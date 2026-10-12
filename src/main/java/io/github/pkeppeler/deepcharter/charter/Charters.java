@@ -86,12 +86,19 @@ public final class Charters {
 		return refusal;
 	}
 
-	/** {@code player} revives the dormant charter {@code id} and becomes its Director. */
+	/** {@code player} revives the dormant charter {@code id} and becomes its Director. Only a former member may. */
 	public static Optional<CharterRefusal> revive(MinecraftServer server, UUID player, CharterId id) {
-		CharterData data = CharterData.get(server);
-		Optional<CharterRefusal> refusal = data.revive(player, id);
+		return revived(server, player, id, CharterData.get(server).revive(player, id));
+	}
+
+	/** As {@link #revive}, for an operator: any player may. Only the operator command calls it. */
+	public static Optional<CharterRefusal> reviveAsOperator(MinecraftServer server, UUID player, CharterId id) {
+		return revived(server, player, id, CharterData.get(server).reviveAsOperator(player, id));
+	}
+
+	private static Optional<CharterRefusal> revived(MinecraftServer server, UUID player, CharterId id, Optional<CharterRefusal> refusal) {
 		if (refusal.isEmpty()) {
-			Charter charter = data.find(id).orElseThrow();
+			Charter charter = CharterData.get(server).find(id).orElseThrow();
 			sync(server, charter.roster());
 			CharterEvents.REVIVED.invoker().onRevived(server, charter, player);
 		}

@@ -9,6 +9,7 @@ import java.util.UUID;
 import java.util.function.UnaryOperator;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -33,9 +34,13 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
  * use of it throws, so a newer world is never overwritten by an older build.
  */
 public final class CharterData extends SavedData {
-	public static final int VERSION = 1;
+	/** 2 adds each charter's former members (#168). Version 1 is still read: its charters start with none. */
+	public static final int VERSION = 2;
+	private static final int FIRST_VERSION = 1;
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "charters");
-	private static final Codec<Versioned<List<Charter>>> VERSIONED_CODEC = Versioned.codec(VERSION, Charter.CODEC.listOf().fieldOf("charters"));
+	private static final MapCodec<List<Charter>> BODY = Charter.CODEC.listOf().fieldOf("charters");
+	// Version 1 has the same body minus "former_members", which Charter.CODEC reads as empty, so the one body codec reads both.
+	private static final Codec<Versioned<List<Charter>>> VERSIONED_CODEC = Versioned.codec(VERSION, BODY, Map.of(FIRST_VERSION, BODY));
 
 	/** The codec of the saved data, which never fails to decode. */
 	public static final Codec<CharterData> CODEC = VERSIONED_CODEC.xmap(CharterData::new, CharterData::versioned);
@@ -136,8 +141,23 @@ public final class CharterData extends SavedData {
 		return Optional.empty();
 	}
 
-	/** {@code player} revives the dormant charter {@code id} and becomes its Director. Its name, account and deepest point are kept. */
+	/**
+	 * {@code player} revives the dormant charter {@code id} and becomes its Director. Only a former member may (ADR 0026); anyone else
+	 * is refused. Its name, account and deepest point are kept.
+	 */
 	public Optional<CharterRefusal> revive(UUID player, CharterId id) {
+		return revive(player, id, false);
+	}
+
+	/**
+	 * As {@link #revive}, for an operator: any player may revive. It is for a charter that went dormant before former members were
+	 * kept (saved version 1), and for support. Only the operator command calls it.
+	 */
+	public Optional<CharterRefusal> reviveAsOperator(UUID player, CharterId id) {
+		return revive(player, id, true);
+	}
+
+	private Optional<CharterRefusal> revive(UUID player, CharterId id, boolean operator) {
 		Optional<Charter> charter = find(id);
 		if (charter.isEmpty()) {
 			return Optional.of(CharterRefusal.NO_SUCH_CHARTER);
@@ -147,6 +167,9 @@ public final class CharterData extends SavedData {
 		}
 		if (charterOf(player).isPresent() || applicationOf(player).isPresent()) {
 			return Optional.of(CharterRefusal.ALREADY_ON_A_CHARTER);
+		}
+		if (!operator && !charter.get().formerMember(player)) {
+			return Optional.of(CharterRefusal.NOT_A_FORMER_MEMBER);
 		}
 		replace(charter.get().revivedBy(player));
 		return Optional.empty();

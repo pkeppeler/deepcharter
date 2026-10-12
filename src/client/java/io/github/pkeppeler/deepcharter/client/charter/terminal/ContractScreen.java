@@ -28,7 +28,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 
 /**
- * The contract terminal's screen: found a charter, apply to one, answer applications as Director, and leave. What it shows
+ * The contract terminal's screen: found a charter, apply to one, revive a dormant one it was once a member of, answer applications as Director, and leave. What it shows
  * is the last {@link ContractState} the server sent; until the first one arrives it shows only the greeting. It decides nothing:
  * every press is a request, the server checks it, and a refusal comes back in the next state, shown under the status.
  *
@@ -47,6 +47,8 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 	private static final int ROWS_TOP = 100;
 	private static final int FIELD_HEIGHT = 14;
 	private static final int MAX_LABEL_NAME = 18;
+	/** The y, from the top of the rows, under the name field and the found button, where the revive rows start. */
+	private static final int BELOW_FOUND = 2 * ROW_PITCH + 2;
 
 	private final TerminalView view;
 	private final Typewriter typewriter;
@@ -120,13 +122,14 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 				nameField.setValue(typed);
 				addRenderableWidget(new CrtButton(left, rowsTop() + ROW_PITCH + 2, columnWidth, ROW_HEIGHT,
 						Component.translatable("screen.deepcharter.contract.found"), button -> send(ContractActions.FOUND, nameField.getValue())));
-				rows(shown.charters(), rightX, columnWidth, "screen.deepcharter.contract.apply", ContractActions.APPLY);
+				rows(shown.revivable(), left, columnWidth, BELOW_FOUND, "screen.deepcharter.contract.revive", ContractActions.REVIVE);
+				rows(shown.charters(), rightX, columnWidth, 0, "screen.deepcharter.contract.apply", ContractActions.APPLY);
 			}
 			case APPLICANT -> leaveButton(actionX, closeY, "screen.deepcharter.contract.withdraw");
 			case CREW -> leaveButton(actionX, closeY, "screen.deepcharter.contract.leave");
 			case DIRECTOR -> {
-				rows(shown.applicants(), left, columnWidth, "screen.deepcharter.contract.approve", ContractActions.APPROVE);
-				rows(shown.applicants(), rightX, columnWidth, "screen.deepcharter.contract.deny", ContractActions.DENY);
+				rows(shown.applicants(), left, columnWidth, 0, "screen.deepcharter.contract.approve", ContractActions.APPROVE);
+				rows(shown.applicants(), rightX, columnWidth, 0, "screen.deepcharter.contract.deny", ContractActions.DENY);
 				leaveButton(actionX, closeY, "screen.deepcharter.contract.leave");
 			}
 		}
@@ -136,13 +139,13 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 		addRenderableWidget(new CrtButton(x, y, ACTION_WIDTH, ROW_HEIGHT, Component.translatable(labelKey), button -> send(ContractActions.LEAVE, "")));
 	}
 
-	/** One button per name in a column, each sending its action with the full name. */
-	private void rows(List<String> names, int x, int columnWidth, String labelKey, Identifier action) {
+	/** One button per name in a column, {@code offsetY} pixels below the top of the rows, each sending its action with the full name. */
+	private void rows(List<String> names, int x, int columnWidth, int offsetY, String labelKey, Identifier action) {
 		for (int i = 0; i < names.size(); i++) {
 			String name = names.get(i);
 			String shownName = name.length() > MAX_LABEL_NAME ? name.substring(0, MAX_LABEL_NAME) + ".." : name;
 			Component label = Component.translatable(labelKey, shownName.toUpperCase(Locale.ROOT));
-			addRenderableWidget(new CrtButton(x, rowsTop() + i * ROW_PITCH, columnWidth, ROW_HEIGHT, label, button -> send(action, name)));
+			addRenderableWidget(new CrtButton(x, rowsTop() + offsetY + i * ROW_PITCH, columnWidth, ROW_HEIGHT, label, button -> send(action, name)));
 		}
 	}
 
@@ -157,6 +160,9 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
 			case NONE -> Component.translatable("screen.deepcharter.contract.status.none")
 					.append(shown.charterCount() > shown.charters().size()
 							? Component.literal(" ").append(Component.translatable("screen.deepcharter.contract.more", shown.charterCount() - shown.charters().size()))
+							: Component.empty())
+					.append(shown.revivableCount() > shown.revivable().size()
+							? Component.literal(" ").append(Component.translatable("screen.deepcharter.contract.more_revivable", shown.revivableCount() - shown.revivable().size()))
 							: Component.empty());
 			case APPLICANT -> fitted(shown.charter(), name -> Component.translatable("screen.deepcharter.contract.status.applicant", name));
 			case CREW -> fitted(shown.charter(), name -> Component.translatable("screen.deepcharter.contract.status.crew", name));

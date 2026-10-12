@@ -87,7 +87,7 @@ public final class CharterCommands {
 		if (charter.isEmpty()) {
 			return refuse(context, CharterRefusal.NO_SUCH_CHARTER);
 		}
-		return report(context, Charters.revive(server(context), player(context).getUUID(), charter.get().id()), "revive", charter.get().name());
+		return report(context, Charters.reviveAsOperator(server(context), player(context).getUUID(), charter.get().id()), "revive", charter.get().name());
 	}
 
 	private static int approve(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {

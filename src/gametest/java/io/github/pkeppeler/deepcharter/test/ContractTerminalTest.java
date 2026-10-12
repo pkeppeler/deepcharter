@@ -19,6 +19,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractActions;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
@@ -31,7 +32,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 
 /**
- * Server GameTests for #72: the contract terminal is always online and open to a player with no charter, each of its five
+ * Server GameTests for #72: the contract terminal is always online and open to a player with no charter, each of its six
  * actions does what {@code Charters} does and shows the player where they stand, and a request it cannot trust changes nothing.
  */
 public class ContractTerminalTest {
@@ -298,6 +299,82 @@ public class ContractTerminalTest {
 		Charter after = Charters.findOrThrow(server, a.id()).orElseThrow();
 		if (!after.applications().equals(List.of(applicant.getUUID())) || Charters.charterOfOrThrow(server, applicant.getUUID()).isPresent()) {
 			throw helper.assertionException("A's application must be untouched by B");
+		}
+		helper.succeed();
+	}
+
+	/** #168: a dormant charter is offered, and revived, only to a player who was once a member (ADR 0026). */
+	@GameTest
+	public void aFormerMemberRevivesADormantCharterFromTheTerminalAndAStrangerIsRefused(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		BlockPos pos = place(helper);
+		ServerPlayer former = visitor(helper, "Departed", pos).player();
+		ServerPlayer outsider = visitor(helper, "Passerby", pos).player();
+		// A name that sorts first, so the row cap cannot hide it.
+		String charter = "!" + uniqueName("Dormant");
+		expectDone(helper, Terminals.act(former, pos, ContractActions.FOUND, name(charter)), "founding");
+		expectDone(helper, Terminals.act(former, pos, ContractActions.LEAVE, new CompoundTag()), "the only member leaving");
+
+		ContractState offered = state(server, former);
+		if (offered.role() != Role.NONE || !offered.revivable().equals(List.of(charter)) || offered.revivableCount() != 1 || offered.charters().contains(charter)) {
+			throw helper.assertionException("the former member is offered the dormant charter to revive and not to apply to, got %s", offered);
+		}
+		ContractState seen = state(server, outsider);
+		if (seen.role() != Role.NONE || !seen.revivable().isEmpty() || seen.revivableCount() != 0) {
+			throw helper.assertionException("a stranger is offered nothing to revive, got %s", seen);
+		}
+
+		Charter before = Charters.findByName(server, charter).orElseThrow();
+		PUSHED.clear();
+		expectRefused(helper, Terminals.act(outsider, pos, ContractActions.REVIVE, name(charter)), "a stranger reviving by a name typed by hand");
+		expectPushed(helper, outsider, state -> state.notice().equals(Optional.of(CharterRefusal.NOT_A_FORMER_MEMBER.translationKey())), "the refusal says why");
+		if (!Charters.findOrThrow(server, before.id()).orElseThrow().equals(before)) {
+			throw helper.assertionException("a refused revival changes nothing");
+		}
+		expectRefused(helper, Terminals.act(former, pos, ContractActions.REVIVE, name(uniqueName("Nowhere"))), "reviving a charter that does not exist");
+		expectRefused(helper, Terminals.act(former, pos, ContractActions.REVIVE, new CompoundTag()), "reviving with no name");
+
+		PUSHED.clear();
+		expectDone(helper, Terminals.act(former, pos, ContractActions.REVIVE, name(charter)), "the former member reviving");
+		ContractState directing = state(server, former);
+		if (directing.role() != Role.DIRECTOR || !directing.charter().equals(charter)) {
+			throw helper.assertionException("the former member should direct the revived charter, got %s", directing);
+		}
+		expectPushed(helper, former, state -> state.role() == Role.DIRECTOR, "the reviver's screen shows the Director view at once");
+		expectPushed(helper, outsider, state -> state.role() == Role.NONE && state.charters().contains(charter), "the revived charter now takes applications");
+		expectRefused(helper, Terminals.act(outsider, pos, ContractActions.REVIVE, name(charter)), "reviving a charter that has a Director");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void aDormantCharterAppearsForItsFormerMembersWhenItGoesDormant(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		BlockPos pos = place(helper);
+		ServerPlayer viewer = visitor(helper, "Remembering", pos).player();
+		String charter = "!" + uniqueName("Fading");
+		expectDone(helper, Terminals.act(viewer, pos, ContractActions.FOUND, name(charter)), "founding");
+		PUSHED.clear();
+
+		if (Charters.leave(server, viewer.getUUID()).isPresent()) {
+			throw helper.assertionException("leaving should succeed");
+		}
+		expectPushed(helper, viewer, state -> state.revivable().equals(List.of(charter)), "the leaver is offered the charter they left");
+		helper.succeed();
+	}
+
+	@GameTest
+	public void theRevivableListIsCappedAndSaysHowManyExist(GameTestHelper helper) {
+		MinecraftServer server = helper.getLevel().getServer();
+		BlockPos pos = place(helper);
+		ServerPlayer viewer = visitor(helper, "Wanderer", pos).player();
+		int cap = ContractTerminalTuning.DEFAULT.revivableRows();
+		for (int i = 0; i < cap + 2; i++) {
+			expectDone(helper, Terminals.act(viewer, pos, ContractActions.FOUND, name(uniqueName("Abandoned"))), "founding");
+			expectDone(helper, Terminals.act(viewer, pos, ContractActions.LEAVE, new CompoundTag()), "leaving");
+		}
+		ContractState seen = state(server, viewer);
+		if (seen.revivable().size() != cap || seen.revivableCount() != cap + 2) {
+			throw helper.assertionException("the charters to revive are capped at %s and counted in full, got %s of %s", cap, seen.revivable().size(), seen.revivableCount());
 		}
 		helper.succeed();
 	}
