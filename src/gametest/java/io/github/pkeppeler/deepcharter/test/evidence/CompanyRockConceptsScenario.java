@@ -58,9 +58,9 @@ public class CompanyRockConceptsScenario extends EvidenceScenario {
 	private static final int SETTLE_TICKS = 20;
 	/**
 	 * The render distance, in chunks, while the scenario runs: a still waits for every chunk in view, and the layers' tall worlds generate slowly
-	 * on a loaded machine, so the default distance did not settle in two minutes. 4 chunks is 64 blocks, past the fog, so no still differs.
+	 * on a loaded machine, so the default distance did not settle in two minutes. 2 chunks is 32 blocks, and every room is sealed in rock, so no still differs.
 	 */
-	private static final int RENDER_DISTANCE = 4;
+	private static final int RENDER_DISTANCE = 2;
 	private static final long CHUNK_WAIT_NANOS = 40_000_000_000L;
 	private static final int CHUNK_ATTEMPTS = 4;
 	/** Where the camera waits while the chunks are sent again: inside the box of rock, far from every room, 3 blocks up so it is in no block. */
