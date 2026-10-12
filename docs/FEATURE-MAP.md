@@ -94,7 +94,7 @@ flowchart LR
   l_gas["Gas and its counters<br/>6 of 6 built"]
   l_company_rock["Company Rock and its counters<br/>3 of 6 built"]
   l_creatures["The Retained and other creatures<br/>5 of 8 built"]
-  l_darkness["Darkness and sight<br/>3 of 8 built"]
+  l_darkness["Darkness and sight<br/>5 of 8 built"]
   l_crust["The breach crust and hard landings<br/>5 of 8 built"]
   l_getting_out["Stranded, rescue and the way home<br/>6 of 11 built"]
   l_consumables["The repair station's shelf<br/>6 of 6 built"]
@@ -127,9 +127,9 @@ flowchart LR
   l_handbook --> l_lava
   l_handbook --> l_pods
   l_hull --> l_crust
+  l_interface --> l_darkness
   l_lava --> l_economy
   l_layers --> l_crust
-  l_layers --> l_darkness
   l_layers --> l_economy
   l_lights --> l_creatures
   l_lights --> l_darkness
@@ -173,7 +173,7 @@ flowchart LR
 | [Gas and its counters](#gas-and-its-counters) | 6 | 0 | 0 | 0 |
 | [Company Rock and its counters](#company-rock-and-its-counters) | 3 | 1 | 2 | 0 |
 | [The Retained and other creatures](#the-retained-and-other-creatures) | 5 | 0 | 1 | 2 |
-| [Darkness and sight](#darkness-and-sight) | 3 | 0 | 4 | 1 |
+| [Darkness and sight](#darkness-and-sight) | 5 | 0 | 2 | 1 |
 | [The breach crust and hard landings](#the-breach-crust-and-hard-landings) | 5 | 0 | 1 | 2 |
 | [Stranded, rescue and the way home](#stranded-rescue-and-the-way-home) | 6 | 0 | 4 | 1 |
 | [The repair station's shelf](#the-repair-stations-shelf) | 6 | 0 | 0 | 0 |
@@ -199,8 +199,6 @@ flowchart LR
 - **Creatures and combat session** (creatures): A session with the user on rare unsettling creatures per layer and bosses; pod combat uses mining gear first. [#13](https://github.com/pkeppeler/deepcharter/issues/13), [SPEC.md](SPEC.md#13-creatures-and-combat)
 - **Heat, pressure and flooding** (crust): Later layers add heat (the Magma Belt), pressure and flooding (the Drowned Deep) that the hull and radiator must answer. [SPEC.md](SPEC.md#story-layers)
 - **Smooth moving light** (darkness): Glow accents, beams, an optional dynamic-lights mod and an opt-in shader pack. [#248](https://github.com/pkeppeler/deepcharter/issues/248)
-- **HUD signal decay** (darkness): Near the bottom of a layer the readouts flicker, jump and finally drop out; the deeper, the more often. [#502](https://github.com/pkeppeler/deepcharter/issues/502)
-- **Console upgrade** (darkness): A cockpit track whose tiers push the decay deeper; the top tier is immune. [#502](https://github.com/pkeppeler/deepcharter/issues/502)
 - **Per-layer drones and the Lamp Hymn** (darkness): Each layer gets its own sound drone, with a hymn motif. [#249](https://github.com/pkeppeler/deepcharter/issues/249)
 - **Drill tier 4** (drill): Drill speed 3.5x stock, $5,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
 - **Drill tier 5** (drill): Drill speed 4.75x stock, $25,000. No chassis built yet can fit it (a Badger or later). [SPEC.md](SPEC.md#components)
@@ -737,8 +735,10 @@ flowchart TB
   n_skins["⚙️ Skins"]
   n_ribbon_hud["⚙️ The Ribbon cockpit HUD"]
   n_front_camera["⬆️ Front camera"]
+  n_signal_decay["HUD signal decay"]
   n_pod_status_hud --> n_scanner_hud
   n_ribbon_hud --> n_front_camera
+  n_ribbon_hud --> n_signal_decay
   classDef built fill:#1f3d2b,stroke:#6fbf73,stroke-width:2px,color:#e8f5e9
   classDef progress fill:#4a3a10,stroke:#f0b429,stroke-width:2px,color:#fff3d6
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
@@ -746,6 +746,7 @@ flowchart TB
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
   class n_altimeter,n_pod_status_hud,n_account_hud,n_scanner_hud,n_breach_fade,n_transmission_overlay,n_crt_terminals,n_skins,n_ribbon_hud built
   class n_front_camera planned
+  class n_signal_decay ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
@@ -971,14 +972,14 @@ flowchart LR
   n_signal_decay["☠️ HUD signal decay"]
   n_console_upgrade["⬆️ Console upgrade"]
   n_lamp_hymn["⚙️ Per-layer drones and the Lamp Hymn"]
-  n_layer_2["Layer 2: The Old Workings"]
   n_lights_t1["Lights tier 1"]
+  n_ribbon_hud["The Ribbon cockpit HUD"]
   n_the_deep_bites["The deep fights back"]
   n_console_upgrade -. counters .-> n_signal_decay
   n_dynamic_lights -. counters .-> n_darkness
-  n_layer_2 --> n_signal_decay
   n_light_ledger -. counters .-> n_darkness
   n_lights_t1 -. counters .-> n_darkness
+  n_ribbon_hud --> n_signal_decay
   n_signal_decay --> n_console_upgrade
   n_suit_lamp -. counters .-> n_darkness
   n_the_deep_bites --> n_darkness
@@ -987,10 +988,10 @@ flowchart LR
   classDef planned fill:#2e2e2e,stroke:#9e9e9e,stroke-width:1px,color:#d6d6d6
   classDef idea fill:#1a1a1a,stroke:#757575,stroke-width:1px,stroke-dasharray:4 3,color:#a0a0a0
   classDef ext fill:#ffffff,stroke:#999999,stroke-width:1px,stroke-dasharray:2 2,color:#555555
-  class n_darkness,n_light_ledger,n_stranded_dark built
-  class n_dynamic_lights,n_signal_decay,n_console_upgrade,n_lamp_hymn planned
+  class n_darkness,n_light_ledger,n_stranded_dark,n_signal_decay,n_console_upgrade built
+  class n_dynamic_lights,n_lamp_hymn planned
   class n_suit_lamp idea
-  class n_layer_2,n_lights_t1,n_the_deep_bites ext
+  class n_lights_t1,n_ribbon_hud,n_the_deep_bites ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |
@@ -1000,8 +1001,8 @@ flowchart LR
 | ☠️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/wreck.png?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/wreck.png?raw=true" width="160" alt=""></a> | <a id="stranded-dark"></a>**A stranded pod goes dark**<br>hazard | With no fuel or hull the pod is powered off, and its lights go out. | ✅ Built | [SPEC.md](SPEC.md#fuel-and-stranded) |
 | 🛡️ | no still yet | <a id="dynamic-lights"></a>**Smooth moving light**<br>counter | Glow accents, beams, an optional dynamic-lights mod and an opt-in shader pack. | 📋 Planned | [#248](https://github.com/pkeppeler/deepcharter/issues/248) |
 | 🛡️ | no still yet | <a id="suit-lamp"></a>**The suit lamp**<br>counter | On foot, a suit lamp on a battery; the finale's Unnumbered Lamp never runs out. | 💭 Idea | [SPEC.md](SPEC.md#9-on-foot) |
-| ☠️ | no still yet | <a id="signal-decay"></a>**HUD signal decay**<br>hazard | Near the bottom of a layer the readouts flicker, jump and finally drop out; the deeper, the more often. | 📋 Planned | [#502](https://github.com/pkeppeler/deepcharter/issues/502) |
-| ⬆️ | no still yet | <a id="console-upgrade"></a>**Console upgrade**<br>upgrade | A cockpit track whose tiers push the decay deeper; the top tier is immune. | 📋 Planned | [#502](https://github.com/pkeppeler/deepcharter/issues/502) |
+| ☠️ | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/543/signal-decay.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/543/signal-decay.gif?raw=true" width="160" alt=""></a> | <a id="signal-decay"></a>**HUD signal decay**<br>hazard | Near the floor of every layer something gets on the line: the scanner fills with noise, then the gauges flicker, jump to false readings and go dark, and in the last slabs the whole display is gone. The hull and burning lamps and the hull alarm never fail. | ✅ Built | [#502](https://github.com/pkeppeler/deepcharter/issues/502), [#543](https://github.com/pkeppeler/deepcharter/issues/543), [mechanics.md](design/mechanics.md#hud-signal-decay-502-a) |
+| <img src="../src/main/resources/assets/deepcharter/textures/item/part_console.png" width="32" alt=""> | <a href="https://github.com/pkeppeler/deepcharter/blob/pr-media/543/signal-decay-console.gif?raw=true"><img src="https://github.com/pkeppeler/deepcharter/blob/pr-media/543/signal-decay-console.gif?raw=true" width="160" alt=""></a> | <a id="console-upgrade"></a>**Console upgrade**<br>upgrade | A three-tier part, $200, $500 and $1,250, that shrinks the decay toward the floor; a Mole fits two tiers, and the third (a Prospector's) is immune. | ✅ Built | [#502](https://github.com/pkeppeler/deepcharter/issues/502), [#543](https://github.com/pkeppeler/deepcharter/issues/543), [mechanics.md](design/mechanics.md#hud-signal-decay-502-a) |
 | ⚙️ | no still yet | <a id="lamp-hymn"></a>**Per-layer drones and the Lamp Hymn**<br>mechanic | Each layer gets its own sound drone, with a hymn motif. | 📋 Planned | [#249](https://github.com/pkeppeler/deepcharter/issues/249) |
 
 ### The breach crust and hard landings
@@ -1337,7 +1338,6 @@ flowchart TB
   n_splice["⚙️ Story-layer splicing"]
   n_uncharted["📍 Uncharted layers"]
   n_breach_crust["The breach crust"]
-  n_signal_decay["HUD signal decay"]
   n_work_orders["Work orders"]
   n_breach_1 --> n_breach_crust
   n_breach_1 --> n_layer_2
@@ -1353,7 +1353,6 @@ flowchart TB
   n_l2_upper --> n_l2_shift
   n_layer_1 --> n_l1_topsoil
   n_layer_2 --> n_l2_upper
-  n_layer_2 --> n_signal_decay
   n_layer_3 --> n_layer_4
   n_layer_4 --> n_layers_5_8
   n_layers_5_8 --> n_finale
@@ -1369,7 +1368,7 @@ flowchart TB
   class n_layer_depth_look progress
   class n_breach_in_world,n_campaign_world,n_layer_3,n_layer_4,n_layers_5_8,n_finale,n_ramp,n_seams,n_splice planned
   class n_uncharted idea
-  class n_breach_crust,n_signal_decay,n_work_orders ext
+  class n_breach_crust,n_work_orders ext
 ```
 
 | Icon | Still | Feature | What it is | Status | Links |

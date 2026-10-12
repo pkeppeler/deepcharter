@@ -51,6 +51,9 @@ public class EconomyAffordabilityTest {
 	private static final int SOUNDER_TIER_TWO_RUNS = 4;
 	/** The heat shield (#482), a layer 2 buy, is dearer than the liner's tier 1 and under its tier 2. */
 	private static final int HEAT_SHIELD_RUNS = 3;
+	/** The console's tiers 2 and 3 (#502) are layer 2 buys, in runs of a Mole with tier 2 parts at most. */
+	private static final int CONSOLE_TIER_TWO_RUNS = 2;
+	private static final int CONSOLE_TIER_THREE_RUNS = 4;
 	/** The radiator matters from layer 3 on, and its tier 1 costs what the others' tier 2 does in the original. */
 	private static final int RADIATOR_RUNS = 5;
 	/** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
@@ -191,6 +194,30 @@ public class EconomyAffordabilityTest {
 		if (price <= UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 1) || price >= UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 2)) {
 			throw failure(helper, "the heat shield costs $%d, which must be over the liner's tier 1 ($%d) and under its tier 2 ($%d)", price,
 					UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 1), UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 2));
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The console (#502) answers the signal decay at the foot of layer 1, so its tier 1 is an early buy like the other tier 1 parts ({@value #EARLY_BUY_RUNS} stock layer 1
+	 * runs at most), and its tiers 2 and 3 are layer 2 buys: {@value #CONSOLE_TIER_TWO_RUNS} and {@value #CONSOLE_TIER_THREE_RUNS} runs of a Mole with tier 2 parts at most.
+	 * Tier 3 is a Prospector's (a Mole takes tier 2), so the immune console is not a Mole's first buy.
+	 */
+	@GameTest
+	public void theConsoleTiersAreAffordableAfterTheirRuns(GameTestHelper helper) {
+		Run layerOne = stockRunInLayerOne();
+		Run layerTwo = upgradedRunInLayerTwo();
+		int[] runs = {layerOne.toAfford(UpgradeTuning.DEFAULT.price(ComponentTrack.CONSOLE, 1)), layerTwo.toAfford(UpgradeTuning.DEFAULT.price(ComponentTrack.CONSOLE, 2)),
+				layerTwo.toAfford(UpgradeTuning.DEFAULT.price(ComponentTrack.CONSOLE, 3))};
+		int[] allowed = {EARLY_BUY_RUNS, CONSOLE_TIER_TWO_RUNS, CONSOLE_TIER_THREE_RUNS};
+		LOGGER.info("[economy] console tiers: {} layer 1 run, then {} and {} layer 2 runs (of ${} and ${})", runs[0], runs[1], runs[2], Math.round(layerOne.net()), Math.round(layerTwo.net()));
+		for (int tier = 1; tier <= ComponentTrack.CONSOLE.maxTier(); tier++) {
+			if (runs[tier - 1] > allowed[tier - 1]) {
+				throw failure(helper, "console tier %d costs $%d, which is %d runs; at most %d are allowed", tier, UpgradeTuning.DEFAULT.price(ComponentTrack.CONSOLE, tier), runs[tier - 1], allowed[tier - 1]);
+			}
+		}
+		if (allowed.length != ComponentTrack.CONSOLE.maxTier()) {
+			throw failure(helper, "the test has bands for %d console tiers, the track has %d", allowed.length, ComponentTrack.CONSOLE.maxTier());
 		}
 		helper.succeed();
 	}

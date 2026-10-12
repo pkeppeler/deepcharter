@@ -6,11 +6,13 @@ import java.util.Map;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -235,6 +237,38 @@ public class SignalDecayTest {
 		} finally {
 			owner.leave();
 			pod.discard();
+		}
+	}
+
+	/**
+	 * A pod saved before the console existed has no console in its parts: it loads, keeps its other parts and reads the stock console (tier 0), and the stock curve applies.
+	 * A saved console round-trips.
+	 */
+	@GameTest
+	public void aPodSavedBeforeTheConsoleLoadsWithTheStockConsoleAndASavedConsoleRoundTrips(GameTestHelper helper) {
+		MockPlayer owner = MockPlayers.join(helper, "Decay saver");
+		PodEntity pod = helper.spawn(PodRegistry.POD, helper.absoluteVec(new net.minecraft.world.phys.Vec3(1.5, 2, 1.5)));
+		PodEntity loaded = helper.spawn(PodRegistry.POD, helper.absoluteVec(new net.minecraft.world.phys.Vec3(3.5, 2, 1.5)));
+		try {
+			ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod, ComponentTrack.HULL, 1);
+			var codec = PodComponents.STATE.persistenceCodec();
+			var oldSave = codec.encodeStart(NbtOps.INSTANCE, pod.getAttached(PodComponents.STATE)).getOrThrow();
+			loaded.setAttached(PodComponents.STATE, codec.parse(NbtOps.INSTANCE, oldSave).getOrThrow());
+			if (PodComponents.effectiveTier(loaded, ComponentTrack.HULL) != 1 || PodComponents.effectiveTier(loaded, ComponentTrack.CONSOLE) != 0
+					|| PodComponents.partOf(loaded, ComponentTrack.CONSOLE).isPresent()) {
+				throw failure(helper, "a pod saved with no console keeps its hull and reads the stock console");
+			}
+			ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod, ComponentTrack.CONSOLE, 2);
+			var newSave = codec.encodeStart(NbtOps.INSTANCE, pod.getAttached(PodComponents.STATE)).getOrThrow();
+			loaded.setAttached(PodComponents.STATE, codec.parse(NbtOps.INSTANCE, newSave).getOrThrow());
+			if (PodComponents.effectiveTier(loaded, ComponentTrack.CONSOLE) != 2 || PodComponents.effectiveTier(loaded, ComponentTrack.HULL) != 1) {
+				throw failure(helper, "a saved console tier 2 loads as tier 2 beside the other parts");
+			}
+			helper.succeed();
+		} finally {
+			owner.leave();
+			pod.discard();
+			loaded.discard();
 		}
 	}
 }
