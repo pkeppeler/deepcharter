@@ -31,6 +31,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.Depth;
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
@@ -100,7 +101,7 @@ public class OrePlacementTest {
 	private static final int SIDE = 6;
 	private static final int FIRST_CHUNK = 400;
 
-	/** Blocks counted in one zone: stone, our ore, our hazards and lava sources. */
+	/** Blocks counted in one zone: the layer's rock, our ore, our hazards and lava sources. */
 	private record Census(int candidates, Map<Block, Integer> found) {
 		int of(Block block) {
 			return found.getOrDefault(block, 0);
@@ -695,12 +696,12 @@ public class OrePlacementTest {
 		return counters;
 	}
 
-	/** Blocks that a zone fill may have decided: stone, what it puts in stone, and lava sources (flowing lava is not its). */
+	/** Blocks that a zone fill may have decided: the layer's rock, what it puts in it, and lava sources (flowing lava is not its). */
 	private static boolean isCandidate(BlockState state) {
 		if (state.is(Blocks.LAVA)) {
 			return state.getFluidState().isSource();
 		}
-		return state.is(Blocks.STONE) || state.is(HazardBlocks.COMPANY_ROCK) || state.is(HazardBlocks.GAS_POCKET)
+		return state.is(LayerBlocks.GROUND) || state.is(HazardBlocks.COMPANY_ROCK) || state.is(HazardBlocks.GAS_POCKET)
 				|| OreRegistry.typeOf(state.getBlock()).isPresent();
 	}
 

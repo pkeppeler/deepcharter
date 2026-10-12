@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "side": "deepcharter:block/green_shale_rubble_0",
+    "end": "deepcharter:block/green_shale_rubble_end"
+  }
+}

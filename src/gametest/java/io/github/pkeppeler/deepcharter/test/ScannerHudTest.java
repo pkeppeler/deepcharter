@@ -22,7 +22,10 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
+import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.scanner.ScannerHud;
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -99,12 +102,16 @@ public class ScannerHudTest implements FabricClientGameTest {
 	}
 
 	/** A screenshot of the HUD, read cell by cell. */
-	public record HudShot(BufferedImage image, int guiWidth, int guiHeight, int scale, ScanArea area) {
-		/** A screenshot read with the geometry of {@code area}, the area of the scanner the HUD is showing. */
+	public record HudShot(BufferedImage image, int guiWidth, int guiHeight, int scale, ScanArea area, Decal window) {
+		/**
+		 * A screenshot read with the geometry of {@code area}, the area of the scanner the HUD is showing: the cockpit's window while the client sits in a pod under the
+		 * Ribbon, else the plain panel at top right.
+		 */
 		public static HudShot take(ClientGameTestContext context, String screenshotName, ScanArea area) {
 			int[] window = context.computeOnClient(client -> new int[] {
 					client.getWindow().getWidth(), client.getWindow().getGuiScaledWidth(),
 					client.getWindow().getGuiScaledHeight(), client.getWindow().getGuiScale()});
+			Decal cockpitWindow = context.computeOnClient(client -> CockpitHud.seated(client).map(CockpitLook.Layout::scanner).orElse(null));
 			Path file = context.takeScreenshot(screenshotName);
 			BufferedImage image;
 			try {
@@ -115,14 +122,17 @@ public class ScannerHudTest implements FabricClientGameTest {
 			if (image.getWidth() != window[0]) {
 				throw new AssertionError("the screenshot is " + image.getWidth() + " wide but the window is " + window[0]);
 			}
-			return new HudShot(image, window[1], window[2], window[3], area);
+			return new HudShot(image, window[1], window[2], window[3], area, cockpitWindow);
 		}
 
 		/** The RGB of the middle of the HUD cell {@code ahead} and {@code up} from the pod. */
 		public int pixel(int ahead, int up) {
-			int half = ScannerHud.cellSize(guiWidth, guiHeight, area) * scale / 2;
-			int x = ScannerHud.cellLeft(guiWidth, guiHeight, area, ahead) * scale + half;
-			int y = ScannerHud.cellTop(guiWidth, guiHeight, area, up) * scale + half;
+			int cell = window == null ? ScannerHud.cellSize(guiWidth, guiHeight, area) : ScannerHud.windowCellSize(window, area);
+			int left = window == null ? ScannerHud.cellLeft(guiWidth, guiHeight, area, ahead) : ScannerHud.windowCellLeft(guiWidth, window, area, ahead);
+			int top = window == null ? ScannerHud.cellTop(guiWidth, guiHeight, area, up) : ScannerHud.windowCellTop(guiHeight, window, area, up);
+			int half = cell * scale / 2;
+			int x = left * scale + half;
+			int y = top * scale + half;
 			return image.getRGB(x, y) & RGB;
 		}
 	}

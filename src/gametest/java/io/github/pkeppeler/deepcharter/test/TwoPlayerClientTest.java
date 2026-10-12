@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
+import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -268,6 +269,11 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
 	/** The scanner is drawn while riding: its pod marker is in the middle of the pod's cells, whatever else is on screen. */
 	private static void expectScannerShowsPod(ClientGameTestContext context, String screenshotName) {
+		// A vanilla toast and a transmission are drawn over the top right of the screen, where the Ribbon hangs its scanner.
+		context.runOnClient(client -> {
+			client.gui.toastManager().clear();
+			TransmissionOverlay.reset();
+		});
 		ScannerHudTest.HudShot shot = ScannerHudTest.HudShot.take(context, screenshotName, ScannerHudTest.TIER_ONE);
 		int actual = shot.pixel(0, 0);
 		int expected = ScannerLook.current().podColor() & RGB;

@@ -111,13 +111,22 @@ def window(glass: str, side: str, glow: str | None) -> Model:
     return Model(textures, boxes)
 
 
-def i_beam(paint: str) -> Model:
-    t = {"flange": tex(paint), "web": tex(paint + "_web"), "end": tex(paint + "_end"), "particle": tex(paint)}
-    return Model(t, [
-        Box((2, 0, 2), (14, 16, 4.5), {"*": "#flange", "up": "#end", "down": "#end"}, cull=True),
-        Box((2, 0, 11.5), (14, 16, 14), {"*": "#flange", "up": "#end", "down": "#end"}, cull=True),
-        Box((6.75, 0, 4.5), (9.25, 16, 11.5), {"*": "#web", "north": None, "south": None, "up": "#end", "down": "#end"}, cull=True),
-    ])
+# How far a steel beam runs on past each end of its block, in model units. The beam is inset 2 units from the sides of its block, so where
+# one meets another at a right angle (a post under a header, a header against a post) its end stops 2 units short of the other's side: a visible gap.
+# The beam's own profile carries on across that gap, inside the next block, where it meets the other beam's side (#241). It has no cap, so a
+# stack of beams has no plate in the channel of the one above, and a beam that ends in the open shows its recessed end.
+BEAM_REACH = 2.0
+
+
+def i_beam() -> Model:
+    t = {"flange": tex("beam"), "web": tex("beam_web"), "end": tex("beam_end"), "particle": tex("beam")}
+    profile = (((2, 2), (14, 4.5), {"*": "#flange"}), ((2, 11.5), (14, 14), {"*": "#flange"}),
+               ((6.75, 4.5), (9.25, 11.5), {"*": "#web", "north": None, "south": None}))
+    boxes = [Box((lo[0], 0, lo[1]), (hi[0], 16, hi[1]), {**faces, "up": "#end", "down": "#end"}, cull=True) for lo, hi, faces in profile]
+    for lo, hi, faces in profile:
+        for y0, y1 in ((-BEAM_REACH, 0), (16, 16 + BEAM_REACH)):
+            boxes.append(Box((lo[0], y0, lo[1]), (hi[0], y1, hi[1]), {**faces, "up": None, "down": None}))
+    return Model(t, boxes)
 
 
 def lattice(texture: str) -> Model:
@@ -293,7 +302,7 @@ CATALOGUE: dict[str, KitBlock] = {block.name: block for block in [
     facing("brace", "Lattice Brace", lambda: brace("lattice")),
     facing("mine_track", "Mine Track", mine_track),
     facing("ore_car", "Ore Car", ore_car),
-    pillar("steel_beam", "Steel Beam", lambda: i_beam("beam")),
+    pillar("steel_beam", "Steel Beam", i_beam),
     pillar("lattice_girder", "Lattice Girder", lambda: lattice("lattice")),
     pillar("pipe", "Steel Pipe", lambda: pipe("pipe")),
     pillar("pipe_brass", "Brass Pipe", lambda: pipe("pipe_brass")),

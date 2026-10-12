@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Writes the layer concept packs and scenes (docs/design/layer-concepts-2.md, #447; round 1 was #241) from the Python sources in this directory.
+"""Writes the layers' rock and lava (the shipped blocks of layers 1 and 2, #241), the layer concept packs and scenes (docs/design/layer-concepts-2.md,
+#447; round 1 was #241) from the Python sources in this directory.
 
 Usage: tools/layer_concepts/make.py [--check]
-       python3 tools/textures/texgen.py --variant layer_grain   (and layer_bedded, layer_mottled, layer_form_1, _2, _3): draws the textures
-       from the recipes written here
+       python3 tools/textures/texgen.py            draws the shipped textures from the recipes written here
+       python3 tools/textures/texgen.py --variant layer_grain   (and layer_form_1, _2, _3): draws a test pack's textures
 
-  - the texgen recipes of each pack, tools/textures/variants/layer_<pack>/recipes/layers.json (art.py)
-  - two kinds of test pack under src/gametest/resources/resourcepacks/layer_concept_<pack>/:
-      a texture style (grain, bedded, mottled): the rock and rubble of the three layers, as the blockstates and models of vanilla granite,
-      cobblestone, tuff, cobbled deepslate, andesite and diorite (the stand-ins for the rock of layers 1, 2 and 3), their textures, and the lava;
+  - the shipped rock of layers 1 and 2, the user's pick of round 2 (Grain): the texgen recipes tools/textures/recipes/layer_rock.json, and the
+    blockstates, models and item definitions of the four blocks (packed shale and its rubble, green shale and its rubble) in the mod's assets
+  - the lava of every layer, minecraft:block/lava_still and lava_flow, animated, under the mod's assets/minecraft (the one block texture of vanilla
+    that the mod redraws)
+  - three kinds of test pack under src/gametest/resources/resourcepacks/layer_concept_<pack>/:
+      grain, the rock and rubble of layer 3: vanilla andesite and diorite stand in for them until layer 3 has its own blocks (#504, with M3);
       a layer's form (form_1, form_2, form_3): the Company Rock and the breach crust of that layer, in the formation the user assigned it. One block
       has one blockstate, so the scenario turns on the form of the layer it shoots
   - the atmosphere of the scenes, shared by all packs: one biome per layer and kind of light, under
@@ -23,8 +26,8 @@ covers them. A PNG is compared by its pixels, so another zlib on another machine
 """
 import argparse
 import json
+import re
 import sys
-from functools import lru_cache
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -43,12 +46,14 @@ ROOT = HERE.parent.parent
 DATA = ROOT / "src/gametest/resources/data/deepcharter-test"
 STRUCTURES = DATA / "structure/layer_concepts"
 SCENES = DATA / "layer_concepts/scenes.json"
-# The texture options, which the user picks from for each layer.
-STYLES = ("grain", "bedded", "mottled")
-NAMES = {"grain": "Grain", "bedded": "Bedded", "mottled": "Mottled"}
+MOD_ASSETS = ROOT / "src/main/resources/assets"
+SHIPPED_RECIPES = ROOT / "tools/textures/recipes/layer_rock.json"
+# The user's pick of round 2 (2026-10-11) was Grain for all three layers. The rock of layers 1 and 2 is the mod's own blocks, with their rubble; layer 3's
+# is the test pack of that name, because layer 3 waits for M3 (#504).
+GRAIN = "grain"
 # The fixed form of each layer: its formation's Company Rock and breach crust.
 FORMS = tuple(f"form_{layer}" for layer in scenes.LAYERS)
-PACKS = STYLES + FORMS
+PACKS = (GRAIN,) + FORMS
 PACK_FORMAT = 97
 BIOMES = DATA / "worldgen/biome"
 
@@ -77,11 +82,15 @@ def pack_dir(pack: str) -> Path:
 # How many models of the rock block each layer has. Layer 1's beds are the likeliest to read as ruled courses, so no two neighbours should match.
 ROCK_VARIANTS = {1: 10, 2: 10, 3: 6}
 RUBBLE_VARIANTS = 2
-# How many textures a layer's rock has for its top and bottom: a floor or a roof is one texture turned and mirrored, and three of them keep
-# it from repeating at the size of a block.
+# How many textures a layer's rock has for its top and bottom: a floor or a roof is one texture, and four of them keep it from repeating at the size
+# of a block.
 END_VARIANTS = 4
-# The vanilla blocks that stand in for each layer's rock and its rubble, and the name the pack gives their textures and models.
-STAND_INS = {1: ("granite", "cobblestone"), 2: ("tuff", "cobbled_deepslate"), 3: ("andesite", "diorite")}
+# The mod's rock block of layers 1 and 2 and its rubble, which the formation pass of worldgen will place.
+BLOCKS = {1: ("packed_shale", "packed_shale_rubble"), 2: ("green_shale", "green_shale_rubble")}
+SHIPPED_LAYERS = tuple(BLOCKS)
+# Layer 3's rock and rubble: the vanilla blocks that stand in for them in the test pack, and the stem of their textures and models.
+LAYER_3 = ("andesite", "diorite")
+LAYER_3_STEMS = ("lc_rock_3", "lc_rubble_3")
 
 # The colour ramp of each layer's rock: rust-brown shale, grey-green shale, and the cold basalt of the columns.
 SHADES = {1: art.ramp("shale1", 6), 2: art.ramp("shale2", 6), 3: art.ramp("basalt3", 6)}
@@ -96,39 +105,32 @@ CRUST_SEED = 61
 
 # ---------------------------------------------------------------------------------------------------------------- textures
 
-@lru_cache(maxsize=None)
-def shared_noise(layer: int, top: bool) -> int:
-    """The seed of the noise that all the variants of a layer's rock share at their edges (art.soft), so that a block of one variant meets a block of
-    another where the noise meets itself: the first seed whose own grain and own mottles tile. The same noise is at the edge of every variant, so a base that did not
-    tile would make every one of them fail, and the seeds of the variants cannot mend it."""
-    for attempt in range(50):
-        base = 90000 + 100 * layer + 7 * top + 1000 * attempt
-        plain = (art.grained(SHADES[layer], base, MID[layer]), art.mottled(SHADES[layer], base, MID[layer], veins=False))
-        if all(seams.measure(image(texture).pixels, art.SIZE).seamless() for texture in plain):
-            return base
-    raise ValueError(f"no shared noise for layer {layer} that tiles")
+# The noise that all the variants of a layer's rock share at their edges (art.soft), by layer and whether it is the top and bottom, so that a block of one
+# variant meets a block of another where the noise meets itself: the first seed whose own grain tiles (round 2 chose the first whose grain and whose
+# mottles both did, so these are the seeds the user saw and picked).
+SHARED_NOISE = {(1, False): 90100, (1, True): 90107, (2, False): 90200, (2, True): 93207, (3, False): 91300, (3, True): 95307}
 
 
-def rock_side(style: str, layer: int, seed: int) -> art.Grid:
+def stems(layer: int) -> tuple[str, str]:
+    """The name of the rock and of the rubble of a layer, the stem of its textures and models."""
+    return BLOCKS[layer] if layer in BLOCKS else LAYER_3_STEMS
+
+
+def rock_grids(layer: int) -> dict[str, art.Grid]:
+    """Every tiling texture of the rock of one layer, by name: the rock and its end, the rubble and its end."""
+    rock, rubble = stems(layer)
     shades, mid = SHADES[layer], MID[layer]
-    if style == "grain":
-        return art.grained(shades, seed, mid, shared_noise(layer, False))
-    if style == "bedded":
-        return art.bedded(shades, seed, 10 + layer, mid, shared_noise(layer, False))
-    return art.mottled(shades, seed, mid, base=shared_noise(layer, False))
-
-
-def rock_end(style: str, layer: int, seed: int) -> art.Grid:
-    shades, mid = SHADES[layer], MID[layer]
-    if style == "grain":
-        return art.grained(shades, seed, mid, shared_noise(layer, True))
-    if style == "bedded":
-        return art.ledge(shades, seed, mid, shared_noise(layer, True))
-    return art.mottled(shades, seed, mid, veins=False, base=shared_noise(layer, True))
-
-
-def rubble(style: str, layer: int, seed: int) -> art.Grid:
-    return (art.flags if style == "bedded" else art.shards)(SHADES[layer], seed)
+    side, end = SHARED_NOISE[layer, False], SHARED_NOISE[layer, True]
+    seed = 100 * layer
+    out: dict[str, art.Grid] = {}
+    for i in range(ROCK_VARIANTS[layer]):
+        out[f"{rock}_{i}"] = fitted(lambda s: art.grained(shades, s, mid, side), seed + i)
+    for j in range(END_VARIANTS):
+        out[f"{rock}_end_{j}"] = fitted(lambda s: art.grained(shades, s, mid, end), seed + 15 + j)
+    for i in range(RUBBLE_VARIANTS):
+        out[f"{rubble}_{i}"] = fitted(lambda s: art.shards(shades, s), seed + 20 + i, seams.MAX_RUBBLE_INSIDE)
+    out[f"{rubble}_end"] = fitted(lambda s: art.shards(shades, s), seed + 22, seams.MAX_RUBBLE_INSIDE)
+    return out
 
 
 def fitted(draw, seed: int, ceiling: float = seams.MAX_INSIDE) -> art.Grid:
@@ -141,21 +143,6 @@ def fitted(draw, seed: int, ceiling: float = seams.MAX_INSIDE) -> art.Grid:
         if found.seamless() and seams.MIN_INSIDE <= found.inside <= ceiling:
             return grid
     raise ValueError(f"no seed from {seed} gives a texture that tiles")
-
-
-def rock_grids(style: str) -> dict[str, art.Grid]:
-    """Every tiling texture of the natural rock of the three layers in one style, by name: the rock and its end, the rubble and its end."""
-    out: dict[str, art.Grid] = {}
-    for layer in scenes.LAYERS:
-        seed = 100 * layer
-        for i in range(ROCK_VARIANTS[layer]):
-            out[f"lc_rock_{layer}_{i}"] = fitted(lambda s: rock_side(style, layer, s), seed + i)
-        for j in range(END_VARIANTS):
-            out[f"lc_rock_{layer}_end_{j}"] = fitted(lambda s: rock_end(style, layer, s), seed + 15 + j)
-        for i in range(RUBBLE_VARIANTS):
-            out[f"lc_rubble_{layer}_{i}"] = fitted(lambda s: rubble(style, layer, s), seed + 20 + i, seams.MAX_RUBBLE_INSIDE)
-        out[f"lc_rubble_{layer}_end"] = fitted(lambda s: rubble(style, layer, s), seed + 22, seams.MAX_RUBBLE_INSIDE)
-    return out
 
 
 def form_grids(layer: int) -> dict[str, art.Grid]:
@@ -201,39 +188,38 @@ def form_textures(layer: int) -> dict[str, dict]:
     return out
 
 
+def shipped_recipes() -> dict[str, dict]:
+    """The texgen recipes of the mod's rock of layers 1 and 2, by key (block/<name>): tools/textures/recipes/layer_rock.json."""
+    return {f"block/{name}": art.recipe(grid) for layer in SHIPPED_LAYERS for name, grid in rock_grids(layer).items()}
+
+
 def textures(pack: str) -> dict[str, dict]:
     """Every texture recipe of a pack, by key (block/<name>)."""
-    if pack in STYLES:
-        return {f"block/{name}": art.recipe(grid) for name, grid in rock_grids(pack).items()} | {
+    if pack == GRAIN:
+        return {f"block/{name}": art.recipe(grid) for name, grid in rock_grids(3).items()} | {
             "block/lc_core_3": art.recipe(art.core(SHADES[3], 309))}
     return form_textures(int(pack.removeprefix("form_")))
 
 
 # ---------------------------------------------------------------------------------------------------------------- models
 
-def cube_models(layer: int, kind: str, count: int) -> dict[str, dict]:
-    """The plain cubes of a layer's rock or rubble: each texture, with the end texture of the next of its few."""
-    out = {}
-    for i in range(count):
-        end = f"lc_{kind}_{layer}_end_{i % END_VARIANTS}" if kind == "rock" else f"lc_{kind}_{layer}_end"
-        out[f"lc_{kind}_{layer}_{i}"] = shapes.cube(f"lc_{kind}_{layer}_{i}", end)
-    return out
+def shipped_models(layer: int) -> dict[str, dict]:
+    """The models of the mod's rock and rubble of a layer, by name: plain cubes, each texture with the end texture of the next of its few."""
+    rock, rubble = BLOCKS[layer]
+    out = {f"{rock}_{i}": shapes.cube(f"{rock}_{i}", f"{rock}_end_{i % END_VARIANTS}") for i in range(ROCK_VARIANTS[layer])}
+    return out | {f"{rubble}_{i}": shapes.cube(f"{rubble}_{i}", f"{rubble}_end") for i in range(RUBBLE_VARIANTS)}
 
 
-def style_models() -> dict[str, dict]:
-    """Every model of a texture style's pack, by name. The same in all styles: the formation is the layer's, and the style is the texture. The
-    rock of layers 1 and 2 is a plain cube; layer 3's is the hexagonal column."""
+def grain_models() -> dict[str, dict]:
+    """Every model of the Grain pack, by name: the hexagonal columns of layer 3's rock and rubble."""
+    rock, rubble = LAYER_3_STEMS
     out = {}
-    for layer in scenes.LAYERS:
-        for kind, count in (("rock", ROCK_VARIANTS[layer]), ("rubble", RUBBLE_VARIANTS)):
-            if scenes.FORMATIONS[layer] == "c":
-                for i in range(count):
-                    m = shapes.prism(i if kind == "rock" else i + 1)
-                    end = f"lc_rock_{layer}_end_{i % END_VARIANTS}" if kind == "rock" else f"lc_rubble_{layer}_end"
-                    m.textures = shapes.rock_textures(f"lc_{kind}_{layer}_{i}", end, f"lc_core_{layer}")
-                    out[f"lc_{kind}_{layer}_{i}"] = m.json(f"layer {layer} {kind} {i}")
-            else:
-                out |= cube_models(layer, kind, count)
+    for stem, count in ((rock, ROCK_VARIANTS[3]), (rubble, RUBBLE_VARIANTS)):
+        for i in range(count):
+            m = shapes.prism(i if stem == rock else i + 1)
+            end = f"{rock}_end_{i % END_VARIANTS}" if stem == rock else f"{rubble}_end"
+            m.textures = shapes.rock_textures(f"{stem}_{i}", end, "lc_core_3")
+            out[f"{stem}_{i}"] = m.json(f"layer 3 {stem} {i}")
     return out
 
 
@@ -257,7 +243,7 @@ def form_models(layer: int) -> dict[str, dict]:
 
 
 def pack_models(pack: str) -> dict[str, dict]:
-    return style_models() if pack in STYLES else form_models(int(pack.removeprefix("form_")))
+    return grain_models() if pack == GRAIN else form_models(int(pack.removeprefix("form_")))
 
 
 def blockstates(pack: str, models: dict[str, dict]) -> dict[str, dict]:
@@ -265,20 +251,29 @@ def blockstates(pack: str, models: dict[str, dict]) -> dict[str, dict]:
     def listed(names, y_turns=shapes.HEX_Y_TURNS):
         return {"variants": {"": shapes.variants(names, y_turns)}}
 
-    if pack in STYLES:
-        out = {}
-        for layer, (rock, rubble_block) in STAND_INS.items():
-            cube = scenes.FORMATIONS[layer] != "c"
-            for kind, block, count in (("rock", rock, ROCK_VARIANTS[layer]), ("rubble", rubble_block, RUBBLE_VARIANTS)):
-                names = [n for n in models if n.startswith(f"lc_{kind}_{layer}_")]
-                assert len(names) == count, (kind, layer, names)
-                out[f"minecraft/blockstates/{block}.json"] = listed(names, (0,)) if cube else listed(names)
-        return out
+    if pack == GRAIN:
+        return {f"minecraft/blockstates/{block}.json": listed([n for n in models if n.startswith(f"{stem}_")])
+                for block, stem in zip(LAYER_3, LAYER_3_STEMS)}
     crusts = [n for n in models if n.startswith("lc_breach_crust_")]
     return {
         "deepcharter/blockstates/company_rock.json": listed([f"lc_company_rock_{i}" for i in range(2)]),
         "deepcharter/blockstates/breach_crust.json": listed(crusts),
     }
+
+
+def shipped_files() -> dict[Path, bytes]:
+    """The files of the mod's rock blocks of layers 1 and 2 under src/main: the recipes of their textures, and each block's blockstate (a plain cube,
+    never turned or mirrored: see the model guard), its models and its item."""
+    files = {SHIPPED_RECIPES: _json({"recipes": shipped_recipes()})}
+    for layer in SHIPPED_LAYERS:
+        models = shipped_models(layer)
+        for name, body in models.items():
+            files[MOD_ASSETS / f"deepcharter/models/block/{name}.json"] = _json(body)
+        for block in BLOCKS[layer]:
+            names = [n for n in models if re.fullmatch(rf"{block}_\d", n)]
+            files[MOD_ASSETS / f"deepcharter/blockstates/{block}.json"] = _json({"variants": {"": shapes.variants(names, (0,))}})
+            files[MOD_ASSETS / f"deepcharter/items/{block}.json"] = _json({"model": {"type": "minecraft:model", "model": shapes.model_id(f"{block}_0")}})
+    return files
 
 
 # ---------------------------------------------------------------------------------------------------------------- scenes
@@ -305,7 +300,9 @@ def scene_body(all_scenes: dict[int, scenes.Scene]) -> dict:
 
 # ---------------------------------------------------------------------------------------------------------------- lava
 
-LAVA_TEXTURES = ("lava_still", "lava_flow")
+LAVA_DIR = MOD_ASSETS / "minecraft/textures/block"
+# Ticks to a frame: the still lava (24 frames) swells and fades over 4 seconds, and the flow (16 frames, one pixel a frame) slides one block in 2.4.
+LAVA_FRAMETIME = {"lava_still": 4, "lava_flow": 3}
 
 
 def palette() -> dict[str, str]:
@@ -331,13 +328,15 @@ def image(grid) -> pngio.Rgba:
     return pngio.Rgba(len(grid[0]), len(grid), bytes(out))
 
 
-def lava() -> dict[str, bytes]:
-    """The lava of every pack: a crusted, darker lava over vanilla's two lava sprites, one frame each (a pack's PNG without a .mcmeta
-    is not animated). One texture for all, because lava's shape is the axis and its texture is not."""
-    return {
-        "lava_still": pngio.encode(image(art.lava_sheet(7, 1, 4))),
-        "lava_flow": pngio.encode(image(art.lava_sheet(9, 2, 0, flow=True))),
-    }
+def lava() -> dict[Path, bytes]:
+    """The lava of every layer, minecraft:block/lava_still and lava_flow, as the vertical strips of frames that the game animates, with their .mcmeta
+    (a PNG without one is a single frame). The flow is 32 x 32 a frame, as vanilla's is, and both wrap on a 16-pixel block (art.py), so no two blocks of lava
+    meet at a seam. One texture for both layers, because lava's shape is the axis and its texture is not."""
+    out: dict[Path, bytes] = {}
+    for name, frames in (("lava_still", art.lava_still(7)), ("lava_flow", art.lava_flow(9))):
+        out[LAVA_DIR / f"{name}.png"] = pngio.encode(image([row for frame in frames for row in frame]))
+        out[LAVA_DIR / f"{name}.png.mcmeta"] = _json({"animation": {"frametime": LAVA_FRAMETIME[name]}})
+    return out
 
 
 # ---------------------------------------------------------------------------------------------------------------- atmosphere
@@ -369,7 +368,7 @@ def _json(body) -> bytes:
 
 
 DESCRIPTIONS = {
-    **{style: f"texture {NAMES[style]} for the rock of layers 1 to 3" for style in STYLES},
+    GRAIN: "Grain, the rock of layer 3",
     **{form: f"the Company Rock and breach crust of layer {form.removeprefix('form_')}" for form in FORMS},
 }
 
@@ -390,9 +389,7 @@ def outputs() -> tuple[dict[Path, bytes], dict[Path, bytes]]:
             files[root / f"assets/deepcharter/models/block/{name}.json"] = _json(body)
         for path, body in blockstates(pack, models).items():
             files[root / "assets" / path] = _json(body)
-    for style in STYLES:
-        for name, body in lava().items():
-            files[pack_dir(style) / f"assets/minecraft/textures/block/{name}.png"] = body
+    files |= shipped_files() | lava()
     for layer in scenes.LAYERS:
         for light in TINTS:
             files[BIOMES / f"lc_layer_{layer}_{light}.json"] = _json(biome_body(layer, light))
@@ -415,6 +412,10 @@ def problems(files: dict[Path, bytes], structures: dict[Path, bytes]) -> list[st
         made = {p for p in files if assets in p.parents}
         for path in sorted(list(assets.glob("*/models/block/*.json")) + list(assets.glob("*/blockstates/*.json"))):
             if path not in made:
+                out.append(f"{path.relative_to(ROOT)}: no source makes it")
+    for block in (name for pair in BLOCKS.values() for name in pair):
+        for path in sorted([*MOD_ASSETS.glob(f"deepcharter/*/{block}*.json"), *MOD_ASSETS.glob(f"deepcharter/models/block/{block}_*.json")]):
+            if path not in files:
                 out.append(f"{path.relative_to(ROOT)}: no source makes it")
     for path in BIOMES.glob("lc_layer_*.json"):
         if path not in files:

@@ -1,7 +1,5 @@
 package io.github.pkeppeler.deepcharter.client.theme;
 
-import java.util.Optional;
-
 import net.minecraft.resources.Identifier;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -9,18 +7,16 @@ import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
 
 /**
- * The cockpit HUD a pilot sees from the seat ({@code theme/cockpit.json}, #247, docs/design/cockpit-concepts.md and cockpit-concepts-2.md). {@code style} picks one of the
- * options below, or 0 for none: then the HUD is the plain text readout, the scanner at top right and the vanilla HUD, as it was. A style is a few
- * decals of housings, a gauge for each of fuel, hull, depth, heat and cargo, a row of warning lamps, a place for the scanner and a place for the readout's plate;
- * round 1's style also has a frame over the whole screen. Its sprites are GUI sprites under {@code textures/gui/sprites/cockpit/<style>/} ({@link Layout#sprite}); the
- * gauges only draw what moves, on the bar the sprites left room for. A pack restyles the colours or picks a style by key. Colours are ARGB, lengths are GUI pixels.
+ * The cockpit HUD a pilot sees from the seat: the Ribbon ({@code theme/cockpit.json}, #247, docs/design/cockpit-concepts-2.md, the user's pick of 2026-10-11). One slim
+ * ribbon along the top edge holds a bar for each of fuel, hull, cargo, depth and heat, the altimeter in a recess at its middle and a row of warning lamps at its end;
+ * the scanner hangs from the ribbon's right end and the readout plate (the tally and every other line of the readout) under it. Its sprites are GUI sprites under
+ * {@code textures/gui/sprites/cockpit/ribbon/} ({@link Layout#sprite}); the gauges only draw what moves, on the bar the sprites left room for. A pack restyles the
+ * colours and the places, or turns the cockpit off ({@code enabled} 0) to get the plain text HUD back. Colours are ARGB, lengths are GUI pixels.
  *
- * @param style which option is drawn
- * @param consoles round 1's look, kept to compare: a frame, two consoles, every line of the readout
- * @param corners a small housing in each corner
- * @param ribbon one slim ribbon along the top edge
- * @param posts a post up each side of the view and a sill
- * @param cab only a small instrument sill, so the pod's own cab is the frame
+ * @param enabled whether the cockpit is drawn while the pilot sits in a pod and the GUI is big enough ({@code minGuiWidth}, {@code minGuiHeight})
+ * @param minGuiWidth the narrowest GUI the ribbon fits, in GUI pixels; under it the plain HUD is drawn
+ * @param minGuiHeight the lowest GUI the ribbon, the scanner under it and the plate fit
+ * @param ribbon where each piece of the ribbon sits
  * @param fuelColor the fuel gauge
  * @param hullColor the hull gauge
  * @param depthColor the depth gauge
@@ -35,16 +31,14 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param heatWarning the heat from which the heat gauge is in warning
  * @param scannerTitleGap the space between the scanner window and its title under it
  * @param lampGap the space between two warning lamps
- * @param tallyGap the space between two numbers of a compact plate's line
+ * @param tallyGap the space between two numbers of the plate's tally
  * @param camera the front camera's feed (#448)
  */
 public record CockpitLook(
-		Style style,
-		Layout consoles,
-		Layout corners,
+		boolean enabled,
+		int minGuiWidth,
+		int minGuiHeight,
 		Layout ribbon,
-		Layout posts,
-		Layout cab,
 		int fuelColor,
 		int hullColor,
 		int depthColor,
@@ -61,26 +55,6 @@ public record CockpitLook(
 		int lampGap,
 		int tallyGap,
 		CameraLook camera) {
-	/** The options. The ordinal is the {@code style} value in the theme. */
-	public enum Style {
-		OFF("off"),
-		CONSOLES("consoles"),
-		CORNERS("corners"),
-		RIBBON("ribbon"),
-		POSTS("posts"),
-		CAB("cab");
-
-		private final String slug;
-
-		Style(String slug) {
-			this.slug = slug;
-		}
-
-		public String slug() {
-			return slug;
-		}
-	}
-
 	/** How a bar fills: segments lit from its start across, or up. */
 	public enum Kind {
 		ACROSS,
@@ -88,7 +62,7 @@ public record CockpitLook(
 	}
 
 	/**
-	 * One gauge: where it sits and how it reads. A width of 0 means the style has no such gauge.
+	 * One gauge: where it sits and how it reads. A width of 0 means the pack has no such gauge.
 	 *
 	 * @param kind a bar that fills across or up
 	 * @param area the bar's slot
@@ -123,16 +97,9 @@ public record CockpitLook(
 	}
 
 	/**
-	 * One style's layout. The frame (when there is one) and the plate are nine-slice sprites; the others are fixed-size sprites placed by their decal. A decal with
-	 * a width of 0 is off.
+	 * The Ribbon's layout. The plate is a nine-slice sprite; the others are fixed-size sprites placed by their decal.
 	 *
-	 * @param name the style's slug, which names its sprite folder
-	 * @param frame whether a frame is drawn over the whole screen (round 1's consoles); the compact styles have none
-	 * @param compact whether the plate shows the tally on one line and the alerts, and the lamps and the cargo gauge are drawn; else it lists every line of the readout
-	 * @param header a decal drawn after the gauges, under the altimeter
-	 * @param partA a housing, drawn after the frame
-	 * @param partB another housing
-	 * @param partC a third housing
+	 * @param band the ribbon along the top edge, with the faces of the gauges, the altimeter's recess and the lamps' slot
 	 * @param cap drawn over the scanner's cells: the bezel that masks them
 	 * @param fuel the fuel gauge
 	 * @param hull the hull gauge
@@ -141,17 +108,11 @@ public record CockpitLook(
 	 * @param cargo the cargo gauge
 	 * @param lamps where the warning lamps go: {@link CockpitHud#LAMPS} lamps in a row (a slot wider than it is tall) or a column
 	 * @param scanner where the scanner's cells go (and its title, under them)
-	 * @param readout where the readout's plate hangs: over its anchor when that is the bottom edge, else under it
+	 * @param readout where the readout's plate hangs: under the anchor
 	 * @param altimeterY the altimeter's top, as the HUD theme's {@code altimeterMargin} is without a cockpit
 	 */
 	public record Layout(
-			String name,
-			boolean frame,
-			boolean compact,
-			Decal header,
-			Decal partA,
-			Decal partB,
-			Decal partC,
+			Decal band,
 			Decal cap,
 			Gauge fuel,
 			Gauge hull,
@@ -162,17 +123,17 @@ public record CockpitLook(
 			Decal scanner,
 			Anchor readout,
 			int altimeterY) {
-		static Layout of(ThemeData d, Style style) {
-			String p = style.slug();
-			return new Layout(p, d.integer(p + "Frame", 0, 1) == 1, d.integer(p + "Compact", 0, 1) == 1, Decal.of(d, p + "Header"), Decal.of(d, p + "PartA"),
-					Decal.of(d, p + "PartB"), Decal.of(d, p + "PartC"), Decal.of(d, p + "Cap"), Gauge.of(d, p + "Fuel"), Gauge.of(d, p + "Hull"), Gauge.of(d, p + "Depth"),
-					Gauge.of(d, p + "Heat"), Gauge.of(d, p + "Cargo"), Decal.of(d, p + "Lamps"), Decal.of(d, p + "Scanner"), Anchor.of(d, p + "Readout"),
-					d.integer(p + "AltimeterY", 0, 200));
+		private static final String P = "ribbon";
+
+		static Layout of(ThemeData d) {
+			return new Layout(Decal.of(d, P + "PartA"), Decal.of(d, P + "Cap"), Gauge.of(d, P + "Fuel"), Gauge.of(d, P + "Hull"), Gauge.of(d, P + "Depth"),
+					Gauge.of(d, P + "Heat"), Gauge.of(d, P + "Cargo"), Decal.of(d, P + "Lamps"), Decal.of(d, P + "Scanner"), Anchor.of(d, P + "Readout"),
+					d.integer(P + "AltimeterY", 0, 200));
 		}
 
-		/** The GUI sprite {@code slot} of this style: {@code frame}, {@code plate}, {@code header}, {@code part_a}, {@code part_b}, {@code part_c} or {@code cap}. */
+		/** The GUI sprite {@code slot} of the Ribbon: {@code plate}, {@code part_a} or {@code cap}. */
 		public Identifier sprite(String slot) {
-			return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "cockpit/" + name + "/" + slot);
+			return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "cockpit/" + P + "/" + slot);
 		}
 	}
 
@@ -270,23 +231,15 @@ public record CockpitLook(
 		return UiTheme.current().cockpit();
 	}
 
-	/** The layout of the style in force, or empty when the style is 0. */
-	public Optional<Layout> active() {
-		return switch (style) {
-			case OFF -> Optional.empty();
-			case CONSOLES -> Optional.of(consoles);
-			case CORNERS -> Optional.of(corners);
-			case RIBBON -> Optional.of(ribbon);
-			case POSTS -> Optional.of(posts);
-			case CAB -> Optional.of(cab);
-		};
+	/** Whether the cockpit is drawn on a GUI {@code guiWidth} x {@code guiHeight}: it is enabled and the Ribbon fits. */
+	public boolean fits(int guiWidth, int guiHeight) {
+		return enabled && guiWidth >= minGuiWidth && guiHeight >= minGuiHeight;
 	}
 
 	public static CockpitLook of(ThemeData d) {
-		return new CockpitLook(Style.values()[d.integer("style", 0, Style.values().length - 1)], Layout.of(d, Style.CONSOLES), Layout.of(d, Style.CORNERS),
-				Layout.of(d, Style.RIBBON), Layout.of(d, Style.POSTS), Layout.of(d, Style.CAB), d.color("fuelColor"), d.color("hullColor"), d.color("depthColor"),
-				d.color("heatColor"), d.color("cargoColor"), d.color("lowColor"), d.color("offColor"), d.decimal("hullLowFraction", 0, 1),
-				d.decimal("heatRisePerTick", 0.001, 1), d.decimal("heatFallPerTick", 0.001, 1), d.integer("platePad", 0, 16), d.decimal("heatWarning", 0, 1),
-				d.integer("scannerTitleGap", 0, 16), d.integer("lampGap", 0, 8), d.integer("tallyGap", 0, 16), CameraLook.of(d));
+		return new CockpitLook(d.integer("enabled", 0, 1) == 1, d.integer("minGuiWidth", 1, 4096), d.integer("minGuiHeight", 1, 4096), Layout.of(d), d.color("fuelColor"),
+				d.color("hullColor"), d.color("depthColor"), d.color("heatColor"), d.color("cargoColor"), d.color("lowColor"), d.color("offColor"),
+				d.decimal("hullLowFraction", 0, 1), d.decimal("heatRisePerTick", 0.001, 1), d.decimal("heatFallPerTick", 0.001, 1), d.integer("platePad", 0, 16),
+				d.decimal("heatWarning", 0, 1), d.integer("scannerTitleGap", 0, 16), d.integer("lampGap", 0, 8), d.integer("tallyGap", 0, 16), CameraLook.of(d));
 	}
 }
