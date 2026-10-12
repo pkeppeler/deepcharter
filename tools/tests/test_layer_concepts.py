@@ -272,7 +272,7 @@ class LayerConceptsTest(unittest.TestCase):
                 for x, y, z in scene.lava:
                     self.assertNotIn((x, y, z), scene.piece.blocks, "a lava source inside a block")
                 self.assertEqual(["silhouette", "lamp-lit", "fog-edge", "company-rock", "lava-flow", "breach-crust", "close-up", "wide-wall",
-                                  "vanilla-reference", "cave"], [v.name for v in scene.views])
+                                  "vanilla-reference", "cave"] + (["beam-corner"] if layer == 1 else []), [v.name for v in scene.views])
                 for view in scene.views:
                     x, y, z = (int(v // 1) for v in view.eye)
                     self.assertNotIn((x, y, z), scene.piece.blocks, f"the camera of {view.name} is in a block")

@@ -374,11 +374,16 @@ class Dressing:
         parts.sign(self.p, name, x, y, z, facing)
 
 
+# The x of each portal frame of layer 1's gallery, and the one whose corner the beam-corner view looks at.
+BEAM_FRAMES = (5, 11, 17, 23)
+BEAM_FRAME_X = BEAM_FRAMES[1]
+
+
 def dress_a(d: Dressing) -> None:
     """Old workings, steel in place of timber: portal frames of steel beam, a mine track with an ore car, a conduit and a cable along the
     roof, a SHAFT NO 1 sign, lamps on the benches."""
     c = d.c
-    for fx in (5, 11, 17, 23):
+    for fx in BEAM_FRAMES:
         for zz in (CZ - 3, CZ + 3):
             for y in range(BASE, TOP):
                 d.put(fx, y, zz, state("steel_beam", axis="y"))
@@ -585,6 +590,9 @@ def views(c: Cave, rock_face: tuple[int, int, int]) -> list[View]:
         View("vanilla-reference", (HALL_MIDDLE + 0.5, BASE + 3.4, CZ + 4.6), (HALL_MIDDLE + 0.5, BASE + 3.4, HALL_NORTH_WALL + 1.0), 40),
         View("cave", (CAVE_X0 + 5.5, BASE + 3.2, CZ + 0.5), (CAVE_X1 - 6.0, BASE + 2.0, CZ - 1.0), 40, "company", LAMP_LEVEL),
     ]
+    if c.formation == "a":
+        # Where a post of a portal frame (dress_a) meets its header: two steel beams at a right angle, which showed a gap (#241).
+        found.append(View("beam-corner", (BEAM_FRAME_X + 3.0, TOP - 2.0, CZ + 0.5), (BEAM_FRAME_X + 0.5, TOP - 1.0, CZ - 2.5), 40, "company", LAMP_LEVEL))
     for view in found:
         x, y, z = (int(v // 1) for v in view.eye)
         if not c.air(x, y, z):
