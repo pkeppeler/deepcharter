@@ -1,5 +1,5 @@
 {
-  "description": "Prosperity at dusk (docs/design/art-direction.md): worn Company steel and brass, rust at the rivets, rust-red ground, and three lights (warm white, sodium amber, the deep's cold). Ramps run dark to light; their shadows lean cool and their lights lean warm.",
+  "description": "Prosperity at dusk (docs/design/art-direction.md): worn Company steel and brass, rust at the rivets, rust-red ground, and three lights (warm white, sodium amber, the deep's cold). The rock of layers 1 and 2 (shale1 rust-brown packed regolith going to dark shale, shale2 grey-green shale) and the lava that runs in them (lavaglow) are the layers' own. Ramps run dark to light; their shadows lean cool and their lights lean warm.",
   "colours": {
     "void": "#0a090b",
     "steel": ["#121418", "#1c2026", "#282e36", "#363e48", "#48525e", "#616d7a", "#8794a0"],
@@ -11,10 +11,14 @@
     "regolith": ["#2b1410", "#421d16", "#5c281c", "#793624", "#96472e", "#b35e3d", "#cc7d55"],
     "dust": ["#4a3a30", "#66513f", "#86694f", "#a68763", "#c2a57f"],
     "ochre": ["#5a3a1c", "#8a5f30", "#a9773f", "#c08d52", "#cf9f63", "#ddb57c", "#ecd09e"],
+    "hardpan": ["#0d111a", "#1a2234", "#283550", "#3a4c6d", "#5870a0"],
     "basalt": ["#0e0d11", "#17161b", "#211f26", "#2a2830", "#34323a", "#46434d"],
     "rock": ["#3f3d3c", "#555251", "#686563", "#74716f", "#7f7c7a", "#8e8b88", "#9d9a97"],
     "host": ["#4c4c4c", "#5c5c5c", "#686868", "#747474", "#7f7f7f", "#8f8f8f", "#a2a2a2"],
     "crust": ["#130b0a", "#21120f", "#321b15", "#45251b", "#5c3124", "#77412d"],
+    "shale1": ["#140b08", "#23140d", "#38211a", "#4f3022", "#6a4430", "#8a5e42"],
+    "shale2": ["#090d0b", "#111814", "#1a241f", "#26362d", "#344a3e", "#476152"],
+    "lavaglow": ["#3a0903", "#8a1c06", "#c9400c", "#f26a14", "#ffa83a", "#fff0a0"],
     "glass": ["#040706", "#09100d", "#0f1915", "#17251f"],
     "phosphor": ["#062012", "#0d3a1f", "#17602f", "#26904a", "#45c46c", "#8cf2a6", "#d8ffe2"],
     "sodium": ["#3b1a03", "#6e3406", "#a8560c", "#d9801a", "#f5a832", "#ffcf6e", "#fff0c4"],

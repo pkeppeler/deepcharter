@@ -1,13 +1,10 @@
-"""The pixel art of the layer concept packs (docs/design/layer-concepts.md), as texgen recipes.
+"""The pixel art of the layers' rock (docs/design/layer-concepts.md, layer-concepts-2.md) and of the lava, as texgen recipes.
 
 Every texture is a 16 x 16 grid of palette colour names that a pure function of a seed makes, so a rebuild gives the same pixels.
 A grid becomes a `pixels` recipe: texgen draws it, and `--check` fails on a stale PNG (ADR 0037). The rock of layer 1 is the ramp
-`shale1` (rust-brown packed regolith going to dark shale), the rock of layer 2 `shale2` (grey-green shale); both are in
-tools/textures/variants/layers/palette.json. The three options draw the same two ramps in three different structures:
-
-  A. Strata    folded, pinching beds crossed by steep joints (no ruled courses)
-  B. Fractured polygons: plates of breccia split by dark cracks
-  C. Columnar  hexagonal basalt columns, each a flat-faced prism with a hexagonal end cap and cross-joints
+`shale1` (rust-brown packed regolith going to dark shale), the rock of layer 2 `shale2` (grey-green shale), both in the default palette. The
+user picked Grain (fine clustered grain, as vanilla stone has it) for all three layers; the other helpers draw the Company's concrete, the
+plugs and the crust of the layer forms, and layer 3's columns.
 """
 import math
 import sys
@@ -160,12 +157,11 @@ def sine_at(position: float) -> float:
     return SINE16[index % len(SINE16)] * (1 - fraction) + SINE16[(index + 1) % len(SINE16)] * fraction
 
 
-def bedded(shades: list[str], seed: int, form: int, mid: int = 2, base: int | None = None) -> Grid:
+def bedded(shades: list[str], seed: int, form: int, mid: int = 2) -> Grid:
     """Beds of sediment, side on. Each bed's top is a wave that goes once or twice across the face, so a bed is thick at one edge of a block and
     thin at the other, and the waves are the layer's own (`form`): every variant shares them, give or take a turn of phase and a pixel or
     two of height, so a bed runs on across the edge to the next block and over the top of the one below. The beds differ by a shade, the first row of a bed is a
     shade darker in places, and a grain runs through all of it. The face wraps on itself, so the sixth bed is the first."""
-    base = seed if base is None else base
     edges = []
     for k, start in enumerate(BED_STARTS):
         edges.append((start + (hashf(form, k, 1) - 0.5) * 0.8, 0.8 + hashf(form, k, 2) * 0.8, 1 + int(hashf(form, k, 3) * 2),
@@ -178,12 +174,12 @@ def bedded(shades: list[str], seed: int, form: int, mid: int = 2, base: int | No
             w = edge_weight(x, y)
             tops = sorted(((y0 + lift * w + amp * sine_at(turns * x + phase + jitter * w)) % SIZE, k) for k, (y0, amp, turns, phase, jitter, lift) in enumerate(edges))
             # A bed's edge is frayed: each pixel is a little above or below where it is, so the edge is a band two rows deep and not a line.
-            place = y + 0.5 + (pinned(seed, base, x, y, 7) - 0.5) * 1.6
+            place = y + 0.5 + (pinned(seed, seed, x, y, 7) - 0.5) * 1.6
             above = [t for t in tops if t[0] <= place % SIZE]
             top, bed = above[-1] if above else (tops[-1][0] - SIZE, tops[-1][1])
             lip = place % SIZE - top
-            shade = mid + BED_SHADES[bed] - (1 if lip < 1.0 and pinned(seed, base, x, y, 6) > 0.75 else 0)
-            g[y][x] = clamp(shade + grain(seed + 10, base + 10, x, y, 0.58), shades)
+            shade = mid + BED_SHADES[bed] - (1 if lip < 1.0 and pinned(seed, seed, x, y, 6) > 0.75 else 0)
+            g[y][x] = clamp(shade + grain(seed + 10, seed + 10, x, y, 0.58), shades)
     return g
 
 
@@ -196,36 +192,14 @@ def grained(shades: list[str], seed: int, mid: int = 2, base: int | None = None)
     return g
 
 
-def ledge(shades: list[str], seed: int, mid: int = 2, base: int | None = None) -> Grid:
+def ledge(shades: list[str], seed: int, mid: int = 2) -> Grid:
     """The top of a bed, which a floor, a bench or a roof shows: grain, and two short fissures that run on across the edge."""
-    g = grained(shades, seed, mid, base)
+    g = grained(shades, seed, mid)
     for k in range(2):
         y = 3 + int(hashf(seed, 90 + k) * 10)
         x0 = int(hashf(seed, 91 + k) * SIZE)
         for x in range(x0, x0 + 3 + int(hashf(seed, 92 + k) * 4)):
             g[y][x % SIZE] = clamp(mid - 1, shades)
-    return g
-
-
-# ---------------------------------------------------------------------------------------------------------------- mottled
-
-def mottled(shades: list[str], seed: int, mid: int = 2, veins: bool = True, base: int | None = None) -> Grid:
-    """Bold mottles, patches of a few pixels a shade or two lighter or darker than the rest, and, in some of them, a thin lighter vein, a short line
-    that wander a pixel and end inside the face (2 to 13), as a vein does that does not reach the edge of the stone; none touches an edge, so
-    none draws a line at the edge of a block."""
-    base = seed if base is None else base
-    g = blank(shades[mid])
-    for y in range(SIZE):
-        for x in range(SIZE):
-            n = soft(seed, base, x, y)
-            g[y][x] = clamp(mid + (2 if n > 1.3 else 1 if n > 0.45 else -2 if n < -1.3 else -1 if n < -0.45 else 0) + grain(seed + 2, base + 2, x, y, 1.1), shades)
-    for k in range(1 if veins and hashf(seed, 80) < 0.15 else 0):
-        x0, y0 = 2 + int(hashf(seed, 81, k) * 7), 3 + int(hashf(seed, 82, k) * 8)
-        slope = (-1, 0, 1)[int(hashf(seed, 83, k) * 3)]
-        for i in range(5 + int(hashf(seed, 84, k) * 5)):
-            x, y = x0 + i, y0 + (i * slope) // 2 + (1 if hashf(seed, 85, k, i) > 0.8 else 0)
-            if 2 <= x <= 13 and 2 <= y <= 13:
-                g[y][x] = clamp(mid + 2, shades)
     return g
 
 
@@ -247,11 +221,6 @@ def breccia(shades: list[str], seed: int, cells: int = 9, aspect: float = 1.4, s
                 shade -= 1
             g[y][x] = clamp(shade, shades)
     return g
-
-
-def flags(shades: list[str], seed: int) -> Grid:
-    """The rubble of A: flat flags, long and slanted, broken from a bed, each darker or paler than the next."""
-    return breccia(shades, seed, cells=7, aspect=2.0, shear=0.6, mid=1, spread=2, seam_gap=1.2, seam_p=0.8)
 
 
 def shards(shades: list[str], seed: int) -> Grid:
@@ -445,59 +414,68 @@ def seam_glow(crack: list[list[bool]], seed: int) -> Grid:
 
 # ---------------------------------------------------------------------------------------------------------------- lava
 
-def lava_tile(seed: int, cells: int) -> Grid:
-    """A tile of crusted lava, shared by all three options (lava's shape is what differs, not its texture): dark plates of cooled crust
-    with a lit lip, split by glowing cracks that run from white-orange in the middle of a crack to dull red at its edge, and a few hot
-    spots where the crust is thin."""
-    field = voronoi(seed, cells)
-    g = blank("crust.1")
-    for y in range(SIZE):
-        for x in range(SIZE):
-            d = field[y][x][1]
-            plate = field[y][x][0]
-            if d < 0.55:
-                g[y][x] = "lavaglow.4" if hashf(seed, x, y) > 0.8 else "lavaglow.3"
-            elif d < 1.0:
-                g[y][x] = "lavaglow.2" if hashf(seed, x, y, 2) > 0.35 else "lavaglow.1"
-            elif d < 1.5:
-                g[y][x] = "lavaglow.1" if hashf(seed, x, y, 3) > 0.45 else "crust.0"
-            else:
-                shade = 2 + int(hashf(seed, plate, 6) * 2) + (1 if vnoise(seed, x, y, 4, 4) > 0.7 else 0)
-                g[y][x] = f"crust.{min(shade, 4)}"
-    for k in range(3):
-        x, y = int(hashf(seed, 80 + k) * 16), int(hashf(seed, 83 + k) * 16)
-        if field[y][x][1] > 1.5:
-            g[y][x] = "lavaglow.2"
-    return g
+# The lava is drawn on a 16-pixel block that wraps in both directions and in time. The renderer shows a flowing top face as a window of half the
+# width of the 32 x 32 sprite, centred and turned to the flow, so two neighbours meet at the window's edge and not at the sprite's: only a pattern
+# that repeats every 16 pixels has no seam there. The same holds for a still face, which shows the whole 16 x 16 sprite.
+LAVA_STILL_FRAMES = 24
+LAVA_FLOW_FRAMES = 16
 
 
-def lava_run(seed: int) -> Grid:
-    """A tile of running lava: glowing streaks with long dark crust skins dragged down the flow, lit at their edges. Tall, narrow noise cells,
-    so nothing in it is a plate or a bar."""
-    g = blank("lavaglow.3")
-    for y in range(SIZE):
-        for x in range(SIZE):
-            n = vnoise(seed, x, y, 4, 16) * 0.7 + vnoise(seed + 1, x, y, 2, 8) * 0.3
-            if n < 0.58:
-                g[y][x] = f"crust.{2 + int(hashf(seed, x, y) * 2.2)}"
-            elif n < 0.63:
-                g[y][x] = "lavaglow.1" if hashf(seed, x, y, 2) > 0.5 else "lavaglow.2"
-            elif n > 0.78:
-                g[y][x] = "lavaglow.3" if hashf(seed, x, y, 3) > 0.25 else "lavaglow.4"
-            else:
-                g[y][x] = "lavaglow.1" if hashf(seed, x, y, 4) > 0.55 else "lavaglow.2"
-    return g
+def lava_noise(seed: int, x: int, y: int, t: int, cell: tuple[int, int, int], frames: int) -> float:
+    """Value noise that wraps over the 16-pixel block in x and y and over `frames` in time, with lattice cells of cell = (x, y, t) pixels and frames."""
+    nx, ny, nt = max(1, SIZE // cell[0]), max(1, SIZE // cell[1]), max(1, frames // cell[2])
+    fx, fy, ft = (x % SIZE) / cell[0], (y % SIZE) / cell[1], (t % frames) / cell[2]
+    x0, y0, t0 = int(fx), int(fy), int(ft)
+    tx, ty, tt = smooth(fx - x0), smooth(fy - y0), smooth(ft - t0)
+
+    def corner(ix: int, iy: int, it: int) -> float:
+        return hashf(seed, ix % nx, iy % ny, it % nt)
+
+    def plane(it: int) -> float:
+        top = corner(x0, y0, it) * (1 - tx) + corner(x0 + 1, y0, it) * tx
+        bottom = corner(x0, y0 + 1, it) * (1 - tx) + corner(x0 + 1, y0 + 1, it) * tx
+        return top * (1 - ty) + bottom * ty
+
+    return plane(t0) * (1 - tt) + plane(t0 + 1) * tt
 
 
-def lava_sheet(seed: int, tiles: int, cells: int, flow: bool = False) -> Grid:
-    """tiles x tiles different lava tiles side by side (each tiles on its own, so the seams do not show): 1 for lava_still, 2 for lava_flow."""
-    out: Grid = [[] for _ in range(SIZE * tiles)]
-    for ty in range(tiles):
-        for tx in range(tiles):
-            tile = (lava_run if flow else lambda sd: lava_tile(sd, cells))(seed + 10 * (ty * tiles + tx))
-            for y in range(SIZE):
-                out[ty * SIZE + y] += tile[y]
-    return out
+def lava_colour(heat: float, seed: int, x: int, y: int) -> str:
+    """The lava ramp at a heat in [0, 1]: a dull red skin where it is coolest, orange over most of it, and a few yellow-white hot spots. Each step is
+    jittered a little by a hash of the pixel, so its edge is a speckle and not a contour line. Nothing in it is grey: a skin of cooled lava is dark red."""
+    h = heat + (hashf(seed, x, y) - 0.5) * 0.14
+    return "lavaglow.1" if h < 0.24 else "lavaglow.2" if h < 0.38 else "lavaglow.3" if h < 0.62 else "lavaglow.4" if h < 0.84 else "lavaglow.5"
+
+
+def lava_still(seed: int) -> list[Grid]:
+    """The frames of lava_still: heat that swells and fades in blobs of 8, 4 and 2 pixels, every frame the next of a loop."""
+    cells = ((8, 8, 8), (4, 4, 6), (2, 2, 3))
+    frames = []
+    for t in range(LAVA_STILL_FRAMES):
+        g = blank("lavaglow.3")
+        for y in range(SIZE):
+            for x in range(SIZE):
+                heat = (0.15 * lava_noise(seed, x, y, t, cells[0], LAVA_STILL_FRAMES) + 0.45 * lava_noise(seed + 1, x, y, t, cells[1], LAVA_STILL_FRAMES)
+                        + 0.40 * lava_noise(seed + 2, x, y, t, cells[2], LAVA_STILL_FRAMES))
+                g[y][x] = lava_colour((heat - 0.5) * 1.3 + 0.5, seed, x, y)
+        frames.append(g)
+    return frames
+
+
+def lava_flow(seed: int) -> list[Grid]:
+    """The frames of lava_flow, 32 x 32 like vanilla's: the block's pattern twice across and twice down, because the renderer takes a window of it. Two
+    layers of stretched heat slide down the frame at one and at two pixels a frame (16 frames, so the loop closes on the 16-pixel block), and a
+    third, finer one swells and fades in place, so the lava runs and is not a texture that is dragged."""
+    cells = ((4, 8, 1), (2, 4, 1), (2, 2, 8))
+    frames = []
+    for t in range(LAVA_FLOW_FRAMES):
+        block = blank("lavaglow.3")
+        for y in range(SIZE):
+            for x in range(SIZE):
+                heat = (0.20 * lava_noise(seed, x, y - t, 0, cells[0], 1) + 0.40 * lava_noise(seed + 1, x, y - 2 * t, 0, cells[1], 1)
+                        + 0.40 * lava_noise(seed + 2, x, y, t, cells[2], LAVA_FLOW_FRAMES))
+                block[y][x] = lava_colour((heat - 0.5) * 1.5 + 0.5, seed, x, y)
+        frames.append([row * 2 for row in block] * 2)
+    return frames
 
 
 # ---------------------------------------------------------------------------------------------------------------- recipes

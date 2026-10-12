@@ -48,6 +48,10 @@
     "deepcharter:upgrade_terminal",
     "deepcharter:wall_lamp",
     "deepcharter:window_ribbon_dark",
-    "deepcharter:window_ribbon_lit"
+    "deepcharter:window_ribbon_lit",
+    "deepcharter:packed_shale",
+    "deepcharter:packed_shale_rubble",
+    "deepcharter:green_shale",
+    "deepcharter:green_shale_rubble"
   ]
 }
