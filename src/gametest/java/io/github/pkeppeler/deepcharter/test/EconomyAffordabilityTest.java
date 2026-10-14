@@ -48,6 +48,9 @@ public class EconomyAffordabilityTest {
 	/** The liner's tier 2 and the seep sounder's, in runs of a Mole with tier 2 parts in layer 2, at most. Tier 1 of each is crafted. */
 	private static final int LINER_TIER_TWO_RUNS = 4;
 	private static final int SOUNDER_TIER_TWO_RUNS = 4;
+	/** The console's tiers 2 and 3 (#502) are layer 2 buys, in runs of a Mole with tier 2 parts at most. Tier 1 is a crafted unit (FirstTierPartsCostTest). */
+	private static final int CONSOLE_TIER_TWO_RUNS = 2;
+	private static final int CONSOLE_TIER_THREE_RUNS = 4;
 	/** The radiator matters from layer 3 on, and its first purchase, tier 2 now that tier 1 is crafted, costs what the others' tier 3 does: this many layer 2 runs of a Mole with tier 2 parts, at most. */
 	private static final int RADIATOR_RUNS = 5;
 	/** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
@@ -144,6 +147,28 @@ public class EconomyAffordabilityTest {
 		LOGGER.info("[economy] liner tier 2 ${}: {} layer 2 runs of {}", price, run.toAfford(price), run);
 		if (run.toAfford(price) > LINER_TIER_TWO_RUNS) {
 			throw failure(helper, "liner tier 2 costs $%d, which is %d layer 2 runs of $%.0f; at most %d are allowed", price, run.toAfford(price), run.net(), LINER_TIER_TWO_RUNS);
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The console (#502) answers the signal decay at the foot of layer 1. Its tier 1 is a crafted unit (#536, FirstTierPartsCostTest), so the terminal sells tiers 2 and 3, which are layer 2 buys:
+	 * {@value #CONSOLE_TIER_TWO_RUNS} and {@value #CONSOLE_TIER_THREE_RUNS} runs of a Mole with tier 2 parts at most. Tier 3 is a Prospector's (a Mole takes tier 2), so the immune console is not a Mole's first buy.
+	 */
+	@GameTest
+	public void theConsoleTiersTwoAndThreeAreAffordableAfterTheirLayerTwoRuns(GameTestHelper helper) {
+		Run layerTwo = upgradedRunInLayerTwo();
+		int[] allowed = {CONSOLE_TIER_TWO_RUNS, CONSOLE_TIER_THREE_RUNS};
+		for (int tier = 2; tier <= ComponentTrack.CONSOLE.maxTier(); tier++) {
+			long price = UpgradeTuning.DEFAULT.price(ComponentTrack.CONSOLE, tier);
+			int runs = layerTwo.toAfford(price);
+			LOGGER.info("[economy] console tier {} ${}: {} layer 2 runs of ${}", tier, price, runs, Math.round(layerTwo.net()));
+			if (runs > allowed[tier - 2]) {
+				throw failure(helper, "console tier %d costs $%d, which is %d runs; at most %d are allowed", tier, price, runs, allowed[tier - 2]);
+			}
+		}
+		if (allowed.length != ComponentTrack.CONSOLE.maxTier() - 1) {
+			throw failure(helper, "the test has bands for %d console tiers, the track has %d bought tiers", allowed.length, ComponentTrack.CONSOLE.maxTier() - 1);
 		}
 		helper.succeed();
 	}

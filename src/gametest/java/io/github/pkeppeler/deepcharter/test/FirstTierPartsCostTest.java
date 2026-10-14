@@ -34,8 +34,8 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Server GameTests for #536 (ADR 0053, mechanics.md "Crafted first-tier parts"): what the crafted units cost a pilot, and that the
- * opening the first six make is no cheaper and no slower than the one the $200 purchases made. The six hazard answers (lights, hopper, brace, sounder, liner,
- * heat shield) are tuned to the minutes their old prices took, and take ore from the pod's cargo, which the crates do not give. What a recipe asks comes from the shipped file,
+ * opening the first six make is no cheaper and no slower than the one the $200 purchases made. The hazard answers (lights, hopper, brace, sounder, liner,
+ * heat shield, console) are tuned to the minutes their old prices took, and take ore from the pod's cargo, which the crates do not give. What a recipe asks comes from the shipped file,
  * what a crate holds from the real loot table, and a run's money and seconds from {@link EarlyRunModel} (the expected ore of a bore, so it
  * never flakes). {@link BootstrapCost} holds the method; no world is built.
  *
@@ -55,23 +55,23 @@ public class FirstTierPartsCostTest {
 			ComponentTrack.HULL, ComponentTrack.ENGINE, ComponentTrack.RADIATOR);
 
 	/**
-	 * The six hazard answers, by the layer of the hazard each meets first: the lights, the hopper and the brace in layer 1 (the dark, the lava
-	 * ladder's first rung, the crust), the sounder, liner and heat shield in layer 2 (gas, lava). Each was bought, before #536, with the layer's runs.
+	 * The hazard answers, by the layer of the hazard each meets first: the lights, the hopper, the brace and the console in layer 1 (the dark, the lava
+	 * ladder's first rung, the crust, the signal decay at the foot of the layer), the sounder, liner and heat shield in layer 2 (gas, lava). Each was bought, before #536, with the layer's runs.
 	 */
 	private static final List<ComponentTrack> HAZARDS = List.of(ComponentTrack.LIGHTS, ComponentTrack.SPOIL_HOPPER, ComponentTrack.BRACE,
-			ComponentTrack.SOUNDER, ComponentTrack.LINER, ComponentTrack.HEAT_SHIELD);
+			ComponentTrack.SOUNDER, ComponentTrack.LINER, ComponentTrack.HEAT_SHIELD, ComponentTrack.CONSOLE);
 	private static final Set<ComponentTrack> LAYER_TWO = Set.of(ComponentTrack.SOUNDER, ComponentTrack.LINER, ComponentTrack.HEAT_SHIELD);
 	/** The zone whose ore a hazard answer's recipe asks for: the ore must lie where the pilot is when the hazard first bites (ZONE of the layer, not the deepest). */
 	private static final Map<ComponentTrack, String> ORE_ZONE = Map.of(
 			ComponentTrack.LIGHTS, "topsoil_claims", ComponentTrack.SPOIL_HOPPER, "topsoil_claims", ComponentTrack.BRACE, "deep_claim",
-			ComponentTrack.SOUNDER, "stone_benches", ComponentTrack.LINER, "upper_levels", ComponentTrack.HEAT_SHIELD, "upper_levels");
+			ComponentTrack.SOUNDER, "stone_benches", ComponentTrack.LINER, "upper_levels", ComponentTrack.HEAT_SHIELD, "upper_levels", ComponentTrack.CONSOLE, "topsoil_claims");
 
 	/** What each part cost at the terminal before #536 and #483, in dollars (UpgradeTuning). */
 	private static final Map<ComponentTrack, Long> OLD_PRICE = Map.ofEntries(
 			Map.entry(ComponentTrack.FUEL_TANK, 200L), Map.entry(ComponentTrack.DRILL, 200L), Map.entry(ComponentTrack.CARGO_BAY, 200L),
 			Map.entry(ComponentTrack.HULL, 200L), Map.entry(ComponentTrack.ENGINE, 200L), Map.entry(ComponentTrack.RADIATOR, 500L),
 			Map.entry(ComponentTrack.LIGHTS, 125L), Map.entry(ComponentTrack.SPOIL_HOPPER, 100L), Map.entry(ComponentTrack.BRACE, 200L),
-			Map.entry(ComponentTrack.SOUNDER, 400L), Map.entry(ComponentTrack.LINER, 500L), Map.entry(ComponentTrack.HEAT_SHIELD, 750L));
+			Map.entry(ComponentTrack.SOUNDER, 400L), Map.entry(ComponentTrack.LINER, 500L), Map.entry(ComponentTrack.HEAT_SHIELD, 750L), Map.entry(ComponentTrack.CONSOLE, 200L));
 
 	private static final List<ComponentTrack> ALL = Stream.concat(ORDER.stream(), HAZARDS.stream()).toList();
 

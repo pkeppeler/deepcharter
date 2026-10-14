@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntSupplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -11,6 +12,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
 import net.minecraft.client.CameraType;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -20,6 +22,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
@@ -27,6 +30,9 @@ import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import io.github.pkeppeler.deepcharter.pod.SignalDecay;
+import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -49,6 +55,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 	private static final int ROOM_WEST = 6;
 	private static final int ROOM_EAST = 16;
 	private static final int ROOM_RADIUS_Z = 6;
+	/** Half the width of the shaft cut above the real pod, which lifts it out of the signal decay (#502) for the layer 1 scanner check. */
+	private static final int SHAFT_RADIUS = 2;
 	private static final float EAST = -90f;
 	private static final float LOOK_DOWN = 30f;
 
@@ -72,7 +80,25 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 	private static final int ARRIVAL_TICKS_PER_FRAME = 8;
 	private static final int RGB = 0xFFFFFF;
 
+	/** The pod {@link #liftOutOfDecay} holds in clear air, and where; null when none is held. */
+	private static final AtomicReference<Held> HELD = new AtomicReference<>();
+
+	static {
+		// PodMovement applies the pod's own gravity whatever Entity.setNoGravity says, so a lifted pod falls back into the decay a little every tick. Pinning it
+		// after each of its ticks keeps it where the test put it, however many ticks the server runs while a slow client catches up.
+		PodEvents.AFTER_TICK.register(pod -> {
+			Held held = HELD.get();
+			if (held != null && held.pod().equals(pod.getUUID())) {
+				pod.setPos(held.at());
+				pod.setDeltaMovement(Vec3.ZERO);
+			}
+		});
+	}
+
 	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
+
+	private record Held(UUID pod, Vec3 at) {
+	}
 
 	/** What the server holds for the flow: both pods, and the layer 1 columns each one bores. */
 	private record Rig(PodEntity realPod, PodEntity mockPod, List<BlockPos> realColumns, List<BlockPos> mockColumns) {
@@ -123,9 +149,19 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 			client.player.setXRot(LOOK_DOWN);
 		});
 		awaitPodTicks(context, two, rig, POD_TICKS_TO_SETTLE);
-		context.waitTicks(2 * ScannerTuning.DEFAULT.rescanTicks() + 2);
+		// The pods stand on the floor of layer 1, inside the signal decay, where the stock console loses the scanner first. This test is about two pods
+		// crossing, not about the decay, so the scanner is read with the real pod lifted to clear air.
+		Vec3 floorPosition = two.server().computeOnServer(server -> liftOutOfDecay(server, rig.realPod()));
+		Vec3 liftedPosition = two.server().computeOnServer(server -> rig.realPod().position());
+		awaitScannerAt(context, rig.realPod().getId(), liftedPosition, true);
 		frame.run();
 		expectScannerShowsPod(context, "m1-two-pods-layer-1");
+		two.server().runOnServer(server -> {
+			HELD.set(null);
+			rig.realPod().setPos(floorPosition);
+			rig.realPod().setDeltaMovement(Vec3.ZERO);
+		});
+		awaitScannerAt(context, rig.realPod().getId(), floorPosition, false);
 
 		BlockPos mockStone = rig.mockColumns().getFirst().atY(STONE_ROW_Y);
 		// A cell in a chunk the client has not loaded reads as air, so wait for the stone before expecting it gone.
@@ -207,6 +243,34 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		return new Rig(realPod, mockPod, columns(realPod), columns(mockPod));
 	}
 
+	/**
+	 * Cuts a shaft above {@code pod} up to one slab past the layer 1 onset of the decay, with a stone shell like the room's, and holds the pod at the top of it
+	 * and holds it there. Returns where it stood, for putting it back. The height is {@link SignalDecayTuning}'s, so a retuned curve moves the test with it.
+	 */
+	private static Vec3 liftOutOfDecay(MinecraftServer server, PodEntity pod) {
+		ServerLevel one = server.getLevel(LayerChain.dimension(1));
+		Vec3 floorPosition = pod.position();
+		int clearY = one.getMinY() + SignalDecayTuning.DEFAULT.band(1).onset() + 1;
+		int centerX = Mth.floor(floorPosition.x);
+		int centerZ = Mth.floor(floorPosition.z);
+		int roofY = FLOOR_Y + 10;
+		int topY = clearY + 4;
+		for (int x = centerX - SHAFT_RADIUS - 1; x <= centerX + SHAFT_RADIUS + 1; x++) {
+			for (int y = roofY; y <= topY + 1; y++) {
+				for (int z = centerZ - SHAFT_RADIUS - 1; z <= centerZ + SHAFT_RADIUS + 1; z++) {
+					one.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), 2);
+				}
+			}
+		}
+		RoomCarver.carve(one, new BlockPos(centerX - SHAFT_RADIUS, roofY, centerZ - SHAFT_RADIUS), new BlockPos(centerX + SHAFT_RADIUS, topY, centerZ + SHAFT_RADIUS),
+				Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+		Vec3 clearPosition = new Vec3(floorPosition.x, clearY, floorPosition.z);
+		HELD.set(new Held(pod.getUUID(), clearPosition));
+		pod.setPos(clearPosition);
+		pod.setDeltaMovement(Vec3.ZERO);
+		return floorPosition;
+	}
+
 	/** The layer 1 columns a pod bores: its footprint on the block grid, as the drill picks it. */
 	private static List<BlockPos> columns(PodEntity pod) {
 		int width = pod.chassis().boreWidth();
@@ -267,6 +331,35 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		require(containsMockPod, "The real client's level does not contain the mock's pod");
 	}
 
+	/**
+	 * Waits until the client's copy of the pod stands at {@code at}, the decay on it is {@code clear} (0) or not, the cells around it are the ones the server
+	 * carved, and the scanner has rescanned since: a rescan runs every {@link ScannerTuning#rescanTicks()} client ticks, so one full interval of game time
+	 * after the client saw the pod there covers it. The wait is on the client's view, not on server ticks: the client gets the pod's position some ticks after the
+	 * server sets it, and on a slow runner the gap is long.
+	 */
+	private static void awaitScannerAt(ClientGameTestContext context, int podId, Vec3 at, boolean clear) {
+		ClientWait.until(context, "the client's pod at " + at + (clear ? " clear of" : " in") + " the signal decay", client -> podAt(client, podId, at, clear),
+				client -> podState(client, podId));
+		long seen = context.computeOnClient(client -> client.level.getGameTime());
+		long rescanned = seen + 2L * ScannerTuning.DEFAULT.rescanTicks() + 2;
+		ClientWait.until(context, "the scanner to rescan with the pod at " + at, client -> client.level.getGameTime() >= rescanned && podAt(client, podId, at, clear),
+				client -> podState(client, podId) + ", game time " + client.level.getGameTime() + " of " + rescanned);
+	}
+
+	private static boolean podAt(Minecraft client, int podId, Vec3 at, boolean clear) {
+		return client.level.getEntity(podId) instanceof PodEntity pod && pod.position().distanceToSqr(at) < 0.0625
+				&& client.player.getVehicle() == pod && (SignalDecay.intensity(pod) == 0) == clear
+				&& client.level.getBlockState(BlockPos.containing(at)).isAir();
+	}
+
+	private static String podState(Minecraft client, int podId) {
+		if (!(client.level.getEntity(podId) instanceof PodEntity pod)) {
+			return "no pod " + podId;
+		}
+		return "the client pod at " + pod.position() + ", decay intensity " + SignalDecay.intensity(pod) + ", ridden by the local player "
+				+ (client.player.getVehicle() == pod) + ", cell " + client.level.getBlockState(pod.blockPosition());
+	}
+
 	/** The scanner is drawn while riding: its pod marker is in the middle of the pod's cells, whatever else is on screen. */
 	private static void expectScannerShowsPod(ClientGameTestContext context, String screenshotName) {
 		// A vanilla toast and a transmission are drawn over the top right of the screen, where the Ribbon hangs its scanner.
@@ -277,8 +370,9 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		ScannerHudTest.HudShot shot = ScannerHudTest.HudShot.take(context, screenshotName, ScannerHudTest.TIER_ONE);
 		int actual = shot.pixel(0, 0);
 		int expected = ScannerLook.current().podColor() & RGB;
-		require(actual == expected, "%s: the scanner HUD should show the pod's marker %06X, the pixel is %06X"
-					.formatted(screenshotName, expected, actual));
+		String state = context.computeOnClient(client -> podState(client, client.player.getVehicle() == null ? -1 : client.player.getVehicle().getId()));
+		require(actual == expected, "%s: the scanner HUD should show the pod's marker %06X, the pixel is %06X (%s; %s)"
+					.formatted(screenshotName, expected, actual, state, shot.describePixel(0, 0)));
 	}
 
 	private static void box(ServerLevel level, int yFrom, int yTo, Block block) {

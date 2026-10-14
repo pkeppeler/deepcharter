@@ -57,6 +57,8 @@ import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.pod.SignalDecay;
+import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreTuning;
@@ -68,6 +70,7 @@ import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.DecayCells;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -75,6 +78,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
 /**
  * Measures how often lava ends a bore (issue 231): a stock Mole with a tier 1 scanner drills from the top of layer 1's rock to the
@@ -183,6 +187,15 @@ public class LavaBoreTest {
 	/** {@code leave} makes the pilot run from lava (the class comment says how); {@code ignore}, the default, is the bot that never reacts. */
 	static final String PILOT_ENV = "DEEPCHARTER_LAVA_BORES_PILOT";
 	private static final String REQUESTED_PILOT = System.getenv(PILOT_ENV);
+	static final String CONSOLE_ENV = "DEEPCHARTER_LAVA_BORES_CONSOLE";
+	private static final String REQUESTED_CONSOLE = System.getenv(CONSOLE_ENV);
+	static final String HEED_ENV = "DEEPCHARTER_LAVA_BORES_HEED";
+	private static final String REQUESTED_HEED = System.getenv(HEED_ENV);
+	/** The signal decay (#502) is modelled: the pilot reads the plate and the scanner only through the cab, as the decay lets it. A smoke run is never decayed. */
+	private static final boolean DECAY = REQUESTED_CONSOLE != null && !REQUESTED_CONSOLE.isBlank() && REQUESTED_BORES != null && !REQUESTED_BORES.isBlank();
+	private static final int CONSOLE_TIER = DECAY ? parseTier(REQUESTED_CONSOLE) : 0;
+	/** The pilot with no brace turns back when the plate shows the crust warning ({@value #HEED_ENV}{@code =1}); under the decay it can only when the plate is readable. */
+	private static final boolean HEED = REQUESTED_BORES != null && !REQUESTED_BORES.isBlank() && "1".equals(REQUESTED_HEED);
 	/** Ticks of lava contact before the pilot reacts: half a second to read the HUD line and pull the rotor. */
 	static final int REACTION_TICKS = 10;
 	/** Ticks clear of lava, and slabs above the first contact, before a pilot that ran drills on again. */
@@ -425,6 +438,12 @@ public class LavaBoreTest {
 		int lastCargoValue;
 		PodEntity pod;
 		int startY;
+		/** What the cab lets the pilot read on this tick (#502): the plate's text and the scanner's window. Always true without the decay. */
+		boolean plateReadable = true;
+		boolean scannerReadable = true;
+		/** Pod ticks with the decay on, and the ones of them in which the plate was dark or jumping. */
+		int decayTicks;
+		int darkPlateTicks;
 
 		Outcome outcome;
 		String cause = "";
@@ -565,6 +584,9 @@ public class LavaBoreTest {
 		if (measuredShield > ComponentTrack.HEAT_SHIELD.maxTier()) {
 			throw helper.assertionException(Component.literal(SHIELD_ENV + " is a heat shield tier from 1 to " + ComponentTrack.HEAT_SHIELD.maxTier()));
 		}
+		if (DECAY && (CONSOLE_TIER < 0 || CONSOLE_TIER > Chassis.MOLE.tierCap() || CONSOLE_TIER > ComponentTrack.CONSOLE.maxTier())) {
+			throw helper.assertionException(Component.literal(CONSOLE_ENV + " is a console tier from 0 (the stock console, with the decay) to " + Chassis.MOLE.tierCap() + " (the Mole's cap), not '" + REQUESTED_CONSOLE + "'"));
+		}
 		boolean leaves = "leave".equalsIgnoreCase(REQUESTED_PILOT);
 		if (REQUESTED_PILOT != null && !REQUESTED_PILOT.isBlank() && !leaves && !"ignore".equalsIgnoreCase(REQUESTED_PILOT)) {
 			throw helper.assertionException(Component.literal(PILOT_ENV + " is 'ignore' or 'leave', not '" + REQUESTED_PILOT + "'"));
@@ -603,6 +625,14 @@ public class LavaBoreTest {
 		});
 		List<BlockPos> probes = bores.stream().map(bore -> new BlockPos(bore.centreX, PILOT_WAIT_Y, bore.centreZ)).toList();
 		FarChunks.awaitEntityTicking(helper, level, probes, index -> launch(helper, server, bores.get(index)));
+	}
+
+	private static int parseTier(String value) {
+		try {
+			return Integer.parseInt(value.trim());
+		} catch (NumberFormatException e) {
+			return -1;
+		}
 	}
 
 	private static int boreCount(GameTestHelper helper) {
@@ -677,6 +707,9 @@ public class LavaBoreTest {
 		}
 		if (bore.shieldTier > 0) {
 			ScannerPods.fit(server, bore.pilot.player(), pod, ComponentTrack.HEAT_SHIELD, bore.shieldTier);
+		}
+		if (DECAY && CONSOLE_TIER > 0) {
+			ScannerPods.fit(server, bore.pilot.player(), pod, ComponentTrack.CONSOLE, CONSOLE_TIER);
 		}
 		if (bore.lookahead > 0 || bore.linerTier > 0 || bore.shieldTier > 0 || bore.leaves && REQUESTED_BRICKS != null) {
 			int bricks = positiveEnv(helper, BRICKS_ENV, REQUESTED_BRICKS, PodLiningTuning.DEFAULT.brickCapacity());
@@ -820,11 +853,12 @@ public class LavaBoreTest {
 		if (bore.braceTier > 0) {
 			noteBrace(bore, pod);
 		}
+		noteDecay(bore, pod, level);
 		if (bore.phase == Phase.DOWN && !pod.blockPosition().equals(bore.lastScanned)) {
 			bore.lastScanned = pod.blockPosition();
 			ScanSlice thermal = noteLavaInView(level, pod, bore, feetY);
-			bore.wantLining = bore.lookahead > 0 && lavaWithin(thermal, bore.lookahead);
-			bore.wantAvoid = bore.sounderTier > 0 ? soundsPocket(pod, bore.sounderTier) : switch (GAS) {
+			bore.wantLining = bore.lookahead > 0 && bore.scannerReadable && lavaWithin(thermal, bore.lookahead);
+			bore.wantAvoid = bore.sounderTier > 0 ? bore.plateReadable && soundsPocket(pod, bore.sounderTier) : switch (GAS) {
 				case IGNORE -> false;
 				case AVOID -> gasInNextSlab(level, pod);
 				case SOUNDER1, SOUNDER -> podHasGas(level, footprintSlab(pod, 0, 0, -1)) || GAS == GasMode.SOUNDER1 && podHasGas(level, footprintSlab(pod, 0, 0, -2));
@@ -844,6 +878,31 @@ public class LavaBoreTest {
 			return;
 		}
 		drive(bore, pod);
+	}
+
+	/**
+	 * What the cab shows the pilot on this tick under the signal decay (#502), judged by the same function and cell the client draws with: the plate (the sounder's line, the
+	 * brace's prompt, the crust warning) and the scanner's window (the lava the lining bot looks for). A glance at a dark or jumping instrument reads nothing. The hull lamp
+	 * and the burning lamp are never dark, so the pilot that leaves lava is not touched by the decay.
+	 */
+	private static void noteDecay(Bore bore, PodEntity pod, ServerLevel level) {
+		bore.plateReadable = true;
+		bore.scannerReadable = true;
+		if (!DECAY) {
+			return;
+		}
+		double intensity = SignalDecay.intensity(pod);
+		if (intensity <= 0) {
+			return;
+		}
+		long cell = Math.floorDiv(level.getGameTime(), (long) DecayCells.ticks());
+		long seed = pod.getUUID().getLeastSignificantBits();
+		bore.plateReadable = SignalDecay.fault(SignalDecay.Instrument.PLATE, intensity, seed, cell) == SignalDecay.Fault.NONE;
+		bore.scannerReadable = SignalDecay.fault(SignalDecay.Instrument.SCANNER, intensity, seed, cell) == SignalDecay.Fault.NONE;
+		bore.decayTicks++;
+		if (!bore.plateReadable) {
+			bore.darkPlateTicks++;
+		}
 	}
 
 	/** The input the bot holds with the rotor off: sprint down, or the push of the sidestep it is in. */
@@ -905,7 +964,8 @@ public class LavaBoreTest {
 	 * and sprints again when the part is done. Returns whether the bot is holding back. With an empty bay it drills on.
 	 */
 	private static boolean braceIfAsked(Bore bore, PodEntity pod) {
-		boolean asked = PodBrace.status(pod, true).patching() == PodBrace.Patching.WORKING;
+		// A pilot already letting go waits through a dark plate; one who has not let go acts only on a prompt it can read.
+		boolean asked = PodBrace.status(pod, true).patching() == PodBrace.Patching.WORKING && (bore.bracing || bore.plateReadable);
 		if (asked && bore.phase == Phase.DOWN && pod.onGround()) {
 			if (!bore.bracing) {
 				bore.bracing = true;
@@ -985,6 +1045,12 @@ public class LavaBoreTest {
 			brake(bore, pod);
 		}
 		if (bore.braceTier > 0 && braceIfAsked(bore, pod)) {
+			return;
+		}
+		if (HEED && bore.braceTier == 0 && bore.plateReadable && PodBrace.status(pod, true).warning().isPresent()) {
+			finish(bore, Outcome.TURNED_BACK, "read the crust warning", pod);
+			pod.discard();
+			bore.pilot.releaseInput();
 			return;
 		}
 		if (bore.leaves && leaveLava(bore, pod)) {
@@ -1417,6 +1483,7 @@ public class LavaBoreTest {
 		reportLiner(bores);
 		reportCrust(bores);
 		reportBrace(bores);
+		reportDecay(bores);
 		reportSummary(bores);
 		LOGGER.info("[lava-bore] hull lost to lava, per bore:   {}", distribution(bores, b -> b.lavaHull));
 		LOGGER.info("[lava-bore] pilot health lost to lava:     {}", distribution(bores, b -> b.lavaPilot));
@@ -1570,6 +1637,30 @@ public class LavaBoreTest {
 				mean(braced, "%.0f", b -> b.braceTicks), bores.stream().filter(b -> b.braceDry).count(),
 				bores.stream().filter(b -> b.braceDry && b.outcome == Outcome.DIED && b.lastCause == Cause.CRUST).count(), bores.stream().filter(b -> b.braceDear).count(),
 				bores.stream().filter(b -> b.braceDear && b.outcome == Outcome.DIED && b.lastCause == Cause.CRUST).count());
+	}
+
+	/**
+	 * What the signal decay did to the bores (#502), when it is modelled: the console tier, how deep the bores got (the lowest feet Y over all bores, 0 is the floor), the
+	 * bores that went into the decay band and died or turned back in it, and the share of the band's ticks in which the plate was dark or jumping.
+	 */
+	private static void reportDecay(List<Bore> bores) {
+		if (!DECAY) {
+			return;
+		}
+		int minY = bores.getFirst().level.getMinY();
+		int onset = (int) Math.ceil(SignalDecayTuning.DEFAULT.band(1).onset() * UpgradeTuning.DEFAULT.ratio(ComponentTrack.CONSOLE, CONSOLE_TIER));
+		List<Bore> inBand = bores.stream().filter(b -> b.decayTicks > 0).toList();
+		List<Bore> diedInBand = inBand.stream().filter(b -> b.outcome == Outcome.DIED).toList();
+		long band = inBand.stream().mapToLong(b -> b.decayTicks).sum();
+		long dark = inBand.stream().mapToLong(b -> b.darkPlateTicks).sum();
+		String causes = Arrays.stream(Cause.values())
+				.map(cause -> cause.name().toLowerCase(Locale.ROOT) + " " + diedInBand.stream().filter(b -> b.lastCause == cause).count())
+				.collect(Collectors.joining(", "));
+		LOGGER.info("[lava-bore] decay: console tier {} (the decay starts {} slabs over the floor, {} stock), heeds the crust warning {}; {} of {} bores went into the band; died in it {} ({}); turned back {} (read the warning in the band {}); the plate was dark or jumping in {} of {} band ticks ({})",
+				CONSOLE_TIER, onset, SignalDecayTuning.DEFAULT.band(1).onset(), HEED, inBand.size(), bores.size(), diedInBand.size(), causes,
+				bores.stream().filter(b -> b.outcome == Outcome.TURNED_BACK).count(), inBand.stream().filter(b -> b.outcome == Outcome.TURNED_BACK).count(), dark, band, percent(dark, band));
+		LOGGER.info("[lava-bore] decay depth: lowest feet Y over all bores, mean {} (the floor is {}); reached layer 2 {} of {}; died anywhere {}",
+				mean(bores, "%.1f", b -> b.lowestFeetY - minY), 0, bores.stream().filter(b -> b.outcome == Outcome.SURVIVED).count(), bores.size(), bores.stream().filter(b -> b.outcome == Outcome.DIED).count());
 	}
 
 	/** What the lining bot did and what it cost, when there was one: the bricks, the sessions and the time the pod stood still. */
