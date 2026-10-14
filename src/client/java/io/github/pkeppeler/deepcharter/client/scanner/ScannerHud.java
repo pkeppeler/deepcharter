@@ -6,11 +6,8 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.level.block.Block;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
@@ -20,20 +17,18 @@ import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
-import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 
 /**
  * Side-view minimap of the ridden pod's surroundings, top right. Pod facing runs left to right. Drawn only while the pod has a
  * working scanner; its reach and detail follow the scanner's tier ({@link ScanSlice}).
  *
- * <p>Draws only with fill() and text(), in the fixed colours of {@link ScannerLook}: neither reads
- * world light, so the map is as readable in the dark of a deep layer as on the surface. It reads the
+ * <p>Draws the cells as the blocks' own textures (see {@link ScannerMap}) and everything else with fill() and text(), in the
+ * fixed colours of {@link ScannerLook}: none of it reads world light, so the map is as readable in the dark of a deep layer as on the surface. It reads the
  * client's own chunk data and rescans every {@link ScannerTuning#rescanTicks()} ticks.
  */
 public final class ScannerHud {
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "scanner");
-	private static final TagKey<Block> GOLD_ORES = TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("c", "ores/gold"));
 	private static final ScannerTuning TUNING = ScannerTuning.DEFAULT;
 	private static final int TITLE_HEIGHT = 10;
 	private static final int FRAME = 1;
@@ -173,19 +168,15 @@ public final class ScannerHud {
 		return Component.translatable("deepcharter.scanner.title", scanned.tier());
 	}
 
-	/** The cells of {@code scanned} and the pod, {@code cell} pixels each, the top left cell of the area at ({@code left}, {@code top}). */
+	/**
+	 * The cells of {@code scanned} and the pod, {@code cell} pixels each, the top left cell of the area at ({@code left}, {@code top}). The
+	 * known cells are one picture of the blocks' own textures, one blit ({@link ScannerMap}); the pod is a flat marker over it.
+	 */
 	private static void drawCells(GuiGraphicsExtractor graphics, Minecraft client, ScanSlice scanned, int cell, int left, int top) {
 		ScannerLook look = ScannerLook.current();
 		ScanArea area = scanned.area();
 		graphics.fill(left, top, left + area.columns() * cell, top + area.rows() * cell, look.airColor());
-		for (int up = area.up(); up >= -area.down(); up--) {
-			for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
-				Cell found = scanned.cell(ahead, up);
-				if (!(found instanceof Cell.Air)) {
-					fillCell(graphics, area, cell, left, top, ahead, up, colour(look, found));
-				}
-			}
-		}
+		ScannerMap.draw(graphics, scanned, look, cell, left, top);
 		// The cells above the feet cell that the ridden pod fills: 1 for a Mole (two blocks tall), 2 for a Prospector.
 		int podCellsUp = client.player.getVehicle() instanceof PodEntity pod ? pod.chassis().boreHeight() - 1 : 0;
 		for (int up = 0; up <= podCellsUp; up++) {
@@ -197,17 +188,5 @@ public final class ScannerHud {
 		int x = left + (ahead + area.halfWidth()) * cell;
 		int y = top + (area.up() - up) * cell;
 		graphics.fill(x, y, x + cell, y + cell, colour);
-	}
-
-	/** Opaque ARGB for a cell; ore gets its own colour per ore, falling back to a generic one. */
-	private static int colour(ScannerLook look, Cell cell) {
-		return switch (cell) {
-			case Cell.Air air -> look.airColor();
-			case Cell.Rock rock -> look.rockColor();
-			case Cell.Lava lava -> look.lavaColor();
-			case Cell.LavaNear near -> look.lavaNearColor();
-			case Cell.Gas gas -> look.gasColor();
-			case Cell.Ore ore -> ore.block().defaultBlockState().is(GOLD_ORES) ? look.goldOreColor() : look.oreColor();
-		};
 	}
 }

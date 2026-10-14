@@ -62,12 +62,18 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
 		context.waitTicks(2 * TUNING.rescanTicks() + 2);
 	}
 
-	private static void expect(String label, int actual, int colour) {
-		require(actual == (colour & RGB), "%s: the pixel should be %06X, was %06X".formatted(label, colour & RGB, actual));
+	private static void expectOpen(String label, HudShot shot, int ahead, int up) {
+		require(shot.isOpenSpace(ahead, up), label + ": the cell should read as open space");
 	}
 
-	private static void expectNot(String label, int actual, int colour) {
-		require(actual != (colour & RGB), "%s: the pixel must not be %06X".formatted(label, colour & RGB));
+	private static void expectDrawn(String label, HudShot shot, int ahead, int up) {
+		require(!shot.isOpenSpace(ahead, up), label + ": the cell should draw a texture, not open space");
+	}
+
+	/** The cells are textures, so the pod marker is the one flat colour: its middle pixel. */
+	private static void expectPod(String label, HudShot shot) {
+		int actual = shot.pixel(0, 0);
+		require(actual == (ScannerLook.current().podColor() & RGB), "%s: the pixel should be %06X, was %06X".formatted(label, ScannerLook.current().podColor() & RGB, actual));
 	}
 
 	@Override
@@ -81,47 +87,52 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
 			// No scanner: no HUD, whatever is around the pod.
 			ScannerHudTest.rideWithGoldAhead(context, server, 0);
 			HudShot none = HudShot.take(context, "scanner-tiers-none", ScannerHudTest.TIER_ONE);
-			expectNot("no scanner: the pod marker", none.pixel(0, 0), ScannerLook.current().podColor());
-			expectNot("no scanner: the gold", none.pixel(ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP), ScannerLook.current().goldOreColor());
+			require(none.pixel(0, 0) != (ScannerLook.current().podColor() & RGB), "no scanner: the pod marker must not be drawn");
+			require(!none.isOpenSpace(ScannerHudTest.GOLD_AHEAD - 1, ScannerHudTest.GOLD_UP), "no scanner: the panel must not be drawn");
 			ScannerHudTest.leavePod(context, server);
 
 			// Tier 1 draws M1's panel: the near gold is there, the far cells are outside it.
 			ScannerHudTest.rideWithGoldAhead(context, server, 1);
 			placeFarCells(context, server);
 			HudShot one = HudShot.take(context, "scanner-tiers-1", ScannerHudTest.TIER_ONE);
-			expect("tier 1: the pod marker", one.pixel(0, 0), ScannerLook.current().podColor());
-			expect("tier 1: the near gold", one.pixel(ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP), ScannerLook.current().goldOreColor());
-			// The far gold is beyond the panel's columns, so the near gold is the only gold cell on the row.
-			int goldCells = 0;
+			expectPod("tier 1: the pod marker", one);
+			expectDrawn("tier 1: the near gold", one, ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP);
+			// The far gold is beyond the panel's columns, so the near gold is the brightest cell on the row, by itself.
+			double nearGold = one.brightness(ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP);
+			int brightCells = 0;
 			for (int ahead = -ScannerHudTest.TIER_ONE.halfWidth(); ahead <= ScannerHudTest.TIER_ONE.halfWidth(); ahead++) {
-				if (one.pixel(ahead, ScannerHudTest.GOLD_UP) == (ScannerLook.current().goldOreColor() & RGB)) {
-					goldCells++;
+				if (one.brightness(ahead, ScannerHudTest.GOLD_UP) >= nearGold - 1) {
+					brightCells++;
 				}
 			}
-			require(goldCells == 1, "tier 1: the gold row should show the near gold only, it shows %d gold cells".formatted(goldCells));
+			require(brightCells == 1, "tier 1: the gold row should show the near gold as its one brightest cell, %d cells are that bright".formatted(brightCells));
 			// Tier 1 draws lava and water as open space, the colour of air.
 			placeFluids(context, server);
 			HudShot oneFluids = HudShot.take(context, "scanner-tiers-1-fluids", ScannerHudTest.TIER_ONE);
-			expect("tier 1: the lava reads as open space", oneFluids.pixel(LAVA_AHEAD, FLUID_UP), ScannerLook.current().airColor());
-			expect("tier 1: the water reads as open space", oneFluids.pixel(WATER_AHEAD, FLUID_UP), ScannerLook.current().airColor());
-			expect("tier 1: the lava beside the plane reads as open space", oneFluids.pixel(NEAR_AHEAD, FLUID_UP), ScannerLook.current().airColor());
+			expectOpen("tier 1: the lava", oneFluids, LAVA_AHEAD, FLUID_UP);
+			expectOpen("tier 1: the water", oneFluids, WATER_AHEAD, FLUID_UP);
+			expectOpen("tier 1: the lava beside the plane", oneFluids, NEAR_AHEAD, FLUID_UP);
 			ScannerHudTest.leavePod(context, server);
 
 			// Tier 2 draws a wider panel with the far cells in it.
 			ScannerHudTest.rideWithGoldAhead(context, server, 2);
 			placeFarCells(context, server);
 			HudShot two = HudShot.take(context, "scanner-tiers-2", TIER_TWO);
-			expect("tier 2: the pod marker", two.pixel(0, 0), ScannerLook.current().podColor());
-			expect("tier 2: the near gold", two.pixel(ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP), ScannerLook.current().goldOreColor());
-			expect("tier 2: the far gold", two.pixel(FAR_AHEAD, ScannerHudTest.GOLD_UP), ScannerLook.current().goldOreColor());
-			expect("tier 2: the far stone", two.pixel(FAR_BEHIND, ScannerHudTest.GOLD_UP), ScannerLook.current().rockColor());
+			expectPod("tier 2: the pod marker", two);
+			expectDrawn("tier 2: the near gold", two, ScannerHudTest.GOLD_AHEAD, ScannerHudTest.GOLD_UP);
+			expectDrawn("tier 2: the far gold", two, FAR_AHEAD, ScannerHudTest.GOLD_UP);
+			expectDrawn("tier 2: the far stone", two, FAR_BEHIND, ScannerHudTest.GOLD_UP);
+			require(two.brightness(FAR_AHEAD, ScannerHudTest.GOLD_UP) > two.brightness(FAR_BEHIND, ScannerHudTest.GOLD_UP),
+					"tier 2: the far gold should be brighter than the far stone");
 
 			// Tier 2 is the thermal tier: lava has its own colour, water is still open space.
 			placeFluids(context, server);
 			HudShot twoFluids = HudShot.take(context, "scanner-tiers-2-fluids", TIER_TWO);
-			expect("tier 2: the lava in the plane", twoFluids.pixel(LAVA_AHEAD, FLUID_UP), ScannerLook.current().lavaColor());
-			expect("tier 2: the lava beside the plane", twoFluids.pixel(NEAR_AHEAD, FLUID_UP), ScannerLook.current().lavaNearColor());
-			expect("tier 2: the water reads as open space", twoFluids.pixel(WATER_AHEAD, FLUID_UP), ScannerLook.current().airColor());
+			expectDrawn("tier 2: the lava in the plane", twoFluids, LAVA_AHEAD, FLUID_UP);
+			expectDrawn("tier 2: the lava beside the plane", twoFluids, NEAR_AHEAD, FLUID_UP);
+			require(twoFluids.channel(LAVA_AHEAD, FLUID_UP, 16) > twoFluids.channel(LAVA_AHEAD, FLUID_UP, 0), "tier 2: lava in the plane should read orange, red over blue");
+			require(twoFluids.brightness(NEAR_AHEAD, FLUID_UP) < twoFluids.brightness(LAVA_AHEAD, FLUID_UP), "tier 2: lava beside the plane should be dimmer than lava in it");
+			expectOpen("tier 2: the water", twoFluids, WATER_AHEAD, FLUID_UP);
 		}
 	}
 }
