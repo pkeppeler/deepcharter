@@ -55,6 +55,12 @@ public class Seams {
         return 3;
     }
 
+    // test-seam: a reason long enough that palantir-java-format wraps it
+    // onto a second comment line
+    public int markedAboveWrapped() {
+        return 5;
+    }
+
     public int viaReference() {
         return 4;
     }
@@ -188,7 +194,7 @@ public class Polite implements Greeter {
 """,
 }
 GREEN_USES = """
-        total += seams.calledByMod() + seams.markedAbove() + seams.markedSameLine() + seams.viaReference() + seams.calledField;
+        total += seams.calledByMod() + seams.markedAbove() + seams.markedSameLine() + seams.markedAboveWrapped() + seams.viaReference() + seams.calledField;
         total += seams.sharedField + fx.Seams.CONSTANT;
         total += new fx.Square().area() + new fx.Point(1, 2).x() + new fx.Point(1, 2).y();
         total += fx.Direction.valueOf("NORTH").ordinal() + fx.Direction.values().length;

@@ -55,7 +55,7 @@ import java.util.zip.ZipFile;
  * <li>A member nothing references, tests included, is not this gate's business.
  * </ul>
  *
- * <p>A deliberate, permanent seam ends its declaration line, or sits on a comment line just above, with {@code // test-seam: <reason>};
+ * <p>A deliberate, permanent seam ends its declaration line, or sits in the block of comment lines just above (palantir wraps a long comment onto more lines), with {@code // test-seam: <reason>};
  * the reason is required. The marker binds to the exact declaration: the same name in another class of the file, or another overload,
  * is not exempted by it.
  *
@@ -592,13 +592,22 @@ public final class TestOnlyGate {
         return true;
     }
 
-    /** The text after {@code // test-seam:} on declaration {@code line} (1-based) or, when that line has none, on a comment-only line above. */
+    /**
+     * The text after {@code // test-seam:} on declaration {@code line} (1-based) or, when that line has none, on a line of the block
+     * of comment-only lines directly above it.
+     */
     private static String markerFor(List<String> lines, int line) {
         String same = marker(lines.get(line - 1));
         if (same != null) {
             return same;
         }
-        return line >= 2 && lines.get(line - 2).strip().startsWith("//") ? marker(lines.get(line - 2)) : null;
+        for (int above = line - 2; above >= 0 && lines.get(above).strip().startsWith("//"); above--) {
+            String found = marker(lines.get(above));
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
     }
 
     private List<Declaration> declarationsIn(Path source) {
