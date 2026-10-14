@@ -50,6 +50,8 @@ public class ScannerLegibilityClientTest implements FabricClientGameTest {
 	private static final double CONTRAST = 48;
 	/** The ore's mean may be this share of the old flat colour's distance from the background: a mark tinted to tell its ore apart is a little nearer to the lava than white was. */
 	private static final double SEPARATION_FLOOR = 0.8;
+	/** How far (RGB distance) the marks of two ores must be apart for the eye to tell them apart at 2 pixels. */
+	private static final double MIN_MARK_DISTANCE = 30;
 	private static final Block SHALE = block("packed_shale");
 	/** One cell each from {@link #FIRST} ahead; every ore has rock or lava on both sides. {@code null} is lava. */
 	private static final List<Block> BLOCKS = Arrays.asList(SHALE, null, OreBlocks.of(OreType.IRONIUM), SHALE, OreBlocks.of(OreType.BRONZIUM), null,
@@ -149,7 +151,22 @@ public class ScannerLegibilityClientTest implements FabricClientGameTest {
 			// A textured ore keeps its grain, so its mean is nearer the rock than a flat white was; only a flat mark is held to the old distance.
 			require(size >= look.oreMarkBelowPixels() || now.separation() >= SEPARATION_FLOOR * old.separation(), "%s (%dpx cells) %s: its mean is %.0f from the nearest rock or lava cell, the old flat colour's %.0f".formatted(label, size, BLOCKS.get(i), now.separation(), old.separation()));
 		}
+		if (size < look.oreMarkBelowPixels()) {
+			expectOresTold(shot);
+		}
 		return size;
+	}
+
+	/** In a small cell the four ores are one flat mark each: their marks differ from each other by at least {@link #MIN_MARK_DISTANCE}. */
+	private static void expectOresTold(HudShot shot) {
+		for (int i = 0; i < BLOCKS.size(); i++) {
+			for (int j = i + 1; j < BLOCKS.size(); j++) {
+				if (isOre(BLOCKS.get(i)) && isOre(BLOCKS.get(j))) {
+					double apart = distance(mean(shot.cellPixels(FIRST + i, ROW)), mean(shot.cellPixels(FIRST + j, ROW)));
+					require(apart >= MIN_MARK_DISTANCE, "%s and %s: their small-cell marks should differ by %.0f or more, they differ by %.0f".formatted(BLOCKS.get(i), BLOCKS.get(j), MIN_MARK_DISTANCE, apart));
+				}
+			}
+		}
 	}
 
 	@Override

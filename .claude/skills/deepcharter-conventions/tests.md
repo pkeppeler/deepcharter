@@ -27,7 +27,8 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - Wait on entity ticks, not server ticks: chunks far from the players do not tick at first in a fresh world.
 - A server GameTest that waits for generated blocks polls under `FarChunks.Deadline`, snapshots chunk state (without loading) before reading blocks, and logs when the wait was needed.
 - A test that runs git in a temp repo clears every `GIT_*` variable and sets `cwd` and `GIT_CEILING_DIRECTORIES`; the pre-push hook also unsets them before running tests.
-- `ScannerFrameTimeClientTest` (#537) is a measurement, not a pass line: it logs `[scanner-frame]` lines, the CPU milliseconds of one frame's render-state extraction (the HUD with its scanner panel) at the top scanner tier on a full-rock area, with no scanner, with one, and with the HUD hidden as a control. It unpaces the client (no vsync, no frame limit) and restores both. Do not time a client tick (it waits for the 20 ticks a second) or `renderFrame` (it returns at once in a test, drawing nothing).
+- `ScannerFrameTimeClientTest` (#537) is a measurement, not a regression guard and not a pass line (it asserts only that the panel is drawn): it logs `[scanner-frame]` lines, the CPU milliseconds of one frame's render-state extraction (the HUD with its scanner panel) at the top scanner tier on a full-rock area, with no scanner, with one, and with the HUD hidden as a control. It unpaces the client (no vsync, no frame limit) and restores both. Do not time a client tick (it waits for the 20 ticks a second) or `renderFrame` (it returns at once in a test, drawing nothing).
+- A visual-legibility test measures at the on-screen cell size of the smallest shipped window, not at the unscaled tile.
 
 ## Client slots
 

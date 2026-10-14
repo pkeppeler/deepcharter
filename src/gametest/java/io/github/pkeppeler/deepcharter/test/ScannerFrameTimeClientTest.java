@@ -34,7 +34,8 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 /**
  * #537: a measurement more than a regression test. Frame time at the largest scan the game allows (a tier 3 scanner on the Prospector: the Mole's cap is 2) against a pod with no
  * scanner, in a world whose scan area is full of mixed rock and ore, so that every cell the scanner can read is drawn. It logs
- * {@code [scanner-frame]} lines and asserts nothing: wall time under load is not a stable pass line.
+ * {@code [scanner-frame]} lines and asserts only that the panel is drawn: wall time under load is not a stable pass line, so this is not a regression guard and a
+ * slow scanner draw does not fail it. Read the logged numbers.
  */
 public class ScannerFrameTimeClientTest implements FabricClientGameTest {
 	private static final Logger LOGGER = LoggerFactory.getLogger("ScannerFrameTime");
