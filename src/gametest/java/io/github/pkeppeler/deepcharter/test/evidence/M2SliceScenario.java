@@ -524,7 +524,7 @@ public class M2SliceScenario extends EvidenceScenario {
 		still("25-scanner-fitted");
 		click("LIGHTS  T0");
 		snap(2);
-		click("BUY TIER 1  $125");
+		click("BUY TIER 2  $375"); // tier 1 is crafted and not sold (#536)
 		awaitServer(server -> PodComponents.partOf(pod(server, mole), ComponentTrack.LIGHTS).isPresent());
 		snap(HOLD_FRAMES);
 		still("26-lights-bought");

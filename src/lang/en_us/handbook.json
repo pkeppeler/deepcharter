@@ -125,7 +125,7 @@
   "deepcharter.handbook.directive.fuel_is_life.drill_down": "Drill down ten blocks.",
   "deepcharter.handbook.directive.fuel_is_life.return_to_colony": "Return to the colony.",
   "deepcharter.handbook.chapter.deepcharter.every_sale_counts.title": "Every Sale Counts",
-  "deepcharter.handbook.chapter.deepcharter.every_sale_counts.text.1": "Ore is heavy, so the Mole is your hauler. Bring ore to the ore processor to sell it; every sale is credited to your charter's account. Spend your earnings at the upgrade terminal on better parts. All parts are licensed to your charter and carry a Company serial number. Ore gets richer the farther down you go!",
+  "deepcharter.handbook.chapter.deepcharter.every_sale_counts.text.1": "Ore is heavy, so the Mole is your hauler. Bring ore to the ore processor to sell it; every sale is credited to your charter's account. The first tier of every part is not sold: craft each as a unit from salvage iron, copper and redstone, and use it on your Mole. The lights, hopper, brace, sounder, liner and heat shield also take a little ore: pick WITHDRAW ORE at the ore processor to move it from your Mole's cargo to your pack instead of selling it. Spend your earnings at the upgrade terminal on the tiers after them. All parts are licensed to your charter and carry a Company serial number. Ore gets richer the farther down you go!",
   "deepcharter.handbook.chapter.deepcharter.every_sale_counts.margin": "Ask where it goes after. The Conduit only runs one way. —R.",
   "deepcharter.handbook.directive.every_sale_counts.sell_ore": "Sell ore at the ore processor.",
   "deepcharter.handbook.directive.every_sale_counts.buy_component": "Buy a component at the upgrade terminal.",

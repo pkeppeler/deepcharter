@@ -38,9 +38,9 @@ public class TerminalPanelUseScenario extends EvidenceScenario {
 			ClientWait.until(context, "the hull track lit", client -> UpgradeShown.isChosen(upgrade, ComponentTrack.HULL));
 			hold(context);
 			screenshot(context, "upgrade-hull");
-			context.clickScreenButton("BUY TIER 1  $200");
-			ClientWait.until(context, "tier 1 installed", client -> upgrade.upgrade().flatMap(view -> view.pod())
-					.map(pod -> pod.slots().stream().anyMatch(slot -> slot.installed() == 1)).orElse(false));
+			context.clickScreenButton("BUY TIER 2  $500"); // tier 1 is crafted and not sold (#536)
+			ClientWait.until(context, "tier 2 installed", client -> upgrade.upgrade().flatMap(view -> view.pod())
+					.map(pod -> pod.slots().stream().anyMatch(slot -> slot.installed() == 2)).orElse(false));
 			hold(context);
 			TerminalPanelScreens.close(context);
 			TerminalPanelScreens.open(context, "repair", scene, null);

@@ -10,5 +10,6 @@ public final class UpgradeInit {
 
 	public static void init() {
 		UpgradeRegistry.register();
+		PartFitting.init();
 	}
 }

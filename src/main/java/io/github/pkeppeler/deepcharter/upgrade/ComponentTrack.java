@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 /**
  * The thirteen tracks of pod parts (SPEC section 7). Tier 0 of a track is the stock part every pod has, so a part item is
  * tier 1 or more. The scanner, lights, spoil hopper, liner, sounder, brace and heat shield have no stock part: their tier 0 is "none".
+ * Tier 1 of every track is a crafted unit fitted by use ({@link PartUnits}, ADR 0048 and ADR 0053), so the upgrade terminal sells tier 2 and up.
  */
 public enum ComponentTrack implements StringRepresentable {
 	DRILL("drill", 6, false),
@@ -36,12 +37,12 @@ public enum ComponentTrack implements StringRepresentable {
 
 	private final String id;
 	private final int maxTier;
-	private final boolean firstTierCrafted;
+	private final boolean needsFirstTier;
 
-	ComponentTrack(String id, int maxTier, boolean firstTierCrafted) {
+	ComponentTrack(String id, int maxTier, boolean needsFirstTier) {
 		this.id = id;
 		this.maxTier = maxTier;
-		this.firstTierCrafted = firstTierCrafted;
+		this.needsFirstTier = needsFirstTier;
 	}
 
 	@Override
@@ -59,11 +60,11 @@ public enum ComponentTrack implements StringRepresentable {
 	}
 
 	/**
-	 * True when tier 1 of this track is made by the player and fitted from an item, and only the tiers above it are sold at the upgrade
-	 * terminal, each needing the one fitted first. The scanner: by the time a pilot needs a better one, hand mining is too slow.
+	 * True when tier 2 and up are sold only to a pod that has the crafted tier 1 fitted: the scanner (ADR 0048), which no Mole has a stock part of.
+	 * Every other track sells tier 2 over what the pod has, the stock part or none.
 	 */
-	public boolean firstTierCrafted() {
-		return firstTierCrafted;
+	public boolean needsFirstTier() {
+		return needsFirstTier;
 	}
 
 	/** The id of this track's part item. */

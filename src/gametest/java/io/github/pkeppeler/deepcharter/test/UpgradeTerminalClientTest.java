@@ -70,14 +70,16 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 			context.clickScreenButton("HULL  T0");
 			ClientWait.until(context, "the hull track lit", client -> UpgradeShown.isChosen(screen, ComponentTrack.HULL));
 			List<String> hull = labels(context, screen);
-			require(hull.contains("BUY TIER 1  $200") && hull.contains("BUY TIER 2  $500"), "the hull parts show their prices, got " + hull);
+			require(hull.contains("TIER 1  CRAFTED, NOT SOLD") && hull.contains("BUY TIER 2  $500"), "the hull shows tier 1 as crafted and the others with their prices, got " + hull);
+			require(!button(context, screen, "TIER 1  CRAFTED, NOT SOLD").active, "a crafted tier is not for sale");
 			require(hull.contains("BUY TIER 3  $1250  (WORKS AS TIER 2)") && hull.contains("BUY TIER 4  $5000  (WORKS AS TIER 2)"),
 					"tiers above the cap say so, got " + hull);
 
-			context.clickScreenButton("BUY TIER 1  $200");
-			ClientWait.until(context, "the tier 1 install label", client -> labels(client, screen).contains("TIER 1  INSTALLED"));
+			// A Mole has a stock hull, so tier 2 is bought over it with no tier 1 fitted.
+			context.clickScreenButton("BUY TIER 2  $500");
+			ClientWait.until(context, "the tier 2 install label", client -> labels(client, screen).contains("TIER 2  INSTALLED"));
 			require(singleplayer.getServer().computeOnServer(server2 -> PodComponents.partOf(pod(server2, scene), ComponentTrack.HULL)
-					.map(label -> label.tier() == 1).orElse(false)), "the server installed the tier 1 hull");
+					.map(label -> label.tier() == 2).orElse(false)), "the server installed the tier 2 hull");
 
 			context.clickScreenButton("BUY TIER 4  $5000  (WORKS AS TIER 2)");
 			ClientWait.until(context, "the tier 4 install label", client -> labels(client, screen).contains("TIER 4  INSTALLED  (WORKS AS TIER 2)"));
@@ -85,11 +87,11 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 				PodEntity pod = pod(server2, scene);
 				boolean capped = PodComponents.effectiveTier(pod, ComponentTrack.HULL) == 2;
 				boolean dropped = pod.level().getEntitiesOfClass(ItemEntity.class, new AABB(scene.terminal()).inflate(20)).stream()
-						.anyMatch(item -> ComponentItems.labelOf(item.getItem()).map(label -> label.tier() == 1).orElse(false));
+						.anyMatch(item -> ComponentItems.labelOf(item.getItem()).map(label -> label.tier() == 2).orElse(false));
 				long account = Charters.charterOfOrThrow(server2, server2.getPlayerList().getPlayers().getFirst().getUUID()).orElseThrow().account();
-				return capped && dropped && account == ACCOUNT - 200 - 5_000;
+				return capped && dropped && account == ACCOUNT - 500 - 5_000;
 			});
-			require(cappedAndDropped, "the tier 4 hull works as tier 2, the tier 1 hull dropped, and the account paid 5200 in all");
+			require(cappedAndDropped, "the tier 4 hull works as tier 2, the tier 2 hull dropped, and the account paid 5500 in all");
 
 			CrtButton unaffordable = context.computeOnClient(client -> screen.children().stream().filter(CrtButton.class::isInstance)
 					.map(CrtButton.class::cast).filter(button -> button.getMessage().getString().startsWith("BUY TIER 6")).findFirst().orElseThrow());

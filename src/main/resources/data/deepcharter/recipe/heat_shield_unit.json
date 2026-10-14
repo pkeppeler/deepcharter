@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "GSG",
+    "CSC"
+  ],
+  "key": {
+    "G": "deepcharter:goldium",
+    "S": "deepcharter:silverium",
+    "C": "minecraft:copper_ingot"
+  },
+  "result": {
+    "id": "deepcharter:heat_shield_unit",
+    "count": 1
+  }
+}

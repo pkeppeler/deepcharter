@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BCB",
+    "CRC",
+    "BNB"
+  ],
+  "key": {
+    "B": "deepcharter:bronzium",
+    "C": "minecraft:copper_ingot",
+    "R": "minecraft:redstone",
+    "N": "deepcharter:ironium"
+  },
+  "result": {
+    "id": "deepcharter:sounder_unit",
+    "count": 1
+  }
+}

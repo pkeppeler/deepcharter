@@ -36,8 +36,8 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
  * <p>A pod is parked at the terminal as {@link Terminals#parkedPods} says, and is the player's to use as
  * {@link PodComponents#mayAccess} says. The charter's own pod wins over an unowned one; within each, the nearer wins.
  *
- * <p>A track whose first tier is crafted ({@link ComponentTrack#firstTierCrafted}, the scanner) does not sell that tier, and sells the
- * ones above it only to a pod that has the crafted part fitted for the buying charter.
+ * <p>Tier 1 of every track is crafted ({@link PartUnits}), so the terminal does not sell it. The scanner ({@link ComponentTrack#needsFirstTier})
+ * sells the tiers above only to a pod that has the crafted part fitted for the buying charter.
  *
  * <p>Terminals have already checked distance, membership and repair when a handler here runs. The args are untrusted: the track
  * and tier are read defensively, and a part above the chassis' cap is allowed (it is shown and applied as capped).
@@ -88,7 +88,7 @@ public final class UpgradeTerminal {
 		if (tier < 1 || tier > track.maxTier()) {
 			return Optional.of(UpgradeRefusal.BAD_REQUEST.message());
 		}
-		if (track.firstTierCrafted() && tier == 1) {
+		if (tier == 1) {
 			return Optional.of(UpgradeRefusal.CRAFTED.message());
 		}
 		Charter charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow();
@@ -107,7 +107,7 @@ public final class UpgradeTerminal {
 			return Optional.of(UpgradeRefusal.NOT_REGISTERED.message());
 		}
 		Optional<PartLabel> held = PodComponents.partOf(pod, track, charter.id());
-		if (track.firstTierCrafted() && held.isEmpty()) {
+		if (track.needsFirstTier() && held.isEmpty()) {
 			// The crafted first tier is what a later tier replaces: buying past it would sell a scanner to a pod that never had one.
 			return Optional.of(UpgradeRefusal.NEEDS_FIRST_TIER.message());
 		}
@@ -130,7 +130,7 @@ public final class UpgradeTerminal {
 	}
 
 	/** Why: the original refills on a purchase, while an install alone keeps the litres and the damage. */
-	private static void refill(PodEntity pod, ComponentTrack track) {
+	static void refill(PodEntity pod, ComponentTrack track) {
 		switch (track) {
 			case HULL -> {
 				// A wreck (no hull left) is a wreck for #67 to handle, and a part must not repair it.
