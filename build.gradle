@@ -138,6 +138,7 @@ apply from: "gradle/gametest.gradle"
 apply from: "gradle/colour-gate.gradle"
 apply from: "gradle/test-only-gate.gradle"
 apply from: "gradle/clientlock.gradle"
+apply from: "gradle/run-jvm.gradle"
 
 processResources {
 	def version = project.version
