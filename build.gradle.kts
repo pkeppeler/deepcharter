@@ -18,8 +18,6 @@ loom {
 		}
 	}
 
-	// Loom deprecated runDir(String) and programArgs(...) for the runDirectory and programArguments properties. The two runs keep the
-	// calls the build always used, so their arguments cannot change in this conversion.
 	runs {
 		// Play-test client. Its own run dir, so the mcpfabric jar that tools/play.sh
 		// places in run/play/mods is loaded here and nowhere else (audit condition 1).

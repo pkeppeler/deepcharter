@@ -14,7 +14,6 @@
 // DEEPCHARTER_CLIENT_SLOTS sets the slot count (default 2; 1 is one client at a time);
 // DEEPCHARTER_LOCK_DIR moves the lock directory; DEEPCHARTER_LOCK_POLL_MS sets the retry interval;
 // DEEPCHARTER_LOCK_TASKS (comma list) replaces the locked task names, for the test's stub task.
-import java.io.File
 import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.channels.FileLock
@@ -25,13 +24,6 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.util.UUID
-import org.gradle.api.Action
-import org.gradle.api.GradleException
-import org.gradle.api.Task
-import org.gradle.api.logging.Logging
-import org.gradle.api.provider.Provider
-import org.gradle.api.services.BuildService
-import org.gradle.api.services.BuildServiceParameters
 
 abstract class ClientLock : BuildService<BuildServiceParameters.None>, AutoCloseable {
 	// The pool this service guards. A subclass renames it: its own slot count, lock files, queue and wording.
@@ -257,28 +249,28 @@ class AcquireClientLock(private val lock: Provider<out ClientLock>, private val 
 	}
 }
 
-val lockSetting: String? = System.getenv("DEEPCHARTER_CLIENT_LOCK")
-val lockOn = if (lockSetting != null) lockSetting == "1" else System.getProperty("os.name").lowercase().contains("mac")
-if (lockOn) {
-	val lock = gradle.sharedServices.registerIfAbsent("clientLock", ClientLock::class.java) {}
-	val worktree = rootProject.projectDir.absolutePath
-	val clientTasks = (System.getenv("DEEPCHARTER_LOCK_TASKS")?.takeIf { it.isNotEmpty() } ?: "runClient,runPlay,runClientGameTest").split(",")
-	tasks.matching { it.name in clientTasks }.configureEach {
-		usesService(lock)
-		doFirst(AcquireClientLock(lock, worktree))
+val macOnByDefault = System.getProperty("os.name").lowercase().contains("mac")
+val worktree = rootProject.projectDir.absolutePath
+
+fun <T : ClientLock> lockTasks(enableEnv: String, serviceName: String, type: Class<T>, taskNames: List<String>) {
+	val setting: String? = System.getenv(enableEnv)
+	if (if (setting != null) setting == "1" else macOnByDefault) {
+		val lock = gradle.sharedServices.registerIfAbsent(serviceName, type) {}
+		tasks.matching { it.name in taskNames }.configureEach {
+			usesService(lock)
+			doFirst(AcquireClientLock(lock, worktree))
+		}
 	}
 }
+
+lockTasks(
+	"DEEPCHARTER_CLIENT_LOCK",
+	"clientLock",
+	ClientLock::class.java,
+	(System.getenv("DEEPCHARTER_LOCK_TASKS")?.takeIf { it.isNotEmpty() } ?: "runClient,runPlay,runClientGameTest").split(","),
+)
 
 // The same for the server GameTest run, in a pool of its own: DEEPCHARTER_SERVER_TEST_SLOTS (default 2) at a time on a Mac.
 // DEEPCHARTER_SERVER_TEST_LOCK=1 forces it on and =0 off.
 // Slot files are server-test.lock[.N] and the queue is queue-server-test, beside the client ones. tools/tests/server-test-lock.test.sh.
-val serverSetting: String? = System.getenv("DEEPCHARTER_SERVER_TEST_LOCK")
-val serverLockOn = if (serverSetting != null) serverSetting == "1" else System.getProperty("os.name").lowercase().contains("mac")
-if (serverLockOn) {
-	val serverLock = gradle.sharedServices.registerIfAbsent("serverTestLock", ServerTestLock::class.java) {}
-	val serverWorktree = rootProject.projectDir.absolutePath
-	tasks.matching { it.name == "runGameTest" }.configureEach {
-		usesService(serverLock)
-		doFirst(AcquireClientLock(serverLock, serverWorktree))
-	}
-}
+lockTasks("DEEPCHARTER_SERVER_TEST_LOCK", "serverTestLock", ServerTestLock::class.java, listOf("runGameTest"))

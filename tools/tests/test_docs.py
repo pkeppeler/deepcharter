@@ -41,12 +41,12 @@ def duplicates(text):
     return found
 
 
-# [text](target) and ![alt](target); a target may carry a "title" after a space.
-LINK = re.compile(r"!?\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+[^)]*)?\)")
+# The target of [text](target) and ![alt](target); a "title" after a space is not part of it.
+LINK = re.compile(r"\]\(([^)\s]+)")
 INLINE_CODE = re.compile(r"`[^`\n]*`")
 # Never committed (XGen's assets, never committed), so absent in CI and in a fresh checkout; docs may still point at them.
 IGNORED_DIRS = ("original_flash_game", "private")
-EXTERNAL = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|#|//)")
+EXTERNAL = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|#)")
 
 
 def link_targets(text):
@@ -68,13 +68,12 @@ def link_targets(text):
 def dangling(path, root):
     """(line, target) for each relative link in the markdown file `path` whose file does not exist.
 
-    Skips URLs with a scheme (http, https, mailto), pure #anchors, links under pr-media (media hosted on a branch) and the
-    IGNORED_DIRS (never committed).
+    Skips URLs with a scheme (http, https, mailto), pure #anchors and the IGNORED_DIRS (never committed).
     Targets resolve against the linking file; a #fragment or ?query is dropped; a leading / is the repo root.
     """
     missing = []
     for line, target in link_targets(path.read_text(encoding="utf-8")):
-        if EXTERNAL.match(target) or "pr-media" in target:
+        if EXTERNAL.match(target):
             continue
         file_part = re.split(r"[#?]", target, maxsplit=1)[0]
         if not file_part:
@@ -113,7 +112,7 @@ class DocLinks(unittest.TestCase):
             page = root / "docs" / "page.md"
             page.write_text(
                 "[ok](../gradle/here.kts#L3) [gone](../gradle/gone.gradle) [abs](/gradle/gone.kts)\n"
-                "[web](https://example.com/x) [mail](mailto:a@b.c) [top](#top) [media](pr-media/a.gif) [ign](../original_flash_game/R.md)\n"
+                "[web](https://example.com/x) [mail](mailto:a@b.c) [top](#top) [ign](../original_flash_game/R.md)\n"
                 "`[code](nope.md)`\n```\n[fenced](nope.md)\n```\n"
             )
             self.assertEqual([(1, "../gradle/gone.gradle"), (1, "/gradle/gone.kts")], dangling(page, root))

@@ -23,16 +23,18 @@ tasks.register("checkTestOnlyMembers") {
 	val listKeys = providers.gradleProperty("testOnlyList").isPresent
 	inputs.property("listKeys", listKeys)
 	doLast {
-		val command = mutableListOf(File(System.getProperty("java.home"), "bin/java").path, gateSource.path, "--root", root.path)
-		command.add("--production")
-		command.addAll((mainClasses.files + clientClasses.files).map { it.path })
-		command.add("--tests")
-		command.addAll(gametestClasses.files.map { it.path })
-		command.add("--sources")
-		command.addAll(sources.map { it.path })
-		if (listKeys) command.add("--list")
-		command.add("--classpath")
-		command.addAll(compileClasspath.files.map { it.path })
+		val command = buildList {
+			add(File(System.getProperty("java.home"), "bin/java").path)
+			addAll(listOf(gateSource.path, "--root", root.path, "--production"))
+			addAll((mainClasses.files + clientClasses.files).map { it.path })
+			add("--tests")
+			addAll(gametestClasses.files.map { it.path })
+			add("--sources")
+			addAll(sources.map { it.path })
+			if (listKeys) add("--list")
+			add("--classpath")
+			addAll(compileClasspath.files.map { it.path })
+		}
 		val process = ProcessBuilder(command).directory(root).redirectErrorStream(true).start()
 		val output = process.inputStream.bufferedReader().readText()
 		if (process.waitFor() != 0) throw GradleException(output.trim())

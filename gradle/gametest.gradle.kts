@@ -146,12 +146,11 @@ object GametestScan {
 				continue
 			}
 			val isServer = gameTestAnnotation.containsMatchIn(text)
-			val isClient = clientSide.containsMatchIn(text)
-			if (isServer && isClient) {
+			if (isServer && isClientSide) {
 				problems.add("$className has both an @GameTest method and is a client GameTest; split it in two")
 			} else if (isServer) {
 				server.add(className)
-			} else if (isClient) {
+			} else if (isClientSide) {
 				client.add(className)
 			} else if (simpleName.endsWith("Test") || simpleName.endsWith("Scenario")) {
 				problems.add("$className is named like a test but has no @GameTest method, does not implement FabricClientGameTest and does not extend EvidenceScenario, so it would not be registered")

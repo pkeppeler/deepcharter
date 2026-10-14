@@ -111,8 +111,7 @@ val checkLang = tasks.register("checkLang") {
 		if (!text.contains("a — b é \\\"q\\\"")) throw GradleException("Non-ASCII characters were not written literally: $text")
 		if ((JsonSlurper().parseText(text) as Map<*, *>)["x.u"] != "a — b é \"q\"") throw GradleException("Non-ASCII output does not round-trip")
 
-		val names = mutableListOf<String>()
-		ZipFile(jarFile.get().asFile).use { z -> z.entries().asSequence().forEach { names.add(it.name) } }
+		val names = ZipFile(jarFile.get().asFile).use { z -> z.entries().asSequence().map { it.name }.toList() }
 		if (!names.contains("assets/deepcharter/lang/en_us.json")) throw GradleException("Jar lacks assets/deepcharter/lang/en_us.json")
 		val leaked = names.filter { it.startsWith("src/lang") || it.startsWith("lang/") }
 		if (leaked.isNotEmpty()) throw GradleException("Lang fragments leaked into the jar: $leaked")
