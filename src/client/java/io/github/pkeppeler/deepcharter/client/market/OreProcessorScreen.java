@@ -171,18 +171,17 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		holds.beginLayout();
 		List<ProcessorView.Hold> all = cargo();
 		int shown = Math.min(holdsPerPage(), all.size() - holds.first());
-		int amountWidth = AMOUNT_WIDTH;
 		for (int row = 0; row < shown; row++) {
 			ProcessorView.Hold hold = all.get(holds.first() + row);
 			int y = holdsTop() + row * (BUTTON_HEIGHT + GAP);
 			listedHolds.add(hold);
 			holdRows.add(y);
 			int x = contentRight(MARGIN) - 3 * AMOUNT_WIDTH - 2 * GAP;
-			addRenderableWidget(holds.shown(new CrtButton(x, y, amountWidth, BUTTON_HEIGHT,
+			addRenderableWidget(holds.shown(new CrtButton(x, y, AMOUNT_WIDTH, BUTTON_HEIGHT,
 					Component.translatable("screen.deepcharter.processor.withdraw_one"), button -> withdraw(hold.ore(), 1))));
-			addRenderableWidget(new CrtButton(x + amountWidth + GAP, y, amountWidth, BUTTON_HEIGHT,
+			addRenderableWidget(new CrtButton(x + AMOUNT_WIDTH + GAP, y, AMOUNT_WIDTH, BUTTON_HEIGHT,
 					Component.translatable("screen.deepcharter.processor.withdraw_ten"), button -> withdraw(hold.ore(), 10)));
-			addRenderableWidget(new CrtButton(x + 2 * (amountWidth + GAP), y, amountWidth, BUTTON_HEIGHT,
+			addRenderableWidget(new CrtButton(x + 2 * (AMOUNT_WIDTH + GAP), y, AMOUNT_WIDTH, BUTTON_HEIGHT,
 					Component.translatable("screen.deepcharter.processor.withdraw_all"), button -> withdraw(hold.ore(), hold.count())));
 		}
 	}

@@ -33,7 +33,7 @@ import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Zone;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
- * Server GameTests for #536 (ADR 0053, mechanics.md "Crafted first-tier parts"): what the twelve crafted units cost a pilot, and that the
+ * Server GameTests for #536 (ADR 0053, mechanics.md "Crafted first-tier parts"): what the crafted units cost a pilot, and that the
  * opening the first six make is no cheaper and no slower than the one the $200 purchases made. The six hazard answers (lights, hopper, brace, sounder, liner,
  * heat shield) are tuned to the minutes their old prices took, and take ore from the pod's cargo, which the crates do not give. What a recipe asks comes from the shipped file,
  * what a crate holds from the real loot table, and a run's money and seconds from {@link EarlyRunModel} (the expected ore of a bore, so it

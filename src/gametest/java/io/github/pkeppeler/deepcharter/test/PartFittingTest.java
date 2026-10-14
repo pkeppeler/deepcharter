@@ -216,7 +216,7 @@ public class PartFittingTest {
 		}
 	}
 
-	/** The twelve units go on one pod in any order: each takes its own track and leaves the others. */
+	/** The units go on one pod in any order: each takes its own track and leaves the others. */
 	@GameTest
 	public void allTheUnitsFitOneMoleAndEachLeavesTheOthersAlone(GameTestHelper helper) {
 		Scene scene = scene(helper, true);
