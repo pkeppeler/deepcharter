@@ -1,7 +1,7 @@
 import java.security.MessageDigest
 import java.util.zip.ZipFile
 
-// Buildscript locking: plugin and plugin-dependency versions. Regenerate: see the deepcharter-conventions skill.
+// Plugin versions are locked too. Regenerate: see the deepcharter-conventions skill.
 buildscript {
 	dependencyLocking {
 		lockAllConfigurations()
@@ -20,14 +20,11 @@ java {
 	consistentResolution { useCompileClasspathVersions() }
 }
 
-// Project locking: every configuration resolves to the versions in gradle.lockfile, and a change fails until the lock is rewritten.
 dependencyLocking {
 	lockAllConfigurations()
 	lockMode = LockMode.STRICT
-	// RELAXED: Minecraft's libraries depend on the operating system (Mojang's manifest rules, as Loom reads them). macOS adds
-	// the Objective-C bridge, the kqueue native and the Vulkan natives; Linux adds the epoll native. A strict lock written on one
-	// system fails on the other ("Resolved ... which is not part of the dependency lock state"), so these modules stay out of the
-	// lock. Their checksums are still verified: the metadata holds the artifacts of both systems.
+	// Mojang's manifest rules make these OS-specific (macOS: Objective-C bridge, kqueue, Vulkan; Linux: epoll), so a lock
+	// written on one system fails on the other. Their checksums stay verified: the metadata holds both systems' artifacts.
 	ignoredDependencies.addAll(
 		"ca.weblite:java-objc-bridge",
 		"io.netty:netty-transport-native-kqueue",
@@ -36,9 +33,8 @@ dependencyLocking {
 	)
 }
 
-// RELAXED: gradle/verification-metadata.xml trusts net.minecraft:minecraft-merged-*, minecraft-common-* and minecraft-clientOnly-*.
-// Loom generates those jars on each machine, and their bytes differ on every generation, so no checksum holds.
-// Mojang's jars they are built from are checked by Loom against Mojang's manifest. Every other artifact stays sha256-verified.
+// gradle/verification-metadata.xml trusts net.minecraft:minecraft-{merged,common,clientOnly}-*: Loom generates those jars per
+// machine with differing bytes, and checks the Mojang jars they come from against Mojang's manifest. All else is sha256-verified.
 
 group = providers.gradleProperty("maven_group").get()
 
@@ -169,9 +165,8 @@ dependencies {
 	include(libs.geckolib)
 }
 
-// Audit condition 2: the resolved GeckoLib jar must be the audited one. gradle/verification-metadata.xml also pins its sha256, but
-// regenerating the metadata accepts whatever jar resolves; this sha512 is the one recorded by the audit, so a changed jar (a
-// re-upload, a swapped repository) fails the build before it is packed into ours until the audit is repeated.
+// Audit condition 2: the resolved GeckoLib jar must be the audited one. Regenerating the verification metadata accepts whatever
+// jar resolves; this sha512 changes only with a repeated audit, so a swapped jar fails the build before it is packed into ours.
 abstract class CheckGeckoLib : DefaultTask() {
 	@get:InputFiles
 	abstract val jars: ConfigurableFileCollection

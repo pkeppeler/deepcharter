@@ -1,7 +1,6 @@
-# Packages whose license is outside the allow-list, or whose registry entry is missing or not
-# a recognised SPDX id. All are build-time or test-only, except GeckoLib, which ships (jar-in-jar). `license.ignore` skips only the
-# license check; vulnerabilities are still reported. A package that ships to users gets one only when its real
-# license is on the allow-list (GeckoLib: MIT), and a new package that fails the license check gets its own entry naming it and its license.
+# Packages whose license is outside the allow-list, or missing or non-SPDX in the registry. All are build-time or test-only,
+# except GeckoLib (jar-in-jar). `license.ignore` skips only the license check. A shipped package gets an entry only when its
+# real license is allowed (GeckoLib: MIT). A new failing package gets its own entry naming it and its license.
 
 [[PackageOverrides]]
 name = ".+\\.gradle\\.plugin"
@@ -38,13 +37,12 @@ ecosystem = "Maven"
 license.ignore = true
 reason = "EPL-2.0 (allowed), but the registry reports its name as non-SPDX; Spotless build-time and test-only, never shipped"
 
-
 [[PackageOverrides]]
 name = "(net\\.fabricmc\\.fabric-api:(fabric-advancement-api-v1|fabric-api|fabric-api-base|fabric-api-deprecated|fabric-api-lookup-api-v1|fabric-biome-api-v1|fabric-block-api-v1|fabric-block-getter-api-v2|fabric-client-gametest-api-v1|fabric-command-api-v2|fabric-content-registries-v0|fabric-convention-tags-v2|fabric-crash-report-info-v1|fabric-creative-tab-api-v1|fabric-data-attachment-api-v1|fabric-data-generation-api-v1|fabric-debug-api-v1|fabric-dimensions-v1|fabric-entity-events-v1|fabric-events-interaction-v0|fabric-game-rule-api-v1|fabric-gametest-api-v1|fabric-item-api-v1|fabric-key-mapping-api-v1|fabric-lifecycle-events-v1|fabric-loot-api-v3|fabric-menu-api-v1|fabric-message-api-v1|fabric-model-loading-api-v1|fabric-networking-api-v1|fabric-object-builder-api-v1|fabric-particles-v1|fabric-permission-api-v1|fabric-recipe-api-v1|fabric-registry-sync-v0|fabric-renderer-api-v1|fabric-renderer-indigo|fabric-rendering-fluids-v1|fabric-rendering-v1|fabric-resource-conditions-api-v1|fabric-resource-loader-v0|fabric-resource-loader-v1|fabric-screen-api-v1|fabric-serialization-api-v1|fabric-sound-api-v1|fabric-tag-api-v1|fabric-transfer-api-v1|fabric-transitive-access-wideners-v1))"
 nameIsRegex = true
 ecosystem = "Maven"
 license.ignore = true
-reason = "Apache-2.0 Fabric API modules; the published POMs carry no license. The player's Fabric API install provides them; the mod jar does not ship them"
+reason = "Apache-2.0 Fabric API modules; the published POMs carry no license. The player's Fabric API install provides them; not shipped"
 
 [[PackageOverrides]]
 name = "(net\\.fabricmc:(fabric-loader|class-tweaker|dev-launch-injector|stitch|tiny-mappings-parser))"
@@ -86,28 +84,28 @@ name = "(com\\.mojang:(authlib|blocklist|jtracy|logging|patchy|text2speech)|net\
 nameIsRegex = true
 ecosystem = "Maven"
 license.ignore = true
-reason = "Mojang libraries and the Loom-generated Minecraft jar under the Minecraft EULA; the POMs carry no license. The game provides them; the mod jar does not ship them"
+reason = "Mojang libraries and the Loom-generated Minecraft jar under the Minecraft EULA; the POMs carry no license. The game provides them; not shipped"
 
 [[PackageOverrides]]
 name = "(com\\.mojang:(brigadier|datafixerupper))"
 nameIsRegex = true
 ecosystem = "Maven"
 license.ignore = true
-reason = "MIT (the published sources); the POMs carry no license. The game provides them; the mod jar does not ship them"
+reason = "MIT (the published sources); the POMs carry no license. The game provides them; not shipped"
 
 [[PackageOverrides]]
 name = "(net\\.java\\.dev\\.jna:(jna|jna-platform))"
 nameIsRegex = true
 ecosystem = "Maven"
 license.ignore = true
-reason = "Dual-licensed LGPL-2.1-or-later or Apache-2.0 (the JNA POM); we take Apache-2.0. A Minecraft runtime library the game provides; the mod jar does not ship it"
+reason = "Dual-licensed LGPL-2.1-or-later or Apache-2.0 (the JNA POM); we take Apache-2.0. A Minecraft runtime library the game provides; not shipped"
 
 [[PackageOverrides]]
 name = "(org\\.jcraft:jorbis|com\\.ibm\\.icu:icu4j)"
 nameIsRegex = true
 ecosystem = "Maven"
 license.ignore = true
-reason = "LGPL (jorbis) and Unicode-3.0 (ICU4J), neither on the allow-list. Minecraft runtime libraries the game provides; the mod jar does not ship them"
+reason = "LGPL (jorbis) and Unicode-3.0 (ICU4J), neither on the allow-list. Minecraft runtime libraries the game provides; not shipped"
 
 [[PackageOverrides]]
 name = "(com\\.geckolib:geckolib-fabric-26\\.3)"
@@ -121,7 +119,7 @@ name = "(net\\.minecraft:minecraft-(common|clientOnly)-[0-9a-f]{10})"
 nameIsRegex = true
 ecosystem = "Maven"
 license.ignore = true
-reason = "Loom-generated Minecraft jars (the name carries a hash) under the Minecraft EULA; no license is published. The game provides them; the mod jar does not ship them"
+reason = "Loom-generated Minecraft jars (the name carries a hash) under the Minecraft EULA; no license is published. The game provides them; not shipped"
 
 [[PackageOverrides]]
 name = "(com\\.puppycrawl\\.tools:checkstyle|net\\.sf\\.saxon:Saxon-HE|org\\.javassist:javassist|org\\.reflections:reflections)"
