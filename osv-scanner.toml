@@ -1,7 +1,7 @@
 # Packages whose license is outside the allow-list, or whose registry entry is missing or not
-# a recognised SPDX id. All are build-time or test-only; none ships to users. `license.ignore` skips only the license
-# check; vulnerabilities are still reported. A package that ships to users never gets one,
-# and a new package that fails the license check gets its own entry naming it and its license.
+# a recognised SPDX id. All are build-time or test-only, except GeckoLib, which ships (jar-in-jar). `license.ignore` skips only the
+# license check; vulnerabilities are still reported. A package that ships to users gets one only when its real
+# license is on the allow-list (GeckoLib: MIT), and a new package that fails the license check gets its own entry naming it and its license.
 
 [[PackageOverrides]]
 name = ".+\\.gradle\\.plugin"

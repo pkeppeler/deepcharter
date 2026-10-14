@@ -36,9 +36,9 @@ dependencyLocking {
 	)
 }
 
-// RELAXED: gradle/verification-metadata.xml trusts net.minecraft:minecraft-{merged,common,clientOnly}-*. Loom generates those jars
-// on each machine (the split source sets add the common and clientOnly ones) and their bytes differ on every generation, so no checksum holds. Mojang's jars they are built from are checked by Loom
-// against Mojang's manifest. Every other artifact stays sha256-verified.
+// RELAXED: gradle/verification-metadata.xml trusts net.minecraft:minecraft-merged-*, minecraft-common-* and minecraft-clientOnly-*.
+// Loom generates those jars on each machine, and their bytes differ on every generation, so no checksum holds.
+// Mojang's jars they are built from are checked by Loom against Mojang's manifest. Every other artifact stays sha256-verified.
 
 group = providers.gradleProperty("maven_group").get()
 
