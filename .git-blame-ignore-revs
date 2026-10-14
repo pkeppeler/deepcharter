@@ -1,0 +1,3 @@
+# Formatting-only commits, skipped by git blame (git config blame.ignoreRevsFile .git-blame-ignore-revs) and GitHub's blame view.
+# palantir-java-format reformat of all Java (#563)
+1b4a1683833262456d30984f053fc8be6327e793
