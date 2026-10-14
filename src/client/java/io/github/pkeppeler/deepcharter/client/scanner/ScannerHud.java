@@ -6,23 +6,17 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.level.block.Block;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
-import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
-import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 
 /**
@@ -35,7 +29,6 @@ import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
  */
 public final class ScannerHud {
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "scanner");
-	private static final TagKey<Block> GOLD_ORES = TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("c", "ores/gold"));
 	private static final ScannerTuning TUNING = ScannerTuning.DEFAULT;
 	private static final int TITLE_HEIGHT = 10;
 	private static final int FRAME = 1;
@@ -195,45 +188,5 @@ public final class ScannerHud {
 		int x = left + (ahead + area.halfWidth()) * cell;
 		int y = top + (area.up() - up) * cell;
 		graphics.fill(x, y, x + cell, y + cell, colour);
-	}
-
-	/** The colour laid over a cell's texture, {@code small} when cells are too small to read a texture ({@link ScannerLook#oreMarkBelowPixels()}); transparent for a cell that has none. */
-	static int overlay(ScannerLook look, Cell cell, boolean small) {
-		return switch (cell) {
-			case Cell.Air air -> 0;
-			case Cell.Rock rock -> small ? look.smallRockShadeColor() : look.rockShadeColor();
-			case Cell.Lava lava -> look.lavaTintColor();
-			case Cell.LavaNear near -> look.lavaNearShadeColor();
-			case Cell.Gas gas -> look.gasTintColor();
-			case Cell.Ore ore -> ore.block().defaultBlockState().is(GOLD_ORES) ? look.goldOreLiftColor() : look.oreLiftColor();
-		};
-	}
-
-	/** The colour of the one-pixel frame round a cell; transparent for a cell that has none. */
-	static int outline(ScannerLook look, Cell cell) {
-		return cell instanceof Cell.Ore ore ? (ore.block().defaultBlockState().is(GOLD_ORES) ? look.goldOreOutlineColor() : look.oreOutlineColor()) : 0;
-	}
-
-	/** The flat mark an ore cell is drawn as when cells are too small to read a texture: the mod's ore in its own colour, any other ore in the generic ore colours. */
-	static int oreMark(ScannerLook look, Cell.Ore ore) {
-		Identifier id = BuiltInRegistries.BLOCK.getKey(ore.block());
-		for (OreType type : OreType.values()) {
-			if (type.blockId().equals(id)) {
-				return look.oreMarkColors().get(type);
-			}
-		}
-		return flatColour(look, ore);
-	}
-
-	/** Opaque ARGB for a cell with no usable sprite; ore gets its own colour per ore, falling back to a generic one. */
-	static int flatColour(ScannerLook look, Cell cell) {
-		return switch (cell) {
-			case Cell.Air air -> look.airColor();
-			case Cell.Rock rock -> look.rockColor();
-			case Cell.Lava lava -> look.lavaColor();
-			case Cell.LavaNear near -> look.lavaNearColor();
-			case Cell.Gas gas -> look.gasColor();
-			case Cell.Ore ore -> ore.block().defaultBlockState().is(GOLD_ORES) ? look.goldOreColor() : look.oreColor();
-		};
 	}
 }

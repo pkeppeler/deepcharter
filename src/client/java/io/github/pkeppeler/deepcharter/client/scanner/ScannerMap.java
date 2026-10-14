@@ -19,10 +19,15 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.block.BlockStateModelSet;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.block.Block;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
@@ -35,7 +40,7 @@ import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
  * when the resources reload.
  *
  * <p>A cell drawn in fewer screen pixels than {@link ScannerLook#oreMarkBelowPixels()} cannot show a texture. There an ore cell is one flat mark of its
- * ore's colour (see {@link ScannerHud#oreMark}), which stays easy to spot, and rock takes the darker small-cell shade; every other cell keeps its texture.
+ * ore's colour (see {@link #oreMark}), which stays easy to spot, and rock takes the darker small-cell shade; every other cell keeps its texture.
  *
  * <p>A cell's pixels are read from the active resource pack's texture file for the sprite that {@link ScannerSprites} names, because the block
  * atlas lives on the graphics card and cannot be read back. The first frame of an animated texture is the cell's. Each texture is
@@ -43,6 +48,7 @@ import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
  */
 final class ScannerMap {
 	private static final Logger LOGGER = LoggerFactory.getLogger("ScannerMap");
+	private static final TagKey<Block> GOLD_ORES = TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("c", "ores/gold"));
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "scanner_map");
 
 	/** The alpha byte of an opaque ARGB colour: a mask, not a colour. */
@@ -127,13 +133,13 @@ final class ScannerMap {
 				if (found instanceof Cell.Air) {
 					fillTile(image, x, y, pixels, 0);
 				} else if (small && found instanceof Cell.Ore ore) {
-					fillTile(image, x, y, pixels, ScannerHud.oreMark(look, ore));
+					fillTile(image, x, y, pixels, oreMark(look, ore));
 				} else {
 					Optional<int[]> tile = tile(ScannerSprites.of(slice, found, ahead, up), pixels, look.airColor());
 					if (tile.isEmpty()) {
-						fillTile(image, x, y, pixels, ScannerHud.flatColour(look, found));
+						fillTile(image, x, y, pixels, flatColour(look, found));
 					} else {
-						copyTile(image, x, y, pixels, tile.get(), ScannerHud.overlay(look, found, small), pixels >= look.oreOutlineMinPixels() ? ScannerHud.outline(look, found) : 0);
+						copyTile(image, x, y, pixels, tile.get(), overlay(look, found, small), pixels >= look.oreOutlineMinPixels() ? outline(look, found) : 0);
 					}
 				}
 			}
@@ -158,6 +164,50 @@ final class ScannerMap {
 				image.setPixel(x + dx, y + dy, edge ? over(outline, argb) : argb);
 			}
 		}
+	}
+
+	/** The colour laid over a cell's texture, {@code small} when cells are too small to read a texture ({@link ScannerLook#oreMarkBelowPixels()}); transparent for a cell that has none. */
+	private static int overlay(ScannerLook look, Cell cell, boolean small) {
+		return switch (cell) {
+			case Cell.Air air -> 0;
+			case Cell.Rock rock -> small ? look.smallRockShadeColor() : look.rockShadeColor();
+			case Cell.Lava lava -> look.lavaTintColor();
+			case Cell.LavaNear near -> look.lavaNearShadeColor();
+			case Cell.Gas gas -> look.gasTintColor();
+			case Cell.Ore ore -> isGold(ore) ? look.goldOreLiftColor() : look.oreLiftColor();
+		};
+	}
+
+	/** The colour of the one-pixel frame round a cell; transparent for a cell that has none. */
+	private static int outline(ScannerLook look, Cell cell) {
+		return cell instanceof Cell.Ore ore ? (isGold(ore) ? look.goldOreOutlineColor() : look.oreOutlineColor()) : 0;
+	}
+
+	/** The flat mark an ore cell is drawn as when cells are too small to read a texture: the mod's ore in its own colour, any other ore in the generic ore colours. */
+	private static int oreMark(ScannerLook look, Cell.Ore ore) {
+		Identifier id = BuiltInRegistries.BLOCK.getKey(ore.block());
+		for (OreType type : OreType.values()) {
+			if (type.blockId().equals(id)) {
+				return look.oreMarkColors().get(type);
+			}
+		}
+		return flatColour(look, ore);
+	}
+
+	/** Opaque ARGB for a cell with no usable sprite; ore gets its own colour per ore, falling back to a generic one. */
+	private static int flatColour(ScannerLook look, Cell cell) {
+		return switch (cell) {
+			case Cell.Air air -> look.airColor();
+			case Cell.Rock rock -> look.rockColor();
+			case Cell.Lava lava -> look.lavaColor();
+			case Cell.LavaNear near -> look.lavaNearColor();
+			case Cell.Gas gas -> look.gasColor();
+			case Cell.Ore ore -> isGold(ore) ? look.goldOreColor() : look.oreColor();
+		};
+	}
+
+	private static boolean isGold(Cell.Ore ore) {
+		return ore.block().defaultBlockState().is(GOLD_ORES);
 	}
 
 	/** {@code top} (ARGB, any alpha) laid over the opaque {@code bottom}: an opaque ARGB. */
