@@ -1,6 +1,14 @@
 import java.security.MessageDigest
 import java.util.zip.ZipFile
 
+// Buildscript locking: plugin and plugin-dependency versions. Regenerate: see the deepcharter-conventions skill.
+buildscript {
+	dependencyLocking {
+		lockAllConfigurations()
+		lockMode = LockMode.STRICT
+	}
+}
+
 plugins {
 	alias(libs.plugins.loom)
 	alias(libs.plugins.dependency.analysis)
@@ -11,6 +19,16 @@ java {
 	// Runtime and test classpaths resolve to the versions the compile classpath chose, so what we compile against is what runs.
 	consistentResolution { useCompileClasspathVersions() }
 }
+
+// Project locking: every configuration resolves to the versions in gradle.lockfile, and a change fails until the lock is rewritten.
+dependencyLocking {
+	lockAllConfigurations()
+	lockMode = LockMode.STRICT
+}
+
+// RELAXED: gradle/verification-metadata.xml trusts net.minecraft:minecraft-merged-*. Loom generates those jars on each machine
+// and their bytes differ on every generation, so no checksum holds. Mojang's jars they are built from are checked by Loom
+// against Mojang's manifest. Every other artifact stays sha256-verified.
 
 group = providers.gradleProperty("maven_group").get()
 
@@ -141,8 +159,9 @@ dependencies {
 	include(libs.geckolib)
 }
 
-// Audit condition 2: the resolved GeckoLib jar must be the audited one. Gradle has no dependency verification here, so a
-// changed jar (a re-upload, a swapped repository) fails the build before it is packed into ours.
+// Audit condition 2: the resolved GeckoLib jar must be the audited one. gradle/verification-metadata.xml also pins its sha256, but
+// regenerating the metadata accepts whatever jar resolves; this sha512 is the one recorded by the audit, so a changed jar (a
+// re-upload, a swapped repository) fails the build before it is packed into ours until the audit is repeated.
 abstract class CheckGeckoLib : DefaultTask() {
 	@get:InputFiles
 	abstract val jars: ConfigurableFileCollection
