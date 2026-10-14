@@ -1,7 +1,7 @@
 # Runs on every PR. Label events are deliberately not triggers here (they live in
 # client-tests.yml), so adding a label never re-runs or cancels the build.
 # The job names below are the REQUIRED_CHECKS in tools/merge-pr.sh; renaming one
-# means changing both.
+# means changing both. The weekly dependency audit lives in audit.yml.
 name: CI
 
 on:

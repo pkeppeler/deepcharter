@@ -15,6 +15,7 @@ Code lives under `io.github.pkeppeler.deepcharter`. Detail beyond this file:
 ## Agent Toolchain
 
 - Build, with the server GameTest and all gates: `./gradlew build`
+- `just check` (`./gradlew check`, a subset of `./gradlew build`); `just audit` (osv-scanner; needs it on PATH). `audit.yml` runs it weekly and on PRs touching dependency files; a lapsed `ignoreUntil` or a new advisory fails the weekly run.
 - Fast test command (server GameTests): `./gradlew runGameTest`
 - One server GameTest, or a prefix: `tools/gametest.sh '<test_id or prefix*>'`
 - Server suite in reverse name order (leak check): `./gradlew runGameTest -PgametestOrder=reverse`
@@ -45,6 +46,8 @@ Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features
 - Client art (colours, sizes, spacing, visual timings) is not a constant in Java. It is resource-pack data in `assets/deepcharter/theme/<area>.json`, read as `CrtTuning.current().thing()` and the like, and a pack restyles it on F3+T ([skins.md](../../../docs/design/skins.md), [ADR 0032](../../../docs/adr/0032-the-ui-theme-is-resource-pack-data-merged-key-by-key.md)). `./gradlew checkColourGate`, part of `check`, fails the build on a colour literal in `src/client/java` outside `client/theme/`; a line that must keep one ends with `// colour-ok: <reason>`.
 - Lang keys: one fragment per feature, `src/lang/en_us/<feature>.json` (outside the resources source set, so it stays out of the jar), merged and sorted into `assets/deepcharter/lang/en_us.json` at build time. That file is generated: never edit it. A key lives in exactly one fragment; a duplicate fails the build. An empty fragment is `{}`.
 - Commands, always added with `FeatureCommands.register("<feature>", ...)`, which puts them under `/deepcharter <feature>`. `charter` and `handbook` have a `XCommands` stub; add one to any other feature that needs it.
+
+Do not spell out counts of enum members or registry entries in prose ("the seven ores"): they drift. Name them, or point at the code.
 
 A new part that needs its own `init()` and has no feature of its own gets a stub in its feature, wired into that feature's `XInit` already: `pod/PodComponents` (#65), `pod/PodTowing` (#76) and `layer/LayerStructures` (#79).
 
