@@ -24,7 +24,7 @@ public record SignalDecayTuning(List<Band> layers, Map<Instrument, Double> thres
 		}
 	}
 
-	public static final SignalDecayTuning DEFAULT = new SignalDecayTuning(List.of(new Band(24, 4), new Band(40, 6), new Band(56, 8)), defaultThresholds(), 0.55, 0.5);
+	public static final SignalDecayTuning DEFAULT = new SignalDecayTuning(List.of(new Band(36, 6), new Band(56, 8), new Band(72, 10)), defaultThresholds(), 0.75, 0.5);
 
 	public SignalDecayTuning {
 		layers = List.copyOf(layers);
@@ -54,11 +54,11 @@ public record SignalDecayTuning(List<Band> layers, Map<Instrument, Double> thres
 		thresholds.put(Instrument.SCANNER, 0.0);
 		thresholds.put(Instrument.HEAT, 0.2);
 		thresholds.put(Instrument.DEPTH, 0.35);
-		thresholds.put(Instrument.CARGO, 0.5);
-		thresholds.put(Instrument.FUEL, 0.6);
-		thresholds.put(Instrument.PLATE, 0.7);
-		thresholds.put(Instrument.LAMPS, 0.8);
-		thresholds.put(Instrument.HULL, 0.9);
+		thresholds.put(Instrument.CARGO, 0.38);
+		thresholds.put(Instrument.FUEL, 0.42);
+		thresholds.put(Instrument.PLATE, 0.45);
+		thresholds.put(Instrument.LAMPS, 0.65);
+		thresholds.put(Instrument.HULL, 0.85);
 		return thresholds;
 	}
 }

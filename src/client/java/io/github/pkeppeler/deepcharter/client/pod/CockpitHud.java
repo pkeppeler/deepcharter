@@ -185,7 +185,7 @@ public final class CockpitHud {
 		return new boolean[] {decay.lampShown(lit[0], 0), lit[1], lit[2], decay.lampShown(lit[3], 1)};
 	}
 
-	/** The altimeter's reading as the decay lets it read: gone when the depth gauge is dark, its digits jumping when it jumps. Empty when the cockpit does not show the Ribbon. */
+	/** The altimeter's reading as the decay lets it read: gone when the depth gauge is dark, its digits jumping when it jumps. Not seated in a pod, the reading as given; empty only on a drop-out of the depth gauge. */
 	public static Optional<Component> altimeter(Minecraft client, Component reading) {
 		if (seated(client).isEmpty()) {
 			return Optional.of(reading);

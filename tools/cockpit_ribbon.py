@@ -60,7 +60,7 @@ SHARED = {
     "cameraStaticColor": "#D8DCE0", "cameraVeilColor": "#050707", "cameraHazeColor": "#FF8A3A", "cameraLiveColor": "#38F06E",
     "cameraBadgeStatic": 0.15, "cameraBadgeDot": 5, "cameraBadgeGap": 3, "cameraBadgePad": 2, "cameraBadgeBack": "#C0050707", "cameraBadgeAnchorX": 1, "cameraBadgeAnchorY": 0, "cameraBadgeX": 0, "cameraBadgeY": 24,
     # The signal decay (#502): a time cell is the span an instrument keeps one fault; the dead colour fills a dark instrument; the specks and torn bands are the scanner's noise.
-    "decayCellTicks": 3, "decayDeadColor": "#0A0E0D", "decayBaseNoise": 0.35, "decayStaticDots": 260, "decayDotSize": 1, "decayDotAlphaMin": 70, "decayStaticColor": "#B8C4C0",
+    "decayCellTicks": 3, "decayDeadColor": "#0A0E0D", "decayBaseNoise": 0.7, "decayStaticDots": 400, "decayDotSize": 1, "decayDotAlphaMin": 70, "decayStaticColor": "#B8C4C0",
     "decayTearBands": 3, "decayTearAlpha": 70, "decayTagColor": "#9FB0AB", "decayLostColor": "#FF3A2A",
     "decayCueSlowTicks": 70, "decayCueFastTicks": 12, "decayAlarmTicks": 20,
 }

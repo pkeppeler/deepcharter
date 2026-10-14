@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DecayCells;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
@@ -34,14 +35,16 @@ final class SignalDecayDescent {
 	static final int X = 5300;
 	static final int Z = 5000;
 	private static final int ROOM_RADIUS = 5;
-	private static final int ROOM_TOP = 40;
+	private static final int ROOM_TOP = 46;
 	/** The pod's feet start this high over the floor of layer 1 and are lowered to the bottom, above the breach crust. */
-	private static final int START_Y = 34;
+	private static final int START_Y = 40;
 	private static final int BOTTOM_Y = 4;
-	private static final double DOWN_PER_FRAME = 0.3;
+	private static final double DOWN_PER_FRAME = 0.4;
 	private static final double UP_PER_FRAME = 0.5;
 	private static final int HOLD_FRAMES = 30;
 	private static final int TICKS_PER_FRAME = 3;
+	/** The plate's threshold is 0.45: from here on a drop-out of the plate is likely enough to wait for one. */
+	private static final double FAILING_FROM = 0.6;
 	private static final float HULL_SHARE = 0.25f;
 
 	private SignalDecayDescent() {
@@ -101,7 +104,7 @@ final class SignalDecayDescent {
 						noisy = true;
 						scenario.screenshot(context, stillPrefix + "-noise");
 					}
-					if (!flicker && intensity > 0.75) {
+					if (!flicker && intensity > FAILING_FROM && plateIsDark(context)) {
 						flicker = true;
 						scenario.screenshot(context, stillPrefix + "-failing");
 					}
@@ -129,6 +132,17 @@ final class SignalDecayDescent {
 			PodEntity pod = (PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle();
 			pod.setPos(X + 0.5, y, Z + 0.5);
 			pod.setDeltaMovement(0, 0, 0);
+		});
+	}
+
+	/** Whether the readout plate is in a drop-out in the cell the client is drawing, so the "failing" still shows the plate's tag and not a lucky true cell. */
+	private static boolean plateIsDark(ClientGameTestContext context) {
+		return context.computeOnClient(client -> {
+			if (!(client.player.getVehicle() instanceof PodEntity pod)) {
+				return false;
+			}
+			long cell = Math.floorDiv(client.level.getGameTime(), (long) DecayCells.ticks());
+			return SignalDecay.fault(SignalDecay.Instrument.PLATE, SignalDecay.intensity(pod), pod.getUUID().getLeastSignificantBits(), cell) == SignalDecay.Fault.DROP;
 		});
 	}
 

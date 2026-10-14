@@ -77,19 +77,19 @@ public class SignalDecayTest {
 
 	@GameTest
 	public void pinsTheStockCurveOfLayersOneAndTwoAndALayerPastTheTableUsesTheLast(GameTestHelper helper) {
-		if (!new SignalDecayTuning.Band(24, 4).equals(SignalDecayTuning.DEFAULT.band(1)) || !new SignalDecayTuning.Band(40, 6).equals(SignalDecayTuning.DEFAULT.band(2))
+		if (!new SignalDecayTuning.Band(36, 6).equals(SignalDecayTuning.DEFAULT.band(1)) || !new SignalDecayTuning.Band(56, 8).equals(SignalDecayTuning.DEFAULT.band(2))
 				|| !SignalDecayTuning.DEFAULT.band(3).equals(SignalDecayTuning.DEFAULT.band(9))) {
-			throw failure(helper, "the curve is 24/4 in layer 1, 40/6 in layer 2, and a deeper layer repeats the last entry");
+			throw failure(helper, "the curve is 36/6 in layer 1, 56/8 in layer 2, and a deeper layer repeats the last entry");
 		}
-		if (Math.abs(SignalDecay.intensity(1, 14, 0) - 0.5) > EPSILON || Math.abs(SignalDecay.intensity(2, 23, 0) - 0.5) > EPSILON) {
-			throw failure(helper, "the middle of the band reads 0.5, got %s and %s", SignalDecay.intensity(1, 14, 0), SignalDecay.intensity(2, 23, 0));
+		if (Math.abs(SignalDecay.intensity(1, 21, 0) - 0.5) > EPSILON || Math.abs(SignalDecay.intensity(2, 32, 0) - 0.5) > EPSILON) {
+			throw failure(helper, "the middle of the band reads 0.5, got %s and %s", SignalDecay.intensity(1, 21, 0), SignalDecay.intensity(2, 32, 0));
 		}
 		helper.succeed();
 	}
 
 	@GameTest
 	public void eachConsoleTierPushesTheOnsetDeeperAndTheTopTierIsImmune(GameTestHelper helper) {
-		int slabs = 3;
+		int slabs = 10;
 		double last = SignalDecay.intensity(1, slabs, 0);
 		for (int tier = 1; tier <= ComponentTrack.CONSOLE.maxTier(); tier++) {
 			double now = SignalDecay.intensity(1, slabs, tier);
@@ -226,11 +226,11 @@ public class SignalDecayTest {
 			if (SignalDecay.intensity(pod) != 0) {
 				throw failure(helper, "a pod 100 slabs over the floor reads no decay, got %s", SignalDecay.intensity(pod));
 			}
-			pod.setPos(0.5, layer.getMinY() + 14, 0.5);
+			pod.setPos(0.5, layer.getMinY() + 21, 0.5);
 			double stock = SignalDecay.intensity(pod);
 			ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod, ComponentTrack.CONSOLE, 2);
 			if (Math.abs(stock - 0.5) > EPSILON || !(SignalDecay.intensity(pod) < stock)
-					|| Math.abs(SignalDecay.intensity(pod) - SignalDecay.intensity(1, 14, 2)) > EPSILON) {
+					|| Math.abs(SignalDecay.intensity(pod) - SignalDecay.intensity(1, 21, 2)) > EPSILON) {
 				throw failure(helper, "the pod reads the curve at its height and its fitted console: stock %s, fitted %s", stock, SignalDecay.intensity(pod));
 			}
 			helper.succeed();
