@@ -9,7 +9,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 
-/** Registers the seven consumables and the repair station's actions. */
+/** Registers the consumables and the repair station's actions. */
 public final class RepairRegistry {
 	private static final Map<Consumable, Item> ITEMS = new EnumMap<>(Consumable.class);
 
