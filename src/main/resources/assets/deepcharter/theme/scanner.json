@@ -19,5 +19,14 @@
   "lavaNearShadeColor": "#99000000",
   "gasTintColor": "#99E040E0",
   "podColor": "#38F06E",
-  "frameColor": "#000000"
+  "frameColor": "#000000",
+  "oreMarkBelowPixels": 4,
+  "smallRockShadeColor": "#50000000",
+  "ironiumOreMarkColor": "#F2F2FF",
+  "bronziumOreMarkColor": "#FFE4C8",
+  "silveriumOreMarkColor": "#C8ECFF",
+  "goldiumOreMarkColor": "#FFF070",
+  "platiniumOreMarkColor": "#C8FFE8",
+  "einsteiniumOreMarkColor": "#DCCCFF",
+  "cicatriumOreMarkColor": "#FFC8E4"
 }

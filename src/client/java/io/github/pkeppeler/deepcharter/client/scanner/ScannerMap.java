@@ -30,8 +30,12 @@ import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
 /**
  * The scanner's cells as one picture: every known cell of a slice is the block's texture scaled down to the cell's size on screen,
  * with the theme's shade, lift or tint over it, and the picture is one texture drawn with one blit. Drawing each cell as its own blit of
- * the block atlas was measured at over twice the CPU time of the flat fill() it replaced (#537, 17,545 cells at the largest tier);
- * one blit costs the same at any scan size, and the picture is rebuilt only when the scanner rescans, every few ticks.
+ * the block atlas was measured at 282 ms a frame against 0.30 ms with no scanner (#537, 7,857 cells at the largest tier, where main's fill() per cell
+ * costs the same); one blit costs the same at any scan size, and the picture is rebuilt only when the scanner rescans, every few ticks, or
+ * when the resources reload.
+ *
+ * <p>A cell drawn in fewer screen pixels than {@link ScannerLook#oreMarkBelowPixels()} cannot show a texture. There an ore cell is one flat mark of its
+ * ore's colour (see {@link ScannerHud#oreMark}), which stays easy to spot, and rock takes the darker small-cell shade; every other cell keeps its texture.
  *
  * <p>A cell's pixels are read from the active resource pack's texture file for the sprite that {@link ScannerSprites} names, because the block
  * atlas lives on the graphics card and cannot be read back. The first frame of an animated texture is the cell's. Each texture is
@@ -52,6 +56,8 @@ final class ScannerMap {
 	private static ScanSlice builtFrom;
 	private static int builtPixels;
 	private static ScannerLook builtLook;
+	/** The model set the picture was read from: a resource reload bakes a new one, and a held slice must then be drawn again from the new pack. */
+	private static BlockStateModelSet builtModels;
 
 	/** Scaled tiles by sprite and size, for the model set they were read from; a resource reload bakes a new set, which drops them. A sprite with no readable file is an empty entry. */
 	private static final Map<TileKey, Optional<int[]>> TILES = new HashMap<>();
@@ -67,21 +73,37 @@ final class ScannerMap {
 	static void draw(GuiGraphicsExtractor graphics, ScanSlice slice, ScannerLook look, int cell, int left, int top) {
 		ScanArea area = slice.area();
 		int pixels = cell * Minecraft.getInstance().getWindow().getGuiScale();
-		if (slice != builtFrom || pixels != builtPixels || !look.equals(builtLook)) {
-			build(slice, look, pixels);
+		BlockStateModelSet models = Minecraft.getInstance().getModelManager().getBlockStateModelSet();
+		if (slice != builtFrom || pixels != builtPixels || !look.equals(builtLook) || models != builtModels) {
+			build(slice, look, pixels, models);
 			builtFrom = slice;
 			builtPixels = pixels;
 			builtLook = look;
+			builtModels = models;
 		}
 		graphics.blit(RenderPipelines.GUI_TEXTURED, ID, left, top, 0f, 0f, area.columns() * cell, area.rows() * cell, textureWidth, textureHeight, textureWidth, textureHeight);
 	}
 
-	private static void build(ScanSlice slice, ScannerLook look, int pixels) {
+	/** Drops the picture and everything kept for it, when the player leaves the world: the texture can be large and nothing draws it until the next scan. */
+	static void release() {
+		if (texture != null) {
+			Minecraft.getInstance().getTextureManager().release(ID);
+			texture = null;
+		}
+		textureWidth = 0;
+		textureHeight = 0;
+		builtFrom = null;
+		builtLook = null;
+		builtModels = null;
+		TILES.clear();
+		tilesFrom = null;
+	}
+
+	private static void build(ScanSlice slice, ScannerLook look, int pixels, BlockStateModelSet models) {
 		ScanArea area = slice.area();
 		int width = area.columns() * pixels;
 		int height = area.rows() * pixels;
 		Minecraft client = Minecraft.getInstance();
-		BlockStateModelSet models = client.getModelManager().getBlockStateModelSet();
 		if (models != tilesFrom) {
 			TILES.clear();
 			tilesFrom = models;
@@ -96,6 +118,7 @@ final class ScannerMap {
 			textureHeight = height;
 		}
 		NativeImage image = texture.getPixels();
+		boolean small = pixels < look.oreMarkBelowPixels();
 		for (int up = area.up(); up >= -area.down(); up--) {
 			for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
 				Cell found = slice.cell(ahead, up);
@@ -103,12 +126,14 @@ final class ScannerMap {
 				int y = (area.up() - up) * pixels;
 				if (found instanceof Cell.Air) {
 					fillTile(image, x, y, pixels, 0);
+				} else if (small && found instanceof Cell.Ore ore) {
+					fillTile(image, x, y, pixels, ScannerHud.oreMark(look, ore));
 				} else {
 					Optional<int[]> tile = tile(ScannerSprites.of(slice, found, ahead, up), pixels, look.airColor());
 					if (tile.isEmpty()) {
 						fillTile(image, x, y, pixels, ScannerHud.flatColour(look, found));
 					} else {
-						copyTile(image, x, y, pixels, tile.get(), ScannerHud.overlay(look, found), pixels >= look.oreOutlineMinPixels() ? ScannerHud.outline(look, found) : 0);
+						copyTile(image, x, y, pixels, tile.get(), ScannerHud.overlay(look, found, small), pixels >= look.oreOutlineMinPixels() ? ScannerHud.outline(look, found) : 0);
 					}
 				}
 			}
