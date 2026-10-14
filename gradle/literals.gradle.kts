@@ -59,8 +59,7 @@ val markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean = { lines, l
 	var top = line
 	while (top > 0 && line - top < 12) {
 		val above = lines[top - 1]
-		val isCommentLine = code(above).isEmpty() && above.trim().startsWith("//")
-		if (!isCommentLine && (code(above).isEmpty() || endsStatement(above))) break
+		if (!above.trim().startsWith("//") && (code(above).isEmpty() || endsStatement(above))) break
 		top--
 	}
 	var bottom = line
