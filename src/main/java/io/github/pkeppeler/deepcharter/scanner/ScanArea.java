@@ -8,15 +8,15 @@ package io.github.pkeppeler.deepcharter.scanner;
  * @param down blocks below the pod's feet
  */
 public record ScanArea(int halfWidth, int up, int down) {
-	public int columns() {
-		return 2 * halfWidth + 1;
-	}
+    public int columns() {
+        return 2 * halfWidth + 1;
+    }
 
-	public int rows() {
-		return up + down + 1;
-	}
+    public int rows() {
+        return up + down + 1;
+    }
 
-	public boolean contains(int ahead, int above) {
-		return Math.abs(ahead) <= halfWidth && above <= up && above >= -down;
-	}
+    public boolean contains(int ahead, int above) {
+        return Math.abs(ahead) <= halfWidth && above <= up && above >= -down;
+    }
 }

@@ -1,11 +1,9 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
-
 import net.minecraft.world.entity.Entity;
-
-import io.github.pkeppeler.deepcharter.charter.CharterId;
 
 /**
  * The hooks other features use to change what a pod does, so that they never edit {@link PodEntity}.
@@ -32,128 +30,133 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
  * {@code ServerEntityEvents.ENTITY_UNLOAD} and {@link io.github.pkeppeler.deepcharter.layer.BreachEvents#CROSSED}.
  */
 public final class PodEvents {
-	/** The pod's hull has just reached 0 from above. Not fired for a pod that loads with no hull: that is #67's to restore. */
-	public static final Event<HullDepleted> HULL_DEPLETED = EventFactory.createArrayBacked(HullDepleted.class, listeners -> pod -> {
-		for (HullDepleted listener : listeners) {
-			listener.onHullDepleted(pod);
-		}
-	});
+    /** The pod's hull has just reached 0 from above. Not fired for a pod that loads with no hull: that is #67's to restore. */
+    public static final Event<HullDepleted> HULL_DEPLETED =
+            EventFactory.createArrayBacked(HullDepleted.class, listeners -> pod -> {
+                for (HullDepleted listener : listeners) {
+                    listener.onHullDepleted(pod);
+                }
+            });
 
-	/** Asked before an entity is added as a passenger, which includes every player's use of the pod. */
-	public static final Event<CanMount> CAN_MOUNT = EventFactory.createArrayBacked(CanMount.class, listeners -> (pod, passenger) -> {
-		for (CanMount listener : listeners) {
-			if (!listener.canMount(pod, passenger)) {
-				return false;
-			}
-		}
-		return true;
-	});
+    /** Asked before an entity is added as a passenger, which includes every player's use of the pod. */
+    public static final Event<CanMount> CAN_MOUNT =
+            EventFactory.createArrayBacked(CanMount.class, listeners -> (pod, passenger) -> {
+                for (CanMount listener : listeners) {
+                    if (!listener.canMount(pod, passenger)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
 
-	/** Asked whenever the pod would use power: to move, drill or burn fuel. A pod without power ignores its pilot. */
-	public static final Event<Powered> IS_POWERED = EventFactory.createArrayBacked(Powered.class, listeners -> pod -> {
-		for (Powered listener : listeners) {
-			if (!listener.isPowered(pod)) {
-				return false;
-			}
-		}
-		return true;
-	});
+    /** Asked whenever the pod would use power: to move, drill or burn fuel. A pod without power ignores its pilot. */
+    public static final Event<Powered> IS_POWERED = EventFactory.createArrayBacked(Powered.class, listeners -> pod -> {
+        for (Powered listener : listeners) {
+            if (!listener.isPowered(pod)) {
+                return false;
+            }
+        }
+        return true;
+    });
 
-	/** Mass added to the pod's cargo mass when its lift is worked out. Listeners' values are summed. */
-	public static final Event<ExtraMass> EXTRA_MASS = EventFactory.createArrayBacked(ExtraMass.class, listeners -> pod -> {
-		float total = 0f;
-		for (ExtraMass listener : listeners) {
-			total += listener.extraMass(pod);
-		}
-		return total;
-	});
+    /** Mass added to the pod's cargo mass when its lift is worked out. Listeners' values are summed. */
+    public static final Event<ExtraMass> EXTRA_MASS =
+            EventFactory.createArrayBacked(ExtraMass.class, listeners -> pod -> {
+                float total = 0f;
+                for (ExtraMass listener : listeners) {
+                    total += listener.extraMass(pod);
+                }
+                return total;
+            });
 
-	/** Whether the pod passes through blocks (a towed pod, #76). Unlike the other predicates this is an OR: one yes is enough. */
-	public static final Event<IgnoresBlockCollision> IGNORES_BLOCK_COLLISION = EventFactory.createArrayBacked(IgnoresBlockCollision.class, listeners -> pod -> {
-		for (IgnoresBlockCollision listener : listeners) {
-			if (listener.ignoresBlockCollision(pod)) {
-				return true;
-			}
-		}
-		return false;
-	});
+    /** Whether the pod passes through blocks (a towed pod, #76). Unlike the other predicates this is an OR: one yes is enough. */
+    public static final Event<IgnoresBlockCollision> IGNORES_BLOCK_COLLISION =
+            EventFactory.createArrayBacked(IgnoresBlockCollision.class, listeners -> pod -> {
+                for (IgnoresBlockCollision listener : listeners) {
+                    if (listener.ignoresBlockCollision(pod)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
 
-	/** Fired at the end of each server tick of the pod, after its own movement, drill and fuel. */
-	public static final Event<AfterTick> AFTER_TICK = EventFactory.createArrayBacked(AfterTick.class, listeners -> pod -> {
-		for (AfterTick listener : listeners) {
-			listener.afterTick(pod);
-		}
-	});
+    /** Fired at the end of each server tick of the pod, after its own movement, drill and fuel. */
+    public static final Event<AfterTick> AFTER_TICK =
+            EventFactory.createArrayBacked(AfterTick.class, listeners -> pod -> {
+                for (AfterTick listener : listeners) {
+                    listener.afterTick(pod);
+                }
+            });
 
-	/** A pod has just been registered to its owner charter. Server only. */
-	public static final Event<Registered> REGISTERED = EventFactory.createArrayBacked(Registered.class, listeners -> (pod, owner) -> {
-		for (Registered listener : listeners) {
-			listener.onRegistered(pod, owner);
-		}
-	});
+    /** A pod has just been registered to its owner charter. Server only. */
+    public static final Event<Registered> REGISTERED =
+            EventFactory.createArrayBacked(Registered.class, listeners -> (pod, owner) -> {
+                for (Registered listener : listeners) {
+                    listener.onRegistered(pod, owner);
+                }
+            });
 
-	private PodEvents() {
-	}
+    private PodEvents() {}
 
-	/** True when no listener forbids {@code passenger} from boarding. */
-	public static boolean canMount(PodEntity pod, Entity passenger) {
-		return CAN_MOUNT.invoker().canMount(pod, passenger);
-	}
+    /** True when no listener forbids {@code passenger} from boarding. */
+    public static boolean canMount(PodEntity pod, Entity passenger) {
+        return CAN_MOUNT.invoker().canMount(pod, passenger);
+    }
 
-	/** True when a listener says the pod passes through blocks. */
-	public static boolean ignoresBlockCollision(PodEntity pod) {
-		return IGNORES_BLOCK_COLLISION.invoker().ignoresBlockCollision(pod);
-	}
+    /** True when a listener says the pod passes through blocks. */
+    public static boolean ignoresBlockCollision(PodEntity pod) {
+        return IGNORES_BLOCK_COLLISION.invoker().ignoresBlockCollision(pod);
+    }
 
-	/** True unless the pod is stranded (the built-in reason) or a listener says it has no power. */
-	public static boolean isPowered(PodEntity pod) {
-		return !pod.stranded() && IS_POWERED.invoker().isPowered(pod);
-	}
+    /** True unless the pod is stranded (the built-in reason) or a listener says it has no power. */
+    public static boolean isPowered(PodEntity pod) {
+        return !pod.stranded() && IS_POWERED.invoker().isPowered(pod);
+    }
 
-	/** The listeners' total extra mass. A negative or NaN total is a bug in a listener, so it fails loudly. */
-	public static float extraMass(PodEntity pod) {
-		float mass = EXTRA_MASS.invoker().extraMass(pod);
-		// NaN fails >= 0, so this refuses it too. Deliberate: a listener bug must not become a silent no-lift pod.
-		if (!(mass >= 0f)) {
-			throw new IllegalStateException("pod extra mass must not be negative, got " + mass);
-		}
-		return mass;
-	}
+    /** The listeners' total extra mass. A negative or NaN total is a bug in a listener, so it fails loudly. */
+    public static float extraMass(PodEntity pod) {
+        float mass = EXTRA_MASS.invoker().extraMass(pod);
+        // NaN fails >= 0, so this refuses it too. Deliberate: a listener bug must not become a silent no-lift pod.
+        if (!(mass >= 0f)) {
+            throw new IllegalStateException("pod extra mass must not be negative, got " + mass);
+        }
+        return mass;
+    }
 
-	@FunctionalInterface
-	public interface HullDepleted {
-		void onHullDepleted(PodEntity pod);
-	}
+    @FunctionalInterface
+    public interface HullDepleted {
+        void onHullDepleted(PodEntity pod);
+    }
 
-	@FunctionalInterface
-	public interface CanMount {
-		/** Runs on the server only: the client's use of the pod is a guess the server then settles. */
-		boolean canMount(PodEntity pod, Entity passenger);
-	}
+    @FunctionalInterface
+    public interface CanMount {
+        /** Runs on the server only: the client's use of the pod is a guess the server then settles. */
+        boolean canMount(PodEntity pod, Entity passenger);
+    }
 
-	@FunctionalInterface
-	public interface Powered {
-		/** May be asked on either side if a client feature calls {@link PodEvents#isPowered}; answer from synced state. */
-		boolean isPowered(PodEntity pod);
-	}
+    @FunctionalInterface
+    public interface Powered {
+        /** May be asked on either side if a client feature calls {@link PodEvents#isPowered}; answer from synced state. */
+        boolean isPowered(PodEntity pod);
+    }
 
-	@FunctionalInterface
-	public interface ExtraMass {
-		float extraMass(PodEntity pod);
-	}
+    @FunctionalInterface
+    public interface ExtraMass {
+        float extraMass(PodEntity pod);
+    }
 
-	@FunctionalInterface
-	public interface IgnoresBlockCollision {
-		boolean ignoresBlockCollision(PodEntity pod);
-	}
+    @FunctionalInterface
+    public interface IgnoresBlockCollision {
+        boolean ignoresBlockCollision(PodEntity pod);
+    }
 
-	@FunctionalInterface
-	public interface Registered {
-		void onRegistered(PodEntity pod, CharterId owner);
-	}
+    @FunctionalInterface
+    public interface Registered {
+        void onRegistered(PodEntity pod, CharterId owner);
+    }
 
-	@FunctionalInterface
-	public interface AfterTick {
-		void afterTick(PodEntity pod);
-	}
+    @FunctionalInterface
+    public interface AfterTick {
+        void afterTick(PodEntity pod);
+    }
 }

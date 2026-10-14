@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.transmission;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class TransmissionInit {
-	private TransmissionInit() {
-	}
+    private TransmissionInit() {}
 
-	public static void init() {
-		TransmissionRegistry.register();
-	}
+    public static void init() {
+        TransmissionRegistry.register();
+    }
 }

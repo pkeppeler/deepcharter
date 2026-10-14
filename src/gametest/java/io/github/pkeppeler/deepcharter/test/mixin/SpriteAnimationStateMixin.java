@@ -1,12 +1,11 @@
 package io.github.pkeppeler.deepcharter.test.mixin;
 
+import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 
 /**
  * While {@link EvidencePins#spritesFrozen} is on, an animated texture (lava, water, fire) is held on its first frame. Test code only:
@@ -14,23 +13,25 @@ import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
  */
 @Mixin(targets = "net.minecraft.client.renderer.texture.SpriteContents$AnimationState", remap = false)
 public abstract class SpriteAnimationStateMixin {
-	@Shadow
-	private int frame;
-	@Shadow
-	private int subFrame;
-	@Shadow
-	private boolean isDirty;
+    @Shadow
+    private int frame;
 
-	@Inject(method = "tick", at = @At("HEAD"), cancellable = true)
-	private void deepcharter$holdTheFirstFrame(CallbackInfo ci) {
-		if (!EvidencePins.spritesFrozen) {
-			return;
-		}
-		// Dirty once, on the tick the sprite goes back to its first frame, so that the atlas redraws it.
-		boolean moved = frame != 0 || subFrame != 0;
-		frame = 0;
-		subFrame = 0;
-		isDirty = moved;
-		ci.cancel();
-	}
+    @Shadow
+    private int subFrame;
+
+    @Shadow
+    private boolean isDirty;
+
+    @Inject(method = "tick", at = @At("HEAD"), cancellable = true)
+    private void deepcharter$holdTheFirstFrame(CallbackInfo ci) {
+        if (!EvidencePins.spritesFrozen) {
+            return;
+        }
+        // Dirty once, on the tick the sprite goes back to its first frame, so that the atlas redraws it.
+        boolean moved = frame != 0 || subFrame != 0;
+        frame = 0;
+        subFrame = 0;
+        isDirty = moved;
+        ci.cancel();
+    }
 }

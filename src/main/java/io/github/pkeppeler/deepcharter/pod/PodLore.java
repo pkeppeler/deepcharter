@@ -11,10 +11,12 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  * @param famousProspector true from the wreck's placing until a restore registers it
  */
 public record PodLore(boolean famousProspector) {
-	/** The saved version; 1 is the first. */
-	public static final int VERSION = 1;
-	public static final PodLore NONE = new PodLore(false);
-	public static final PodLore FAMOUS_PROSPECTOR = new PodLore(true);
-	public static final MapCodec<PodLore> BODY = RecordCodecBuilder.mapCodec(instance -> instance.group(
-			Codec.BOOL.fieldOf("famous_prospector").forGetter(PodLore::famousProspector)).apply(instance, PodLore::new));
+    /** The saved version; 1 is the first. */
+    public static final int VERSION = 1;
+
+    public static final PodLore NONE = new PodLore(false);
+    public static final PodLore FAMOUS_PROSPECTOR = new PodLore(true);
+    public static final MapCodec<PodLore> BODY = RecordCodecBuilder.mapCodec(
+            instance -> instance.group(Codec.BOOL.fieldOf("famous_prospector").forGetter(PodLore::famousProspector))
+                    .apply(instance, PodLore::new));
 }

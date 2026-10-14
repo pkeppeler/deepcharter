@@ -1,14 +1,12 @@
 package io.github.pkeppeler.deepcharter.client.ore;
 
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import net.minecraft.client.gui.screens.MenuScreens;
 
-import io.github.pkeppeler.deepcharter.ore.OreRegistry;
-
 public final class OreClientRegistry {
-	private OreClientRegistry() {
-	}
+    private OreClientRegistry() {}
 
-	public static void register() {
-		MenuScreens.register(OreRegistry.CARGO_MENU, OreCargoScreen::new);
-	}
+    public static void register() {
+        MenuScreens.register(OreRegistry.CARGO_MENU, OreCargoScreen::new);
+    }
 }

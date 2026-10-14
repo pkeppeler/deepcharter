@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.client.transmission;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class TransmissionClientInit {
-	private TransmissionClientInit() {
-	}
+    private TransmissionClientInit() {}
 
-	public static void init() {
-		TransmissionClientRegistry.register();
-	}
+    public static void init() {
+        TransmissionClientRegistry.register();
+    }
 }

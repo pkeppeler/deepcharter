@@ -1,10 +1,9 @@
 package io.github.pkeppeler.deepcharter.client.theme;
 
-import java.util.EnumMap;
-import java.util.Map;
-
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * How the scanner minimap looks ({@code theme/scanner.json}). Colours are ARGB. The HUD draws a cell as the block's own texture from the block atlas; neither that nor fill() reads
@@ -37,42 +36,63 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param oreMarkColors the mark of each of the mod's ores in a small cell: bright, and told apart by hue
  */
 public record ScannerLook(
-		int cellPixels,
-		int margin,
-		int titleColor,
-		int airColor,
-		int rockColor,
-		int oreColor,
-		int goldOreColor,
-		int lavaColor,
-		int lavaNearColor,
-		int gasColor,
-		int rockShadeColor,
-		int oreLiftColor,
-		int goldOreLiftColor,
-		int oreOutlineColor,
-		int goldOreOutlineColor,
-		int oreOutlineMinPixels,
-		int lavaTintColor,
-		int lavaNearShadeColor,
-		int gasTintColor,
-		int podColor,
-		int frameColor,
-		int oreMarkBelowPixels,
-		int smallRockShadeColor,
-		Map<OreType, Integer> oreMarkColors) {
-	public static ScannerLook current() {
-		return UiTheme.current().scanner();
-	}
+        int cellPixels,
+        int margin,
+        int titleColor,
+        int airColor,
+        int rockColor,
+        int oreColor,
+        int goldOreColor,
+        int lavaColor,
+        int lavaNearColor,
+        int gasColor,
+        int rockShadeColor,
+        int oreLiftColor,
+        int goldOreLiftColor,
+        int oreOutlineColor,
+        int goldOreOutlineColor,
+        int oreOutlineMinPixels,
+        int lavaTintColor,
+        int lavaNearShadeColor,
+        int gasTintColor,
+        int podColor,
+        int frameColor,
+        int oreMarkBelowPixels,
+        int smallRockShadeColor,
+        Map<OreType, Integer> oreMarkColors) {
+    public static ScannerLook current() {
+        return UiTheme.current().scanner();
+    }
 
-	public static ScannerLook of(ThemeData d) {
-		Map<OreType, Integer> marks = new EnumMap<>(OreType.class);
-		for (OreType type : OreType.values()) {
-			marks.put(type, d.color(type.itemId().getPath() + "OreMarkColor"));
-		}
-		return new ScannerLook(d.integer("cellPixels", 1), d.integer("margin", 0), d.color("titleColor"), d.color("airColor"),
-				d.color("rockColor"), d.color("oreColor"), d.color("goldOreColor"), d.color("lavaColor"), d.color("lavaNearColor"), d.color("gasColor"),
-				d.color("rockShadeColor"), d.color("oreLiftColor"), d.color("goldOreLiftColor"), d.color("oreOutlineColor"), d.color("goldOreOutlineColor"), d.integer("oreOutlineMinPixels", 4), d.color("lavaTintColor"), d.color("lavaNearShadeColor"), d.color("gasTintColor"), d.color("podColor"),
-				d.color("frameColor"), d.integer("oreMarkBelowPixels", 4), d.color("smallRockShadeColor"), marks);
-	}
+    public static ScannerLook of(ThemeData d) {
+        Map<OreType, Integer> marks = new EnumMap<>(OreType.class);
+        for (OreType type : OreType.values()) {
+            marks.put(type, d.color(type.itemId().getPath() + "OreMarkColor"));
+        }
+        return new ScannerLook(
+                d.integer("cellPixels", 1),
+                d.integer("margin", 0),
+                d.color("titleColor"),
+                d.color("airColor"),
+                d.color("rockColor"),
+                d.color("oreColor"),
+                d.color("goldOreColor"),
+                d.color("lavaColor"),
+                d.color("lavaNearColor"),
+                d.color("gasColor"),
+                d.color("rockShadeColor"),
+                d.color("oreLiftColor"),
+                d.color("goldOreLiftColor"),
+                d.color("oreOutlineColor"),
+                d.color("goldOreOutlineColor"),
+                d.integer("oreOutlineMinPixels", 4),
+                d.color("lavaTintColor"),
+                d.color("lavaNearShadeColor"),
+                d.color("gasTintColor"),
+                d.color("podColor"),
+                d.color("frameColor"),
+                d.integer("oreMarkBelowPixels", 4),
+                d.color("smallRockShadeColor"),
+                marks);
+    }
 }

@@ -1,12 +1,18 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
+import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
+import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.test.UpgradeTerminalClientTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.util.Set;
-
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
-
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -17,15 +23,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
-import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
-import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
-import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
-import io.github.pkeppeler.deepcharter.pod.PodEntity;
-import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
-import io.github.pkeppeler.deepcharter.test.UpgradeTerminalClientTest;
-import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
-import io.github.pkeppeler.deepcharter.test.support.ClientWait;
-
 /**
  * Evidence scenario "pod-upgrade" (#243, #536): a Mole with its stock drill stands beside the upgrade terminal and turns slowly; the pilot
  * fits a crafted drill unit (tier 1 is not sold), then opens the terminal, buys a tier 2 drill and shuts it. The Mole's cutter is the
@@ -34,156 +31,215 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
  * {@code after-stacked} and {@code after-fluted}.
  */
 public class PodUpgradeScenario extends EvidenceScenario {
-	private static final int TICKS_PER_FRAME = 2;
-	private static final int BEFORE_FRAMES = 14;
-	private static final int TYPING_FRAMES = 14;
-	private static final int HOLD_FRAMES = 6;
-	private static final int AFTER_FRAMES = 18;
-	private static final float TURN_DEGREES_PER_FRAME = 7f;
-	/** The camera stands this far east and south of the pod, which faces south, and looks at its middle. */
-	private static final Vec3 CAMERA_OFFSET = new Vec3(3.6, 0, 3.0);
-	private static final double POD_MIDDLE = 0.9;
+    private static final int TICKS_PER_FRAME = 2;
+    private static final int BEFORE_FRAMES = 14;
+    private static final int TYPING_FRAMES = 14;
+    private static final int HOLD_FRAMES = 6;
+    private static final int AFTER_FRAMES = 18;
+    private static final float TURN_DEGREES_PER_FRAME = 7f;
+    /** The camera stands this far east and south of the pod, which faces south, and looks at its middle. */
+    private static final Vec3 CAMERA_OFFSET = new Vec3(3.6, 0, 3.0);
 
-	/** The pod's heading when each turn starts, before the terminal and after it: the same views either side of the swap. */
-	private static final float START_YAW = 200f;
+    private static final double POD_MIDDLE = 0.9;
 
-	private float yaw = START_YAW;
+    /** The pod's heading when each turn starts, before the terminal and after it: the same views either side of the swap. */
+    private static final float START_YAW = 200f;
 
-	@Override
-	protected String name() {
-		return "pod-upgrade";
-	}
+    private float yaw = START_YAW;
 
-	@Override
-	protected void run(ClientGameTestContext context) {
-		ClientChecks.withHudHidden(context, () -> runHidden(context));
-	}
+    @Override
+    protected String name() {
+        return "pod-upgrade";
+    }
 
-	private void runHidden(ClientGameTestContext context) {
-		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			UpgradeTerminalClientTest.Scene scene = singleplayer.getServer().computeOnServer(UpgradeTerminalClientTest::setUp);
-			context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
-			Vec3 pod = singleplayer.getServer().computeOnServer(server -> server.overworld().getEntity(scene.pod()).position());
-			singleplayer.getServer().runOnServer(server -> lookAt(server.getPlayerList().getPlayers().getFirst(), pod));
-			ClientWait.until(context, "the stock Mole drawn with the tricone", client -> cutter(client, scene).equals("tricone"), client -> cutter(client, scene));
-			context.waitTicks(10); // tick-wait: the view settles before the first frame
-			for (int i = 0; i < BEFORE_FRAMES; i++) {
-				turn(context, singleplayer, scene);
-				context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-				frame(context);
-				if (i == BEFORE_FRAMES / 2) {
-					screenshot(context, "before-tricone");
-				}
-			}
+    @Override
+    protected void run(ClientGameTestContext context) {
+        ClientChecks.withHudHidden(context, () -> runHidden(context));
+    }
 
-			// T0 to T1 (a crafted unit fitted by use): the tricone becomes the stacked rings. T1 to T2 (bought): the stacked rings become the fluted auger (the Mole's cap).
-			fitTheDrillUnit(context, singleplayer, scene);
-			afterFrames(context, singleplayer, scene, "after-stacked");
-			buyAtTheTerminal(context, singleplayer, scene, 2, "fluted");
-			afterFrames(context, singleplayer, scene, "after-fluted");
-		}
-	}
+    private void runHidden(ClientGameTestContext context) {
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            UpgradeTerminalClientTest.Scene scene =
+                    singleplayer.getServer().computeOnServer(UpgradeTerminalClientTest::setUp);
+            context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+            Vec3 pod = singleplayer
+                    .getServer()
+                    .computeOnServer(
+                            server -> server.overworld().getEntity(scene.pod()).position());
+            singleplayer
+                    .getServer()
+                    .runOnServer(
+                            server -> lookAt(server.getPlayerList().getPlayers().getFirst(), pod));
+            ClientWait.until(
+                    context,
+                    "the stock Mole drawn with the tricone",
+                    client -> cutter(client, scene).equals("tricone"),
+                    client -> cutter(client, scene));
+            context.waitTicks(10); // tick-wait: the view settles before the first frame
+            for (int i = 0; i < BEFORE_FRAMES; i++) {
+                turn(context, singleplayer, scene);
+                context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+                frame(context);
+                if (i == BEFORE_FRAMES / 2) {
+                    screenshot(context, "before-tricone");
+                }
+            }
 
-	/** The pilot uses a drill unit on the Mole, as a click does, and waits until the Mole draws the stacked rings. */
-	private void fitTheDrillUnit(ClientGameTestContext context, TestSingleplayerContext singleplayer, UpgradeTerminalClientTest.Scene scene) {
-		singleplayer.getServer().runOnServer(server -> {
-			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-			Entity pod = server.overworld().getEntity(scene.pod());
-			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("deepcharter", "drill_unit"))));
-			if (!UseEntityCallback.EVENT.invoker().interact(player, pod.level(), InteractionHand.MAIN_HAND, pod, null).consumesAction()) {
-				throw new AssertionError("the drill unit should fit the Mole");
-			}
-		});
-		ClientWait.until(context, "the Mole drawn with the stacked rings", client -> cutter(client, scene).equals("stacked"), client -> cutter(client, scene));
-		hold(context, singleplayer, scene);
-	}
+            // T0 to T1 (a crafted unit fitted by use): the tricone becomes the stacked rings. T1 to T2 (bought): the
+            // stacked rings become the fluted auger (the Mole's cap).
+            fitTheDrillUnit(context, singleplayer, scene);
+            afterFrames(context, singleplayer, scene, "after-stacked");
+            buyAtTheTerminal(context, singleplayer, scene, 2, "fluted");
+            afterFrames(context, singleplayer, scene, "after-fluted");
+        }
+    }
 
-	/** Opens the terminal, buys the drill of {@code tier}, waits until the Mole draws {@code cutter}, and shuts the terminal. */
-	private void buyAtTheTerminal(ClientGameTestContext context, TestSingleplayerContext singleplayer, UpgradeTerminalClientTest.Scene scene, int tier,
-			String cutter) {
-		context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
-		ClientWait.screen(context, UpgradeScreen.class);
-		UpgradeScreen screen = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
-		for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
-			turn(context, singleplayer, scene);
-			context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-			frame(context);
-		}
-		hold(context, singleplayer, scene);
-		String buy = context.computeOnClient(client -> label(screen, "BUY TIER " + tier));
-		screenshot(context, "terminal-buy-drill");
-		context.clickScreenButton(buy);
-		// The server installs the part and the client's pod is told: the cutter changes with the next frame.
-		ClientWait.until(context, "the Mole drawn with the " + cutter, client -> cutter(client, scene).equals(cutter), client -> cutter(client, scene));
-		hold(context, singleplayer, scene);
-		context.setScreen(() -> null);
-	}
+    /** The pilot uses a drill unit on the Mole, as a click does, and waits until the Mole draws the stacked rings. */
+    private void fitTheDrillUnit(
+            ClientGameTestContext context,
+            TestSingleplayerContext singleplayer,
+            UpgradeTerminalClientTest.Scene scene) {
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            Entity pod = server.overworld().getEntity(scene.pod());
+            player.setItemInHand(
+                    InteractionHand.MAIN_HAND,
+                    new ItemStack(BuiltInRegistries.ITEM.getValue(
+                            Identifier.fromNamespaceAndPath("deepcharter", "drill_unit"))));
+            if (!UseEntityCallback.EVENT
+                    .invoker()
+                    .interact(player, pod.level(), InteractionHand.MAIN_HAND, pod, null)
+                    .consumesAction()) {
+                throw new AssertionError("the drill unit should fit the Mole");
+            }
+        });
+        ClientWait.until(
+                context,
+                "the Mole drawn with the stacked rings",
+                client -> cutter(client, scene).equals("stacked"),
+                client -> cutter(client, scene));
+        hold(context, singleplayer, scene);
+    }
 
-	/** The pod turns again from the heading it started with, so the views match the ones before the swap. */
-	private void afterFrames(ClientGameTestContext context, TestSingleplayerContext singleplayer, UpgradeTerminalClientTest.Scene scene, String still) {
-		yaw = START_YAW;
-		for (int i = 0; i < AFTER_FRAMES; i++) {
-			turn(context, singleplayer, scene);
-			context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-			frame(context);
-			if (i == AFTER_FRAMES / 2) {
-				screenshot(context, still);
-			}
-		}
-	}
+    /** Opens the terminal, buys the drill of {@code tier}, waits until the Mole draws {@code cutter}, and shuts the terminal. */
+    private void buyAtTheTerminal(
+            ClientGameTestContext context,
+            TestSingleplayerContext singleplayer,
+            UpgradeTerminalClientTest.Scene scene,
+            int tier,
+            String cutter) {
+        context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
+        ClientWait.screen(context, UpgradeScreen.class);
+        UpgradeScreen screen = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
+        for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
+            turn(context, singleplayer, scene);
+            context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+            frame(context);
+        }
+        hold(context, singleplayer, scene);
+        String buy = context.computeOnClient(client -> label(screen, "BUY TIER " + tier));
+        screenshot(context, "terminal-buy-drill");
+        context.clickScreenButton(buy);
+        // The server installs the part and the client's pod is told: the cutter changes with the next frame.
+        ClientWait.until(
+                context,
+                "the Mole drawn with the " + cutter,
+                client -> cutter(client, scene).equals(cutter),
+                client -> cutter(client, scene));
+        hold(context, singleplayer, scene);
+        context.setScreen(() -> null);
+    }
 
-	private void hold(ClientGameTestContext context, TestSingleplayerContext singleplayer, UpgradeTerminalClientTest.Scene scene) {
-		for (int i = 0; i < HOLD_FRAMES; i++) {
-			turn(context, singleplayer, scene);
-			context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-			frame(context);
-		}
-	}
+    /** The pod turns again from the heading it started with, so the views match the ones before the swap. */
+    private void afterFrames(
+            ClientGameTestContext context,
+            TestSingleplayerContext singleplayer,
+            UpgradeTerminalClientTest.Scene scene,
+            String still) {
+        yaw = START_YAW;
+        for (int i = 0; i < AFTER_FRAMES; i++) {
+            turn(context, singleplayer, scene);
+            context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+            frame(context);
+            if (i == AFTER_FRAMES / 2) {
+                screenshot(context, still);
+            }
+        }
+    }
 
-	/** The pod turns a little each frame, so the cutter shows from every side. */
-	private void turn(ClientGameTestContext context, TestSingleplayerContext singleplayer, UpgradeTerminalClientTest.Scene scene) {
-		yaw += TURN_DEGREES_PER_FRAME;
-		float turned = yaw;
-		singleplayer.getServer().runOnServer(server -> server.overworld().getEntity(scene.pod()).setYRot(turned));
-		context.runOnClient(client -> {
-			Entity pod = clientPod(client, scene);
-			if (pod != null) {
-				pod.setYRot(turned);
-				pod.yRotO = turned;
-			}
-		});
-	}
+    private void hold(
+            ClientGameTestContext context,
+            TestSingleplayerContext singleplayer,
+            UpgradeTerminalClientTest.Scene scene) {
+        for (int i = 0; i < HOLD_FRAMES; i++) {
+            turn(context, singleplayer, scene);
+            context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+            frame(context);
+        }
+    }
 
-	/** The player stands east and south of {@code pod}, looking at its middle. */
-	private static void lookAt(ServerPlayer player, Vec3 pod) {
-		Vec3 eye = pod.add(CAMERA_OFFSET);
-		Vec3 d = pod.add(0, POD_MIDDLE, 0).subtract(eye.add(0, 1.62, 0));
-		player.teleportTo(player.level(), eye.x, eye.y, eye.z, Set.of(), (float) Math.toDegrees(Math.atan2(-d.x, d.z)),
-				(float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z))), true);
-	}
+    /** The pod turns a little each frame, so the cutter shows from every side. */
+    private void turn(
+            ClientGameTestContext context,
+            TestSingleplayerContext singleplayer,
+            UpgradeTerminalClientTest.Scene scene) {
+        yaw += TURN_DEGREES_PER_FRAME;
+        float turned = yaw;
+        singleplayer
+                .getServer()
+                .runOnServer(server -> server.overworld().getEntity(scene.pod()).setYRot(turned));
+        context.runOnClient(client -> {
+            Entity pod = clientPod(client, scene);
+            if (pod != null) {
+                pod.setYRot(turned);
+                pod.yRotO = turned;
+            }
+        });
+    }
 
-	private static String cutter(Minecraft client, UpgradeTerminalClientTest.Scene scene) {
-		if (!(clientPod(client, scene) instanceof PodEntity pod)) {
-			return "no pod";
-		}
-		Object drawn = client.getEntityRenderDispatcher().getRenderer(pod);
-		return drawn instanceof PodGeoRenderer geo ? String.valueOf(geo.appearanceOf(pod).cutter()) : String.valueOf(drawn);
-	}
+    /** The player stands east and south of {@code pod}, looking at its middle. */
+    private static void lookAt(ServerPlayer player, Vec3 pod) {
+        Vec3 eye = pod.add(CAMERA_OFFSET);
+        Vec3 d = pod.add(0, POD_MIDDLE, 0).subtract(eye.add(0, 1.62, 0));
+        player.teleportTo(
+                player.level(),
+                eye.x,
+                eye.y,
+                eye.z,
+                Set.of(),
+                (float) Math.toDegrees(Math.atan2(-d.x, d.z)),
+                (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z))),
+                true);
+    }
 
-	/** The client's copy of the pod, which the scene names by its UUID, or null while it has not arrived. */
-	private static Entity clientPod(Minecraft client, UpgradeTerminalClientTest.Scene scene) {
-		for (Entity entity : client.level.entitiesForRendering()) {
-			if (entity.getUUID().equals(scene.pod())) {
-				return entity;
-			}
-		}
-		return null;
-	}
+    private static String cutter(Minecraft client, UpgradeTerminalClientTest.Scene scene) {
+        if (!(clientPod(client, scene) instanceof PodEntity pod)) {
+            return "no pod";
+        }
+        Object drawn = client.getEntityRenderDispatcher().getRenderer(pod);
+        return drawn instanceof PodGeoRenderer geo
+                ? String.valueOf(geo.appearanceOf(pod).cutter())
+                : String.valueOf(drawn);
+    }
 
-	/** The label of the button that starts with {@code prefix}. */
-	private static String label(UpgradeScreen screen, String prefix) {
-		return screen.children().stream().filter(CrtButton.class::isInstance).map(button -> ((CrtButton) button).getMessage().getString())
-				.map(text -> text.startsWith("> ") ? text.substring(2) : text).filter(text -> text.startsWith(prefix)).findFirst()
-				.orElseThrow(() -> new AssertionError("the upgrade screen has no button starting " + prefix));
-	}
+    /** The client's copy of the pod, which the scene names by its UUID, or null while it has not arrived. */
+    private static Entity clientPod(Minecraft client, UpgradeTerminalClientTest.Scene scene) {
+        for (Entity entity : client.level.entitiesForRendering()) {
+            if (entity.getUUID().equals(scene.pod())) {
+                return entity;
+            }
+        }
+        return null;
+    }
+
+    /** The label of the button that starts with {@code prefix}. */
+    private static String label(UpgradeScreen screen, String prefix) {
+        return screen.children().stream()
+                .filter(CrtButton.class::isInstance)
+                .map(button -> ((CrtButton) button).getMessage().getString())
+                .map(text -> text.startsWith("> ") ? text.substring(2) : text)
+                .filter(text -> text.startsWith(prefix))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the upgrade screen has no button starting " + prefix));
+    }
 }

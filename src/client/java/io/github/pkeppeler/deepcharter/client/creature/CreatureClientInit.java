@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.client.creature;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class CreatureClientInit {
-	private CreatureClientInit() {
-	}
+    private CreatureClientInit() {}
 
-	public static void init() {
-		CreatureClientRegistry.register();
-	}
+    public static void init() {
+        CreatureClientRegistry.register();
+    }
 }

@@ -12,7 +12,7 @@ package io.github.pkeppeler.deepcharter.ore;
  *                         the 100-point hull below it; a flat 1/20 gives about 20 points at the top of Deep Claim
  * @param blastRadius      a gas blast clears the blocks within this many of the pocket on each axis, so 1 is 3 x 3 x 3
  */
-public record OreTuning(float massScale, double slowdownPerMass, double maxSlowdown, float gasDamagePerFoot,
-		int blastRadius) {
-	public static final OreTuning DEFAULT = new OreTuning(5f, 0.02, 0.8, 0.05f, 1);
+public record OreTuning(
+        float massScale, double slowdownPerMass, double maxSlowdown, float gasDamagePerFoot, int blastRadius) {
+    public static final OreTuning DEFAULT = new OreTuning(5f, 0.02, 0.8, 0.05f, 1);
 }

@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.hangar;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class HangarInit {
-	private HangarInit() {
-	}
+    private HangarInit() {}
 
-	public static void init() {
-		HangarRegistry.register();
-	}
+    public static void init() {
+        HangarRegistry.register();
+    }
 }

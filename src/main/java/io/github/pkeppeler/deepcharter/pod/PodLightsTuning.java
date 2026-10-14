@@ -7,11 +7,12 @@ package io.github.pkeppeler.deepcharter.pod;
  * @param sweepIntervalTicks how often each dimension looks for light blocks that no pod holds any more
  */
 public record PodLightsTuning(int sweepIntervalTicks) {
-	public static final PodLightsTuning DEFAULT = new PodLightsTuning(20);
+    public static final PodLightsTuning DEFAULT = new PodLightsTuning(20);
 
-	public PodLightsTuning {
-		if (sweepIntervalTicks < 1) {
-			throw new IllegalArgumentException("the light sweep interval must be at least 1 tick, got " + sweepIntervalTicks);
-		}
-	}
+    public PodLightsTuning {
+        if (sweepIntervalTicks < 1) {
+            throw new IllegalArgumentException(
+                    "the light sweep interval must be at least 1 tick, got " + sweepIntervalTicks);
+        }
+    }
 }

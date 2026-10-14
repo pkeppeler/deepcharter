@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.client.surface;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class SurfaceClientInit {
-	private SurfaceClientInit() {
-	}
+    private SurfaceClientInit() {}
 
-	public static void init() {
-		SurfaceClientRegistry.register();
-	}
+    public static void init() {
+        SurfaceClientRegistry.register();
+    }
 }

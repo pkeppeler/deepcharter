@@ -5,11 +5,10 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 
 /** The ore processor's screen, and the account HUD. */
 public final class MarketClientRegistry {
-	private MarketClientRegistry() {
-	}
+    private MarketClientRegistry() {}
 
-	public static void register() {
-		TerminalScreens.register(TerminalTypes.ORE_PROCESSOR, OreProcessorScreen::new);
-		AccountHud.init();
-	}
+    public static void register() {
+        TerminalScreens.register(TerminalTypes.ORE_PROCESSOR, OreProcessorScreen::new);
+        AccountHud.init();
+    }
 }

@@ -10,27 +10,27 @@ import net.minecraft.network.chat.Component;
  * {@link EditBox}'s; this class only draws the frame, which is brighter while the field has focus.
  */
 public final class CrtTextField extends EditBox {
-	/** Pixels the frame sits outside the widget rectangle, so the borderless text does not touch it. Leave this much room around the field. */
-	public static final int FRAME = 3;
+    /** Pixels the frame sits outside the widget rectangle, so the borderless text does not touch it. Leave this much room around the field. */
+    public static final int FRAME = 3;
 
-	public CrtTextField(Font font, int x, int y, int width, int height, Component hint) {
-		super(font, x, y, width, height, hint);
-		setBordered(false);
-		setTextShadow(false);
-		setHint(hint);
-	}
+    public CrtTextField(Font font, int x, int y, int width, int height, Component hint) {
+        super(font, x, y, width, height, hint);
+        setBordered(false);
+        setTextShadow(false);
+        setHint(hint);
+    }
 
-	@Override
-	public void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		CrtTuning tuning = CrtTuning.current();
-		// Set at each draw, not once, so a reload restyles a field that is open.
-		setTextColor(tuning.phosphorColor());
-		int left = getX() - FRAME;
-		int top = getY() - FRAME;
-		int right = getRight() + FRAME;
-		int bottom = getBottom() + FRAME;
-		graphics.fill(left, top, right, bottom, tuning.backgroundColor());
-		CrtDraw.border(graphics, left, top, right, bottom, isFocused() ? tuning.phosphorColor() : tuning.dimColor());
-		super.extractWidgetRenderState(graphics, mouseX, mouseY, partialTick);
-	}
+    @Override
+    public void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        CrtTuning tuning = CrtTuning.current();
+        // Set at each draw, not once, so a reload restyles a field that is open.
+        setTextColor(tuning.phosphorColor());
+        int left = getX() - FRAME;
+        int top = getY() - FRAME;
+        int right = getRight() + FRAME;
+        int bottom = getBottom() + FRAME;
+        graphics.fill(left, top, right, bottom, tuning.backgroundColor());
+        CrtDraw.border(graphics, left, top, right, bottom, isFocused() ? tuning.phosphorColor() : tuning.dimColor());
+        super.extractWidgetRenderState(graphics, mouseX, mouseY, partialTick);
+    }
 }

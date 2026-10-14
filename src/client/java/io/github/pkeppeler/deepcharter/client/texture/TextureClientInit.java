@@ -4,10 +4,9 @@ import net.fabricmc.fabric.api.client.model.loading.v1.CustomUnbakedBlockStateMo
 
 /** Client entry point for the texture system, called from DeepCharterClient: the connected-casing model type (ADR 0037). */
 public final class TextureClientInit {
-	private TextureClientInit() {
-	}
+    private TextureClientInit() {}
 
-	public static void init() {
-		CustomUnbakedBlockStateModel.register(ConnectedBlockModel.TYPE, ConnectedBlockModel.Unbaked.CODEC);
-	}
+    public static void init() {
+        CustomUnbakedBlockStateModel.register(ConnectedBlockModel.TYPE, ConnectedBlockModel.Unbaked.CODEC);
+    }
 }

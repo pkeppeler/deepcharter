@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.repair;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class RepairInit {
-	private RepairInit() {
-	}
+    private RepairInit() {}
 
-	public static void init() {
-		RepairRegistry.register();
-	}
+    public static void init() {
+        RepairRegistry.register();
+    }
 }

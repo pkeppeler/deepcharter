@@ -5,11 +5,10 @@ package io.github.pkeppeler.deepcharter.sound;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class SoundInit {
-	private SoundInit() {
-	}
+    private SoundInit() {}
 
-	public static void init() {
-		SoundRegistry.register();
-		TerminalSounds.init();
-	}
+    public static void init() {
+        SoundRegistry.register();
+        TerminalSounds.init();
+    }
 }

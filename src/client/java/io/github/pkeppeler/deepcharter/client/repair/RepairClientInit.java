@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.client.repair;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class RepairClientInit {
-	private RepairClientInit() {
-	}
+    private RepairClientInit() {}
 
-	public static void init() {
-		RepairClientRegistry.register();
-	}
+    public static void init() {
+        RepairClientRegistry.register();
+    }
 }

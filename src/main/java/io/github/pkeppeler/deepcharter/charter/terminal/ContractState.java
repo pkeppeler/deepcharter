@@ -1,11 +1,9 @@
 package io.github.pkeppeler.deepcharter.charter.terminal;
 
-import java.util.List;
-import java.util.Optional;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.DecoderException;
-
+import java.util.List;
+import java.util.Optional;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 
@@ -24,52 +22,78 @@ import net.minecraft.network.codec.StreamCodec;
  * @param applicantCount every application waiting, listed or not
  * @param notice     the translation key of the refusal the last request met, or empty
  */
-public record ContractState(Role role, String charter, List<String> charters, int charterCount, List<String> revivable, int revivableCount,
-		List<String> applicants, int applicantCount,
-		Optional<String> notice) {
-	/** Longest name or key sent: a player name is at most 16 characters, and a charter name is capped by {@code CharterTuning}. */
-	private static final int MAX_TEXT = 128;
-	private static final int MAX_LIST = 64;
+public record ContractState(
+        Role role,
+        String charter,
+        List<String> charters,
+        int charterCount,
+        List<String> revivable,
+        int revivableCount,
+        List<String> applicants,
+        int applicantCount,
+        Optional<String> notice) {
+    /** Longest name or key sent: a player name is at most 16 characters, and a charter name is capped by {@code CharterTuning}. */
+    private static final int MAX_TEXT = 128;
 
-	public enum Role {
-		/** On no charter and no application open. */
-		NONE,
-		/** Has applied and waits. */
-		APPLICANT,
-		/** On the roster, not the Director. */
-		CREW,
-		DIRECTOR
-	}
+    private static final int MAX_LIST = 64;
 
-	public static final StreamCodec<ByteBuf, ContractState> STREAM_CODEC = StreamCodec.composite(
-			ByteBufCodecs.idMapper(ContractState::roleAt, Role::ordinal), ContractState::role,
-			ByteBufCodecs.stringUtf8(MAX_TEXT), ContractState::charter,
-			ByteBufCodecs.stringUtf8(MAX_TEXT).apply(ByteBufCodecs.list(MAX_LIST)), ContractState::charters,
-			ByteBufCodecs.VAR_INT, ContractState::charterCount,
-			ByteBufCodecs.stringUtf8(MAX_TEXT).apply(ByteBufCodecs.list(MAX_LIST)), ContractState::revivable,
-			ByteBufCodecs.VAR_INT, ContractState::revivableCount,
-			ByteBufCodecs.stringUtf8(MAX_TEXT).apply(ByteBufCodecs.list(MAX_LIST)), ContractState::applicants,
-			ByteBufCodecs.VAR_INT, ContractState::applicantCount,
-			ByteBufCodecs.optional(ByteBufCodecs.stringUtf8(MAX_TEXT)), ContractState::notice,
-			ContractState::new);
+    public enum Role {
+        /** On no charter and no application open. */
+        NONE,
+        /** Has applied and waits. */
+        APPLICANT,
+        /** On the roster, not the Director. */
+        CREW,
+        DIRECTOR
+    }
 
-	private static Role roleAt(int ordinal) {
-		if (ordinal < 0 || ordinal >= Role.values().length) {
-			throw new DecoderException("unknown contract role " + ordinal);
-		}
-		return Role.values()[ordinal];
-	}
+    public static final StreamCodec<ByteBuf, ContractState> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.idMapper(ContractState::roleAt, Role::ordinal),
+            ContractState::role,
+            ByteBufCodecs.stringUtf8(MAX_TEXT),
+            ContractState::charter,
+            ByteBufCodecs.stringUtf8(MAX_TEXT).apply(ByteBufCodecs.list(MAX_LIST)),
+            ContractState::charters,
+            ByteBufCodecs.VAR_INT,
+            ContractState::charterCount,
+            ByteBufCodecs.stringUtf8(MAX_TEXT).apply(ByteBufCodecs.list(MAX_LIST)),
+            ContractState::revivable,
+            ByteBufCodecs.VAR_INT,
+            ContractState::revivableCount,
+            ByteBufCodecs.stringUtf8(MAX_TEXT).apply(ByteBufCodecs.list(MAX_LIST)),
+            ContractState::applicants,
+            ByteBufCodecs.VAR_INT,
+            ContractState::applicantCount,
+            ByteBufCodecs.optional(ByteBufCodecs.stringUtf8(MAX_TEXT)),
+            ContractState::notice,
+            ContractState::new);
 
-	public ContractState {
-		if (charterCount < charters.size() || revivableCount < revivable.size() || applicantCount < applicants.size()) {
-			throw new IllegalArgumentException("a total cannot be below the names listed");
-		}
-		charters = List.copyOf(charters);
-		revivable = List.copyOf(revivable);
-		applicants = List.copyOf(applicants);
-	}
+    private static Role roleAt(int ordinal) {
+        if (ordinal < 0 || ordinal >= Role.values().length) {
+            throw new DecoderException("unknown contract role " + ordinal);
+        }
+        return Role.values()[ordinal];
+    }
 
-	public ContractState withNotice(String key) {
-		return new ContractState(role, charter, charters, charterCount, revivable, revivableCount, applicants, applicantCount, Optional.of(key));
-	}
+    public ContractState {
+        if (charterCount < charters.size() || revivableCount < revivable.size() || applicantCount < applicants.size()) {
+            throw new IllegalArgumentException("a total cannot be below the names listed");
+        }
+        charters = List.copyOf(charters);
+        revivable = List.copyOf(revivable);
+        applicants = List.copyOf(applicants);
+    }
+
+    public ContractState withNotice(String key) {
+        return new ContractState(
+                role,
+                charter,
+                charters,
+                charterCount,
+                revivable,
+                revivableCount,
+                applicants,
+                applicantCount,
+                Optional.of(key));
+    }
 }

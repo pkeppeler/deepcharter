@@ -1,17 +1,5 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.level.saveddata.SavedDataType;
-
 import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.colony.ColonyDisplays;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
@@ -23,6 +11,15 @@ import io.github.pkeppeler.deepcharter.pod.PodLightLedger;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 
 /**
  * Fails the server GameTest run when a test leaves the world's saved data swapped across a tick boundary.
@@ -37,32 +34,43 @@ import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
  * server is watched: the client suite's integrated server is not.
  */
 public final class WorldDataGuard implements ModInitializer {
-	private static final List<SavedDataType<?>> WATCHED = List.of(CharterData.TYPE, ColonySite.TYPE, HandbookProgressData.TYPE,
-			NotesData.TYPE, HangarData.TYPE, WorkOrderData.TYPE, PodLightLedger.TYPE, Serials.TYPE, RepairState.TYPE, TransmissionData.TYPE,
-			ColonyDisplays.TYPE);
-	private static final Map<SavedDataType<?>, SavedData> SEEN = new HashMap<>();
+    private static final List<SavedDataType<?>> WATCHED = List.of(
+            CharterData.TYPE,
+            ColonySite.TYPE,
+            HandbookProgressData.TYPE,
+            NotesData.TYPE,
+            HangarData.TYPE,
+            WorkOrderData.TYPE,
+            PodLightLedger.TYPE,
+            Serials.TYPE,
+            RepairState.TYPE,
+            TransmissionData.TYPE,
+            ColonyDisplays.TYPE);
+    private static final Map<SavedDataType<?>, SavedData> SEEN = new HashMap<>();
 
-	@Override
-	public void onInitialize() {
-		ServerTickEvents.START_SERVER_TICK.register(WorldDataGuard::check);
-		ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
-			SEEN.clear();
-			WorldData.forgetSwappers();
-		});
-	}
+    @Override
+    public void onInitialize() {
+        ServerTickEvents.START_SERVER_TICK.register(WorldDataGuard::check);
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+            SEEN.clear();
+            WorldData.forgetSwappers();
+        });
+    }
 
-	private static void check(MinecraftServer server) {
-		if (!server.isDedicatedServer()) {
-			return;
-		}
-		for (SavedDataType<?> type : WATCHED) {
-			SavedData now = server.getDataStorage().computeIfAbsent(type);
-			SavedData before = SEEN.put(type, now);
-			if (before != null && before != now) {
-				throw new IllegalStateException("The world's " + type.id() + " was swapped across a tick; last swapped by "
-						+ WorldData.lastSwapper(type).orElse("a test that does not use WorldData") + ". Swap through WorldData, which restores it in a finally"
-						+ " on the tick that swapped it.");
-			}
-		}
-	}
+    private static void check(MinecraftServer server) {
+        if (!server.isDedicatedServer()) {
+            return;
+        }
+        for (SavedDataType<?> type : WATCHED) {
+            SavedData now = server.getDataStorage().computeIfAbsent(type);
+            SavedData before = SEEN.put(type, now);
+            if (before != null && before != now) {
+                throw new IllegalStateException(
+                        "The world's " + type.id() + " was swapped across a tick; last swapped by "
+                                + WorldData.lastSwapper(type).orElse("a test that does not use WorldData")
+                                + ". Swap through WorldData, which restores it in a finally"
+                                + " on the tick that swapped it.");
+            }
+        }
+    }
 }

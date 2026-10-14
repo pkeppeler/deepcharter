@@ -1,18 +1,5 @@
 package io.github.pkeppeler.deepcharter.upgrade;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-
-import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
@@ -26,6 +13,17 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeatures;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * The upgrade terminal (SPEC section 7): a charter buys a part for the pod of its own that is parked at the terminal. The part
@@ -43,135 +41,154 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
  * and tier are read defensively, and a part above the chassis' cap is allowed (it is shown and applied as capped).
  */
 public final class UpgradeTerminal {
-	/** The action: buy the part named by {@link #TRACK_KEY} and {@link #TIER_KEY}. */
-	public static final Identifier BUY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "upgrade_buy");
-	/** The id of a {@link ComponentTrack}, such as {@code fuel_tank}. */
-	public static final String TRACK_KEY = "track";
-	/** An int, 1 up to the track's best tier. */
-	public static final String TIER_KEY = "tier";
+    /** The action: buy the part named by {@link #TRACK_KEY} and {@link #TIER_KEY}. */
+    public static final Identifier BUY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "upgrade_buy");
+    /** The id of a {@link ComponentTrack}, such as {@code fuel_tank}. */
+    public static final String TRACK_KEY = "track";
+    /** An int, 1 up to the track's best tier. */
+    public static final String TIER_KEY = "tier";
 
+    private UpgradeTerminal() {}
 
-	private UpgradeTerminal() {
-	}
+    static void register() {
+        TerminalActions.register(TerminalTypes.UPGRADE_TERMINAL, BUY, UpgradeTerminal::runBuy);
+        TerminalFeatures.register(TerminalTypes.UPGRADE_TERMINAL, UpgradeView.STREAM_CODEC, UpgradeTerminal::view);
+    }
 
-	static void register() {
-		TerminalActions.register(TerminalTypes.UPGRADE_TERMINAL, BUY, UpgradeTerminal::runBuy);
-		TerminalFeatures.register(TerminalTypes.UPGRADE_TERMINAL, UpgradeView.STREAM_CODEC, UpgradeTerminal::view);
-	}
+    private sealed interface Parked {
+        record Ours(PodEntity pod) implements Parked {}
 
-	private sealed interface Parked {
-		record Ours(PodEntity pod) implements Parked {
-		}
+        record Foreign() implements Parked {}
 
-		record Foreign() implements Parked {
-		}
+        record None() implements Parked {}
+    }
 
-		record None() implements Parked {
-		}
-	}
+    private static Optional<Component> runBuy(TerminalAction.Context context) {
+        Optional<ComponentTrack> track = context.args().getString(TRACK_KEY).flatMap(UpgradeTerminal::trackNamed);
+        Optional<Integer> tier = context.args().getInt(TIER_KEY);
+        if (track.isEmpty() || tier.isEmpty()) {
+            return Optional.of(UpgradeRefusal.BAD_REQUEST.message());
+        }
+        return buy(context.server(), context.player(), context.pos(), track.get(), tier.get());
+    }
 
-	private static Optional<Component> runBuy(TerminalAction.Context context) {
-		Optional<ComponentTrack> track = context.args().getString(TRACK_KEY).flatMap(UpgradeTerminal::trackNamed);
-		Optional<Integer> tier = context.args().getInt(TIER_KEY);
-		if (track.isEmpty() || tier.isEmpty()) {
-			return Optional.of(UpgradeRefusal.BAD_REQUEST.message());
-		}
-		return buy(context.server(), context.player(), context.pos(), track.get(), tier.get());
-	}
+    private static Optional<ComponentTrack> trackNamed(String id) {
+        return Arrays.stream(ComponentTrack.values())
+                .filter(track -> track.id().equals(id))
+                .findFirst();
+    }
 
-	private static Optional<ComponentTrack> trackNamed(String id) {
-		return Arrays.stream(ComponentTrack.values()).filter(track -> track.id().equals(id)).findFirst();
-	}
+    /** Empty when done, or why it was refused, with nothing changed. The player must be on a charter. */
+    public static Optional<Component> buy(
+            MinecraftServer server, ServerPlayer player, BlockPos terminal, ComponentTrack track, int tier) {
+        if (tier < 1 || tier > track.maxTier()) {
+            return Optional.of(UpgradeRefusal.BAD_REQUEST.message());
+        }
+        if (tier == 1) {
+            return Optional.of(UpgradeRefusal.CRAFTED.message());
+        }
+        Charter charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow();
+        PodEntity pod;
+        switch (parked(player, charter, terminal)) {
+            case Parked.None _ -> {
+                return Optional.of(UpgradeRefusal.NO_POD.message());
+            }
+            case Parked.Foreign _ -> {
+                return Optional.of(UpgradeRefusal.NOT_YOUR_POD.message());
+            }
+            case Parked.Ours ours -> pod = ours.pod();
+        }
+        if (PodComponents.registration(pod).isEmpty()) {
+            // A part there would be void, and the refill would make the purchase a repair.
+            return Optional.of(UpgradeRefusal.NOT_REGISTERED.message());
+        }
+        Optional<PartLabel> held = PodComponents.partOf(pod, track, charter.id());
+        if (track.needsFirstTier() && held.isEmpty()) {
+            // The crafted first tier is what a later tier replaces: buying past it would sell a scanner to a pod that
+            // never had one.
+            return Optional.of(UpgradeRefusal.NEEDS_FIRST_TIER.message());
+        }
+        if (held.isPresent() && held.get().tier() >= tier) {
+            return Optional.of(UpgradeRefusal.NOT_AN_UPGRADE.message());
+        }
+        // Everything that can throw or refuse comes before the spend, so a charge always buys an install. A serial
+        // burnt by a later refusal is harmless.
+        if (!Serials.get(server).isReadable()) {
+            return Optional.of(UpgradeRefusal.SERIALS_UNREADABLE.message());
+        }
+        ItemStack part = ComponentItems.mint(server, track, tier, charter.id());
+        Optional<CharterRefusal> unpaid =
+                Charters.spend(server, charter.id(), UpgradeTuning.DEFAULT.price(track, tier));
+        if (unpaid.isPresent()) {
+            return Optional.of(unpaid.get().message());
+        }
+        PodComponents.installAndDropReplaced(pod, part);
+        refill(pod, track);
+        UpgradeEvents.BOUGHT.invoker().onBought(server, player, pod, track, tier);
+        return Optional.empty();
+    }
 
-	/** Empty when done, or why it was refused, with nothing changed. The player must be on a charter. */
-	public static Optional<Component> buy(MinecraftServer server, ServerPlayer player, BlockPos terminal, ComponentTrack track, int tier) {
-		if (tier < 1 || tier > track.maxTier()) {
-			return Optional.of(UpgradeRefusal.BAD_REQUEST.message());
-		}
-		if (tier == 1) {
-			return Optional.of(UpgradeRefusal.CRAFTED.message());
-		}
-		Charter charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow();
-		PodEntity pod;
-		switch (parked(player, charter, terminal)) {
-			case Parked.None _ -> {
-				return Optional.of(UpgradeRefusal.NO_POD.message());
-			}
-			case Parked.Foreign _ -> {
-				return Optional.of(UpgradeRefusal.NOT_YOUR_POD.message());
-			}
-			case Parked.Ours ours -> pod = ours.pod();
-		}
-		if (PodComponents.registration(pod).isEmpty()) {
-			// A part there would be void, and the refill would make the purchase a repair.
-			return Optional.of(UpgradeRefusal.NOT_REGISTERED.message());
-		}
-		Optional<PartLabel> held = PodComponents.partOf(pod, track, charter.id());
-		if (track.needsFirstTier() && held.isEmpty()) {
-			// The crafted first tier is what a later tier replaces: buying past it would sell a scanner to a pod that never had one.
-			return Optional.of(UpgradeRefusal.NEEDS_FIRST_TIER.message());
-		}
-		if (held.isPresent() && held.get().tier() >= tier) {
-			return Optional.of(UpgradeRefusal.NOT_AN_UPGRADE.message());
-		}
-		// Everything that can throw or refuse comes before the spend, so a charge always buys an install. A serial burnt by a later refusal is harmless.
-		if (!Serials.get(server).isReadable()) {
-			return Optional.of(UpgradeRefusal.SERIALS_UNREADABLE.message());
-		}
-		ItemStack part = ComponentItems.mint(server, track, tier, charter.id());
-		Optional<CharterRefusal> unpaid = Charters.spend(server, charter.id(), UpgradeTuning.DEFAULT.price(track, tier));
-		if (unpaid.isPresent()) {
-			return Optional.of(unpaid.get().message());
-		}
-		PodComponents.installAndDropReplaced(pod, part);
-		refill(pod, track);
-		UpgradeEvents.BOUGHT.invoker().onBought(server, player, pod, track, tier);
-		return Optional.empty();
-	}
+    /** Why: the original refills on a purchase, while an install alone keeps the litres and the damage. */
+    static void refill(PodEntity pod, ComponentTrack track) {
+        switch (track) {
+            case HULL -> {
+                // A wreck (no hull left) is a wreck for #67 to handle, and a part must not repair it.
+                if (pod.hull() > 0f) {
+                    pod.setHull(pod.maxHull());
+                }
+            }
+            case FUEL_TANK -> pod.setFuel(PodTuning.DEFAULT.shell().fullFuel());
+            case DRILL,
+                    ENGINE,
+                    RADIATOR,
+                    CARGO_BAY,
+                    SCANNER,
+                    LIGHTS,
+                    SPOIL_HOPPER,
+                    LINER,
+                    SOUNDER,
+                    BRACE,
+                    HEAT_SHIELD,
+                    CONSOLE -> {}
+        }
+    }
 
-	/** Why: the original refills on a purchase, while an install alone keeps the litres and the damage. */
-	static void refill(PodEntity pod, ComponentTrack track) {
-		switch (track) {
-			case HULL -> {
-				// A wreck (no hull left) is a wreck for #67 to handle, and a part must not repair it.
-				if (pod.hull() > 0f) {
-					pod.setHull(pod.maxHull());
-				}
-			}
-			case FUEL_TANK -> pod.setFuel(PodTuning.DEFAULT.shell().fullFuel());
-			case DRILL, ENGINE, RADIATOR, CARGO_BAY, SCANNER, LIGHTS, SPOIL_HOPPER, LINER, SOUNDER, BRACE, HEAT_SHIELD, CONSOLE -> {
-			}
-		}
-	}
+    private static Parked parked(ServerPlayer player, Charter charter, BlockPos terminal) {
+        ServerLevel level = player.level();
+        List<PodEntity> parked = Terminals.parkedPods(level, terminal);
+        Optional<PodEntity> ours = Terminals.parkedPods(level, terminal, Optional.of(charter)).stream()
+                .findFirst();
+        if (ours.isPresent()) {
+            return new Parked.Ours(ours.get());
+        }
+        return parked.isEmpty() ? new Parked.None() : new Parked.Foreign();
+    }
 
-	private static Parked parked(ServerPlayer player, Charter charter, BlockPos terminal) {
-		ServerLevel level = player.level();
-		List<PodEntity> parked = Terminals.parkedPods(level, terminal);
-		Optional<PodEntity> ours = Terminals.parkedPods(level, terminal, Optional.of(charter)).stream().findFirst();
-		if (ours.isPresent()) {
-			return new Parked.Ours(ours.get());
-		}
-		return parked.isEmpty() ? new Parked.None() : new Parked.Foreign();
-	}
-
-	/** The view of the terminal at {@code terminal} for {@code player}, who must be on a charter. Never throws on unreadable pod data. */
-	public static UpgradeView view(MinecraftServer server, ServerPlayer player, Optional<Charter> onCharter, BlockPos terminal) {
-		Charter charter = onCharter.orElseThrow();
-		return switch (parked(player, charter, terminal)) {
-			case Parked.None _ -> new UpgradeView(Optional.empty(), false);
-			case Parked.Foreign _ -> new UpgradeView(Optional.empty(), true);
-			case Parked.Ours ours -> {
-				PodEntity pod = ours.pod();
-				List<UpgradeView.Slot> slots = new ArrayList<>();
-				for (ComponentTrack track : ComponentTrack.values()) {
-					slots.add(new UpgradeView.Slot(track, PodComponents.partOf(pod, track).map(PartLabel::tier).orElse(0),
-							PodComponents.effectiveTier(pod, track)));
-				}
-				// An unowned pod is anyone's and has no serial: the screen words that.
-				String serial = PodComponents.registration(pod).map(PodComponents.Registration::serial).orElse("");
-				yield new UpgradeView(Optional.of(new UpgradeView.Pod(serial, pod.chassis().tierCap(), slots)), false);
-			}
-		};
-	}
-
+    /** The view of the terminal at {@code terminal} for {@code player}, who must be on a charter. Never throws on unreadable pod data. */
+    public static UpgradeView view(
+            MinecraftServer server, ServerPlayer player, Optional<Charter> onCharter, BlockPos terminal) {
+        Charter charter = onCharter.orElseThrow();
+        return switch (parked(player, charter, terminal)) {
+            case Parked.None _ -> new UpgradeView(Optional.empty(), false);
+            case Parked.Foreign _ -> new UpgradeView(Optional.empty(), true);
+            case Parked.Ours ours -> {
+                PodEntity pod = ours.pod();
+                List<UpgradeView.Slot> slots = new ArrayList<>();
+                for (ComponentTrack track : ComponentTrack.values()) {
+                    slots.add(new UpgradeView.Slot(
+                            track,
+                            PodComponents.partOf(pod, track)
+                                    .map(PartLabel::tier)
+                                    .orElse(0),
+                            PodComponents.effectiveTier(pod, track)));
+                }
+                // An unowned pod is anyone's and has no serial: the screen words that.
+                String serial = PodComponents.registration(pod)
+                        .map(PodComponents.Registration::serial)
+                        .orElse("");
+                yield new UpgradeView(
+                        Optional.of(new UpgradeView.Pod(serial, pod.chassis().tierCap(), slots)), false);
+            }
+        };
+    }
 }

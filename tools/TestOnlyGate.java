@@ -68,13 +68,26 @@ import java.util.zip.ZipFile;
 public final class TestOnlyGate {
     private static final String MARKER = "test-seam:";
     private static final Set<String> NOT_SIGNIFICANT_ANNOTATIONS = Set.of(
-        "Nullable", "NotNull", "NonNull", "Nonnull", "Deprecated", "SafeVarargs", "FunctionalInterface", "VisibleForTesting");
+            "Nullable",
+            "NotNull",
+            "NonNull",
+            "Nonnull",
+            "Deprecated",
+            "SafeVarargs",
+            "FunctionalInterface",
+            "VisibleForTesting");
     /** Types whose instances the game registers. */
     private static final Set<String> REGISTERED_ROOTS = Set.of(
-        "net/minecraft/world/level/block/Block", "net/minecraft/world/item/Item", "net/minecraft/world/entity/EntityType",
-        "net/minecraft/sounds/SoundEvent", "net/minecraft/world/level/block/entity/BlockEntityType",
-        "net/minecraft/world/inventory/MenuType", "net/minecraft/world/level/material/Fluid", "net/minecraft/core/Holder",
-        "net/minecraft/resources/ResourceKey", "net/minecraft/core/component/DataComponentType");
+            "net/minecraft/world/level/block/Block",
+            "net/minecraft/world/item/Item",
+            "net/minecraft/world/entity/EntityType",
+            "net/minecraft/sounds/SoundEvent",
+            "net/minecraft/world/level/block/entity/BlockEntityType",
+            "net/minecraft/world/inventory/MenuType",
+            "net/minecraft/world/level/material/Fluid",
+            "net/minecraft/core/Holder",
+            "net/minecraft/resources/ResourceKey",
+            "net/minecraft/core/component/DataComponentType");
 
     /** Who references a member: production code (the mod, own class included) or the GameTest source set. */
     private static final class Refs {
@@ -99,7 +112,7 @@ public final class TestOnlyGate {
     }
 
     /** A member declaration found in a source file: where, in which class, and its parameter types as written. */
-    private record Declaration(int line, String classPath, String name, boolean field, List<String> parameters) { }
+    private record Declaration(int line, String classPath, String name, boolean field, List<String> parameters) {}
 
     private final Map<String, ClassModel> production = new LinkedHashMap<>();
     private final Map<String, ClassModel> tests = new LinkedHashMap<>();
@@ -134,23 +147,27 @@ public final class TestOnlyGate {
             }
         }
         List<Path> sources = options.get("--sources").stream().map(Path::of).toList();
-        Path root = Path.of(options.getOrDefault("--root", List.of(".")).getFirst()).toAbsolutePath().normalize();
+        Path root = Path.of(options.getOrDefault("--root", List.of(".")).getFirst())
+                .toAbsolutePath()
+                .normalize();
         TestOnlyGate gate = new TestOnlyGate(sources, root);
         for (String entry : options.getOrDefault("--classpath", List.of())) {
             gate.addClasspath(Path.of(entry));
         }
         Map<String, String> findings = gate.run(
-            options.get("--production").stream().map(Path::of).toList(), options.get("--tests").stream().map(Path::of).toList());
+                options.get("--production").stream().map(Path::of).toList(),
+                options.get("--tests").stream().map(Path::of).toList());
         if (options.containsKey("--list")) {
             findings.keySet().forEach(System.out::println);
             return;
         }
         List<String> fresh = List.copyOf(findings.values());
         if (!fresh.isEmpty()) {
-            System.err.println("Members referenced only from src/gametest (" + fresh.size() + "). A test is not a production caller."
-                + " Fix the member: delete it and have the test use the seam production uses, or make it private."
-                + " A deliberate, permanent seam ends its declaration line, or sits on the comment line above, with"
-                + " '// test-seam: <why it is deliberate>'.");
+            System.err.println("Members referenced only from src/gametest (" + fresh.size()
+                    + "). A test is not a production caller."
+                    + " Fix the member: delete it and have the test use the seam production uses, or make it private."
+                    + " A deliberate, permanent seam ends its declaration line, or sits on the comment line above, with"
+                    + " '// test-seam: <why it is deliberate>'.");
             fresh.forEach(message -> System.err.println("  " + message));
             System.exit(1);
         }
@@ -193,7 +210,8 @@ public final class TestOnlyGate {
                 continue;
             }
             try (var files = Files.walk(dir)) {
-                for (Path file : files.filter(path -> path.toString().endsWith(".class")).toList()) {
+                for (Path file :
+                        files.filter(path -> path.toString().endsWith(".class")).toList()) {
                     ClassModel model = ClassFile.of().parse(file);
                     into.put(model.thisClass().asInternalName(), model);
                 }
@@ -251,8 +269,8 @@ public final class TestOnlyGate {
             }
             ClassModel parent = find(name);
             if (parent == null) {
-                throw new IllegalStateException("cannot load " + name + ", a supertype of " + model.thisClass().asInternalName()
-                    + ": add its jar to --classpath");
+                throw new IllegalStateException("cannot load " + name + ", a supertype of "
+                        + model.thisClass().asInternalName() + ": add its jar to --classpath");
             }
             out.add(parent);
             enqueueSupers(parent, queue);
@@ -271,15 +289,31 @@ public final class TestOnlyGate {
             method.code().ifPresent(code -> {
                 for (CodeElement element : code) {
                     switch (element) {
-                        case InvokeInstruction call -> credit(call.owner().asInternalName(), call.name().stringValue(),
-                            call.type().stringValue(), false, origin, fromProduction);
-                        case FieldInstruction access when isOwnWrite(access, origin) -> { }
-                        case FieldInstruction access -> credit(access.owner().asInternalName(), access.name().stringValue(),
-                            access.type().stringValue(), true, origin, fromProduction);
-                        case InvokeDynamicInstruction dynamic -> dynamic.invokedynamic().bootstrap().arguments()
-                            .forEach(arg -> creditHandle(arg, origin, fromProduction));
-                        case ConstantInstruction.LoadConstantInstruction load -> creditHandle(load.constantEntry(), origin, fromProduction);
-                        default -> { }
+                        case InvokeInstruction call ->
+                            credit(
+                                    call.owner().asInternalName(),
+                                    call.name().stringValue(),
+                                    call.type().stringValue(),
+                                    false,
+                                    origin,
+                                    fromProduction);
+                        case FieldInstruction access when isOwnWrite(access, origin) -> {}
+                        case FieldInstruction access ->
+                            credit(
+                                    access.owner().asInternalName(),
+                                    access.name().stringValue(),
+                                    access.type().stringValue(),
+                                    true,
+                                    origin,
+                                    fromProduction);
+                        case InvokeDynamicInstruction dynamic ->
+                            dynamic.invokedynamic()
+                                    .bootstrap()
+                                    .arguments()
+                                    .forEach(arg -> creditHandle(arg, origin, fromProduction));
+                        case ConstantInstruction.LoadConstantInstruction load ->
+                            creditHandle(load.constantEntry(), origin, fromProduction);
+                        default -> {}
                     }
                 }
             });
@@ -289,19 +323,26 @@ public final class TestOnlyGate {
     /** A class assigning its own field (an initializer, a constructor) uses nothing: only a read, or a write from another class, does. */
     private static boolean isOwnWrite(FieldInstruction access, String origin) {
         return (access.opcode() == Opcode.PUTFIELD || access.opcode() == Opcode.PUTSTATIC)
-            && access.owner().asInternalName().equals(origin);
+                && access.owner().asInternalName().equals(origin);
     }
 
     private void creditHandle(LoadableConstantEntry entry, String origin, boolean fromProduction) {
         if (entry instanceof MethodHandleEntry handle) {
             MemberRefEntry target = handle.reference();
             boolean field = target.nameAndType().type().stringValue().charAt(0) != '(';
-            credit(target.owner().asInternalName(), target.name().stringValue(), target.type().stringValue(), field, origin, fromProduction);
+            credit(
+                    target.owner().asInternalName(),
+                    target.name().stringValue(),
+                    target.type().stringValue(),
+                    field,
+                    origin,
+                    fromProduction);
         }
     }
 
     /** Credits every production class in the owner's hierarchy that declares the member: javac names the receiver's type, not the declarer. */
-    private void credit(String owner, String name, String descriptor, boolean field, String origin, boolean fromProduction) {
+    private void credit(
+            String owner, String name, String descriptor, boolean field, String origin, boolean fromProduction) {
         ArrayDeque<String> queue = new ArrayDeque<>(List.of(owner));
         Set<String> seen = new HashSet<>();
         while (!queue.isEmpty()) {
@@ -327,41 +368,55 @@ public final class TestOnlyGate {
 
     private List<Member> candidates(ClassModel model) {
         List<Member> out = new ArrayList<>();
-        if (model.flags().has(AccessFlag.SYNTHETIC) || annotationsOf(model).anyMatch(annotation -> simpleName(annotation).equals("Mixin"))
-            || isLocalOrAnonymous(model)) {
+        if (model.flags().has(AccessFlag.SYNTHETIC)
+                || annotationsOf(model)
+                        .anyMatch(annotation -> simpleName(annotation).equals("Mixin"))
+                || isLocalOrAnonymous(model)) {
             return out;
         }
         boolean isEnum = model.flags().has(AccessFlag.ENUM);
         Set<String> components = new HashSet<>();
-        model.findAttribute(Attributes.record()).ifPresent(record -> record.components().forEach(c -> components.add(c.name().stringValue())));
+        model.findAttribute(Attributes.record())
+                .ifPresent(record ->
+                        record.components().forEach(c -> components.add(c.name().stringValue())));
         List<ClassModel> parents = supertypes(model);
         Set<String> bridgeTargets = bridgeTargets(model);
         for (var field : model.fields()) {
             var flags = field.flags();
-            if (flags.has(AccessFlag.PRIVATE) || flags.has(AccessFlag.SYNTHETIC) || flags.has(AccessFlag.ENUM)
-                || field.findAttribute(Attributes.constantValue()).isPresent()
-                || hasSignificantAnnotation(field)
-                || (flags.has(AccessFlag.STATIC) && flags.has(AccessFlag.FINAL) && isRegisteredType(field.fieldType().stringValue()))) {
+            if (flags.has(AccessFlag.PRIVATE)
+                    || flags.has(AccessFlag.SYNTHETIC)
+                    || flags.has(AccessFlag.ENUM)
+                    || field.findAttribute(Attributes.constantValue()).isPresent()
+                    || hasSignificantAnnotation(field)
+                    || (flags.has(AccessFlag.STATIC)
+                            && flags.has(AccessFlag.FINAL)
+                            && isRegisteredType(field.fieldType().stringValue()))) {
                 continue;
             }
-            out.add(new Member(model, field.fieldName().stringValue(), field.fieldType().stringValue(), true));
+            out.add(new Member(
+                    model, field.fieldName().stringValue(), field.fieldType().stringValue(), true));
         }
         for (MethodModel method : model.methods()) {
             String name = method.methodName().stringValue();
             String descriptor = method.methodType().stringValue();
             var flags = method.flags();
-            if (flags.has(AccessFlag.PRIVATE) || flags.has(AccessFlag.SYNTHETIC) || flags.has(AccessFlag.BRIDGE)
-                || flags.has(AccessFlag.ABSTRACT) || name.equals("<clinit>")
-                || hasSignificantAnnotation(method)) {
+            if (flags.has(AccessFlag.PRIVATE)
+                    || flags.has(AccessFlag.SYNTHETIC)
+                    || flags.has(AccessFlag.BRIDGE)
+                    || flags.has(AccessFlag.ABSTRACT)
+                    || name.equals("<clinit>")
+                    || hasSignificantAnnotation(method)) {
                 continue;
             }
             MethodTypeDesc type = MethodTypeDesc.ofDescriptor(descriptor);
             if (isEnum && (name.equals("values") || name.equals("valueOf"))
-                || type.parameterCount() == 0 && components.contains(name)) {
+                    || type.parameterCount() == 0 && components.contains(name)) {
                 continue;
             }
-            boolean inherited = !name.equals("<init>") && !flags.has(AccessFlag.STATIC)
-                && (bridgeTargets.contains(name + parameters(descriptor)) || overrides(parents, name, parameters(descriptor)));
+            boolean inherited = !name.equals("<init>")
+                    && !flags.has(AccessFlag.STATIC)
+                    && (bridgeTargets.contains(name + parameters(descriptor))
+                            || overrides(parents, name, parameters(descriptor)));
             if (!inherited) {
                 out.add(new Member(model, name, descriptor, false));
             }
@@ -372,7 +427,9 @@ public final class TestOnlyGate {
     private static boolean isLocalOrAnonymous(ClassModel model) {
         String binary = model.thisClass().asInternalName();
         String last = binary.substring(binary.lastIndexOf('/') + 1);
-        return Stream.of(last.split("\\$")).skip(1).anyMatch(part -> !part.isEmpty() && Character.isDigit(part.charAt(0)));
+        return Stream.of(last.split("\\$"))
+                .skip(1)
+                .anyMatch(part -> !part.isEmpty() && Character.isDigit(part.charAt(0)));
     }
 
     /** The methods that a bridge method of {@code model} calls: they implement a generic supertype method under another erasure. */
@@ -385,9 +442,13 @@ public final class TestOnlyGate {
             }
             bridge.code().ifPresent(code -> {
                 for (CodeElement element : code) {
-                    if (element instanceof InvokeInstruction call && call.owner().asInternalName().equals(self)
-                        && call.name().stringValue().equals(bridge.methodName().stringValue())) {
-                        targets.add(call.name().stringValue() + parameters(call.type().stringValue()));
+                    if (element instanceof InvokeInstruction call
+                            && call.owner().asInternalName().equals(self)
+                            && call.name()
+                                    .stringValue()
+                                    .equals(bridge.methodName().stringValue())) {
+                        targets.add(call.name().stringValue()
+                                + parameters(call.type().stringValue()));
                     }
                 }
             });
@@ -396,10 +457,12 @@ public final class TestOnlyGate {
     }
 
     private static boolean overrides(List<ClassModel> parents, String name, String parameters) {
-        return parents.stream().flatMap(parent -> parent.methods().stream()).anyMatch(method ->
-            method.methodName().stringValue().equals(name)
-                && !method.flags().has(AccessFlag.PRIVATE) && !method.flags().has(AccessFlag.STATIC)
-                && parameters(method.methodType().stringValue()).equals(parameters));
+        return parents.stream()
+                .flatMap(parent -> parent.methods().stream())
+                .anyMatch(method -> method.methodName().stringValue().equals(name)
+                        && !method.flags().has(AccessFlag.PRIVATE)
+                        && !method.flags().has(AccessFlag.STATIC)
+                        && parameters(method.methodType().stringValue()).equals(parameters));
     }
 
     /** The parameter part of a method descriptor, {@code (ILjava/lang/String;)}. */
@@ -414,23 +477,29 @@ public final class TestOnlyGate {
         String name = fieldDescriptor.substring(1, fieldDescriptor.length() - 1);
         ClassModel type = find(name);
         return REGISTERED_ROOTS.contains(name)
-            || type != null && Stream.concat(Stream.of(type), supertypes(type).stream())
-                .anyMatch(parent -> REGISTERED_ROOTS.contains(parent.thisClass().asInternalName()));
+                || type != null
+                        && Stream.concat(Stream.of(type), supertypes(type).stream())
+                                .anyMatch(parent -> REGISTERED_ROOTS.contains(
+                                        parent.thisClass().asInternalName()));
     }
 
     private static Stream<Annotation> annotationsOf(AttributedElement element) {
         return Stream.concat(
-            element.findAttribute(Attributes.runtimeVisibleAnnotations()).stream().flatMap(a -> a.annotations().stream()),
-            element.findAttribute(Attributes.runtimeInvisibleAnnotations()).stream().flatMap(a -> a.annotations().stream()));
+                element.findAttribute(Attributes.runtimeVisibleAnnotations()).stream()
+                        .flatMap(a -> a.annotations().stream()),
+                element.findAttribute(Attributes.runtimeInvisibleAnnotations()).stream()
+                        .flatMap(a -> a.annotations().stream()));
     }
 
     private static boolean hasSignificantAnnotation(AttributedElement element) {
-        return annotationsOf(element).anyMatch(annotation -> !NOT_SIGNIFICANT_ANNOTATIONS.contains(simpleName(annotation)));
+        return annotationsOf(element)
+                .anyMatch(annotation -> !NOT_SIGNIFICANT_ANNOTATIONS.contains(simpleName(annotation)));
     }
 
     private static String simpleName(Annotation annotation) {
         String descriptor = annotation.className().stringValue();
-        return descriptor.substring(Math.max(descriptor.lastIndexOf('/'), descriptor.lastIndexOf('$')) + 1, descriptor.length() - 1);
+        return descriptor.substring(
+                Math.max(descriptor.lastIndexOf('/'), descriptor.lastIndexOf('$')) + 1, descriptor.length() - 1);
     }
 
     /** The finding line, or null when a valid marker on this exact declaration exempts it (or it is an implicit constructor). */
@@ -447,7 +516,10 @@ public final class TestOnlyGate {
         } else {
             label = classPath + "." + member.name() + "(" + parameterNames(member.descriptor()) + ")";
         }
-        String sourceName = member.owner().findAttribute(Attributes.sourceFile()).map(a -> a.sourceFile().stringValue()).orElse(null);
+        String sourceName = member.owner()
+                .findAttribute(Attributes.sourceFile())
+                .map(a -> a.sourceFile().stringValue())
+                .orElse(null);
         Path source = sourceName == null ? null : locate(binary, sourceName);
         String where = binary.substring(binary.lastIndexOf('/') + 1);
         int line = 0;
@@ -469,12 +541,13 @@ public final class TestOnlyGate {
         }
         String caller = found.firstTest.substring(found.firstTest.lastIndexOf('/') + 1);
         return where + ":" + line + " " + label + " is referenced only from src/gametest (first: " + caller + ")"
-            + (bare ? "; its '// test-seam:' marker has no reason" : "");
+                + (bare ? "; its '// test-seam:' marker has no reason" : "");
     }
 
     private static String parameterNames(String descriptor) {
         return MethodTypeDesc.ofDescriptor(descriptor).parameterList().stream()
-            .map(ClassDesc::displayName).collect(Collectors.joining(", "));
+                .map(ClassDesc::displayName)
+                .collect(Collectors.joining(", "));
     }
 
     private Path locate(String binary, String sourceName) {
@@ -491,10 +564,19 @@ public final class TestOnlyGate {
     /** The declaration of {@code member} in {@code source}: same class, name and parameter types, so one overload or nested class never stands for another. */
     private Declaration declarationOf(Path source, String classPath, String name, Member member) {
         List<Declaration> all = declarations.computeIfAbsent(source, path -> declarationsIn(path));
-        List<String> wanted = member.field() ? List.of() : MethodTypeDesc.ofDescriptor(member.descriptor()).parameterList().stream()
-            .map(type -> type.displayName().substring(type.displayName().lastIndexOf('$') + 1)).toList();
-        return all.stream().filter(d -> d.classPath().equals(classPath) && d.name().equals(name) && d.field() == member.field()
-            && (member.field() || sameParameters(d.parameters(), wanted))).findFirst().orElse(null);
+        List<String> wanted = member.field()
+                ? List.of()
+                : MethodTypeDesc.ofDescriptor(member.descriptor()).parameterList().stream()
+                        .map(type ->
+                                type.displayName().substring(type.displayName().lastIndexOf('$') + 1))
+                        .toList();
+        return all.stream()
+                .filter(d -> d.classPath().equals(classPath)
+                        && d.name().equals(name)
+                        && d.field() == member.field()
+                        && (member.field() || sameParameters(d.parameters(), wanted)))
+                .findFirst()
+                .orElse(null);
     }
 
     private static boolean sameParameters(List<String> written, List<String> erased) {
@@ -554,7 +636,8 @@ public final class TestOnlyGate {
             if (declared.find()) {
                 pending = declared.group(1);
             } else if (atMemberLevel) {
-                Declaration member = memberDeclaration(lines, index, code, String.join(".", reversed(classes)), classes.peek());
+                Declaration member =
+                        memberDeclaration(lines, index, code, String.join(".", reversed(classes)), classes.peek());
                 if (member != null) {
                     out.add(member);
                 }
@@ -586,16 +669,31 @@ public final class TestOnlyGate {
     }
 
     private static final Set<String> MODIFIERS = Set.of(
-        "public", "protected", "private", "static", "final", "abstract", "synchronized", "native", "default", "strictfp", "transient", "volatile");
+            "public",
+            "protected",
+            "private",
+            "static",
+            "final",
+            "abstract",
+            "synchronized",
+            "native",
+            "default",
+            "strictfp",
+            "transient",
+            "volatile");
 
     /** A method, constructor or field declared on {@code code}, or null: a type or modifiers before the name, never a statement. */
-    private static Declaration memberDeclaration(List<String> lines, int index, String code, String classPath, String className) {
+    private static Declaration memberDeclaration(
+            List<String> lines, int index, String code, String classPath, String className) {
         Matcher first = Pattern.compile("[(=;,]").matcher(code);
         if (!first.find()) {
             return null;
         }
         boolean method = code.charAt(first.start()) == '(';
-        String head = code.substring(0, first.start()).replaceAll("@\\w+(?:\\.\\w+)*(?:\\([^)]*\\))?", " ").replaceAll("<[^<>]*(?:<[^<>]*>[^<>]*)*>", " ").strip();
+        String head = code.substring(0, first.start())
+                .replaceAll("@\\w+(?:\\.\\w+)*(?:\\([^)]*\\))?", " ")
+                .replaceAll("<[^<>]*(?:<[^<>]*>[^<>]*)*>", " ")
+                .strip();
         if (head.isEmpty()) {
             return null;
         }
@@ -604,8 +702,13 @@ public final class TestOnlyGate {
         if (!name.matches("\\w+")) {
             return null;
         }
-        List<String> before = Stream.of(words).limit(words.length - 1).filter(word -> !MODIFIERS.contains(word)).toList();
-        if (before.stream().anyMatch(word -> Set.of("return", "throw", "new", "else", "case", "yield", "package", "import").contains(word))) {
+        List<String> before = Stream.of(words)
+                .limit(words.length - 1)
+                .filter(word -> !MODIFIERS.contains(word))
+                .toList();
+        if (before.stream()
+                .anyMatch(word -> Set.of("return", "throw", "new", "else", "case", "yield", "package", "import")
+                        .contains(word))) {
             return null;
         }
         boolean constructor = method && before.isEmpty() && name.equals(className);
@@ -646,7 +749,9 @@ public final class TestOnlyGate {
             }
             text.append(' ');
         }
-        String params = text.toString().replaceAll("@\\w+(?:\\.\\w+)*(?:\\([^)]*\\))?", " ").strip();
+        String params = text.toString()
+                .replaceAll("@\\w+(?:\\.\\w+)*(?:\\([^)]*\\))?", " ")
+                .strip();
         if (params.isEmpty()) {
             return List.of();
         }
@@ -671,8 +776,13 @@ public final class TestOnlyGate {
     }
 
     private static String simpleType(String parameter) {
-        String stripped = parameter.replaceAll("<[^<>]*(?:<[^<>]*>[^<>]*)*>", "").replaceAll("\\bfinal\\b", " ").strip();
-        String type = stripped.substring(0, Math.max(0, stripped.lastIndexOf(' '))).strip().replaceAll("\\s+", "");
+        String stripped = parameter
+                .replaceAll("<[^<>]*(?:<[^<>]*>[^<>]*)*>", "")
+                .replaceAll("\\bfinal\\b", " ")
+                .strip();
+        String type = stripped.substring(0, Math.max(0, stripped.lastIndexOf(' ')))
+                .strip()
+                .replaceAll("\\s+", "");
         type = type.endsWith("...") ? type.substring(0, type.length() - 3) + "[]" : type;
         return type.substring(type.lastIndexOf('.') + 1);
     }
@@ -711,7 +821,8 @@ public final class TestOnlyGate {
             if (c == '"' || c == '\'') {
                 i = endOfLiteral(line, i);
             } else if (line.startsWith("//", i)) {
-                Matcher found = Pattern.compile("^//\\s*" + Pattern.quote(MARKER) + "(.*)$").matcher(line.substring(i));
+                Matcher found = Pattern.compile("^//\\s*" + Pattern.quote(MARKER) + "(.*)$")
+                        .matcher(line.substring(i));
                 return found.find() ? found.group(1).trim() : null;
             }
         }

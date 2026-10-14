@@ -1,59 +1,69 @@
 package io.github.pkeppeler.deepcharter.client.ui;
 
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 
-import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
-
 /**
  * A flat phosphor-outlined button, or with the machine panel on ({@link PanelLook}) a button drawn from the pack's button sprites. It
  * extends the vanilla {@link Button}, so focus, keys, narration and GameTest's {@code clickScreenButton} work as for any button.
  */
 public final class CrtButton extends Button implements PanelButton {
-	private boolean marked;
+    private boolean marked;
 
-	public CrtButton(int x, int y, int width, int height, Component label, OnPress onPress) {
-		super(x, y, width, height, label, onPress, DEFAULT_NARRATION);
-	}
+    public CrtButton(int x, int y, int width, int height, Component label, OnPress onPress) {
+        super(x, y, width, height, label, onPress, DEFAULT_NARRATION);
+    }
 
-	/**
-	 * Draws this button lit, as it is when the cursor is on it, for as long as it is marked: a list shows its chosen row that way, so the label
-	 * needs no marker in front of it and keeps its room.
-	 */
-	public CrtButton marked(boolean marked) {
-		this.marked = marked;
-		return this;
-	}
+    /**
+     * Draws this button lit, as it is when the cursor is on it, for as long as it is marked: a list shows its chosen row that way, so the label
+     * needs no marker in front of it and keeps its room.
+     */
+    public CrtButton marked(boolean marked) {
+        this.marked = marked;
+        return this;
+    }
 
-	@Override
-	public int panelLabelWidth(Font font) {
-		return CrtText.width(font, getMessage().getString());
-	}
+    @Override
+    public int panelLabelWidth(Font font) {
+        return CrtText.width(font, getMessage().getString());
+    }
 
-	/** The base class paints the vanilla sprite first; the fill here is opaque and covers it. */
-	@Override
-	protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		CrtTuning tuning = CrtTuning.current();
-		boolean lit = (isHoveredOrFocused() || marked) && active;
-		Font font = Minecraft.getInstance().font;
-		PanelLook panel = PanelLook.current();
-		if (PanelLook.drawn()) {
-			String text = getMessage().getString();
-			int x = CrtDraw.panelButtonFace(graphics, panel, getX(), getY(), getWidth(), getHeight(), active, lit, CrtText.width(font, text),
-					CrtDraw.pipsFit(panel, font, Minecraft.getInstance().gui.screen()));
-			int y = getY() + (getHeight() - font.lineHeight) / 2 + tuning.buttonLabelOffset();
-			int ink = panel.labelColor(active, lit);
-			graphics.text(font, CrtText.of(text), x, y, ink, false);
-			return;
-		}
-		graphics.fill(getX(), getY(), getRight(), getBottom(), lit ? tuning.hoverFillColor() : tuning.backgroundColor());
-		CrtDraw.border(graphics, getX(), getY(), getRight(), getBottom(), lit ? tuning.phosphorColor() : tuning.dimColor());
-		String label = getMessage().getString();
-		int x = getX() + (getWidth() - font.width(label)) / 2;
-		int y = getY() + (getHeight() - font.lineHeight) / 2 + tuning.buttonLabelOffset();
-		CrtDraw.glowText(graphics, font, label, x, y, active ? tuning.phosphorColor() : tuning.dimColor());
-	}
+    /** The base class paints the vanilla sprite first; the fill here is opaque and covers it. */
+    @Override
+    protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        CrtTuning tuning = CrtTuning.current();
+        boolean lit = (isHoveredOrFocused() || marked) && active;
+        Font font = Minecraft.getInstance().font;
+        PanelLook panel = PanelLook.current();
+        if (PanelLook.drawn()) {
+            String text = getMessage().getString();
+            int x = CrtDraw.panelButtonFace(
+                    graphics,
+                    panel,
+                    getX(),
+                    getY(),
+                    getWidth(),
+                    getHeight(),
+                    active,
+                    lit,
+                    CrtText.width(font, text),
+                    CrtDraw.pipsFit(panel, font, Minecraft.getInstance().gui.screen()));
+            int y = getY() + (getHeight() - font.lineHeight) / 2 + tuning.buttonLabelOffset();
+            int ink = panel.labelColor(active, lit);
+            graphics.text(font, CrtText.of(text), x, y, ink, false);
+            return;
+        }
+        graphics.fill(
+                getX(), getY(), getRight(), getBottom(), lit ? tuning.hoverFillColor() : tuning.backgroundColor());
+        CrtDraw.border(
+                graphics, getX(), getY(), getRight(), getBottom(), lit ? tuning.phosphorColor() : tuning.dimColor());
+        String label = getMessage().getString();
+        int x = getX() + (getWidth() - font.width(label)) / 2;
+        int y = getY() + (getHeight() - font.lineHeight) / 2 + tuning.buttonLabelOffset();
+        CrtDraw.glowText(graphics, font, label, x, y, active ? tuning.phosphorColor() : tuning.dimColor());
+    }
 }

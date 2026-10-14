@@ -10,54 +10,76 @@ import java.util.TreeSet;
  * its cutter (ADR 0040): the pod shows the cutter that its drill tier picks.
  */
 public enum BoneRole {
-	/** Rides along with its parent. */
-	FIXED,
-	/** Aims the drill. Its rotation in the file is the idle pose; the game levels it to bore sideways and points it down to bore the floor. */
-	DRILL_MOUNT,
-	/** Spins about its own z axis while the pod drills. */
-	DRILL_HEAD,
-	/** Spins about its own z axis the other way from the drill head while the pod drills, so a cutter of two parts churns. */
-	DRILL_RING,
-	/** Spins about y while the pod flies, once its blades are out. */
-	ROTOR,
-	/** A blade of a rotor, a child of a {@code rotor} bone with its pivot at the hub. It folds forward to lie along the pod while the pod is on the ground or drilling, and swings out to lift off and stay out while the pod is in the air. */
-	BLADE,
-	/** Spins about z while the pod has power. */
-	FAN,
-	/** Swings from pointing back (stowed) to pointing down while the pod flies. */
-	THRUSTER,
-	/** Shown only while the pod flies. */
-	FLAME,
-	/** Turns about x with the distance the pod drives. */
-	WHEEL,
-	/** Slides back along z with the distance the pod drives, one link pitch at a time, so the tread seems to run. */
-	LINKS,
-	/** A hip: swings about y with the stride. */
-	LEG,
-	/** Lifts its foot with the stride, turning about z. */
-	THIGH;
+    /** Rides along with its parent. */
+    FIXED,
+    /** Aims the drill. Its rotation in the file is the idle pose; the game levels it to bore sideways and points it down to bore the floor. */
+    DRILL_MOUNT,
+    /** Spins about its own z axis while the pod drills. */
+    DRILL_HEAD,
+    /** Spins about its own z axis the other way from the drill head while the pod drills, so a cutter of two parts churns. */
+    DRILL_RING,
+    /** Spins about y while the pod flies, once its blades are out. */
+    ROTOR,
+    /** A blade of a rotor, a child of a {@code rotor} bone with its pivot at the hub. It folds forward to lie along the pod while the pod is on the ground or drilling, and swings out to lift off and stay out while the pod is in the air. */
+    BLADE,
+    /** Spins about z while the pod has power. */
+    FAN,
+    /** Swings from pointing back (stowed) to pointing down while the pod flies. */
+    THRUSTER,
+    /** Shown only while the pod flies. */
+    FLAME,
+    /** Turns about x with the distance the pod drives. */
+    WHEEL,
+    /** Slides back along z with the distance the pod drives, one link pitch at a time, so the tread seems to run. */
+    LINKS,
+    /** A hip: swings about y with the stride. */
+    LEG,
+    /** Lifts its foot with the stride, turning about z. */
+    THIGH;
 
-	private static final Map<String, BoneRole> WORDS = Map.ofEntries(
-			Map.entry("body", FIXED), Map.entry("hull", FIXED), Map.entry("canopy", FIXED), Map.entry("hatch", FIXED),
-			Map.entry("lamps", FIXED), Map.entry("cutter", FIXED), Map.entry("tank", FIXED), Map.entry("exhaust", FIXED),
-			Map.entry("fender", FIXED), Map.entry("tread", FIXED), Map.entry("mast", FIXED), Map.entry("duct", FIXED),
-			Map.entry("frame", FIXED), Map.entry("strut", FIXED), Map.entry("shin", FIXED), Map.entry("foot", FIXED), Map.entry("winch", FIXED),
-			Map.entry("drill_mount", DRILL_MOUNT), Map.entry("drill_head", DRILL_HEAD), Map.entry("drill_ring", DRILL_RING), Map.entry("rotor", ROTOR), Map.entry("blade", BLADE),
-			Map.entry("fan", FAN), Map.entry("thruster", THRUSTER), Map.entry("flame", FLAME), Map.entry("wheel", WHEEL),
-			Map.entry("links", LINKS), Map.entry("leg", LEG), Map.entry("thigh", THIGH));
+    private static final Map<String, BoneRole> WORDS = Map.ofEntries(
+            Map.entry("body", FIXED),
+            Map.entry("hull", FIXED),
+            Map.entry("canopy", FIXED),
+            Map.entry("hatch", FIXED),
+            Map.entry("lamps", FIXED),
+            Map.entry("cutter", FIXED),
+            Map.entry("tank", FIXED),
+            Map.entry("exhaust", FIXED),
+            Map.entry("fender", FIXED),
+            Map.entry("tread", FIXED),
+            Map.entry("mast", FIXED),
+            Map.entry("duct", FIXED),
+            Map.entry("frame", FIXED),
+            Map.entry("strut", FIXED),
+            Map.entry("shin", FIXED),
+            Map.entry("foot", FIXED),
+            Map.entry("winch", FIXED),
+            Map.entry("drill_mount", DRILL_MOUNT),
+            Map.entry("drill_head", DRILL_HEAD),
+            Map.entry("drill_ring", DRILL_RING),
+            Map.entry("rotor", ROTOR),
+            Map.entry("blade", BLADE),
+            Map.entry("fan", FAN),
+            Map.entry("thruster", THRUSTER),
+            Map.entry("flame", FLAME),
+            Map.entry("wheel", WHEEL),
+            Map.entry("links", LINKS),
+            Map.entry("leg", LEG),
+            Map.entry("thigh", THIGH));
 
-	/** The role of the bone named {@code name}; throws if the name is not a vocabulary word, or a word and a suffix. */
-	public static BoneRole of(String name) {
-		String best = null;
-		for (String word : WORDS.keySet()) {
-			if ((name.equals(word) || name.startsWith(word + "_")) && (best == null || word.length() > best.length())) {
-				best = word;
-			}
-		}
-		if (best == null) {
-			throw new IllegalArgumentException("'" + name + "' is not a pod bone: a bone is named one of " + new TreeSet<>(WORDS.keySet())
-					+ ", alone or followed by _ and a suffix");
-		}
-		return WORDS.get(best);
-	}
+    /** The role of the bone named {@code name}; throws if the name is not a vocabulary word, or a word and a suffix. */
+    public static BoneRole of(String name) {
+        String best = null;
+        for (String word : WORDS.keySet()) {
+            if ((name.equals(word) || name.startsWith(word + "_")) && (best == null || word.length() > best.length())) {
+                best = word;
+            }
+        }
+        if (best == null) {
+            throw new IllegalArgumentException("'" + name + "' is not a pod bone: a bone is named one of "
+                    + new TreeSet<>(WORDS.keySet()) + ", alone or followed by _ and a suffix");
+        }
+        return WORDS.get(best);
+    }
 }

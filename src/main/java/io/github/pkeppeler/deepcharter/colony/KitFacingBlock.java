@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.colony;
 
 import java.util.Map;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -19,26 +18,27 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * its blockstate file; its shape, given facing north, is turned the same way. Placed by hand it faces the player.
  */
 class KitFacingBlock extends HorizontalDirectionalBlock {
-	private final Map<Direction, VoxelShape> shapes;
+    private final Map<Direction, VoxelShape> shapes;
 
-	KitFacingBlock(Properties properties, VoxelShape north) {
-		super(properties);
-		this.shapes = Shapes.rotateHorizontal(north);
-		registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
-	}
+    KitFacingBlock(Properties properties, VoxelShape north) {
+        super(properties);
+        this.shapes = Shapes.rotateHorizontal(north);
+        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
+    }
 
-	@Override
-	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-		builder.add(FACING);
-	}
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(FACING);
+    }
 
-	@Override
-	public BlockState getStateForPlacement(BlockPlaceContext context) {
-		return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
-	}
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        return defaultBlockState()
+                .setValue(FACING, context.getHorizontalDirection().getOpposite());
+    }
 
-	@Override
-	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-		return shapes.get(state.getValue(FACING));
-	}
+    @Override
+    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return shapes.get(state.getValue(FACING));
+    }
 }

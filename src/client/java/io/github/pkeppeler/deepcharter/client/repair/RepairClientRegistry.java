@@ -5,10 +5,9 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 
 /** Registers the repair station's screen. */
 public final class RepairClientRegistry {
-	private RepairClientRegistry() {
-	}
+    private RepairClientRegistry() {}
 
-	public static void register() {
-		TerminalScreens.register(TerminalTypes.REPAIR_STATION, RepairStationScreen::new);
-	}
+    public static void register() {
+        TerminalScreens.register(TerminalTypes.REPAIR_STATION, RepairStationScreen::new);
+    }
 }

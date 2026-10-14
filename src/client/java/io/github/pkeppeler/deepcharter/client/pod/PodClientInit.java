@@ -5,18 +5,17 @@ package io.github.pkeppeler.deepcharter.client.pod;
  * Each part of the pod feature registers itself from here, one line per part.
  */
 public final class PodClientInit {
-	private PodClientInit() {
-	}
+    private PodClientInit() {}
 
-	public static void init() {
-		PodClientRegistry.register();
-		PodPaint.init();
-		PodStatusHud.init();
-		CockpitHud.init();
-		FrontCameraFeed.init();
-		LowFuelBeep.init();
-		SignalDecayCue.init();
-		PilotFire.init();
-		LiningKeys.register();
-	}
+    public static void init() {
+        PodClientRegistry.register();
+        PodPaint.init();
+        PodStatusHud.init();
+        CockpitHud.init();
+        FrontCameraFeed.init();
+        LowFuelBeep.init();
+        SignalDecayCue.init();
+        PilotFire.init();
+        LiningKeys.register();
+    }
 }

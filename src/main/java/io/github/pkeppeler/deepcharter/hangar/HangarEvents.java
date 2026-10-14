@@ -1,32 +1,30 @@
 package io.github.pkeppeler.deepcharter.hangar;
 
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
-
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
-import io.github.pkeppeler.deepcharter.pod.PodEntity;
-
 /** Server-side events of the hangar feature. */
 public final class HangarEvents {
-	/**
-	 * A player restored a wreck at the hangar console: the pod is whole and registered to the player's charter, and the money and
-	 * catalyst are taken. Fires after the change is made, from inside the restore action, so before the acting player's screen is
-	 * refreshed and before {@code TerminalEvents.ACTED}. A listener that throws stops the call: the restore has taken effect, but the
-	 * screen is not refreshed and the {@code ACTED} listeners do not run.
-	 */
-	public static final Event<Restored> RESTORED = EventFactory.createArrayBacked(Restored.class, listeners -> (server, player, pod) -> {
-		for (Restored listener : listeners) {
-			listener.onRestored(server, player, pod);
-		}
-	});
+    /**
+     * A player restored a wreck at the hangar console: the pod is whole and registered to the player's charter, and the money and
+     * catalyst are taken. Fires after the change is made, from inside the restore action, so before the acting player's screen is
+     * refreshed and before {@code TerminalEvents.ACTED}. A listener that throws stops the call: the restore has taken effect, but the
+     * screen is not refreshed and the {@code ACTED} listeners do not run.
+     */
+    public static final Event<Restored> RESTORED =
+            EventFactory.createArrayBacked(Restored.class, listeners -> (server, player, pod) -> {
+                for (Restored listener : listeners) {
+                    listener.onRestored(server, player, pod);
+                }
+            });
 
-	private HangarEvents() {
-	}
+    private HangarEvents() {}
 
-	@FunctionalInterface
-	public interface Restored {
-		void onRestored(MinecraftServer server, ServerPlayer player, PodEntity pod);
-	}
+    @FunctionalInterface
+    public interface Restored {
+        void onRestored(MinecraftServer server, ServerPlayer player, PodEntity pod);
+    }
 }

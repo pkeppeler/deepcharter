@@ -1,22 +1,5 @@
 package io.github.pkeppeler.deepcharter.market;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.WeakHashMap;
-
-import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
@@ -31,6 +14,21 @@ import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.WeakHashMap;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * The actions of the ore processor terminal: two sales of ore at {@link OreType#value()}, the withdrawal of ore from a pod's cargo into the pack
@@ -38,298 +36,313 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
  * credit went through, so a refused credit (a full account) leaves the ore where it was. The terminal has already checked the player's range, the charter and the repair state.
  */
 public final class OreProcessor {
-	/** Sells the cargo of every pod the player may access parked at the processor ({@link Terminals#parkedPods}). */
-	public static final Identifier SELL_CARGO = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sell_cargo");
-	/** Sells every ore the player carries. */
-	public static final Identifier SELL_INVENTORY = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sell_inventory");
+    /** Sells the cargo of every pod the player may access parked at the processor ({@link Terminals#parkedPods}). */
+    public static final Identifier SELL_CARGO = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sell_cargo");
+    /** Sells every ore the player carries. */
+    public static final Identifier SELL_INVENTORY =
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sell_inventory");
 
-	/** Fuses the spoil of every pod the player may access parked at the processor into slag brick, at a price for each brick. */
-	public static final Identifier FUSE_SPOIL = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "fuse_spoil");
+    /** Fuses the spoil of every pod the player may access parked at the processor into slag brick, at a price for each brick. */
+    public static final Identifier FUSE_SPOIL = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "fuse_spoil");
 
-	/** Presses the spoil of every pod the player may access parked at the processor into salvage crates, at no price but the spoil (#470). */
-	public static final Identifier PRESS_CRATES = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "press_crates");
+    /** Presses the spoil of every pod the player may access parked at the processor into salvage crates, at no price but the spoil (#470). */
+    public static final Identifier PRESS_CRATES = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "press_crates");
 
-	/** Moves ore from the cargo of the pods parked at the processor into the player's pack, for no money (#536). */
-	public static final Identifier WITHDRAW_ORE = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "withdraw_ore");
-	/** The argument of {@link #WITHDRAW_ORE} that names the ore: the path of its item id, such as {@code bronzium}. */
-	public static final String ORE_KEY = "ore";
-	/** The argument of {@link #WITHDRAW_ORE} that says how many: at least 1. */
-	public static final String COUNT_KEY = "count";
+    /** Moves ore from the cargo of the pods parked at the processor into the player's pack, for no money (#536). */
+    public static final Identifier WITHDRAW_ORE = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "withdraw_ore");
+    /** The argument of {@link #WITHDRAW_ORE} that names the ore: the path of its item id, such as {@code bronzium}. */
+    public static final String ORE_KEY = "ore";
+    /** The argument of {@link #WITHDRAW_ORE} that says how many: at least 1. */
+    public static final String COUNT_KEY = "count";
 
-	/** Pods whose unreadable cargo was logged, so each is logged once. */
-	private static final Set<PodEntity> SKIPPED_LOGGED = Collections.newSetFromMap(new WeakHashMap<>());
+    /** Pods whose unreadable cargo was logged, so each is logged once. */
+    private static final Set<PodEntity> SKIPPED_LOGGED = Collections.newSetFromMap(new WeakHashMap<>());
 
-	private OreProcessor() {
-	}
+    private OreProcessor() {}
 
-	public static Optional<Component> sellCargo(TerminalAction.Context context) {
-		Charter charter = context.charter().orElseThrow();
-		List<PodEntity> pods = podsAt(context, charter);
-		if (pods.isEmpty()) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
-		}
-		List<PodEntity> readable = new ArrayList<>();
-		for (PodEntity pod : pods) {
-			if (pod.cargo().isReadable()) {
-				readable.add(pod);
-			} else if (SKIPPED_LOGGED.add(pod)) {
-				DeepCharter.LOGGER.error("Pod {}: cargo unreadable, not sold", pod.getUUID());
-			}
-		}
-		int skipped = pods.size() - readable.size();
-		if (readable.isEmpty()) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.unreadable_cargo"));
-		}
-		long total = 0;
-		int count = 0;
-		for (PodEntity pod : readable) {
-			for (PodCargo.Entry entry : pod.cargo().entries()) {
-				total += value(entry.stack()) * entry.stack().getCount();
-				count += entry.stack().getCount();
-			}
-		}
-		Optional<Component> refusal = credit(context, charter, total, count, skipped);
-		if (refusal.isEmpty()) {
-			readable.forEach(pod -> pod.cargo().dump(pod));
-		}
-		return refusal;
-	}
+    public static Optional<Component> sellCargo(TerminalAction.Context context) {
+        Charter charter = context.charter().orElseThrow();
+        List<PodEntity> pods = podsAt(context, charter);
+        if (pods.isEmpty()) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
+        }
+        List<PodEntity> readable = new ArrayList<>();
+        for (PodEntity pod : pods) {
+            if (pod.cargo().isReadable()) {
+                readable.add(pod);
+            } else if (SKIPPED_LOGGED.add(pod)) {
+                DeepCharter.LOGGER.error("Pod {}: cargo unreadable, not sold", pod.getUUID());
+            }
+        }
+        int skipped = pods.size() - readable.size();
+        if (readable.isEmpty()) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.unreadable_cargo"));
+        }
+        long total = 0;
+        int count = 0;
+        for (PodEntity pod : readable) {
+            for (PodCargo.Entry entry : pod.cargo().entries()) {
+                total += value(entry.stack()) * entry.stack().getCount();
+                count += entry.stack().getCount();
+            }
+        }
+        Optional<Component> refusal = credit(context, charter, total, count, skipped);
+        if (refusal.isEmpty()) {
+            readable.forEach(pod -> pod.cargo().dump(pod));
+        }
+        return refusal;
+    }
 
-	public static Optional<Component> sellInventory(TerminalAction.Context context) {
-		Charter charter = context.charter().orElseThrow();
-		Inventory inventory = context.player().getInventory();
-		long total = 0;
-		int count = 0;
-		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-			ItemStack stack = inventory.getItem(slot);
-			if (OreRegistry.typeOf(stack).isPresent()) {
-				total += value(stack) * stack.getCount();
-				count += stack.getCount();
-			}
-		}
-		Optional<Component> refusal = credit(context, charter, total, count, 0);
-		if (refusal.isEmpty()) {
-			for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-				if (OreRegistry.typeOf(inventory.getItem(slot)).isPresent()) {
-					inventory.setItem(slot, ItemStack.EMPTY);
-				}
-			}
-		}
-		return refusal;
-	}
+    public static Optional<Component> sellInventory(TerminalAction.Context context) {
+        Charter charter = context.charter().orElseThrow();
+        Inventory inventory = context.player().getInventory();
+        long total = 0;
+        int count = 0;
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (OreRegistry.typeOf(stack).isPresent()) {
+                total += value(stack) * stack.getCount();
+                count += stack.getCount();
+            }
+        }
+        Optional<Component> refusal = credit(context, charter, total, count, 0);
+        if (refusal.isEmpty()) {
+            for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+                if (OreRegistry.typeOf(inventory.getItem(slot)).isPresent()) {
+                    inventory.setItem(slot, ItemStack.EMPTY);
+                }
+            }
+        }
+        return refusal;
+    }
 
-	/**
-	 * Moves up to {@code count} of one ore from the cargo of the pods parked at the processor into the pack (#536). No money changes hands: a
-	 * kept ore is a sale forgone, which is what the units that ask for ore cost. It takes what the cargo holds and the pack has room for, in
-	 * the pods' order, and refuses when that is none. The arguments are the client's and are checked here.
-	 */
-	public static Optional<Component> withdrawOre(TerminalAction.Context context) {
-		Charter charter = context.charter().orElseThrow();
-		Optional<OreType> ore = context.args().getString(ORE_KEY).flatMap(OreProcessor::oreNamed);
-		int wanted = context.args().getInt(COUNT_KEY).orElse(0);
-		if (ore.isEmpty() || wanted < 1) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.bad_withdrawal"));
-		}
-		List<PodEntity> pods = podsAt(context, charter);
-		if (pods.isEmpty()) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
-		}
-		List<PodEntity> readable = pods.stream().filter(pod -> pod.cargo().isReadable()).toList();
-		if (readable.isEmpty()) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.unreadable_cargo"));
-		}
-		OreType kind = ore.get();
-		Component name = Component.translatable(OreRegistry.item(kind).getDescriptionId());
-		int held = readable.stream().mapToInt(pod -> pod.cargo().count(kind)).sum();
-		if (held == 0) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.no_ore_in_cargo", name));
-		}
-		int room = packRoom(context.player().getInventory(), OreRegistry.item(kind));
-		if (room == 0) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.no_room_for_ore", name));
-		}
-		int amount = Math.min(wanted, Math.min(held, room));
-		int left = amount;
-		for (PodEntity pod : readable) {
-			if (left > 0) {
-				left -= pod.cargo().take(pod, kind, left);
-			}
-		}
-		giveToPack(context.player(), OreRegistry.item(kind), amount);
-		context.player().sendOverlayMessage(Component.translatable("deepcharter.market.withdrawn", amount, name));
-		return Optional.empty();
-	}
+    /**
+     * Moves up to {@code count} of one ore from the cargo of the pods parked at the processor into the pack (#536). No money changes hands: a
+     * kept ore is a sale forgone, which is what the units that ask for ore cost. It takes what the cargo holds and the pack has room for, in
+     * the pods' order, and refuses when that is none. The arguments are the client's and are checked here.
+     */
+    public static Optional<Component> withdrawOre(TerminalAction.Context context) {
+        Charter charter = context.charter().orElseThrow();
+        Optional<OreType> ore = context.args().getString(ORE_KEY).flatMap(OreProcessor::oreNamed);
+        int wanted = context.args().getInt(COUNT_KEY).orElse(0);
+        if (ore.isEmpty() || wanted < 1) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.bad_withdrawal"));
+        }
+        List<PodEntity> pods = podsAt(context, charter);
+        if (pods.isEmpty()) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
+        }
+        List<PodEntity> readable =
+                pods.stream().filter(pod -> pod.cargo().isReadable()).toList();
+        if (readable.isEmpty()) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.unreadable_cargo"));
+        }
+        OreType kind = ore.get();
+        Component name = Component.translatable(OreRegistry.item(kind).getDescriptionId());
+        int held = readable.stream().mapToInt(pod -> pod.cargo().count(kind)).sum();
+        if (held == 0) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.no_ore_in_cargo", name));
+        }
+        int room = packRoom(context.player().getInventory(), OreRegistry.item(kind));
+        if (room == 0) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.no_room_for_ore", name));
+        }
+        int amount = Math.min(wanted, Math.min(held, room));
+        int left = amount;
+        for (PodEntity pod : readable) {
+            if (left > 0) {
+                left -= pod.cargo().take(pod, kind, left);
+            }
+        }
+        giveToPack(context.player(), OreRegistry.item(kind), amount);
+        context.player().sendOverlayMessage(Component.translatable("deepcharter.market.withdrawn", amount, name));
+        return Optional.empty();
+    }
 
-	/** The ore whose item id has the path {@code name}. */
-	private static Optional<OreType> oreNamed(String name) {
-		return Arrays.stream(OreType.values()).filter(type -> type.itemId().getPath().equals(name)).findFirst();
-	}
+    /** The ore whose item id has the path {@code name}. */
+    private static Optional<OreType> oreNamed(String name) {
+        return Arrays.stream(OreType.values())
+                .filter(type -> type.itemId().getPath().equals(name))
+                .findFirst();
+    }
 
-	/** The processor's view: the work orders, and the ore in the cargo of the readable pods parked here that the player may use. Never throws on unreadable saved data. */
-	public static ProcessorView view(MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
-		List<ProcessorView.Hold> cargo = new ArrayList<>();
-		List<PodEntity> pods = Terminals.parkedPods(player.level(), pos, charter).stream().filter(pod -> pod.cargo().isReadable()).toList();
-		for (OreType type : OreType.values()) {
-			int count = pods.stream().mapToInt(pod -> pod.cargo().count(type)).sum();
-			if (count > 0) {
-				cargo.add(new ProcessorView.Hold(type, count));
-			}
-		}
-		return new ProcessorView(WorkOrders.view(server, player, charter, pos), cargo);
-	}
+    /** The processor's view: the work orders, and the ore in the cargo of the readable pods parked here that the player may use. Never throws on unreadable saved data. */
+    public static ProcessorView view(
+            MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
+        List<ProcessorView.Hold> cargo = new ArrayList<>();
+        List<PodEntity> pods = Terminals.parkedPods(player.level(), pos, charter).stream()
+                .filter(pod -> pod.cargo().isReadable())
+                .toList();
+        for (OreType type : OreType.values()) {
+            int count = pods.stream().mapToInt(pod -> pod.cargo().count(type)).sum();
+            if (count > 0) {
+                cargo.add(new ProcessorView.Hold(type, count));
+            }
+        }
+        return new ProcessorView(WorkOrders.view(server, player, charter, pos), cargo);
+    }
 
-	/** What the fuse does for one pod: the bricks it can make from the pod's spoil, and where each goes. */
-	private record Fusion(PodEntity pod, int makeable, int toRack, int toPack) {
-		int bricks() {
-			return toRack + toPack;
-		}
+    /** What the fuse does for one pod: the bricks it can make from the pod's spoil, and where each goes. */
+    private record Fusion(PodEntity pod, int makeable, int toRack, int toPack) {
+        int bricks() {
+            return toRack + toPack;
+        }
 
-		Fusion withPack(int toPack) {
-			return new Fusion(pod, makeable, toRack, toPack);
-		}
-	}
+        Fusion withPack(int toPack) {
+            return new Fusion(pod, makeable, toRack, toPack);
+        }
+    }
 
-	/**
-	 * Turns spoil into slag brick: {@link PodLiningTuning#spoilPerBrick()} spoil for a brick, and no money (#363). Each parked pod's
-	 * bricks go to its rack until the rack is full, and the rest to the player's pack while it has room. It makes only the bricks that
-	 * have somewhere to go, and refuses when that is none.
-	 */
-	public static Optional<Component> fuseSpoil(TerminalAction.Context context) {
-		Charter charter = context.charter().orElseThrow();
-		List<PodEntity> pods = podsAt(context, charter);
-		if (pods.isEmpty()) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
-		}
-		PodLiningTuning tuning = PodLiningTuning.DEFAULT;
-		Inventory inventory = context.player().getInventory();
-		List<Fusion> racked = new ArrayList<>();
-		for (PodEntity pod : pods) {
-			// A pod whose lining state cannot be read has nothing to fuse and is left as it is.
-			Optional<PodLining.State> state = PodLining.readable(pod);
-			if (state.isPresent()) {
-				int makeable = state.get().spoil() / tuning.spoilPerBrick();
-				int toRack = (int) Math.min(makeable, Math.max(0, tuning.brickCapacity() - state.get().bricks()));
-				racked.add(new Fusion(pod, makeable, toRack, 0));
-			}
-		}
-		int packRoom = packRoom(inventory, SlagBrick.item());
-		List<Fusion> fusions = new ArrayList<>();
-		for (Fusion fusion : racked) {
-			int toPack = (int) Math.min(fusion.makeable() - fusion.toRack(), packRoom);
-			packRoom -= toPack;
-			fusions.add(fusion.withPack(toPack));
-		}
-		int made = fusions.stream().mapToInt(Fusion::bricks).sum();
-		if (fusions.stream().mapToInt(Fusion::makeable).sum() == 0) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.no_spoil"));
-		}
-		if (made == 0) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.no_room"));
-		}
-		int rackTotal = fusions.stream().mapToInt(Fusion::toRack).sum();
-		int packTotal = made - rackTotal;
-		for (Fusion fusion : fusions) {
-			// The state was read above, and nothing has changed it since: this cannot fail.
-			PodLining.modify(fusion.pod(), state -> state.fused(fusion.bricks() * tuning.spoilPerBrick(), fusion.toRack()));
-		}
-		giveToPack(context.player(), SlagBrick.item(), packTotal);
-		context.player().sendOverlayMessage(Component.translatable("deepcharter.market.fused", made, rackTotal, packTotal));
-		return Optional.empty();
-	}
+    /**
+     * Turns spoil into slag brick: {@link PodLiningTuning#spoilPerBrick()} spoil for a brick, and no money (#363). Each parked pod's
+     * bricks go to its rack until the rack is full, and the rest to the player's pack while it has room. It makes only the bricks that
+     * have somewhere to go, and refuses when that is none.
+     */
+    public static Optional<Component> fuseSpoil(TerminalAction.Context context) {
+        Charter charter = context.charter().orElseThrow();
+        List<PodEntity> pods = podsAt(context, charter);
+        if (pods.isEmpty()) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
+        }
+        PodLiningTuning tuning = PodLiningTuning.DEFAULT;
+        Inventory inventory = context.player().getInventory();
+        List<Fusion> racked = new ArrayList<>();
+        for (PodEntity pod : pods) {
+            // A pod whose lining state cannot be read has nothing to fuse and is left as it is.
+            Optional<PodLining.State> state = PodLining.readable(pod);
+            if (state.isPresent()) {
+                int makeable = state.get().spoil() / tuning.spoilPerBrick();
+                int toRack = (int) Math.min(
+                        makeable,
+                        Math.max(0, tuning.brickCapacity() - state.get().bricks()));
+                racked.add(new Fusion(pod, makeable, toRack, 0));
+            }
+        }
+        int packRoom = packRoom(inventory, SlagBrick.item());
+        List<Fusion> fusions = new ArrayList<>();
+        for (Fusion fusion : racked) {
+            int toPack = (int) Math.min(fusion.makeable() - fusion.toRack(), packRoom);
+            packRoom -= toPack;
+            fusions.add(fusion.withPack(toPack));
+        }
+        int made = fusions.stream().mapToInt(Fusion::bricks).sum();
+        if (fusions.stream().mapToInt(Fusion::makeable).sum() == 0) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.no_spoil"));
+        }
+        if (made == 0) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.no_room"));
+        }
+        int rackTotal = fusions.stream().mapToInt(Fusion::toRack).sum();
+        int packTotal = made - rackTotal;
+        for (Fusion fusion : fusions) {
+            // The state was read above, and nothing has changed it since: this cannot fail.
+            PodLining.modify(
+                    fusion.pod(), state -> state.fused(fusion.bricks() * tuning.spoilPerBrick(), fusion.toRack()));
+        }
+        giveToPack(context.player(), SlagBrick.item(), packTotal);
+        context.player()
+                .sendOverlayMessage(Component.translatable("deepcharter.market.fused", made, rackTotal, packTotal));
+        return Optional.empty();
+    }
 
-	/** What pressing does for one pod: the crates it can make from the pod's spoil that have room in the pack. */
-	private record Pressing(PodEntity pod, int crates) {
-	}
+    /** What pressing does for one pod: the crates it can make from the pod's spoil that have room in the pack. */
+    private record Pressing(PodEntity pod, int crates) {}
 
-	/**
-	 * Turns spoil into salvage crates (#470): {@link MarketTuning#spoilPerCrate()} spoil for a crate, and no money. The crates go to the player's
-	 * pack, the only place a crate can be, and breaking one drops the loot of a crate of the yard. It makes only the crates the pack has room
-	 * for, and refuses when that is none.
-	 */
-	public static Optional<Component> pressCrates(TerminalAction.Context context) {
-		Charter charter = context.charter().orElseThrow();
-		List<PodEntity> pods = podsAt(context, charter);
-		if (pods.isEmpty()) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
-		}
-		int spoilPerCrate = MarketTuning.DEFAULT.spoilPerCrate();
-		Item crate = SurfaceBlocks.SALVAGE_CRATE.asItem();
-		Inventory inventory = context.player().getInventory();
-		int room = packRoom(inventory, crate);
-		int makeable = 0;
-		List<Pressing> pressings = new ArrayList<>();
-		for (PodEntity pod : pods) {
-			// A pod whose lining state cannot be read has nothing to press and is left as it is.
-			Optional<PodLining.State> state = PodLining.readable(pod);
-			if (state.isPresent()) {
-				int fromPod = state.get().spoil() / spoilPerCrate;
-				makeable += fromPod;
-				int crates = Math.min(fromPod, room);
-				room -= crates;
-				pressings.add(new Pressing(pod, crates));
-			}
-		}
-		if (makeable == 0) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.no_spoil_for_crate"));
-		}
-		int made = pressings.stream().mapToInt(Pressing::crates).sum();
-		if (made == 0) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.no_room_for_crate"));
-		}
-		for (Pressing pressing : pressings) {
-			// The state was read above, and nothing has changed it since: this cannot fail.
-			PodLining.modify(pressing.pod(), state -> state.withSpoil(state.spoil() - pressing.crates() * spoilPerCrate));
-		}
-		giveToPack(context.player(), crate, made);
-		context.player().sendOverlayMessage(Component.translatable("deepcharter.market.pressed", made, made * spoilPerCrate));
-		return Optional.empty();
-	}
+    /**
+     * Turns spoil into salvage crates (#470): {@link MarketTuning#spoilPerCrate()} spoil for a crate, and no money. The crates go to the player's
+     * pack, the only place a crate can be, and breaking one drops the loot of a crate of the yard. It makes only the crates the pack has room
+     * for, and refuses when that is none.
+     */
+    public static Optional<Component> pressCrates(TerminalAction.Context context) {
+        Charter charter = context.charter().orElseThrow();
+        List<PodEntity> pods = podsAt(context, charter);
+        if (pods.isEmpty()) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
+        }
+        int spoilPerCrate = MarketTuning.DEFAULT.spoilPerCrate();
+        Item crate = SurfaceBlocks.SALVAGE_CRATE.asItem();
+        Inventory inventory = context.player().getInventory();
+        int room = packRoom(inventory, crate);
+        int makeable = 0;
+        List<Pressing> pressings = new ArrayList<>();
+        for (PodEntity pod : pods) {
+            // A pod whose lining state cannot be read has nothing to press and is left as it is.
+            Optional<PodLining.State> state = PodLining.readable(pod);
+            if (state.isPresent()) {
+                int fromPod = state.get().spoil() / spoilPerCrate;
+                makeable += fromPod;
+                int crates = Math.min(fromPod, room);
+                room -= crates;
+                pressings.add(new Pressing(pod, crates));
+            }
+        }
+        if (makeable == 0) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.no_spoil_for_crate"));
+        }
+        int made = pressings.stream().mapToInt(Pressing::crates).sum();
+        if (made == 0) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.no_room_for_crate"));
+        }
+        for (Pressing pressing : pressings) {
+            // The state was read above, and nothing has changed it since: this cannot fail.
+            PodLining.modify(
+                    pressing.pod(), state -> state.withSpoil(state.spoil() - pressing.crates() * spoilPerCrate));
+        }
+        giveToPack(context.player(), crate, made);
+        context.player()
+                .sendOverlayMessage(Component.translatable("deepcharter.market.pressed", made, made * spoilPerCrate));
+        return Optional.empty();
+    }
 
-	/** Puts {@code count} of {@code item} in the player's pack; what does not fit is dropped at their feet. */
-	private static void giveToPack(ServerPlayer player, Item item, int count) {
-		if (count > 0) {
-			ItemStack stack = new ItemStack(item, count);
-			player.getInventory().add(stack);
-			if (!stack.isEmpty()) {
-				player.spawnAtLocation(player.level(), stack);
-			}
-		}
-	}
+    /** Puts {@code count} of {@code item} in the player's pack; what does not fit is dropped at their feet. */
+    private static void giveToPack(ServerPlayer player, Item item, int count) {
+        if (count > 0) {
+            ItemStack stack = new ItemStack(item, count);
+            player.getInventory().add(stack);
+            if (!stack.isEmpty()) {
+                player.spawnAtLocation(player.level(), stack);
+            }
+        }
+    }
 
-	/** How many of {@code item} the pack can take: the room in its stacks of them and in its empty slots. */
-	private static int packRoom(Inventory inventory, Item item) {
-		int max = item.getDefaultMaxStackSize();
-		int room = 0;
-		for (ItemStack stack : inventory.getNonEquipmentItems()) {
-			if (stack.isEmpty()) {
-				room += max;
-			} else if (stack.is(item)) {
-				room += max - stack.getCount();
-			}
-		}
-		return room;
-	}
+    /** How many of {@code item} the pack can take: the room in its stacks of them and in its empty slots. */
+    private static int packRoom(Inventory inventory, Item item) {
+        int max = item.getDefaultMaxStackSize();
+        int room = 0;
+        for (ItemStack stack : inventory.getNonEquipmentItems()) {
+            if (stack.isEmpty()) {
+                room += max;
+            } else if (stack.is(item)) {
+                room += max - stack.getCount();
+            }
+        }
+        return room;
+    }
 
-	/** Credits {@code total} dollars for {@code count} ore and tells the player, or returns why not. */
-	private static Optional<Component> credit(TerminalAction.Context context, Charter charter, long total, int count, int skipped) {
-		if (count == 0) {
-			return Optional.of(Component.translatable("deepcharter.market.refusal.nothing_to_sell"));
-		}
-		Optional<Component> refusal = Charters.deposit(context.server(), charter.id(), total).map(CharterRefusal::message);
-		if (refusal.isPresent()) {
-			return refusal;
-		}
-		ServerPlayer player = context.player();
-		player.sendOverlayMessage(skipped == 0 ? Component.translatable("deepcharter.market.sold", count, total)
-				: Component.translatable("deepcharter.market.sold_skipped", count, total, skipped));
-		return Optional.empty();
-	}
+    /** Credits {@code total} dollars for {@code count} ore and tells the player, or returns why not. */
+    private static Optional<Component> credit(
+            TerminalAction.Context context, Charter charter, long total, int count, int skipped) {
+        if (count == 0) {
+            return Optional.of(Component.translatable("deepcharter.market.refusal.nothing_to_sell"));
+        }
+        Optional<Component> refusal =
+                Charters.deposit(context.server(), charter.id(), total).map(CharterRefusal::message);
+        if (refusal.isPresent()) {
+            return refusal;
+        }
+        ServerPlayer player = context.player();
+        player.sendOverlayMessage(
+                skipped == 0
+                        ? Component.translatable("deepcharter.market.sold", count, total)
+                        : Component.translatable("deepcharter.market.sold_skipped", count, total, skipped));
+        return Optional.empty();
+    }
 
-	private static long value(ItemStack stack) {
-		return OreRegistry.typeOf(stack).orElseThrow().value();
-	}
+    private static long value(ItemStack stack) {
+        return OreRegistry.typeOf(stack).orElseThrow().value();
+    }
 
-	private static List<PodEntity> podsAt(TerminalAction.Context context, Charter charter) {
-		return Terminals.parkedPods(context.player().level(), context.pos(), Optional.of(charter));
-	}
+    private static List<PodEntity> podsAt(TerminalAction.Context context, Charter charter) {
+        return Terminals.parkedPods(context.player().level(), context.pos(), Optional.of(charter));
+    }
 }

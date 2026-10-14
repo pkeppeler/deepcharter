@@ -11,18 +11,18 @@ import java.util.List;
  * @param reserveLitres what a reserve tank adds to the tank, and what it holds when it rescues a stranded pod
  */
 public record FuelTuning(long pricePerLitre, List<Integer> purchaseSteps, float reserveLitres) {
-	public static final FuelTuning DEFAULT = new FuelTuning(1, List.of(1, 5, 10), 25f);
+    public static final FuelTuning DEFAULT = new FuelTuning(1, List.of(1, 5, 10), 25f);
 
-	public FuelTuning {
-		if (pricePerLitre < 1) {
-			throw new IllegalArgumentException("the price of a litre must be at least $1, got " + pricePerLitre);
-		}
-		purchaseSteps = List.copyOf(purchaseSteps);
-		if (purchaseSteps.stream().anyMatch(step -> step < 1)) {
-			throw new IllegalArgumentException("every purchase step must be at least 1 litre, got " + purchaseSteps);
-		}
-		if (!(reserveLitres > 0)) {
-			throw new IllegalArgumentException("the reserve must hold some litres, got " + reserveLitres);
-		}
-	}
+    public FuelTuning {
+        if (pricePerLitre < 1) {
+            throw new IllegalArgumentException("the price of a litre must be at least $1, got " + pricePerLitre);
+        }
+        purchaseSteps = List.copyOf(purchaseSteps);
+        if (purchaseSteps.stream().anyMatch(step -> step < 1)) {
+            throw new IllegalArgumentException("every purchase step must be at least 1 litre, got " + purchaseSteps);
+        }
+        if (!(reserveLitres > 0)) {
+            throw new IllegalArgumentException("the reserve must hold some litres, got " + reserveLitres);
+        }
+    }
 }

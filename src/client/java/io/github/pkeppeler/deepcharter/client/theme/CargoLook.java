@@ -9,16 +9,16 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param textColor the title and the mass line
  */
 public record CargoLook(int textColor) {
-	/** The nine-slice sprite of the panel, outline included, {@code textures/gui/sprites/cargo/panel.png}. */
-	public static final String PANEL_SPRITE = "cargo/panel";
-	/** The nine-slice sprite of one slot, outline included, {@code textures/gui/sprites/cargo/slot.png}. */
-	public static final String SLOT_SPRITE = "cargo/slot";
+    /** The nine-slice sprite of the panel, outline included, {@code textures/gui/sprites/cargo/panel.png}. */
+    public static final String PANEL_SPRITE = "cargo/panel";
+    /** The nine-slice sprite of one slot, outline included, {@code textures/gui/sprites/cargo/slot.png}. */
+    public static final String SLOT_SPRITE = "cargo/slot";
 
-	public static CargoLook current() {
-		return UiTheme.current().cargo();
-	}
+    public static CargoLook current() {
+        return UiTheme.current().cargo();
+    }
 
-	public static CargoLook of(ThemeData d) {
-		return new CargoLook(d.color("textColor"));
-	}
+    public static CargoLook of(ThemeData d) {
+        return new CargoLook(d.color("textColor"));
+    }
 }

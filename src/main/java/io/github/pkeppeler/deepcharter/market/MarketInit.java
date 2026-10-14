@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.market;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class MarketInit {
-	private MarketInit() {
-	}
+    private MarketInit() {}
 
-	public static void init() {
-		MarketRegistry.register();
-	}
+    public static void init() {
+        MarketRegistry.register();
+    }
 }

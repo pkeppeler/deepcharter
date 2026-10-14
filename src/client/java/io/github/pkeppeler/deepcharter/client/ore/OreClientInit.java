@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.client.ore;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class OreClientInit {
-	private OreClientInit() {
-	}
+    private OreClientInit() {}
 
-	public static void init() {
-		OreClientRegistry.register();
-	}
+    public static void init() {
+        OreClientRegistry.register();
+    }
 }

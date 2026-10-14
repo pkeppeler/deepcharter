@@ -3,12 +3,10 @@ package io.github.pkeppeler.deepcharter.test.support;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -19,199 +17,216 @@ import net.minecraft.server.level.ParticleStatus;
  * test can name the case it was running in the failure. The layout checks read the client's font, so call them on the client thread.
  */
 public final class ClientChecks {
-	private ClientChecks() {
-	}
+    private ClientChecks() {}
 
-	/** A rectangle on the screen, in GUI pixels. */
-	public record Box(int x, int y, int width, int height) {
-		public static Box of(AbstractWidget widget) {
-			return new Box(widget.getX(), widget.getY(), widget.getWidth(), widget.getHeight());
-		}
+    /** A rectangle on the screen, in GUI pixels. */
+    public record Box(int x, int y, int width, int height) {
+        public static Box of(AbstractWidget widget) {
+            return new Box(widget.getX(), widget.getY(), widget.getWidth(), widget.getHeight());
+        }
 
-		public static Box ofText(int x, int y, String text) {
-			Minecraft client = Minecraft.getInstance();
-			return new Box(x, y, client.font.width(text), client.font.lineHeight);
-		}
+        public static Box ofText(int x, int y, String text) {
+            Minecraft client = Minecraft.getInstance();
+            return new Box(x, y, client.font.width(text), client.font.lineHeight);
+        }
 
-		public int right() {
-			return x + width;
-		}
+        public int right() {
+            return x + width;
+        }
 
-		public int bottom() {
-			return y + height;
-		}
-	}
+        public int bottom() {
+            return y + height;
+        }
+    }
 
-	public static void require(boolean condition, String message) {
-		if (!condition) {
-			throw new AssertionError(message);
-		}
-	}
+    public static void require(boolean condition, String message) {
+        if (!condition) {
+            throw new AssertionError(message);
+        }
+    }
 
-	/**
-	 * Runs {@code body} with the HUD hidden (F1), then puts the HUD back as it was, in a finally, also when {@code body} throws. Every client
-	 * test shares one client, and a later one draws on the HUD. This is the one place a test toggles the HUD: {@code gradle/gametest.gradle.kts}
-	 * fails the build for a direct toggle elsewhere.
-	 */
-	public static void withHudHidden(ClientGameTestContext context, Runnable body) {
-		withHud(context, true, body);
-	}
+    /**
+     * Runs {@code body} with the HUD hidden (F1), then puts the HUD back as it was, in a finally, also when {@code body} throws. Every client
+     * test shares one client, and a later one draws on the HUD. This is the one place a test toggles the HUD: {@code gradle/gametest.gradle.kts}
+     * fails the build for a direct toggle elsewhere.
+     */
+    public static void withHudHidden(ClientGameTestContext context, Runnable body) {
+        withHud(context, true, body);
+    }
 
-	/** Like {@link #withHudHidden(ClientGameTestContext, Runnable)} with the HUD shown, for a still in the middle of a run that hides it. */
-	public static void withHudShown(ClientGameTestContext context, Runnable body) {
-		withHud(context, false, body);
-	}
+    /** Like {@link #withHudHidden(ClientGameTestContext, Runnable)} with the HUD shown, for a still in the middle of a run that hides it. */
+    public static void withHudShown(ClientGameTestContext context, Runnable body) {
+        withHud(context, false, body);
+    }
 
-	/**
-	 * Like {@link #withHudHidden(ClientGameTestContext, Runnable)}, and the particle option is set to {@code particles} (and the live
-	 * particles cleared) for the body and put back with the HUD, so a throw anywhere after the saves restores both.
-	 */
-	public static void withHudHidden(ClientGameTestContext context, ParticleStatus particles, Runnable body) {
-		ParticleStatus particlesWere = context.computeOnClient(client -> client.options.particles().get());
-		try {
-			context.runOnClient(client -> {
-				client.options.particles().set(particles);
-				client.particleEngine.clearParticles();
-			});
-			withHud(context, true, body);
-		} finally {
-			context.runOnClient(client -> client.options.particles().set(particlesWere));
-		}
-	}
+    /**
+     * Like {@link #withHudHidden(ClientGameTestContext, Runnable)}, and the particle option is set to {@code particles} (and the live
+     * particles cleared) for the body and put back with the HUD, so a throw anywhere after the saves restores both.
+     */
+    public static void withHudHidden(ClientGameTestContext context, ParticleStatus particles, Runnable body) {
+        ParticleStatus particlesWere =
+                context.computeOnClient(client -> client.options.particles().get());
+        try {
+            context.runOnClient(client -> {
+                client.options.particles().set(particles);
+                client.particleEngine.clearParticles();
+            });
+            withHud(context, true, body);
+        } finally {
+            context.runOnClient(client -> client.options.particles().set(particlesWere));
+        }
+    }
 
-	private static void withHud(ClientGameTestContext context, boolean hidden, Runnable body) {
-		boolean hudWasHidden = context.computeOnClient(client -> client.gui.hud.isHidden());
-		try {
-			setHudHidden(context, hidden);
-			body.run();
-		} finally {
-			setHudHidden(context, hudWasHidden);
-		}
-	}
+    private static void withHud(ClientGameTestContext context, boolean hidden, Runnable body) {
+        boolean hudWasHidden = context.computeOnClient(client -> client.gui.hud.isHidden());
+        try {
+            setHudHidden(context, hidden);
+            body.run();
+        } finally {
+            setHudHidden(context, hudWasHidden);
+        }
+    }
 
-	private static void setHudHidden(ClientGameTestContext context, boolean hidden) {
-		context.runOnClient(client -> {
-			if (client.gui.hud.isHidden() != hidden) {
-				client.gui.hud.toggle();
-			}
-		});
-	}
+    private static void setHudHidden(ClientGameTestContext context, boolean hidden) {
+        context.runOnClient(client -> {
+            if (client.gui.hud.isHidden() != hidden) {
+                client.gui.hud.toggle();
+            }
+        });
+    }
 
-	public static void requireNone(String when, Optional<String> problem) {
-		require(problem.isEmpty(), when + ": " + problem.orElse(""));
-	}
+    public static void requireNone(String when, Optional<String> problem) {
+        require(problem.isEmpty(), when + ": " + problem.orElse(""));
+    }
 
-	public static List<Button> buttons(Screen screen) {
-		return screen.children().stream().filter(Button.class::isInstance).map(Button.class::cast).toList();
-	}
+    public static List<Button> buttons(Screen screen) {
+        return screen.children().stream()
+                .filter(Button.class::isInstance)
+                .map(Button.class::cast)
+                .toList();
+    }
 
-	public static Button button(Screen screen, String label) {
-		return buttons(screen).stream().filter(button -> button.getMessage().getString().equals(label)).findFirst()
-				.orElseThrow(() -> new AssertionError("no button '" + label + "' on the screen"));
-	}
+    public static Button button(Screen screen, String label) {
+        return buttons(screen).stream()
+                .filter(button -> button.getMessage().getString().equals(label))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no button '" + label + "' on the screen"));
+    }
 
-	public static String labelOf(Button button) {
-		return "'" + button.getMessage().getString() + "'";
-	}
+    public static String labelOf(Button button) {
+        return "'" + button.getMessage().getString() + "'";
+    }
 
-	/** Boxes that only touch do not overlap. */
-	public static boolean overlaps(Box box, Box other) {
-		return box.x() < other.right() && other.x() < box.right() && box.y() < other.bottom() && other.y() < box.bottom();
-	}
+    /** Boxes that only touch do not overlap. */
+    public static boolean overlaps(Box box, Box other) {
+        return box.x() < other.right()
+                && other.x() < box.right()
+                && box.y() < other.bottom()
+                && other.y() < box.bottom();
+    }
 
-	public static Optional<String> buttonLeavesScreen(Screen screen, Button button) {
-		Box box = Box.of(button);
-		if (box.x() < 0 || box.y() < 0 || box.right() > screen.width || box.bottom() > screen.height) {
-			return Optional.of(labelOf(button) + " leaves the " + screen.width + " by " + screen.height + " screen");
-		}
-		return Optional.empty();
-	}
+    public static Optional<String> buttonLeavesScreen(Screen screen, Button button) {
+        Box box = Box.of(button);
+        if (box.x() < 0 || box.y() < 0 || box.right() > screen.width || box.bottom() > screen.height) {
+            return Optional.of(labelOf(button) + " leaves the " + screen.width + " by " + screen.height + " screen");
+        }
+        return Optional.empty();
+    }
 
-	public static Optional<String> labelClipped(Button button) {
-		int textWidth = Minecraft.getInstance().font.width(button.getMessage().getString());
-		if (textWidth > button.getWidth()) {
-			return Optional.of(labelOf(button) + " is " + textWidth + " wide in a button " + button.getWidth() + " wide");
-		}
-		return Optional.empty();
-	}
+    public static Optional<String> labelClipped(Button button) {
+        int textWidth = Minecraft.getInstance().font.width(button.getMessage().getString());
+        if (textWidth > button.getWidth()) {
+            return Optional.of(
+                    labelOf(button) + " is " + textWidth + " wide in a button " + button.getWidth() + " wide");
+        }
+        return Optional.empty();
+    }
 
-	/** {@code kind} names the line in the message. */
-	public static Optional<String> textLeavesScreen(Screen screen, String kind, int x, int y, String text) {
-		Box box = Box.ofText(x, y, text);
-		if (box.x() < 0 || box.y() < 0 || box.right() > screen.width || box.bottom() > screen.height) {
-			return Optional.of(kind + " '" + text + "' leaves the " + screen.width + " by " + screen.height + " screen");
-		}
-		return Optional.empty();
-	}
+    /** {@code kind} names the line in the message. */
+    public static Optional<String> textLeavesScreen(Screen screen, String kind, int x, int y, String text) {
+        Box box = Box.ofText(x, y, text);
+        if (box.x() < 0 || box.y() < 0 || box.right() > screen.width || box.bottom() > screen.height) {
+            return Optional.of(
+                    kind + " '" + text + "' leaves the " + screen.width + " by " + screen.height + " screen");
+        }
+        return Optional.empty();
+    }
 
-	/** {@code kind} names the line in the message. */
-	public static Optional<String> textUnderButton(String kind, int x, int y, String text, List<Button> buttons) {
-		Box box = Box.ofText(x, y, text);
-		for (Button button : buttons) {
-			if (overlaps(box, Box.of(button))) {
-				return Optional.of(kind + " '" + text + "' is under " + labelOf(button));
-			}
-		}
-		return Optional.empty();
-	}
+    /** {@code kind} names the line in the message. */
+    public static Optional<String> textUnderButton(String kind, int x, int y, String text, List<Button> buttons) {
+        Box box = Box.ofText(x, y, text);
+        for (Button button : buttons) {
+            if (overlaps(box, Box.of(button))) {
+                return Optional.of(kind + " '" + text + "' is under " + labelOf(button));
+            }
+        }
+        return Optional.empty();
+    }
 
-	/** A widget by what a failure message should call it: a button by its label, any other by its class and message. */
-	public static String describe(AbstractWidget widget) {
-		if (widget instanceof Button button) {
-			return labelOf(button);
-		}
-		return widget.getClass().getSimpleName() + " '" + widget.getMessage().getString() + "'";
-	}
+    /** A widget by what a failure message should call it: a button by its label, any other by its class and message. */
+    public static String describe(AbstractWidget widget) {
+        if (widget instanceof Button button) {
+            return labelOf(button);
+        }
+        return widget.getClass().getSimpleName() + " '" + widget.getMessage().getString() + "'";
+    }
 
-	/** Every visible widget the screen holds, in the order it holds them: what must lie inside the screen. */
-	public static List<AbstractWidget> visibleWidgets(Screen screen) {
-		return screen.children().stream().filter(AbstractWidget.class::isInstance).map(AbstractWidget.class::cast)
-				.filter(widget -> widget.visible).toList();
-	}
+    /** Every visible widget the screen holds, in the order it holds them: what must lie inside the screen. */
+    public static List<AbstractWidget> visibleWidgets(Screen screen) {
+        return screen.children().stream()
+                .filter(AbstractWidget.class::isInstance)
+                .map(AbstractWidget.class::cast)
+                .filter(widget -> widget.visible)
+                .toList();
+    }
 
-	/**
-	 * The visible widgets a player can press or type into: a button (also when greyed out), a text field, or any other widget that is
-	 * active. A label or a panel is not one, so it may sit under a button without counting as an overlap.
-	 */
-	public static List<AbstractWidget> interactiveWidgets(Screen screen) {
-		return visibleWidgets(screen).stream().filter(widget -> widget instanceof AbstractButton || widget instanceof EditBox || widget.active).toList();
-	}
+    /**
+     * The visible widgets a player can press or type into: a button (also when greyed out), a text field, or any other widget that is
+     * active. A label or a panel is not one, so it may sit under a button without counting as an overlap.
+     */
+    public static List<AbstractWidget> interactiveWidgets(Screen screen) {
+        return visibleWidgets(screen).stream()
+                .filter(widget -> widget instanceof AbstractButton || widget instanceof EditBox || widget.active)
+                .toList();
+    }
 
-	/** How far {@code box} reaches past each edge of the screen, as "5 px past the right edge, 3 px past the bottom edge"; empty when it lies inside. */
-	public static Optional<String> overflowOf(Screen screen, Box box) {
-		List<String> edges = new ArrayList<>();
-		if (box.x() < 0) {
-			edges.add(-box.x() + " px past the left edge");
-		}
-		if (box.y() < 0) {
-			edges.add(-box.y() + " px past the top edge");
-		}
-		if (box.right() > screen.width) {
-			edges.add((box.right() - screen.width) + " px past the right edge");
-		}
-		if (box.bottom() > screen.height) {
-			edges.add((box.bottom() - screen.height) + " px past the bottom edge");
-		}
-		return edges.isEmpty() ? Optional.empty() : Optional.of(String.join(", ", edges));
-	}
+    /** How far {@code box} reaches past each edge of the screen, as "5 px past the right edge, 3 px past the bottom edge"; empty when it lies inside. */
+    public static Optional<String> overflowOf(Screen screen, Box box) {
+        List<String> edges = new ArrayList<>();
+        if (box.x() < 0) {
+            edges.add(-box.x() + " px past the left edge");
+        }
+        if (box.y() < 0) {
+            edges.add(-box.y() + " px past the top edge");
+        }
+        if (box.right() > screen.width) {
+            edges.add((box.right() - screen.width) + " px past the right edge");
+        }
+        if (box.bottom() > screen.height) {
+            edges.add((box.bottom() - screen.height) + " px past the bottom edge");
+        }
+        return edges.isEmpty() ? Optional.empty() : Optional.of(String.join(", ", edges));
+    }
 
-	/** {@code what} names the rectangle in the message; the overflow is in pixels past each edge. */
-	public static Optional<String> boxLeavesScreen(Screen screen, String what, Box box) {
-		return overflowOf(screen, box).map(overflow -> what + " at " + box.x() + "," + box.y() + " " + box.width() + " x " + box.height()
-				+ " leaves the " + screen.width + " by " + screen.height + " screen: " + overflow);
-	}
+    /** {@code what} names the rectangle in the message; the overflow is in pixels past each edge. */
+    public static Optional<String> boxLeavesScreen(Screen screen, String what, Box box) {
+        return overflowOf(screen, box)
+                .map(overflow -> what + " at " + box.x() + "," + box.y() + " " + box.width() + " x " + box.height()
+                        + " leaves the " + screen.width + " by " + screen.height + " screen: " + overflow);
+    }
 
-	/** The overlap is in pixels, width by height. */
-	public static Optional<String> widgetOverlaps(AbstractWidget widget, List<? extends AbstractWidget> widgets) {
-		Box box = Box.of(widget);
-		for (AbstractWidget other : widgets) {
-			Box otherBox = Box.of(other);
-			if (other != widget && overlaps(box, otherBox)) {
-				int across = Math.min(box.right(), otherBox.right()) - Math.max(box.x(), otherBox.x());
-				int down = Math.min(box.bottom(), otherBox.bottom()) - Math.max(box.y(), otherBox.y());
-				return Optional.of(describe(widget) + " overlaps " + describe(other) + " by " + across + " x " + down + " px");
-			}
-		}
-		return Optional.empty();
-	}
+    /** The overlap is in pixels, width by height. */
+    public static Optional<String> widgetOverlaps(AbstractWidget widget, List<? extends AbstractWidget> widgets) {
+        Box box = Box.of(widget);
+        for (AbstractWidget other : widgets) {
+            Box otherBox = Box.of(other);
+            if (other != widget && overlaps(box, otherBox)) {
+                int across = Math.min(box.right(), otherBox.right()) - Math.max(box.x(), otherBox.x());
+                int down = Math.min(box.bottom(), otherBox.bottom()) - Math.max(box.y(), otherBox.y());
+                return Optional.of(
+                        describe(widget) + " overlaps " + describe(other) + " by " + across + " x " + down + " px");
+            }
+        }
+        return Optional.empty();
+    }
 }

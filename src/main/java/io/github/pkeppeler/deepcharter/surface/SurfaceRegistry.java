@@ -1,28 +1,27 @@
 package io.github.pkeppeler.deepcharter.surface;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
-
 import net.minecraft.core.Registry;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
-
 public final class SurfaceRegistry {
-	/**
-	 * The dust that drifts in the surface air. The sky timeline names it in its {@code ambient_particles} track; its look is the
-	 * resource files {@code particles/dust_mote.json} and its texture.
-	 */
-	public static final SimpleParticleType DUST_MOTE_PARTICLE = Registry.register(BuiltInRegistries.PARTICLE_TYPE,
-			Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "dust_mote"), FabricParticleTypes.simple());
+    /**
+     * The dust that drifts in the surface air. The sky timeline names it in its {@code ambient_particles} track; its look is the
+     * resource files {@code particles/dust_mote.json} and its texture.
+     */
+    public static final SimpleParticleType DUST_MOTE_PARTICLE = Registry.register(
+            BuiltInRegistries.PARTICLE_TYPE,
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "dust_mote"),
+            FabricParticleTypes.simple());
 
-	private SurfaceRegistry() {
-	}
+    private SurfaceRegistry() {}
 
-	/** Loads this class, which registers the particle, the surface blocks and the salvage items. The surface rules and structure removal are data. */
-	public static void register() {
-		SurfaceBlocks.register();
-		SurfaceItems.register();
-	}
+    /** Loads this class, which registers the particle, the surface blocks and the salvage items. The surface rules and structure removal are data. */
+    public static void register() {
+        SurfaceBlocks.register();
+        SurfaceItems.register();
+    }
 }

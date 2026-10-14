@@ -9,11 +9,12 @@ package io.github.pkeppeler.deepcharter.terminal;
  *                     the terminal, for every pod terminal
  */
 public record TerminalTuning(double maxDistance, double parkedRadius) {
-	public static final TerminalTuning DEFAULT = new TerminalTuning(6.0, 8.0);
+    public static final TerminalTuning DEFAULT = new TerminalTuning(6.0, 8.0);
 
-	public TerminalTuning {
-		if (!(parkedRadius > 0)) {
-			throw new IllegalArgumentException("the radius a pod is parked within must be above 0, got " + parkedRadius);
-		}
-	}
+    public TerminalTuning {
+        if (!(parkedRadius > 0)) {
+            throw new IllegalArgumentException(
+                    "the radius a pod is parked within must be above 0, got " + parkedRadius);
+        }
+    }
 }

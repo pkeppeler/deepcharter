@@ -13,22 +13,30 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param jitterPixels how far the HUD shakes at first, in GUI pixels
  * @param fadeColor the colour faded to; its alpha is ignored, the fade sets it
  */
-public record BreachLook(int fadeTicks, int fadeInTicks, int blackTicks, int jitterTicks, int jitterPixels, int fadeColor) {
-	public static BreachLook current() {
-		return UiTheme.current().breach();
-	}
+public record BreachLook(
+        int fadeTicks, int fadeInTicks, int blackTicks, int jitterTicks, int jitterPixels, int fadeColor) {
+    public static BreachLook current() {
+        return UiTheme.current().breach();
+    }
 
-	/** The longest a fade or shake may last, so that a pack cannot black out the HUD for long. */
-	static final int MAX_TICKS = 100;
+    /** The longest a fade or shake may last, so that a pack cannot black out the HUD for long. */
+    static final int MAX_TICKS = 100;
 
-	public static BreachLook of(ThemeData d) {
-		BreachLook look = new BreachLook(d.integer("fadeTicks", 1, MAX_TICKS), d.integer("fadeInTicks", 1, MAX_TICKS),
-				d.integer("blackTicks", 0, MAX_TICKS), d.integer("jitterTicks", 1, MAX_TICKS), d.integer("jitterPixels", 0, 32),
-				d.color("fadeColor"));
-		if (look.fadeInTicks() + look.blackTicks() >= look.fadeTicks()) {
-			throw d.conflict("fadeInTicks + blackTicks must be less than fadeTicks, or the fade has no way back",
-					"fadeTicks", "fadeInTicks", "blackTicks");
-		}
-		return look;
-	}
+    public static BreachLook of(ThemeData d) {
+        BreachLook look = new BreachLook(
+                d.integer("fadeTicks", 1, MAX_TICKS),
+                d.integer("fadeInTicks", 1, MAX_TICKS),
+                d.integer("blackTicks", 0, MAX_TICKS),
+                d.integer("jitterTicks", 1, MAX_TICKS),
+                d.integer("jitterPixels", 0, 32),
+                d.color("fadeColor"));
+        if (look.fadeInTicks() + look.blackTicks() >= look.fadeTicks()) {
+            throw d.conflict(
+                    "fadeInTicks + blackTicks must be less than fadeTicks, or the fade has no way back",
+                    "fadeTicks",
+                    "fadeInTicks",
+                    "blackTicks");
+        }
+        return look;
+    }
 }

@@ -15,38 +15,35 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
  * @param gasTier the lowest scanner tier that shows gas pockets; below it they read as the rock they look like
  * @param rescanTicks client ticks between rescans
  */
-public record ScannerTuning(
-		ScanArea tierOneArea,
-		int lavaTier,
-		int lavaMargin,
-		int gasTier,
-		int rescanTicks) {
-	public static final ScannerTuning DEFAULT = new ScannerTuning(new ScanArea(24, 8, 32), 2, 1, 3, 5);
+public record ScannerTuning(ScanArea tierOneArea, int lavaTier, int lavaMargin, int gasTier, int rescanTicks) {
+    public static final ScannerTuning DEFAULT = new ScannerTuning(new ScanArea(24, 8, 32), 2, 1, 3, 5);
 
-	/** The area a scanner of {@code tier} covers; tier 0 is no scanner and has none, so it throws. */
-	public ScanArea area(int tier) {
-		ComponentTrack track = ComponentTrack.SCANNER;
-		if (tier < 1 || tier > track.maxTier()) {
-			throw new IllegalArgumentException("a scanner has tiers 1 to " + track.maxTier() + ", got " + tier);
-		}
-		float scale = UpgradeTuning.DEFAULT.value(track, tier) / UpgradeTuning.DEFAULT.value(track, 1);
-		return new ScanArea(Math.round(tierOneArea.halfWidth() * scale), Math.round(tierOneArea.up() * scale),
-				Math.round(tierOneArea.down() * scale));
-	}
+    /** The area a scanner of {@code tier} covers; tier 0 is no scanner and has none, so it throws. */
+    public ScanArea area(int tier) {
+        ComponentTrack track = ComponentTrack.SCANNER;
+        if (tier < 1 || tier > track.maxTier()) {
+            throw new IllegalArgumentException("a scanner has tiers 1 to " + track.maxTier() + ", got " + tier);
+        }
+        float scale = UpgradeTuning.DEFAULT.value(track, tier) / UpgradeTuning.DEFAULT.value(track, 1);
+        return new ScanArea(
+                Math.round(tierOneArea.halfWidth() * scale),
+                Math.round(tierOneArea.up() * scale),
+                Math.round(tierOneArea.down() * scale));
+    }
 
-	/**
-	 * How many blocks either side of the plane the thermal tier looks for lava for a pod of {@code chassis}: the most its bore reaches from
-	 * the plane's block (half the bore's width, the pod being centred in it) and {@link #lavaMargin} beyond. 2 for the Mole and the Prospector.
-	 */
-	public int lavaSpread(Chassis chassis) {
-		return chassis.boreWidth() / 2 + lavaMargin;
-	}
+    /**
+     * How many blocks either side of the plane the thermal tier looks for lava for a pod of {@code chassis}: the most its bore reaches from
+     * the plane's block (half the bore's width, the pod being centred in it) and {@link #lavaMargin} beyond. 2 for the Mole and the Prospector.
+     */
+    public int lavaSpread(Chassis chassis) {
+        return chassis.boreWidth() / 2 + lavaMargin;
+    }
 
-	public boolean showsLava(int tier) {
-		return tier >= lavaTier;
-	}
+    public boolean showsLava(int tier) {
+        return tier >= lavaTier;
+    }
 
-	public boolean showsGas(int tier) {
-		return tier >= gasTier;
-	}
+    public boolean showsGas(int tier) {
+        return tier >= gasTier;
+    }
 }

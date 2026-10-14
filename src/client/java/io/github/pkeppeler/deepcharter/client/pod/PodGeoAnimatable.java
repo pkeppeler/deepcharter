@@ -11,14 +11,13 @@ import com.geckolib.util.GeckoLibUtil;
  * pod's bones move by their role from the pod's own state, in {@link PodGeoRenderer}.
  */
 public final class PodGeoAnimatable implements GeoAnimatable {
-	private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
-	@Override
-	public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-	}
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {}
 
-	@Override
-	public AnimatableInstanceCache getAnimatableInstanceCache() {
-		return cache;
-	}
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return cache;
+    }
 }

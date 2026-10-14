@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.charter.terminal;
  * Each part of the contract terminal registers itself from here, one line per part.
  */
 public final class ContractTerminalInit {
-	private ContractTerminalInit() {
-	}
+    private ContractTerminalInit() {}
 
-	public static void init() {
-		ContractTerminalRegistry.register();
-	}
+    public static void init() {
+        ContractTerminalRegistry.register();
+    }
 }

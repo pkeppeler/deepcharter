@@ -1,11 +1,10 @@
 package io.github.pkeppeler.deepcharter.layer;
 
+import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-
-import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 
 /**
  * Seals a room cut into rock against what worldgen leaves in it: the one-block shell around a box (its sides, floor and
@@ -16,23 +15,26 @@ import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
  * (a breach pocket, a test's room) should call it.
  */
 public final class RoomSeal {
-	private RoomSeal() {
-	}
+    private RoomSeal() {}
 
-	/** Seals the shell around the box from {@code min} to {@code max}, both inclusive; the box itself is left alone. */
-	public static void seal(ServerLevel level, BlockPos min, BlockPos max) {
-		BlockState ground = LayerBlocks.groundOf(level).defaultBlockState();
-		for (BlockPos pos : BlockPos.betweenClosed(min.offset(-1, -1, -1), max.offset(1, 1, 1))) {
-			boolean inside = pos.getX() >= min.getX() && pos.getX() <= max.getX() && pos.getY() >= min.getY()
-					&& pos.getY() <= max.getY() && pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();
-			if (!inside && !level.isOutsideBuildHeight(pos) && needsSealing(level.getBlockState(pos))) {
-				level.setBlock(pos.immutable(), ground, Block.UPDATE_CLIENTS);
-			}
-		}
-	}
+    /** Seals the shell around the box from {@code min} to {@code max}, both inclusive; the box itself is left alone. */
+    public static void seal(ServerLevel level, BlockPos min, BlockPos max) {
+        BlockState ground = LayerBlocks.groundOf(level).defaultBlockState();
+        for (BlockPos pos : BlockPos.betweenClosed(min.offset(-1, -1, -1), max.offset(1, 1, 1))) {
+            boolean inside = pos.getX() >= min.getX()
+                    && pos.getX() <= max.getX()
+                    && pos.getY() >= min.getY()
+                    && pos.getY() <= max.getY()
+                    && pos.getZ() >= min.getZ()
+                    && pos.getZ() <= max.getZ();
+            if (!inside && !level.isOutsideBuildHeight(pos) && needsSealing(level.getBlockState(pos))) {
+                level.setBlock(pos.immutable(), ground, Block.UPDATE_CLIENTS);
+            }
+        }
+    }
 
-	/** True for a block that worldgen leaves in rock and that wakes when a neighbour changes: a fluid or a gas pocket. */
-	static boolean needsSealing(BlockState state) {
-		return !state.getFluidState().isEmpty() || state.is(HazardBlocks.GAS_POCKET);
-	}
+    /** True for a block that worldgen leaves in rock and that wakes when a neighbour changes: a fluid or a gas pocket. */
+    static boolean needsSealing(BlockState state) {
+        return !state.getFluidState().isEmpty() || state.is(HazardBlocks.GAS_POCKET);
+    }
 }

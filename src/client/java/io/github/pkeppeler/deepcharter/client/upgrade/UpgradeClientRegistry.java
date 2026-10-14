@@ -5,10 +5,9 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 
 /** Registers the upgrade terminal's online screen. */
 public final class UpgradeClientRegistry {
-	private UpgradeClientRegistry() {
-	}
+    private UpgradeClientRegistry() {}
 
-	public static void register() {
-		TerminalScreens.register(TerminalTypes.UPGRADE_TERMINAL, UpgradeScreen::new);
-	}
+    public static void register() {
+        TerminalScreens.register(TerminalTypes.UPGRADE_TERMINAL, UpgradeScreen::new);
+    }
 }

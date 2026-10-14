@@ -9,12 +9,12 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
  * A screen that does not implement it is replaced by a new one on every view.
  */
 public interface TerminalViewScreen {
-	/** True when this screen can show {@code view} in place: the same terminal, and nothing about it that needs a new screen. */
-	boolean accepts(TerminalView view);
+    /** True when this screen can show {@code view} in place: the same terminal, and nothing about it that needs a new screen. */
+    boolean accepts(TerminalView view);
 
-	/** Shows {@code view}. Only called after {@link #accepts} returned true. */
-	void update(TerminalView view);
+    /** Shows {@code view}. Only called after {@link #accepts} returned true. */
+    void update(TerminalView view);
 
-	/** The typewriter of the screen's text. A client test waits for it to finish before it reads the screen. */
-	Typewriter typewriter();
+    /** The typewriter of the screen's text. A client test waits for it to finish before it reads the screen. */
+    Typewriter typewriter();
 }

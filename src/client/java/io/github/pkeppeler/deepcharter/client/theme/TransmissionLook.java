@@ -18,26 +18,34 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param holdTicks ticks the finished transmission stays up before the next one starts
  */
 public record TransmissionLook(
-		int panelFillColor,
-		int textColor,
-		int liveColor,
-		int relayColor,
-		int unknownColor,
-		int maxWidth,
-		int screenMargin,
-		double centerY,
-		int headerGap,
-		int holdTicks) {
-	public static TransmissionLook current() {
-		return UiTheme.current().transmission();
-	}
+        int panelFillColor,
+        int textColor,
+        int liveColor,
+        int relayColor,
+        int unknownColor,
+        int maxWidth,
+        int screenMargin,
+        double centerY,
+        int headerGap,
+        int holdTicks) {
+    public static TransmissionLook current() {
+        return UiTheme.current().transmission();
+    }
 
-	/** The longest a finished transmission may stay up: one minute. */
-	static final int MAX_HOLD_TICKS = 1200;
+    /** The longest a finished transmission may stay up: one minute. */
+    static final int MAX_HOLD_TICKS = 1200;
 
-	public static TransmissionLook of(ThemeData d) {
-		return new TransmissionLook(d.color("panelFillColor"), d.color("textColor"), d.color("liveColor"), d.color("relayColor"),
-				d.color("unknownColor"), d.integer("maxWidth", 1), d.integer("screenMargin", 0), d.decimal("centerY", 0, 1),
-				d.integer("headerGap", 0), d.integer("holdTicks", 1, MAX_HOLD_TICKS));
-	}
+    public static TransmissionLook of(ThemeData d) {
+        return new TransmissionLook(
+                d.color("panelFillColor"),
+                d.color("textColor"),
+                d.color("liveColor"),
+                d.color("relayColor"),
+                d.color("unknownColor"),
+                d.integer("maxWidth", 1),
+                d.integer("screenMargin", 0),
+                d.decimal("centerY", 0, 1),
+                d.integer("headerGap", 0),
+                d.integer("holdTicks", 1, MAX_HOLD_TICKS));
+    }
 }

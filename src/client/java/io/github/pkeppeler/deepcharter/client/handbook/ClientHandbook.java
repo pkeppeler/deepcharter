@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.client.handbook;
 
 import java.util.Collection;
 import java.util.Set;
-
 import net.minecraft.resources.Identifier;
 
 /**
@@ -10,16 +9,15 @@ import net.minecraft.resources.Identifier;
  * screen (#66) reads it. Read and written on the client thread.
  */
 public final class ClientHandbook {
-	private static Set<Identifier> completed = Set.of();
+    private static Set<Identifier> completed = Set.of();
 
-	private ClientHandbook() {
-	}
+    private ClientHandbook() {}
 
-	public static Set<Identifier> completed() {
-		return completed;
-	}
+    public static Set<Identifier> completed() {
+        return completed;
+    }
 
-	static void set(Collection<Identifier> newCompleted) {
-		completed = Set.copyOf(newCompleted);
-	}
+    static void set(Collection<Identifier> newCompleted) {
+        completed = Set.copyOf(newCompleted);
+    }
 }

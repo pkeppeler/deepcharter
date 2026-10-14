@@ -1,23 +1,20 @@
 package io.github.pkeppeler.deepcharter.handbook;
 
+import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterEvents;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-
-import io.github.pkeppeler.deepcharter.charter.Charter;
-import io.github.pkeppeler.deepcharter.charter.CharterEvents;
-import io.github.pkeppeler.deepcharter.charter.Charters;
 
 /**
  * Directive progress, which belongs to the charter: a directive one member completes is complete for everyone on it, and a
@@ -33,123 +30,127 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
  * {@link HandbookProgressData#completed} is an explicit call and throws instead.
  */
 public final class HandbookProgress {
-	private HandbookProgress() {
-	}
+    private HandbookProgress() {}
 
-	/** Syncs progress to clients, mirrors it into advancements, and polls vanilla criteria. */
-	static void register() {
-		HandbookSyncPayload.register();
-		ServerPlayerEvents.JOIN.register(player -> refresh(player.level().getServer(), player));
-		CharterEvents.FOUNDED.register((server, charter) -> refreshAll(server, charter.roster()));
-		CharterEvents.REVIVED.register((server, charter, director) -> refreshAll(server, List.of(director)));
-		CharterEvents.JOINED.register((server, charter, player) -> refreshAll(server, List.of(player)));
-		CharterEvents.LEFT.register((server, charter, player) -> refreshAll(server, List.of(player)));
-		ServerTickEvents.END_SERVER_TICK.register(server -> {
-			for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-				if (player.tickCount % HandbookTuning.DEFAULT.progressPollTicks() == 0) {
-					sweep(player);
-				}
-			}
-		});
-	}
+    /** Syncs progress to clients, mirrors it into advancements, and polls vanilla criteria. */
+    static void register() {
+        HandbookSyncPayload.register();
+        ServerPlayerEvents.JOIN.register(player -> refresh(player.level().getServer(), player));
+        CharterEvents.FOUNDED.register((server, charter) -> refreshAll(server, charter.roster()));
+        CharterEvents.REVIVED.register((server, charter, director) -> refreshAll(server, List.of(director)));
+        CharterEvents.JOINED.register((server, charter, player) -> refreshAll(server, List.of(player)));
+        CharterEvents.LEFT.register((server, charter, player) -> refreshAll(server, List.of(player)));
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if (player.tickCount % HandbookTuning.DEFAULT.progressPollTicks() == 0) {
+                    sweep(player);
+                }
+            }
+        });
+    }
 
-	/**
-	 * The directives complete for {@code player}: those of their charter, or none when they are on none. Empty, and logged once,
-	 * while the saved charters or progress are unreadable.
-	 */
-	public static Set<Identifier> completedFor(MinecraftServer server, UUID player) {
-		Optional<HandbookProgressData> data = readableData(server);
-		if (data.isEmpty()) {
-			return Set.of();
-		}
-		return Charters.readableCharterOf(server, player).map(charter -> data.get().completed(charter.id())).orElse(Set.of());
-	}
+    /**
+     * The directives complete for {@code player}: those of their charter, or none when they are on none. Empty, and logged once,
+     * while the saved charters or progress are unreadable.
+     */
+    public static Set<Identifier> completedFor(MinecraftServer server, UUID player) {
+        Optional<HandbookProgressData> data = readableData(server);
+        if (data.isEmpty()) {
+            return Set.of();
+        }
+        return Charters.readableCharterOf(server, player)
+                .map(charter -> data.get().completed(charter.id()))
+                .orElse(Set.of());
+    }
 
-	/**
-	 * Completes, for {@code player}'s charter, every directive whose advancement {@code player} has finished. A player on no
-	 * charter completes nothing. Does nothing while the saved charters or progress are unreadable.
-	 */
-	public static void sweep(ServerPlayer player) {
-		MinecraftServer server = player.level().getServer();
-		Optional<HandbookProgressData> readable = readableData(server);
-		if (readable.isEmpty()) {
-			return;
-		}
-		Optional<Charter> charter = Charters.readableCharterOf(server, player.getUUID());
-		if (charter.isEmpty()) {
-			return;
-		}
-		HandbookProgressData data = readable.get();
-		Set<Identifier> done = data.completed(charter.get().id());
-		boolean changed = false;
-		for (Identifier directive : HandbookChapters.directivesOrEmpty(server)) {
-			if (done.contains(directive)) {
-				continue;
-			}
-			AdvancementHolder advancement = server.getAdvancements().get(directive);
-			if (advancement != null && player.getAdvancements().getOrStartProgress(advancement).isDone()) {
-				changed |= data.complete(charter.get().id(), directive);
-			}
-		}
-		if (changed) {
-			charter.get().roster().forEach(member -> HandbookSyncPayload.send(server, member));
-		}
-	}
+    /**
+     * Completes, for {@code player}'s charter, every directive whose advancement {@code player} has finished. A player on no
+     * charter completes nothing. Does nothing while the saved charters or progress are unreadable.
+     */
+    public static void sweep(ServerPlayer player) {
+        MinecraftServer server = player.level().getServer();
+        Optional<HandbookProgressData> readable = readableData(server);
+        if (readable.isEmpty()) {
+            return;
+        }
+        Optional<Charter> charter = Charters.readableCharterOf(server, player.getUUID());
+        if (charter.isEmpty()) {
+            return;
+        }
+        HandbookProgressData data = readable.get();
+        Set<Identifier> done = data.completed(charter.get().id());
+        boolean changed = false;
+        for (Identifier directive : HandbookChapters.directivesOrEmpty(server)) {
+            if (done.contains(directive)) {
+                continue;
+            }
+            AdvancementHolder advancement = server.getAdvancements().get(directive);
+            if (advancement != null
+                    && player.getAdvancements().getOrStartProgress(advancement).isDone()) {
+                changed |= data.complete(charter.get().id(), directive);
+            }
+        }
+        if (changed) {
+            charter.get().roster().forEach(member -> HandbookSyncPayload.send(server, member));
+        }
+    }
 
-	/** The progress data, or empty (logged once for each saved-data object) when the saved charters or the saved progress are unreadable. */
-	static Optional<HandbookProgressData> readableData(MinecraftServer server) {
-		if (!Charters.isReadable(server)) {
-			return Optional.empty();
-		}
-		return Optional.of(HandbookProgressData.get(server)).filter(HandbookProgressData::isReadable);
-	}
+    /** The progress data, or empty (logged once for each saved-data object) when the saved charters or the saved progress are unreadable. */
+    static Optional<HandbookProgressData> readableData(MinecraftServer server) {
+        if (!Charters.isReadable(server)) {
+            return Optional.empty();
+        }
+        return Optional.of(HandbookProgressData.get(server)).filter(HandbookProgressData::isReadable);
+    }
 
-	private static void refreshAll(MinecraftServer server, Iterable<UUID> players) {
-		for (UUID id : players) {
-			ServerPlayer online = server.getPlayerList().getPlayer(id);
-			if (online != null) {
-				refresh(server, online);
-			}
-		}
-	}
+    private static void refreshAll(MinecraftServer server, Iterable<UUID> players) {
+        for (UUID id : players) {
+            ServerPlayer online = server.getPlayerList().getPlayer(id);
+            if (online != null) {
+                refresh(server, online);
+            }
+        }
+    }
 
-	private static void refresh(MinecraftServer server, ServerPlayer player) {
-		mirror(server, player);
-		HandbookSyncPayload.send(server, player);
-	}
+    private static void refresh(MinecraftServer server, ServerPlayer player) {
+        mirror(server, player);
+        HandbookSyncPayload.send(server, player);
+    }
 
-	/**
-	 * Makes {@code player}'s directive advancements match their charter: done for the directives the charter has completed, not
-	 * done for the rest. A player on no charter has none done.
-	 */
-	private static void mirror(MinecraftServer server, ServerPlayer player) {
-		Optional<HandbookProgressData> data = readableData(server);
-		if (data.isEmpty()) {
-			return;
-		}
-		Set<Identifier> done = Charters.readableCharterOf(server, player.getUUID()).map(charter -> data.get().completed(charter.id())).orElse(Set.of());
-		for (Identifier directive : HandbookChapters.directivesOrEmpty(server)) {
-			AdvancementHolder advancement = server.getAdvancements().get(directive);
-			if (advancement == null) {
-				continue;
-			}
-			AdvancementProgress progress = player.getAdvancements().getOrStartProgress(advancement);
-			if (done.contains(directive)) {
-				for (String criterion : toList(progress.getRemainingCriteria())) {
-					player.getAdvancements().award(advancement, criterion);
-				}
-			} else {
-				for (String criterion : toList(progress.getCompletedCriteria())) {
-					player.getAdvancements().revoke(advancement, criterion);
-				}
-			}
-		}
-	}
+    /**
+     * Makes {@code player}'s directive advancements match their charter: done for the directives the charter has completed, not
+     * done for the rest. A player on no charter has none done.
+     */
+    private static void mirror(MinecraftServer server, ServerPlayer player) {
+        Optional<HandbookProgressData> data = readableData(server);
+        if (data.isEmpty()) {
+            return;
+        }
+        Set<Identifier> done = Charters.readableCharterOf(server, player.getUUID())
+                .map(charter -> data.get().completed(charter.id()))
+                .orElse(Set.of());
+        for (Identifier directive : HandbookChapters.directivesOrEmpty(server)) {
+            AdvancementHolder advancement = server.getAdvancements().get(directive);
+            if (advancement == null) {
+                continue;
+            }
+            AdvancementProgress progress = player.getAdvancements().getOrStartProgress(advancement);
+            if (done.contains(directive)) {
+                for (String criterion : toList(progress.getRemainingCriteria())) {
+                    player.getAdvancements().award(advancement, criterion);
+                }
+            } else {
+                for (String criterion : toList(progress.getCompletedCriteria())) {
+                    player.getAdvancements().revoke(advancement, criterion);
+                }
+            }
+        }
+    }
 
-	/** A copy: awarding and revoking change the progress being read. */
-	private static List<String> toList(Iterable<String> criteria) {
-		List<String> list = new ArrayList<>();
-		criteria.forEach(list::add);
-		return list;
-	}
+    /** A copy: awarding and revoking change the progress being read. */
+    private static List<String> toList(Iterable<String> criteria) {
+        List<String> list = new ArrayList<>();
+        criteria.forEach(list::add);
+        return list;
+    }
 }

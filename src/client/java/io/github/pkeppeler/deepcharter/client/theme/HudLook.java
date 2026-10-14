@@ -22,28 +22,39 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param accountColor its text
  */
 public record HudLook(
-		int podStatusMargin,
-		int podStatusLineGap,
-		int podStatusColor,
-		int podBurningColor,
-		int podLiningColor,
-		int podLiningDryColor,
-		int podLinerColor,
-		int podSounderColor,
-		int podHardLandingColor,
-		int altimeterMargin,
-		int altimeterColor,
-		int accountMargin,
-		double accountY,
-		int accountColor) {
-	public static HudLook current() {
-		return UiTheme.current().hud();
-	}
+        int podStatusMargin,
+        int podStatusLineGap,
+        int podStatusColor,
+        int podBurningColor,
+        int podLiningColor,
+        int podLiningDryColor,
+        int podLinerColor,
+        int podSounderColor,
+        int podHardLandingColor,
+        int altimeterMargin,
+        int altimeterColor,
+        int accountMargin,
+        double accountY,
+        int accountColor) {
+    public static HudLook current() {
+        return UiTheme.current().hud();
+    }
 
-	public static HudLook of(ThemeData d) {
-		return new HudLook(d.integer("podStatusMargin", 0), d.integer("podStatusLineGap", 0), d.color("podStatusColor"),
-				d.color("podBurningColor"), d.color("podLiningColor"), d.color("podLiningDryColor"), d.color("podLinerColor"), d.color("podSounderColor"), d.color("podHardLandingColor"),
-				d.integer("altimeterMargin", 0), d.color("altimeterColor"), d.integer("accountMargin", 0), d.decimal("accountY", 0, 1),
-				d.color("accountColor"));
-	}
+    public static HudLook of(ThemeData d) {
+        return new HudLook(
+                d.integer("podStatusMargin", 0),
+                d.integer("podStatusLineGap", 0),
+                d.color("podStatusColor"),
+                d.color("podBurningColor"),
+                d.color("podLiningColor"),
+                d.color("podLiningDryColor"),
+                d.color("podLinerColor"),
+                d.color("podSounderColor"),
+                d.color("podHardLandingColor"),
+                d.integer("altimeterMargin", 0),
+                d.color("altimeterColor"),
+                d.integer("accountMargin", 0),
+                d.decimal("accountY", 0, 1),
+                d.color("accountColor"));
+    }
 }

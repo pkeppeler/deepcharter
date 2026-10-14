@@ -1,55 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Reader;
-import java.io.UncheckedIOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.function.IntBinaryOperator;
-
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-
-import net.fabricmc.fabric.api.gametest.v1.GameTest;
-
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtAccounter;
-import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
-import net.minecraft.util.ProblemReporter;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.Display;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.level.block.BedBlock;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.storage.TagValueOutput;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.phys.shapes.CollisionContext;
-
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
@@ -67,6 +20,49 @@ import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.TestRegions;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
+import java.io.UncheckedIOException;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.IntBinaryOperator;
+import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtAccounter;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.storage.TagValueOutput;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
 
 /**
  * Server GameTests for #244, the colony rebuild: the town the world builds at spawn (tools/colony/town.py, the layout file
@@ -78,623 +74,777 @@ import io.github.pkeppeler.deepcharter.test.support.TestRegions;
  * with an unknown block places as air, which the first test sees as a hole.
  */
 public class ColonyPlacementTest {
-	/** A player's hitbox. */
-	private static final double PLAYER_WIDTH = 0.6;
-	private static final double PLAYER_HEIGHT = 1.8;
-	private static final double SWEEP_STEP = 0.25;
-	/** How far a sweep starts outside an opening, and how far it runs inside a door and inside a bay. */
-	private static final double SWEEP_OUT = 4;
-	private static final double SWEEP_IN_DOOR = 2;
-	private static final double SWEEP_IN_BAY = 6;
-	/** A player jumps up one block and drops three. */
-	private static final int DROP = 3;
-	/** The most blocks above the ground a walk looks at: steps, not ladders. */
-	private static final int WALK_HEIGHT = 3;
-	/** How far a player's eyes are above the feet, and how far a player reaches to use a block. */
-	private static final double EYE = 1.62;
-	private static final double REACH = 4.5;
+    /** A player's hitbox. */
+    private static final double PLAYER_WIDTH = 0.6;
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
-	public void everyBlockOfEveryPieceOfTheLayoutStandsInTheWorld(GameTestHelper helper) {
-		MinecraftServer server = server(helper);
-		ServerLevel level = server.overworld();
-		ColonySite.Placed colony = placed(helper);
-		int[] ticking = {0};
-		List<BlockPos> chunks = ColonyChunks.of(colony);
-		FarChunks.awaitEntityTicking(helper, level, chunks, index -> ticking[0]++);
-		helper.succeedWhen(() -> {
-			if (ticking[0] < chunks.size()) {
-				throw failure(helper, "waiting for the pad's chunks to tick: %s of %s", ticking[0], chunks.size());
-			}
-			ColonyLayout layout = ColonyLayout.read(server);
-			List<String> problems = new ArrayList<>();
-			int displays = 0;
-			for (ColonyLayout.Piece piece : layout.pieces()) {
-				displays += piece.displays();
-				try {
-					checkPiece(server, level, colony.center().offset(piece.offset()), piece, problems);
-				} catch (IOException e) {
-					throw new UncheckedIOException(e);
-				}
-			}
-			long standing = level.getEntitiesOfClass(Display.BlockDisplay.class, pad(colony), display -> !display.getBlockState().equals(FounderStatue.handsState())).size();
-			if (standing != displays) {
-				problems.add(standing + " block displays stand on the pad, the layout's pieces place " + displays);
-			}
-			if (!problems.isEmpty()) {
-				throw failure(helper, "%s problem(s):\n  %s", problems.size(), String.join("\n  ", problems));
-			}
-		});
-	}
+    private static final double PLAYER_HEIGHT = 1.8;
+    private static final double SWEEP_STEP = 0.25;
+    /** How far a sweep starts outside an opening, and how far it runs inside a door and inside a bay. */
+    private static final double SWEEP_OUT = 4;
 
-	/** Every block of the piece's file at its place, above the ground row (the ground row is where a footing goes over paving). */
-	private static void checkPiece(MinecraftServer server, ServerLevel level, BlockPos origin, ColonyLayout.Piece piece, List<String> problems) throws IOException {
-		var file = net.minecraft.resources.Identifier.fromNamespaceAndPath(piece.structure().getNamespace(), "structure/" + piece.structure().getPath() + ".nbt");
-		CompoundTag root;
-		try (InputStream stream = server.getResourceManager().getResourceOrThrow(file).open()) {
-			root = NbtIo.readCompressed(stream, NbtAccounter.unlimitedHeap());
-		}
-		List<BlockState> palette = new ArrayList<>();
-		for (Tag tag : root.getListOrEmpty("palette")) {
-			palette.add(BlockState.CODEC.parse(NbtOps.INSTANCE, tag).getOrThrow(message -> new IllegalStateException(piece.structure() + " palette: " + message)));
-		}
-		int wrong = 0;
-		String first = "";
-		for (Tag tag : root.getListOrEmpty("blocks")) {
-			CompoundTag block = (CompoundTag) tag;
-			var list = block.getListOrEmpty("pos");
-			int[] pos = {list.getIntOr(0, 0), list.getIntOr(1, 0), list.getIntOr(2, 0)};
-			BlockPos at = origin.offset(pos[0], pos[1], pos[2]);
-			BlockState wanted = palette.get(block.getIntOr("state", 0));
-			if (pos[1] + piece.offset().getY() >= 1 && !level.getBlockState(at).equals(wanted)) {
-				if (wrong++ == 0) {
-					first = at.toShortString() + " is " + level.getBlockState(at) + ", the file has " + wanted;
-				}
-			}
-		}
-		if (wrong > 0) {
-			problems.add(piece.structure() + ": " + wrong + " block(s) are not as the file has them, the first: " + first);
-		}
-	}
+    private static final double SWEEP_IN_DOOR = 2;
+    private static final double SWEEP_IN_BAY = 6;
+    /** A player jumps up one block and drops three. */
+    private static final int DROP = 3;
+    /** The most blocks above the ground a walk looks at: steps, not ladders. */
+    private static final int WALK_HEIGHT = 3;
+    /** How far a player's eyes are above the feet, and how far a player reaches to use a block. */
+    private static final double EYE = 1.62;
 
-	@GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
-	public void theHostStandsAtTenBlocksOnHisPlinthWithoutHisHands(GameTestHelper helper) {
-		MinecraftServer server = server(helper);
-		ServerLevel level = server.overworld();
-		ColonySite.Placed colony = placed(helper);
-		BlockPos feet = colony.anchors().get(ColonyAnchor.STATUE);
-		boolean[] ticking = {false};
-		FarChunks.awaitEntityTicking(helper, level, feet, () -> ticking[0] = true);
-		helper.succeedWhen(() -> {
-			if (!ticking[0]) {
-				throw failure(helper, "waiting for the Host's chunk to tick");
-			}
-			checkTheHost(helper, server, level, feet);
-		});
-	}
+    private static final double REACH = 4.5;
 
-	private static void checkTheHost(GameTestHelper helper, MinecraftServer server, ServerLevel level, BlockPos feet) {
-		List<Display.BlockDisplay> found = ColonyChunks.hostBody(server);
-		if (found.size() != 1) {
-			throw failure(helper, "one body of the Host should stand at %s, found %s", feet.toShortString(), found.size());
-		}
-		Vec3 at = found.getFirst().position();
-		if (Math.abs(at.x - (feet.getX() + 0.5)) > 0.01 || Math.abs(at.y - feet.getY()) > 0.01 || Math.abs(at.z - (feet.getZ() + 0.5)) > 0.01) {
-			throw failure(helper, "the Host's feet are at %s, not at the middle of the bottom of %s", at, feet.toShortString());
-		}
-		// A display scales the model to the height the square wants: ten blocks is this scale (tools/colony/town.py HOST, whose test
-		// ties the number to the figure).
-		TagValueOutput saved = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
-		found.getFirst().saveWithoutId(saved);
-		float scale = saved.buildResult().getCompoundOrEmpty("transformation").getListOrEmpty("scale").getFloatOr(1, 0F);
-		if (Math.abs(scale - HOST_SCALE) > 0.001) {
-			throw failure(helper, "the Host's display scale is %s, which stands him %s blocks tall, not 10", scale, scale / HOST_SCALE * 10);
-		}
-		if (!level.getBlockState(feet.below()).is(ColonyKit.BRASS_TRIM)) {
-			throw failure(helper, "the Host has no plinth under his feet at %s: %s", feet.toShortString(), level.getBlockState(feet.below()));
-		}
-		if (!level.getBlockState(feet).is(Blocks.BARRIER)) {
-			throw failure(helper, "no collision stands in the Host at %s, so a pod could fly through him", feet.toShortString());
-		}
-		if (!FounderStatue.hands(server).isEmpty()) {
-			throw failure(helper, "the built colony should leave the Host without hands");
-		}
-	}
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void everyBlockOfEveryPieceOfTheLayoutStandsInTheWorld(GameTestHelper helper) {
+        MinecraftServer server = server(helper);
+        ServerLevel level = server.overworld();
+        ColonySite.Placed colony = placed(helper);
+        int[] ticking = {0};
+        List<BlockPos> chunks = ColonyChunks.of(colony);
+        FarChunks.awaitEntityTicking(helper, level, chunks, index -> ticking[0]++);
+        helper.succeedWhen(() -> {
+            if (ticking[0] < chunks.size()) {
+                throw failure(helper, "waiting for the pad's chunks to tick: %s of %s", ticking[0], chunks.size());
+            }
+            ColonyLayout layout = ColonyLayout.read(server);
+            List<String> problems = new ArrayList<>();
+            int displays = 0;
+            for (ColonyLayout.Piece piece : layout.pieces()) {
+                displays += piece.displays();
+                try {
+                    checkPiece(server, level, colony.center().offset(piece.offset()), piece, problems);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            }
+            long standing = level.getEntitiesOfClass(
+                            Display.BlockDisplay.class,
+                            pad(colony),
+                            display -> !display.getBlockState().equals(FounderStatue.handsState()))
+                    .size();
+            if (standing != displays) {
+                problems.add(standing + " block displays stand on the pad, the layout's pieces place " + displays);
+            }
+            if (!problems.isEmpty()) {
+                throw failure(helper, "%s problem(s):\n  %s", problems.size(), String.join("\n  ", problems));
+            }
+        });
+    }
 
-	/** The display scale that makes the Host 10 blocks tall, from his soles to his raised hand. */
-	private static final double HOST_SCALE = 3.4752;
+    /** Every block of the piece's file at its place, above the ground row (the ground row is where a footing goes over paving). */
+    private static void checkPiece(
+            MinecraftServer server, ServerLevel level, BlockPos origin, ColonyLayout.Piece piece, List<String> problems)
+            throws IOException {
+        var file = net.minecraft.resources.Identifier.fromNamespaceAndPath(
+                piece.structure().getNamespace(),
+                "structure/" + piece.structure().getPath() + ".nbt");
+        CompoundTag root;
+        try (InputStream stream =
+                server.getResourceManager().getResourceOrThrow(file).open()) {
+            root = NbtIo.readCompressed(stream, NbtAccounter.unlimitedHeap());
+        }
+        List<BlockState> palette = new ArrayList<>();
+        for (Tag tag : root.getListOrEmpty("palette")) {
+            palette.add(BlockState.CODEC
+                    .parse(NbtOps.INSTANCE, tag)
+                    .getOrThrow(message -> new IllegalStateException(piece.structure() + " palette: " + message)));
+        }
+        int wrong = 0;
+        String first = "";
+        for (Tag tag : root.getListOrEmpty("blocks")) {
+            CompoundTag block = (CompoundTag) tag;
+            var list = block.getListOrEmpty("pos");
+            int[] pos = {list.getIntOr(0, 0), list.getIntOr(1, 0), list.getIntOr(2, 0)};
+            BlockPos at = origin.offset(pos[0], pos[1], pos[2]);
+            BlockState wanted = palette.get(block.getIntOr("state", 0));
+            if (pos[1] + piece.offset().getY() >= 1 && !level.getBlockState(at).equals(wanted)) {
+                if (wrong++ == 0) {
+                    first = at.toShortString() + " is " + level.getBlockState(at) + ", the file has " + wanted;
+                }
+            }
+        }
+        if (wrong > 0) {
+            problems.add(
+                    piece.structure() + ": " + wrong + " block(s) are not as the file has them, the first: " + first);
+        }
+    }
 
-	@GameTest(maxTicks = 400)
-	public void aPlayerWalksFromTheContinuityOfficeToEveryPlaceTheColonyIsFor(GameTestHelper helper) {
-		MinecraftServer server = server(helper);
-		ServerLevel level = server.overworld();
-		ColonySite.Placed colony = placed(helper);
-		loadPad(level, colony);
-		BlockPos spawn = colony.anchors().get(ColonyAnchor.CONTINUITY_OFFICE);
-		Set<BlockPos> reach = reach(level, colony, spawn);
-		if (!reach.contains(spawn)) {
-			throw failure(helper, "a player cannot stand at the world spawn %s", spawn.toShortString());
-		}
-		List<String> problems = new ArrayList<>();
-		// Each function of the colony and the block it is used at.
-		Map<String, BlockPos> places = new java.util.LinkedHashMap<>();
-		for (ColonyAnchor anchor : List.of(ColonyAnchor.FUEL_PUMP, ColonyAnchor.ORE_PROCESSOR, ColonyAnchor.UPGRADE_TERMINAL, ColonyAnchor.REPAIR_STATION,
-				ColonyAnchor.CONTRACT_TERMINAL, ColonyAnchor.CHAPEL_CANDLE, ColonyAnchor.CONDUIT)) {
-			places.put(anchor.getSerializedName(), colony.anchors().get(anchor));
-		}
-		places.put("hangar console", HangarConsole.find(server).orElseThrow());
-		places.put("the Host's plinth", colony.center().offset(0, 1, 4));
-		for (ColonyAnchor anchor : List.of(ColonyAnchor.HANGAR, ColonyAnchor.BUNKHOUSE, ColonyAnchor.PAY_OFFICE, ColonyAnchor.PERSONNEL_OFFICE, ColonyAnchor.LAMP_AND_PICK)) {
-			BlockPos inside = colony.anchors().get(anchor);
-			if (!reach.contains(inside)) {
-				problems.add("a player cannot walk to the " + anchor.getSerializedName() + " at " + inside.toShortString());
-			}
-		}
-		BlockPos centre = colony.center();
-		for (BlockPos pos : BlockPos.betweenClosed(centre.offset(-ColonyTuning.DEFAULT.padSize() / 2, 1, -ColonyTuning.DEFAULT.padSize() / 2),
-				centre.offset(ColonyTuning.DEFAULT.padSize() / 2 - 1, WALK_HEIGHT + 1, ColonyTuning.DEFAULT.padSize() / 2 - 1))) {
-			BlockState state = level.getBlockState(pos);
-			if (state.is(HandbookRegistry.NOTE)) {
-				places.put("note N0" + state.getValue(NoteBlock.NOTE), pos.immutable());
-			} else if (state.getBlock() instanceof BedBlock) {
-				places.putIfAbsent("a bed", pos.immutable());
-			}
-		}
-		for (Map.Entry<String, BlockPos> place : places.entrySet()) {
-			if (reach.stream().noneMatch(stand -> canUse(level, stand, place.getValue()))) {
-				problems.add("no place a player can walk to reaches " + place.getKey() + " at " + place.getValue().toShortString() + " with a clear line to it");
-			}
-		}
-		if (places.keySet().stream().filter(name -> name.startsWith("note N0")).count() != 4) {
-			problems.add("the colony holds notes " + places.keySet() + ", expected N01 to N04");
-		}
-		finish(helper, problems);
-	}
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void theHostStandsAtTenBlocksOnHisPlinthWithoutHisHands(GameTestHelper helper) {
+        MinecraftServer server = server(helper);
+        ServerLevel level = server.overworld();
+        ColonySite.Placed colony = placed(helper);
+        BlockPos feet = colony.anchors().get(ColonyAnchor.STATUE);
+        boolean[] ticking = {false};
+        FarChunks.awaitEntityTicking(helper, level, feet, () -> ticking[0] = true);
+        helper.succeedWhen(() -> {
+            if (!ticking[0]) {
+                throw failure(helper, "waiting for the Host's chunk to tick");
+            }
+            checkTheHost(helper, server, level, feet);
+        });
+    }
 
-	/** True when a player standing at {@code stand} can use the block at {@code target}: it is within reach of the eyes and the first block the line to it meets is that block (or, for the casing, one of its kind). */
-	private static boolean canUse(ServerLevel level, BlockPos stand, BlockPos target) {
-		Vec3 eye = Vec3.atBottomCenterOf(stand).add(0, EYE, 0);
-		BlockState state = level.getBlockState(target);
-		Vec3 aim = Vec3.atLowerCornerOf(target).add(state.getShape(level, target).bounds().getCenter());
-		if (eye.distanceTo(aim) > REACH) {
-			return false;
-		}
-		BlockHitResult hit = level.clip(new ClipContext(eye, aim, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, CollisionContext.empty()));
-		if (hit.getType() != HitResult.Type.BLOCK) {
-			return false;
-		}
-		BlockState first = level.getBlockState(hit.getBlockPos());
-		return hit.getBlockPos().equals(target) || (state.is(ColonyBlocks.CONDUIT) && first.is(ColonyBlocks.CONDUIT));
-	}
+    private static void checkTheHost(GameTestHelper helper, MinecraftServer server, ServerLevel level, BlockPos feet) {
+        List<Display.BlockDisplay> found = ColonyChunks.hostBody(server);
+        if (found.size() != 1) {
+            throw failure(
+                    helper, "one body of the Host should stand at %s, found %s", feet.toShortString(), found.size());
+        }
+        Vec3 at = found.getFirst().position();
+        if (Math.abs(at.x - (feet.getX() + 0.5)) > 0.01
+                || Math.abs(at.y - feet.getY()) > 0.01
+                || Math.abs(at.z - (feet.getZ() + 0.5)) > 0.01) {
+            throw failure(
+                    helper,
+                    "the Host's feet are at %s, not at the middle of the bottom of %s",
+                    at,
+                    feet.toShortString());
+        }
+        // A display scales the model to the height the square wants: ten blocks is this scale (tools/colony/town.py
+        // HOST, whose test
+        // ties the number to the figure).
+        TagValueOutput saved = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
+        found.getFirst().saveWithoutId(saved);
+        float scale = saved.buildResult()
+                .getCompoundOrEmpty("transformation")
+                .getListOrEmpty("scale")
+                .getFloatOr(1, 0F);
+        if (Math.abs(scale - HOST_SCALE) > 0.001) {
+            throw failure(
+                    helper,
+                    "the Host's display scale is %s, which stands him %s blocks tall, not 10",
+                    scale,
+                    scale / HOST_SCALE * 10);
+        }
+        if (!level.getBlockState(feet.below()).is(ColonyKit.BRASS_TRIM)) {
+            throw failure(
+                    helper,
+                    "the Host has no plinth under his feet at %s: %s",
+                    feet.toShortString(),
+                    level.getBlockState(feet.below()));
+        }
+        if (!level.getBlockState(feet).is(Blocks.BARRIER)) {
+            throw failure(
+                    helper,
+                    "no collision stands in the Host at %s, so a pod could fly through him",
+                    feet.toShortString());
+        }
+        if (!FounderStatue.hands(server).isEmpty()) {
+            throw failure(helper, "the built colony should leave the Host without hands");
+        }
+    }
 
-	/** The standing places a player reaches from {@code start} on the pad: walking, a jump up one block, a drop of up to three. */
-	private static Set<BlockPos> reach(ServerLevel level, ColonySite.Placed colony, BlockPos start) {
-		int half = ColonyTuning.DEFAULT.padSize() / 2;
-		BlockPos centre = colony.center();
-		Set<BlockPos> seen = new HashSet<>();
-		Deque<BlockPos> frontier = new ArrayDeque<>();
-		seen.add(start);
-		frontier.add(start);
-		while (!frontier.isEmpty()) {
-			BlockPos from = frontier.poll();
-			for (Direction side : Direction.Plane.HORIZONTAL) {
-				for (int dy = 1; dy >= -DROP; dy--) {
-					BlockPos to = from.relative(side).above(dy);
-					boolean inside = Math.abs(to.getX() - centre.getX()) < half && Math.abs(to.getZ() - centre.getZ()) < half
-							&& to.getY() >= centre.getY() && to.getY() <= centre.getY() + WALK_HEIGHT;
-					if (!inside || seen.contains(to) || !stands(level, to)) {
-						continue;
-					}
-					// The way: up, the head clears one block higher where the player is; level or down, the body clears the way out.
-					boolean passes = dy > 0 ? clear(level, playerAt(from.above())) : clear(level, playerAt(from.relative(side).atY(from.getY())));
-					if (passes) {
-						seen.add(to);
-						frontier.add(to);
-						break;
-					}
-				}
-			}
-		}
-		return seen;
-	}
+    /** The display scale that makes the Host 10 blocks tall, from his soles to his raised hand. */
+    private static final double HOST_SCALE = 3.4752;
 
-	private static boolean stands(ServerLevel level, BlockPos feet) {
-		BlockPos below = feet.below();
-		return clear(level, playerAt(feet)) && level.getBlockState(below).isFaceSturdy(level, below, Direction.UP);
-	}
+    @GameTest(maxTicks = 400)
+    public void aPlayerWalksFromTheContinuityOfficeToEveryPlaceTheColonyIsFor(GameTestHelper helper) {
+        MinecraftServer server = server(helper);
+        ServerLevel level = server.overworld();
+        ColonySite.Placed colony = placed(helper);
+        loadPad(level, colony);
+        BlockPos spawn = colony.anchors().get(ColonyAnchor.CONTINUITY_OFFICE);
+        Set<BlockPos> reach = reach(level, colony, spawn);
+        if (!reach.contains(spawn)) {
+            throw failure(helper, "a player cannot stand at the world spawn %s", spawn.toShortString());
+        }
+        List<String> problems = new ArrayList<>();
+        // Each function of the colony and the block it is used at.
+        Map<String, BlockPos> places = new java.util.LinkedHashMap<>();
+        for (ColonyAnchor anchor : List.of(
+                ColonyAnchor.FUEL_PUMP,
+                ColonyAnchor.ORE_PROCESSOR,
+                ColonyAnchor.UPGRADE_TERMINAL,
+                ColonyAnchor.REPAIR_STATION,
+                ColonyAnchor.CONTRACT_TERMINAL,
+                ColonyAnchor.CHAPEL_CANDLE,
+                ColonyAnchor.CONDUIT)) {
+            places.put(anchor.getSerializedName(), colony.anchors().get(anchor));
+        }
+        places.put("hangar console", HangarConsole.find(server).orElseThrow());
+        places.put("the Host's plinth", colony.center().offset(0, 1, 4));
+        for (ColonyAnchor anchor : List.of(
+                ColonyAnchor.HANGAR,
+                ColonyAnchor.BUNKHOUSE,
+                ColonyAnchor.PAY_OFFICE,
+                ColonyAnchor.PERSONNEL_OFFICE,
+                ColonyAnchor.LAMP_AND_PICK)) {
+            BlockPos inside = colony.anchors().get(anchor);
+            if (!reach.contains(inside)) {
+                problems.add(
+                        "a player cannot walk to the " + anchor.getSerializedName() + " at " + inside.toShortString());
+            }
+        }
+        BlockPos centre = colony.center();
+        for (BlockPos pos : BlockPos.betweenClosed(
+                centre.offset(-ColonyTuning.DEFAULT.padSize() / 2, 1, -ColonyTuning.DEFAULT.padSize() / 2),
+                centre.offset(
+                        ColonyTuning.DEFAULT.padSize() / 2 - 1,
+                        WALK_HEIGHT + 1,
+                        ColonyTuning.DEFAULT.padSize() / 2 - 1))) {
+            BlockState state = level.getBlockState(pos);
+            if (state.is(HandbookRegistry.NOTE)) {
+                places.put("note N0" + state.getValue(NoteBlock.NOTE), pos.immutable());
+            } else if (state.getBlock() instanceof BedBlock) {
+                places.putIfAbsent("a bed", pos.immutable());
+            }
+        }
+        for (Map.Entry<String, BlockPos> place : places.entrySet()) {
+            if (reach.stream().noneMatch(stand -> canUse(level, stand, place.getValue()))) {
+                problems.add("no place a player can walk to reaches " + place.getKey() + " at "
+                        + place.getValue().toShortString() + " with a clear line to it");
+            }
+        }
+        if (places.keySet().stream().filter(name -> name.startsWith("note N0")).count() != 4) {
+            problems.add("the colony holds notes " + places.keySet() + ", expected N01 to N04");
+        }
+        finish(helper, problems);
+    }
 
-	private static AABB playerAt(BlockPos feet) {
-		return box(Vec3.atBottomCenterOf(feet), PLAYER_WIDTH, PLAYER_HEIGHT);
-	}
+    /** True when a player standing at {@code stand} can use the block at {@code target}: it is within reach of the eyes and the first block the line to it meets is that block (or, for the casing, one of its kind). */
+    private static boolean canUse(ServerLevel level, BlockPos stand, BlockPos target) {
+        Vec3 eye = Vec3.atBottomCenterOf(stand).add(0, EYE, 0);
+        BlockState state = level.getBlockState(target);
+        Vec3 aim = Vec3.atLowerCornerOf(target)
+                .add(state.getShape(level, target).bounds().getCenter());
+        if (eye.distanceTo(aim) > REACH) {
+            return false;
+        }
+        BlockHitResult hit = level.clip(
+                new ClipContext(eye, aim, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, CollisionContext.empty()));
+        if (hit.getType() != HitResult.Type.BLOCK) {
+            return false;
+        }
+        BlockState first = level.getBlockState(hit.getBlockPos());
+        return hit.getBlockPos().equals(target) || (state.is(ColonyBlocks.CONDUIT) && first.is(ColonyBlocks.CONDUIT));
+    }
 
-	private static AABB box(Vec3 feet, double width, double height) {
-		return new AABB(feet.x - width / 2, feet.y, feet.z - width / 2, feet.x + width / 2, feet.y + height, feet.z + width / 2);
-	}
+    /** The standing places a player reaches from {@code start} on the pad: walking, a jump up one block, a drop of up to three. */
+    private static Set<BlockPos> reach(ServerLevel level, ColonySite.Placed colony, BlockPos start) {
+        int half = ColonyTuning.DEFAULT.padSize() / 2;
+        BlockPos centre = colony.center();
+        Set<BlockPos> seen = new HashSet<>();
+        Deque<BlockPos> frontier = new ArrayDeque<>();
+        seen.add(start);
+        frontier.add(start);
+        while (!frontier.isEmpty()) {
+            BlockPos from = frontier.poll();
+            for (Direction side : Direction.Plane.HORIZONTAL) {
+                for (int dy = 1; dy >= -DROP; dy--) {
+                    BlockPos to = from.relative(side).above(dy);
+                    boolean inside = Math.abs(to.getX() - centre.getX()) < half
+                            && Math.abs(to.getZ() - centre.getZ()) < half
+                            && to.getY() >= centre.getY()
+                            && to.getY() <= centre.getY() + WALK_HEIGHT;
+                    if (!inside || seen.contains(to) || !stands(level, to)) {
+                        continue;
+                    }
+                    // The way: up, the head clears one block higher where the player is; level or down, the body clears
+                    // the way out.
+                    boolean passes = dy > 0
+                            ? clear(level, playerAt(from.above()))
+                            : clear(level, playerAt(from.relative(side).atY(from.getY())));
+                    if (passes) {
+                        seen.add(to);
+                        frontier.add(to);
+                        break;
+                    }
+                }
+            }
+        }
+        return seen;
+    }
 
-	/** True when no block's collision shape meets the box. Entities, such as the derelict Mole, do not count. */
-	private static boolean clear(ServerLevel level, AABB box) {
-		return !level.getBlockCollisions(null, box).iterator().hasNext();
-	}
+    private static boolean stands(ServerLevel level, BlockPos feet) {
+        BlockPos below = feet.below();
+        return clear(level, playerAt(feet)) && level.getBlockState(below).isFaceSturdy(level, below, Direction.UP);
+    }
 
-	@GameTest
-	public void aPlayerFitsEveryDoorAndAPodEveryBayAndTheHangar(GameTestHelper helper) throws IOException {
-		MinecraftServer server = server(helper);
-		ServerLevel level = server.overworld();
-		ColonySite.Placed colony = placed(helper);
-		loadPad(level, colony);
-		List<String> problems = new ArrayList<>();
-		JsonObject layout;
-		try (Reader reader = server.getResourceManager().getResourceOrThrow(ColonyLayout.ID).openAsReader()) {
-			layout = JsonParser.parseReader(reader).getAsJsonObject();
-		}
-		int doors = 0;
-		int bays = 0;
-		for (JsonElement element : layout.getAsJsonArray("doors")) {
-			JsonObject door = element.getAsJsonObject();
-			var outside = door.getAsJsonArray("outside");
-			BlockPos cell = colony.center().offset(outside.get(0).getAsInt(), outside.get(1).getAsInt(), outside.get(2).getAsInt());
-			Direction facing = Direction.byName(door.get("facing").getAsString());
-			int width = door.get("width").getAsInt();
-			int height = door.get("height").getAsInt();
-			String name = door.get("building").getAsString();
-			if (width == 1) {
-				doors++;
-				if (!sweep(level, cell, facing, 0.5, PLAYER_WIDTH, PLAYER_HEIGHT, SWEEP_IN_DOOR)) {
-					problems.add("a player does not fit the door of " + name + " at " + cell.toShortString());
-				}
-				if (height < 2) {
-					problems.add("the door of " + name + " is " + height + " high");
-				}
-			} else {
-				bays++;
-				for (EntityType<?> pod : List.of(PodRegistry.POD, PodRegistry.PROSPECTOR)) {
-					var size = pod.getDimensions();
-					boolean fits = false;
-					for (double lateral = size.width() / 2; lateral <= width - size.width() / 2 + 1e-9 && !fits; lateral += SWEEP_STEP) {
-						fits = sweep(level, cell, facing, lateral, size.width(), size.height(), SWEEP_IN_BAY);
-					}
-					if (!fits) {
-						problems.add("the " + EntityType.getKey(pod).getPath() + " does not fit the " + name + " at " + cell.toShortString());
-					}
-				}
-			}
-		}
-		if (doors != 8 || bays != 2) {
-			problems.add("the layout lists " + doors + " doors and " + bays + " bays, expected a door to each of eight buildings and two bays");
-		}
-		// The hangar holds a pod at its anchor, whichever chassis.
-		BlockPos hangar = colony.anchors().get(ColonyAnchor.HANGAR);
-		for (EntityType<?> pod : List.of(PodRegistry.POD, PodRegistry.PROSPECTOR)) {
-			var size = pod.getDimensions();
-			if (!clear(level, box(Vec3.atBottomCenterOf(hangar), size.width(), size.height()))) {
-				problems.add("the " + EntityType.getKey(pod).getPath() + " does not fit in the hangar at " + hangar.toShortString());
-			}
-		}
-		finish(helper, problems);
-	}
+    private static AABB playerAt(BlockPos feet) {
+        return box(Vec3.atBottomCenterOf(feet), PLAYER_WIDTH, PLAYER_HEIGHT);
+    }
 
-	/**
-	 * Moves a box of the given size through an opening: it starts {@link #SWEEP_OUT} blocks outside the cell and ends {@link #SWEEP_IN}
-	 * inside it ({@code inside}), along {@code facing} in the opposite way, with its middle {@code lateral} blocks along the wall from the cell's low
-	 * edge. True when no block meets it on the way.
-	 */
-	private static boolean sweep(ServerLevel level, BlockPos cell, Direction facing, double lateral, double width, double height, double inside) {
-		// The opening's wall runs along X when it faces north or south, along Z when it faces east or west.
-		boolean wallAlongX = facing.getAxis() == Direction.Axis.Z;
-		int outward = facing.getAxisDirection().getStep();
-		for (double t = -SWEEP_OUT; t <= inside; t += SWEEP_STEP) {
-			double depth = (wallAlongX ? cell.getZ() : cell.getX()) + 0.5 - outward * t;
-			double x = wallAlongX ? cell.getX() + lateral : depth;
-			double z = wallAlongX ? depth : cell.getZ() + lateral;
-			if (!clear(level, box(new Vec3(x, cell.getY(), z), width, height))) {
-				return false;
-			}
-		}
-		return true;
-	}
+    private static AABB box(Vec3 feet, double width, double height) {
+        return new AABB(
+                feet.x - width / 2,
+                feet.y,
+                feet.z - width / 2,
+                feet.x + width / 2,
+                feet.y + height,
+                feet.z + width / 2);
+    }
 
-	@GameTest(maxTicks = 400)
-	public void noBlockOfTheColonyFloatsOrHangsOverTheVoid(GameTestHelper helper) {
-		MinecraftServer server = server(helper);
-		ServerLevel level = server.overworld();
-		ColonySite.Placed colony = placed(helper);
-		loadPad(level, colony);
-		int half = ColonyTuning.DEFAULT.padSize() / 2;
-		BlockPos centre = colony.center();
-		List<String> problems = new ArrayList<>();
-		// Every column of the pad has solid ground under it: nothing of the colony stands over a gap.
-		for (int x = -half; x < half; x++) {
-			for (int z = -half; z < half; z++) {
-				for (int dy = 0; dy >= -3; dy--) {
-					BlockPos pos = centre.offset(x, dy, z);
-					if (level.getBlockState(pos).isAir() || !level.getFluidState(pos).isEmpty()) {
-						problems.add("the pad has no ground at " + pos.toShortString() + ": " + level.getBlockState(pos));
-						dy = -4;
-					}
-				}
-			}
-		}
-		// Every block above the ground joins the ground or the Conduit's casing, by a face or along an edge.
-		Set<BlockPos> blocks = new HashSet<>();
-		Deque<BlockPos> frontier = new ArrayDeque<>();
-		Set<BlockPos> supported = new HashSet<>();
-		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-		for (int x = -half; x < half; x++) {
-			for (int z = -half; z < half; z++) {
-				for (int y = 1; y <= ColonyTuning.DEFAULT.clearHeight(); y++) {
-					pos.setWithOffset(centre, x, y, z);
-					BlockState state = level.getBlockState(pos);
-					// A pod's light blocks hang in the air by design (ADR 0024); they are not the colony's.
-					if (!state.isAir() && !state.is(Blocks.LIGHT)) {
-						BlockPos found = pos.immutable();
-						blocks.add(found);
-						if (y == 1 || state.is(ColonyBlocks.CONDUIT)) {
-							supported.add(found);
-							frontier.add(found);
-						}
-					}
-				}
-			}
-		}
-		while (!frontier.isEmpty()) {
-			BlockPos from = frontier.poll();
-			for (int dx = -1; dx <= 1; dx++) {
-				for (int dy = -1; dy <= 1; dy++) {
-					for (int dz = -1; dz <= 1; dz++) {
-						int apart = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
-						BlockPos near = from.offset(dx, dy, dz);
-						if ((apart == 1 || apart == 2) && blocks.contains(near) && supported.add(near)) {
-							frontier.add(near);
-						}
-					}
-				}
-			}
-		}
-		blocks.removeAll(supported);
-		if (!blocks.isEmpty()) {
-			problems.add(blocks.size() + " block(s) hang in the air, the first at " + blocks.iterator().next().toShortString());
-		}
-		if (blocks.size() + supported.size() < 3000) {
-			problems.add("only " + (blocks.size() + supported.size()) + " blocks stand on the pad: the colony was not built");
-		}
-		finish(helper, problems);
-	}
+    /** True when no block's collision shape meets the box. Entities, such as the derelict Mole, do not count. */
+    private static boolean clear(ServerLevel level, AABB box) {
+        return !level.getBlockCollisions(null, box).iterator().hasNext();
+    }
 
-	/** A player climbs one block. */
-	private static final int STEP = 1;
+    @GameTest
+    public void aPlayerFitsEveryDoorAndAPodEveryBayAndTheHangar(GameTestHelper helper) throws IOException {
+        MinecraftServer server = server(helper);
+        ServerLevel level = server.overworld();
+        ColonySite.Placed colony = placed(helper);
+        loadPad(level, colony);
+        List<String> problems = new ArrayList<>();
+        JsonObject layout;
+        try (Reader reader =
+                server.getResourceManager().getResourceOrThrow(ColonyLayout.ID).openAsReader()) {
+            layout = JsonParser.parseReader(reader).getAsJsonObject();
+        }
+        int doors = 0;
+        int bays = 0;
+        for (JsonElement element : layout.getAsJsonArray("doors")) {
+            JsonObject door = element.getAsJsonObject();
+            var outside = door.getAsJsonArray("outside");
+            BlockPos cell = colony.center()
+                    .offset(
+                            outside.get(0).getAsInt(),
+                            outside.get(1).getAsInt(),
+                            outside.get(2).getAsInt());
+            Direction facing = Direction.byName(door.get("facing").getAsString());
+            int width = door.get("width").getAsInt();
+            int height = door.get("height").getAsInt();
+            String name = door.get("building").getAsString();
+            if (width == 1) {
+                doors++;
+                if (!sweep(level, cell, facing, 0.5, PLAYER_WIDTH, PLAYER_HEIGHT, SWEEP_IN_DOOR)) {
+                    problems.add("a player does not fit the door of " + name + " at " + cell.toShortString());
+                }
+                if (height < 2) {
+                    problems.add("the door of " + name + " is " + height + " high");
+                }
+            } else {
+                bays++;
+                for (EntityType<?> pod : List.of(PodRegistry.POD, PodRegistry.PROSPECTOR)) {
+                    var size = pod.getDimensions();
+                    boolean fits = false;
+                    for (double lateral = size.width() / 2;
+                            lateral <= width - size.width() / 2 + 1e-9 && !fits;
+                            lateral += SWEEP_STEP) {
+                        fits = sweep(level, cell, facing, lateral, size.width(), size.height(), SWEEP_IN_BAY);
+                    }
+                    if (!fits) {
+                        problems.add("the " + EntityType.getKey(pod).getPath() + " does not fit the " + name + " at "
+                                + cell.toShortString());
+                    }
+                }
+            }
+        }
+        if (doors != 8 || bays != 2) {
+            problems.add("the layout lists " + doors + " doors and " + bays
+                    + " bays, expected a door to each of eight buildings and two bays");
+        }
+        // The hangar holds a pod at its anchor, whichever chassis.
+        BlockPos hangar = colony.anchors().get(ColonyAnchor.HANGAR);
+        for (EntityType<?> pod : List.of(PodRegistry.POD, PodRegistry.PROSPECTOR)) {
+            var size = pod.getDimensions();
+            if (!clear(level, box(Vec3.atBottomCenterOf(hangar), size.width(), size.height()))) {
+                problems.add("the " + EntityType.getKey(pod).getPath() + " does not fit in the hangar at "
+                        + hangar.toShortString());
+            }
+        }
+        finish(helper, problems);
+    }
 
-	/**
-	 * In the built world the surface of the pad's edge and of the margins around it has no step between neighbouring columns taller
-	 * than a player climbs. Reads the pad's ground at its outermost columns (a solid block at the pad's ground) and the margins'
-	 * surface by the heightmap. The test world is flat: {@link #theMarginReachesTheNaturalGroundOfAHillAPitAndAMesa} has the relief.
-	 */
-	@GameTest(maxTicks = 100)
-	public void theBuiltMarginHasNoStepOverOneBlockAroundThePad(GameTestHelper helper) {
-		ServerLevel level = server(helper).overworld();
-		ColonySite.Placed colony = placed(helper);
-		BlockPos centre = colony.center();
-		int half = ColonyTuning.DEFAULT.padSize() / 2;
-		int reach = half + ColonyTuning.DEFAULT.edgeMargin();
-		int size = 2 * reach;
-		// Read through held chunks: getHeight answers the world minimum, 68 below the ground, for a chunk that is not loaded (#393).
-		int minChunkX = (centre.getX() - reach) >> 4;
-		int minChunkZ = (centre.getZ() - reach) >> 4;
-		LevelChunk[][] chunks = loadChunks(level, centre.getX() - reach, centre.getX() + reach - 1, centre.getZ() - reach, centre.getZ() + reach - 1);
-		Function<BlockPos, BlockState> blockAt = pos -> chunks[(pos.getX() >> 4) - minChunkX][(pos.getZ() >> 4) - minChunkZ].getBlockState(pos);
-		List<String> problems = new ArrayList<>();
-		List<TestRegions.Region> regions = TestRegions.in(level, centre.getX() - reach, centre.getX() + reach - 1, centre.getZ() - reach, centre.getZ() + reach - 1);
-		int[][] surface = new int[size][size];
-		for (int i = 0; i < size; i++) {
-			for (int j = 0; j < size; j++) {
-				int x = centre.getX() - reach + i;
-				int z = centre.getZ() - reach + j;
-				boolean onPad = x >= centre.getX() - half && x < centre.getX() + half && z >= centre.getZ() - half && z < centre.getZ() + half;
-				boolean edge = onPad && (x == centre.getX() - half || x == centre.getX() + half - 1 || z == centre.getZ() - half || z == centre.getZ() + half - 1);
-				if (edge && blockAt.apply(new BlockPos(x, centre.getY(), z)).isAir()) {
-					problems.add("no pad ground at " + x + " " + z);
-				}
-				surface[i][j] = onPad ? centre.getY() : chunks[(x >> 4) - minChunkX][(z >> 4) - minChunkZ].getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
-			}
-		}
-		int checked = 0;
-		for (int i = 0; i < size; i++) {
-			for (int j = 0; j < size; j++) {
-				int x = centre.getX() - reach + i;
-				int z = centre.getZ() - reach + j;
-				checked++;
-				if (i + 1 < size && Math.abs(surface[i][j] - surface[i + 1][j]) > STEP) {
-					problems.add(step(blockAt, regions, new BlockPos(x, surface[i][j], z), new BlockPos(x + 1, surface[i + 1][j], z), "east"));
-				}
-				if (j + 1 < size && Math.abs(surface[i][j] - surface[i][j + 1]) > STEP) {
-					problems.add(step(blockAt, regions, new BlockPos(x, surface[i][j], z), new BlockPos(x, surface[i][j + 1], z + 1), "south"));
-				}
-			}
-		}
-		if (checked == 0) {
-			problems.add("no column of the margin was checked");
-		}
-		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
-	}
+    /**
+     * Moves a box of the given size through an opening: it starts {@link #SWEEP_OUT} blocks outside the cell and ends {@link #SWEEP_IN}
+     * inside it ({@code inside}), along {@code facing} in the opposite way, with its middle {@code lateral} blocks along the wall from the cell's low
+     * edge. True when no block meets it on the way.
+     */
+    private static boolean sweep(
+            ServerLevel level,
+            BlockPos cell,
+            Direction facing,
+            double lateral,
+            double width,
+            double height,
+            double inside) {
+        // The opening's wall runs along X when it faces north or south, along Z when it faces east or west.
+        boolean wallAlongX = facing.getAxis() == Direction.Axis.Z;
+        int outward = facing.getAxisDirection().getStep();
+        for (double t = -SWEEP_OUT; t <= inside; t += SWEEP_STEP) {
+            double depth = (wallAlongX ? cell.getZ() : cell.getX()) + 0.5 - outward * t;
+            double x = wallAlongX ? cell.getX() + lateral : depth;
+            double z = wallAlongX ? depth : cell.getZ() + lateral;
+            if (!clear(level, box(new Vec3(x, cell.getY(), z), width, height))) {
+                return false;
+            }
+        }
+        return true;
+    }
 
-	/** The failure text of a step: the block on each side, and the test region that holds each column. */
-	private static String step(Function<BlockPos, BlockState> blockAt, List<TestRegions.Region> regions, BlockPos here, BlockPos next, String going) {
-		return "step of " + (next.getY() - here.getY()) + " at " + here.getX() + " " + here.getZ() + " going " + going
-				+ ": " + BuiltInRegistries.BLOCK.getKey(blockAt.apply(here).getBlock()) + " at " + here.toShortString() + " ("
-				+ TestRegions.ownerOfColumn(regions, here.getX(), here.getZ()) + "), then " + BuiltInRegistries.BLOCK.getKey(blockAt.apply(next).getBlock()) + " at "
-				+ next.toShortString() + " (" + TestRegions.ownerOfColumn(regions, next.getX(), next.getZ()) + ")";
-	}
+    @GameTest(maxTicks = 400)
+    public void noBlockOfTheColonyFloatsOrHangsOverTheVoid(GameTestHelper helper) {
+        MinecraftServer server = server(helper);
+        ServerLevel level = server.overworld();
+        ColonySite.Placed colony = placed(helper);
+        loadPad(level, colony);
+        int half = ColonyTuning.DEFAULT.padSize() / 2;
+        BlockPos centre = colony.center();
+        List<String> problems = new ArrayList<>();
+        // Every column of the pad has solid ground under it: nothing of the colony stands over a gap.
+        for (int x = -half; x < half; x++) {
+            for (int z = -half; z < half; z++) {
+                for (int dy = 0; dy >= -3; dy--) {
+                    BlockPos pos = centre.offset(x, dy, z);
+                    if (level.getBlockState(pos).isAir()
+                            || !level.getFluidState(pos).isEmpty()) {
+                        problems.add(
+                                "the pad has no ground at " + pos.toShortString() + ": " + level.getBlockState(pos));
+                        dy = -4;
+                    }
+                }
+            }
+        }
+        // Every block above the ground joins the ground or the Conduit's casing, by a face or along an edge.
+        Set<BlockPos> blocks = new HashSet<>();
+        Deque<BlockPos> frontier = new ArrayDeque<>();
+        Set<BlockPos> supported = new HashSet<>();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (int x = -half; x < half; x++) {
+            for (int z = -half; z < half; z++) {
+                for (int y = 1; y <= ColonyTuning.DEFAULT.clearHeight(); y++) {
+                    pos.setWithOffset(centre, x, y, z);
+                    BlockState state = level.getBlockState(pos);
+                    // A pod's light blocks hang in the air by design (ADR 0024); they are not the colony's.
+                    if (!state.isAir() && !state.is(Blocks.LIGHT)) {
+                        BlockPos found = pos.immutable();
+                        blocks.add(found);
+                        if (y == 1 || state.is(ColonyBlocks.CONDUIT)) {
+                            supported.add(found);
+                            frontier.add(found);
+                        }
+                    }
+                }
+            }
+        }
+        while (!frontier.isEmpty()) {
+            BlockPos from = frontier.poll();
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        int apart = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
+                        BlockPos near = from.offset(dx, dy, dz);
+                        if ((apart == 1 || apart == 2) && blocks.contains(near) && supported.add(near)) {
+                            frontier.add(near);
+                        }
+                    }
+                }
+            }
+        }
+        blocks.removeAll(supported);
+        if (!blocks.isEmpty()) {
+            problems.add(blocks.size() + " block(s) hang in the air, the first at "
+                    + blocks.iterator().next().toShortString());
+        }
+        if (blocks.size() + supported.size() < 3000) {
+            problems.add("only " + (blocks.size() + supported.size())
+                    + " blocks stand on the pad: the colony was not built");
+        }
+        finish(helper, problems);
+    }
 
-	/**
-	 * Land the test world does not have, round a pad at 64: a hill 40 above it, a pit 40 below it, and a mesa 60 above it, each all
-	 * round the pad and starting at its edge. In each the margin's outer rim meets the natural ground just outside it with no step over
-	 * a block, the pad keeps its ground, no step in the grid is over a block, and the same land gives the same grade. A mesa 100 above
-	 * the pad is past the cap: its rim is a step, as the cap says, and the grade still has no step over a block inside it.
-	 */
-	@GameTest(maxTicks = 100)
-	public void theMarginReachesTheNaturalGroundOfAHillAPitAndAMesa(GameTestHelper helper) {
-		List<String> problems = new ArrayList<>();
-		for (int[] relief : new int[][] {{40}, {-40}, {60}}) {
-			checkRelief(relief[0], problems, true);
-		}
-		checkRelief(100, problems, false);
-		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
-	}
+    /** A player climbs one block. */
+    private static final int STEP = 1;
 
-	/** Grades land {@code height} above a pad at 64 (below it when negative) and notes what is wrong. */
-	private static void checkRelief(int height, List<String> problems, boolean fits) {
-		int pad = ColonyTuning.DEFAULT.padSize();
-		int ground = 64;
-		int minX = 1000;
-		int minZ = -2000;
-		IntBinaryOperator land = (x, z) -> x >= minX && x < minX + pad && z >= minZ && z < minZ + pad ? ground : ground + height;
-		ColonyEdge.Margins margins = ColonyEdge.margins(ground, minX, minZ, minX + pad - 1, minZ + pad - 1, land);
-		int originX = minX - margins.west().width();
-		int originZ = minZ - margins.north().width();
-		int[][] natural = new int[margins.sizeX()][margins.sizeZ()];
-		for (int i = 0; i < natural.length; i++) {
-			for (int j = 0; j < natural[0].length; j++) {
-				natural[i][j] = land.applyAsInt(originX + i, originZ + j);
-			}
-		}
-		int[][] first = ColonyEdge.heights(natural, margins, originX, originZ, ground);
-		String what = "land " + height + " from the pad: ";
-		if (!Arrays.deepEquals(first, ColonyEdge.heights(natural, margins, originX, originZ, ground))) {
-			problems.add(what + "the same land gave two different grades");
-		}
-		for (ColonyEdge.Side side : List.of(margins.west(), margins.east(), margins.north(), margins.south())) {
-			if (fits && (side.width() < Math.abs(height) || side.width() > ColonyTuning.DEFAULT.edgeMarginCap())) {
-				problems.add(what + "a margin of " + side.width() + " does not fit a gap of " + Math.abs(height));
-			}
-			if (!fits && side.width() != ColonyTuning.DEFAULT.edgeMarginCap()) {
-				problems.add(what + "a gap past the cap should give the cap, got " + side.width());
-			}
-		}
-		for (int i = 0; i < first.length; i++) {
-			for (int j = 0; j < first[0].length; j++) {
-				boolean onPad = originX + i >= minX && originX + i < minX + pad && originZ + j >= minZ && originZ + j < minZ + pad;
-				if (onPad && first[i][j] != ground) {
-					problems.add(what + "the pad's column " + i + " " + j + " is at " + first[i][j]);
-				}
-				if (i + 1 < first.length && Math.abs(first[i][j] - first[i + 1][j]) > STEP || j + 1 < first[0].length && Math.abs(first[i][j] - first[i][j + 1]) > STEP) {
-					problems.add(what + "a step over one block at " + i + " " + j);
-				}
-				boolean rim = i == 0 || j == 0 || i == first.length - 1 || j == first[0].length - 1;
-				// The natural ground just outside a rim column is the same height as the column's own natural ground.
-				if (rim && fits && Math.abs(first[i][j] - (ground + height)) > STEP) {
-					problems.add(what + "the rim column " + i + " " + j + " is at " + first[i][j] + ", the natural ground outside is " + (ground + height));
-				}
-				// Past the cap the middle of a side, where the pad is nearest, stops short of the natural ground: a corner is further and can reach it.
-				if (rim && !fits && i == 0 && j == first[0].length / 2 && Math.abs(first[i][j] - (ground + height)) <= STEP) {
-					problems.add(what + "a gap past the cap should leave a step at the rim, " + i + " " + j + " is at " + first[i][j]);
-				}
-			}
-		}
-	}
+    /**
+     * In the built world the surface of the pad's edge and of the margins around it has no step between neighbouring columns taller
+     * than a player climbs. Reads the pad's ground at its outermost columns (a solid block at the pad's ground) and the margins'
+     * surface by the heightmap. The test world is flat: {@link #theMarginReachesTheNaturalGroundOfAHillAPitAndAMesa} has the relief.
+     */
+    @GameTest(maxTicks = 100)
+    public void theBuiltMarginHasNoStepOverOneBlockAroundThePad(GameTestHelper helper) {
+        ServerLevel level = server(helper).overworld();
+        ColonySite.Placed colony = placed(helper);
+        BlockPos centre = colony.center();
+        int half = ColonyTuning.DEFAULT.padSize() / 2;
+        int reach = half + ColonyTuning.DEFAULT.edgeMargin();
+        int size = 2 * reach;
+        // Read through held chunks: getHeight answers the world minimum, 68 below the ground, for a chunk that is not
+        // loaded (#393).
+        int minChunkX = (centre.getX() - reach) >> 4;
+        int minChunkZ = (centre.getZ() - reach) >> 4;
+        LevelChunk[][] chunks = loadChunks(
+                level,
+                centre.getX() - reach,
+                centre.getX() + reach - 1,
+                centre.getZ() - reach,
+                centre.getZ() + reach - 1);
+        Function<BlockPos, BlockState> blockAt =
+                pos -> chunks[(pos.getX() >> 4) - minChunkX][(pos.getZ() >> 4) - minChunkZ].getBlockState(pos);
+        List<String> problems = new ArrayList<>();
+        List<TestRegions.Region> regions = TestRegions.in(
+                level,
+                centre.getX() - reach,
+                centre.getX() + reach - 1,
+                centre.getZ() - reach,
+                centre.getZ() + reach - 1);
+        int[][] surface = new int[size][size];
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                int x = centre.getX() - reach + i;
+                int z = centre.getZ() - reach + j;
+                boolean onPad = x >= centre.getX() - half
+                        && x < centre.getX() + half
+                        && z >= centre.getZ() - half
+                        && z < centre.getZ() + half;
+                boolean edge = onPad
+                        && (x == centre.getX() - half
+                                || x == centre.getX() + half - 1
+                                || z == centre.getZ() - half
+                                || z == centre.getZ() + half - 1);
+                if (edge && blockAt.apply(new BlockPos(x, centre.getY(), z)).isAir()) {
+                    problems.add("no pad ground at " + x + " " + z);
+                }
+                surface[i][j] = onPad
+                        ? centre.getY()
+                        : chunks[(x >> 4) - minChunkX][(z >> 4) - minChunkZ].getHeight(
+                                Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
+            }
+        }
+        int checked = 0;
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                int x = centre.getX() - reach + i;
+                int z = centre.getZ() - reach + j;
+                checked++;
+                if (i + 1 < size && Math.abs(surface[i][j] - surface[i + 1][j]) > STEP) {
+                    problems.add(step(
+                            blockAt,
+                            regions,
+                            new BlockPos(x, surface[i][j], z),
+                            new BlockPos(x + 1, surface[i + 1][j], z),
+                            "east"));
+                }
+                if (j + 1 < size && Math.abs(surface[i][j] - surface[i][j + 1]) > STEP) {
+                    problems.add(step(
+                            blockAt,
+                            regions,
+                            new BlockPos(x, surface[i][j], z),
+                            new BlockPos(x, surface[i][j + 1], z + 1),
+                            "south"));
+                }
+            }
+        }
+        if (checked == 0) {
+            problems.add("no column of the margin was checked");
+        }
+        finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
+    }
 
-	/**
-	 * What shows on the pad's rim and on the margin: the plain's own surface blocks and nothing else, the packed regolith and rock of
-	 * its layers scattered by the pad's edge and thinning outward.
-	 */
-	@GameTest(maxTicks = 100)
-	public void theMarginIsTheSurfacesBlocksWithRockAndPackedRegolithScatteredByThePad(GameTestHelper helper) {
-		ServerLevel level = server(helper).overworld();
-		ColonySite.Placed colony = placed(helper);
-		BlockPos centre = colony.center();
-		int half = ColonyTuning.DEFAULT.padSize() / 2;
-		int margin = ColonyTuning.DEFAULT.edgeMargin();
-		int[] shown = new int[3];
-		int[] total = new int[3];
-		List<String> problems = new ArrayList<>();
-		// The north margin, beyond the pad's north edge, in three bands by the pad: next to it, in the middle, out by the rim.
-		for (int dz = 1; dz <= margin; dz++) {
-			for (int dx = -half; dx < half; dx++) {
-				int x = centre.getX() + dx;
-				int z = centre.getZ() - half - dz;
-				level.getChunk(x >> 4, z >> 4);
-				BlockState top = level.getBlockState(new BlockPos(x, level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1, z));
-				if (!top.is(SurfaceBlocks.REGOLITH) && !top.is(SurfaceBlocks.REGOLITH_PACKED) && !top.is(SurfaceBlocks.REGOLITH_ROCK)
-						&& !top.is(SurfaceBlocks.OCHRE_REGOLITH) && !top.is(SurfaceBlocks.BASALT_OUTCROP)) {
-					problems.add("the margin at " + x + " " + z + " is topped with " + top);
-				}
-				int band = dz <= margin / 3 ? 0 : dz <= 2 * margin / 3 ? 1 : 2;
-				total[band]++;
-				if (top.is(SurfaceBlocks.REGOLITH_PACKED) || top.is(SurfaceBlocks.REGOLITH_ROCK)) {
-					shown[band]++;
-				}
-			}
-		}
-		if (shown[0] == 0 || shown[0] * 100 / total[0] > ColonyTuning.DEFAULT.scatterPercent() * ColonyTuning.DEFAULT.scatterPackedFactor() + 5) {
-			problems.add("the band by the pad shows " + shown[0] + " of " + total[0] + " scattered");
-		}
-		if (shown[2] >= shown[0]) {
-			problems.add("the scatter should thin outward: " + shown[0] + ", " + shown[1] + ", " + shown[2]);
-		}
-		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
-	}
+    /** The failure text of a step: the block on each side, and the test region that holds each column. */
+    private static String step(
+            Function<BlockPos, BlockState> blockAt,
+            List<TestRegions.Region> regions,
+            BlockPos here,
+            BlockPos next,
+            String going) {
+        return "step of " + (next.getY() - here.getY()) + " at " + here.getX() + " " + here.getZ() + " going " + going
+                + ": " + BuiltInRegistries.BLOCK.getKey(blockAt.apply(here).getBlock()) + " at " + here.toShortString()
+                + " ("
+                + TestRegions.ownerOfColumn(regions, here.getX(), here.getZ()) + "), then "
+                + BuiltInRegistries.BLOCK.getKey(blockAt.apply(next).getBlock()) + " at "
+                + next.toShortString() + " (" + TestRegions.ownerOfColumn(regions, next.getX(), next.getZ()) + ")";
+    }
 
-	/** The pad is the plain's own ground: regolith, with the rock of its layers scattered only on the rim. */
-	@GameTest(maxTicks = 100)
-	public void thePadCornersAreThePlainsRegolith(GameTestHelper helper) {
-		ServerLevel level = server(helper).overworld();
-		ColonySite.Placed colony = placed(helper);
-		loadPad(level, colony);
-		int half = ColonyTuning.DEFAULT.padSize() / 2;
-		int rim = ColonyTuning.DEFAULT.rimWidth();
-		BlockPos centre = colony.center();
-		List<String> problems = new ArrayList<>();
-		for (int dx = rim; dx < rim + 8; dx++) {
-			for (int dz = rim; dz < rim + 8; dz++) {
-				BlockPos at = new BlockPos(centre.getX() - half + dx, centre.getY(), centre.getZ() - half + dz);
-				if (!level.getBlockState(at).is(SurfaceBlocks.REGOLITH)) {
-					problems.add(at.toShortString() + " is " + level.getBlockState(at));
-				}
-			}
-		}
-		finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
-	}
+    /**
+     * Land the test world does not have, round a pad at 64: a hill 40 above it, a pit 40 below it, and a mesa 60 above it, each all
+     * round the pad and starting at its edge. In each the margin's outer rim meets the natural ground just outside it with no step over
+     * a block, the pad keeps its ground, no step in the grid is over a block, and the same land gives the same grade. A mesa 100 above
+     * the pad is past the cap: its rim is a step, as the cap says, and the grade still has no step over a block inside it.
+     */
+    @GameTest(maxTicks = 100)
+    public void theMarginReachesTheNaturalGroundOfAHillAPitAndAMesa(GameTestHelper helper) {
+        List<String> problems = new ArrayList<>();
+        for (int[] relief : new int[][] {{40}, {-40}, {60}}) {
+            checkRelief(relief[0], problems, true);
+        }
+        checkRelief(100, problems, false);
+        finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
+    }
 
-	private static AABB pad(ColonySite.Placed colony) {
-		int half = ColonyTuning.DEFAULT.padSize() / 2;
-		BlockPos centre = colony.center();
-		return new AABB(centre.getX() - half, centre.getY(), centre.getZ() - half, centre.getX() + half, centre.getY() + ColonyTuning.DEFAULT.clearHeight(), centre.getZ() + half);
-	}
+    /** Grades land {@code height} above a pad at 64 (below it when negative) and notes what is wrong. */
+    private static void checkRelief(int height, List<String> problems, boolean fits) {
+        int pad = ColonyTuning.DEFAULT.padSize();
+        int ground = 64;
+        int minX = 1000;
+        int minZ = -2000;
+        IntBinaryOperator land =
+                (x, z) -> x >= minX && x < minX + pad && z >= minZ && z < minZ + pad ? ground : ground + height;
+        ColonyEdge.Margins margins = ColonyEdge.margins(ground, minX, minZ, minX + pad - 1, minZ + pad - 1, land);
+        int originX = minX - margins.west().width();
+        int originZ = minZ - margins.north().width();
+        int[][] natural = new int[margins.sizeX()][margins.sizeZ()];
+        for (int i = 0; i < natural.length; i++) {
+            for (int j = 0; j < natural[0].length; j++) {
+                natural[i][j] = land.applyAsInt(originX + i, originZ + j);
+            }
+        }
+        int[][] first = ColonyEdge.heights(natural, margins, originX, originZ, ground);
+        String what = "land " + height + " from the pad: ";
+        if (!Arrays.deepEquals(first, ColonyEdge.heights(natural, margins, originX, originZ, ground))) {
+            problems.add(what + "the same land gave two different grades");
+        }
+        for (ColonyEdge.Side side : List.of(margins.west(), margins.east(), margins.north(), margins.south())) {
+            if (fits && (side.width() < Math.abs(height) || side.width() > ColonyTuning.DEFAULT.edgeMarginCap())) {
+                problems.add(what + "a margin of " + side.width() + " does not fit a gap of " + Math.abs(height));
+            }
+            if (!fits && side.width() != ColonyTuning.DEFAULT.edgeMarginCap()) {
+                problems.add(what + "a gap past the cap should give the cap, got " + side.width());
+            }
+        }
+        for (int i = 0; i < first.length; i++) {
+            for (int j = 0; j < first[0].length; j++) {
+                boolean onPad = originX + i >= minX
+                        && originX + i < minX + pad
+                        && originZ + j >= minZ
+                        && originZ + j < minZ + pad;
+                if (onPad && first[i][j] != ground) {
+                    problems.add(what + "the pad's column " + i + " " + j + " is at " + first[i][j]);
+                }
+                if (i + 1 < first.length && Math.abs(first[i][j] - first[i + 1][j]) > STEP
+                        || j + 1 < first[0].length && Math.abs(first[i][j] - first[i][j + 1]) > STEP) {
+                    problems.add(what + "a step over one block at " + i + " " + j);
+                }
+                boolean rim = i == 0 || j == 0 || i == first.length - 1 || j == first[0].length - 1;
+                // The natural ground just outside a rim column is the same height as the column's own natural ground.
+                if (rim && fits && Math.abs(first[i][j] - (ground + height)) > STEP) {
+                    problems.add(what + "the rim column " + i + " " + j + " is at " + first[i][j]
+                            + ", the natural ground outside is " + (ground + height));
+                }
+                // Past the cap the middle of a side, where the pad is nearest, stops short of the natural ground: a
+                // corner is further and can reach it.
+                if (rim
+                        && !fits
+                        && i == 0
+                        && j == first[0].length / 2
+                        && Math.abs(first[i][j] - (ground + height)) <= STEP) {
+                    problems.add(what + "a gap past the cap should leave a step at the rim, " + i + " " + j + " is at "
+                            + first[i][j]);
+                }
+            }
+        }
+    }
 
-	/** Loads every chunk of the pad, so a height read there is not the world minimum. */
-	private static void loadPad(ServerLevel level, ColonySite.Placed colony) {
-		int half = ColonyTuning.DEFAULT.padSize() / 2;
-		BlockPos centre = colony.center();
-		loadChunks(level, centre.getX() - half, centre.getX() + half - 1, centre.getZ() - half, centre.getZ() + half - 1);
-	}
+    /**
+     * What shows on the pad's rim and on the margin: the plain's own surface blocks and nothing else, the packed regolith and rock of
+     * its layers scattered by the pad's edge and thinning outward.
+     */
+    @GameTest(maxTicks = 100)
+    public void theMarginIsTheSurfacesBlocksWithRockAndPackedRegolithScatteredByThePad(GameTestHelper helper) {
+        ServerLevel level = server(helper).overworld();
+        ColonySite.Placed colony = placed(helper);
+        BlockPos centre = colony.center();
+        int half = ColonyTuning.DEFAULT.padSize() / 2;
+        int margin = ColonyTuning.DEFAULT.edgeMargin();
+        int[] shown = new int[3];
+        int[] total = new int[3];
+        List<String> problems = new ArrayList<>();
+        // The north margin, beyond the pad's north edge, in three bands by the pad: next to it, in the middle, out by
+        // the rim.
+        for (int dz = 1; dz <= margin; dz++) {
+            for (int dx = -half; dx < half; dx++) {
+                int x = centre.getX() + dx;
+                int z = centre.getZ() - half - dz;
+                level.getChunk(x >> 4, z >> 4);
+                BlockState top = level.getBlockState(
+                        new BlockPos(x, level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1, z));
+                if (!top.is(SurfaceBlocks.REGOLITH)
+                        && !top.is(SurfaceBlocks.REGOLITH_PACKED)
+                        && !top.is(SurfaceBlocks.REGOLITH_ROCK)
+                        && !top.is(SurfaceBlocks.OCHRE_REGOLITH)
+                        && !top.is(SurfaceBlocks.BASALT_OUTCROP)) {
+                    problems.add("the margin at " + x + " " + z + " is topped with " + top);
+                }
+                int band = dz <= margin / 3 ? 0 : dz <= 2 * margin / 3 ? 1 : 2;
+                total[band]++;
+                if (top.is(SurfaceBlocks.REGOLITH_PACKED) || top.is(SurfaceBlocks.REGOLITH_ROCK)) {
+                    shown[band]++;
+                }
+            }
+        }
+        if (shown[0] == 0
+                || shown[0] * 100 / total[0]
+                        > ColonyTuning.DEFAULT.scatterPercent() * ColonyTuning.DEFAULT.scatterPackedFactor() + 5) {
+            problems.add("the band by the pad shows " + shown[0] + " of " + total[0] + " scattered");
+        }
+        if (shown[2] >= shown[0]) {
+            problems.add("the scatter should thin outward: " + shown[0] + ", " + shown[1] + ", " + shown[2]);
+        }
+        finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
+    }
 
-	/** Loads the chunks over the columns {@code x1..x2}, {@code z1..z2}; indexed from the chunk of {@code x1}, {@code z1}. */
-	private static LevelChunk[][] loadChunks(ServerLevel level, int x1, int x2, int z1, int z2) {
-		LevelChunk[][] chunks = new LevelChunk[(x2 >> 4) - (x1 >> 4) + 1][(z2 >> 4) - (z1 >> 4) + 1];
-		for (int i = 0; i < chunks.length; i++) {
-			for (int j = 0; j < chunks[i].length; j++) {
-				chunks[i][j] = level.getChunk((x1 >> 4) + i, (z1 >> 4) + j);
-			}
-		}
-		return chunks;
-	}
+    /** The pad is the plain's own ground: regolith, with the rock of its layers scattered only on the rim. */
+    @GameTest(maxTicks = 100)
+    public void thePadCornersAreThePlainsRegolith(GameTestHelper helper) {
+        ServerLevel level = server(helper).overworld();
+        ColonySite.Placed colony = placed(helper);
+        loadPad(level, colony);
+        int half = ColonyTuning.DEFAULT.padSize() / 2;
+        int rim = ColonyTuning.DEFAULT.rimWidth();
+        BlockPos centre = colony.center();
+        List<String> problems = new ArrayList<>();
+        for (int dx = rim; dx < rim + 8; dx++) {
+            for (int dz = rim; dz < rim + 8; dz++) {
+                BlockPos at = new BlockPos(centre.getX() - half + dx, centre.getY(), centre.getZ() - half + dz);
+                if (!level.getBlockState(at).is(SurfaceBlocks.REGOLITH)) {
+                    problems.add(at.toShortString() + " is " + level.getBlockState(at));
+                }
+            }
+        }
+        finish(helper, problems.size() > 5 ? problems.subList(0, 5) : problems);
+    }
 
-	private static MinecraftServer server(GameTestHelper helper) {
-		return helper.getLevel().getServer();
-	}
+    private static AABB pad(ColonySite.Placed colony) {
+        int half = ColonyTuning.DEFAULT.padSize() / 2;
+        BlockPos centre = colony.center();
+        return new AABB(
+                centre.getX() - half,
+                centre.getY(),
+                centre.getZ() - half,
+                centre.getX() + half,
+                centre.getY() + ColonyTuning.DEFAULT.clearHeight(),
+                centre.getZ() + half);
+    }
 
-	private static ColonySite.Placed placed(GameTestHelper helper) {
-		Optional<ColonySite.Placed> colony = Colony.placed(server(helper));
-		return colony.orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
-	}
+    /** Loads every chunk of the pad, so a height read there is not the world minimum. */
+    private static void loadPad(ServerLevel level, ColonySite.Placed colony) {
+        int half = ColonyTuning.DEFAULT.padSize() / 2;
+        BlockPos centre = colony.center();
+        loadChunks(
+                level, centre.getX() - half, centre.getX() + half - 1, centre.getZ() - half, centre.getZ() + half - 1);
+    }
 
-	private static void finish(GameTestHelper helper, List<String> problems) {
-		if (!problems.isEmpty()) {
-			throw helper.assertionException(Component.literal(problems.size() + " problem(s):\n  " + String.join("\n  ", problems)));
-		}
-		helper.succeed();
-	}
+    /** Loads the chunks over the columns {@code x1..x2}, {@code z1..z2}; indexed from the chunk of {@code x1}, {@code z1}. */
+    private static LevelChunk[][] loadChunks(ServerLevel level, int x1, int x2, int z1, int z2) {
+        LevelChunk[][] chunks = new LevelChunk[(x2 >> 4) - (x1 >> 4) + 1][(z2 >> 4) - (z1 >> 4) + 1];
+        for (int i = 0; i < chunks.length; i++) {
+            for (int j = 0; j < chunks[i].length; j++) {
+                chunks[i][j] = level.getChunk((x1 >> 4) + i, (z1 >> 4) + j);
+            }
+        }
+        return chunks;
+    }
 
-	// assertionException(String, Object...) leaves the placeholders unfilled in the report.
-	private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
-		return helper.assertionException(Component.literal(String.format(format, args)));
-	}
+    private static MinecraftServer server(GameTestHelper helper) {
+        return helper.getLevel().getServer();
+    }
+
+    private static ColonySite.Placed placed(GameTestHelper helper) {
+        Optional<ColonySite.Placed> colony = Colony.placed(server(helper));
+        return colony.orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
+    }
+
+    private static void finish(GameTestHelper helper, List<String> problems) {
+        if (!problems.isEmpty()) {
+            throw helper.assertionException(
+                    Component.literal(problems.size() + " problem(s):\n  " + String.join("\n  ", problems)));
+        }
+        helper.succeed();
+    }
+
+    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
+    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+        return helper.assertionException(Component.literal(String.format(format, args)));
+    }
 }

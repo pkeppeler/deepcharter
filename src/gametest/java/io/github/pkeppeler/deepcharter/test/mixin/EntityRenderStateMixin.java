@@ -1,17 +1,15 @@
 package io.github.pkeppeler.deepcharter.test.mixin;
 
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.world.entity.Entity;
-
-import io.github.pkeppeler.deepcharter.pod.PodEntity;
-import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * While {@link EvidencePins#entitiesPosed} is on, every entity but a pod is drawn at rest. The idle sway of the arms reads the age of
@@ -20,16 +18,19 @@ import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
  */
 @Mixin(value = EntityRenderer.class, remap = false)
 public abstract class EntityRenderStateMixin {
-	@Inject(method = "createRenderState(Lnet/minecraft/world/entity/Entity;F)Lnet/minecraft/client/renderer/entity/state/EntityRenderState;", at = @At("RETURN"))
-	private void deepcharter$pose(Entity entity, float partialTick, CallbackInfoReturnable<EntityRenderState> cir) {
-		if (!EvidencePins.entitiesPosed || entity instanceof PodEntity) {
-			return;
-		}
-		EntityRenderState state = cir.getReturnValue();
-		state.ageInTicks = 0f;
-		if (state instanceof LivingEntityRenderState living) {
-			living.walkAnimationPos = 0f;
-			living.walkAnimationSpeed = 0f;
-		}
-	}
+    @Inject(
+            method =
+                    "createRenderState(Lnet/minecraft/world/entity/Entity;F)Lnet/minecraft/client/renderer/entity/state/EntityRenderState;",
+            at = @At("RETURN"))
+    private void deepcharter$pose(Entity entity, float partialTick, CallbackInfoReturnable<EntityRenderState> cir) {
+        if (!EvidencePins.entitiesPosed || entity instanceof PodEntity) {
+            return;
+        }
+        EntityRenderState state = cir.getReturnValue();
+        state.ageInTicks = 0f;
+        if (state instanceof LivingEntityRenderState living) {
+            living.walkAnimationPos = 0f;
+            living.walkAnimationSpeed = 0f;
+        }
+    }
 }

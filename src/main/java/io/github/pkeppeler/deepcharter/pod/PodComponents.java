@@ -1,36 +1,9 @@
 package io.github.pkeppeler.deepcharter.pod;
 
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.UnaryOperator;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-
-import io.netty.buffer.ByteBuf;
-
-import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
-import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
-import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
-
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.item.ItemStack;
-
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
@@ -40,6 +13,28 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
+import io.netty.buffer.ByteBuf;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * What a pod is made of and whose it is: the owner charter and serial (such as {@code MOLE-0001}), and the parts installed in
@@ -59,331 +54,371 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
  * as a pod with no parts, and refuse every pilot, because the owner is unknown. {@link #register} and {@link #install} are explicit changes and do throw.
  */
 public final class PodComponents {
-	public static final int VERSION = 1;
+    public static final int VERSION = 1;
 
+    /** A pod's owner charter and its serial number. */
+    public record Registration(CharterId owner, String serial) {
+        public static final Codec<Registration> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                        CharterId.CODEC.fieldOf("owner").forGetter(Registration::owner),
+                        Codec.STRING.fieldOf("serial").forGetter(Registration::serial))
+                .apply(instance, Registration::new));
+        public static final StreamCodec<ByteBuf, Registration> STREAM_CODEC = StreamCodec.composite(
+                CharterId.STREAM_CODEC,
+                Registration::owner,
+                ByteBufCodecs.STRING_UTF8,
+                Registration::serial,
+                Registration::new);
+    }
 
-	/** A pod's owner charter and its serial number. */
-	public record Registration(CharterId owner, String serial) {
-		public static final Codec<Registration> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-				CharterId.CODEC.fieldOf("owner").forGetter(Registration::owner),
-				Codec.STRING.fieldOf("serial").forGetter(Registration::serial)).apply(instance, Registration::new));
-		public static final StreamCodec<ByteBuf, Registration> STREAM_CODEC = StreamCodec.composite(
-				CharterId.STREAM_CODEC, Registration::owner,
-				ByteBufCodecs.STRING_UTF8, Registration::serial,
-				Registration::new);
-	}
+    /** The attachment's value: who owns the pod (unowned until {@link #register}) and the part installed on each track. */
+    public record State(Optional<Registration> registration, Map<ComponentTrack, PartLabel> parts) {
+        public static final State EMPTY = new State(Optional.empty(), Map.of());
+        /** A saved tier beyond its track's best decodes to an error, so it reads as unreadable and never reaches a stats listener. */
+        public static final MapCodec<State> BODY = RecordCodecBuilder.<State>mapCodec(instance -> instance.group(
+                                Registration.CODEC
+                                        .optionalFieldOf("registration")
+                                        .forGetter(State::registration),
+                                Codec.unboundedMap(ComponentTrack.CODEC, PartLabel.CODEC)
+                                        .fieldOf("parts")
+                                        .forGetter(State::parts))
+                        .apply(instance, State::new))
+                .flatXmap(State::validated, DataResult::success);
 
-	/** The attachment's value: who owns the pod (unowned until {@link #register}) and the part installed on each track. */
-	public record State(Optional<Registration> registration, Map<ComponentTrack, PartLabel> parts) {
-		public static final State EMPTY = new State(Optional.empty(), Map.of());
-		/** A saved tier beyond its track's best decodes to an error, so it reads as unreadable and never reaches a stats listener. */
-		public static final MapCodec<State> BODY = RecordCodecBuilder.<State>mapCodec(instance -> instance.group(
-				Registration.CODEC.optionalFieldOf("registration").forGetter(State::registration),
-				Codec.unboundedMap(ComponentTrack.CODEC, PartLabel.CODEC).fieldOf("parts").forGetter(State::parts)).apply(instance, State::new))
-				.flatXmap(State::validated, DataResult::success);
-		public static final StreamCodec<ByteBuf, State> STREAM = StreamCodec.composite(
-				ByteBufCodecs.optional(Registration.STREAM_CODEC), State::registration,
-				ByteBufCodecs.map(ignored -> new EnumMap<>(ComponentTrack.class), ComponentTrack.STREAM_CODEC, PartLabel.STREAM_CODEC), State::parts,
-				State::new);
+        public static final StreamCodec<ByteBuf, State> STREAM = StreamCodec.composite(
+                ByteBufCodecs.optional(Registration.STREAM_CODEC),
+                State::registration,
+                ByteBufCodecs.map(
+                        ignored -> new EnumMap<>(ComponentTrack.class),
+                        ComponentTrack.STREAM_CODEC,
+                        PartLabel.STREAM_CODEC),
+                State::parts,
+                State::new);
 
-		public State {
-			parts = Map.copyOf(parts);
-		}
+        public State {
+            parts = Map.copyOf(parts);
+        }
 
-		private DataResult<State> validated() {
-			for (Map.Entry<ComponentTrack, PartLabel> part : parts.entrySet()) {
-				if (part.getValue().tier() > part.getKey().maxTier()) {
-					return DataResult.error(() -> "a " + part.getKey().id() + " part has tier " + part.getValue().tier()
-							+ ", the best is " + part.getKey().maxTier());
-				}
-			}
-			return DataResult.success(this);
-		}
+        private DataResult<State> validated() {
+            for (Map.Entry<ComponentTrack, PartLabel> part : parts.entrySet()) {
+                if (part.getValue().tier() > part.getKey().maxTier()) {
+                    return DataResult.error(() -> "a " + part.getKey().id() + " part has tier "
+                            + part.getValue().tier() + ", the best is "
+                            + part.getKey().maxTier());
+                }
+            }
+            return DataResult.success(this);
+        }
 
-		private State with(ComponentTrack track, PartLabel label) {
-			Map<ComponentTrack, PartLabel> changed = new EnumMap<>(ComponentTrack.class);
-			changed.putAll(parts);
-			changed.put(track, label);
-			return new State(registration, changed);
-		}
-	}
+        private State with(ComponentTrack track, PartLabel label) {
+            Map<ComponentTrack, PartLabel> changed = new EnumMap<>(ComponentTrack.class);
+            changed.putAll(parts);
+            changed.put(track, label);
+            return new State(registration, changed);
+        }
+    }
 
-	public static final AttachmentType<Versioned<State>> STATE = AttachmentRegistry.create(
-			Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_components"),
-			builder -> builder
-					.persistent(Versioned.codec(VERSION, State.BODY))
-					.initializer(() -> Versioned.of(State.EMPTY))
-					.syncWith(Versioned.streamCodec(VERSION, State.STREAM), AttachmentSyncPredicate.all()));
+    public static final AttachmentType<Versioned<State>> STATE = AttachmentRegistry.create(
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_components"),
+            builder -> builder.persistent(Versioned.codec(VERSION, State.BODY))
+                    .initializer(() -> Versioned.of(State.EMPTY))
+                    .syncWith(Versioned.streamCodec(VERSION, State.STREAM), AttachmentSyncPredicate.all()));
 
-	/** The lore mark of a pod, saved and not synced: only the server reads it. */
-	public static final AttachmentType<Versioned<PodLore>> LORE = AttachmentRegistry.create(
-			Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_lore"),
-			builder -> builder
-					.persistent(Versioned.codec(PodLore.VERSION, PodLore.BODY))
-					.initializer(() -> Versioned.of(PodLore.NONE)));
+    /** The lore mark of a pod, saved and not synced: only the server reads it. */
+    public static final AttachmentType<Versioned<PodLore>> LORE = AttachmentRegistry.create(
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_lore"),
+            builder -> builder.persistent(Versioned.codec(PodLore.VERSION, PodLore.BODY))
+                    .initializer(() -> Versioned.of(PodLore.NONE)));
 
-	/**
-	 * One stat a track moves, and which way is better. A part scales the stat by the tier's ratio against the stock part, so it
-	 * composes with other listeners. A drill is better when its ticks for each hardness are fewer, so it divides.
-	 */
-	private record Axis(Function<PodStats, Float> read, BiFunction<PodStats, Float, PodStats> write, boolean lowerIsBetter) {
-		PodStats scale(PodStats stats, float ratio) {
-			float value = read.apply(stats);
-			return write.apply(stats, lowerIsBetter ? value / ratio : value * ratio);
-		}
-	}
+    /**
+     * One stat a track moves, and which way is better. A part scales the stat by the tier's ratio against the stock part, so it
+     * composes with other listeners. A drill is better when its ticks for each hardness are fewer, so it divides.
+     */
+    private record Axis(
+            Function<PodStats, Float> read, BiFunction<PodStats, Float, PodStats> write, boolean lowerIsBetter) {
+        PodStats scale(PodStats stats, float ratio) {
+            float value = read.apply(stats);
+            return write.apply(stats, lowerIsBetter ? value / ratio : value * ratio);
+        }
+    }
 
-	/** The stats of each track. The radiator, scanner and lights move none: they are read through {@link #effectiveTier}. */
-	private static final Map<ComponentTrack, List<Axis>> AXES = new EnumMap<>(ComponentTrack.class);
+    /** The stats of each track. The radiator, scanner and lights move none: they are read through {@link #effectiveTier}. */
+    private static final Map<ComponentTrack, List<Axis>> AXES = new EnumMap<>(ComponentTrack.class);
 
-	static {
-		AXES.put(ComponentTrack.DRILL, List.of(new Axis(PodStats::ticksPerHardness, PodStats::withTicksPerHardness, true)));
-		AXES.put(ComponentTrack.HULL, List.of(new Axis(PodStats::maxHull, PodStats::withMaxHull, false)));
-		AXES.put(ComponentTrack.ENGINE, List.of(
-				new Axis(PodStats::enginePower, PodStats::withEnginePower, false),
-				new Axis(PodStats::horizontalSpeed, PodStats::withHorizontalSpeed, false)));
-		AXES.put(ComponentTrack.FUEL_TANK, List.of(new Axis(PodStats::tankLitres, PodStats::withTankLitres, false)));
-		AXES.put(ComponentTrack.CARGO_BAY, List.of(new Axis(stats -> (float) stats.cargoSlots(),
-				(stats, slots) -> stats.withCargoSlots(Math.round(slots)), false)));
-	}
+    static {
+        AXES.put(
+                ComponentTrack.DRILL,
+                List.of(new Axis(PodStats::ticksPerHardness, PodStats::withTicksPerHardness, true)));
+        AXES.put(ComponentTrack.HULL, List.of(new Axis(PodStats::maxHull, PodStats::withMaxHull, false)));
+        AXES.put(
+                ComponentTrack.ENGINE,
+                List.of(
+                        new Axis(PodStats::enginePower, PodStats::withEnginePower, false),
+                        new Axis(PodStats::horizontalSpeed, PodStats::withHorizontalSpeed, false)));
+        AXES.put(ComponentTrack.FUEL_TANK, List.of(new Axis(PodStats::tankLitres, PodStats::withTankLitres, false)));
+        AXES.put(
+                ComponentTrack.CARGO_BAY,
+                List.of(new Axis(
+                        stats -> (float) stats.cargoSlots(),
+                        (stats, slots) -> stats.withCargoSlots(Math.round(slots)),
+                        false)));
+    }
 
-	private PodComponents() {
-	}
+    private PodComponents() {}
 
-	public static void init() {
-		PodStats.MODIFY.register(PodStats.BASE, PodComponents::applyParts);
-		PodEvents.CAN_MOUNT.register(PodComponents::canMount);
-	}
+    public static void init() {
+        PodStats.MODIFY.register(PodStats.BASE, PodComponents::applyParts);
+        PodEvents.CAN_MOUNT.register(PodComponents::canMount);
+    }
 
-	/** The pod's owner and serial, or empty for a pod nobody owns. */
-	public static Optional<Registration> registration(PodEntity pod) {
-		return read(pod).registration();
-	}
+    /** The pod's owner and serial, or empty for a pod nobody owns. */
+    public static Optional<Registration> registration(PodEntity pod) {
+        return read(pod).registration();
+    }
 
-	/** The part installed on {@code track}, void or not. */
-	public static Optional<PartLabel> partOf(PodEntity pod, ComponentTrack track) {
-		return Optional.ofNullable(read(pod).parts().get(track));
-	}
+    /** The part installed on {@code track}, void or not. */
+    public static Optional<PartLabel> partOf(PodEntity pod, ComponentTrack track) {
+        return Optional.ofNullable(read(pod).parts().get(track));
+    }
 
-	/** The part of {@code track} on the pod, if it is stamped for {@code charter}. */
-	public static Optional<PartLabel> partOf(PodEntity pod, ComponentTrack track, CharterId charter) {
-		return partOf(pod, track).filter(label -> label.charter().equals(charter));
-	}
+    /** The part of {@code track} on the pod, if it is stamped for {@code charter}. */
+    public static Optional<PartLabel> partOf(PodEntity pod, ComponentTrack track, CharterId charter) {
+        return partOf(pod, track).filter(label -> label.charter().equals(charter));
+    }
 
-	/**
-	 * The tier the pod gets from {@code track}: 0 for no part or a void one, and never above the chassis' cap. The scanner,
-	 * lights and radiator read this to know what they do.
-	 */
-	public static int effectiveTier(PodEntity pod, ComponentTrack track) {
-		State state = read(pod);
-		PartLabel label = state.parts().get(track);
-		if (label == null || !counts(state, label)) {
-			return 0;
-		}
-		return cappedTier(pod, label);
-	}
+    /**
+     * The tier the pod gets from {@code track}: 0 for no part or a void one, and never above the chassis' cap. The scanner,
+     * lights and radiator read this to know what they do.
+     */
+    public static int effectiveTier(PodEntity pod, ComponentTrack track) {
+        State state = read(pod);
+        PartLabel label = state.parts().get(track);
+        if (label == null || !counts(state, label)) {
+            return 0;
+        }
+        return cappedTier(pod, label);
+    }
 
-	/**
-	 * What the pod's radiator multiplies heat damage by: 1.0 (stock) for no radiator or a void or unreadable part, lower for
-	 * a better one. Lava and gas both read it.
-	 */
-	public static float radiatorRatio(PodEntity pod) {
-		return UpgradeTuning.DEFAULT.ratio(ComponentTrack.RADIATOR, effectiveTier(pod, ComponentTrack.RADIATOR));
-	}
+    /**
+     * What the pod's radiator multiplies heat damage by: 1.0 (stock) for no radiator or a void or unreadable part, lower for
+     * a better one. Lava and gas both read it.
+     */
+    public static float radiatorRatio(PodEntity pod) {
+        return UpgradeTuning.DEFAULT.ratio(ComponentTrack.RADIATOR, effectiveTier(pod, ComponentTrack.RADIATOR));
+    }
 
-	/** The one place a chassis' tier cap applies: the tier a counted part works at. */
-	private static int cappedTier(PodEntity pod, PartLabel label) {
-		return Math.min(label.tier(), pod.chassis().tierCap());
-	}
+    /** The one place a chassis' tier cap applies: the tier a counted part works at. */
+    private static int cappedTier(PodEntity pod, PartLabel label) {
+        return Math.min(label.tier(), pod.chassis().tierCap());
+    }
 
-	/**
-	 * Server only: makes {@code owner} the pod's owner and gives the pod the next serial of its chassis. A pod is registered
-	 * once, so a second call throws.
-	 */
-	public static void register(PodEntity pod, CharterId owner) {
-		requireUnregistered(pod);
-		String serial = Serials.get(requireServer(pod)).next(pod.chassis().id().toUpperCase(Locale.ROOT));
-		change(pod, state -> new State(Optional.of(new Registration(owner, serial)), state.parts()));
-		PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
-	}
+    /**
+     * Server only: makes {@code owner} the pod's owner and gives the pod the next serial of its chassis. A pod is registered
+     * once, so a second call throws.
+     */
+    public static void register(PodEntity pod, CharterId owner) {
+        requireUnregistered(pod);
+        String serial = Serials.get(requireServer(pod)).next(pod.chassis().id().toUpperCase(Locale.ROOT));
+        change(pod, state -> new State(Optional.of(new Registration(owner, serial)), state.parts()));
+        PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
+    }
 
-	/** Server only: marks the pod as the wreck that holds {@link Serials#FAMOUS_PROSPECTOR}, for {@link #registerLoreWreck}. */
-	public static void markFamousProspector(PodEntity pod) {
-		requireServer(pod);
-		Versioned.modifyOrThrow(pod, LORE, lore -> PodLore.FAMOUS_PROSPECTOR);
-	}
+    /** Server only: marks the pod as the wreck that holds {@link Serials#FAMOUS_PROSPECTOR}, for {@link #registerLoreWreck}. */
+    public static void markFamousProspector(PodEntity pod) {
+        requireServer(pod);
+        Versioned.modifyOrThrow(pod, LORE, lore -> PodLore.FAMOUS_PROSPECTOR);
+    }
 
-	/** True for the wreck marked by {@link #markFamousProspector} that no restore has registered yet. Unreadable lore reads as false (logged once). */
-	public static boolean isFamousProspector(PodEntity pod) {
-		return Versioned.readable(pod, LORE).map(PodLore::famousProspector).orElse(false);
-	}
+    /** True for the wreck marked by {@link #markFamousProspector} that no restore has registered yet. Unreadable lore reads as false (logged once). */
+    public static boolean isFamousProspector(PodEntity pod) {
+        return Versioned.readable(pod, LORE).map(PodLore::famousProspector).orElse(false);
+    }
 
-	/**
-	 * Server only: registers the marked wreck to {@code owner} under {@link Serials#FAMOUS_PROSPECTOR} and clears the mark. Throws
-	 * for a pod that is not the marked wreck or is registered already, and on a second claim of the number on any pod.
-	 */
-	public static void registerLoreWreck(PodEntity pod, CharterId owner) {
-		MinecraftServer server = requireServer(pod);
-		if (!Versioned.orThrow(pod, LORE).famousProspector()) {
-			throw new IllegalStateException("pod " + pod.getUUID() + " is not the wreck that holds " + Serials.FAMOUS_PROSPECTOR);
-		}
-		requireUnregistered(pod);
-		Serials.get(server).claimFamousProspector();
-		change(pod, state -> new State(Optional.of(new Registration(owner, Serials.FAMOUS_PROSPECTOR)), state.parts()));
-		Versioned.modifyOrThrow(pod, LORE, lore -> PodLore.NONE);
-		PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
-	}
+    /**
+     * Server only: registers the marked wreck to {@code owner} under {@link Serials#FAMOUS_PROSPECTOR} and clears the mark. Throws
+     * for a pod that is not the marked wreck or is registered already, and on a second claim of the number on any pod.
+     */
+    public static void registerLoreWreck(PodEntity pod, CharterId owner) {
+        MinecraftServer server = requireServer(pod);
+        if (!Versioned.orThrow(pod, LORE).famousProspector()) {
+            throw new IllegalStateException(
+                    "pod " + pod.getUUID() + " is not the wreck that holds " + Serials.FAMOUS_PROSPECTOR);
+        }
+        requireUnregistered(pod);
+        Serials.get(server).claimFamousProspector();
+        change(pod, state -> new State(Optional.of(new Registration(owner, Serials.FAMOUS_PROSPECTOR)), state.parts()));
+        Versioned.modifyOrThrow(pod, LORE, lore -> PodLore.NONE);
+        PodEvents.REGISTERED.invoker().onRegistered(pod, owner);
+    }
 
-	private static void requireUnregistered(PodEntity pod) {
-		if (Versioned.orThrow(pod, STATE).registration().isPresent()) {
-			throw new IllegalStateException("pod " + pod.getUUID() + " is already registered");
-		}
-	}
+    private static void requireUnregistered(PodEntity pod) {
+        if (Versioned.orThrow(pod, STATE).registration().isPresent()) {
+            throw new IllegalStateException("pod " + pod.getUUID() + " is already registered");
+        }
+    }
 
-	/**
-	 * Server only: installs the part in the stack, over the part of its track that is there, and returns that one. The stack is
-	 * left alone: whoever installs it takes it. A stack that is not a labelled part throws.
-	 *
-	 * <p>A part of another charter installs and then does nothing. Fuel and hull follow the change, see {@link #change}.
-	 */
-	public static Optional<PartLabel> install(PodEntity pod, ItemStack stack) {
-		requireServer(pod);
-		ComponentTrack track = ComponentItems.trackOf(stack)
-				.orElseThrow(() -> new IllegalArgumentException("not a pod part: " + stack));
-		PartLabel label = ComponentItems.labelOf(stack)
-				.orElseThrow(() -> new IllegalArgumentException("pod part has no label: " + stack));
-		track.requirePartTier(label.tier());
-		Optional<PartLabel> replaced = Optional.ofNullable(Versioned.orThrow(pod, STATE).parts().get(track));
-		change(pod, state -> state.with(track, label));
-		return replaced;
-	}
+    /**
+     * Server only: installs the part in the stack, over the part of its track that is there, and returns that one. The stack is
+     * left alone: whoever installs it takes it. A stack that is not a labelled part throws.
+     *
+     * <p>A part of another charter installs and then does nothing. Fuel and hull follow the change, see {@link #change}.
+     */
+    public static Optional<PartLabel> install(PodEntity pod, ItemStack stack) {
+        requireServer(pod);
+        ComponentTrack track = ComponentItems.trackOf(stack)
+                .orElseThrow(() -> new IllegalArgumentException("not a pod part: " + stack));
+        PartLabel label = ComponentItems.labelOf(stack)
+                .orElseThrow(() -> new IllegalArgumentException("pod part has no label: " + stack));
+        track.requirePartTier(label.tier());
+        Optional<PartLabel> replaced =
+                Optional.ofNullable(Versioned.orThrow(pod, STATE).parts().get(track));
+        change(pod, state -> state.with(track, label));
+        return replaced;
+    }
 
-	/**
-	 * As {@link #install}, and the part it replaces drops as an item at the pod, so no part is lost to a fit or a purchase. The one
-	 * place that rule lives: the upgrade terminal and the scanner unit both install through it.
-	 */
-	public static Optional<PartLabel> installAndDropReplaced(PodEntity pod, ItemStack stack) {
-		Optional<PartLabel> replaced = install(pod, stack);
-		ComponentTrack track = ComponentItems.trackOf(stack).orElseThrow();
-		replaced.ifPresent(label -> pod.level().addFreshEntity(
-				new ItemEntity(pod.level(), pod.getX(), pod.getY() + pod.getBbHeight(), pod.getZ(), ComponentItems.stackOf(track, label))));
-		return replaced;
-	}
+    /**
+     * As {@link #install}, and the part it replaces drops as an item at the pod, so no part is lost to a fit or a purchase. The one
+     * place that rule lives: the upgrade terminal and the scanner unit both install through it.
+     */
+    public static Optional<PartLabel> installAndDropReplaced(PodEntity pod, ItemStack stack) {
+        Optional<PartLabel> replaced = install(pod, stack);
+        ComponentTrack track = ComponentItems.trackOf(stack).orElseThrow();
+        replaced.ifPresent(label -> pod.level()
+                .addFreshEntity(new ItemEntity(
+                        pod.level(),
+                        pod.getX(),
+                        pod.getY() + pod.getBbHeight(),
+                        pod.getZ(),
+                        ComponentItems.stackOf(track, label))));
+        return replaced;
+    }
 
-	/**
-	 * Changes the state, and keeps what the pod holds while its stats move: a new tank keeps the litres (the stored percent is
-	 * rescaled, ADR 0010), and a bigger hull keeps the damage taken. Registering an owner can change the stats too, because
-	 * it makes the parts installed before it count.
-	 */
-	private static void change(PodEntity pod, UnaryOperator<State> change) {
-		PodStats before = PodStats.of(pod);
-		Versioned.modifyOrThrow(pod, STATE, change);
-		PodStats after = PodStats.of(pod);
-		rescaleFuel(pod, before, after);
-		if (pod.hull() > 0f) {
-			// A pod with no hull left is a wreck (#67), and a part must not repair it. setHull holds the result to the new maximum.
-			pod.setHull(pod.hull() + Math.max(0f, after.maxHull() - before.maxHull()));
-		}
-	}
+    /**
+     * Changes the state, and keeps what the pod holds while its stats move: a new tank keeps the litres (the stored percent is
+     * rescaled, ADR 0010), and a bigger hull keeps the damage taken. Registering an owner can change the stats too, because
+     * it makes the parts installed before it count.
+     */
+    private static void change(PodEntity pod, UnaryOperator<State> change) {
+        PodStats before = PodStats.of(pod);
+        Versioned.modifyOrThrow(pod, STATE, change);
+        PodStats after = PodStats.of(pod);
+        rescaleFuel(pod, before, after);
+        if (pod.hull() > 0f) {
+            // A pod with no hull left is a wreck (#67), and a part must not repair it. setHull holds the result to the
+            // new maximum.
+            pod.setHull(pod.hull() + Math.max(0f, after.maxHull() - before.maxHull()));
+        }
+    }
 
-	/**
-	 * Keeps the litres in the tank when the tank size moves from {@code before} to {@code after}: the stored percent is of the new
-	 * size (ADR 0010). Does nothing when the size is the same. Server only, like every change to a pod.
-	 *
-	 * <p>{@code before} and {@code after} must both be this pod's {@code PodStats.of(pod)}, taken before and after the change.
-	 */
-	public static void rescaleFuel(PodEntity pod, PodStats before, PodStats after) {
-		Objects.requireNonNull(before, "before");
-		Objects.requireNonNull(after, "after");
-		if (after.tankLitres() != before.tankLitres()) {
-			float full = PodTuning.DEFAULT.shell().fullFuel();
-			pod.setFuel(Math.min(full, pod.fuel() * before.tankLitres() / after.tankLitres()));
-		}
-	}
+    /**
+     * Keeps the litres in the tank when the tank size moves from {@code before} to {@code after}: the stored percent is of the new
+     * size (ADR 0010). Does nothing when the size is the same. Server only, like every change to a pod.
+     *
+     * <p>{@code before} and {@code after} must both be this pod's {@code PodStats.of(pod)}, taken before and after the change.
+     */
+    public static void rescaleFuel(PodEntity pod, PodStats before, PodStats after) {
+        Objects.requireNonNull(before, "before");
+        Objects.requireNonNull(after, "after");
+        if (after.tankLitres() != before.tankLitres()) {
+            float full = PodTuning.DEFAULT.shell().fullFuel();
+            pod.setFuel(Math.min(full, pod.fuel() * before.tankLitres() / after.tankLitres()));
+        }
+    }
 
-	private static PodStats applyParts(PodEntity pod, PodStats stats) {
-		PodStats result = stats;
-		for (Map.Entry<ComponentTrack, List<Axis>> track : AXES.entrySet()) {
-			int tier = effectiveTier(pod, track.getKey());
-			if (tier == 0) {
-				continue;
-			}
-			float ratio = UpgradeTuning.DEFAULT.ratio(track.getKey(), tier);
-			for (Axis axis : track.getValue()) {
-				result = axis.scale(result, ratio);
-			}
-		}
-		return result;
-	}
+    private static PodStats applyParts(PodEntity pod, PodStats stats) {
+        PodStats result = stats;
+        for (Map.Entry<ComponentTrack, List<Axis>> track : AXES.entrySet()) {
+            int tier = effectiveTier(pod, track.getKey());
+            if (tier == 0) {
+                continue;
+            }
+            float ratio = UpgradeTuning.DEFAULT.ratio(track.getKey(), tier);
+            for (Axis axis : track.getValue()) {
+                result = axis.scale(result, ratio);
+            }
+        }
+        return result;
+    }
 
-	private static boolean canMount(PodEntity pod, Entity passenger) {
-		if (!(passenger instanceof ServerPlayer player)) {
-			return !unreadable(pod);
-		}
-		MinecraftServer server = player.level().getServer();
-		if (!Charters.isReadable(server)) {
-			// Without the charters nobody's ownership can be checked: a readable pod is open, as in mayAccess.
-			return !unreadable(pod);
-		}
-		Optional<Charter> charter = Charters.readableCharterOf(server, player.getUUID());
-		if (mayAccess(pod, charter)) {
-			return true;
-		}
-		// Denied: say whose pod it is, unless the pod's own state is what cannot be read.
-		if (!unreadable(pod)) {
-			Registration registration = read(pod).registration().orElseThrow();
-			player.sendSystemMessage(Component.translatable("message.deepcharter.pod.not_crew", registration.serial(),
-					Charters.readableFind(server, registration.owner()).orElseThrow().name()), true);
-		}
-		return false;
-	}
+    private static boolean canMount(PodEntity pod, Entity passenger) {
+        if (!(passenger instanceof ServerPlayer player)) {
+            return !unreadable(pod);
+        }
+        MinecraftServer server = player.level().getServer();
+        if (!Charters.isReadable(server)) {
+            // Without the charters nobody's ownership can be checked: a readable pod is open, as in mayAccess.
+            return !unreadable(pod);
+        }
+        Optional<Charter> charter = Charters.readableCharterOf(server, player.getUUID());
+        if (mayAccess(pod, charter)) {
+            return true;
+        }
+        // Denied: say whose pod it is, unless the pod's own state is what cannot be read.
+        if (!unreadable(pod)) {
+            Registration registration = read(pod).registration().orElseThrow();
+            player.sendSystemMessage(
+                    Component.translatable(
+                            "message.deepcharter.pod.not_crew",
+                            registration.serial(),
+                            Charters.readableFind(server, registration.owner())
+                                    .orElseThrow()
+                                    .name()),
+                    true);
+        }
+        return false;
+    }
 
-	/**
-	 * The one rule of who may act on a pod (mount it, sell its cargo, fit its parts) for {@code charter}, the acting player's
-	 * charter if they are on one. Features ask this and never reimplement it.
-	 * <ul>
-	 *   <li>Components the build cannot read: no. Who owns the pod is unknown, and unknown is not everyone.</li>
-	 *   <li>An unowned pod: anyone.</li>
-	 *   <li>An owner that is gone or dormant cannot crew its pods, so they must not stay locked: anyone.</li>
-	 *   <li>Otherwise only the owner charter.</li>
-	 * </ul>
-	 * Saved charters this build cannot read leave no owner to check against: the owner check is skipped (logged once).
-	 */
-	public static boolean mayAccess(PodEntity pod, Optional<Charter> charter) {
-		if (unreadable(pod)) {
-			return false;
-		}
-		return ownerCharter(pod).map(owner -> charter.map(acting -> acting.id().equals(owner.id())).orElse(false)).orElse(true);
-	}
+    /**
+     * The one rule of who may act on a pod (mount it, sell its cargo, fit its parts) for {@code charter}, the acting player's
+     * charter if they are on one. Features ask this and never reimplement it.
+     * <ul>
+     *   <li>Components the build cannot read: no. Who owns the pod is unknown, and unknown is not everyone.</li>
+     *   <li>An unowned pod: anyone.</li>
+     *   <li>An owner that is gone or dormant cannot crew its pods, so they must not stay locked: anyone.</li>
+     *   <li>Otherwise only the owner charter.</li>
+     * </ul>
+     * Saved charters this build cannot read leave no owner to check against: the owner check is skipped (logged once).
+     */
+    public static boolean mayAccess(PodEntity pod, Optional<Charter> charter) {
+        if (unreadable(pod)) {
+            return false;
+        }
+        return ownerCharter(pod)
+                .map(owner ->
+                        charter.map(acting -> acting.id().equals(owner.id())).orElse(false))
+                .orElse(true);
+    }
 
-	/** The charter that owns the pod. Empty when the pod is unowned or the owner is gone or dormant (anyone's); never throws. */
-	public static Optional<Charter> ownerCharter(PodEntity pod) {
-		Optional<Registration> registration = read(pod).registration();
-		if (registration.isEmpty()) {
-			return Optional.empty();
-		}
-		return Charters.readableFind(pod.level().getServer(), registration.get().owner()).filter(owner -> !owner.dormant());
-	}
+    /** The charter that owns the pod. Empty when the pod is unowned or the owner is gone or dormant (anyone's); never throws. */
+    public static Optional<Charter> ownerCharter(PodEntity pod) {
+        Optional<Registration> registration = read(pod).registration();
+        if (registration.isEmpty()) {
+            return Optional.empty();
+        }
+        return Charters.readableFind(pod.level().getServer(), registration.get().owner())
+                .filter(owner -> !owner.dormant());
+    }
 
-	/** True when the pod's components are unreadable; logs once, through {@link Versioned#readable}. */
-	private static boolean unreadable(PodEntity pod) {
-		return Versioned.readable(pod, STATE).isEmpty();
-	}
+    /** True when the pod's components are unreadable; logs once, through {@link Versioned#readable}. */
+    private static boolean unreadable(PodEntity pod) {
+        return Versioned.readable(pod, STATE).isEmpty();
+    }
 
-	private static boolean counts(State state, PartLabel label) {
-		return state.registration().map(registration -> registration.owner().equals(label.charter())).orElse(false);
-	}
+    private static boolean counts(State state, PartLabel label) {
+        return state.registration()
+                .map(registration -> registration.owner().equals(label.charter()))
+                .orElse(false);
+    }
 
-	/** The pod's state, or the empty one when it was never set or is unreadable (logged once). Never throws: listeners call it. */
-	private static State read(PodEntity pod) {
-		return Versioned.readable(pod, STATE).orElse(State.EMPTY);
-	}
+    /** The pod's state, or the empty one when it was never set or is unreadable (logged once). Never throws: listeners call it. */
+    private static State read(PodEntity pod) {
+        return Versioned.readable(pod, STATE).orElse(State.EMPTY);
+    }
 
-	private static MinecraftServer requireServer(PodEntity pod) {
-		MinecraftServer server = pod.level().getServer();
-		if (pod.level().isClientSide() || server == null) {
-			throw new IllegalStateException("pod components change on the server only");
-		}
-		return server;
-	}
+    private static MinecraftServer requireServer(PodEntity pod) {
+        MinecraftServer server = pod.level().getServer();
+        if (pod.level().isClientSide() || server == null) {
+            throw new IllegalStateException("pod components change on the server only");
+        }
+        return server;
+    }
 }

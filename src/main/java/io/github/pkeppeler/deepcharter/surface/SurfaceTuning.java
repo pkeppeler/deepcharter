@@ -5,5 +5,5 @@ package io.github.pkeppeler.deepcharter.surface;
  * component per tunable and give it its value where {@code DEFAULT} is built.
  */
 public record SurfaceTuning() {
-	public static final SurfaceTuning DEFAULT = new SurfaceTuning();
+    public static final SurfaceTuning DEFAULT = new SurfaceTuning();
 }

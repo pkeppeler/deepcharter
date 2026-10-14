@@ -38,57 +38,79 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param disabledInkColor the label of a button that cannot be pressed
  */
 public record HandbookScreenTuning(
-		int paperWidth,
-		int paperMaxHeight,
-		int bindingWidth,
-		int padding,
-		int marginWidth,
-		int tabWidth,
-		int tabHeight,
-		int buttonWidth,
-		int buttonHeight,
-		int flipTicks,
-		int shadowOffset,
-		int ruleSpacing,
-		int ruleAlpha,
-		int marginRuleAlpha,
-		int topMargin,
-		int contentTop,
-		int paragraphGap,
-		int marginGap,
-		int shadowColor,
-		int paperColor,
-		int paperEdgeColor,
-		int bindingColor,
-		int inkColor,
-		int marginInkColor,
-		int stampColor,
-		int redactionColor,
-		int faintInkColor,
-		int hoverFillColor,
-		int disabledInkColor) {
-	public HandbookScreenTuning {
-		if (flipTicks < 1) {
-			throw new IllegalArgumentException("flipTicks must be at least 1, got " + flipTicks);
-		}
-	}
+        int paperWidth,
+        int paperMaxHeight,
+        int bindingWidth,
+        int padding,
+        int marginWidth,
+        int tabWidth,
+        int tabHeight,
+        int buttonWidth,
+        int buttonHeight,
+        int flipTicks,
+        int shadowOffset,
+        int ruleSpacing,
+        int ruleAlpha,
+        int marginRuleAlpha,
+        int topMargin,
+        int contentTop,
+        int paragraphGap,
+        int marginGap,
+        int shadowColor,
+        int paperColor,
+        int paperEdgeColor,
+        int bindingColor,
+        int inkColor,
+        int marginInkColor,
+        int stampColor,
+        int redactionColor,
+        int faintInkColor,
+        int hoverFillColor,
+        int disabledInkColor) {
+    public HandbookScreenTuning {
+        if (flipTicks < 1) {
+            throw new IllegalArgumentException("flipTicks must be at least 1, got " + flipTicks);
+        }
+    }
 
-	public static HandbookScreenTuning current() {
-		return UiTheme.current().handbook();
-	}
+    public static HandbookScreenTuning current() {
+        return UiTheme.current().handbook();
+    }
 
-	public static HandbookScreenTuning of(ThemeData d) {
-		return new HandbookScreenTuning(d.integer("paperWidth", 1), d.integer("paperMaxHeight", 100), d.integer("bindingWidth", 0),
-				d.integer("padding", 0), d.integer("marginWidth", 0), d.integer("tabWidth", 1), d.integer("tabHeight", 1),
-				d.integer("buttonWidth", 1), d.integer("buttonHeight", 1), d.integer("flipTicks", 1), d.integer("shadowOffset", 0),
-				d.integer("ruleSpacing", 1), alpha(d, "ruleAlpha"), alpha(d, "marginRuleAlpha"), d.integer("topMargin", 0),
-				d.integer("contentTop", 0), d.integer("paragraphGap", 0), d.integer("marginGap", 0), d.color("shadowColor"),
-				d.color("paperColor"), d.color("paperEdgeColor"), d.color("bindingColor"), d.color("inkColor"), d.color("marginInkColor"),
-				d.color("stampColor"), d.color("redactionColor"), d.color("faintInkColor"), d.color("hoverFillColor"),
-				d.color("disabledInkColor"));
-	}
+    public static HandbookScreenTuning of(ThemeData d) {
+        return new HandbookScreenTuning(
+                d.integer("paperWidth", 1),
+                d.integer("paperMaxHeight", 100),
+                d.integer("bindingWidth", 0),
+                d.integer("padding", 0),
+                d.integer("marginWidth", 0),
+                d.integer("tabWidth", 1),
+                d.integer("tabHeight", 1),
+                d.integer("buttonWidth", 1),
+                d.integer("buttonHeight", 1),
+                d.integer("flipTicks", 1),
+                d.integer("shadowOffset", 0),
+                d.integer("ruleSpacing", 1),
+                alpha(d, "ruleAlpha"),
+                alpha(d, "marginRuleAlpha"),
+                d.integer("topMargin", 0),
+                d.integer("contentTop", 0),
+                d.integer("paragraphGap", 0),
+                d.integer("marginGap", 0),
+                d.color("shadowColor"),
+                d.color("paperColor"),
+                d.color("paperEdgeColor"),
+                d.color("bindingColor"),
+                d.color("inkColor"),
+                d.color("marginInkColor"),
+                d.color("stampColor"),
+                d.color("redactionColor"),
+                d.color("faintInkColor"),
+                d.color("hoverFillColor"),
+                d.color("disabledInkColor"));
+    }
 
-	private static int alpha(ThemeData d, String key) {
-		return d.integer(key, 0, 255);
-	}
+    private static int alpha(ThemeData d, String key) {
+        return d.integer(key, 0, 255);
+    }
 }

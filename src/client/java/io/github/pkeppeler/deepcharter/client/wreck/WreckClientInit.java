@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.client.wreck;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class WreckClientInit {
-	private WreckClientInit() {
-	}
+    private WreckClientInit() {}
 
-	public static void init() {
-		WreckClientRegistry.register();
-	}
+    public static void init() {
+        WreckClientRegistry.register();
+    }
 }

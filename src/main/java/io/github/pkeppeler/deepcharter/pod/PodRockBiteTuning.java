@@ -9,23 +9,25 @@ package io.github.pkeppeler.deepcharter.pod;
  * @param heatHullPerSecond hull points the cutter's heat costs each second of a bite, before the radiator's ratio
  * @param hullFloor         a pod whose hull is at or under this does not bite: the cutter runs hot, so the drill is never a way to burn the hull to nothing
  */
-public record PodRockBiteTuning(int minTier, float hardness, float fuelMultiplier, float heatHullPerSecond, float hullFloor) {
-	/**
-	 * (A) Tier 3 is the Prospector's best drill (a Mole is capped at 2, so it never bites), the one tier a shipped chassis can reach. A tier 3 drill takes 6.4
-	 * ticks for each point of hardness, so hardness 15 is 96 ticks, 4.8 s at the surface, against 0.5 s for stone: ten times slower. Fuel burns at three times the
-	 * drilling rate and the cutter costs 1.5 hull a second, so a slab costs about $22 at layer 2 depth in fuel and hull repair, a little over the $20 a slab of a blasting
-	 * charge (EconomyAffordabilityTest): the tier buys freedom from carrying charges, not a discount, and the heat is what binds (about 6 slabs from a full stock hull to the floor).
-	 * A hull of 20 or less stops the bite, as it stops a charge.
-	 */
-	public static final PodRockBiteTuning DEFAULT = new PodRockBiteTuning(3, 15f, 3f, 1.5f, 20f);
+public record PodRockBiteTuning(
+        int minTier, float hardness, float fuelMultiplier, float heatHullPerSecond, float hullFloor) {
+    /**
+     * (A) Tier 3 is the Prospector's best drill (a Mole is capped at 2, so it never bites), the one tier a shipped chassis can reach. A tier 3 drill takes 6.4
+     * ticks for each point of hardness, so hardness 15 is 96 ticks, 4.8 s at the surface, against 0.5 s for stone: ten times slower. Fuel burns at three times the
+     * drilling rate and the cutter costs 1.5 hull a second, so a slab costs about $22 at layer 2 depth in fuel and hull repair, a little over the $20 a slab of a blasting
+     * charge (EconomyAffordabilityTest): the tier buys freedom from carrying charges, not a discount, and the heat is what binds (about 6 slabs from a full stock hull to the floor).
+     * A hull of 20 or less stops the bite, as it stops a charge.
+     */
+    public static final PodRockBiteTuning DEFAULT = new PodRockBiteTuning(3, 15f, 3f, 1.5f, 20f);
 
-	public PodRockBiteTuning {
-		if (minTier < 1) {
-			throw new IllegalArgumentException("a drill that bites needs a tier of 1 or more, got " + minTier);
-		}
-		if (!(hardness > 0f) || !(fuelMultiplier >= 1f) || !(heatHullPerSecond >= 0f) || !(hullFloor >= 0f)) {
-			throw new IllegalArgumentException("a bite needs a hardness above 0, a fuel multiplier of 1 or more and no negative heat or hull floor, got "
-					+ hardness + ", " + fuelMultiplier + ", " + heatHullPerSecond + ", " + hullFloor);
-		}
-	}
+    public PodRockBiteTuning {
+        if (minTier < 1) {
+            throw new IllegalArgumentException("a drill that bites needs a tier of 1 or more, got " + minTier);
+        }
+        if (!(hardness > 0f) || !(fuelMultiplier >= 1f) || !(heatHullPerSecond >= 0f) || !(hullFloor >= 0f)) {
+            throw new IllegalArgumentException(
+                    "a bite needs a hardness above 0, a fuel multiplier of 1 or more and no negative heat or hull floor, got "
+                            + hardness + ", " + fuelMultiplier + ", " + heatHullPerSecond + ", " + hullFloor);
+        }
+    }
 }
