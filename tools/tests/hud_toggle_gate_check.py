@@ -89,6 +89,9 @@ TOGGLES = {
 TWO_ABOVE = "// hud-toggle: too far above\n        int gap = 0;\n        client.gui.hud.toggle();"
 BARE = "// hud-toggle:\n        client.gui.hud.toggle();"
 NEXT_STATEMENT = "client.gui.hud.toggle();\n        int gap = 0; // hud-toggle: belongs to the next statement"
+BLANK_LINE = "// hud-toggle: separated by a blank line\n\n        client.gui.hud.toggle();"
+FAR_END = "client.gui.hud.toggle(\n" + ",\n".join(f"            arg{i}" for i in range(14)) + "); // hud-toggle: more than 12 lines away"
+URL_LINE = '// hud-toggle: above a line whose string holds //\n        String url = "http://x";\n        client.gui.hud.toggle();'
 IN_STRING = 'String note = "// hud-toggle: not a comment"; client.gui.hud.toggle();'
 IN_TEXT_BLOCK = 'String note = """\n            // hud-toggle: in a text block\n            """; client.gui.hud.toggle();'
 
@@ -96,6 +99,9 @@ MARKERS = {
     "a bare marker": (BARE, 5),
     "two lines above": (TWO_ABOVE, 6),
     "a marker on the next statement": (NEXT_STATEMENT, 4),
+    "a marker above a line with // in a string": (URL_LINE, 6),
+    "a marker above a blank line": (BLANK_LINE, 6),
+    "a marker more than 12 lines down a wrapped statement": (FAR_END, 4),
     "a marker in a string": (IN_STRING, 4),
     "a marker in a text block": (IN_TEXT_BLOCK, 6),
 }

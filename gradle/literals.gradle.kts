@@ -51,7 +51,8 @@ extra["blankLiterals"] = blankLiterals
 // end of the wrapped statement, so "the flagged line or the one above" no longer finds it. markedNear(lines, line, isMarker) is
 // true when isMarker holds for the flagged line (0-based `line`), the line above it, any line of the statement the flagged line is
 // in, or a comment line directly above that statement. A statement runs from after the previous line that ends in `;`, `{` or `}`
-// to the next one; the walk is capped at 12 lines each way, so a marker never reaches far.
+// to the next one. `lines` come from blankLiterals, so a `//` inside a string literal is already gone and cannot pass for a
+// comment. The walk is capped at 12 lines each way, so a marker never reaches far.
 val markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean = { lines, line, isMarker ->
 	fun code(l: String): String = l.substringBefore("//").trim()
 	fun endsStatement(l: String): Boolean = code(l).let { it.endsWith(";") || it.endsWith("{") || it.endsWith("}") }

@@ -252,6 +252,18 @@ public class Marks {
     public int second() {
         return 2;
     }
+
+    // test-seam: separated from its declaration by a blank line, so it binds to nothing
+
+    public int blankSeparated() {
+        return 3;
+    }
+
+    // test-seam: separated from its declaration by code, so it binds to nothing
+    private final int gap = 0;
+    public int codeSeparated() {
+        return 4;
+    }
 }
 """,
     "fx/Outer.java": """package fx;
@@ -279,7 +291,7 @@ RED_USES = """
         total += new fx.Polite().shout();
         total += fx.Blocks.PLAIN == null ? 0 : 1;
         fx.Marks marks = new fx.Marks();
-        total += marks.pick(1) + marks.pick("a") + marks.first() + marks.second();
+        total += marks.pick(1) + marks.pick("a") + marks.first() + marks.second() + marks.blankSeparated() + marks.codeSeparated();
         fx.Outer outer = new fx.Outer();
         total += outer.deep() + new fx.Outer.Inner().deep();
         new fx.Hooks().nullable();
@@ -298,6 +310,8 @@ RED = [
     ("fx/Blocks.java", "public static final Object PLAIN", "Blocks.PLAIN", "fx.Blocks#PLAIN", ""),
     ("fx/Marks.java", "public int pick(String value)", "Marks.pick(String)", "fx.Marks#pick(Ljava/lang/String;)", ""),
     ("fx/Marks.java", "public int second()", "Marks.second()", "fx.Marks#second()", ""),
+    ("fx/Marks.java", "public int blankSeparated()", "Marks.blankSeparated()", "fx.Marks#blankSeparated()", ""),
+    ("fx/Marks.java", "public int codeSeparated()", "Marks.codeSeparated()", "fx.Marks#codeSeparated()", ""),
     ("fx/Outer.java", "        public int deep()", "Outer.Inner.deep()", "fx.Outer$Inner#deep()", ""),
     ("fx/Hooks.java", "public String nullable()", "Hooks.nullable()", "fx.Hooks#nullable()", ""),
 ]

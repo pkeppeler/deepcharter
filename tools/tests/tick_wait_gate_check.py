@@ -84,11 +84,18 @@ CLIENT_CLASS = "public class TicksClientTest implements FabricClientGameTest"
 BARE = "// tick-wait:\n        context.waitFor(client -> true, 5);"
 IN_STRING = 'String note = "// tick-wait: not a comment"; context.waitFor(client -> true, 5);'
 IN_TEXT_BLOCK = 'String note = """\n            // tick-wait: in a text block\n            """; context.waitFor(client -> true, 5);'
+# palantir-java-format moves a marker within a wrapped statement; the shared markedNear must still not reach a marker that belongs elsewhere.
+NEXT_STATEMENT = "context.waitFor(client -> true, 5);\n        int gap = 0; // tick-wait: belongs to the next statement"
+BLANK_LINE = "// tick-wait: separated by a blank line\n\n        context.waitFor(client -> true, 5);"
+FAR_END = "context.waitFor(client -> true,\n" + ",\n".join(f"            arg{i}" for i in range(14)) + "); // tick-wait: more than 12 lines away"
 
 # label: (file under the test package, class declaration, statement, line the gate reports)
 BAD = {
     **{f"violation/{label}": ("TicksClientTest.java", CLIENT_CLASS, statement, 4) for label, statement in VIOLATIONS.items()},
     "marker/a bare marker": ("TicksClientTest.java", CLIENT_CLASS, BARE, 5),
+    "marker/a marker on the next statement": ("TicksClientTest.java", CLIENT_CLASS, NEXT_STATEMENT, 4),
+    "marker/a marker above a blank line": ("TicksClientTest.java", CLIENT_CLASS, BLANK_LINE, 6),
+    "marker/a marker more than 12 lines down a wrapped statement": ("TicksClientTest.java", CLIENT_CLASS, FAR_END, 4),
     "marker/a marker in a string": ("TicksClientTest.java", CLIENT_CLASS, IN_STRING, 4),
     "marker/a marker in a text block": ("TicksClientTest.java", CLIENT_CLASS, IN_TEXT_BLOCK, 6),
     "support": ("support/TicksSupport.java", "public class TicksSupport", VIOLATIONS["tick budget"], 4),

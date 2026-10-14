@@ -8,8 +8,14 @@ indent_style = space
 indent_size = 4
 trim_trailing_whitespace = true
 
-[*.{yml,yaml,json,toml,md,mcmeta}]
+[*.{yml,yaml,toml,mcmeta}]
 indent_size = 2
+
+# JSON and Markdown here mix 2-space files with a few tab-indented ones (fabric.mod.json, the GeckoLib models, sounds.json), so no
+# indent is claimed for them.
+[*.{json,md}]
+indent_style = unset
+indent_size = unset
 
 # The Gradle Kotlin DSL files in this repo are tab-indented; Spotless does not touch them.
 [*.kts]

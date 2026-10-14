@@ -96,8 +96,16 @@ BARE = "// world-clock:\n        server.clockManager().setPaused(sky, true);"
 IN_STRING = 'String note = "// world-clock: not a comment"; server.clockManager().setPaused(sky, true);'
 IN_TEXT_BLOCK = 'String note = """\n            // world-clock: in a text block\n            """; server.clockManager().setPaused(sky, true);'
 
+# palantir-java-format moves a marker within a wrapped statement; the shared markedNear must still not reach a marker that belongs elsewhere.
+NEXT_STATEMENT = "server.clockManager().setPaused(sky, true);\n        int gap = 0; // world-clock: belongs to the next statement"
+BLANK_LINE = "// world-clock: separated by a blank line\n\n        server.clockManager().setPaused(sky, true);"
+FAR_END = "server.clockManager().setPaused(sky,\n" + ",\n".join(f"            arg{i}" for i in range(14)) + ",\n            true); // world-clock: more than 12 lines away"
+
 MARKERS = {
     "a bare marker": (BARE, 6),
+    "a marker on the next statement": (NEXT_STATEMENT, 5),
+    "a marker above a blank line": (BLANK_LINE, 7),
+    "a marker more than 12 lines down a wrapped statement": (FAR_END, 5),
     "two lines above": (TWO_ABOVE, 7),
     "a marker in a string": (IN_STRING, 5),
     "a marker in a text block": (IN_TEXT_BLOCK, 7),
