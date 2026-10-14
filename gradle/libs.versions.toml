@@ -9,6 +9,8 @@ geckolib = "5.5.7"
 geckolibSha512 = "c7c89bd6c5f2801ef1575e2e1212202f5a3eff480d73503beff12b1d60dfb751112fccf36e36c243b26b6b492261cef12d8b2c1a92a734bb0b621daa8c158fc5"
 checkstyle = "14.3.0"
 dependencyAnalysis = "3.19.2"
+palantirJavaFormat = "2.102.0"
+spotless = "8.10.3"
 
 [libraries]
 minecraft = { module = "com.mojang:minecraft", version.ref = "minecraft" }
@@ -19,3 +21,4 @@ geckolib = { module = "com.geckolib:geckolib-fabric-26.3", version.ref = "geckol
 [plugins]
 loom = { id = "net.fabricmc.fabric-loom", version.ref = "loom" }
 dependency-analysis = { id = "com.autonomousapps.dependency-analysis", version.ref = "dependencyAnalysis" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
