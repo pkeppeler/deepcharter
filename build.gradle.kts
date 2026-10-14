@@ -3,7 +3,13 @@ import java.util.zip.ZipFile
 
 plugins {
 	alias(libs.plugins.loom)
+	alias(libs.plugins.dependency.analysis)
 	checkstyle
+}
+
+java {
+	// Runtime and test classpaths resolve to the versions the compile classpath chose, so what we compile against is what runs.
+	consistentResolution { useCompileClasspathVersions() }
 }
 
 group = providers.gradleProperty("maven_group").get()
@@ -72,14 +78,66 @@ repositories {
 	}
 }
 
+// Stands in for FAIL_ON_PROJECT_REPOS (see settings.gradle.kts): only Loom's repositories and GeckoLib's may exist.
+val allowedRepositoryUrls = setOf(
+	"https://maven.fabricmc.net/",
+	"https://libraries.minecraft.net/",
+	"https://repo.maven.apache.org/maven2/",
+	"https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/",
+)
+gradle.projectsEvaluated {
+	val unexpected = repositories.filter { repo ->
+		!repo.name.startsWith("LoomLocal") && !repo.name.startsWith("LoomGlobal") &&
+			(repo as? MavenArtifactRepository)?.url?.toString() !in allowedRepositoryUrls
+	}
+	check(unexpected.isEmpty()) {
+		"Project repositories outside Loom's own and GeckoLib's: ${unexpected.map { it.name }}. " +
+			"Declare dependencies from Fabric's, Mojang's or Maven Central only, or audit the new repository and list it here."
+	}
+}
+
+// The Fabric API modules each source set compiles against, as buildHealth (dependency-analysis) reports them.
+// api: the module's types appear in our public signatures. A source set lists every module its own code uses; the client and
+// gametest sets do not inherit main's declarations for this check. Code that uses a new module fails buildHealth and names it;
+// add it here.
+val fabricApiModules = mapOf(
+	"api" to listOf("fabric-api-base", "fabric-data-attachment-api-v1", "fabric-menu-api-v1"),
+	"implementation" to listOf(
+		"fabric-command-api-v2", "fabric-entity-events-v1", "fabric-events-interaction-v0", "fabric-lifecycle-events-v1",
+		"fabric-networking-api-v1", "fabric-object-builder-api-v1", "fabric-particles-v1", "fabric-registry-sync-v0",
+		"fabric-resource-loader-v1",
+	),
+	"clientImplementation" to listOf(
+		"fabric-api-base", "fabric-data-attachment-api-v1", "fabric-events-interaction-v0", "fabric-key-mapping-api-v1",
+		"fabric-lifecycle-events-v1", "fabric-menu-api-v1", "fabric-model-loading-api-v1", "fabric-networking-api-v1",
+		"fabric-particles-v1", "fabric-renderer-api-v1", "fabric-rendering-v1", "fabric-resource-loader-v1",
+	),
+	"gametestImplementation" to listOf(
+		"fabric-api-base", "fabric-client-gametest-api-v1", "fabric-data-attachment-api-v1", "fabric-events-interaction-v0",
+		"fabric-gametest-api-v1", "fabric-lifecycle-events-v1", "fabric-menu-api-v1", "fabric-networking-api-v1",
+		"fabric-rendering-v1", "fabric-resource-loader-v1", "fabric-screen-api-v1",
+	),
+)
+
 dependencies {
 	minecraft(libs.minecraft)
-	implementation(libs.fabric.loader)
+	// api: entrypoints implement ModInitializer, a public Loader type.
+	api(libs.fabric.loader)
 
+	// Loom's interface injection makes vanilla classes implement Fabric API interfaces (FabricItem, FabricBlock, FabricBlockState,
+	// RenderDataBlockEntity, ...), so javac must see the whole of Fabric API on the compile classpath even where no source names a
+	// module. The kind's runtimeOnly fails to compile here; the unused-dependency finding is excluded below instead.
 	implementation(libs.fabric.api)
+	val fabricApiVersion = libs.versions.fabricApi.get()
+	fabricApiModules.forEach { (configuration, modules) ->
+		modules.forEach { module -> add(configuration, fabricApi.module(module, fabricApiVersion)) }
+	}
 
 	// Pod models (ADR 0030). The jar is nested in ours, so a player installs nothing extra (audit condition 4).
-	implementation(libs.geckolib)
+	// Only the client and gametest code touch GeckoLib's types; main needs it at run time.
+	runtimeOnly(libs.geckolib)
+	"clientImplementation"(libs.geckolib)
+	"gametestImplementation"(libs.geckolib)
 	include(libs.geckolib)
 }
 
@@ -190,3 +248,22 @@ if (System.getProperty("os.name").lowercase().contains("mac") && System.getenv("
 		programArgs("--graphicsBackend", "vulkan")
 	}
 }
+
+// REPLACES: JUnit/AssertJ/JaCoCo — no src/test; tests are GameTests in Loom run JVMs, which JaCoCo cannot see, and an unused JUnit dependency fails buildHealth.
+dependencyAnalysis {
+	issues {
+		all {
+			onAny { severity("fail") }
+			// The fabric-api umbrella is on the compile classpath for Loom's interface injection (see dependencies {}), but no source names it.
+			onUnusedDependencies { exclude("net.fabricmc.fabric-api:fabric-api") }
+			// Libraries that com.mojang:minecraft's metadata supplies and its release pins, and Loom's merged Minecraft artifact
+			// (its name carries a hash). Declaring them would add a second source of truth for versions that move with Minecraft.
+			onUsedTransitiveDependencies {
+				exclude("com.mojang:brigadier", "com.mojang:datafixerupper", "io.netty:netty-buffer", "org.jspecify:jspecify", "org.slf4j:slf4j-api")
+				excludeRegex("net\\.minecraft:minecraft-common-.*")
+			}
+		}
+	}
+}
+// check already runs runGameTest (Fabric API wires it in), the checkstyle tasks and the gates above; buildHealth is not part of check by default.
+tasks.check { dependsOn(tasks.named("buildHealth")) }
