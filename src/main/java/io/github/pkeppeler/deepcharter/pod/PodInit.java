@@ -5,26 +5,25 @@ package io.github.pkeppeler.deepcharter.pod;
  * Each part of the pod feature registers itself from here, one line per part.
  */
 public final class PodInit {
-	private PodInit() {
-	}
+    private PodInit() {}
 
-	public static void init() {
-		PodRegistry.register();
-		PodRenames.init();
-		PodCommands.init();
-		PodMovement.init();
-		HardLanding.init();
-		PodDrill.init();
-		PodCargo.init();
-		PodFuel.init();
-		PodComponents.init();
-		PodLights.init();
-		PodLining.init();
-		PodLiner.init();
-		PodSounder.init();
-		PodLavaWatch.init();
-		PodBrace.init();
-		PodHeatShield.init();
-		PodTowing.init();
-	}
+    public static void init() {
+        PodRegistry.register();
+        PodRenames.init();
+        PodCommands.init();
+        PodMovement.init();
+        HardLanding.init();
+        PodDrill.init();
+        PodCargo.init();
+        PodFuel.init();
+        PodComponents.init();
+        PodLights.init();
+        PodLining.init();
+        PodLiner.init();
+        PodSounder.init();
+        PodLavaWatch.init();
+        PodBrace.init();
+        PodHeatShield.init();
+        PodTowing.init();
+    }
 }

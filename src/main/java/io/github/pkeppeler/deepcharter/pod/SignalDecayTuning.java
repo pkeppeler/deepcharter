@@ -1,10 +1,9 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import io.github.pkeppeler.deepcharter.pod.SignalDecay.Instrument;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-
-import io.github.pkeppeler.deepcharter.pod.SignalDecay.Instrument;
 
 /**
  * Tunables for the signal decay (#502), read as {@code SignalDecayTuning.DEFAULT.thing()}. The console part's tiers and prices are {@code UpgradeTuning}'s.
@@ -14,51 +13,55 @@ import io.github.pkeppeler.deepcharter.pod.SignalDecay.Instrument;
  * @param maxFaultChance  the chance that an instrument is faulty in a time cell, when its intensity is just under 1
  * @param jumpShare       the share of faults that are a jump (a false reading), the rest are drop-outs
  */
-public record SignalDecayTuning(List<Band> layers, Map<Instrument, Double> thresholds, double maxFaultChance, double jumpShare) {
-	/** One layer's curve: {@code onset} slabs above the floor the decay starts, {@code blackout} slabs above it (and under) the cockpit is dark. */
-	public record Band(int onset, int blackout) {
-		public Band {
-			if (blackout < 0 || onset <= blackout) {
-				throw new IllegalArgumentException("the decay must start above the blackout, got onset " + onset + " and blackout " + blackout);
-			}
-		}
-	}
+public record SignalDecayTuning(
+        List<Band> layers, Map<Instrument, Double> thresholds, double maxFaultChance, double jumpShare) {
+    /** One layer's curve: {@code onset} slabs above the floor the decay starts, {@code blackout} slabs above it (and under) the cockpit is dark. */
+    public record Band(int onset, int blackout) {
+        public Band {
+            if (blackout < 0 || onset <= blackout) {
+                throw new IllegalArgumentException(
+                        "the decay must start above the blackout, got onset " + onset + " and blackout " + blackout);
+            }
+        }
+    }
 
-	public static final SignalDecayTuning DEFAULT = new SignalDecayTuning(List.of(new Band(36, 6), new Band(56, 8), new Band(72, 10)), defaultThresholds(), 0.75, 0.5);
+    public static final SignalDecayTuning DEFAULT = new SignalDecayTuning(
+            List.of(new Band(36, 6), new Band(56, 8), new Band(72, 10)), defaultThresholds(), 0.75, 0.5);
 
-	public SignalDecayTuning {
-		layers = List.copyOf(layers);
-		thresholds = Map.copyOf(thresholds);
-		if (layers.isEmpty()) {
-			throw new IllegalArgumentException("the decay needs a curve for at least one layer");
-		}
-		for (Instrument instrument : Instrument.values()) {
-			Double threshold = thresholds.get(instrument);
-			if (threshold == null || !(threshold >= 0 && threshold < 1)) {
-				throw new IllegalArgumentException("the " + instrument + " needs a threshold in [0, 1), got " + threshold);
-			}
-		}
-		if (!(maxFaultChance > 0 && maxFaultChance <= 1) || !(jumpShare >= 0 && jumpShare <= 1)) {
-			throw new IllegalArgumentException("chances are in (0, 1], got " + maxFaultChance + " and " + jumpShare);
-		}
-	}
+    public SignalDecayTuning {
+        layers = List.copyOf(layers);
+        thresholds = Map.copyOf(thresholds);
+        if (layers.isEmpty()) {
+            throw new IllegalArgumentException("the decay needs a curve for at least one layer");
+        }
+        for (Instrument instrument : Instrument.values()) {
+            Double threshold = thresholds.get(instrument);
+            if (threshold == null || !(threshold >= 0 && threshold < 1)) {
+                throw new IllegalArgumentException(
+                        "the " + instrument + " needs a threshold in [0, 1), got " + threshold);
+            }
+        }
+        if (!(maxFaultChance > 0 && maxFaultChance <= 1) || !(jumpShare >= 0 && jumpShare <= 1)) {
+            throw new IllegalArgumentException("chances are in (0, 1], got " + maxFaultChance + " and " + jumpShare);
+        }
+    }
 
-	/** The curve of {@code layer} (1 or more). */
-	public Band band(int layer) {
-		return layers.get(Math.min(layer, layers.size()) - 1);
-	}
+    /** The curve of {@code layer} (1 or more). */
+    public Band band(int layer) {
+        return layers.get(Math.min(layer, layers.size()) - 1);
+    }
 
-	/** (A) The scanner fails first, noise from the first slab; then the heat gauge, depth, cargo, fuel, the readout plate and the lamps; the hull gauge last. */
-	private static Map<Instrument, Double> defaultThresholds() {
-		Map<Instrument, Double> thresholds = new EnumMap<>(Instrument.class);
-		thresholds.put(Instrument.SCANNER, 0.0);
-		thresholds.put(Instrument.HEAT, 0.2);
-		thresholds.put(Instrument.DEPTH, 0.35);
-		thresholds.put(Instrument.CARGO, 0.38);
-		thresholds.put(Instrument.FUEL, 0.42);
-		thresholds.put(Instrument.PLATE, 0.45);
-		thresholds.put(Instrument.LAMPS, 0.65);
-		thresholds.put(Instrument.HULL, 0.85);
-		return thresholds;
-	}
+    /** (A) The scanner fails first, noise from the first slab; then the heat gauge, depth, cargo, fuel, the readout plate and the lamps; the hull gauge last. */
+    private static Map<Instrument, Double> defaultThresholds() {
+        Map<Instrument, Double> thresholds = new EnumMap<>(Instrument.class);
+        thresholds.put(Instrument.SCANNER, 0.0);
+        thresholds.put(Instrument.HEAT, 0.2);
+        thresholds.put(Instrument.DEPTH, 0.35);
+        thresholds.put(Instrument.CARGO, 0.38);
+        thresholds.put(Instrument.FUEL, 0.42);
+        thresholds.put(Instrument.PLATE, 0.45);
+        thresholds.put(Instrument.LAMPS, 0.65);
+        thresholds.put(Instrument.HULL, 0.85);
+        return thresholds;
+    }
 }

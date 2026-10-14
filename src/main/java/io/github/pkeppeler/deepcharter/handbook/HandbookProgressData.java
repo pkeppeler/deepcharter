@@ -1,24 +1,21 @@
 package io.github.pkeppeler.deepcharter.handbook;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.SavedState;
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
-
-import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.attachment.SavedState;
-import io.github.pkeppeler.deepcharter.attachment.Versioned;
-import io.github.pkeppeler.deepcharter.charter.CharterId;
 
 /**
  * The directives each charter has completed, saved with the world and keyed by {@link CharterId}, so a charter keeps its progress
@@ -28,78 +25,87 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
  * of it throws, so a newer world is never overwritten by an older build (see ADR 0007).
  */
 public final class HandbookProgressData extends SavedData {
-	public static final int VERSION = 1;
-	private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook_progress");
-	private static final Codec<Versioned<List<Entry>>> VERSIONED_CODEC = Versioned.codec(VERSION, Entry.CODEC.listOf().fieldOf("progress"));
+    public static final int VERSION = 1;
+    private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook_progress");
+    private static final Codec<Versioned<List<Entry>>> VERSIONED_CODEC =
+            Versioned.codec(VERSION, Entry.CODEC.listOf().fieldOf("progress"));
 
-	/** The codec of the saved data, which never fails to decode. */
-	public static final Codec<HandbookProgressData> CODEC = VERSIONED_CODEC.xmap(HandbookProgressData::new, HandbookProgressData::versioned);
-	// Datafixer type: vanilla applies it to saved data it reads. Our data has a version of its own, so the vanilla fixers find nothing to fix.
-	public static final SavedDataType<HandbookProgressData> TYPE = new SavedDataType<>(ID, HandbookProgressData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
+    /** The codec of the saved data, which never fails to decode. */
+    public static final Codec<HandbookProgressData> CODEC =
+            VERSIONED_CODEC.xmap(HandbookProgressData::new, HandbookProgressData::versioned);
+    // Datafixer type: vanilla applies it to saved data it reads. Our data has a version of its own, so the vanilla
+    // fixers find nothing to fix.
+    public static final SavedDataType<HandbookProgressData> TYPE =
+            new SavedDataType<>(ID, HandbookProgressData::new, CODEC, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
 
-	/** A directive whose id changed, by its old id: a charter that completed the old one has completed the new one (ADR 0047). */
-	private static final Map<Identifier, Identifier> RENAMED = Map.of(
-			Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/welcome/mine_iron_ore"),
-			Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/welcome/gather_scrap"));
+    /** A directive whose id changed, by its old id: a charter that completed the old one has completed the new one (ADR 0047). */
+    private static final Map<Identifier, Identifier> RENAMED = Map.of(
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/welcome/mine_iron_ore"),
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/welcome/gather_scrap"));
 
-	private final SavedState<Map<CharterId, Set<Identifier>>> state;
+    private final SavedState<Map<CharterId, Set<Identifier>>> state;
 
-	public HandbookProgressData() {
-		this.state = SavedState.fresh(ID, VERSION, new LinkedHashMap<>());
-	}
+    public HandbookProgressData() {
+        this.state = SavedState.fresh(ID, VERSION, new LinkedHashMap<>());
+    }
 
-	private HandbookProgressData(Versioned<List<Entry>> loaded) {
-		this.state = SavedState.load(ID, VERSION, loaded, entries -> {
-			Map<CharterId, Set<Identifier>> progress = new LinkedHashMap<>();
-			entries.forEach(entry -> {
-				Set<Identifier> completed = new LinkedHashSet<>(entry.completed());
-				RENAMED.forEach((old, renamed) -> {
-					if (completed.contains(old)) {
-						completed.add(renamed);
-					}
-				});
-				progress.put(entry.charter(), completed);
-			});
-			return progress;
-		});
-	}
+    private HandbookProgressData(Versioned<List<Entry>> loaded) {
+        this.state = SavedState.load(ID, VERSION, loaded, entries -> {
+            Map<CharterId, Set<Identifier>> progress = new LinkedHashMap<>();
+            entries.forEach(entry -> {
+                Set<Identifier> completed = new LinkedHashSet<>(entry.completed());
+                RENAMED.forEach((old, renamed) -> {
+                    if (completed.contains(old)) {
+                        completed.add(renamed);
+                    }
+                });
+                progress.put(entry.charter(), completed);
+            });
+            return progress;
+        });
+    }
 
-	/** The world's handbook progress. Call on the server thread. */
-	public static HandbookProgressData get(MinecraftServer server) {
-		return server.getDataStorage().computeIfAbsent(TYPE);
-	}
+    /** The world's handbook progress. Call on the server thread. */
+    public static HandbookProgressData get(MinecraftServer server) {
+        return server.getDataStorage().computeIfAbsent(TYPE);
+    }
 
-	/** False (logged once) when the saved progress is of a version this build cannot read: {@link #completed} and {@link #complete} then throw. */
-	public boolean isReadable() {
-		return state.isReadable();
-	}
+    /** False (logged once) when the saved progress is of a version this build cannot read: {@link #completed} and {@link #complete} then throw. */
+    public boolean isReadable() {
+        return state.isReadable();
+    }
 
-	/** The directives {@code charter} has completed. Throws if the saved data is of a version this build cannot read. */
-	public Set<Identifier> completed(CharterId charter) {
-		return Set.copyOf(readable().getOrDefault(charter, Set.of()));
-	}
+    /** The directives {@code charter} has completed. Throws if the saved data is of a version this build cannot read. */
+    public Set<Identifier> completed(CharterId charter) {
+        return Set.copyOf(readable().getOrDefault(charter, Set.of()));
+    }
 
-	/** Records {@code directive} as completed for {@code charter}. Returns false when it already was. */
-	public boolean complete(CharterId charter, Identifier directive) {
-		boolean added = readable().computeIfAbsent(charter, ignored -> new LinkedHashSet<>()).add(directive);
-		if (added) {
-			setDirty();
-		}
-		return added;
-	}
+    /** Records {@code directive} as completed for {@code charter}. Returns false when it already was. */
+    public boolean complete(CharterId charter, Identifier directive) {
+        boolean added = readable()
+                .computeIfAbsent(charter, ignored -> new LinkedHashSet<>())
+                .add(directive);
+        if (added) {
+            setDirty();
+        }
+        return added;
+    }
 
-	private Versioned<List<Entry>> versioned() {
-		return state.versioned(progress -> progress.entrySet().stream().map(entry -> new Entry(entry.getKey(), List.copyOf(entry.getValue()))).toList());
-	}
+    private Versioned<List<Entry>> versioned() {
+        return state.versioned(progress -> progress.entrySet().stream()
+                .map(entry -> new Entry(entry.getKey(), List.copyOf(entry.getValue())))
+                .toList());
+    }
 
-	private Map<CharterId, Set<Identifier>> readable() {
-		return state.orThrow();
-	}
+    private Map<CharterId, Set<Identifier>> readable() {
+        return state.orThrow();
+    }
 
-	/** One charter's completed directives, in the order they were completed. */
-	private record Entry(CharterId charter, List<Identifier> completed) {
-		static final Codec<Entry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-				CharterId.CODEC.fieldOf("charter").forGetter(Entry::charter),
-				Identifier.CODEC.listOf().fieldOf("completed").forGetter(Entry::completed)).apply(instance, Entry::new));
-	}
+    /** One charter's completed directives, in the order they were completed. */
+    private record Entry(CharterId charter, List<Identifier> completed) {
+        static final Codec<Entry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                        CharterId.CODEC.fieldOf("charter").forGetter(Entry::charter),
+                        Identifier.CODEC.listOf().fieldOf("completed").forGetter(Entry::completed))
+                .apply(instance, Entry::new));
+    }
 }

@@ -1,17 +1,5 @@
 package io.github.pkeppeler.deepcharter.client.charter.terminal;
 
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.function.Function;
-
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-
 import io.github.pkeppeler.deepcharter.charter.CharterTuning;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractActions;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
@@ -26,6 +14,15 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.function.Function;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 /**
  * The contract terminal's screen: found a charter, apply to one, revive a dormant one it was once a member of, answer applications as Director, and leave. What it shows
@@ -36,175 +33,281 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
  * survives.
  */
 public final class ContractScreen extends CrtScreen implements TerminalViewScreen {
-	private static final int MARGIN = 24;
-	private static final int ROW_HEIGHT = 16;
-	private static final int ROW_PITCH = 20;
-	private static final int COLUMN_WIDTH = 170;
-	private static final int COLUMN_GAP = 16;
-	private static final int CLOSE_WIDTH = 70;
-	private static final int ACTION_WIDTH = 120;
-	private static final int STATUS_Y = 72;
-	private static final int ROWS_TOP = 100;
-	private static final int FIELD_HEIGHT = 14;
-	private static final int MAX_LABEL_NAME = 18;
-	/** The y, from the top of the rows, under the name field and the found button, where the revive rows start. */
-	private static final int BELOW_FOUND = 2 * ROW_PITCH + 2;
+    private static final int MARGIN = 24;
+    private static final int ROW_HEIGHT = 16;
+    private static final int ROW_PITCH = 20;
+    private static final int COLUMN_WIDTH = 170;
+    private static final int COLUMN_GAP = 16;
+    private static final int CLOSE_WIDTH = 70;
+    private static final int ACTION_WIDTH = 120;
+    private static final int STATUS_Y = 72;
+    private static final int ROWS_TOP = 100;
+    private static final int FIELD_HEIGHT = 14;
+    private static final int MAX_LABEL_NAME = 18;
+    /** The y, from the top of the rows, under the name field and the found button, where the revive rows start. */
+    private static final int BELOW_FOUND = 2 * ROW_PITCH + 2;
 
-	private final TerminalView view;
-	private final Typewriter typewriter;
-	private Optional<ContractState> state = Optional.empty();
-	private CrtTextField nameField;
-	/** The last status line {@link #fitted} measured, with the text and width it was measured for. */
-	private String fitKey = "";
-	private Component fitValue = Component.empty();
+    private final TerminalView view;
+    private final Typewriter typewriter;
+    private Optional<ContractState> state = Optional.empty();
+    private CrtTextField nameField;
+    /** The last status line {@link #fitted} measured, with the text and width it was measured for. */
+    private String fitKey = "";
 
-	public ContractScreen(TerminalView view) {
-		super(Component.translatable("block.deepcharter.contract_terminal"));
-		this.view = view;
-		this.typewriter = typewriter(Component.translatable("screen.deepcharter.contract.intro"), new TypewriterSound());
-	}
+    private Component fitValue = Component.empty();
 
-	@Override
-	public boolean accepts(TerminalView other) {
-		return view.pos().equals(other.pos()) && view.type().equals(other.type());
-	}
+    public ContractScreen(TerminalView view) {
+        super(Component.translatable("block.deepcharter.contract_terminal"));
+        this.view = view;
+        this.typewriter =
+                typewriter(Component.translatable("screen.deepcharter.contract.intro"), new TypewriterSound());
+    }
 
-	/** The server's answer to a press carries no news for this screen: the {@link ContractState} that follows does. */
-	@Override
-	public void update(TerminalView newer) {
-	}
+    @Override
+    public boolean accepts(TerminalView other) {
+        return view.pos().equals(other.pos()) && view.type().equals(other.type());
+    }
 
-	/** Shows what the server last said about the player. */
-	public void show(ContractState newer) {
-		state = Optional.of(newer);
-		rebuildWidgets();
-	}
+    /** The server's answer to a press carries no news for this screen: the {@link ContractState} that follows does. */
+    @Override
+    public void update(TerminalView newer) {}
 
-	@Override
-	public Typewriter typewriter() {
-		return typewriter;
-	}
+    /** Shows what the server last said about the player. */
+    public void show(ContractState newer) {
+        state = Optional.of(newer);
+        rebuildWidgets();
+    }
 
-	/** The refusal the server last sent, as the screen shows it. */
-	public Optional<Component> refusal() {
-		return state.flatMap(ContractState::notice).map(key -> Component.translatable("screen.deepcharter.contract.refused", Component.translatable(key)));
-	}
+    @Override
+    public Typewriter typewriter() {
+        return typewriter;
+    }
 
-	/** The y of the status line: the same distance below the top of the content as before the panel. */
-	private int statusY() {
-		return contentTop(MARGIN) + STATUS_Y - MARGIN;
-	}
+    /** The refusal the server last sent, as the screen shows it. */
+    public Optional<Component> refusal() {
+        return state.flatMap(ContractState::notice)
+                .map(key -> Component.translatable("screen.deepcharter.contract.refused", Component.translatable(key)));
+    }
 
-	/** The y of the first row of the lists and the name field. */
-	private int rowsTop() {
-		return contentTop(MARGIN) + ROWS_TOP - MARGIN;
-	}
+    /** The y of the status line: the same distance below the top of the content as before the panel. */
+    private int statusY() {
+        return contentTop(MARGIN) + STATUS_Y - MARGIN;
+    }
 
-	@Override
-	protected void layout() {
-		String typed = nameField == null ? "" : nameField.getValue();
-		nameField = null;
-		int left = contentLeft(MARGIN);
-		int closeY = contentBottom(MARGIN) - ROW_HEIGHT;
-		addRenderableWidget(new CrtButton(left, closeY, CLOSE_WIDTH, ROW_HEIGHT, Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
-		if (state.isEmpty()) {
-			return;
-		}
-		ContractState shown = state.get();
-		int columnWidth = Math.min(COLUMN_WIDTH, (contentWidth(MARGIN) - COLUMN_GAP) / 2);
-		int rightX = left + columnWidth + COLUMN_GAP;
-		int actionX = left + CLOSE_WIDTH + 6;
-		switch (shown.role()) {
-			case NONE -> {
-				nameField = addRenderableWidget(new CrtTextField(font, left + CrtTextField.FRAME, rowsTop() + CrtTextField.FRAME,
-						columnWidth - 2 * CrtTextField.FRAME, FIELD_HEIGHT, Component.translatable("screen.deepcharter.contract.name_hint")));
-				nameField.setMaxLength(CharterTuning.DEFAULT.maxNameLength());
-				nameField.setValue(typed);
-				addRenderableWidget(new CrtButton(left, rowsTop() + ROW_PITCH + 2, columnWidth, ROW_HEIGHT,
-						Component.translatable("screen.deepcharter.contract.found"), button -> send(ContractActions.FOUND, nameField.getValue())));
-				rows(shown.revivable(), left, columnWidth, BELOW_FOUND, "screen.deepcharter.contract.revive", ContractActions.REVIVE);
-				rows(shown.charters(), rightX, columnWidth, 0, "screen.deepcharter.contract.apply", ContractActions.APPLY);
-			}
-			case APPLICANT -> leaveButton(actionX, closeY, "screen.deepcharter.contract.withdraw");
-			case CREW -> leaveButton(actionX, closeY, "screen.deepcharter.contract.leave");
-			case DIRECTOR -> {
-				rows(shown.applicants(), left, columnWidth, 0, "screen.deepcharter.contract.approve", ContractActions.APPROVE);
-				rows(shown.applicants(), rightX, columnWidth, 0, "screen.deepcharter.contract.deny", ContractActions.DENY);
-				leaveButton(actionX, closeY, "screen.deepcharter.contract.leave");
-			}
-		}
-	}
+    /** The y of the first row of the lists and the name field. */
+    private int rowsTop() {
+        return contentTop(MARGIN) + ROWS_TOP - MARGIN;
+    }
 
-	private void leaveButton(int x, int y, String labelKey) {
-		addRenderableWidget(new CrtButton(x, y, ACTION_WIDTH, ROW_HEIGHT, Component.translatable(labelKey), button -> send(ContractActions.LEAVE, "")));
-	}
+    @Override
+    protected void layout() {
+        String typed = nameField == null ? "" : nameField.getValue();
+        nameField = null;
+        int left = contentLeft(MARGIN);
+        int closeY = contentBottom(MARGIN) - ROW_HEIGHT;
+        addRenderableWidget(new CrtButton(
+                left,
+                closeY,
+                CLOSE_WIDTH,
+                ROW_HEIGHT,
+                Component.translatable("screen.deepcharter.terminal.close"),
+                button -> onClose()));
+        if (state.isEmpty()) {
+            return;
+        }
+        ContractState shown = state.get();
+        int columnWidth = Math.min(COLUMN_WIDTH, (contentWidth(MARGIN) - COLUMN_GAP) / 2);
+        int rightX = left + columnWidth + COLUMN_GAP;
+        int actionX = left + CLOSE_WIDTH + 6;
+        switch (shown.role()) {
+            case NONE -> {
+                nameField = addRenderableWidget(new CrtTextField(
+                        font,
+                        left + CrtTextField.FRAME,
+                        rowsTop() + CrtTextField.FRAME,
+                        columnWidth - 2 * CrtTextField.FRAME,
+                        FIELD_HEIGHT,
+                        Component.translatable("screen.deepcharter.contract.name_hint")));
+                nameField.setMaxLength(CharterTuning.DEFAULT.maxNameLength());
+                nameField.setValue(typed);
+                addRenderableWidget(new CrtButton(
+                        left,
+                        rowsTop() + ROW_PITCH + 2,
+                        columnWidth,
+                        ROW_HEIGHT,
+                        Component.translatable("screen.deepcharter.contract.found"),
+                        button -> send(ContractActions.FOUND, nameField.getValue())));
+                rows(
+                        shown.revivable(),
+                        left,
+                        columnWidth,
+                        BELOW_FOUND,
+                        "screen.deepcharter.contract.revive",
+                        ContractActions.REVIVE);
+                rows(
+                        shown.charters(),
+                        rightX,
+                        columnWidth,
+                        0,
+                        "screen.deepcharter.contract.apply",
+                        ContractActions.APPLY);
+            }
+            case APPLICANT -> leaveButton(actionX, closeY, "screen.deepcharter.contract.withdraw");
+            case CREW -> leaveButton(actionX, closeY, "screen.deepcharter.contract.leave");
+            case DIRECTOR -> {
+                rows(
+                        shown.applicants(),
+                        left,
+                        columnWidth,
+                        0,
+                        "screen.deepcharter.contract.approve",
+                        ContractActions.APPROVE);
+                rows(
+                        shown.applicants(),
+                        rightX,
+                        columnWidth,
+                        0,
+                        "screen.deepcharter.contract.deny",
+                        ContractActions.DENY);
+                leaveButton(actionX, closeY, "screen.deepcharter.contract.leave");
+            }
+        }
+    }
 
-	/** One button per name in a column, {@code offsetY} pixels below the top of the rows, each sending its action with the full name. */
-	private void rows(List<String> names, int x, int columnWidth, int offsetY, String labelKey, Identifier action) {
-		for (int i = 0; i < names.size(); i++) {
-			String name = names.get(i);
-			String shownName = name.length() > MAX_LABEL_NAME ? name.substring(0, MAX_LABEL_NAME) + ".." : name;
-			Component label = Component.translatable(labelKey, shownName.toUpperCase(Locale.ROOT));
-			addRenderableWidget(new CrtButton(x, rowsTop() + offsetY + i * ROW_PITCH, columnWidth, ROW_HEIGHT, label, button -> send(action, name)));
-		}
-	}
+    private void leaveButton(int x, int y, String labelKey) {
+        addRenderableWidget(new CrtButton(
+                x,
+                y,
+                ACTION_WIDTH,
+                ROW_HEIGHT,
+                Component.translatable(labelKey),
+                button -> send(ContractActions.LEAVE, "")));
+    }
 
-	private void send(Identifier action, String name) {
-		CompoundTag args = new CompoundTag();
-		args.putString(ContractActions.NAME_KEY, name);
-		ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), action, args));
-	}
+    /** One button per name in a column, {@code offsetY} pixels below the top of the rows, each sending its action with the full name. */
+    private void rows(List<String> names, int x, int columnWidth, int offsetY, String labelKey, Identifier action) {
+        for (int i = 0; i < names.size(); i++) {
+            String name = names.get(i);
+            String shownName = name.length() > MAX_LABEL_NAME ? name.substring(0, MAX_LABEL_NAME) + ".." : name;
+            Component label = Component.translatable(labelKey, shownName.toUpperCase(Locale.ROOT));
+            addRenderableWidget(new CrtButton(
+                    x,
+                    rowsTop() + offsetY + i * ROW_PITCH,
+                    columnWidth,
+                    ROW_HEIGHT,
+                    label,
+                    button -> send(action, name)));
+        }
+    }
 
-	private Component status(ContractState shown) {
-		return switch (shown.role()) {
-			case NONE -> Component.translatable("screen.deepcharter.contract.status.none")
-					.append(shown.charterCount() > shown.charters().size()
-							? Component.literal(" ").append(Component.translatable("screen.deepcharter.contract.more", shown.charterCount() - shown.charters().size()))
-							: Component.empty());
-			case APPLICANT -> fitted(shown.charter(), name -> Component.translatable("screen.deepcharter.contract.status.applicant", name));
-			case CREW -> fitted(shown.charter(), name -> Component.translatable("screen.deepcharter.contract.status.crew", name));
-			case DIRECTOR -> fitted(shown.charter(), name -> Component.translatable("screen.deepcharter.contract.status.director", name, shown.applicantCount())
-					.append(shown.applicantCount() > shown.applicants().size()
-							? Component.literal(" ").append(Component.translatable("screen.deepcharter.contract.shown", shown.applicants().size(), shown.applicantCount()))
-							: Component.empty()));
-		};
-	}
+    private void send(Identifier action, String name) {
+        CompoundTag args = new CompoundTag();
+        args.putString(ContractActions.NAME_KEY, name);
+        ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), action, args));
+    }
 
-	/** The status line for {@code name}, with the name cut and ended in "..." when the line would be wider than the content: a long charter name must not run off the screen. */
-	private Component fitted(String name, Function<String, Component> line) {
-		Component full = line.apply(name);
-		String key = full.getString() + '|' + contentWidth(MARGIN);
-		if (key.equals(fitKey)) {
-			return fitValue; // the status line is read every frame: measure it once for a given text and width
-		}
-		Component result = full;
-		if (CrtText.width(font, full.getString()) > contentWidth(MARGIN)) {
-			String cut = name;
-			while (!cut.isEmpty() && CrtText.width(font, line.apply(cut + "...").getString()) > contentWidth(MARGIN)) {
-				cut = cut.substring(0, cut.length() - 1);
-			}
-			result = line.apply(cut + "...");
-		}
-		fitKey = key;
-		fitValue = result;
-		return result;
-	}
+    private Component status(ContractState shown) {
+        return switch (shown.role()) {
+            case NONE ->
+                Component.translatable("screen.deepcharter.contract.status.none")
+                        .append(
+                                shown.charterCount() > shown.charters().size()
+                                        ? Component.literal(" ")
+                                                .append(Component.translatable(
+                                                        "screen.deepcharter.contract.more",
+                                                        shown.charterCount()
+                                                                - shown.charters()
+                                                                        .size()))
+                                        : Component.empty());
+            case APPLICANT ->
+                fitted(
+                        shown.charter(),
+                        name -> Component.translatable("screen.deepcharter.contract.status.applicant", name));
+            case CREW ->
+                fitted(
+                        shown.charter(),
+                        name -> Component.translatable("screen.deepcharter.contract.status.crew", name));
+            case DIRECTOR ->
+                fitted(
+                        shown.charter(),
+                        name -> Component.translatable(
+                                        "screen.deepcharter.contract.status.director", name, shown.applicantCount())
+                                .append(
+                                        shown.applicantCount()
+                                                        > shown.applicants().size()
+                                                ? Component.literal(" ")
+                                                        .append(Component.translatable(
+                                                                "screen.deepcharter.contract.shown",
+                                                                shown.applicants()
+                                                                        .size(),
+                                                                shown.applicantCount()))
+                                                : Component.empty()));
+        };
+    }
 
-	/** The status line as the screen draws it, for a test to read. */
-	public Component statusLine() {
-		return state.map(this::status).orElse(Component.translatable("screen.deepcharter.contract.loading"));
-	}
+    /** The status line for {@code name}, with the name cut and ended in "..." when the line would be wider than the content: a long charter name must not run off the screen. */
+    private Component fitted(String name, Function<String, Component> line) {
+        Component full = line.apply(name);
+        String key = full.getString() + '|' + contentWidth(MARGIN);
+        if (key.equals(fitKey)) {
+            return fitValue; // the status line is read every frame: measure it once for a given text and width
+        }
+        Component result = full;
+        if (CrtText.width(font, full.getString()) > contentWidth(MARGIN)) {
+            String cut = name;
+            while (!cut.isEmpty() && CrtText.width(font, line.apply(cut + "...").getString()) > contentWidth(MARGIN)) {
+                cut = cut.substring(0, cut.length() - 1);
+            }
+            result = line.apply(cut + "...");
+        }
+        fitKey = key;
+        fitValue = result;
+        return result;
+    }
 
-	@Override
-	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		CrtTuning tuning = CrtTuning.current();
-		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
-		drawTypewriter(graphics, typewriter, contentLeft(MARGIN), contentTop(MARGIN) + font.lineHeight + 14, contentWidth(MARGIN));
-		CrtDraw.glowText(graphics, font, statusLine().getString(), contentLeft(MARGIN), statusY(), tuning.phosphorColor());
-		refusal().ifPresent(message -> CrtDraw.glowText(graphics, font, message.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), statusY() + font.lineHeight + 4, tuning.refusalColor()));
-		state.filter(shown -> shown.revivableCount() > shown.revivable().size()).ifPresent(shown -> CrtDraw.glowText(graphics, font,
-				Component.translatable("screen.deepcharter.contract.more", shown.revivableCount() - shown.revivable().size()).getString(),
-				contentLeft(MARGIN), rowsTop() + BELOW_FOUND + shown.revivable().size() * ROW_PITCH + 3, tuning.phosphorColor()));
-		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-	}
+    /** The status line as the screen draws it, for a test to read. */
+    public Component statusLine() {
+        return state.map(this::status).orElse(Component.translatable("screen.deepcharter.contract.loading"));
+    }
+
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        CrtTuning tuning = CrtTuning.current();
+        CrtDraw.header(
+                graphics,
+                font,
+                title.getString().toUpperCase(Locale.ROOT),
+                contentLeft(MARGIN),
+                contentTop(MARGIN),
+                contentRight(MARGIN));
+        drawTypewriter(
+                graphics,
+                typewriter,
+                contentLeft(MARGIN),
+                contentTop(MARGIN) + font.lineHeight + 14,
+                contentWidth(MARGIN));
+        CrtDraw.glowText(
+                graphics, font, statusLine().getString(), contentLeft(MARGIN), statusY(), tuning.phosphorColor());
+        refusal()
+                .ifPresent(message -> CrtDraw.glowText(
+                        graphics,
+                        font,
+                        message.getString().toUpperCase(Locale.ROOT),
+                        contentLeft(MARGIN),
+                        statusY() + font.lineHeight + 4,
+                        tuning.refusalColor()));
+        state.filter(shown -> shown.revivableCount() > shown.revivable().size())
+                .ifPresent(shown -> CrtDraw.glowText(
+                        graphics,
+                        font,
+                        Component.translatable(
+                                        "screen.deepcharter.contract.more",
+                                        shown.revivableCount()
+                                                - shown.revivable().size())
+                                .getString(),
+                        contentLeft(MARGIN),
+                        rowsTop() + BELOW_FOUND + shown.revivable().size() * ROW_PITCH + 3,
+                        tuning.phosphorColor()));
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    }
 }

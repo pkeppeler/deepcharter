@@ -1,15 +1,14 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
+import io.github.pkeppeler.deepcharter.layer.Depth;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.dimension.DimensionType;
-
-import io.github.pkeppeler.deepcharter.layer.Depth;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.pod.PodEntity;
-import io.github.pkeppeler.deepcharter.pod.PodStats;
 
 /**
  * What the cockpit's five gauges read, each from 0 to 1: the fuel tank, the hull out of the most the pod's parts allow, the depth out of the deepest
@@ -23,28 +22,33 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
  * @param cargo the ore aboard, a share of the bay's slots
  */
 public record CockpitReading(double fuel, double hull, double depth, double heat, double cargo) {
-	/** The most fuel the tank holds, in the percent the pod counts it in. */
-	private static final double FULL_TANK_PERCENT = 100.0;
+    /** The most fuel the tank holds, in the percent the pod counts it in. */
+    private static final double FULL_TANK_PERCENT = 100.0;
 
-	public static CockpitReading of(Minecraft client, PodEntity pod, double heat) {
-		double deepest = deepestBlocks(client.level.registryAccess());
-		return new CockpitReading(clamp(pod.fuel() / FULL_TANK_PERCENT), pod.maxHull() > 0f ? clamp(pod.hull() / pod.maxHull()) : 0.0,
-				clamp(Depth.of(client.level, pod.getBlockY()) / deepest), clamp(heat), cargoShare(pod));
-	}
+    public static CockpitReading of(Minecraft client, PodEntity pod, double heat) {
+        double deepest = deepestBlocks(client.level.registryAccess());
+        return new CockpitReading(
+                clamp(pod.fuel() / FULL_TANK_PERCENT),
+                pod.maxHull() > 0f ? clamp(pod.hull() / pod.maxHull()) : 0.0,
+                clamp(Depth.of(client.level, pod.getBlockY()) / deepest),
+                clamp(heat),
+                cargoShare(pod));
+    }
 
-	private static double cargoShare(PodEntity pod) {
-		int slots = PodStats.of(pod).cargoSlots();
-		return slots > 0 ? clamp((double) pod.cargoUsed() / slots) : 0.0;
-	}
+    private static double cargoShare(PodEntity pod) {
+        int slots = PodStats.of(pod).cargoSlots();
+        return slots > 0 ? clamp((double) pod.cargoUsed() / slots) : 0.0;
+    }
 
-	/** The depth, in blocks below sea level, of the floor of the last layer. */
-	static double deepestBlocks(RegistryAccess registries) {
-		int last = LayerChain.count(registries);
-		Registry<DimensionType> types = registries.lookupOrThrow(Registries.DIMENSION_TYPE);
-		return LayerChain.topDepth(registries, last) + types.getValueOrThrow(LayerChain.type(last)).height();
-	}
+    /** The depth, in blocks below sea level, of the floor of the last layer. */
+    static double deepestBlocks(RegistryAccess registries) {
+        int last = LayerChain.count(registries);
+        Registry<DimensionType> types = registries.lookupOrThrow(Registries.DIMENSION_TYPE);
+        return LayerChain.topDepth(registries, last)
+                + types.getValueOrThrow(LayerChain.type(last)).height();
+    }
 
-	private static double clamp(double share) {
-		return Math.max(0.0, Math.min(1.0, share));
-	}
+    private static double clamp(double share) {
+        return Math.max(0.0, Math.min(1.0, share));
+    }
 }

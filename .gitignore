@@ -6,6 +6,7 @@
 /reference/
 # Gradle / build
 .gradle/
+.kotlin/
 build/
 out/
 run/

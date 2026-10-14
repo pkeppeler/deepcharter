@@ -18,18 +18,33 @@ import java.util.Arrays;
  * @param lavaHullPerSecond hull points a pod loses each second while it is in or touching lava, before a radiator
  * @param lavaCueTicks      ticks between the hiss that tells the crew the hull is burning
  */
-public record LayerTuning(int seaLevel, double feetPerBlock, int crustThickness, int pocketRadius, int pocketHeight,
-		int structureSpacing, int structureFloorMargin, int structureCeilingMargin, float lavaHullPerSecond, int lavaCueTicks) {
-	public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15);
+public record LayerTuning(
+        int seaLevel,
+        double feetPerBlock,
+        int crustThickness,
+        int pocketRadius,
+        int pocketHeight,
+        int structureSpacing,
+        int structureFloorMargin,
+        int structureCeilingMargin,
+        float lavaHullPerSecond,
+        int lavaCueTicks) {
+    public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15);
 
-	public LayerTuning {
-		if (structureSpacing <= 0 || structureSpacing % 16 != 0) {
-			throw new IllegalArgumentException("structureSpacing must be a positive multiple of 16, got " + structureSpacing);
-		}
-		// A site keeps reach + 1 blocks from its cell's edge, so that its shell lies in the cell too; the cell needs room left to place it.
-		int widest = Arrays.stream(StructureKind.values()).mapToInt(StructureKind::reach).max().orElseThrow();
-		if (structureSpacing <= 2 * (widest + 1)) {
-			throw new IllegalArgumentException("structureSpacing " + structureSpacing + " leaves no room for a structure of reach " + widest);
-		}
-	}
+    public LayerTuning {
+        if (structureSpacing <= 0 || structureSpacing % 16 != 0) {
+            throw new IllegalArgumentException(
+                    "structureSpacing must be a positive multiple of 16, got " + structureSpacing);
+        }
+        // A site keeps reach + 1 blocks from its cell's edge, so that its shell lies in the cell too; the cell needs
+        // room left to place it.
+        int widest = Arrays.stream(StructureKind.values())
+                .mapToInt(StructureKind::reach)
+                .max()
+                .orElseThrow();
+        if (structureSpacing <= 2 * (widest + 1)) {
+            throw new IllegalArgumentException(
+                    "structureSpacing " + structureSpacing + " leaves no room for a structure of reach " + widest);
+        }
+    }
 }

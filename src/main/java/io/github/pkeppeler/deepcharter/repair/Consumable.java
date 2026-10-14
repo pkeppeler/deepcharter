@@ -1,11 +1,9 @@
 package io.github.pkeppeler.deepcharter.repair;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import java.util.Arrays;
 import java.util.Optional;
-
 import net.minecraft.resources.Identifier;
-
-import io.github.pkeppeler.deepcharter.DeepCharter;
 
 /**
  * The items the repair station sells. The original's debug Core Teleporter is not sold, so it is not here.
@@ -16,41 +14,45 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
  * {@code EconomyAffordabilityTest} holds each item to its band.
  */
 public enum Consumable {
-	// Layer 1 tool: under one stock layer-1 run, the cheap way past a 10 L tank.
-	RESERVE_FUEL_TANK("reserve_fuel_tank", 100),
-	// Layer 2 tool: under one layer-2 run, and above the station's price for the same 30 HP.
-	HULL_NANOBOTS("hull_nanobots", 345),
-	// Layer 1 tool: under one stock layer-1 run.
-	DYNAMITE("dynamite", 100),
-	// Layer 2 tool: under one layer-2 run, and above the dynamite it outdoes.
-	PLASTIC_EXPLOSIVES("plastic_explosives", 300),
-	// Layer 1 tool (#509): the only thing that clears Company rock. A straight layer 1 bore needs several, so one costs a fraction of a stock layer 1 run.
-	BLASTING_CHARGE("blasting_charge", 40),
-	// Layer 2 and 3 tool (#526): the same set-up as the blasting charge, but it clears a whole Company rock column. $100 is under three blasting charges ($120), the three it replaces in a thick stretch.
-	SHAPED_CHARGE("shaped_charge", 100),
-	// SPEC section 11: an expensive escape, about 2 layer-2 runs; the cargo drop is the rest of the cost.
-	QUANTUM_TELEPORTER("quantum_teleporter", 690),
-	// SPEC section 11: a layer-3 item measured as about 4 layer-2 runs; the cargo drop is the rest of the cost.
-	MATTER_TRANSMITTER("matter_transmitter", 1_390);
+    // Layer 1 tool: under one stock layer-1 run, the cheap way past a 10 L tank.
+    RESERVE_FUEL_TANK("reserve_fuel_tank", 100),
+    // Layer 2 tool: under one layer-2 run, and above the station's price for the same 30 HP.
+    HULL_NANOBOTS("hull_nanobots", 345),
+    // Layer 1 tool: under one stock layer-1 run.
+    DYNAMITE("dynamite", 100),
+    // Layer 2 tool: under one layer-2 run, and above the dynamite it outdoes.
+    PLASTIC_EXPLOSIVES("plastic_explosives", 300),
+    // Layer 1 tool (#509): the only thing that clears Company rock. A straight layer 1 bore needs several, so one costs
+    // a fraction of a stock layer 1 run.
+    BLASTING_CHARGE("blasting_charge", 40),
+    // Layer 2 and 3 tool (#526): the same set-up as the blasting charge, but it clears a whole Company rock column.
+    // $100 is under three blasting charges ($120), the three it replaces in a thick stretch.
+    SHAPED_CHARGE("shaped_charge", 100),
+    // SPEC section 11: an expensive escape, about 2 layer-2 runs; the cargo drop is the rest of the cost.
+    QUANTUM_TELEPORTER("quantum_teleporter", 690),
+    // SPEC section 11: a layer-3 item measured as about 4 layer-2 runs; the cargo drop is the rest of the cost.
+    MATTER_TRANSMITTER("matter_transmitter", 1_390);
 
-	private final Identifier itemId;
-	private final long price;
+    private final Identifier itemId;
+    private final long price;
 
-	Consumable(String path, long price) {
-		this.itemId = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
-		this.price = price;
-	}
+    Consumable(String path, long price) {
+        this.itemId = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
+        this.price = price;
+    }
 
-	public Identifier itemId() {
-		return itemId;
-	}
+    public Identifier itemId() {
+        return itemId;
+    }
 
-	/** Dollars, taken from the charter's account. */
-	public long price() {
-		return price;
-	}
+    /** Dollars, taken from the charter's account. */
+    public long price() {
+        return price;
+    }
 
-	public static Optional<Consumable> byItemId(Identifier id) {
-		return Arrays.stream(values()).filter(consumable -> consumable.itemId.equals(id)).findFirst();
-	}
+    public static Optional<Consumable> byItemId(Identifier id) {
+        return Arrays.stream(values())
+                .filter(consumable -> consumable.itemId.equals(id))
+                .findFirst();
+    }
 }

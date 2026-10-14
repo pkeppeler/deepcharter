@@ -1,9 +1,10 @@
 package io.github.pkeppeler.deepcharter.ore;
 
+import io.github.pkeppeler.deepcharter.pod.PodCargo;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 import java.util.List;
-
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
-
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -16,10 +17,6 @@ import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
-import io.github.pkeppeler.deepcharter.pod.PodCargo;
-import io.github.pkeppeler.deepcharter.pod.PodEntity;
-import io.github.pkeppeler.deepcharter.pod.PodStats;
-
 /**
  * A look into a pod's cargo bay: one read-only slot per bay slot, and the cargo mass. It follows the bay while open.
  * Taking ore out is not here: terminals (a later issue) are where ore leaves a pod.
@@ -28,138 +25,141 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
  * and the server sends it with the open packet, so the client builds the same number of slots.
  */
 public final class OreCargoMenu extends AbstractContainerMenu {
-	public static final int SLOT_X = 8;
-	public static final int SLOT_Y = 20;
-	public static final int SLOT_SIZE = 18;
-	/** The most slots in a row: a big bay wraps into more rows. */
-	public static final int MAX_COLUMNS = 15;
-	private static final double REACH_SQUARED = 64;
+    public static final int SLOT_X = 8;
+    public static final int SLOT_Y = 20;
+    public static final int SLOT_SIZE = 18;
+    /** The most slots in a row: a big bay wraps into more rows. */
+    public static final int MAX_COLUMNS = 15;
 
-	/** The pod whose bay this shows. Null on the client, which only mirrors what the server sends. */
-	private final PodEntity pod;
-	private final int slotCount;
-	private final SimpleContainer view;
-	private final ContainerData data;
+    private static final double REACH_SQUARED = 64;
 
-	/** The client's menu: the server fills the slots and the mass, and sent how many slots there are. */
-	public OreCargoMenu(int containerId, int slotCount) {
-		this(containerId, null, slotCount, new SimpleContainerData(1));
-	}
+    /** The pod whose bay this shows. Null on the client, which only mirrors what the server sends. */
+    private final PodEntity pod;
 
-	private OreCargoMenu(int containerId, PodEntity pod, int slotCount, ContainerData data) {
-		super(OreRegistry.CARGO_MENU, containerId);
-		this.pod = pod;
-		this.slotCount = slotCount;
-		this.view = new SimpleContainer(slotCount);
-		this.data = data;
-		int columns = columns(slotCount);
-		for (int i = 0; i < slotCount; i++) {
-			addSlot(new ViewSlot(view, i, SLOT_X + i % columns * SLOT_SIZE, SLOT_Y + i / columns * SLOT_SIZE));
-		}
-		addDataSlots(data);
-		refresh();
-	}
+    private final int slotCount;
+    private final SimpleContainer view;
+    private final ContainerData data;
 
-	/** Server only: opens the pod's cargo for the player. */
-	public static void open(ServerPlayer player, PodEntity pod) {
-		ContainerData mass = new ContainerData() {
-			@Override
-			public int get(int index) {
-				return Math.round(pod.cargoMass());
-			}
+    /** The client's menu: the server fills the slots and the mass, and sent how many slots there are. */
+    public OreCargoMenu(int containerId, int slotCount) {
+        this(containerId, null, slotCount, new SimpleContainerData(1));
+    }
 
-			@Override
-			public void set(int index, int value) {
-				throw new UnsupportedOperationException("the cargo mass is read from the pod");
-			}
+    private OreCargoMenu(int containerId, PodEntity pod, int slotCount, ContainerData data) {
+        super(OreRegistry.CARGO_MENU, containerId);
+        this.pod = pod;
+        this.slotCount = slotCount;
+        this.view = new SimpleContainer(slotCount);
+        this.data = data;
+        int columns = columns(slotCount);
+        for (int i = 0; i < slotCount; i++) {
+            addSlot(new ViewSlot(view, i, SLOT_X + i % columns * SLOT_SIZE, SLOT_Y + i / columns * SLOT_SIZE));
+        }
+        addDataSlots(data);
+        refresh();
+    }
 
-			@Override
-			public int getCount() {
-				return 1;
-			}
-		};
-		// A bay that shrank below what it holds still shows all its ore.
-		int slots = Math.max(PodStats.of(pod).cargoSlots(), pod.cargo().entries().size());
-		player.openMenu(new ExtendedMenuProvider<Integer>() {
-			@Override
-			public Integer getScreenOpeningData(ServerPlayer opener) {
-				return slots;
-			}
+    /** Server only: opens the pod's cargo for the player. */
+    public static void open(ServerPlayer player, PodEntity pod) {
+        ContainerData mass = new ContainerData() {
+            @Override
+            public int get(int index) {
+                return Math.round(pod.cargoMass());
+            }
 
-			@Override
-			public Component getDisplayName() {
-				return Component.translatable("container.deepcharter.cargo");
-			}
+            @Override
+            public void set(int index, int value) {
+                throw new UnsupportedOperationException("the cargo mass is read from the pod");
+            }
 
-			@Override
-			public AbstractContainerMenu createMenu(int id, Inventory inventory, Player opener) {
-				return new OreCargoMenu(id, pod, slots, mass);
-			}
-		});
-	}
+            @Override
+            public int getCount() {
+                return 1;
+            }
+        };
+        // A bay that shrank below what it holds still shows all its ore.
+        int slots =
+                Math.max(PodStats.of(pod).cargoSlots(), pod.cargo().entries().size());
+        player.openMenu(new ExtendedMenuProvider<Integer>() {
+            @Override
+            public Integer getScreenOpeningData(ServerPlayer opener) {
+                return slots;
+            }
 
-	/** Slots in each row of a bay of {@code slotCount}. */
-	public static int columns(int slotCount) {
-		return Math.max(1, Math.min(slotCount, MAX_COLUMNS));
-	}
+            @Override
+            public Component getDisplayName() {
+                return Component.translatable("container.deepcharter.cargo");
+            }
 
-	/** Rows of slots in a bay of {@code slotCount}. */
-	public static int rows(int slotCount) {
-		return Math.max(1, (slotCount + MAX_COLUMNS - 1) / MAX_COLUMNS);
-	}
+            @Override
+            public AbstractContainerMenu createMenu(int id, Inventory inventory, Player opener) {
+                return new OreCargoMenu(id, pod, slots, mass);
+            }
+        });
+    }
 
-	/** How many slots this menu has, one for each bay slot. */
-	public int cargoSlots() {
-		return slotCount;
-	}
+    /** Slots in each row of a bay of {@code slotCount}. */
+    public static int columns(int slotCount) {
+        return Math.max(1, Math.min(slotCount, MAX_COLUMNS));
+    }
 
-	/** The cargo mass, whole units. */
-	public int cargoMass() {
-		return data.get(0);
-	}
+    /** Rows of slots in a bay of {@code slotCount}. */
+    public static int rows(int slotCount) {
+        return Math.max(1, (slotCount + MAX_COLUMNS - 1) / MAX_COLUMNS);
+    }
 
-	@Override
-	public void broadcastChanges() {
-		refresh();
-		super.broadcastChanges();
-	}
+    /** How many slots this menu has, one for each bay slot. */
+    public int cargoSlots() {
+        return slotCount;
+    }
 
-	private void refresh() {
-		if (pod == null) {
-			return;
-		}
-		List<PodCargo.Entry> entries = pod.cargo().entries();
-		for (int i = 0; i < slotCount; i++) {
-			ItemStack shown = i < entries.size() ? entries.get(i).stack().copy() : ItemStack.EMPTY;
-			if (!ItemStack.matches(view.getItem(i), shown)) {
-				view.setItem(i, shown);
-			}
-		}
-	}
+    /** The cargo mass, whole units. */
+    public int cargoMass() {
+        return data.get(0);
+    }
 
-	@Override
-	public ItemStack quickMoveStack(Player player, int index) {
-		return ItemStack.EMPTY;
-	}
+    @Override
+    public void broadcastChanges() {
+        refresh();
+        super.broadcastChanges();
+    }
 
-	@Override
-	public boolean stillValid(Player player) {
-		return pod == null || pod.isAlive() && player.distanceToSqr(pod) <= REACH_SQUARED;
-	}
+    private void refresh() {
+        if (pod == null) {
+            return;
+        }
+        List<PodCargo.Entry> entries = pod.cargo().entries();
+        for (int i = 0; i < slotCount; i++) {
+            ItemStack shown = i < entries.size() ? entries.get(i).stack().copy() : ItemStack.EMPTY;
+            if (!ItemStack.matches(view.getItem(i), shown)) {
+                view.setItem(i, shown);
+            }
+        }
+    }
 
-	private static final class ViewSlot extends Slot {
-		ViewSlot(Container container, int index, int x, int y) {
-			super(container, index, x, y);
-		}
+    @Override
+    public ItemStack quickMoveStack(Player player, int index) {
+        return ItemStack.EMPTY;
+    }
 
-		@Override
-		public boolean mayPlace(ItemStack stack) {
-			return false;
-		}
+    @Override
+    public boolean stillValid(Player player) {
+        return pod == null || pod.isAlive() && player.distanceToSqr(pod) <= REACH_SQUARED;
+    }
 
-		@Override
-		public boolean mayPickup(Player player) {
-			return false;
-		}
-	}
+    private static final class ViewSlot extends Slot {
+        ViewSlot(Container container, int index, int x, int y) {
+            super(container, index, x, y);
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return false;
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            return false;
+        }
+    }
 }

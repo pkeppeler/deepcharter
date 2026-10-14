@@ -1,16 +1,5 @@
 package io.github.pkeppeler.deepcharter.client.terminal;
 
-import java.util.List;
-import java.util.Locale;
-
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
-
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.sound.TypewriterSound;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
@@ -23,6 +12,14 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import java.util.List;
+import java.util.Locale;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * The generic terminal screen. Offline (unrepaired), it lists the terminal's parts as buttons: pressing one asks the server to put
@@ -32,99 +29,132 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
  * the same for every type. The screen never decides anything: the server checks every press.
  */
 public final class TerminalScreen extends CrtScreen implements TerminalViewScreen {
-	private static final int MARGIN = 24;
-	private static final int BUTTON_WIDTH = 200;
-	private static final int BUTTON_HEIGHT = 20;
-	private static final int GAP = 6;
-	private static final int CLOSE_WIDTH = 90;
+    private static final int MARGIN = 24;
+    private static final int BUTTON_WIDTH = 200;
+    private static final int BUTTON_HEIGHT = 20;
+    private static final int GAP = 6;
+    private static final int CLOSE_WIDTH = 90;
 
-	private TerminalView view;
-	private final Typewriter typewriter;
+    private TerminalView view;
+    private final Typewriter typewriter;
 
-	public TerminalScreen(TerminalView view) {
-		super(Component.translatable(typeOf(view).block().getDescriptionId()));
-		this.view = view;
-		this.typewriter = typewriter(intro(view), new TypewriterSound());
-	}
+    public TerminalScreen(TerminalView view) {
+        super(Component.translatable(typeOf(view).block().getDescriptionId()));
+        this.view = view;
+        this.typewriter = typewriter(intro(view), new TypewriterSound());
+    }
 
-	private static TerminalType typeOf(TerminalView view) {
-		return TerminalTypes.get(view.type()).orElseThrow(() -> new IllegalStateException("unknown terminal type " + view.type()));
-	}
+    private static TerminalType typeOf(TerminalView view) {
+        return TerminalTypes.get(view.type())
+                .orElseThrow(() -> new IllegalStateException("unknown terminal type " + view.type()));
+    }
 
-	private Component intro(TerminalView shown) {
-		if (shown.repaired()) {
-			return Component.translatable("screen.deepcharter.terminal.online");
-		}
-		if (!shown.unlocked()) {
-			TerminalType first = typeOf(shown).prerequisite().orElseThrow();
-			return Component.translatable("screen.deepcharter.terminal.offline_locked", Component.translatable(first.block().getDescriptionId()).getString().toUpperCase(Locale.ROOT));
-		}
-		return Component.translatable("screen.deepcharter.terminal.offline");
-	}
+    private Component intro(TerminalView shown) {
+        if (shown.repaired()) {
+            return Component.translatable("screen.deepcharter.terminal.online");
+        }
+        if (!shown.unlocked()) {
+            TerminalType first = typeOf(shown).prerequisite().orElseThrow();
+            return Component.translatable(
+                    "screen.deepcharter.terminal.offline_locked",
+                    Component.translatable(first.block().getDescriptionId())
+                            .getString()
+                            .toUpperCase(Locale.ROOT));
+        }
+        return Component.translatable("screen.deepcharter.terminal.offline");
+    }
 
-	/** True when {@code other} is the same terminal in the same mode, so this screen can take it with {@link #update}. */
-	@Override
-	public boolean accepts(TerminalView other) {
-		return view.pos().equals(other.pos()) && view.type().equals(other.type())
-				&& view.repaired() == other.repaired() && view.unlocked() == other.unlocked();
-	}
+    /** True when {@code other} is the same terminal in the same mode, so this screen can take it with {@link #update}. */
+    @Override
+    public boolean accepts(TerminalView other) {
+        return view.pos().equals(other.pos())
+                && view.type().equals(other.type())
+                && view.repaired() == other.repaired()
+                && view.unlocked() == other.unlocked();
+    }
 
-	/** Shows a newer view of the same terminal, keeping the typewriter where it is. */
-	@Override
-	public void update(TerminalView newer) {
-		view = newer;
-		rebuildWidgets();
-	}
+    /** Shows a newer view of the same terminal, keeping the typewriter where it is. */
+    @Override
+    public void update(TerminalView newer) {
+        view = newer;
+        rebuildWidgets();
+    }
 
-	@Override
-	public Typewriter typewriter() {
-		return typewriter;
-	}
+    @Override
+    public Typewriter typewriter() {
+        return typewriter;
+    }
 
-	@Override
-	protected void layout() {
-		int closeY = contentBottom(MARGIN) - BUTTON_HEIGHT;
-		int left = contentLeft(MARGIN);
-		addRenderableWidget(new CrtButton(left, closeY, CLOSE_WIDTH, BUTTON_HEIGHT,
-				Component.translatable("screen.deepcharter.terminal.close"), button -> onClose()));
-		if (view.repaired()) {
-			return;
-		}
-		List<TerminalView.PartStatus> parts = view.parts();
-		int top = closeY - GAP - parts.size() * (BUTTON_HEIGHT + GAP) + GAP;
-		for (int i = 0; i < parts.size(); i++) {
-			TerminalView.PartStatus part = parts.get(i);
-			Component label = Component.translatable(part.inserted() ? "screen.deepcharter.terminal.inserted" : "screen.deepcharter.terminal.insert",
-					partName(part));
-			CrtButton button = addRenderableWidget(new CrtButton(left, top + i * (BUTTON_HEIGHT + GAP), BUTTON_WIDTH, BUTTON_HEIGHT, label,
-					pressed -> insert(part)));
-			button.active = view.unlocked() && !part.inserted();
-		}
-	}
+    @Override
+    protected void layout() {
+        int closeY = contentBottom(MARGIN) - BUTTON_HEIGHT;
+        int left = contentLeft(MARGIN);
+        addRenderableWidget(new CrtButton(
+                left,
+                closeY,
+                CLOSE_WIDTH,
+                BUTTON_HEIGHT,
+                Component.translatable("screen.deepcharter.terminal.close"),
+                button -> onClose()));
+        if (view.repaired()) {
+            return;
+        }
+        List<TerminalView.PartStatus> parts = view.parts();
+        int top = closeY - GAP - parts.size() * (BUTTON_HEIGHT + GAP) + GAP;
+        for (int i = 0; i < parts.size(); i++) {
+            TerminalView.PartStatus part = parts.get(i);
+            Component label = Component.translatable(
+                    part.inserted() ? "screen.deepcharter.terminal.inserted" : "screen.deepcharter.terminal.insert",
+                    partName(part));
+            CrtButton button = addRenderableWidget(new CrtButton(
+                    left,
+                    top + i * (BUTTON_HEIGHT + GAP),
+                    BUTTON_WIDTH,
+                    BUTTON_HEIGHT,
+                    label,
+                    pressed -> insert(part)));
+            button.active = view.unlocked() && !part.inserted();
+        }
+    }
 
-	private static String partName(TerminalView.PartStatus part) {
-		// An id this build does not know (a part from a newer server) still shows, as "?", and the server decides what the button does.
-		return BuiltInRegistries.ITEM.getOptional(part.part())
-				.map(item -> new ItemStack(item).getHoverName().getString().toUpperCase(Locale.ROOT)).orElse("?");
-	}
+    private static String partName(TerminalView.PartStatus part) {
+        // An id this build does not know (a part from a newer server) still shows, as "?", and the server decides what
+        // the button does.
+        return BuiltInRegistries.ITEM
+                .getOptional(part.part())
+                .map(item -> new ItemStack(item).getHoverName().getString().toUpperCase(Locale.ROOT))
+                .orElse("?");
+    }
 
-	private void insert(TerminalView.PartStatus part) {
-		CompoundTag args = new CompoundTag();
-		args.putString(Terminals.PART_KEY, part.part().toString());
-		ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), Terminals.INSERT_PART, args));
-	}
+    private void insert(TerminalView.PartStatus part) {
+        CompoundTag args = new CompoundTag();
+        args.putString(Terminals.PART_KEY, part.part().toString());
+        ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), Terminals.INSERT_PART, args));
+    }
 
-	@Override
-	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		CrtTuning tuning = CrtTuning.current();
-		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
-		int below = drawTypewriter(graphics, typewriter, contentLeft(MARGIN), contentTop(MARGIN) + font.lineHeight + 14, contentWidth(MARGIN));
-		if (view.repaired()) {
-			String account = ClientCharter.view()
-					.map(charter -> Component.translatable("screen.deepcharter.terminal.account", charter.balance()).getString())
-					.orElse("");
-			CrtDraw.glowText(graphics, font, account, contentLeft(MARGIN), below + GAP, tuning.phosphorColor());
-		}
-		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-	}
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        CrtTuning tuning = CrtTuning.current();
+        CrtDraw.header(
+                graphics,
+                font,
+                title.getString().toUpperCase(Locale.ROOT),
+                contentLeft(MARGIN),
+                contentTop(MARGIN),
+                contentRight(MARGIN));
+        int below = drawTypewriter(
+                graphics,
+                typewriter,
+                contentLeft(MARGIN),
+                contentTop(MARGIN) + font.lineHeight + 14,
+                contentWidth(MARGIN));
+        if (view.repaired()) {
+            String account = ClientCharter.view()
+                    .map(charter -> Component.translatable("screen.deepcharter.terminal.account", charter.balance())
+                            .getString())
+                    .orElse("");
+            CrtDraw.glowText(graphics, font, account, contentLeft(MARGIN), below + GAP, tuning.phosphorColor());
+        }
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    }
 }

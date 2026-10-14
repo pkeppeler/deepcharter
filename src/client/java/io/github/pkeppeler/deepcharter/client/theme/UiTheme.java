@@ -1,12 +1,11 @@
 package io.github.pkeppeler.deepcharter.client.theme;
 
-import java.util.Map;
-import java.util.Set;
-
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Every art value of the client UI, as read from the resource packs by {@link UiThemeLoader} (ADR 0032): one typed record for each area
@@ -26,62 +25,70 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param tow the chain links of the tow line between two pods
  */
 public record UiTheme(
-		CrtTuning crt,
-		HandbookScreenTuning handbook,
-		ScannerLook scanner,
-		HudLook hud,
-		TransmissionLook transmission,
-		BreachLook breach,
-		CargoLook cargo,
-		PodPaintLook pod,
-		PanelLook panel,
-		CockpitLook cockpit,
-		TowChainLook tow) {
-	/** The areas, each one a file {@code theme/<name>.json}. */
-	static final Set<String> AREAS = Set.of("crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod", "panel", "cockpit", "tow");
+        CrtTuning crt,
+        HandbookScreenTuning handbook,
+        ScannerLook scanner,
+        HudLook hud,
+        TransmissionLook transmission,
+        BreachLook breach,
+        CargoLook cargo,
+        PodPaintLook pod,
+        PanelLook panel,
+        CockpitLook cockpit,
+        TowChainLook tow) {
+    /** The areas, each one a file {@code theme/<name>.json}. */
+    static final Set<String> AREAS = Set.of(
+            "crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod", "panel", "cockpit", "tow");
 
-	private static volatile UiTheme current;
+    private static volatile UiTheme current;
 
-	/** The theme in force. Throws before the first resource reload has loaded one. */
-	public static UiTheme current() {
-		UiTheme theme = current;
-		if (theme == null) {
-			throw new IllegalStateException("The UI theme is not loaded yet: it loads with the client's resources");
-		}
-		return theme;
-	}
+    /** The theme in force. Throws before the first resource reload has loaded one. */
+    public static UiTheme current() {
+        UiTheme theme = current;
+        if (theme == null) {
+            throw new IllegalStateException("The UI theme is not loaded yet: it loads with the client's resources");
+        }
+        return theme;
+    }
 
-	static void install(UiTheme theme) {
-		current = theme;
-	}
+    static void install(UiTheme theme) {
+        current = theme;
+    }
 
-	/** Builds the theme from its areas, which must all be there, and logs any key that nothing read. */
-	public static UiTheme of(Map<String, ThemeData> areas) {
-		if (!areas.keySet().equals(AREAS)) {
-			throw new IllegalStateException("The UI theme needs the areas " + AREAS + ", has " + areas.keySet());
-		}
-		UiTheme theme = new UiTheme(
-				CrtTuning.of(areas.get("crt")),
-				HandbookScreenTuning.of(areas.get("handbook")),
-				ScannerLook.of(areas.get("scanner")),
-				HudLook.of(areas.get("hud")),
-				TransmissionLook.of(areas.get("transmission")),
-				BreachLook.of(areas.get("breach")),
-				CargoLook.of(areas.get("cargo")),
-				PodPaintLook.of(areas.get("pod")),
-				PanelLook.of(areas.get("panel")),
-				CockpitLook.of(areas.get("cockpit")),
-				TowChainLook.of(areas.get("tow")));
-		if (theme.transmission().maxWidth() <= 2 * theme.crt().padding()) {
-			throw new IllegalArgumentException(areas.get("transmission").conflict("maxWidth must be more than twice the padding of the crt area, "
-					+ "or the panel has no room for text", "maxWidth").getMessage()
-					+ "; " + areas.get("crt").conflict("padding is " + theme.crt().padding(), "padding").getMessage());
-		}
-		areas.forEach((name, data) -> {
-			if (!data.unread().isEmpty()) {
-				DeepCharter.LOGGER.warn("UI theme area '{}' has keys nothing reads (a typo?): {}", name, data.unread());
-			}
-		});
-		return theme;
-	}
+    /** Builds the theme from its areas, which must all be there, and logs any key that nothing read. */
+    public static UiTheme of(Map<String, ThemeData> areas) {
+        if (!areas.keySet().equals(AREAS)) {
+            throw new IllegalStateException("The UI theme needs the areas " + AREAS + ", has " + areas.keySet());
+        }
+        UiTheme theme = new UiTheme(
+                CrtTuning.of(areas.get("crt")),
+                HandbookScreenTuning.of(areas.get("handbook")),
+                ScannerLook.of(areas.get("scanner")),
+                HudLook.of(areas.get("hud")),
+                TransmissionLook.of(areas.get("transmission")),
+                BreachLook.of(areas.get("breach")),
+                CargoLook.of(areas.get("cargo")),
+                PodPaintLook.of(areas.get("pod")),
+                PanelLook.of(areas.get("panel")),
+                CockpitLook.of(areas.get("cockpit")),
+                TowChainLook.of(areas.get("tow")));
+        if (theme.transmission().maxWidth() <= 2 * theme.crt().padding()) {
+            throw new IllegalArgumentException(areas.get("transmission")
+                            .conflict(
+                                    "maxWidth must be more than twice the padding of the crt area, "
+                                            + "or the panel has no room for text",
+                                    "maxWidth")
+                            .getMessage()
+                    + "; "
+                    + areas.get("crt")
+                            .conflict("padding is " + theme.crt().padding(), "padding")
+                            .getMessage());
+        }
+        areas.forEach((name, data) -> {
+            if (!data.unread().isEmpty()) {
+                DeepCharter.LOGGER.warn("UI theme area '{}' has keys nothing reads (a typo?): {}", name, data.unread());
+            }
+        });
+        return theme;
+    }
 }

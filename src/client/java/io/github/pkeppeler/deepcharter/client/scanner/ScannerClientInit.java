@@ -7,12 +7,11 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
  * Each part of the scanner feature registers itself from here, one line per part.
  */
 public final class ScannerClientInit {
-	private ScannerClientInit() {
-	}
+    private ScannerClientInit() {}
 
-	public static void init() {
-		ScannerClientRegistry.register();
-		ScannerHud.init();
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ScannerMap.release());
-	}
+    public static void init() {
+        ScannerClientRegistry.register();
+        ScannerHud.init();
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ScannerMap.release());
+    }
 }

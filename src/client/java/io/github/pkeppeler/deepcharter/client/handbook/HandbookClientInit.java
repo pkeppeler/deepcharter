@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.client.handbook;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class HandbookClientInit {
-	private HandbookClientInit() {
-	}
+    private HandbookClientInit() {}
 
-	public static void init() {
-		HandbookClientRegistry.register();
-	}
+    public static void init() {
+        HandbookClientRegistry.register();
+    }
 }

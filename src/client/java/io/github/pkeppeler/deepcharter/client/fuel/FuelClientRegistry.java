@@ -5,10 +5,9 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 
 /** Registers the fuel pump's screen. */
 public final class FuelClientRegistry {
-	private FuelClientRegistry() {
-	}
+    private FuelClientRegistry() {}
 
-	public static void register() {
-		TerminalScreens.register(TerminalTypes.FUEL_PUMP, FuelPumpScreen::new);
-	}
+    public static void register() {
+        TerminalScreens.register(TerminalTypes.FUEL_PUMP, FuelPumpScreen::new);
+    }
 }

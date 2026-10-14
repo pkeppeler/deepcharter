@@ -1,11 +1,10 @@
 package io.github.pkeppeler.deepcharter.charter;
 
+import io.github.pkeppeler.deepcharter.layer.Depth;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
-
-import io.github.pkeppeler.deepcharter.layer.Depth;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 
 /**
  * Raises each charter's deepest point from play: a member standing deeper than the charter has ever been, on foot or in a pod,
@@ -14,32 +13,36 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
  * for free, and the Nether has a depth of its own that means nothing here.
  */
 public final class DeepestPoint {
-	private DeepestPoint() {
-	}
+    private DeepestPoint() {}
 
-	private static boolean counts(ServerPlayer player) {
-		GameType mode = player.gameMode.getGameModeForPlayer();
-		if (mode != GameType.SURVIVAL && mode != GameType.ADVENTURE) {
-			return false;
-		}
-		return LayerChain.indexOf(player.level().dimensionTypeRegistration().unwrapKey().orElseThrow().identifier()).isPresent();
-	}
+    private static boolean counts(ServerPlayer player) {
+        GameType mode = player.gameMode.getGameModeForPlayer();
+        if (mode != GameType.SURVIVAL && mode != GameType.ADVENTURE) {
+            return false;
+        }
+        return LayerChain.indexOf(player.level()
+                        .dimensionTypeRegistration()
+                        .unwrapKey()
+                        .orElseThrow()
+                        .identifier())
+                .isPresent();
+    }
 
-	/** Checks every online member against their charter's record. A player on no charter, or unreadable saved charters, change nothing. */
-	public static void poll(MinecraftServer server) {
-		if (!Charters.isReadable(server)) {
-			return;
-		}
-		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-			if (!counts(player)) {
-				continue;
-			}
-			Charters.readableCharterOf(server, player.getUUID()).ifPresent(charter -> {
-				int depth = Depth.of(player.level(), player.getBlockY());
-				if (depth > charter.deepestPoint()) {
-					Charters.recordDeepestPoint(server, charter.id(), depth);
-				}
-			});
-		}
-	}
+    /** Checks every online member against their charter's record. A player on no charter, or unreadable saved charters, change nothing. */
+    public static void poll(MinecraftServer server) {
+        if (!Charters.isReadable(server)) {
+            return;
+        }
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (!counts(player)) {
+                continue;
+            }
+            Charters.readableCharterOf(server, player.getUUID()).ifPresent(charter -> {
+                int depth = Depth.of(player.level(), player.getBlockY());
+                if (depth > charter.deepestPoint()) {
+                    Charters.recordDeepestPoint(server, charter.id(), depth);
+                }
+            });
+        }
+    }
 }

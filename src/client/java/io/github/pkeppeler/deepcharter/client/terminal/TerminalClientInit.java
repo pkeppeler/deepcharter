@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.client.terminal;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class TerminalClientInit {
-	private TerminalClientInit() {
-	}
+    private TerminalClientInit() {}
 
-	public static void init() {
-		TerminalClientRegistry.register();
-	}
+    public static void init() {
+        TerminalClientRegistry.register();
+    }
 }

@@ -1,11 +1,9 @@
 package io.github.pkeppeler.deepcharter.hangar;
 
+import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 import io.netty.buffer.ByteBuf;
-
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-
-import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 
 /**
  * What the hangar console's screen needs beyond the generic terminal view: how much of the Company's advance the viewing charter
@@ -15,13 +13,12 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
  *                    cannot be read
  */
 public record HangarView(int advanceLeft) implements TerminalFeature {
-	public static final StreamCodec<ByteBuf, HangarView> STREAM_CODEC = StreamCodec.composite(
-			ByteBufCodecs.VAR_INT, HangarView::advanceLeft,
-			HangarView::new);
+    public static final StreamCodec<ByteBuf, HangarView> STREAM_CODEC =
+            StreamCodec.composite(ByteBufCodecs.VAR_INT, HangarView::advanceLeft, HangarView::new);
 
-	public HangarView {
-		if (advanceLeft < 0) {
-			throw new IllegalArgumentException("a charter cannot have " + advanceLeft + " catalysts of advance left");
-		}
-	}
+    public HangarView {
+        if (advanceLeft < 0) {
+            throw new IllegalArgumentException("a charter cannot have " + advanceLeft + " catalysts of advance left");
+        }
+    }
 }

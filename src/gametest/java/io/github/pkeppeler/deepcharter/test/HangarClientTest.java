@@ -1,18 +1,5 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
-import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
-import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.core.BlockPos;
-
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.hangar.HangarView;
@@ -22,76 +9,103 @@ import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.HangarDrawn;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.core.BlockPos;
 
 /**
  * Client GameTest for #222: the hangar console shows the price of every action inside the screen, at the GUI size of an
  * 854 by 480 window (about 427 by 240) and at 320 by 240, the smallest GUI.
  */
 public class HangarClientTest implements FabricClientGameTest {
-	@Override
-	public void runTest(ClientGameTestContext context) {
-		ClientTestLog.start(this);
-		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			ClientWait.until(context, "the client in the world", client -> client.player != null && client.level != null);
-			// The advance line shows while the charter has advance left, and is gone once it is used.
-			for (int advanceLeft : new int[] {3, 0}) {
-				TerminalView view = new TerminalView(BlockPos.ZERO, HangarTerminal.TYPE.id(), true, true, List.of(),
-						Optional.<TerminalFeature>of(new HangarView(advanceLeft)));
-				for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
-					context.setScreen(() -> new HangarScreen(view));
-					HangarScreen screen = context.computeOnClient(client -> (HangarScreen) client.gui.screen());
-					context.runOnClient(client -> screen.resize(size[0], size[1]));
-					ClientWait.until(context, "the hangar screen finished typing", client -> screen.typewriter().done(),
-							client -> "typewriter text '" + screen.typewriter().text() + "'");
-					ClientChecks.requireNone("with " + advanceLeft + " advance left, at " + size[0] + " by " + size[1],
-							context.computeOnClient(client -> problem(screen, advanceLeft)));
-				}
-			}
-			context.setScreen(() -> null);
-		}
-	}
+    @Override
+    public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            ClientWait.until(
+                    context, "the client in the world", client -> client.player != null && client.level != null);
+            // The advance line shows while the charter has advance left, and is gone once it is used.
+            for (int advanceLeft : new int[] {3, 0}) {
+                TerminalView view = new TerminalView(
+                        BlockPos.ZERO,
+                        HangarTerminal.TYPE.id(),
+                        true,
+                        true,
+                        List.of(),
+                        Optional.<TerminalFeature>of(new HangarView(advanceLeft)));
+                for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
+                    context.setScreen(() -> new HangarScreen(view));
+                    HangarScreen screen = context.computeOnClient(client -> (HangarScreen) client.gui.screen());
+                    context.runOnClient(client -> screen.resize(size[0], size[1]));
+                    ClientWait.until(
+                            context,
+                            "the hangar screen finished typing",
+                            client -> screen.typewriter().done(),
+                            client -> "typewriter text '" + screen.typewriter().text() + "'");
+                    ClientChecks.requireNone(
+                            "with " + advanceLeft + " advance left, at " + size[0] + " by " + size[1],
+                            context.computeOnClient(client -> problem(screen, advanceLeft)));
+                }
+            }
+            context.setScreen(() -> null);
+        }
+    }
 
-	/** Every button and price or advance line lies inside the screen, a button holds its whole label, and no price line is under a button. */
-	private static Optional<String> problem(HangarScreen screen, int advanceLeft) {
-		Font font = Minecraft.getInstance().font;
-		List<Button> buttons = ClientChecks.buttons(screen);
-		for (Button button : buttons) {
-			Optional<String> problem = ClientChecks.buttonLeavesScreen(screen, button)
-					.or(() -> button.getY() < screen.headerBottom()
-							? Optional.of(ClientChecks.labelOf(button) + " starts at " + button.getY() + ", above the header text that ends at " + screen.headerBottom())
-							: Optional.empty())
-					.or(() -> ClientChecks.labelClipped(button));
-			if (problem.isPresent()) {
-				return problem;
-			}
-		}
-		List<DrawnText.Drawn> priceLines = HangarDrawn.priceLines(screen);
-		List<DrawnText.Drawn> advanceLines = HangarDrawn.advanceLines(screen);
-		if (priceLines.isEmpty()) {
-			return Optional.of("the screen shows no restore prices");
-		}
-		if (advanceLeft > 0 == advanceLines.isEmpty()) {
-			return Optional.of("with " + advanceLeft + " advance left the screen shows " + advanceLines.size() + " advance lines");
-		}
-		if (priceLines.stream().anyMatch(advanceLines::contains)) {
-			return Optional.of("the advance runs on in the price lines " + priceLines);
-		}
-		if (!advanceLines.isEmpty()) {
-			int lastPrice = priceLines.stream().mapToInt(line -> line.box().y()).max().orElseThrow();
-			int firstAdvance = advanceLines.stream().mapToInt(line -> line.box().y()).min().orElseThrow();
-			if (firstAdvance < lastPrice + font.lineHeight) {
-				return Optional.of("the advance starts at " + firstAdvance + ", not on a line of its own below the prices that end at " + (lastPrice + font.lineHeight));
-			}
-		}
-		List<DrawnText.Drawn> drawn = new ArrayList<>(priceLines);
-		drawn.addAll(advanceLines);
-		for (DrawnText.Drawn line : drawn) {
-			Optional<String> problem = ClientChecks.textLeavesScreen(screen, "the price line", line.box().x(), line.box().y(), line.text())
-					.or(() -> ClientChecks.textUnderButton("the price line", line.box().x(), line.box().y(), line.text(), buttons));
-			if (problem.isPresent()) {
-				return problem;
-			}
-		}
-		return Optional.empty();
-	}
+    /** Every button and price or advance line lies inside the screen, a button holds its whole label, and no price line is under a button. */
+    private static Optional<String> problem(HangarScreen screen, int advanceLeft) {
+        Font font = Minecraft.getInstance().font;
+        List<Button> buttons = ClientChecks.buttons(screen);
+        for (Button button : buttons) {
+            Optional<String> problem = ClientChecks.buttonLeavesScreen(screen, button)
+                    .or(() -> button.getY() < screen.headerBottom()
+                            ? Optional.of(ClientChecks.labelOf(button) + " starts at " + button.getY()
+                                    + ", above the header text that ends at " + screen.headerBottom())
+                            : Optional.empty())
+                    .or(() -> ClientChecks.labelClipped(button));
+            if (problem.isPresent()) {
+                return problem;
+            }
+        }
+        List<DrawnText.Drawn> priceLines = HangarDrawn.priceLines(screen);
+        List<DrawnText.Drawn> advanceLines = HangarDrawn.advanceLines(screen);
+        if (priceLines.isEmpty()) {
+            return Optional.of("the screen shows no restore prices");
+        }
+        if (advanceLeft > 0 == advanceLines.isEmpty()) {
+            return Optional.of(
+                    "with " + advanceLeft + " advance left the screen shows " + advanceLines.size() + " advance lines");
+        }
+        if (priceLines.stream().anyMatch(advanceLines::contains)) {
+            return Optional.of("the advance runs on in the price lines " + priceLines);
+        }
+        if (!advanceLines.isEmpty()) {
+            int lastPrice =
+                    priceLines.stream().mapToInt(line -> line.box().y()).max().orElseThrow();
+            int firstAdvance =
+                    advanceLines.stream().mapToInt(line -> line.box().y()).min().orElseThrow();
+            if (firstAdvance < lastPrice + font.lineHeight) {
+                return Optional.of("the advance starts at " + firstAdvance
+                        + ", not on a line of its own below the prices that end at " + (lastPrice + font.lineHeight));
+            }
+        }
+        List<DrawnText.Drawn> drawn = new ArrayList<>(priceLines);
+        drawn.addAll(advanceLines);
+        for (DrawnText.Drawn line : drawn) {
+            Optional<String> problem = ClientChecks.textLeavesScreen(
+                            screen, "the price line", line.box().x(), line.box().y(), line.text())
+                    .or(() -> ClientChecks.textUnderButton(
+                            "the price line", line.box().x(), line.box().y(), line.text(), buttons));
+            if (problem.isPresent()) {
+                return problem;
+            }
+        }
+        return Optional.empty();
+    }
 }

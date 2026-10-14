@@ -7,14 +7,14 @@ package io.github.pkeppeler.deepcharter.charter.terminal;
  * @param revivableRows the most dormant charters the screen offers to revive at once, under the found button. The server sends no more than this.
  */
 public record ContractTerminalTuning(int listedRows, int revivableRows) {
-	public static final ContractTerminalTuning DEFAULT = new ContractTerminalTuning(5, 2);
+    public static final ContractTerminalTuning DEFAULT = new ContractTerminalTuning(5, 2);
 
-	public ContractTerminalTuning {
-		if (listedRows < 1) {
-			throw new IllegalArgumentException("listedRows must be at least 1, got " + listedRows);
-		}
-		if (revivableRows < 1) {
-			throw new IllegalArgumentException("revivableRows must be at least 1, got " + revivableRows);
-		}
-	}
+    public ContractTerminalTuning {
+        if (listedRows < 1) {
+            throw new IllegalArgumentException("listedRows must be at least 1, got " + listedRows);
+        }
+        if (revivableRows < 1) {
+            throw new IllegalArgumentException("revivableRows must be at least 1, got " + revivableRows);
+        }
+    }
 }

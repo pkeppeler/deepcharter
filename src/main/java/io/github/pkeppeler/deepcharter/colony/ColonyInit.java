@@ -5,14 +5,13 @@ package io.github.pkeppeler.deepcharter.colony;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class ColonyInit {
-	private ColonyInit() {
-	}
+    private ColonyInit() {}
 
-	public static void init() {
-		ColonyRegistry.register();
-		ColonyBuilder.init();
-		Conduit.init();
-		FounderStatue.init();
-		ColonyDisplays.init();
-	}
+    public static void init() {
+        ColonyRegistry.register();
+        ColonyBuilder.init();
+        Conduit.init();
+        FounderStatue.init();
+        ColonyDisplays.init();
+    }
 }

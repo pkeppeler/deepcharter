@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.handbook;
 
 import java.util.Locale;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,40 +24,45 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * a message and files nothing. Where the blocks stand is level design (#79).
  */
 public final class NoteBlock extends Block {
-	public static final IntegerProperty NOTE = IntegerProperty.create("note", 1, Notes.MAX_NUMBER);
-	private static final VoxelShape SHAPE = Shapes.box(0.125, 0, 0.125, 0.875, 0.0625, 0.875);
+    public static final IntegerProperty NOTE = IntegerProperty.create("note", 1, Notes.MAX_NUMBER);
+    private static final VoxelShape SHAPE = Shapes.box(0.125, 0, 0.125, 0.875, 0.0625, 0.875);
 
-	NoteBlock(Properties properties) {
-		super(properties);
-		registerDefaultState(stateDefinition.any().setValue(NOTE, 1));
-	}
+    NoteBlock(Properties properties) {
+        super(properties);
+        registerDefaultState(stateDefinition.any().setValue(NOTE, 1));
+    }
 
-	/** The state of the block for Note number {@code number}. */
-	public static BlockState stateOf(int number) {
-		return HandbookRegistry.NOTE.defaultBlockState().setValue(NOTE, number);
-	}
+    /** The state of the block for Note number {@code number}. */
+    public static BlockState stateOf(int number) {
+        return HandbookRegistry.NOTE.defaultBlockState().setValue(NOTE, number);
+    }
 
-	@Override
-	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-		builder.add(NOTE);
-	}
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(NOTE);
+    }
 
-	@Override
-	protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-		return SHAPE;
-	}
+    @Override
+    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return SHAPE;
+    }
 
-	@Override
-	protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-		return Shapes.empty();
-	}
+    @Override
+    protected VoxelShape getCollisionShape(
+            BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return Shapes.empty();
+    }
 
-	@Override
-	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
-		if (player instanceof ServerPlayer serverPlayer) {
-			FindResult result = Notes.find(serverPlayer, Notes.id(state.getValue(NOTE)));
-			serverPlayer.sendSystemMessage(Component.translatable("deepcharter.handbook.note.use." + result.name().toLowerCase(Locale.ROOT)), true);
-		}
-		return InteractionResult.SUCCESS;
-	}
+    @Override
+    protected InteractionResult useWithoutItem(
+            BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        if (player instanceof ServerPlayer serverPlayer) {
+            FindResult result = Notes.find(serverPlayer, Notes.id(state.getValue(NOTE)));
+            serverPlayer.sendSystemMessage(
+                    Component.translatable(
+                            "deepcharter.handbook.note.use." + result.name().toLowerCase(Locale.ROOT)),
+                    true);
+        }
+        return InteractionResult.SUCCESS;
+    }
 }

@@ -7,12 +7,11 @@ import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminalInit;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class CharterInit {
-	private CharterInit() {
-	}
+    private CharterInit() {}
 
-	public static void init() {
-		CharterRegistry.register();
-		CharterCommands.init();
-		ContractTerminalInit.init();
-	}
+    public static void init() {
+        CharterRegistry.register();
+        CharterCommands.init();
+        ContractTerminalInit.init();
+    }
 }

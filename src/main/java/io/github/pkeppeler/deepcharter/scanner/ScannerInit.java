@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.scanner;
  * Each part of the scanner feature registers itself from here, one line per part.
  */
 public final class ScannerInit {
-	private ScannerInit() {
-	}
+    private ScannerInit() {}
 
-	public static void init() {
-		ScannerRegistry.register();
-	}
+    public static void init() {
+        ScannerRegistry.register();
+    }
 }

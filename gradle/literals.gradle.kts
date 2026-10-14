@@ -46,3 +46,24 @@ val blankLiterals: (String) -> String = { text ->
 	out.toString()
 }
 extra["blankLiterals"] = blankLiterals
+
+// A formatter (palantir-java-format) wraps a long statement over several lines and moves a trailing `// <marker>:` comment to the
+// end of the wrapped statement, so "the flagged line or the one above" no longer finds it. markedNear(lines, line, isMarker) is
+// true when isMarker holds for the flagged line (0-based `line`), the line above it, any line of the statement the flagged line is
+// in, or a comment line directly above that statement. A statement runs from after the previous line that ends in `;`, `{` or `}`
+// to the next one. `lines` come from blankLiterals, so a `//` inside a string literal is already gone and cannot pass for a
+// comment. The walk is capped at 12 lines each way, so a marker never reaches far.
+val markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean = { lines, line, isMarker ->
+	fun code(l: String): String = l.substringBefore("//").trim()
+	fun endsStatement(l: String): Boolean = code(l).let { it.endsWith(";") || it.endsWith("{") || it.endsWith("}") }
+	var top = line
+	while (top > 0 && line - top < 12) {
+		val above = lines[top - 1]
+		if (!above.trim().startsWith("//") && (code(above).isEmpty() || endsStatement(above))) break
+		top--
+	}
+	var bottom = line
+	while (bottom + 1 < lines.size && bottom - line < 12 && !endsStatement(lines[bottom])) bottom++
+	(top..bottom).any { isMarker(lines[it]) } || (line > 0 && isMarker(lines[line - 1]))
+}
+extra["markedNear"] = markedNear

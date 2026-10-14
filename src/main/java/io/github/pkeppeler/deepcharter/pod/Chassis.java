@@ -1,11 +1,9 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.List;
-
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
-
-import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * The fixed frame a pod is built on (SPEC section 7). Width is the hitbox width and depth; height is its height. They may differ (a
@@ -14,68 +12,70 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
  * here, the seat offsets next to its registration in {@link PodRegistry}, and the model in its look file.
  */
 public record Chassis(String id, int seats, int tierCap, float width, float height) {
-	// 1.9 wide and 2.9 tall (ADR 0043) so that a 2-wide, 3-tall bore clears it: the pilot sits upright in the cab.
-	public static final Chassis MOLE = new Chassis("mole", 1, 2, 1.9f, 2.9f);
-	// 2.9 x 2.9 so that a 3 x 3 bore clears it. The pilot's seat, then the navigator's.
-	public static final Chassis PROSPECTOR = new Chassis("prospector", 2, 3, 2.9f, 2.9f);
+    // 1.9 wide and 2.9 tall (ADR 0043) so that a 2-wide, 3-tall bore clears it: the pilot sits upright in the cab.
+    public static final Chassis MOLE = new Chassis("mole", 1, 2, 1.9f, 2.9f);
+    // 2.9 x 2.9 so that a 3 x 3 bore clears it. The pilot's seat, then the navigator's.
+    public static final Chassis PROSPECTOR = new Chassis("prospector", 2, 3, 2.9f, 2.9f);
 
-	private static final List<Chassis> SHIPPED = List.of(MOLE, PROSPECTOR);
+    private static final List<Chassis> SHIPPED = List.of(MOLE, PROSPECTOR);
 
-	/** Every chassis the game ships: the ones with a look, a hangar price and a place in the handbook. A test mod may register more in {@link PodRegistry}. */
-	public static List<Chassis> all() {
-		return SHIPPED;
-	}
+    /** Every chassis the game ships: the ones with a look, a hangar price and a place in the handbook. A test mod may register more in {@link PodRegistry}. */
+    public static List<Chassis> all() {
+        return SHIPPED;
+    }
 
-	public Chassis {
-		if (seats < 1) {
-			throw new IllegalArgumentException("a chassis needs at least one seat: " + id);
-		}
-		int bestTier = 0;
-		for (ComponentTrack track : ComponentTrack.values()) {
-			bestTier = Math.max(bestTier, track.maxTier());
-		}
-		// The cap and the seats are adjacent ints, so a swap of the two must not register.
-		if (tierCap < 1 || tierCap > bestTier) {
-			throw new IllegalArgumentException("a chassis takes part tiers 1 to " + bestTier + ", " + id + " says " + tierCap);
-		}
-		if (!(width > 0f) || !(height > 0f)) {
-			throw new IllegalArgumentException("a chassis needs a width and a height above 0: " + id + " " + width + " x " + height);
-		}
-	}
+    public Chassis {
+        if (seats < 1) {
+            throw new IllegalArgumentException("a chassis needs at least one seat: " + id);
+        }
+        int bestTier = 0;
+        for (ComponentTrack track : ComponentTrack.values()) {
+            bestTier = Math.max(bestTier, track.maxTier());
+        }
+        // The cap and the seats are adjacent ints, so a swap of the two must not register.
+        if (tierCap < 1 || tierCap > bestTier) {
+            throw new IllegalArgumentException(
+                    "a chassis takes part tiers 1 to " + bestTier + ", " + id + " says " + tierCap);
+        }
+        if (!(width > 0f) || !(height > 0f)) {
+            throw new IllegalArgumentException(
+                    "a chassis needs a width and a height above 0: " + id + " " + width + " x " + height);
+        }
+    }
 
-	/** Blocks across the bore, on both horizontal axes: the smallest square of whole blocks that clears the hitbox. */
-	public int boreWidth() {
-		return Mth.ceil(width);
-	}
+    /** Blocks across the bore, on both horizontal axes: the smallest square of whole blocks that clears the hitbox. */
+    public int boreWidth() {
+        return Mth.ceil(width);
+    }
 
-	/** Blocks tall the bore is for a sideways step: the whole blocks that clear the hitbox. */
-	public int boreHeight() {
-		return Mth.ceil(height);
-	}
+    /** Blocks tall the bore is for a sideways step: the whole blocks that clear the hitbox. */
+    public int boreHeight() {
+        return Mth.ceil(height);
+    }
 
-	/**
-	 * The share of a gas blast a pod takes when its drill opens the pocket in a sideways bore (#424): the blast is spread over the open
-	 * face of {@code boreWidth x boreHeight} cells, so the pod pays it per cell of its slab, 1 at most (2/3 for a 2 x 3 Mole). Per pocket.
-	 */
-	public float sidewaysBlastShare() {
-		return Math.min(1f, (float) slabCells() / (boreWidth() * boreHeight()));
-	}
+    /**
+     * The share of a gas blast a pod takes when its drill opens the pocket in a sideways bore (#424): the blast is spread over the open
+     * face of {@code boreWidth x boreHeight} cells, so the pod pays it per cell of its slab, 1 at most (2/3 for a 2 x 3 Mole). Per pocket.
+     */
+    public float sidewaysBlastShare() {
+        return Math.min(1f, (float) slabCells() / (boreWidth() * boreHeight()));
+    }
 
-	/**
-	 * The share of a gas blast the pod takes when its drill opens a pocket while boring in {@code direction}: 1 for down, {@link #sidewaysBlastShare()} for a horizontal direction.
-	 *
-	 * @throws IllegalArgumentException for up, which a pod never bores
-	 */
-	public float blastShare(Direction direction) {
-		return switch (direction) {
-			case DOWN -> 1f;
-			case NORTH, SOUTH, EAST, WEST -> sidewaysBlastShare();
-			case UP -> throw new IllegalArgumentException("a pod never bores up");
-		};
-	}
+    /**
+     * The share of a gas blast the pod takes when its drill opens a pocket while boring in {@code direction}: 1 for down, {@link #sidewaysBlastShare()} for a horizontal direction.
+     *
+     * @throws IllegalArgumentException for up, which a pod never bores
+     */
+    public float blastShare(Direction direction) {
+        return switch (direction) {
+            case DOWN -> 1f;
+            case NORTH, SOUTH, EAST, WEST -> sidewaysBlastShare();
+            case UP -> throw new IllegalArgumentException("a pod never bores up");
+        };
+    }
 
-	/** Blocks in one slab of a downward bore: the cells, and so the ore, a step takes. */
-	public int slabCells() {
-		return boreWidth() * boreWidth();
-	}
+    /** Blocks in one slab of a downward bore: the cells, and so the ore, a step takes. */
+    public int slabCells() {
+        return boreWidth() * boreWidth();
+    }
 }

@@ -1,22 +1,5 @@
 package io.github.pkeppeler.deepcharter.charter.terminal;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.function.Predicate;
-
-import net.fabricmc.fabric.api.event.Event;
-import net.fabricmc.fabric.api.event.EventFactory;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.players.NameAndId;
-
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
@@ -27,6 +10,20 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import net.fabricmc.fabric.api.event.Event;
+import net.fabricmc.fabric.api.event.EventFactory;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.NameAndId;
 
 /**
  * The contract terminal (lore canon section 8): the one terminal that never went dark. It is always online and any player may
@@ -39,170 +36,250 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
  * nothing, and the player is sent the reason in their {@link ContractState}.
  */
 public final class ContractTerminal {
-	public static final TerminalType TYPE = TerminalTypes.registerAlwaysOnline(id("contract_terminal"), TerminalType.Access.ANYONE);
+    public static final TerminalType TYPE =
+            TerminalTypes.registerAlwaysOnline(id("contract_terminal"), TerminalType.Access.ANYONE);
 
-	/**
-	 * The server worked out a {@link ContractState} for {@code player} and is sending it. Fires whether or not the player's client
-	 * can take it, so a test with a mock player can watch the pushes.
-	 */
-	public static final Event<Pushed> PUSHED = EventFactory.createArrayBacked(Pushed.class, listeners -> (player, state) -> {
-		for (Pushed listener : listeners) {
-			listener.onPushed(player, state);
-		}
-	});
+    /**
+     * The server worked out a {@link ContractState} for {@code player} and is sending it. Fires whether or not the player's client
+     * can take it, so a test with a mock player can watch the pushes.
+     */
+    public static final Event<Pushed> PUSHED =
+            EventFactory.createArrayBacked(Pushed.class, listeners -> (player, state) -> {
+                for (Pushed listener : listeners) {
+                    listener.onPushed(player, state);
+                }
+            });
 
-	static {
-		TerminalActions.register(TYPE, ContractActions.FOUND, context -> byName(context, CharterRefusal.INVALID_NAME,
-				name -> Charters.found(context.server(), context.player().getUUID(), name)));
-		TerminalActions.register(TYPE, ContractActions.APPLY, context -> onCharterNamed(context, id -> Charters.apply(context.server(), context.player().getUUID(), id)));
-		// Only a former member may revive; the rule is CharterData's, so a name typed by hand gets the same refusal as a button.
-		TerminalActions.register(TYPE, ContractActions.REVIVE, context -> onCharterNamed(context, id -> Charters.revive(context.server(), context.player().getUUID(), id)));
-		TerminalActions.register(TYPE, ContractActions.APPROVE, context -> answer(context, applicantNamed(context), Charters::approve));
-		TerminalActions.register(TYPE, ContractActions.DENY, context -> {
-			Optional<UUID> applicant = applicantNamed(context);
-			Optional<Component> refusal = answer(context, applicant, Charters::deny);
-			// A denial has no charter event, so the Director's list and the applicant's status are refreshed here.
-			if (refusal.isEmpty()) {
-				refresh(context.server(), context.player().getUUID());
-				applicant.ifPresent(denied -> refresh(context.server(), denied));
-			}
-			return refusal;
-		});
-		TerminalActions.register(TYPE, ContractActions.LEAVE, context -> {
-			// Withdrawing an application fires no charter event, so the Director's list and the applicant's status are refreshed here.
-			Optional<Charter> applied = CharterData.get(context.server()).applicationOf(context.player().getUUID());
-			Optional<Component> refusal = report(context, Charters.leave(context.server(), context.player().getUUID()));
-			if (refusal.isEmpty() && applied.isPresent()) {
-				refresh(context.server(), context.player().getUUID());
-				applied.get().director().ifPresent(director -> refresh(context.server(), director));
-			}
-			return refusal;
-		});
-	}
+    static {
+        TerminalActions.register(
+                TYPE,
+                ContractActions.FOUND,
+                context -> byName(
+                        context,
+                        CharterRefusal.INVALID_NAME,
+                        name -> Charters.found(
+                                context.server(), context.player().getUUID(), name)));
+        TerminalActions.register(
+                TYPE,
+                ContractActions.APPLY,
+                context -> onCharterNamed(
+                        context,
+                        id -> Charters.apply(context.server(), context.player().getUUID(), id)));
+        // Only a former member may revive; the rule is CharterData's, so a name typed by hand gets the same refusal as
+        // a button.
+        TerminalActions.register(
+                TYPE,
+                ContractActions.REVIVE,
+                context -> onCharterNamed(
+                        context,
+                        id -> Charters.revive(context.server(), context.player().getUUID(), id)));
+        TerminalActions.register(
+                TYPE, ContractActions.APPROVE, context -> answer(context, applicantNamed(context), Charters::approve));
+        TerminalActions.register(TYPE, ContractActions.DENY, context -> {
+            Optional<UUID> applicant = applicantNamed(context);
+            Optional<Component> refusal = answer(context, applicant, Charters::deny);
+            // A denial has no charter event, so the Director's list and the applicant's status are refreshed here.
+            if (refusal.isEmpty()) {
+                refresh(context.server(), context.player().getUUID());
+                applicant.ifPresent(denied -> refresh(context.server(), denied));
+            }
+            return refusal;
+        });
+        TerminalActions.register(TYPE, ContractActions.LEAVE, context -> {
+            // Withdrawing an application fires no charter event, so the Director's list and the applicant's status are
+            // refreshed here.
+            Optional<Charter> applied = CharterData.get(context.server())
+                    .applicationOf(context.player().getUUID());
+            Optional<Component> refusal = report(
+                    context, Charters.leave(context.server(), context.player().getUUID()));
+            if (refusal.isEmpty() && applied.isPresent()) {
+                refresh(context.server(), context.player().getUUID());
+                applied.get().director().ifPresent(director -> refresh(context.server(), director));
+            }
+            return refusal;
+        });
+    }
 
-	private ContractTerminal() {
-	}
+    private ContractTerminal() {}
 
-	/** Loads the class, which registers the terminal and its actions. */
-	static void register() {
-	}
+    /** Loads the class, which registers the terminal and its actions. */
+    static void register() {}
 
-	private static Identifier id(String path) {
-		return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
-	}
+    private static Identifier id(String path) {
+        return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
+    }
 
-	private static Optional<String> nameArg(TerminalAction.Context context) {
-		return context.args().getString(ContractActions.NAME_KEY);
-	}
+    private static Optional<String> nameArg(TerminalAction.Context context) {
+        return context.args().getString(ContractActions.NAME_KEY);
+    }
 
-	private static Optional<Component> byName(TerminalAction.Context context, CharterRefusal missing, Function<String, Optional<CharterRefusal>> run) {
-		return report(context, nameArg(context).map(run).orElse(Optional.of(missing)));
-	}
+    private static Optional<Component> byName(
+            TerminalAction.Context context, CharterRefusal missing, Function<String, Optional<CharterRefusal>> run) {
+        return report(context, nameArg(context).map(run).orElse(Optional.of(missing)));
+    }
 
-	/** Runs {@code run} on the charter the args name; a name no charter has is refused. */
-	private static Optional<Component> onCharterNamed(TerminalAction.Context context, Function<CharterId, Optional<CharterRefusal>> run) {
-		return byName(context, CharterRefusal.NO_SUCH_CHARTER, name -> Charters.findByName(context.server(), name)
-				.map(charter -> run.apply(charter.id()))
-				.orElse(Optional.of(CharterRefusal.NO_SUCH_CHARTER)));
-	}
+    /** Runs {@code run} on the charter the args name; a name no charter has is refused. */
+    private static Optional<Component> onCharterNamed(
+            TerminalAction.Context context, Function<CharterId, Optional<CharterRefusal>> run) {
+        return byName(
+                context,
+                CharterRefusal.NO_SUCH_CHARTER,
+                name -> Charters.findByName(context.server(), name)
+                        .map(charter -> run.apply(charter.id()))
+                        .orElse(Optional.of(CharterRefusal.NO_SUCH_CHARTER)));
+    }
 
-	private static Optional<Component> answer(TerminalAction.Context context, Optional<UUID> applicant, Answer answer) {
-		if (applicant.isEmpty()) {
-			return report(context, Optional.of(CharterRefusal.NO_APPLICATION));
-		}
-		return report(context, answer.apply(context.server(), context.player().getUUID(), applicant.get()));
-	}
+    private static Optional<Component> answer(TerminalAction.Context context, Optional<UUID> applicant, Answer answer) {
+        if (applicant.isEmpty()) {
+            return report(context, Optional.of(CharterRefusal.NO_APPLICATION));
+        }
+        return report(context, answer.apply(context.server(), context.player().getUUID(), applicant.get()));
+    }
 
-	/** The player named by the args among the applications to the acting player's charter. Empty when there is none. */
-	private static Optional<UUID> applicantNamed(TerminalAction.Context context) {
-		Optional<String> name = nameArg(context);
-		Optional<Charter> charter = Charters.charterOfOrThrow(context.server(), context.player().getUUID());
-		if (name.isEmpty() || charter.isEmpty()) {
-			return Optional.empty();
-		}
-		List<UUID> matches = charter.get().applications().stream().filter(applicant -> displayName(context.server(), applicant).equals(name.get())).toList();
-		// Two applicants with one name: refuse, so the Director never answers the wrong one.
-		return matches.size() == 1 ? Optional.of(matches.getFirst()) : Optional.empty();
-	}
+    /** The player named by the args among the applications to the acting player's charter. Empty when there is none. */
+    private static Optional<UUID> applicantNamed(TerminalAction.Context context) {
+        Optional<String> name = nameArg(context);
+        Optional<Charter> charter =
+                Charters.charterOfOrThrow(context.server(), context.player().getUUID());
+        if (name.isEmpty() || charter.isEmpty()) {
+            return Optional.empty();
+        }
+        List<UUID> matches = charter.get().applications().stream()
+                .filter(applicant -> displayName(context.server(), applicant).equals(name.get()))
+                .toList();
+        // Two applicants with one name: refuse, so the Director never answers the wrong one.
+        return matches.size() == 1 ? Optional.of(matches.getFirst()) : Optional.empty();
+    }
 
-	private static Optional<Component> report(TerminalAction.Context context, Optional<CharterRefusal> refusal) {
-		if (refusal.isEmpty()) {
-			return Optional.empty();
-		}
-		send(context.player(), stateOf(context.server(), context.player().getUUID()).withNotice(refusal.get().translationKey()));
-		return Optional.of(refusal.get().message());
-	}
+    private static Optional<Component> report(TerminalAction.Context context, Optional<CharterRefusal> refusal) {
+        if (refusal.isEmpty()) {
+            return Optional.empty();
+        }
+        send(
+                context.player(),
+                stateOf(context.server(), context.player().getUUID())
+                        .withNotice(refusal.get().translationKey()));
+        return Optional.of(refusal.get().message());
+    }
 
-	/** Tells {@code player} where they stand now, if they are online. Does nothing when the saved charters cannot be read. */
-	static void refresh(MinecraftServer server, UUID player) {
-		ServerPlayer online = server.getPlayerList().getPlayer(player);
-		if (online != null && Charters.isReadable(server)) {
-			send(online, stateOf(server, player));
-		}
-	}
+    /** Tells {@code player} where they stand now, if they are online. Does nothing when the saved charters cannot be read. */
+    static void refresh(MinecraftServer server, UUID player) {
+        ServerPlayer online = server.getPlayerList().getPlayer(player);
+        if (online != null && Charters.isReadable(server)) {
+            send(online, stateOf(server, player));
+        }
+    }
 
-	private static void send(ServerPlayer player, ContractState state) {
-		PUSHED.invoker().onPushed(player, state);
-		if (ServerPlayNetworking.canSend(player, ContractStatePayload.TYPE)) {
-			ServerPlayNetworking.send(player, new ContractStatePayload(state));
-		}
-	}
+    private static void send(ServerPlayer player, ContractState state) {
+        PUSHED.invoker().onPushed(player, state);
+        if (ServerPlayNetworking.canSend(player, ContractStatePayload.TYPE)) {
+            ServerPlayNetworking.send(player, new ContractStatePayload(state));
+        }
+    }
 
-	/** Where {@code player} stands with the charters now. Throws when the saved charters cannot be read: check {@code Charters.isReadable} first. */
-	public static ContractState stateOf(MinecraftServer server, UUID player) {
-		int rows = ContractTerminalTuning.DEFAULT.listedRows();
-		Optional<Charter> own = Charters.charterOfOrThrow(server, player);
-		if (own.isPresent()) {
-			Charter charter = own.get();
-			if (!charter.isDirector(player)) {
-				return new ContractState(ContractState.Role.CREW, charter.name(), List.of(), 0, List.of(), 0, List.of(), 0, Optional.empty());
-			}
-			List<String> applicants = charter.applications().stream().map(applicant -> displayName(server, applicant)).limit(rows).toList();
-			return new ContractState(ContractState.Role.DIRECTOR, charter.name(), List.of(), 0, List.of(), 0, applicants, charter.applications().size(), Optional.empty());
-		}
-		Optional<Charter> applied = CharterData.get(server).applicationOf(player);
-		if (applied.isPresent()) {
-			return new ContractState(ContractState.Role.APPLICANT, applied.get().name(), List.of(), 0, List.of(), 0, List.of(), 0, Optional.empty());
-		}
-		List<String> open = names(server, charter -> !charter.dormant());
-		List<String> revivable = names(server, charter -> charter.dormant() && charter.formerMember(player));
-		return new ContractState(ContractState.Role.NONE, "", open.stream().limit(rows).toList(), open.size(),
-				revivable.stream().limit(ContractTerminalTuning.DEFAULT.revivableRows()).toList(), revivable.size(), List.of(), 0, Optional.empty());
-	}
+    /** Where {@code player} stands with the charters now. Throws when the saved charters cannot be read: check {@code Charters.isReadable} first. */
+    public static ContractState stateOf(MinecraftServer server, UUID player) {
+        int rows = ContractTerminalTuning.DEFAULT.listedRows();
+        Optional<Charter> own = Charters.charterOfOrThrow(server, player);
+        if (own.isPresent()) {
+            Charter charter = own.get();
+            if (!charter.isDirector(player)) {
+                return new ContractState(
+                        ContractState.Role.CREW,
+                        charter.name(),
+                        List.of(),
+                        0,
+                        List.of(),
+                        0,
+                        List.of(),
+                        0,
+                        Optional.empty());
+            }
+            List<String> applicants = charter.applications().stream()
+                    .map(applicant -> displayName(server, applicant))
+                    .limit(rows)
+                    .toList();
+            return new ContractState(
+                    ContractState.Role.DIRECTOR,
+                    charter.name(),
+                    List.of(),
+                    0,
+                    List.of(),
+                    0,
+                    applicants,
+                    charter.applications().size(),
+                    Optional.empty());
+        }
+        Optional<Charter> applied = CharterData.get(server).applicationOf(player);
+        if (applied.isPresent()) {
+            return new ContractState(
+                    ContractState.Role.APPLICANT,
+                    applied.get().name(),
+                    List.of(),
+                    0,
+                    List.of(),
+                    0,
+                    List.of(),
+                    0,
+                    Optional.empty());
+        }
+        List<String> open = names(server, charter -> !charter.dormant());
+        List<String> revivable = names(server, charter -> charter.dormant() && charter.formerMember(player));
+        return new ContractState(
+                ContractState.Role.NONE,
+                "",
+                open.stream().limit(rows).toList(),
+                open.size(),
+                revivable.stream()
+                        .limit(ContractTerminalTuning.DEFAULT.revivableRows())
+                        .toList(),
+                revivable.size(),
+                List.of(),
+                0,
+                Optional.empty());
+    }
 
-	private static List<String> names(MinecraftServer server, Predicate<Charter> wanted) {
-		return Charters.allOrThrow(server).stream().filter(wanted).map(Charter::name).sorted(Comparator.comparing(String::toLowerCase)).toList();
-	}
+    private static List<String> names(MinecraftServer server, Predicate<Charter> wanted) {
+        return Charters.allOrThrow(server).stream()
+                .filter(wanted)
+                .map(Charter::name)
+                .sorted(Comparator.comparing(String::toLowerCase))
+                .toList();
+    }
 
-	/** Refreshes every online player on no charter and no application: their list of charters just changed. */
-	static void refreshUnaffiliated(MinecraftServer server) {
-		if (!Charters.isReadable(server)) {
-			return;
-		}
-		for (ServerPlayer online : server.getPlayerList().getPlayers()) {
-			ContractState state = stateOf(server, online.getUUID());
-			if (state.role() == ContractState.Role.NONE) {
-				send(online, state);
-			}
-		}
-	}
+    /** Refreshes every online player on no charter and no application: their list of charters just changed. */
+    static void refreshUnaffiliated(MinecraftServer server) {
+        if (!Charters.isReadable(server)) {
+            return;
+        }
+        for (ServerPlayer online : server.getPlayerList().getPlayers()) {
+            ContractState state = stateOf(server, online.getUUID());
+            if (state.role() == ContractState.Role.NONE) {
+                send(online, state);
+            }
+        }
+    }
 
-	/** A player's name: the online one, else the server's cache of names, else the start of the id, which nobody can mistake for a name. */
-	static String displayName(MinecraftServer server, UUID player) {
-		ServerPlayer online = server.getPlayerList().getPlayer(player);
-		if (online != null) {
-			return online.getGameProfile().name();
-		}
-		return server.services().nameToIdCache().get(player).map(NameAndId::name).orElseGet(() -> player.toString().substring(0, 8));
-	}
+    /** A player's name: the online one, else the server's cache of names, else the start of the id, which nobody can mistake for a name. */
+    static String displayName(MinecraftServer server, UUID player) {
+        ServerPlayer online = server.getPlayerList().getPlayer(player);
+        if (online != null) {
+            return online.getGameProfile().name();
+        }
+        return server.services()
+                .nameToIdCache()
+                .get(player)
+                .map(NameAndId::name)
+                .orElseGet(() -> player.toString().substring(0, 8));
+    }
 
-	@FunctionalInterface
-	public interface Pushed {
-		void onPushed(ServerPlayer player, ContractState state);
-	}
+    @FunctionalInterface
+    public interface Pushed {
+        void onPushed(ServerPlayer player, ContractState state);
+    }
 
-	@FunctionalInterface
-	private interface Answer {
-		Optional<CharterRefusal> apply(MinecraftServer server, UUID director, UUID applicant);
-	}
+    @FunctionalInterface
+    private interface Answer {
+        Optional<CharterRefusal> apply(MinecraftServer server, UUID director, UUID applicant);
+    }
 }

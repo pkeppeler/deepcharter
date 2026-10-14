@@ -33,7 +33,7 @@ object GametestScan {
 	// A test or scenario that opens a room in layer rock with a direct air write skips the RoomSeal that keeps worldgen lava out of it
 	// (PR 229 found one that flooded). In a file that touches a layer dimension, only RoomCarver.carve, which seals first, writes a
 	// room's air. A setBlock, setBlockState, setBlockAndUpdate or box/fill helper call that names Blocks.AIR is flagged; a write that is not layer
-	// rock (the surface, one block inside a sealed room) carries the comment below, with its reason, on its line or the one above.
+	// rock (the surface, one block inside a sealed room) carries the comment below, with its reason, on its statement or the comment line above it.
 	// This misses a carve whose air is not spelled Blocks.AIR, one through destroyBlock, removeBlock or a differently named helper,
 	// and one in a file that reaches a layer level without LayerChain.dimension(.
 	private const val CARVE_MARKER = "// room-carver:"
@@ -42,17 +42,17 @@ object GametestScan {
 	// (Fabric's default is 200 ticks). The client and server tick unthrottled, so the same budget is a different wall time under load,
 	// and the test flakes (issues 262, 277). Wait with ClientWait.until or ClientWait.screen, which poll a wall-clock deadline and name
 	// what they awaited and what they saw. A fixed span of ticks that is not a poll uses waitTicks. A waitFor that must stay carries the
-	// comment below, with a reason, on its line or the one above; a bare marker, or one inside a string, does not count.
+	// comment below, with a reason, on its statement or the comment line above it; a bare marker, or one inside a string, does not count.
 	private const val TICK_WAIT_MARKER = "// tick-wait:"
 	private val tickWaitCall = Regex("""\bwaitFor(?:Screen)?\s*\(""")
 	// A server GameTest shares its world with every test beside it, so a clock write moves the sky or gameplay time under them. It goes through
-	// TestClocks.paused (restores in a finally on the same tick) or carries the marker below, with a reason, on its line or the one above.
+	// TestClocks.paused (restores in a finally on the same tick) or carries the marker below, with a reason, on its statement or the comment line above it.
 	// Client tests and evidence scenarios run in their own world and are exempt. TestClocks.java is the one file that writes a clock directly.
 	private const val WORLD_CLOCK_MARKER = "// world-clock:"
 	private val worldClockWrite = Regex("""\.\s*(?:setTotalTicks|setPaused|addTicks|setRate)\s*\(""")
 	// A client test shares one client with every test after it, so a HUD it hides (F1) and never shows again fails the next test that draws on
 	// it (PR 330). A HUD toggle (keyToggleGui, hideGui, the 26.3 hud.toggle(), an F1 key code) goes through ClientChecks.withHudHidden or withHudShown,
-	// which restore it in a finally, or carries the marker below, with a reason, on its line or the one above. ClientChecks.java is the one file
+	// which restore it in a finally, or carries the marker below, with a reason, on its statement or the comment line above it. ClientChecks.java is the one file
 	// that toggles directly. The scan matches the names, not the receiver.
 	private const val HUD_TOGGLE_MARKER = "// hud-toggle:"
 	private val hudToggle = Regex("""\b(?:keyToggleGui|hideGui|KEY_F1)\b|\bhud\s*\.\s*toggle\s*\(""")
@@ -72,8 +72,9 @@ object GametestScan {
 
 	private fun lineOf(text: String, start: Int): Int = text.substring(0, start).count { it == '\n' }
 
-	private fun marked(rawLines: List<String>, line: Int, marker: String): Boolean =
-		listOf(line, line - 1).any { it >= 0 && hasMarker(rawLines[it], marker) }
+	// Where the marker may sit is markedNear's (literals.gradle.kts): the statement's lines or the comment lines above it, so palantir's wrapping cannot hide it.
+	private fun marked(markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean, rawLines: List<String>, line: Int, marker: String): Boolean =
+		markedNear(rawLines, line) { hasMarker(it, marker) }
 
 	/**
 	 * One scan of a source tree: the entrypoint lists, ordered, or a GradleException naming every problem. [mainSources] and
@@ -86,6 +87,7 @@ object GametestScan {
 		mainSources: Collection<File>,
 		guardSource: File,
 		blankLiterals: (String) -> String,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
 	): GametestFound {
 		val javaFiles = javaRoot.walkTopDown().filter { it.isFile && it.name.endsWith(".java") }.toList().sorted()
 		val server = mutableListOf<String>()
@@ -104,7 +106,7 @@ object GametestScan {
 			if (source.name != "WorldData.java") {
 				for (direct in directSwap.findAll(text)) {
 					val line = lineOf(text, direct.range.first)
-					if (!marked(rawLines, line, DIRECT_SWAP_MARKER)) {
+					if (!marked(markedNear, rawLines, line, DIRECT_SWAP_MARKER)) {
 						problems.add("$className:${line + 1} swaps or keeps getDataStorage() directly; swap a world-global record with WorldData.with, WorldData.swap or WorldData.replace, which restore it in a finally, or mark a deliberate listener-phase swap with '$DIRECT_SWAP_MARKER <reason>'")
 					}
 				}
@@ -112,7 +114,7 @@ object GametestScan {
 			if (text.contains("LayerChain.dimension(")) {
 				for (carve in carveWrite.findAll(text)) {
 					val line = lineOf(text, carve.range.first)
-					if (!marked(rawLines, line, CARVE_MARKER)) {
+					if (!marked(markedNear, rawLines, line, CARVE_MARKER)) {
 						problems.add("$className:${line + 1} writes air in a file that touches a layer dimension; carve a room with RoomCarver.carve, which seals the shell against worldgen lava first, or mark a write that is not layer rock with '$CARVE_MARKER <reason>'")
 					}
 				}
@@ -120,7 +122,7 @@ object GametestScan {
 			if (clientImplements.containsMatchIn(text) || className.contains(".test.support.") || className.contains(".test.evidence.")) {
 				for (tickWait in tickWaitCall.findAll(text)) {
 					val line = lineOf(text, tickWait.range.first)
-					if (!marked(rawLines, line, TICK_WAIT_MARKER)) {
+					if (!marked(markedNear, rawLines, line, TICK_WAIT_MARKER)) {
 						problems.add("$className:${line + 1} waits with waitFor or waitForScreen, a tick budget; poll the wall clock with ClientWait.until or ClientWait.screen, or mark a deliberate fixed-tick wait with '$TICK_WAIT_MARKER <reason>'")
 					}
 				}
@@ -128,7 +130,7 @@ object GametestScan {
 			if (source.name != "ClientChecks.java") {
 				for (hud in hudToggle.findAll(text)) {
 					val line = lineOf(text, hud.range.first)
-					if (!marked(rawLines, line, HUD_TOGGLE_MARKER)) {
+					if (!marked(markedNear, rawLines, line, HUD_TOGGLE_MARKER)) {
 						problems.add("$className:${line + 1} toggles the HUD directly, which the next client test inherits; hide it with ClientChecks.withHudHidden (or show it with withHudShown), which restore it in a finally, or mark a deliberate toggle with '$HUD_TOGGLE_MARKER <reason>'")
 					}
 				}
@@ -137,7 +139,7 @@ object GametestScan {
 			if (!isClientSide && source.name != "TestClocks.java") {
 				for (clockWrite in worldClockWrite.findAll(text)) {
 					val line = lineOf(text, clockWrite.range.first)
-					if (!marked(rawLines, line, WORLD_CLOCK_MARKER)) {
+					if (!marked(markedNear, rawLines, line, WORLD_CLOCK_MARKER)) {
 						problems.add("$className:${line + 1} writes a world clock in a server test, which every test in the world sees; write it through TestClocks.paused, which restores it in a finally on the same tick, or mark a deliberate write with '$WORLD_CLOCK_MARKER <reason>' (the scan matches the method name, not the receiver; if this is not a world clock, mark it '$WORLD_CLOCK_MARKER not a clock')")
 					}
 				}
@@ -204,6 +206,8 @@ object GametestScan {
 val generateGametestModJson = tasks.register("generateGametestModJson") {
 	@Suppress("UNCHECKED_CAST")
 	val blankLiterals = project.extra["blankLiterals"] as (String) -> String
+	@Suppress("UNCHECKED_CAST")
+	val markedNear = project.extra["markedNear"] as (List<String>, Int, (String) -> Boolean) -> Boolean
 	val generatedGametestResources = layout.buildDirectory.dir("generated/gametest-resources")
 	val template = file("src/gametest/fabric.mod.template.json")
 	// WorldDataGuard must list every saved-data record of the mod, or it misses a swap of a new one.
@@ -226,7 +230,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	inputs.files(mainSources).withPropertyName("mainSources")
 	outputs.file(outputFile)
 	doLast {
-		val found = GametestScan.scan(javaRoot, clientFilter, order, mainSources.files, guardSource, blankLiterals)
+		val found = GametestScan.scan(javaRoot, clientFilter, order, mainSources.files, guardSource, blankLiterals, markedNear)
 		var json = template.readText()
 		mapOf("SERVER_TESTS" to found.server, "CLIENT_TESTS" to found.client).forEach { (token, names) ->
 			val placeholder = "\"@$token@\""
@@ -244,9 +248,11 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
 	val blankLiterals = project.extra["blankLiterals"] as (String) -> String
+	@Suppress("UNCHECKED_CAST")
+	val markedNear = project.extra["markedNear"] as (List<String>, Int, (String) -> Boolean) -> Boolean
 	// The entity-query gate's scan (entity-query-gate.gradle.kts), which checkGametestFixtures runs over fixture trees.
 	@Suppress("UNCHECKED_CAST")
-	val entityQueryProblems = project.extra["entityQueryProblems"] as (File, File, (String) -> String) -> List<String>
+	val entityQueryProblems = project.extra["entityQueryProblems"] as (File, File, (String) -> String, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
 	val entityQueryAdvice = project.extra["entityQueryAdvice"] as String
 	val mainSources = fileTree("src/main/java") { include("**/*.java") }
 	val guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
@@ -264,14 +270,14 @@ tasks.register("checkGametestFixtures") {
 			try {
 				if (c["gate"] == "entity_query") {
 					val root = File(c["root"] as String)
-					val problems = entityQueryProblems(root, root, blankLiterals)
+					val problems = entityQueryProblems(root, root, blankLiterals, markedNear)
 					if (problems.isNotEmpty()) {
 						throw GradleException("Entity queries in production code. $entityQueryAdvice\n  " + problems.joinToString("\n  "))
 					}
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue
 				}
-				val found = GametestScan.scan(File(c["root"] as String), c["clientTests"] as String?, "name", mainSources.files, guardSource, blankLiterals)
+				val found = GametestScan.scan(File(c["root"] as String), c["clientTests"] as String?, "name", mainSources.files, guardSource, blankLiterals, markedNear)
 				report[name] = linkedMapOf("ok" to true, "message" to "", "server" to found.server, "client" to found.client)
 			} catch (e: GradleException) {
 				report[name] = linkedMapOf("ok" to false, "message" to e.message!!, "server" to emptyList<String>(), "client" to emptyList<String>())

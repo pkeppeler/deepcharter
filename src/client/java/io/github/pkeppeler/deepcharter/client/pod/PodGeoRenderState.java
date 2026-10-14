@@ -5,29 +5,32 @@ import net.minecraft.resources.Identifier;
 
 /** Per-frame copy of what a pod model's bones need ({@link PodMotion} fills it). Angles are degrees, distances model pixels. */
 public class PodGeoRenderState extends EntityRenderState {
-	/** Where the pod faces, as a vanilla yaw. */
-	public float heading;
-	/** The drill mount's x rotation, replacing the file's: 0 is level, 90 points the drill down. */
-	public float mountPitch;
-	public float drillSpin;
-	public float rotorSpin;
-	/** 0 with the rotor's blades folded away, 1 with them out to fly. */
-	public float rotorOut;
-	public float fanSpin;
-	/** 0 with the thrusters stowed, 1 with them swung down to lift. */
-	public float thrust;
-	/** How far the pod has driven, for wheels, treads and legs. */
-	public float travel;
-	/** 0 standing, 1 in full stride. */
-	public float walk;
-	public boolean flying;
-	public boolean drilling;
-	/** The lamps are on: the pod has a pilot and power. */
-	public boolean lit;
-	/** The local pilot looks out through a live front camera in first person, so none of the pod is drawn (#448). */
-	public boolean cabHidden;
-	/** What the pod shows this frame, from its drill tier and whether it is a wreck ({@link PodGeoRenderer#appearanceOf}). */
-	public PodGeoRenderer.Appearance appearance;
-	/** The texture the pod is drawn with this frame: its variant's, or that painted in its charter's colour. */
-	public Identifier texture;
+    /** Where the pod faces, as a vanilla yaw. */
+    public float heading;
+    /** The drill mount's x rotation, replacing the file's: 0 is level, 90 points the drill down. */
+    public float mountPitch;
+
+    public float drillSpin;
+    public float rotorSpin;
+    /** 0 with the rotor's blades folded away, 1 with them out to fly. */
+    public float rotorOut;
+
+    public float fanSpin;
+    /** 0 with the thrusters stowed, 1 with them swung down to lift. */
+    public float thrust;
+    /** How far the pod has driven, for wheels, treads and legs. */
+    public float travel;
+    /** 0 standing, 1 in full stride. */
+    public float walk;
+
+    public boolean flying;
+    public boolean drilling;
+    /** The lamps are on: the pod has a pilot and power. */
+    public boolean lit;
+    /** The local pilot looks out through a live front camera in first person, so none of the pod is drawn (#448). */
+    public boolean cabHidden;
+    /** What the pod shows this frame, from its drill tier and whether it is a wreck ({@link PodGeoRenderer#appearanceOf}). */
+    public PodGeoRenderer.Appearance appearance;
+    /** The texture the pod is drawn with this frame: its variant's, or that painted in its charter's colour. */
+    public Identifier texture;
 }

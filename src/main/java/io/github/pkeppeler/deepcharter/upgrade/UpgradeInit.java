@@ -5,11 +5,10 @@ package io.github.pkeppeler.deepcharter.upgrade;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class UpgradeInit {
-	private UpgradeInit() {
-	}
+    private UpgradeInit() {}
 
-	public static void init() {
-		UpgradeRegistry.register();
-		PartFitting.init();
-	}
+    public static void init() {
+        UpgradeRegistry.register();
+        PartFitting.init();
+    }
 }

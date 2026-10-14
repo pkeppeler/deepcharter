@@ -12,6 +12,7 @@ buildscript {
 plugins {
 	alias(libs.plugins.loom)
 	alias(libs.plugins.dependency.analysis)
+	alias(libs.plugins.spotless)
 	checkstyle
 }
 
@@ -253,6 +254,17 @@ checkstyle {
 	toolVersion = libs.versions.checkstyle.get()
 	configFile = file("config/checkstyle/checkstyle.xml")
 	maxWarnings = 0
+}
+
+// palantir-java-format owns Java formatting (run `just fmt`); spotlessCheck is part of check. tooling/ is third-party code and is not
+// ours to reformat. The two single-file programs outside src/ are Java too. The gate fixtures in tools/tests are strings inside
+// Python, not files, so no target here touches them.
+spotless {
+	java {
+		target("src/**/*.java", "gradle/OomProbe.java", "tools/TestOnlyGate.java")
+		palantirJavaFormat(libs.versions.palantirJavaFormat.get())
+		removeUnusedImports()
+	}
 }
 
 tasks.withType<JavaCompile>().configureEach {

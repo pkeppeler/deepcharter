@@ -5,13 +5,12 @@ package io.github.pkeppeler.deepcharter.ore;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class OreInit {
-	private OreInit() {
-	}
+    private OreInit() {}
 
-	public static void init() {
-		OreRegistry.register();
-		OreEncumbrance.init();
-		CompanyRock.init();
-		GasHazard.init();
-	}
+    public static void init() {
+        OreRegistry.register();
+        OreEncumbrance.init();
+        CompanyRock.init();
+        GasHazard.init();
+    }
 }

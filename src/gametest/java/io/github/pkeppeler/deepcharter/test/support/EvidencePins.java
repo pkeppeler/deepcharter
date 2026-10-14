@@ -7,42 +7,41 @@ package io.github.pkeppeler.deepcharter.test.support;
  * it and off again after. The fields are read on the render thread and set from the test thread, so they are volatile.
  */
 public final class EvidencePins {
-	/** Every animated texture (lava, water, fire) shows its first frame and no longer advances. */
-	public static volatile boolean spritesFrozen;
-	/** The HUD vignette is not drawn: its brightness eases over ticks. */
-	public static volatile boolean vignetteHidden;
-	/** The held item name is not drawn: it fades on client ticks. */
-	public static volatile boolean itemNameHidden;
-	/** The player's hands and the item in them are not drawn, so a rider's arm is not in a still. */
-	public static volatile boolean handsHidden;
-	/** Block light does not flicker: vanilla random-walks every lit surface on each client tick. */
-	public static volatile boolean lightFlickerOff;
-	/** The breach fade shows this alpha (0 clear to 1 black), HUD jitter off; negative lets it run. */
-	public static volatile float breachFadeAlpha = -1f;
-	/** Entities other than pods are drawn at rest: no arm sway, no walk cycle, whatever their age. */
-	public static volatile boolean entitiesPosed;
-	/** No lampless figures spawn on the rails: one that spawned between the last wait and the shot would be in the still. */
-	public static volatile boolean figureSpawningOff;
+    /** Every animated texture (lava, water, fire) shows its first frame and no longer advances. */
+    public static volatile boolean spritesFrozen;
+    /** The HUD vignette is not drawn: its brightness eases over ticks. */
+    public static volatile boolean vignetteHidden;
+    /** The held item name is not drawn: it fades on client ticks. */
+    public static volatile boolean itemNameHidden;
+    /** The player's hands and the item in them are not drawn, so a rider's arm is not in a still. */
+    public static volatile boolean handsHidden;
+    /** Block light does not flicker: vanilla random-walks every lit surface on each client tick. */
+    public static volatile boolean lightFlickerOff;
+    /** The breach fade shows this alpha (0 clear to 1 black), HUD jitter off; negative lets it run. */
+    public static volatile float breachFadeAlpha = -1f;
+    /** Entities other than pods are drawn at rest: no arm sway, no walk cycle, whatever their age. */
+    public static volatile boolean entitiesPosed;
+    /** No lampless figures spawn on the rails: one that spawned between the last wait and the shot would be in the still. */
+    public static volatile boolean figureSpawningOff;
 
-	/**
-	 * The age in ticks that GeckoLib reads as the clock of a lampless figure's animation (0 or more); negative keeps the figure's own.
-	 * Pods keep their own.
-	 */
-	public static volatile float figureAnimationAge = -1f;
+    /**
+     * The age in ticks that GeckoLib reads as the clock of a lampless figure's animation (0 or more); negative keeps the figure's own.
+     * Pods keep their own.
+     */
+    public static volatile float figureAnimationAge = -1f;
 
-	private EvidencePins() {
-	}
+    private EvidencePins() {}
 
-	/** Puts every switch back to the game's own behaviour. */
-	public static void reset() {
-		spritesFrozen = false;
-		vignetteHidden = false;
-		lightFlickerOff = false;
-		handsHidden = false;
-		itemNameHidden = false;
-		breachFadeAlpha = -1f;
-		entitiesPosed = false;
-		figureSpawningOff = false;
-		figureAnimationAge = -1f;
-	}
+    /** Puts every switch back to the game's own behaviour. */
+    public static void reset() {
+        spritesFrozen = false;
+        vignetteHidden = false;
+        lightFlickerOff = false;
+        handsHidden = false;
+        itemNameHidden = false;
+        breachFadeAlpha = -1f;
+        entitiesPosed = false;
+        figureSpawningOff = false;
+        figureAnimationAge = -1f;
+    }
 }

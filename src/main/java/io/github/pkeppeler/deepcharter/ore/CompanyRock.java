@@ -9,12 +9,12 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
  * ({@code PodCharge}, ADR 0050) clears it.
  */
 public final class CompanyRock {
-	// If a soft block ever joins the undiggable tag, add a client AttackBlockCallback as LayerRock does, so a swing starts no crack.
-	private CompanyRock() {
-	}
+    // If a soft block ever joins the undiggable tag, add a client AttackBlockCallback as LayerRock does, so a swing
+    // starts no crack.
+    private CompanyRock() {}
 
-	public static void init() {
-		PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, blockEntity) ->
-				player.isCreative() || !state.is(HazardBlocks.UNDIGGABLE));
-	}
+    public static void init() {
+        PlayerBlockBreakEvents.BEFORE.register(
+                (level, player, pos, state, blockEntity) -> player.isCreative() || !state.is(HazardBlocks.UNDIGGABLE));
+    }
 }

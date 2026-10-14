@@ -11,5 +11,4 @@ import net.minecraft.resources.Identifier;
  * @param title  what the list shows
  * @param text   what the Note says when it is opened
  */
-public record HandbookNote(Identifier id, int number, Component title, Component text) {
-}
+public record HandbookNote(Identifier id, int number, Component title, Component text) {}

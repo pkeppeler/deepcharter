@@ -10,5 +10,5 @@ package io.github.pkeppeler.deepcharter.sound;
  *                                  swap its engine loop every tick
  */
 public record SoundTuning(int typewriterLettersPerClick, double movingSpeed, int movingHoldTicks) {
-	public static final SoundTuning DEFAULT = new SoundTuning(2, 0.02, 10);
+    public static final SoundTuning DEFAULT = new SoundTuning(2, 0.02, 10);
 }

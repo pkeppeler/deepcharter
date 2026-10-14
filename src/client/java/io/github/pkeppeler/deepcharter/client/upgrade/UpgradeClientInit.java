@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.client.upgrade;
  * Each part of the feature registers itself from here, one line per part.
  */
 public final class UpgradeClientInit {
-	private UpgradeClientInit() {
-	}
+    private UpgradeClientInit() {}
 
-	public static void init() {
-		UpgradeClientRegistry.register();
-	}
+    public static void init() {
+        UpgradeClientRegistry.register();
+    }
 }

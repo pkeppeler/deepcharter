@@ -1,28 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.IntSupplier;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
-import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
-import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-
-import net.minecraft.client.CameraType;
-import net.minecraft.client.Minecraft;
-import net.minecraft.core.BlockPos;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Mth;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Input;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.Vec3;
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
@@ -38,8 +16,27 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
-
-import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.IntSupplier;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.minecraft.client.CameraType;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Client GameTest on a real dedicated server: the harness works (the real client sees itself and the mock player), and
@@ -47,363 +44,422 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
  * across the breach into layer 2. The evidence scenario "m1-two-pods" replays the same flow with a recording.
  */
 public class TwoPlayerClientTest implements FabricClientGameTest {
-	// Layer 1 is crust at y 0-2, then stone; the pods stand a row above the crust, so the stone row is their first bore.
-	private static final int X = 4000;
-	private static final int Z = 4000;
-	private static final int FLOOR_Y = 4;
-	private static final int STONE_ROW_Y = FLOOR_Y - 1;
-	private static final int ROOM_WEST = 6;
-	private static final int ROOM_EAST = 16;
-	private static final int ROOM_RADIUS_Z = 6;
-	/** Half the width of the shaft cut above the real pod, which lifts it out of the signal decay (#502) for the layer 1 scanner check. */
-	private static final int SHAFT_RADIUS = 2;
-	private static final float EAST = -90f;
-	private static final float LOOK_DOWN = 30f;
+    // Layer 1 is crust at y 0-2, then stone; the pods stand a row above the crust, so the stone row is their first
+    // bore.
+    private static final int X = 4000;
+    private static final int Z = 4000;
+    private static final int FLOOR_Y = 4;
+    private static final int STONE_ROW_Y = FLOOR_Y - 1;
+    private static final int ROOM_WEST = 6;
+    private static final int ROOM_EAST = 16;
+    private static final int ROOM_RADIUS_Z = 6;
+    /** Half the width of the shaft cut above the real pod, which lifts it out of the signal decay (#502) for the layer 1 scanner check. */
+    private static final int SHAFT_RADIUS = 2;
 
-	/**
-	 * Far layer chunks generate on worker threads while game ticks run as fast as the CPU allows, so a pod can sit
-	 * un-ticked for a long time. Waits on what a pod does are therefore counted in the pod's own {@code tickCount}. A bore
-	 * through the stone row and the crust takes under 700 of them; a run that passes ends at once, so the budget is free.
-	 */
-	private static final int POD_TICK_BUDGET = 3000;
-	/** Pod ticks before the pilots start drilling: long enough to settle on the floor and be scanned. */
-	private static final int POD_TICKS_TO_SETTLE = 40;
-	/**
-	 * A fuse on client ticks, for the case that no pod ticks at all, which a pod-tick budget cannot catch. It is the pod-tick
-	 * budget plus margin, about 3 minutes at 20 ticks a second, so a hang fails with a message inside CI's 8-minute step.
-	 */
-	private static final int CLIENT_TICK_FUSE = POD_TICK_BUDGET + 600;
-	private static final int POLL_TICKS = 4;
-	private static final int TICKS_PER_FRAME = 16;
-	private static final int TICKS_PER_FADE_FRAME = 2;
-	private static final int ARRIVAL_FRAMES = 8;
-	private static final int ARRIVAL_TICKS_PER_FRAME = 8;
-	private static final int RGB = 0xFFFFFF;
+    private static final float EAST = -90f;
+    private static final float LOOK_DOWN = 30f;
 
-	/** The pod {@link #liftOutOfDecay} holds in clear air, and where; null when none is held. */
-	private static final AtomicReference<Held> HELD = new AtomicReference<>();
+    /**
+     * Far layer chunks generate on worker threads while game ticks run as fast as the CPU allows, so a pod can sit
+     * un-ticked for a long time. Waits on what a pod does are therefore counted in the pod's own {@code tickCount}. A bore
+     * through the stone row and the crust takes under 700 of them; a run that passes ends at once, so the budget is free.
+     */
+    private static final int POD_TICK_BUDGET = 3000;
+    /** Pod ticks before the pilots start drilling: long enough to settle on the floor and be scanned. */
+    private static final int POD_TICKS_TO_SETTLE = 40;
+    /**
+     * A fuse on client ticks, for the case that no pod ticks at all, which a pod-tick budget cannot catch. It is the pod-tick
+     * budget plus margin, about 3 minutes at 20 ticks a second, so a hang fails with a message inside CI's 8-minute step.
+     */
+    private static final int CLIENT_TICK_FUSE = POD_TICK_BUDGET + 600;
 
-	static {
-		// PodMovement applies the pod's own gravity whatever Entity.setNoGravity says, so a lifted pod falls back into the decay a little every tick. Pinning it
-		// after each of its ticks keeps it where the test put it, however many ticks the server runs while a slow client catches up.
-		PodEvents.AFTER_TICK.register(pod -> {
-			Held held = HELD.get();
-			if (held != null && held.pod().equals(pod.getUUID())) {
-				pod.setPos(held.at());
-				pod.setDeltaMovement(Vec3.ZERO);
-			}
-		});
-	}
+    private static final int POLL_TICKS = 4;
+    private static final int TICKS_PER_FRAME = 16;
+    private static final int TICKS_PER_FADE_FRAME = 2;
+    private static final int ARRIVAL_FRAMES = 8;
+    private static final int ARRIVAL_TICKS_PER_FRAME = 8;
+    private static final int RGB = 0xFFFFFF;
 
-	private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
+    /** The pod {@link #liftOutOfDecay} holds in clear air, and where; null when none is held. */
+    private static final AtomicReference<Held> HELD = new AtomicReference<>();
 
-	private record Held(UUID pod, Vec3 at) {
-	}
+    static {
+        // PodMovement applies the pod's own gravity whatever Entity.setNoGravity says, so a lifted pod falls back into
+        // the decay a little every tick. Pinning it
+        // after each of its ticks keeps it where the test put it, however many ticks the server runs while a slow
+        // client catches up.
+        PodEvents.AFTER_TICK.register(pod -> {
+            Held held = HELD.get();
+            if (held != null && held.pod().equals(pod.getUUID())) {
+                pod.setPos(held.at());
+                pod.setDeltaMovement(Vec3.ZERO);
+            }
+        });
+    }
 
-	/** What the server holds for the flow: both pods, and the layer 1 columns each one bores. */
-	private record Rig(PodEntity realPod, PodEntity mockPod, List<BlockPos> realColumns, List<BlockPos> mockColumns) {
-	}
+    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
-	/** What the server says about the crossing, read in one call so the two pilots are judged at the same moment. */
-	private record Crossing(boolean realInLayer2, boolean mockInLayer2, boolean bothRiding, int podTicks) {
-	}
+    private record Held(UUID pod, Vec3 at) {}
 
-	@Override
-	public void runTest(ClientGameTestContext context) {
-		ClientTestLog.start(this);
-		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
-			int seen = context.computeOnClient(client -> client.level.players().size());
-			require(seen == 2, "Expected the real client to see 2 players, saw " + seen);
-			boolean mockVisible = context.computeOnClient(
-					client -> client.level.getPlayerByUUID(two.mock().player().getUUID()) != null);
-			require(mockVisible, "The real client does not see the mock player");
-			crossTogether(context, two, () -> {
-			});
-		}
-	}
+    /** What the server holds for the flow: both pods, and the layer 1 columns each one bores. */
+    private record Rig(PodEntity realPod, PodEntity mockPod, List<BlockPos> realColumns, List<BlockPos> mockColumns) {}
 
-	/**
-	 * Seats the real client and the mock player in one Mole each in layer 1, drills both through the stone and the crust,
-	 * and asserts that each ends in layer 2 still riding, with the real client having seen the mock's pod, its bore, and
-	 * its own breach fade and scanner. Calls {@code frame} at a steady pace, and faster during a fade.
-	 */
-	public static void crossTogether(ClientGameTestContext context, TwoPlayerServer two, Runnable frame) {
-		CameraType previousCamera = context.computeOnClient(client -> client.options.getCameraType());
-		try {
-			drive(context, two, frame);
-		} finally {
-			context.getInput().releaseKey(options -> options.keySprint);
-			context.runOnClient(client -> client.options.setCameraType(previousCamera));
-		}
-	}
+    /** What the server says about the crossing, read in one call so the two pilots are judged at the same moment. */
+    private record Crossing(boolean realInLayer2, boolean mockInLayer2, boolean bothRiding, int podTicks) {}
 
-	private static void drive(ClientGameTestContext context, TwoPlayerServer two, Runnable frame) {
-		UUID mockId = two.mock().player().getUUID();
-		Rig rig = two.server().computeOnServer(server -> setUp(server, two));
-		ClientWait.until(context, "the real client riding a pod in layer_1 with the mock's pod in view", client -> client.player != null && client.player.getVehicle() instanceof PodEntity
-				&& client.level.dimension().equals(LayerChain.dimension(1))
-				&& client.level.getEntity(rig.mockPod().getId()) instanceof PodEntity);
-		context.runOnClient(client -> {
-			client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-			client.player.setYRot(EAST);
-			client.player.setXRot(LOOK_DOWN);
-		});
-		awaitPodTicks(context, two, rig, POD_TICKS_TO_SETTLE);
-		// The pods stand on the floor of layer 1, inside the signal decay, where the stock console loses the scanner first. This test is about two pods
-		// crossing, not about the decay, so the scanner is read with the real pod lifted to clear air.
-		Vec3 floorPosition = two.server().computeOnServer(server -> liftOutOfDecay(server, rig.realPod()));
-		Vec3 liftedPosition = two.server().computeOnServer(server -> rig.realPod().position());
-		awaitScannerAt(context, rig.realPod().getId(), liftedPosition, true);
-		frame.run();
-		expectScannerShowsPod(context, "m1-two-pods-layer-1");
-		two.server().runOnServer(server -> {
-			HELD.set(null);
-			rig.realPod().setPos(floorPosition);
-			rig.realPod().setDeltaMovement(Vec3.ZERO);
-		});
-		awaitScannerAt(context, rig.realPod().getId(), floorPosition, false);
+    @Override
+    public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
+        try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
+            int seen = context.computeOnClient(client -> client.level.players().size());
+            require(seen == 2, "Expected the real client to see 2 players, saw " + seen);
+            boolean mockVisible = context.computeOnClient(
+                    client -> client.level.getPlayerByUUID(two.mock().player().getUUID()) != null);
+            require(mockVisible, "The real client does not see the mock player");
+            crossTogether(context, two, () -> {});
+        }
+    }
 
-		BlockPos mockStone = rig.mockColumns().getFirst().atY(STONE_ROW_Y);
-		// A cell in a chunk the client has not loaded reads as air, so wait for the stone before expecting it gone.
-		ClientWait.until(context, "the mock stone block", client -> client.level.getBlockState(mockStone).is(Blocks.STONE));
-		float idleFade = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
-		require(idleFade == 0f, "A breach fade is already running before the drive, so it could not be this crossing's: " + idleFade);
-		two.server().runOnServer(server -> {
-			rig.realPod().setFuel(100f);
-			rig.mockPod().setFuel(100f);
-			two.mock().setInput(SPRINT);
-		});
-		context.getInput().holdKey(options -> options.keySprint);
+    /**
+     * Seats the real client and the mock player in one Mole each in layer 1, drills both through the stone and the crust,
+     * and asserts that each ends in layer 2 still riding, with the real client having seen the mock's pod, its bore, and
+     * its own breach fade and scanner. Calls {@code frame} at a steady pace, and faster during a fade.
+     */
+    public static void crossTogether(ClientGameTestContext context, TwoPlayerServer two, Runnable frame) {
+        CameraType previousCamera = context.computeOnClient(client -> client.options.getCameraType());
+        try {
+            drive(context, two, frame);
+        } finally {
+            context.getInput().releaseKey(options -> options.keySprint);
+            context.runOnClient(client -> client.options.setCameraType(previousCamera));
+        }
+    }
 
-		boolean realReleased = false;
-		boolean mockReleased = false;
-		boolean fadeStarted = false;
-		boolean clientSawMockBore = false;
-		int sinceFrame = 0;
-		for (int tick = 1; tick <= CLIENT_TICK_FUSE; tick++) {
-			context.waitTick();
-			float alpha = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
-			fadeStarted |= alpha > 0;
-			if (++sinceFrame >= (alpha > 0 ? TICKS_PER_FADE_FRAME : TICKS_PER_FRAME)) {
-				frame.run();
-				sinceFrame = 0;
-			}
-			if (tick % POLL_TICKS != 0) {
-				continue;
-			}
-			Crossing crossing = two.server().computeOnServer(server -> crossing(server, two, rig));
-			if (crossing.realInLayer2() && !realReleased) {
-				context.getInput().releaseKey(options -> options.keySprint);
-				realReleased = true;
-			}
-			if (crossing.mockInLayer2() && !mockReleased) {
-				two.server().runOnServer(server -> two.mock().releaseInput());
-				mockReleased = true;
-			}
-			clientSawMockBore |= context.computeOnClient(client -> client.level.dimension().equals(LayerChain.dimension(1))
-					&& client.level.getBlockState(mockStone).isAir());
-			if (realReleased && mockReleased) {
-				break;
-			}
-			require(crossing.podTicks() <= POD_TICK_BUDGET, "After " + crossing.podTicks() + " pod ticks, real crossed: " + crossing.realInLayer2()
-						+ ", mock crossed: " + crossing.mockInLayer2());
-		}
-		context.getInput().releaseKey(options -> options.keySprint);
-		two.server().runOnServer(server -> two.mock().releaseInput());
-		require(realReleased && mockReleased, "Not both pods crossed into layer_2 (real: " + realReleased + ", mock: " + mockReleased + ")");
+    private static void drive(ClientGameTestContext context, TwoPlayerServer two, Runnable frame) {
+        UUID mockId = two.mock().player().getUUID();
+        Rig rig = two.server().computeOnServer(server -> setUp(server, two));
+        ClientWait.until(
+                context,
+                "the real client riding a pod in layer_1 with the mock's pod in view",
+                client -> client.player != null
+                        && client.player.getVehicle() instanceof PodEntity
+                        && client.level.dimension().equals(LayerChain.dimension(1))
+                        && client.level.getEntity(rig.mockPod().getId()) instanceof PodEntity);
+        context.runOnClient(client -> {
+            client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            client.player.setYRot(EAST);
+            client.player.setXRot(LOOK_DOWN);
+        });
+        awaitPodTicks(context, two, rig, POD_TICKS_TO_SETTLE);
+        // The pods stand on the floor of layer 1, inside the signal decay, where the stock console loses the scanner
+        // first. This test is about two pods
+        // crossing, not about the decay, so the scanner is read with the real pod lifted to clear air.
+        Vec3 floorPosition = two.server().computeOnServer(server -> liftOutOfDecay(server, rig.realPod()));
+        Vec3 liftedPosition =
+                two.server().computeOnServer(server -> rig.realPod().position());
+        awaitScannerAt(context, rig.realPod().getId(), liftedPosition, true);
+        frame.run();
+        expectScannerShowsPod(context, "m1-two-pods-layer-1");
+        two.server().runOnServer(server -> {
+            HELD.set(null);
+            rig.realPod().setPos(floorPosition);
+            rig.realPod().setDeltaMovement(Vec3.ZERO);
+        });
+        awaitScannerAt(context, rig.realPod().getId(), floorPosition, false);
 
-		for (int i = 0; i < ARRIVAL_FRAMES; i++) {
-			context.waitTicks(ARRIVAL_TICKS_PER_FRAME);
-			fadeStarted |= context.computeOnClient(client -> BreachEffects.fadeAlpha(0f)) > 0;
-			frame.run();
-		}
+        BlockPos mockStone = rig.mockColumns().getFirst().atY(STONE_ROW_Y);
+        // A cell in a chunk the client has not loaded reads as air, so wait for the stone before expecting it gone.
+        ClientWait.until(
+                context,
+                "the mock stone block",
+                client -> client.level.getBlockState(mockStone).is(Blocks.STONE));
+        float idleFade = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
+        require(
+                idleFade == 0f,
+                "A breach fade is already running before the drive, so it could not be this crossing's: " + idleFade);
+        two.server().runOnServer(server -> {
+            rig.realPod().setFuel(100f);
+            rig.mockPod().setFuel(100f);
+            two.mock().setInput(SPRINT);
+        });
+        context.getInput().holdKey(options -> options.keySprint);
 
-		require(fadeStarted, "The client never received the breach effect: the fade did not start");
-		require(clientSawMockBore, "While in layer_1 the client never saw the mock pod's bore at " + mockStone);
-		expectEndState(context, two, rig, mockId);
-		expectScannerShowsPod(context, "m1-two-pods-layer-2");
-	}
+        boolean realReleased = false;
+        boolean mockReleased = false;
+        boolean fadeStarted = false;
+        boolean clientSawMockBore = false;
+        int sinceFrame = 0;
+        for (int tick = 1; tick <= CLIENT_TICK_FUSE; tick++) {
+            context.waitTick();
+            float alpha = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
+            fadeStarted |= alpha > 0;
+            if (++sinceFrame >= (alpha > 0 ? TICKS_PER_FADE_FRAME : TICKS_PER_FRAME)) {
+                frame.run();
+                sinceFrame = 0;
+            }
+            if (tick % POLL_TICKS != 0) {
+                continue;
+            }
+            Crossing crossing = two.server().computeOnServer(server -> crossing(server, two, rig));
+            if (crossing.realInLayer2() && !realReleased) {
+                context.getInput().releaseKey(options -> options.keySprint);
+                realReleased = true;
+            }
+            if (crossing.mockInLayer2() && !mockReleased) {
+                two.server().runOnServer(server -> two.mock().releaseInput());
+                mockReleased = true;
+            }
+            clientSawMockBore |=
+                    context.computeOnClient(client -> client.level.dimension().equals(LayerChain.dimension(1))
+                            && client.level.getBlockState(mockStone).isAir());
+            if (realReleased && mockReleased) {
+                break;
+            }
+            require(
+                    crossing.podTicks() <= POD_TICK_BUDGET,
+                    "After " + crossing.podTicks() + " pod ticks, real crossed: " + crossing.realInLayer2()
+                            + ", mock crossed: " + crossing.mockInLayer2());
+        }
+        context.getInput().releaseKey(options -> options.keySprint);
+        two.server().runOnServer(server -> two.mock().releaseInput());
+        require(
+                realReleased && mockReleased,
+                "Not both pods crossed into layer_2 (real: " + realReleased + ", mock: " + mockReleased + ")");
 
-	/** Builds a room in layer 1, then seats the real player and the mock each in a Mole, a few rows above the crust. */
-	private static Rig setUp(MinecraftServer server, TwoPlayerServer two) {
-		ServerLevel one = server.getLevel(LayerChain.dimension(1));
-		box(one, 0, 2, LayerBlocks.BREACH_CRUST);
-		box(one, STONE_ROW_Y, STONE_ROW_Y, Blocks.STONE);
-		shell(one);
-		RoomCarver.carve(one, new BlockPos(X - ROOM_WEST, FLOOR_Y, Z - ROOM_RADIUS_Z), new BlockPos(X + ROOM_EAST, FLOOR_Y + 9, Z + ROOM_RADIUS_Z),
-				Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-		lamps(one);
-		ServerPlayer real = realPlayer(server, two.mock().player());
-		real.teleportTo(one, X, FLOOR_Y, Z, Set.of(), EAST, LOOK_DOWN, true);
-		int mockPodId = PodMovementClientTest.mountBoth(two);
-		PodEntity realPod = (PodEntity) real.getVehicle();
-		PodEntity mockPod = (PodEntity) two.mock().player().getVehicle();
-		ScannerPods.fit(server, real, realPod, 1);
-		require(mockPod.getId() == mockPodId && realPod != mockPod && realPod.level() == one && mockPod.level() == one, "Each player should ride their own pod in layer_1");
-		return new Rig(realPod, mockPod, columns(realPod), columns(mockPod));
-	}
+        for (int i = 0; i < ARRIVAL_FRAMES; i++) {
+            context.waitTicks(ARRIVAL_TICKS_PER_FRAME);
+            fadeStarted |= context.computeOnClient(client -> BreachEffects.fadeAlpha(0f)) > 0;
+            frame.run();
+        }
 
-	/**
-	 * Cuts a shaft above {@code pod} up to one slab past the layer 1 onset of the decay, with a stone shell like the room's, and holds the pod at the top of it
-	 * and holds it there. Returns where it stood, for putting it back. The height is {@link SignalDecayTuning}'s, so a retuned curve moves the test with it.
-	 */
-	private static Vec3 liftOutOfDecay(MinecraftServer server, PodEntity pod) {
-		ServerLevel one = server.getLevel(LayerChain.dimension(1));
-		Vec3 floorPosition = pod.position();
-		int clearY = one.getMinY() + SignalDecayTuning.DEFAULT.band(1).onset() + 1;
-		int centerX = Mth.floor(floorPosition.x);
-		int centerZ = Mth.floor(floorPosition.z);
-		int roofY = FLOOR_Y + 10;
-		int topY = clearY + 4;
-		for (int x = centerX - SHAFT_RADIUS - 1; x <= centerX + SHAFT_RADIUS + 1; x++) {
-			for (int y = roofY; y <= topY + 1; y++) {
-				for (int z = centerZ - SHAFT_RADIUS - 1; z <= centerZ + SHAFT_RADIUS + 1; z++) {
-					one.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), 2);
-				}
-			}
-		}
-		RoomCarver.carve(one, new BlockPos(centerX - SHAFT_RADIUS, roofY, centerZ - SHAFT_RADIUS), new BlockPos(centerX + SHAFT_RADIUS, topY, centerZ + SHAFT_RADIUS),
-				Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-		Vec3 clearPosition = new Vec3(floorPosition.x, clearY, floorPosition.z);
-		HELD.set(new Held(pod.getUUID(), clearPosition));
-		pod.setPos(clearPosition);
-		pod.setDeltaMovement(Vec3.ZERO);
-		return floorPosition;
-	}
+        require(fadeStarted, "The client never received the breach effect: the fade did not start");
+        require(clientSawMockBore, "While in layer_1 the client never saw the mock pod's bore at " + mockStone);
+        expectEndState(context, two, rig, mockId);
+        expectScannerShowsPod(context, "m1-two-pods-layer-2");
+    }
 
-	/** The layer 1 columns a pod bores: its footprint on the block grid, as the drill picks it. */
-	private static List<BlockPos> columns(PodEntity pod) {
-		int width = pod.chassis().boreWidth();
-		int lowX = Mth.floor(pod.getX() - width / 2.0 + 0.5);
-		int lowZ = Mth.floor(pod.getZ() - width / 2.0 + 0.5);
-		require(lowX >= X - ROOM_WEST + 1 && lowX + width <= X + ROOM_EAST - 1, "The pod at " + pod.position() + " stands outside the room");
-		return IntStream.range(0, width * width)
-				.mapToObj(i -> new BlockPos(lowX + i / width, 0, lowZ + i % width))
-				.toList();
-	}
+    /** Builds a room in layer 1, then seats the real player and the mock each in a Mole, a few rows above the crust. */
+    private static Rig setUp(MinecraftServer server, TwoPlayerServer two) {
+        ServerLevel one = server.getLevel(LayerChain.dimension(1));
+        box(one, 0, 2, LayerBlocks.BREACH_CRUST);
+        box(one, STONE_ROW_Y, STONE_ROW_Y, Blocks.STONE);
+        shell(one);
+        RoomCarver.carve(
+                one,
+                new BlockPos(X - ROOM_WEST, FLOOR_Y, Z - ROOM_RADIUS_Z),
+                new BlockPos(X + ROOM_EAST, FLOOR_Y + 9, Z + ROOM_RADIUS_Z),
+                Blocks.AIR.defaultBlockState(),
+                Block.UPDATE_ALL);
+        lamps(one);
+        ServerPlayer real = realPlayer(server, two.mock().player());
+        real.teleportTo(one, X, FLOOR_Y, Z, Set.of(), EAST, LOOK_DOWN, true);
+        int mockPodId = PodMovementClientTest.mountBoth(two);
+        PodEntity realPod = (PodEntity) real.getVehicle();
+        PodEntity mockPod = (PodEntity) two.mock().player().getVehicle();
+        ScannerPods.fit(server, real, realPod, 1);
+        require(
+                mockPod.getId() == mockPodId && realPod != mockPod && realPod.level() == one && mockPod.level() == one,
+                "Each player should ride their own pod in layer_1");
+        return new Rig(realPod, mockPod, columns(realPod), columns(mockPod));
+    }
 
-	private static Crossing crossing(MinecraftServer server, TwoPlayerServer two, Rig rig) {
-		ServerPlayer mock = two.mock().player();
-		ServerPlayer real = realPlayer(server, mock);
-		boolean riding = real.getVehicle() instanceof PodEntity && mock.getVehicle() instanceof PodEntity
-				&& real.getVehicle() != mock.getVehicle();
-		return new Crossing(inLayer2(real), inLayer2(mock), riding, Math.max(rig.realPod().tickCount, rig.mockPod().tickCount));
-	}
+    /**
+     * Cuts a shaft above {@code pod} up to one slab past the layer 1 onset of the decay, with a stone shell like the room's, and holds the pod at the top of it
+     * and holds it there. Returns where it stood, for putting it back. The height is {@link SignalDecayTuning}'s, so a retuned curve moves the test with it.
+     */
+    private static Vec3 liftOutOfDecay(MinecraftServer server, PodEntity pod) {
+        ServerLevel one = server.getLevel(LayerChain.dimension(1));
+        Vec3 floorPosition = pod.position();
+        int clearY = one.getMinY() + SignalDecayTuning.DEFAULT.band(1).onset() + 1;
+        int centerX = Mth.floor(floorPosition.x);
+        int centerZ = Mth.floor(floorPosition.z);
+        int roofY = FLOOR_Y + 10;
+        int topY = clearY + 4;
+        for (int x = centerX - SHAFT_RADIUS - 1; x <= centerX + SHAFT_RADIUS + 1; x++) {
+            for (int y = roofY; y <= topY + 1; y++) {
+                for (int z = centerZ - SHAFT_RADIUS - 1; z <= centerZ + SHAFT_RADIUS + 1; z++) {
+                    one.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), 2);
+                }
+            }
+        }
+        RoomCarver.carve(
+                one,
+                new BlockPos(centerX - SHAFT_RADIUS, roofY, centerZ - SHAFT_RADIUS),
+                new BlockPos(centerX + SHAFT_RADIUS, topY, centerZ + SHAFT_RADIUS),
+                Blocks.AIR.defaultBlockState(),
+                Block.UPDATE_ALL);
+        Vec3 clearPosition = new Vec3(floorPosition.x, clearY, floorPosition.z);
+        HELD.set(new Held(pod.getUUID(), clearPosition));
+        pod.setPos(clearPosition);
+        pod.setDeltaMovement(Vec3.ZERO);
+        return floorPosition;
+    }
 
-	private static boolean inLayer2(ServerPlayer player) {
-		return player.level().dimension().equals(LayerChain.dimension(2));
-	}
+    /** The layer 1 columns a pod bores: its footprint on the block grid, as the drill picks it. */
+    private static List<BlockPos> columns(PodEntity pod) {
+        int width = pod.chassis().boreWidth();
+        int lowX = Mth.floor(pod.getX() - width / 2.0 + 0.5);
+        int lowZ = Mth.floor(pod.getZ() - width / 2.0 + 0.5);
+        require(
+                lowX >= X - ROOM_WEST + 1 && lowX + width <= X + ROOM_EAST - 1,
+                "The pod at " + pod.position() + " stands outside the room");
+        return IntStream.range(0, width * width)
+                .mapToObj(i -> new BlockPos(lowX + i / width, 0, lowZ + i % width))
+                .toList();
+    }
 
-	private static ServerPlayer realPlayer(MinecraftServer server, ServerPlayer mock) {
-		return server.getPlayerList().getPlayers().stream()
-				.filter(player -> player != mock)
-				.findFirst()
-				.orElseThrow(() -> new AssertionError("the real client's player is not on the server"));
-	}
+    private static Crossing crossing(MinecraftServer server, TwoPlayerServer two, Rig rig) {
+        ServerPlayer mock = two.mock().player();
+        ServerPlayer real = realPlayer(server, mock);
+        boolean riding = real.getVehicle() instanceof PodEntity
+                && mock.getVehicle() instanceof PodEntity
+                && real.getVehicle() != mock.getVehicle();
+        return new Crossing(
+                inLayer2(real), inLayer2(mock), riding, Math.max(rig.realPod().tickCount, rig.mockPod().tickCount));
+    }
 
-	/** Waits until both of the original pods have ticked {@code ticks} times. */
-	private static void awaitPodTicks(ClientGameTestContext context, TwoPlayerServer two, Rig rig, int ticks) {
-		IntSupplier least = () -> two.server().computeOnServer(server -> Math.min(rig.realPod().tickCount, rig.mockPod().tickCount));
-		ClientWait.until(context, "both pods ticked " + ticks + " times", () -> least.getAsInt() >= ticks,
-				() -> "the least ticked pod at " + least.getAsInt());
-	}
+    private static boolean inLayer2(ServerPlayer player) {
+        return player.level().dimension().equals(LayerChain.dimension(2));
+    }
 
-	/** Server and client agree: both pilots ride a pod in layer_2, the crust under both pods is gone, and the client has the mock's pod. */
-	private static void expectEndState(ClientGameTestContext context, TwoPlayerServer two, Rig rig, UUID mockId) {
-		Crossing end = two.server().computeOnServer(server -> crossing(server, two, rig));
-		require(end.realInLayer2() && end.mockInLayer2() && end.bothRiding(), "Each pod should end in layer_2 with its pilot riding: " + end);
-		two.server().runOnServer(server -> {
-			ServerLevel one = server.getLevel(LayerChain.dimension(1));
-			for (BlockPos column : Stream.concat(rig.realColumns().stream(), rig.mockColumns().stream()).toList()) {
-				for (int y = 0; y <= 2; y++) {
-					require(!one.getBlockState(column.atY(y)).is(LayerBlocks.BREACH_CRUST), "The crust at " + column.atY(y) + " was not bored");
-				}
-			}
-		});
-		ClientWait.until(context, "both players riding pods in layer_2", client -> client.level.dimension().equals(LayerChain.dimension(2))
-				&& client.player.getVehicle() instanceof PodEntity
-				&& client.level.getPlayerByUUID(mockId) != null
-				&& client.level.getPlayerByUUID(mockId).getVehicle() instanceof PodEntity);
-		boolean containsMockPod = context.computeOnClient(client -> {
-			Entity pod = client.level.getPlayerByUUID(mockId).getVehicle();
-			return client.level.getEntity(pod.getId()) == pod;
-		});
-		require(containsMockPod, "The real client's level does not contain the mock's pod");
-	}
+    private static ServerPlayer realPlayer(MinecraftServer server, ServerPlayer mock) {
+        return server.getPlayerList().getPlayers().stream()
+                .filter(player -> player != mock)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the real client's player is not on the server"));
+    }
 
-	/**
-	 * Waits until the client's copy of the pod stands at {@code at}, the decay on it is {@code clear} (0) or not, the cells around it are the ones the server
-	 * carved, and the scanner has rescanned since: a rescan runs every {@link ScannerTuning#rescanTicks()} client ticks, so one full interval of game time
-	 * after the client saw the pod there covers it. The wait is on the client's view, not on server ticks: the client gets the pod's position some ticks after the
-	 * server sets it, and on a slow runner the gap is long.
-	 */
-	private static void awaitScannerAt(ClientGameTestContext context, int podId, Vec3 at, boolean clear) {
-		ClientWait.until(context, "the client's pod at " + at + (clear ? " clear of" : " in") + " the signal decay", client -> podAt(client, podId, at, clear),
-				client -> podState(client, podId));
-		long seen = context.computeOnClient(client -> client.level.getGameTime());
-		long rescanned = seen + 2L * ScannerTuning.DEFAULT.rescanTicks() + 2;
-		ClientWait.until(context, "the scanner to rescan with the pod at " + at, client -> client.level.getGameTime() >= rescanned && podAt(client, podId, at, clear),
-				client -> podState(client, podId) + ", game time " + client.level.getGameTime() + " of " + rescanned);
-	}
+    /** Waits until both of the original pods have ticked {@code ticks} times. */
+    private static void awaitPodTicks(ClientGameTestContext context, TwoPlayerServer two, Rig rig, int ticks) {
+        IntSupplier least = () ->
+                two.server().computeOnServer(server -> Math.min(rig.realPod().tickCount, rig.mockPod().tickCount));
+        ClientWait.until(
+                context,
+                "both pods ticked " + ticks + " times",
+                () -> least.getAsInt() >= ticks,
+                () -> "the least ticked pod at " + least.getAsInt());
+    }
 
-	private static boolean podAt(Minecraft client, int podId, Vec3 at, boolean clear) {
-		return client.level.getEntity(podId) instanceof PodEntity pod && pod.position().distanceToSqr(at) < 0.0625
-				&& client.player.getVehicle() == pod && (SignalDecay.intensity(pod) == 0) == clear
-				&& client.level.getBlockState(BlockPos.containing(at)).isAir();
-	}
+    /** Server and client agree: both pilots ride a pod in layer_2, the crust under both pods is gone, and the client has the mock's pod. */
+    private static void expectEndState(ClientGameTestContext context, TwoPlayerServer two, Rig rig, UUID mockId) {
+        Crossing end = two.server().computeOnServer(server -> crossing(server, two, rig));
+        require(
+                end.realInLayer2() && end.mockInLayer2() && end.bothRiding(),
+                "Each pod should end in layer_2 with its pilot riding: " + end);
+        two.server().runOnServer(server -> {
+            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            for (BlockPos column : Stream.concat(rig.realColumns().stream(), rig.mockColumns().stream())
+                    .toList()) {
+                for (int y = 0; y <= 2; y++) {
+                    require(
+                            !one.getBlockState(column.atY(y)).is(LayerBlocks.BREACH_CRUST),
+                            "The crust at " + column.atY(y) + " was not bored");
+                }
+            }
+        });
+        ClientWait.until(
+                context,
+                "both players riding pods in layer_2",
+                client -> client.level.dimension().equals(LayerChain.dimension(2))
+                        && client.player.getVehicle() instanceof PodEntity
+                        && client.level.getPlayerByUUID(mockId) != null
+                        && client.level.getPlayerByUUID(mockId).getVehicle() instanceof PodEntity);
+        boolean containsMockPod = context.computeOnClient(client -> {
+            Entity pod = client.level.getPlayerByUUID(mockId).getVehicle();
+            return client.level.getEntity(pod.getId()) == pod;
+        });
+        require(containsMockPod, "The real client's level does not contain the mock's pod");
+    }
 
-	private static String podState(Minecraft client, int podId) {
-		if (!(client.level.getEntity(podId) instanceof PodEntity pod)) {
-			return "no pod " + podId;
-		}
-		return "the client pod at " + pod.position() + ", decay intensity " + SignalDecay.intensity(pod) + ", ridden by the local player "
-				+ (client.player.getVehicle() == pod) + ", cell " + client.level.getBlockState(pod.blockPosition());
-	}
+    /**
+     * Waits until the client's copy of the pod stands at {@code at}, the decay on it is {@code clear} (0) or not, the cells around it are the ones the server
+     * carved, and the scanner has rescanned since: a rescan runs every {@link ScannerTuning#rescanTicks()} client ticks, so one full interval of game time
+     * after the client saw the pod there covers it. The wait is on the client's view, not on server ticks: the client gets the pod's position some ticks after the
+     * server sets it, and on a slow runner the gap is long.
+     */
+    private static void awaitScannerAt(ClientGameTestContext context, int podId, Vec3 at, boolean clear) {
+        ClientWait.until(
+                context,
+                "the client's pod at " + at + (clear ? " clear of" : " in") + " the signal decay",
+                client -> podAt(client, podId, at, clear),
+                client -> podState(client, podId));
+        long seen = context.computeOnClient(client -> client.level.getGameTime());
+        long rescanned = seen + 2L * ScannerTuning.DEFAULT.rescanTicks() + 2;
+        ClientWait.until(
+                context,
+                "the scanner to rescan with the pod at " + at,
+                client -> client.level.getGameTime() >= rescanned && podAt(client, podId, at, clear),
+                client -> podState(client, podId) + ", game time " + client.level.getGameTime() + " of " + rescanned);
+    }
 
-	/** The scanner is drawn while riding: its pod marker is in the middle of the pod's cells, whatever else is on screen. */
-	private static void expectScannerShowsPod(ClientGameTestContext context, String screenshotName) {
-		// A vanilla toast and a transmission are drawn over the top right of the screen, where the Ribbon hangs its scanner.
-		context.runOnClient(client -> {
-			client.gui.toastManager().clear();
-			TransmissionOverlay.reset();
-		});
-		ScannerHudTest.HudShot shot = ScannerHudTest.HudShot.take(context, screenshotName, ScannerHudTest.TIER_ONE);
-		int actual = shot.pixel(0, 0);
-		int expected = ScannerLook.current().podColor() & RGB;
-		String state = context.computeOnClient(client -> podState(client, client.player.getVehicle() == null ? -1 : client.player.getVehicle().getId()));
-		require(actual == expected, "%s: the scanner HUD should show the pod's marker %06X, the pixel is %06X (%s; %s)"
-					.formatted(screenshotName, expected, actual, state, shot.describePixel(0, 0)));
-	}
+    private static boolean podAt(Minecraft client, int podId, Vec3 at, boolean clear) {
+        return client.level.getEntity(podId) instanceof PodEntity pod
+                && pod.position().distanceToSqr(at) < 0.0625
+                && client.player.getVehicle() == pod
+                && (SignalDecay.intensity(pod) == 0) == clear
+                && client.level.getBlockState(BlockPos.containing(at)).isAir();
+    }
 
-	private static void box(ServerLevel level, int yFrom, int yTo, Block block) {
-		for (int x = X - ROOM_WEST; x <= X + ROOM_EAST; x++) {
-			for (int y = yFrom; y <= yTo; y++) {
-				for (int z = Z - ROOM_RADIUS_Z; z <= Z + ROOM_RADIUS_Z; z++) {
-					level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), 3);
-				}
-			}
-		}
-	}
+    private static String podState(Minecraft client, int podId) {
+        if (!(client.level.getEntity(podId) instanceof PodEntity pod)) {
+            return "no pod " + podId;
+        }
+        return "the client pod at " + pod.position() + ", decay intensity " + SignalDecay.intensity(pod)
+                + ", ridden by the local player " + (client.player.getVehicle() == pod) + ", cell "
+                + client.level.getBlockState(pod.blockPosition());
+    }
 
-	/**
-	 * One block of stone around and over the room. Worldgen puts lava in the rock here, and lava next to a room flows in.
-	 * Placed with no neighbour updates (flag 2), so nothing wakes the lava outside it.
-	 */
-	private static void shell(ServerLevel level) {
-		for (int x = X - ROOM_WEST - 1; x <= X + ROOM_EAST + 1; x++) {
-			for (int y = STONE_ROW_Y; y <= FLOOR_Y + 10; y++) {
-				for (int z = Z - ROOM_RADIUS_Z - 1; z <= Z + ROOM_RADIUS_Z + 1; z++) {
-					level.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), 2);
-				}
-			}
-		}
-	}
+    /** The scanner is drawn while riding: its pod marker is in the middle of the pod's cells, whatever else is on screen. */
+    private static void expectScannerShowsPod(ClientGameTestContext context, String screenshotName) {
+        // A vanilla toast and a transmission are drawn over the top right of the screen, where the Ribbon hangs its
+        // scanner.
+        context.runOnClient(client -> {
+            client.gui.toastManager().clear();
+            TransmissionOverlay.reset();
+        });
+        ScannerHudTest.HudShot shot = ScannerHudTest.HudShot.take(context, screenshotName, ScannerHudTest.TIER_ONE);
+        int actual = shot.pixel(0, 0);
+        int expected = ScannerLook.current().podColor() & RGB;
+        String state = context.computeOnClient(client -> podState(
+                client,
+                client.player.getVehicle() == null
+                        ? -1
+                        : client.player.getVehicle().getId()));
+        require(
+                actual == expected,
+                "%s: the scanner HUD should show the pod's marker %06X, the pixel is %06X (%s; %s)"
+                        .formatted(screenshotName, expected, actual, state, shot.describePixel(0, 0)));
+    }
 
-	/** Lamps along both walls, for the recording. */
-	private static void lamps(ServerLevel level) {
-		for (int x = X - 3; x <= X + 11; x += 4) {
-			level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z + 4), Blocks.GLOWSTONE.defaultBlockState(), 3);
-			level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z - 4), Blocks.GLOWSTONE.defaultBlockState(), 3);
-		}
-	}
+    private static void box(ServerLevel level, int yFrom, int yTo, Block block) {
+        for (int x = X - ROOM_WEST; x <= X + ROOM_EAST; x++) {
+            for (int y = yFrom; y <= yTo; y++) {
+                for (int z = Z - ROOM_RADIUS_Z; z <= Z + ROOM_RADIUS_Z; z++) {
+                    level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), 3);
+                }
+            }
+        }
+    }
+
+    /**
+     * One block of stone around and over the room. Worldgen puts lava in the rock here, and lava next to a room flows in.
+     * Placed with no neighbour updates (flag 2), so nothing wakes the lava outside it.
+     */
+    private static void shell(ServerLevel level) {
+        for (int x = X - ROOM_WEST - 1; x <= X + ROOM_EAST + 1; x++) {
+            for (int y = STONE_ROW_Y; y <= FLOOR_Y + 10; y++) {
+                for (int z = Z - ROOM_RADIUS_Z - 1; z <= Z + ROOM_RADIUS_Z + 1; z++) {
+                    level.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), 2);
+                }
+            }
+        }
+    }
+
+    /** Lamps along both walls, for the recording. */
+    private static void lamps(ServerLevel level) {
+        for (int x = X - 3; x <= X + 11; x += 4) {
+            level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z + 4), Blocks.GLOWSTONE.defaultBlockState(), 3);
+            level.setBlock(new BlockPos(x, FLOOR_Y + 3, Z - 4), Blocks.GLOWSTONE.defaultBlockState(), 3);
+        }
+    }
 }

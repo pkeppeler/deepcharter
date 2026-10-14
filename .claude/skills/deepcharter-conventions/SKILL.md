@@ -16,6 +16,7 @@ Code lives under `io.github.pkeppeler.deepcharter`. Detail beyond this file:
 
 - Build, with the server GameTest and all gates: `./gradlew build`
 - `just check` (`./gradlew check`, a subset of `./gradlew build`); `just audit` (osv-scanner; needs it on PATH). `audit.yml` runs it weekly and on PRs touching dependency files; a lapsed `ignoreUntil` or a new advisory fails the weekly run.
+- Formatting: palantir-java-format via Spotless owns all Java formatting (4-space indent, 120 columns); `spotlessCheck` is part of `check`. Run `just fmt` (`./gradlew spotlessApply`) before handing work back. The Kotlin DSL files stay tab-indented and unformatted.
 - Fast test command (server GameTests): `./gradlew runGameTest`
 - One server GameTest, or a prefix: `tools/gametest.sh '<test_id or prefix*>'`
 - Server suite in reverse name order (leak check): `./gradlew runGameTest -PgametestOrder=reverse`

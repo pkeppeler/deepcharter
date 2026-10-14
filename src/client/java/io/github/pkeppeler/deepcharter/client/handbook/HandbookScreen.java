@@ -1,5 +1,12 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
+import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.theme.Colors;
+import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
+import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
+import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
+import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
+import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -9,9 +16,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -24,14 +29,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 
-import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
-import io.github.pkeppeler.deepcharter.client.theme.Colors;
-import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
-import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
-import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
-import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
-import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
-
 /**
  * The Employee Handbook: a paper booklet, with a Handbook tab (cover, issue slip, Founder's letter, contents, the chapters and the
  * end page) and a Notes tab. All text is the vanilla italic font in coloured ink.
@@ -42,650 +39,873 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
  * marked; opening a Note shows its text and reports it the same way, once, if it is not read yet.
  */
 public class HandbookScreen extends Screen {
-	/** The sheet is wide enough for a margin column from this width on. */
-	private static final int MARGIN_MIN_PAPER_WIDTH = 220;
+    /** The sheet is wide enough for a margin column from this width on. */
+    private static final int MARGIN_MIN_PAPER_WIDTH = 220;
 
+    /** The look in force: read at each use, never kept, so a resource reload restyles an open screen. */
+    private static HandbookScreenTuning tuning() {
+        return HandbookScreenTuning.current();
+    }
 
-	/** The look in force: read at each use, never kept, so a resource reload restyles an open screen. */
-	private static HandbookScreenTuning tuning() {
-		return HandbookScreenTuning.current();
-	}
+    /** One line of the Notes list: the box it fills, and the Note a click on it opens. */
+    public record NoteRow(Identifier note, int left, int top, int right, int bottom) {
+        boolean contains(double x, double y) {
+            return x >= left && x < right && y >= top && y < bottom;
+        }
+    }
 
-	/** One line of the Notes list: the box it fills, and the Note a click on it opens. */
-	public record NoteRow(Identifier note, int left, int top, int right, int bottom) {
-		boolean contains(double x, double y) {
-			return x >= left && x < right && y >= top && y < bottom;
-		}
-	}
+    /** One line of a contents page: the box it fills, and the page a click on it goes to. */
+    public record ContentsEntry(int page, int left, int top, int right, int bottom) {
+        boolean contains(double x, double y) {
+            return x >= left && x < right && y >= top && y < bottom;
+        }
+    }
 
-	/** One line of a contents page: the box it fills, and the page a click on it goes to. */
-	public record ContentsEntry(int page, int left, int top, int right, int bottom) {
-		boolean contains(double x, double y) {
-			return x >= left && x < right && y >= top && y < bottom;
-		}
-	}
+    private final List<HandbookPage> pages;
+    /** The index in {@link #pages} of the first page of each chapter, by chapter number. */
+    private final Map<Integer, Integer> chapterPages;
+    /** The page of directives of each chapter, by chapter number. */
+    private final Map<Integer, HandbookPage.Chapter> chapters;
 
-	private final List<HandbookPage> pages;
-	/** The index in {@link #pages} of the first page of each chapter, by chapter number. */
-	private final Map<Integer, Integer> chapterPages;
-	/** The page of directives of each chapter, by chapter number. */
-	private final Map<Integer, HandbookPage.Chapter> chapters;
-	private final Predicate<Identifier> isRead;
-	private final Consumer<Identifier> onViewed;
-	private final List<HandbookNote> notes;
-	private final Set<Identifier> reported = new HashSet<>();
+    private final Predicate<Identifier> isRead;
+    private final Consumer<Identifier> onViewed;
+    private final List<HandbookNote> notes;
+    private final Set<Identifier> reported = new HashSet<>();
 
-	private int page;
-	private int previousPage;
-	private int flipTicks;
-	private boolean notesTab;
-	private Identifier openNote;
-	private final ScrollList noteScroll = new ScrollList(this::noteCount, () -> Math.max(1, noteRows().size()), () -> { });
-	/** The sheet of the open Note being read, from 0: a Note longer than one sheet runs on to the next. */
-	private int notePage;
+    private int page;
+    private int previousPage;
+    private int flipTicks;
+    private boolean notesTab;
+    private Identifier openNote;
+    private final ScrollList noteScroll =
+            new ScrollList(this::noteCount, () -> Math.max(1, noteRows().size()), () -> {});
+    /** The sheet of the open Note being read, from 0: a Note longer than one sheet runs on to the next. */
+    private int notePage;
 
-	private int paperLeft;
-	private int paperTop;
-	private int paperWidth;
-	private int paperHeight;
-	private int textLeft;
-	private int textWidth;
-	private int marginLeft;
-	private int marginWidth;
-	private PaperButton back;
-	private PaperButton next;
-	private PaperButton handbookTab;
-	private PaperButton notesButton;
-	private PaperButton noteBack;
+    private int paperLeft;
+    private int paperTop;
+    private int paperWidth;
+    private int paperHeight;
+    private int textLeft;
+    private int textWidth;
+    private int marginLeft;
+    private int marginWidth;
+    private PaperButton back;
+    private PaperButton next;
+    private PaperButton handbookTab;
+    private PaperButton notesButton;
+    private PaperButton noteBack;
 
-	/**
-	 * @param pages    the pages of the Handbook tab, from {@link HandbookPages#of}
-	 * @param isRead   whether the player has already read an entry: a chapter or a Note
-	 * @param onViewed told the id of a chapter or Note the player has just opened, once, if it is not read yet
-	 * @param notes    what the Notes tab lists; empty shows its empty state
-	 */
-	public HandbookScreen(List<HandbookPage> pages, Predicate<Identifier> isRead, Consumer<Identifier> onViewed, List<HandbookNote> notes) {
-		super(Component.translatable("deepcharter.handbook.screen.title"));
-		if (pages.isEmpty()) {
-			throw new IllegalArgumentException("the handbook needs at least one page");
-		}
-		this.pages = List.copyOf(pages);
-		Map<Integer, Integer> firstPages = new HashMap<>();
-		Map<Integer, HandbookPage.Chapter> byNumber = new HashMap<>();
-		for (int index = 0; index < this.pages.size(); index++) {
-			switch (this.pages.get(index)) {
-				case HandbookPage.ChapterText text -> firstPages.putIfAbsent(text.number(), index);
-				case HandbookPage.Chapter chapter -> {
-					firstPages.putIfAbsent(chapter.number(), index);
-					byNumber.put(chapter.number(), chapter);
-				}
-				default -> {
-				}
-			}
-		}
-		this.chapterPages = Map.copyOf(firstPages);
-		this.chapters = Map.copyOf(byNumber);
-		this.isRead = isRead;
-		this.onViewed = onViewed;
-		this.notes = List.copyOf(notes);
-	}
+    /**
+     * @param pages    the pages of the Handbook tab, from {@link HandbookPages#of}
+     * @param isRead   whether the player has already read an entry: a chapter or a Note
+     * @param onViewed told the id of a chapter or Note the player has just opened, once, if it is not read yet
+     * @param notes    what the Notes tab lists; empty shows its empty state
+     */
+    public HandbookScreen(
+            List<HandbookPage> pages,
+            Predicate<Identifier> isRead,
+            Consumer<Identifier> onViewed,
+            List<HandbookNote> notes) {
+        super(Component.translatable("deepcharter.handbook.screen.title"));
+        if (pages.isEmpty()) {
+            throw new IllegalArgumentException("the handbook needs at least one page");
+        }
+        this.pages = List.copyOf(pages);
+        Map<Integer, Integer> firstPages = new HashMap<>();
+        Map<Integer, HandbookPage.Chapter> byNumber = new HashMap<>();
+        for (int index = 0; index < this.pages.size(); index++) {
+            switch (this.pages.get(index)) {
+                case HandbookPage.ChapterText text -> firstPages.putIfAbsent(text.number(), index);
+                case HandbookPage.Chapter chapter -> {
+                    firstPages.putIfAbsent(chapter.number(), index);
+                    byNumber.put(chapter.number(), chapter);
+                }
+                default -> {}
+            }
+        }
+        this.chapterPages = Map.copyOf(firstPages);
+        this.chapters = Map.copyOf(byNumber);
+        this.isRead = isRead;
+        this.onViewed = onViewed;
+        this.notes = List.copyOf(notes);
+    }
 
-	/** Opens the handbook with the chapters the server synced and the progress it last sent. Marks a viewed chapter read on the server. */
-	public static void open(Minecraft client) {
-		if (client.player == null || client.getConnection() == null) {
-			return;
-		}
-		client.gui.setScreen(new HandbookScreen(currentPages(client), ClientReadMarks::isRead,
-				entry -> ClientPlayNetworking.send(new HandbookReadPayload(entry)), ClientNotes.entries()));
-	}
+    /** Opens the handbook with the chapters the server synced and the progress it last sent. Marks a viewed chapter read on the server. */
+    public static void open(Minecraft client) {
+        if (client.player == null || client.getConnection() == null) {
+            return;
+        }
+        client.gui.setScreen(new HandbookScreen(
+                currentPages(client),
+                ClientReadMarks::isRead,
+                entry -> ClientPlayNetworking.send(new HandbookReadPayload(entry)),
+                ClientNotes.entries()));
+    }
 
-	/** The pages of the Handbook tab, from the chapters and progress the server synced. */
-	public static List<HandbookPage> currentPages(Minecraft client) {
-		Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
-		HandbookChapters.all(client.getConnection().registryAccess()).forEach(chapter -> chapters.put(chapter.key().identifier(), chapter.value()));
-		return HandbookPages.of(chapters, ClientHandbook.completed());
-	}
+    /** The pages of the Handbook tab, from the chapters and progress the server synced. */
+    public static List<HandbookPage> currentPages(Minecraft client) {
+        Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
+        HandbookChapters.all(client.getConnection().registryAccess())
+                .forEach(chapter -> chapters.put(chapter.key().identifier(), chapter.value()));
+        return HandbookPages.of(chapters, ClientHandbook.completed());
+    }
 
-	/**
-	 * The lang key of the margin note of a chapter: {@code deepcharter.handbook.chapter.<namespace>.<path>.margin}, with each
-	 * {@code /} of the path turned into a dot, so that two namespaces never share a note.
-	 */
-	public static String marginKey(Identifier chapter) {
-		return chapterKey(chapter) + ".margin";
-	}
+    /**
+     * The lang key of the margin note of a chapter: {@code deepcharter.handbook.chapter.<namespace>.<path>.margin}, with each
+     * {@code /} of the path turned into a dot, so that two namespaces never share a note.
+     */
+    public static String marginKey(Identifier chapter) {
+        return chapterKey(chapter) + ".margin";
+    }
 
-	/** The lang key of page {@code part} (from 1) of the text of a chapter: the chapter's key, then {@code .text.<part>}. */
-	public static String textKey(Identifier chapter, int part) {
-		return chapterKey(chapter) + ".text." + part;
-	}
+    /** The lang key of page {@code part} (from 1) of the text of a chapter: the chapter's key, then {@code .text.<part>}. */
+    public static String textKey(Identifier chapter, int part) {
+        return chapterKey(chapter) + ".text." + part;
+    }
 
-	/** The lang key of the margin note beside page {@code part} of the text of a chapter. */
-	public static String textMarginKey(Identifier chapter, int part) {
-		return textKey(chapter, part) + ".margin";
-	}
+    /** The lang key of the margin note beside page {@code part} of the text of a chapter. */
+    public static String textMarginKey(Identifier chapter, int part) {
+        return textKey(chapter, part) + ".margin";
+    }
 
-	/** The lang key of page {@code part} (from 1) of Appendix A. Its clauses are separated by a newline. */
-	public static String contractKey(int part) {
-		return "deepcharter.handbook.appendix.page." + part;
-	}
+    /** The lang key of page {@code part} (from 1) of Appendix A. Its clauses are separated by a newline. */
+    public static String contractKey(int part) {
+        return "deepcharter.handbook.appendix.page." + part;
+    }
 
-	private static String chapterKey(Identifier chapter) {
-		return "deepcharter.handbook.chapter." + chapter.getNamespace() + "." + chapter.getPath().replace('/', '.');
-	}
+    private static String chapterKey(Identifier chapter) {
+        return "deepcharter.handbook.chapter." + chapter.getNamespace() + "."
+                + chapter.getPath().replace('/', '.');
+    }
 
-	// test-seam: the page in view is navigation state that reaches the player only as a flipping sheet (the counter shows the page being left until the flip ends), and goTo's clamping at the cover and the end is what tests pin
-	public int page() {
-		return page;
-	}
+    // test-seam: the page in view is navigation state that reaches the player only as a flipping sheet (the counter
+    // shows the page being left until the flip ends), and goTo's clamping at the cover and the end is what tests pin
+    public int page() {
+        return page;
+    }
 
-	/** Flips to page {@code index}, stopping at the cover and the end page. */
-	public void goTo(int index) {
-		int target = Mth.clamp(index, 0, pages.size() - 1);
-		if (target == page) {
-			return;
-		}
-		previousPage = page;
-		page = target;
-		flipTicks = tuning().flipTicks();
-		Identifier viewed = switch (pages.get(page)) {
-			case HandbookPage.Chapter chapter when chapter.visibility() == HandbookVisibility.FULL -> chapter.id();
-			case HandbookPage.ChapterText text -> text.id();
-			default -> null;
-		};
-		if (viewed != null && !isRead.test(viewed) && reported.add(viewed)) {
-			onViewed.accept(viewed);
-		}
-		updateButtons();
-	}
+    /** Flips to page {@code index}, stopping at the cover and the end page. */
+    public void goTo(int index) {
+        int target = Mth.clamp(index, 0, pages.size() - 1);
+        if (target == page) {
+            return;
+        }
+        previousPage = page;
+        page = target;
+        flipTicks = tuning().flipTicks();
+        Identifier viewed = switch (pages.get(page)) {
+            case HandbookPage.Chapter chapter when chapter.visibility() == HandbookVisibility.FULL -> chapter.id();
+            case HandbookPage.ChapterText text -> text.id();
+            default -> null;
+        };
+        if (viewed != null && !isRead.test(viewed) && reported.add(viewed)) {
+            onViewed.accept(viewed);
+        }
+        updateButtons();
+    }
 
-	public void showNotes() {
-		notesTab = true;
-		openNote = null;
-		updateButtons();
-	}
+    public void showNotes() {
+        notesTab = true;
+        openNote = null;
+        updateButtons();
+    }
 
-	public void showHandbook() {
-		notesTab = false;
-		updateButtons();
-	}
+    public void showHandbook() {
+        notesTab = false;
+        updateButtons();
+    }
 
-	/** Whether the player has yet to read {@code note}, which the Notes list marks. */
-	public boolean noteUnread(Identifier note) {
-		return !isRead.test(note);
-	}
+    /** Whether the player has yet to read {@code note}, which the Notes list marks. */
+    public boolean noteUnread(Identifier note) {
+        return !isRead.test(note);
+    }
 
-	/** Opens {@code note} on the Notes tab. Reports it as viewed the first time, if it is not read yet. An id the tab does not list is ignored. */
-	public void openNote(Identifier note) {
-		if (notes.stream().noneMatch(entry -> entry.id().equals(note))) {
-			return;
-		}
-		notesTab = true;
-		openNote = note;
-		notePage = 0;
-		if (noteUnread(note) && reported.add(note)) {
-			onViewed.accept(note);
-		}
-		updateButtons();
-	}
+    /** Opens {@code note} on the Notes tab. Reports it as viewed the first time, if it is not read yet. An id the tab does not list is ignored. */
+    public void openNote(Identifier note) {
+        if (notes.stream().noneMatch(entry -> entry.id().equals(note))) {
+            return;
+        }
+        notesTab = true;
+        openNote = note;
+        notePage = 0;
+        if (noteUnread(note) && reported.add(note)) {
+            onViewed.accept(note);
+        }
+        updateButtons();
+    }
 
-	/** Back from a Note to the list. */
-	public void closeNote() {
-		openNote = null;
-		updateButtons();
-	}
+    /** Back from a Note to the list. */
+    public void closeNote() {
+        openNote = null;
+        updateButtons();
+    }
 
-	/**
-	 * The rows of the Notes list that fit on the sheet from the scroll position, top to bottom. Needs the screen to be initialised.
-	 * The same boxes are drawn and are the click targets.
-	 */
-	public List<NoteRow> noteRows() {
-		List<NoteRow> rows = new ArrayList<>();
-		int y = notesTop();
-		for (int index = noteScroll.first(); index < notes.size() && y + font.lineHeight + 2 <= bottom(); index++) {
-			rows.add(new NoteRow(notes.get(index).id(), textLeft, y - 1, textLeft + textWidth, y + font.lineHeight + 2));
-			y += font.lineHeight + 4;
-		}
-		return rows;
-	}
+    /**
+     * The rows of the Notes list that fit on the sheet from the scroll position, top to bottom. Needs the screen to be initialised.
+     * The same boxes are drawn and are the click targets.
+     */
+    public List<NoteRow> noteRows() {
+        List<NoteRow> rows = new ArrayList<>();
+        int y = notesTop();
+        for (int index = noteScroll.first(); index < notes.size() && y + font.lineHeight + 2 <= bottom(); index++) {
+            rows.add(
+                    new NoteRow(notes.get(index).id(), textLeft, y - 1, textLeft + textWidth, y + font.lineHeight + 2));
+            y += font.lineHeight + 4;
+        }
+        return rows;
+    }
 
-	private int noteCount() {
-		return notes.size();
-	}
+    private int noteCount() {
+        return notes.size();
+    }
 
-	private int notesTop() {
-		return paperTop + tuning().topMargin() + Math.round(font.lineHeight * 1.25f) + 2 + tuning().paragraphGap();
-	}
+    private int notesTop() {
+        return paperTop + tuning().topMargin() + Math.round(font.lineHeight * 1.25f) + 2 + tuning().paragraphGap();
+    }
 
-	private static String label(HandbookNote note) {
-		return String.format("N%02d", note.number());
-	}
+    private static String label(HandbookNote note) {
+        return String.format("N%02d", note.number());
+    }
 
-	private HandbookNote note(Identifier id) {
-		return notes.stream().filter(entry -> entry.id().equals(id)).findFirst().orElseThrow();
-	}
+    private HandbookNote note(Identifier id) {
+        return notes.stream().filter(entry -> entry.id().equals(id)).findFirst().orElseThrow();
+    }
 
-	@Override
-	protected void init() {
-		paperWidth = Math.min(tuning().paperWidth(), width - 12);
-		paperHeight = Mth.clamp(height - tuning().tabHeight() - 16, 100, tuning().paperMaxHeight());
-		paperLeft = (width - paperWidth) / 2;
-		paperTop = (height - paperHeight + tuning().tabHeight()) / 2;
-		textLeft = paperLeft + tuning().bindingWidth() + tuning().padding();
-		boolean hasMargin = paperWidth >= MARGIN_MIN_PAPER_WIDTH;
-		marginWidth = hasMargin ? tuning().marginWidth() : 0;
-		int textRight = paperLeft + paperWidth - tuning().padding() - (hasMargin ? marginWidth + tuning().marginGap() : 0);
-		textWidth = textRight - textLeft;
-		marginLeft = textRight + tuning().marginGap();
+    @Override
+    protected void init() {
+        paperWidth = Math.min(tuning().paperWidth(), width - 12);
+        paperHeight = Mth.clamp(height - tuning().tabHeight() - 16, 100, tuning().paperMaxHeight());
+        paperLeft = (width - paperWidth) / 2;
+        paperTop = (height - paperHeight + tuning().tabHeight()) / 2;
+        textLeft = paperLeft + tuning().bindingWidth() + tuning().padding();
+        boolean hasMargin = paperWidth >= MARGIN_MIN_PAPER_WIDTH;
+        marginWidth = hasMargin ? tuning().marginWidth() : 0;
+        int textRight =
+                paperLeft + paperWidth - tuning().padding() - (hasMargin ? marginWidth + tuning().marginGap() : 0);
+        textWidth = textRight - textLeft;
+        marginLeft = textRight + tuning().marginGap();
 
-		int tabY = paperTop - tuning().tabHeight() + 1;
-		int tabX = paperLeft + tuning().bindingWidth() + 4;
-		handbookTab = addRenderableWidget(new PaperButton(tabX, tabY, tuning().tabWidth(), tuning().tabHeight(),
-				Component.translatable("deepcharter.handbook.screen.tab.handbook"), button -> showHandbook()));
-		notesButton = addRenderableWidget(new PaperButton(tabX + tuning().tabWidth() + 2, tabY, tuning().tabWidth(), tuning().tabHeight(),
-				Component.translatable("deepcharter.handbook.screen.tab.notes"), button -> showNotes()));
-		int buttonY = paperTop + paperHeight - tuning().buttonHeight() - 4;
-		noteBack = addRenderableWidget(new PaperButton(textLeft, buttonY, tuning().buttonWidth(), tuning().buttonHeight(),
-				Component.translatable("deepcharter.handbook.notes.back"), button -> closeNote()));
-		back = addRenderableWidget(new PaperButton(textLeft, buttonY, tuning().buttonWidth(), tuning().buttonHeight(),
-				Component.translatable("deepcharter.handbook.screen.back"), button -> goTo(page - 1)));
-		next = addRenderableWidget(new PaperButton(paperLeft + paperWidth - tuning().padding() - tuning().buttonWidth(), buttonY, tuning().buttonWidth(), tuning().buttonHeight(),
-				Component.translatable("deepcharter.handbook.screen.next"), button -> pressNext()));
-		// A resize can change how many sheets a Note takes, so the sheet that was on screen may be gone.
-		if (openNote != null) {
-			notePage = Mth.clamp(notePage, 0, noteSheets() - 1);
-		}
-		updateButtons();
-	}
+        int tabY = paperTop - tuning().tabHeight() + 1;
+        int tabX = paperLeft + tuning().bindingWidth() + 4;
+        handbookTab = addRenderableWidget(new PaperButton(
+                tabX,
+                tabY,
+                tuning().tabWidth(),
+                tuning().tabHeight(),
+                Component.translatable("deepcharter.handbook.screen.tab.handbook"),
+                button -> showHandbook()));
+        notesButton = addRenderableWidget(new PaperButton(
+                tabX + tuning().tabWidth() + 2,
+                tabY,
+                tuning().tabWidth(),
+                tuning().tabHeight(),
+                Component.translatable("deepcharter.handbook.screen.tab.notes"),
+                button -> showNotes()));
+        int buttonY = paperTop + paperHeight - tuning().buttonHeight() - 4;
+        noteBack = addRenderableWidget(new PaperButton(
+                textLeft,
+                buttonY,
+                tuning().buttonWidth(),
+                tuning().buttonHeight(),
+                Component.translatable("deepcharter.handbook.notes.back"),
+                button -> closeNote()));
+        back = addRenderableWidget(new PaperButton(
+                textLeft,
+                buttonY,
+                tuning().buttonWidth(),
+                tuning().buttonHeight(),
+                Component.translatable("deepcharter.handbook.screen.back"),
+                button -> goTo(page - 1)));
+        next = addRenderableWidget(new PaperButton(
+                paperLeft + paperWidth - tuning().padding() - tuning().buttonWidth(),
+                buttonY,
+                tuning().buttonWidth(),
+                tuning().buttonHeight(),
+                Component.translatable("deepcharter.handbook.screen.next"),
+                button -> pressNext()));
+        // A resize can change how many sheets a Note takes, so the sheet that was on screen may be gone.
+        if (openNote != null) {
+            notePage = Mth.clamp(notePage, 0, noteSheets() - 1);
+        }
+        updateButtons();
+    }
 
-	/** The next button turns a page of the handbook, or a sheet of an open Note, and from the last sheet of a Note goes back to its first. */
-	private void pressNext() {
-		if (notesTab) {
-			turnNote((notePage + 1) % notePages(note(openNote)));
-		} else {
-			goTo(page + 1);
-		}
-	}
+    /** The next button turns a page of the handbook, or a sheet of an open Note, and from the last sheet of a Note goes back to its first. */
+    private void pressNext() {
+        if (notesTab) {
+            turnNote((notePage + 1) % notePages(note(openNote)));
+        } else {
+            goTo(page + 1);
+        }
+    }
 
-	/** How many sheets the open Note takes, or 0 while no Note is open. */
-	public int noteSheets() {
-		return openNote == null ? 0 : notePages(note(openNote));
-	}
+    /** How many sheets the open Note takes, or 0 while no Note is open. */
+    public int noteSheets() {
+        return openNote == null ? 0 : notePages(note(openNote));
+    }
 
-	/** Turns the open Note to sheet {@code sheet}, from 0, stopping at its first and last sheet. Does nothing while no Note is open. */
-	public void turnNote(int sheet) {
-		if (openNote == null) {
-			return;
-		}
-		notePage = Mth.clamp(sheet, 0, noteSheets() - 1);
-		updateButtons();
-	}
+    /** Turns the open Note to sheet {@code sheet}, from 0, stopping at its first and last sheet. Does nothing while no Note is open. */
+    public void turnNote(int sheet) {
+        if (openNote == null) {
+            return;
+        }
+        notePage = Mth.clamp(sheet, 0, noteSheets() - 1);
+        updateButtons();
+    }
 
-	private void updateButtons() {
-		if (back == null) {
-			return;
-		}
-		back.visible = !notesTab;
-		next.visible = !notesTab || (openNote != null && notePages(note(openNote)) > 1);
-		back.active = !notesTab && page > 0;
-		next.active = notesTab || page < pages.size() - 1;
-		noteBack.visible = notesTab && openNote != null;
-		handbookTab.setSelected(!notesTab);
-		notesButton.setSelected(notesTab);
-	}
+    private void updateButtons() {
+        if (back == null) {
+            return;
+        }
+        back.visible = !notesTab;
+        next.visible = !notesTab || (openNote != null && notePages(note(openNote)) > 1);
+        back.active = !notesTab && page > 0;
+        next.active = notesTab || page < pages.size() - 1;
+        noteBack.visible = notesTab && openNote != null;
+        handbookTab.setSelected(!notesTab);
+        notesButton.setSelected(notesTab);
+    }
 
-	@Override
-	public void tick() {
-		super.tick();
-		if (flipTicks > 0) {
-			flipTicks--;
-		}
-	}
+    @Override
+    public void tick() {
+        super.tick();
+        if (flipTicks > 0) {
+            flipTicks--;
+        }
+    }
 
-	@Override
-	public boolean isPauseScreen() {
-		return false;
-	}
+    @Override
+    public boolean isPauseScreen() {
+        return false;
+    }
 
-	@Override
-	public boolean keyPressed(KeyEvent event) {
-		if (HandbookKeys.OPEN.matches(event)) {
-			onClose();
-			return true;
-		}
-		if (!notesTab && event.isLeft()) {
-			goTo(page - 1);
-			return true;
-		}
-		if (!notesTab && event.isRight()) {
-			goTo(page + 1);
-			return true;
-		}
-		if (notesTab && openNote != null && event.isLeft()) {
-			turnNote(Math.max(0, notePage - 1));
-			return true;
-		}
-		if (notesTab && openNote != null && event.isRight()) {
-			turnNote(Math.min(notePages(note(openNote)) - 1, notePage + 1));
-			return true;
-		}
-		return super.keyPressed(event);
-	}
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (HandbookKeys.OPEN.matches(event)) {
+            onClose();
+            return true;
+        }
+        if (!notesTab && event.isLeft()) {
+            goTo(page - 1);
+            return true;
+        }
+        if (!notesTab && event.isRight()) {
+            goTo(page + 1);
+            return true;
+        }
+        if (notesTab && openNote != null && event.isLeft()) {
+            turnNote(Math.max(0, notePage - 1));
+            return true;
+        }
+        if (notesTab && openNote != null && event.isRight()) {
+            turnNote(Math.min(notePages(note(openNote)) - 1, notePage + 1));
+            return true;
+        }
+        return super.keyPressed(event);
+    }
 
-	@Override
-	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-		if (super.mouseClicked(event, doubleClick)) {
-			return true;
-		}
-		if (notesTab && openNote == null) {
-			for (NoteRow row : noteRows()) {
-				if (row.contains(event.x(), event.y())) {
-					openNote(row.note());
-					return true;
-				}
-			}
-		}
-		if (flipTicks == 0 && !notesTab) {
-			if (pages.get(page) instanceof HandbookPage.Contents contents) {
-				for (ContentsEntry entry : contentsEntries(contents)) {
-					if (entry.contains(event.x(), event.y())) {
-						goTo(entry.page());
-						return true;
-					}
-				}
-			}
-		}
-		return false;
-	}
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (super.mouseClicked(event, doubleClick)) {
+            return true;
+        }
+        if (notesTab && openNote == null) {
+            for (NoteRow row : noteRows()) {
+                if (row.contains(event.x(), event.y())) {
+                    openNote(row.note());
+                    return true;
+                }
+            }
+        }
+        if (flipTicks == 0 && !notesTab) {
+            if (pages.get(page) instanceof HandbookPage.Contents contents) {
+                for (ContentsEntry entry : contentsEntries(contents)) {
+                    if (entry.contains(event.x(), event.y())) {
+                        goTo(entry.page());
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
 
-	@Override
-	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-		if (notesTab && openNote == null && scrollY != 0) {
-			return noteScroll.mouseScrolled(scrollY);
-		}
-		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
-	}
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (notesTab && openNote == null && scrollY != 0) {
+            return noteScroll.mouseScrolled(scrollY);
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
 
-	@Override
-	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-		int shown = page;
-		float squeeze = 1;
-		if (flipTicks > 0 && !notesTab) {
-			float progress = Mth.clamp(1 - (flipTicks - partialTick) / tuning().flipTicks(), 0, 1);
-			shown = progress < 0.5f ? previousPage : page;
-			squeeze = Math.max(0.03f, progress < 0.5f ? 1 - 2 * progress : 2 * progress - 1);
-		}
-		graphics.pose().pushMatrix();
-		graphics.pose().translate(paperLeft, 0);
-		graphics.pose().scale(squeeze, 1);
-		graphics.pose().translate(-paperLeft, 0);
-		PaperDraw.sheet(graphics, paperLeft, paperTop, paperWidth, paperHeight);
-		if (notesTab) {
-			drawNotes(graphics);
-		} else {
-			drawPage(graphics, pages.get(shown));
-			graphics.centeredText(font, PaperDraw.ink(Component.translatable("deepcharter.handbook.screen.page", shown + 1, pages.size()), tuning().faintInkColor()),
-					(next.getX() + back.getRight()) / 2, back.getY() + 3, Colors.opaque(tuning().faintInkColor()));
-		}
-		graphics.pose().popMatrix();
-		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-	}
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        int shown = page;
+        float squeeze = 1;
+        if (flipTicks > 0 && !notesTab) {
+            float progress = Mth.clamp(1 - (flipTicks - partialTick) / tuning().flipTicks(), 0, 1);
+            shown = progress < 0.5f ? previousPage : page;
+            squeeze = Math.max(0.03f, progress < 0.5f ? 1 - 2 * progress : 2 * progress - 1);
+        }
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(paperLeft, 0);
+        graphics.pose().scale(squeeze, 1);
+        graphics.pose().translate(-paperLeft, 0);
+        PaperDraw.sheet(graphics, paperLeft, paperTop, paperWidth, paperHeight);
+        if (notesTab) {
+            drawNotes(graphics);
+        } else {
+            drawPage(graphics, pages.get(shown));
+            graphics.centeredText(
+                    font,
+                    PaperDraw.ink(
+                            Component.translatable("deepcharter.handbook.screen.page", shown + 1, pages.size()),
+                            tuning().faintInkColor()),
+                    (next.getX() + back.getRight()) / 2,
+                    back.getY() + 3,
+                    Colors.opaque(tuning().faintInkColor()));
+        }
+        graphics.pose().popMatrix();
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    }
 
-	private void drawPage(GuiGraphicsExtractor graphics, HandbookPage content) {
-		switch (content) {
-			case HandbookPage.Cover cover -> drawCover(graphics);
-			case HandbookPage.Slip slip -> drawSlip(graphics);
-			case HandbookPage.Letter letter -> drawLetter(graphics);
-			case HandbookPage.Contents contents -> drawContents(graphics, contents);
-			case HandbookPage.ChapterText text -> drawChapterText(graphics, text);
-			case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter);
-			case HandbookPage.Appendix appendix -> drawAppendix(graphics);
-			case HandbookPage.Contract contract -> drawContract(graphics, contract);
-		}
-	}
+    private void drawPage(GuiGraphicsExtractor graphics, HandbookPage content) {
+        switch (content) {
+            case HandbookPage.Cover cover -> drawCover(graphics);
+            case HandbookPage.Slip slip -> drawSlip(graphics);
+            case HandbookPage.Letter letter -> drawLetter(graphics);
+            case HandbookPage.Contents contents -> drawContents(graphics, contents);
+            case HandbookPage.ChapterText text -> drawChapterText(graphics, text);
+            case HandbookPage.Chapter chapter -> drawChapter(graphics, chapter);
+            case HandbookPage.Appendix appendix -> drawAppendix(graphics);
+            case HandbookPage.Contract contract -> drawContract(graphics, contract);
+        }
+    }
 
-	/** The middle of the page, the binding band left out. */
-	private int centerX() {
-		return paperLeft + tuning().bindingWidth() + (paperWidth - tuning().bindingWidth()) / 2;
-	}
+    /** The middle of the page, the binding band left out. */
+    private int centerX() {
+        return paperLeft + tuning().bindingWidth() + (paperWidth - tuning().bindingWidth()) / 2;
+    }
 
-	private int bottom() {
-		return paperTop + paperHeight - tuning().buttonHeight() - 10;
-	}
+    private int bottom() {
+        return paperTop + paperHeight - tuning().buttonHeight() - 10;
+    }
 
-	private static Component tr(String key, Object... args) {
-		return Component.translatable("deepcharter.handbook." + key, args);
-	}
+    private static Component tr(String key, Object... args) {
+        return Component.translatable("deepcharter.handbook." + key, args);
+    }
 
-	private void drawCover(GuiGraphicsExtractor graphics) {
-		int y = PaperDraw.centered(graphics, font, tr("cover.company"), centerX(), paperTop + tuning().topMargin() + 6, 1, tuning().faintInkColor());
-		y = PaperDraw.centered(graphics, font, tr("cover.divisions"), centerX(), y, 1, tuning().faintInkColor());
-		Component title = tr("cover.title");
-		float scale = Math.min(2f, (float) textWidth / Math.max(1, font.width(PaperDraw.ink(title, tuning().inkColor()))));
-		y = PaperDraw.centered(graphics, font, title, centerX(), y + 14, scale, tuning().inkColor());
-		PaperDraw.centered(graphics, font, tr("cover.subtitle"), centerX(), y + 4, 1, tuning().inkColor());
-		PaperDraw.stamp(graphics, font, tr("cover.stamp"), centerX(), bottom() - 28, -7, tuning().stampColor());
-	}
+    private void drawCover(GuiGraphicsExtractor graphics) {
+        int y = PaperDraw.centered(
+                graphics,
+                font,
+                tr("cover.company"),
+                centerX(),
+                paperTop + tuning().topMargin() + 6,
+                1,
+                tuning().faintInkColor());
+        y = PaperDraw.centered(graphics, font, tr("cover.divisions"), centerX(), y, 1, tuning().faintInkColor());
+        Component title = tr("cover.title");
+        float scale =
+                Math.min(2f, (float) textWidth / Math.max(1, font.width(PaperDraw.ink(title, tuning().inkColor()))));
+        y = PaperDraw.centered(graphics, font, title, centerX(), y + 14, scale, tuning().inkColor());
+        PaperDraw.centered(graphics, font, tr("cover.subtitle"), centerX(), y + 4, 1, tuning().inkColor());
+        PaperDraw.stamp(graphics, font, tr("cover.stamp"), centerX(), bottom() - 28, -7, tuning().stampColor());
+    }
 
-	private void drawSlip(GuiGraphicsExtractor graphics) {
-		int y = PaperDraw.centered(graphics, font, tr("slip.heading"), centerX(), paperTop + tuning().topMargin(), 1.5f, tuning().inkColor()) + tuning().paragraphGap();
-		String player = minecraft != null && minecraft.player != null ? minecraft.player.getName().getString() : "";
-		y = PaperDraw.wrapped(graphics, font, tr("slip.issued_to", player), textLeft, y, textWidth, tuning().inkColor()) + 2;
-		Component charter = ClientCharter.view().map(view -> (Component) Component.literal(view.name())).orElseGet(() -> tr("slip.no_charter"));
-		y = PaperDraw.wrapped(graphics, font, tr("slip.charter", charter), textLeft, y, textWidth, tuning().inkColor()) + tuning().paragraphGap() * 2;
-		PaperDraw.wrapped(graphics, font, tr("slip.note"), textLeft, y, textWidth, tuning().inkColor());
-		margin(graphics, "deepcharter.handbook.slip.margin", paperTop + tuning().contentTop() * 2);
-		PaperDraw.stamp(graphics, font, tr("slip.stamp"), centerX(), bottom() - 28, 6, tuning().stampColor());
-	}
+    private void drawSlip(GuiGraphicsExtractor graphics) {
+        int y = PaperDraw.centered(
+                        graphics,
+                        font,
+                        tr("slip.heading"),
+                        centerX(),
+                        paperTop + tuning().topMargin(),
+                        1.5f,
+                        tuning().inkColor())
+                + tuning().paragraphGap();
+        String player = minecraft != null && minecraft.player != null
+                ? minecraft.player.getName().getString()
+                : "";
+        y = PaperDraw.wrapped(graphics, font, tr("slip.issued_to", player), textLeft, y, textWidth, tuning().inkColor())
+                + 2;
+        Component charter = ClientCharter.view()
+                .map(view -> (Component) Component.literal(view.name()))
+                .orElseGet(() -> tr("slip.no_charter"));
+        y = PaperDraw.wrapped(graphics, font, tr("slip.charter", charter), textLeft, y, textWidth, tuning().inkColor())
+                + tuning().paragraphGap() * 2;
+        PaperDraw.wrapped(graphics, font, tr("slip.note"), textLeft, y, textWidth, tuning().inkColor());
+        margin(graphics, "deepcharter.handbook.slip.margin", paperTop + tuning().contentTop() * 2);
+        PaperDraw.stamp(graphics, font, tr("slip.stamp"), centerX(), bottom() - 28, 6, tuning().stampColor());
+    }
 
-	private void drawLetter(GuiGraphicsExtractor graphics) {
-		int y = PaperDraw.centered(graphics, font, tr("letter.heading"), centerX(), paperTop + tuning().topMargin(), 1.25f, tuning().inkColor()) + tuning().paragraphGap();
-		y = PaperDraw.wrapped(graphics, font, tr("letter.body.1"), textLeft, y, textWidth, tuning().inkColor()) + tuning().paragraphGap();
-		y = PaperDraw.wrapped(graphics, font, tr("letter.body.2"), textLeft, y, textWidth, tuning().inkColor()) + tuning().paragraphGap();
-		PaperDraw.centered(graphics, font, tr("letter.signature"), textLeft + textWidth * 3 / 4, y, 1, tuning().inkColor());
-		margin(graphics, "deepcharter.handbook.letter.margin", paperTop + tuning().contentTop() * 2);
-	}
+    private void drawLetter(GuiGraphicsExtractor graphics) {
+        int y = PaperDraw.centered(
+                        graphics,
+                        font,
+                        tr("letter.heading"),
+                        centerX(),
+                        paperTop + tuning().topMargin(),
+                        1.25f,
+                        tuning().inkColor())
+                + tuning().paragraphGap();
+        y = PaperDraw.wrapped(graphics, font, tr("letter.body.1"), textLeft, y, textWidth, tuning().inkColor())
+                + tuning().paragraphGap();
+        y = PaperDraw.wrapped(graphics, font, tr("letter.body.2"), textLeft, y, textWidth, tuning().inkColor())
+                + tuning().paragraphGap();
+        PaperDraw.centered(
+                graphics, font, tr("letter.signature"), textLeft + textWidth * 3 / 4, y, 1, tuning().inkColor());
+        margin(graphics, "deepcharter.handbook.letter.margin", paperTop + tuning().contentTop() * 2);
+    }
 
-	/**
-	 * The entries of one contents page, top to bottom, every one on one line. Needs the screen to be initialised. The same boxes
-	 * are drawn and are the click targets.
-	 */
-	public List<ContentsEntry> contentsEntries(HandbookPage.Contents contents) {
-		List<ContentsEntry> entries = new ArrayList<>();
-		int y = contentsTop();
-		for (int number = contents.firstChapter(); number < contents.firstChapter() + contents.count(); number++) {
-			int pageIndex = chapterPages.get(number);
-			entries.add(new ContentsEntry(pageIndex, textLeft, y - 1, textLeft + textWidth, y + font.lineHeight + 2));
-			y += font.lineHeight + 4;
-		}
-		return entries;
-	}
+    /**
+     * The entries of one contents page, top to bottom, every one on one line. Needs the screen to be initialised. The same boxes
+     * are drawn and are the click targets.
+     */
+    public List<ContentsEntry> contentsEntries(HandbookPage.Contents contents) {
+        List<ContentsEntry> entries = new ArrayList<>();
+        int y = contentsTop();
+        for (int number = contents.firstChapter(); number < contents.firstChapter() + contents.count(); number++) {
+            int pageIndex = chapterPages.get(number);
+            entries.add(new ContentsEntry(pageIndex, textLeft, y - 1, textLeft + textWidth, y + font.lineHeight + 2));
+            y += font.lineHeight + 4;
+        }
+        return entries;
+    }
 
-	private int contentsTop() {
-		return paperTop + tuning().topMargin() + Math.round(font.lineHeight * 1.25f) + 2 + tuning().paragraphGap();
-	}
+    private int contentsTop() {
+        return paperTop + tuning().topMargin() + Math.round(font.lineHeight * 1.25f) + 2 + tuning().paragraphGap();
+    }
 
-	private void drawContents(GuiGraphicsExtractor graphics, HandbookPage.Contents contents) {
-		Component heading = contents.parts() > 1 ? tr("contents.heading.part", contents.part(), contents.parts()) : tr("contents.heading");
-		PaperDraw.centered(graphics, font, heading, centerX(), paperTop + tuning().topMargin(), 1.25f, tuning().inkColor());
-		for (ContentsEntry box : contentsEntries(contents)) {
-			HandbookPage.Chapter chapter = chapters.get(chapterNumberAt(box.page()));
-			int y = box.top() + 1;
-			if (chapter.visibility() == HandbookVisibility.CLASSIFIED) {
-				PaperDraw.redacted(graphics, font, I18n.get("deepcharter.handbook.contents.entry.classified", chapter.number()),
-						textLeft, y, textWidth, tuning().inkColor());
-				continue;
-			}
-			Component status = chapter.isComplete() ? tr("contents.done") : chapter.visibility() == HandbookVisibility.FULL && !isRead.test(chapter.id()) ? tr("contents.new") : null;
-			int statusWidth = status == null ? 0 : font.width(status) + 4;
-			String line = tr("contents.entry", chapter.number(), chapter.chapter().title()).getString();
-			int lineWidth = textWidth - statusWidth;
-			if (font.width(PaperDraw.ink(Component.literal(line), tuning().inkColor())) > lineWidth) {
-				line = font.plainSubstrByWidth(line, lineWidth - font.width("...")) + "...";
-			}
-			graphics.text(font, PaperDraw.ink(Component.literal(line), tuning().inkColor()), textLeft, y, Colors.opaque(tuning().inkColor()), false);
-			if (status != null) {
-				graphics.text(font, PaperDraw.ink(status, tuning().stampColor()), textLeft + textWidth - statusWidth + 4, y, Colors.opaque(tuning().stampColor()), false);
-			}
-		}
-	}
+    private void drawContents(GuiGraphicsExtractor graphics, HandbookPage.Contents contents) {
+        Component heading = contents.parts() > 1
+                ? tr("contents.heading.part", contents.part(), contents.parts())
+                : tr("contents.heading");
+        PaperDraw.centered(
+                graphics, font, heading, centerX(), paperTop + tuning().topMargin(), 1.25f, tuning().inkColor());
+        for (ContentsEntry box : contentsEntries(contents)) {
+            HandbookPage.Chapter chapter = chapters.get(chapterNumberAt(box.page()));
+            int y = box.top() + 1;
+            if (chapter.visibility() == HandbookVisibility.CLASSIFIED) {
+                PaperDraw.redacted(
+                        graphics,
+                        font,
+                        I18n.get("deepcharter.handbook.contents.entry.classified", chapter.number()),
+                        textLeft,
+                        y,
+                        textWidth,
+                        tuning().inkColor());
+                continue;
+            }
+            Component status = chapter.isComplete()
+                    ? tr("contents.done")
+                    : chapter.visibility() == HandbookVisibility.FULL && !isRead.test(chapter.id())
+                            ? tr("contents.new")
+                            : null;
+            int statusWidth = status == null ? 0 : font.width(status) + 4;
+            String line = tr(
+                            "contents.entry",
+                            chapter.number(),
+                            chapter.chapter().title())
+                    .getString();
+            int lineWidth = textWidth - statusWidth;
+            if (font.width(PaperDraw.ink(Component.literal(line), tuning().inkColor())) > lineWidth) {
+                line = font.plainSubstrByWidth(line, lineWidth - font.width("...")) + "...";
+            }
+            graphics.text(
+                    font,
+                    PaperDraw.ink(Component.literal(line), tuning().inkColor()),
+                    textLeft,
+                    y,
+                    Colors.opaque(tuning().inkColor()),
+                    false);
+            if (status != null) {
+                graphics.text(
+                        font,
+                        PaperDraw.ink(status, tuning().stampColor()),
+                        textLeft + textWidth - statusWidth + 4,
+                        y,
+                        Colors.opaque(tuning().stampColor()),
+                        false);
+            }
+        }
+    }
 
-	private int chapterNumberAt(int pageIndex) {
-		return switch (pages.get(pageIndex)) {
-			case HandbookPage.ChapterText text -> text.number();
-			case HandbookPage.Chapter chapter -> chapter.number();
-			default -> throw new IllegalArgumentException("page " + pageIndex + " is not a chapter page");
-		};
-	}
+    private int chapterNumberAt(int pageIndex) {
+        return switch (pages.get(pageIndex)) {
+            case HandbookPage.ChapterText text -> text.number();
+            case HandbookPage.Chapter chapter -> chapter.number();
+            default -> throw new IllegalArgumentException("page " + pageIndex + " is not a chapter page");
+        };
+    }
 
-	/** A page of the text of a chapter: its label and title, the text, and the margin note beside it if the language file has one. */
-	private void drawChapterText(GuiGraphicsExtractor graphics, HandbookPage.ChapterText text) {
-		int y = PaperDraw.wrapped(graphics, font, tr("chapter.label", text.number()), textLeft, paperTop + tuning().topMargin(), textWidth, tuning().faintInkColor());
-		y = PaperDraw.wrapped(graphics, font, text.chapter().title(), textLeft, y + 3, textWidth, tuning().inkColor());
-		y = titleRule(graphics, y);
-		PaperDraw.wrapped(graphics, font, Component.translatable(textKey(text.id(), text.part())), textLeft, y, textWidth, tuning().inkColor());
-		margin(graphics, textMarginKey(text.id(), text.part()), paperTop + tuning().contentTop() * 2);
-	}
+    /** A page of the text of a chapter: its label and title, the text, and the margin note beside it if the language file has one. */
+    private void drawChapterText(GuiGraphicsExtractor graphics, HandbookPage.ChapterText text) {
+        int y = PaperDraw.wrapped(
+                graphics,
+                font,
+                tr("chapter.label", text.number()),
+                textLeft,
+                paperTop + tuning().topMargin(),
+                textWidth,
+                tuning().faintInkColor());
+        y = PaperDraw.wrapped(graphics, font, text.chapter().title(), textLeft, y + 3, textWidth, tuning().inkColor());
+        y = titleRule(graphics, y);
+        PaperDraw.wrapped(
+                graphics,
+                font,
+                Component.translatable(textKey(text.id(), text.part())),
+                textLeft,
+                y,
+                textWidth,
+                tuning().inkColor());
+        margin(graphics, textMarginKey(text.id(), text.part()), paperTop + tuning().contentTop() * 2);
+    }
 
-	private void drawChapter(GuiGraphicsExtractor graphics, HandbookPage.Chapter chapter) {
-		int y = PaperDraw.wrapped(graphics, font, tr("chapter.label", chapter.number()), textLeft, paperTop + tuning().topMargin(), textWidth, tuning().faintInkColor());
-		if (chapter.visibility() == HandbookVisibility.CLASSIFIED) {
-			for (int bar = 0; bar < 3; bar++) {
-				PaperDraw.redaction(graphics, textLeft, y + 4 + bar * (font.lineHeight + 4), textWidth * (9 - (chapter.number() + bar) % 3) / 10, font.lineHeight);
-			}
-			y += 3 * (font.lineHeight + 4) + 10;
-			PaperDraw.wrapped(graphics, font, tr("chapter.classified"), textLeft, y, textWidth, tuning().inkColor());
-			PaperDraw.stamp(graphics, font, tr("chapter.stamp.classified"), centerX(), bottom() - 28, -12, tuning().stampColor());
-			return;
-		}
-		y = PaperDraw.wrapped(graphics, font, chapter.chapter().title(), textLeft, y + 3, textWidth, tuning().inkColor());
-		y = titleRule(graphics, y);
-		y = PaperDraw.wrapped(graphics, font, tr("chapter.directives"), textLeft, y, textWidth, tuning().faintInkColor()) + 2;
-		for (HandbookChapter.Entry directive : chapter.chapter().directives()) {
-			String key = chapter.completed().contains(directive.id()) ? "chapter.directive.done" : "chapter.directive.open";
-			y = PaperDraw.wrapped(graphics, font, tr(key, directive.text()), textLeft, y, textWidth, tuning().inkColor()) + 3;
-		}
-		if (chapter.visibility() == HandbookVisibility.FULL) {
-			margin(graphics, marginKey(chapter.id()), paperTop + tuning().contentTop() * 2);
-		}
-		if (chapter.visibility() == HandbookVisibility.PREVIEW) {
-			PaperDraw.stamp(graphics, font, tr("chapter.stamp.coming"), centerX(), bottom() - 28, 8, tuning().stampColor());
-		} else if (chapter.isComplete()) {
-			PaperDraw.stamp(graphics, font, tr("chapter.stamp.complete"), centerX(), bottom() - 28, -10, tuning().stampColor());
-		}
-	}
+    private void drawChapter(GuiGraphicsExtractor graphics, HandbookPage.Chapter chapter) {
+        int y = PaperDraw.wrapped(
+                graphics,
+                font,
+                tr("chapter.label", chapter.number()),
+                textLeft,
+                paperTop + tuning().topMargin(),
+                textWidth,
+                tuning().faintInkColor());
+        if (chapter.visibility() == HandbookVisibility.CLASSIFIED) {
+            for (int bar = 0; bar < 3; bar++) {
+                PaperDraw.redaction(
+                        graphics,
+                        textLeft,
+                        y + 4 + bar * (font.lineHeight + 4),
+                        textWidth * (9 - (chapter.number() + bar) % 3) / 10,
+                        font.lineHeight);
+            }
+            y += 3 * (font.lineHeight + 4) + 10;
+            PaperDraw.wrapped(graphics, font, tr("chapter.classified"), textLeft, y, textWidth, tuning().inkColor());
+            PaperDraw.stamp(
+                    graphics,
+                    font,
+                    tr("chapter.stamp.classified"),
+                    centerX(),
+                    bottom() - 28,
+                    -12,
+                    tuning().stampColor());
+            return;
+        }
+        y = PaperDraw.wrapped(
+                graphics, font, chapter.chapter().title(), textLeft, y + 3, textWidth, tuning().inkColor());
+        y = titleRule(graphics, y);
+        y = PaperDraw.wrapped(
+                        graphics, font, tr("chapter.directives"), textLeft, y, textWidth, tuning().faintInkColor())
+                + 2;
+        for (HandbookChapter.Entry directive : chapter.chapter().directives()) {
+            String key =
+                    chapter.completed().contains(directive.id()) ? "chapter.directive.done" : "chapter.directive.open";
+            y = PaperDraw.wrapped(
+                            graphics, font, tr(key, directive.text()), textLeft, y, textWidth, tuning().inkColor())
+                    + 3;
+        }
+        if (chapter.visibility() == HandbookVisibility.FULL) {
+            margin(graphics, marginKey(chapter.id()), paperTop + tuning().contentTop() * 2);
+        }
+        if (chapter.visibility() == HandbookVisibility.PREVIEW) {
+            PaperDraw.stamp(
+                    graphics, font, tr("chapter.stamp.coming"), centerX(), bottom() - 28, 8, tuning().stampColor());
+        } else if (chapter.isComplete()) {
+            PaperDraw.stamp(
+                    graphics, font, tr("chapter.stamp.complete"), centerX(), bottom() - 28, -10, tuning().stampColor());
+        }
+    }
 
-	private void drawAppendix(GuiGraphicsExtractor graphics) {
-		int y = PaperDraw.centered(graphics, font, tr("appendix.heading"), centerX(), paperTop + tuning().topMargin(), 1.25f, tuning().inkColor()) + tuning().paragraphGap();
-		PaperDraw.wrapped(graphics, font, tr("appendix.restricted"), textLeft, y, textWidth, tuning().inkColor());
-		margin(graphics, "deepcharter.handbook.appendix.margin", paperTop + tuning().contentTop() * 2);
-		PaperDraw.stamp(graphics, font, tr("appendix.stamp"), centerX(), bottom() - 28, -9, tuning().stampColor());
-	}
+    private void drawAppendix(GuiGraphicsExtractor graphics) {
+        int y = PaperDraw.centered(
+                        graphics,
+                        font,
+                        tr("appendix.heading"),
+                        centerX(),
+                        paperTop + tuning().topMargin(),
+                        1.25f,
+                        tuning().inkColor())
+                + tuning().paragraphGap();
+        PaperDraw.wrapped(graphics, font, tr("appendix.restricted"), textLeft, y, textWidth, tuning().inkColor());
+        margin(graphics, "deepcharter.handbook.appendix.margin", paperTop + tuning().contentTop() * 2);
+        PaperDraw.stamp(graphics, font, tr("appendix.stamp"), centerX(), bottom() - 28, -9, tuning().stampColor());
+    }
 
-	/** A page of Appendix A: its title, and the clauses of the page, one a paragraph, with a black bar over each redacted word. */
-	private void drawContract(GuiGraphicsExtractor graphics, HandbookPage.Contract contract) {
-		Component heading = contract.parts() > 1 ? tr("appendix.title.part", Component.translatable("deepcharter.handbook.appendix.title"), contract.part(), contract.parts())
-				: tr("appendix.title");
-		int y = PaperDraw.wrapped(graphics, font, heading, textLeft, paperTop + tuning().topMargin(), textWidth, tuning().faintInkColor());
-		y = titleRule(graphics, y);
-		for (String clause : I18n.get(contractKey(contract.part())).split("\n")) {
-			y = PaperDraw.redacted(graphics, font, clause, textLeft, y, textWidth, tuning().inkColor()) + tuning().paragraphGap();
-		}
-		margin(graphics, contractKey(contract.part()) + ".margin", paperTop + tuning().contentTop() * 2);
-	}
+    /** A page of Appendix A: its title, and the clauses of the page, one a paragraph, with a black bar over each redacted word. */
+    private void drawContract(GuiGraphicsExtractor graphics, HandbookPage.Contract contract) {
+        Component heading = contract.parts() > 1
+                ? tr(
+                        "appendix.title.part",
+                        Component.translatable("deepcharter.handbook.appendix.title"),
+                        contract.part(),
+                        contract.parts())
+                : tr("appendix.title");
+        int y = PaperDraw.wrapped(
+                graphics,
+                font,
+                heading,
+                textLeft,
+                paperTop + tuning().topMargin(),
+                textWidth,
+                tuning().faintInkColor());
+        y = titleRule(graphics, y);
+        for (String clause : I18n.get(contractKey(contract.part())).split("\n")) {
+            y = PaperDraw.redacted(graphics, font, clause, textLeft, y, textWidth, tuning().inkColor())
+                    + tuning().paragraphGap();
+        }
+        margin(graphics, contractKey(contract.part()) + ".margin", paperTop + tuning().contentTop() * 2);
+    }
 
-	private void drawNotes(GuiGraphicsExtractor graphics) {
-		if (openNote != null) {
-			drawNote(graphics, note(openNote));
-			return;
-		}
-		int y = PaperDraw.centered(graphics, font, tr("notes.heading"), centerX(), paperTop + tuning().topMargin(), 1.25f, tuning().inkColor()) + tuning().paragraphGap();
-		if (notes.isEmpty()) {
-			y = PaperDraw.centered(graphics, font, tr("notes.empty"), centerX(), y + tuning().paragraphGap() * 3, 1, tuning().inkColor()) + 2;
-			PaperDraw.wrapped(graphics, font, tr("notes.hint"), textLeft, y, textWidth, tuning().faintInkColor());
-			return;
-		}
-		for (NoteRow row : noteRows()) {
-			HandbookNote note = note(row.note());
-			boolean unread = noteUnread(note.id());
-			int color = unread ? tuning().inkColor() : tuning().faintInkColor();
-			Component status = unread ? tr("notes.new") : null;
-			int statusWidth = status == null ? 0 : font.width(status) + 4;
-			String line = tr("notes.entry", label(note), note.title()).getString();
-			if (font.width(PaperDraw.ink(Component.literal(line), color)) > textWidth - statusWidth) {
-				line = font.plainSubstrByWidth(line, textWidth - statusWidth - font.width("...")) + "...";
-			}
-			graphics.text(font, PaperDraw.ink(Component.literal(line), color), textLeft, row.top() + 1, Colors.opaque(color), false);
-			if (status != null) {
-				graphics.text(font, PaperDraw.ink(status, tuning().stampColor()), textLeft + textWidth - statusWidth + 4, row.top() + 1, Colors.opaque(tuning().stampColor()), false);
-			}
-		}
-	}
+    private void drawNotes(GuiGraphicsExtractor graphics) {
+        if (openNote != null) {
+            drawNote(graphics, note(openNote));
+            return;
+        }
+        int y = PaperDraw.centered(
+                        graphics,
+                        font,
+                        tr("notes.heading"),
+                        centerX(),
+                        paperTop + tuning().topMargin(),
+                        1.25f,
+                        tuning().inkColor())
+                + tuning().paragraphGap();
+        if (notes.isEmpty()) {
+            y = PaperDraw.centered(
+                            graphics,
+                            font,
+                            tr("notes.empty"),
+                            centerX(),
+                            y + tuning().paragraphGap() * 3,
+                            1,
+                            tuning().inkColor())
+                    + 2;
+            PaperDraw.wrapped(graphics, font, tr("notes.hint"), textLeft, y, textWidth, tuning().faintInkColor());
+            return;
+        }
+        for (NoteRow row : noteRows()) {
+            HandbookNote note = note(row.note());
+            boolean unread = noteUnread(note.id());
+            int color = unread ? tuning().inkColor() : tuning().faintInkColor();
+            Component status = unread ? tr("notes.new") : null;
+            int statusWidth = status == null ? 0 : font.width(status) + 4;
+            String line = tr("notes.entry", label(note), note.title()).getString();
+            if (font.width(PaperDraw.ink(Component.literal(line), color)) > textWidth - statusWidth) {
+                line = font.plainSubstrByWidth(line, textWidth - statusWidth - font.width("...")) + "...";
+            }
+            graphics.text(
+                    font,
+                    PaperDraw.ink(Component.literal(line), color),
+                    textLeft,
+                    row.top() + 1,
+                    Colors.opaque(color),
+                    false);
+            if (status != null) {
+                graphics.text(
+                        font,
+                        PaperDraw.ink(status, tuning().stampColor()),
+                        textLeft + textWidth - statusWidth + 4,
+                        row.top() + 1,
+                        Colors.opaque(tuning().stampColor()),
+                        false);
+            }
+        }
+    }
 
-	private void drawNote(GuiGraphicsExtractor graphics, HandbookNote note) {
-		int pitch = font.lineHeight + 1;
-		List<FormattedCharSequence> body = noteBody(note);
-		int first = noteFirstSheetLines(note);
-		int start = notePage == 0 ? 0 : first + (notePage - 1) * noteLaterSheetLines();
-		int top = paperTop + tuning().topMargin();
-		int y = top;
-		if (notePage == 0) {
-			y = PaperDraw.wrapped(graphics, font, tr("notes.label", label(note)), textLeft, top, textWidth, tuning().faintInkColor());
-			y = PaperDraw.wrapped(graphics, font, note.title(), textLeft, y + 3, textWidth, tuning().inkColor());
-			graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, Colors.opaque(tuning().inkColor()));
-			y += tuning().paragraphGap() + 2;
-		}
-		int count = notePage == 0 ? first : noteLaterSheetLines();
-		for (FormattedCharSequence line : body.subList(Math.min(start, body.size()), Math.min(body.size(), start + count))) {
-			graphics.text(font, line, textLeft, y, Colors.opaque(tuning().marginInkColor()), false);
-			y += pitch;
-		}
-		int sheets = notePages(note);
-		if (sheets > 1) {
-			graphics.centeredText(font, PaperDraw.ink(Component.translatable("deepcharter.handbook.screen.page", notePage + 1, sheets), tuning().faintInkColor()),
-					(next.getX() + noteBack.getRight()) / 2, noteBack.getY() + 3, Colors.opaque(tuning().faintInkColor()));
-		}
-	}
+    private void drawNote(GuiGraphicsExtractor graphics, HandbookNote note) {
+        int pitch = font.lineHeight + 1;
+        List<FormattedCharSequence> body = noteBody(note);
+        int first = noteFirstSheetLines(note);
+        int start = notePage == 0 ? 0 : first + (notePage - 1) * noteLaterSheetLines();
+        int top = paperTop + tuning().topMargin();
+        int y = top;
+        if (notePage == 0) {
+            y = PaperDraw.wrapped(
+                    graphics, font, tr("notes.label", label(note)), textLeft, top, textWidth, tuning().faintInkColor());
+            y = PaperDraw.wrapped(graphics, font, note.title(), textLeft, y + 3, textWidth, tuning().inkColor());
+            graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, Colors.opaque(tuning().inkColor()));
+            y += tuning().paragraphGap() + 2;
+        }
+        int count = notePage == 0 ? first : noteLaterSheetLines();
+        for (FormattedCharSequence line :
+                body.subList(Math.min(start, body.size()), Math.min(body.size(), start + count))) {
+            graphics.text(font, line, textLeft, y, Colors.opaque(tuning().marginInkColor()), false);
+            y += pitch;
+        }
+        int sheets = notePages(note);
+        if (sheets > 1) {
+            graphics.centeredText(
+                    font,
+                    PaperDraw.ink(
+                            Component.translatable("deepcharter.handbook.screen.page", notePage + 1, sheets),
+                            tuning().faintInkColor()),
+                    (next.getX() + noteBack.getRight()) / 2,
+                    noteBack.getY() + 3,
+                    Colors.opaque(tuning().faintInkColor()));
+        }
+    }
 
-	private List<FormattedCharSequence> noteBody(HandbookNote note) {
-		return font.split(PaperDraw.ink(note.text(), tuning().marginInkColor()), textWidth);
-	}
+    private List<FormattedCharSequence> noteBody(HandbookNote note) {
+        return font.split(PaperDraw.ink(note.text(), tuning().marginInkColor()), textWidth);
+    }
 
-	/** The y where the text of a Note starts on its first sheet: under the label, the title and the rule. */
-	private int noteBodyTop(HandbookNote note) {
-		int pitch = font.lineHeight + 1;
-		int labelEnd = paperTop + tuning().topMargin() + font.split(PaperDraw.ink(tr("notes.label", label(note)), tuning().faintInkColor()), textWidth).size() * pitch;
-		int titleEnd = labelEnd + 3 + font.split(PaperDraw.ink(note.title(), tuning().inkColor()), textWidth).size() * pitch;
-		return titleEnd + tuning().paragraphGap() + 2;
-	}
+    /** The y where the text of a Note starts on its first sheet: under the label, the title and the rule. */
+    private int noteBodyTop(HandbookNote note) {
+        int pitch = font.lineHeight + 1;
+        int labelEnd = paperTop
+                + tuning().topMargin()
+                + font.split(PaperDraw.ink(tr("notes.label", label(note)), tuning().faintInkColor()), textWidth)
+                                .size()
+                        * pitch;
+        int titleEnd = labelEnd
+                + 3
+                + font.split(PaperDraw.ink(note.title(), tuning().inkColor()), textWidth)
+                                .size()
+                        * pitch;
+        return titleEnd + tuning().paragraphGap() + 2;
+    }
 
-	/** How many lines of a Note fit on its first sheet, which also holds the label and the title. At least one. */
-	private int noteFirstSheetLines(HandbookNote note) {
-		return Math.max(1, (bottom() - noteBodyTop(note)) / (font.lineHeight + 1));
-	}
+    /** How many lines of a Note fit on its first sheet, which also holds the label and the title. At least one. */
+    private int noteFirstSheetLines(HandbookNote note) {
+        return Math.max(1, (bottom() - noteBodyTop(note)) / (font.lineHeight + 1));
+    }
 
-	/** How many lines fit on each later sheet of a Note, which has the whole sheet. At least one. */
-	private int noteLaterSheetLines() {
-		return Math.max(1, (bottom() - (paperTop + tuning().topMargin())) / (font.lineHeight + 1));
-	}
+    /** How many lines fit on each later sheet of a Note, which has the whole sheet. At least one. */
+    private int noteLaterSheetLines() {
+        return Math.max(1, (bottom() - (paperTop + tuning().topMargin())) / (font.lineHeight + 1));
+    }
 
-	/** How many sheets a Note takes, so that none of its text runs past the buttons. */
-	private int notePages(HandbookNote note) {
-		int rest = Math.max(0, noteBody(note).size() - noteFirstSheetLines(note));
-		return 1 + (rest + noteLaterSheetLines() - 1) / noteLaterSheetLines();
-	}
+    /** How many sheets a Note takes, so that none of its text runs past the buttons. */
+    private int notePages(HandbookNote note) {
+        int rest = Math.max(0, noteBody(note).size() - noteFirstSheetLines(note));
+        return 1 + (rest + noteLaterSheetLines() - 1) / noteLaterSheetLines();
+    }
 
-	/** Draws the rule under a page title that ends at {@code y}, and returns where the text below it starts. */
-	private int titleRule(GuiGraphicsExtractor graphics, int y) {
-		graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, Colors.opaque(tuning().inkColor()));
-		return y + tuning().paragraphGap() + 2;
-	}
+    /** Draws the rule under a page title that ends at {@code y}, and returns where the text below it starts. */
+    private int titleRule(GuiGraphicsExtractor graphics, int y) {
+        graphics.fill(textLeft, y + 1, textLeft + textWidth, y + 2, Colors.opaque(tuning().inkColor()));
+        return y + tuning().paragraphGap() + 2;
+    }
 
-	/** A previous miner's note in pencil, in the margin column, if the sheet has one and the language file has a note for it. */
-	private void margin(GuiGraphicsExtractor graphics, String key, int y) {
-		if (marginWidth <= 0 || !Language.getInstance().has(key)) {
-			return;
-		}
-		graphics.fill(marginLeft - 2, y - 2, marginLeft - 1, paperTop + paperHeight - tuning().buttonHeight() - 14, Colors.withAlpha(tuning().marginInkColor(), tuning().marginRuleAlpha()));
-		PaperDraw.wrapped(graphics, font, Component.translatable(key), marginLeft + 2, y, marginWidth - 4, tuning().marginInkColor());
-	}
+    /** A previous miner's note in pencil, in the margin column, if the sheet has one and the language file has a note for it. */
+    private void margin(GuiGraphicsExtractor graphics, String key, int y) {
+        if (marginWidth <= 0 || !Language.getInstance().has(key)) {
+            return;
+        }
+        graphics.fill(
+                marginLeft - 2,
+                y - 2,
+                marginLeft - 1,
+                paperTop + paperHeight - tuning().buttonHeight() - 14,
+                Colors.withAlpha(tuning().marginInkColor(), tuning().marginRuleAlpha()));
+        PaperDraw.wrapped(
+                graphics,
+                font,
+                Component.translatable(key),
+                marginLeft + 2,
+                y,
+                marginWidth - 4,
+                tuning().marginInkColor());
+    }
 }

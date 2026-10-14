@@ -1,19 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import java.util.List;
-
-import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
-import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-
-import net.minecraft.client.Minecraft;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -31,109 +18,176 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
-
-import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import java.util.List;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySpawnReason;
 
 /**
  * Client GameTest for #69: the pump screen shows the account and the parked pod's tank, its buttons are live only when a press
  * could work, a press buys through the server, and an account that cannot pay changes nothing.
  */
 public class FuelPumpClientTest implements FabricClientGameTest {
-	/** Dollars the charter starts with. */
-	public static final long START_BALANCE = 20;
-	/** The pod starts with 2 of its 10 litres. */
-	public static final float START_FUEL_PERCENT = 20f;
-	private static final float EPSILON = 0.01f;
-	/** Marks the pod that burns no fuel while the test waits, so the litres can be compared exactly. */
-	private static final String FROZEN = "fuel-pump-test-frozen";
+    /** Dollars the charter starts with. */
+    public static final long START_BALANCE = 20;
+    /** The pod starts with 2 of its 10 litres. */
+    public static final float START_FUEL_PERCENT = 20f;
 
-	static {
-		PodEvents.IS_POWERED.register(pod -> !pod.entityTags().contains(FROZEN));
-	}
+    private static final float EPSILON = 0.01f;
+    /** Marks the pod that burns no fuel while the test waits, so the litres can be compared exactly. */
+    private static final String FROZEN = "fuel-pump-test-frozen";
 
-	/** What the scene gives the test. */
-	public record Scene(BlockPos pump, CharterId charter) {
-	}
+    static {
+        PodEvents.IS_POWERED.register(pod -> !pod.entityTags().contains(FROZEN));
+    }
 
-	@Override
-	public void runTest(ClientGameTestContext context) {
-		ClientTestLog.start(this);
-		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			Scene scene = singleplayer.getServer().computeOnServer(FuelPumpClientTest::setUp);
-			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.pump())));
-			ClientWait.screen(context, FuelPumpScreen.class);
-			FuelPumpScreen screen = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
-			ClientWait.until(context, "the fuel pump screen finished typing", client -> screen.typewriter().done(), client -> "typewriter text '" + screen.typewriter().text() + "'");
-			require(screen.typewriter().text().contains("$1 A LITRE"), "the screen names the price, got '" + screen.typewriter().text() + "'");
-			ClientWait.until(context, "the starting balance and a parked pod", client -> ClientCharter.view().isPresent() && ClientCharter.view().get().balance() == START_BALANCE
-					&& !Terminals.parkedPods(client.level, scene.pump()).isEmpty(), client -> "charter " + ClientCharter.view());
+    /** What the scene gives the test. */
+    public record Scene(BlockPos pump, CharterId charter) {}
 
-			// 2 of 10 litres: there is room for 5 but not for 10.
-			require(live(context, screen, "BUY 1 L") && live(context, screen, "BUY 5 L") && !live(context, screen, "BUY 10 L") && live(context, screen, "FILL UP"),
-					"with 8 litres of room and $20, the 1 and 5 litre buttons and FILL UP are live and the 10 litre button is not");
+    @Override
+    public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            Scene scene = singleplayer.getServer().computeOnServer(FuelPumpClientTest::setUp);
+            context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.pump())));
+            ClientWait.screen(context, FuelPumpScreen.class);
+            FuelPumpScreen screen = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
+            ClientWait.until(
+                    context,
+                    "the fuel pump screen finished typing",
+                    client -> screen.typewriter().done(),
+                    client -> "typewriter text '" + screen.typewriter().text() + "'");
+            require(
+                    screen.typewriter().text().contains("$1 A LITRE"),
+                    "the screen names the price, got '" + screen.typewriter().text() + "'");
+            ClientWait.until(
+                    context,
+                    "the starting balance and a parked pod",
+                    client -> ClientCharter.view().isPresent()
+                            && ClientCharter.view().get().balance() == START_BALANCE
+                            && !Terminals.parkedPods(client.level, scene.pump()).isEmpty(),
+                    client -> "charter " + ClientCharter.view());
 
-			context.clickScreenButton("BUY 5 L");
-			ClientWait.until(context, "the balance after the first purchase", client -> ClientCharter.view().get().balance() == START_BALANCE - 5, client -> "charter " + ClientCharter.view());
-			ClientWait.until(context, "7 L in the pod's tank", client -> Math.abs(litres(client, scene) - 7f) < EPSILON, client -> "litres " + litres(client, scene));
-			require(context.computeOnClient(client -> client.gui.screen() == screen), "the server's answer must not replace the screen");
+            // 2 of 10 litres: there is room for 5 but not for 10.
+            require(
+                    live(context, screen, "BUY 1 L")
+                            && live(context, screen, "BUY 5 L")
+                            && !live(context, screen, "BUY 10 L")
+                            && live(context, screen, "FILL UP"),
+                    "with 8 litres of room and $20, the 1 and 5 litre buttons and FILL UP are live and the 10 litre button is not");
 
-			context.clickScreenButton("FILL UP");
-			ClientWait.until(context, "the balance after the second purchase", client -> ClientCharter.view().get().balance() == START_BALANCE - 5 - 3, client -> "charter " + ClientCharter.view());
-			ClientWait.until(context, "10 L in the pod's tank", client -> Math.abs(litres(client, scene) - 10f) < EPSILON, client -> "litres " + litres(client, scene));
-			context.waitTicks(2);
-			require(!live(context, screen, "BUY 1 L") && !live(context, screen, "FILL UP"), "with a full tank no buy button is live");
+            context.clickScreenButton("BUY 5 L");
+            ClientWait.until(
+                    context,
+                    "the balance after the first purchase",
+                    client -> ClientCharter.view().get().balance() == START_BALANCE - 5,
+                    client -> "charter " + ClientCharter.view());
+            ClientWait.until(
+                    context,
+                    "7 L in the pod's tank",
+                    client -> Math.abs(litres(client, scene) - 7f) < EPSILON,
+                    client -> "litres " + litres(client, scene));
+            require(
+                    context.computeOnClient(client -> client.gui.screen() == screen),
+                    "the server's answer must not replace the screen");
 
-			// An empty account: nothing is live, and a press sent anyway is refused and changes nothing.
-			singleplayer.getServer().runOnServer(server -> {
-				Charters.spend(server, scene.charter(), Charters.findOrThrow(server, scene.charter()).orElseThrow().account());
-				pod(server).setFuel(0f);
-			});
-			ClientWait.until(context, "an empty account and a full-priced tank", client -> ClientCharter.view().get().balance() == 0 && litres(client, scene) < EPSILON, client -> "charter " + ClientCharter.view() + ", litres " + litres(client, scene));
-			context.waitTicks(2);
-			require(!live(context, screen, "BUY 1 L") && !live(context, screen, "FILL UP"), "with an empty account no buy button is live");
-			CompoundTag args = new CompoundTag();
-			args.putInt(FuelPump.LITRES_KEY, 1);
-			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalActionPayload(scene.pump(), FuelPump.BUY, args)));
-			context.waitTicks(20);
-			float afterRefusal = singleplayer.getServer().computeOnServer(server -> pod(server).fuel());
-			require(afterRefusal == 0f, "a purchase with an empty account must not fuel the pod, fuel is " + afterRefusal);
-			context.setScreen(() -> null);
-		}
-	}
+            context.clickScreenButton("FILL UP");
+            ClientWait.until(
+                    context,
+                    "the balance after the second purchase",
+                    client -> ClientCharter.view().get().balance() == START_BALANCE - 5 - 3,
+                    client -> "charter " + ClientCharter.view());
+            ClientWait.until(
+                    context,
+                    "10 L in the pod's tank",
+                    client -> Math.abs(litres(client, scene) - 10f) < EPSILON,
+                    client -> "litres " + litres(client, scene));
+            context.waitTicks(2);
+            require(
+                    !live(context, screen, "BUY 1 L") && !live(context, screen, "FILL UP"),
+                    "with a full tank no buy button is live");
 
-	/**
-	 * The player founds a charter with {@link #START_BALANCE} dollars, with a repaired pump two blocks east and its own pod three
-	 * blocks west, which has {@link #START_FUEL_PERCENT} of its tank. Public for the evidence scenario.
-	 */
-	public static Scene setUp(MinecraftServer server) {
-		ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-		require(Charters.found(server, player.getUUID(), "Pump Test Charter").isEmpty(), "founding the charter should succeed");
-		CharterId charter = Charters.charterOfOrThrow(server, player.getUUID()).orElseThrow().id();
-		require(Charters.deposit(server, charter, START_BALANCE).isEmpty(), "the deposit should succeed");
-		RepairState repairs = RepairState.get(server);
-		TerminalTypes.FUEL_PUMP.parts().forEach(part -> repairs.insert(TerminalTypes.FUEL_PUMP, part));
-		BlockPos pump = player.blockPosition().relative(Direction.EAST, 2);
-		server.overworld().setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
-		PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
-		pod.setPos(player.position().relative(Direction.WEST, 3));
-		player.level().addFreshEntity(pod);
-		PodComponents.register(pod, charter);
-		pod.setFuel(START_FUEL_PERCENT);
-		pod.addTag(FROZEN);
-		return new Scene(pump, charter);
-	}
+            // An empty account: nothing is live, and a press sent anyway is refused and changes nothing.
+            singleplayer.getServer().runOnServer(server -> {
+                Charters.spend(
+                        server,
+                        scene.charter(),
+                        Charters.findOrThrow(server, scene.charter())
+                                .orElseThrow()
+                                .account());
+                pod(server).setFuel(0f);
+            });
+            ClientWait.until(
+                    context,
+                    "an empty account and a full-priced tank",
+                    client -> ClientCharter.view().get().balance() == 0 && litres(client, scene) < EPSILON,
+                    client -> "charter " + ClientCharter.view() + ", litres " + litres(client, scene));
+            context.waitTicks(2);
+            require(
+                    !live(context, screen, "BUY 1 L") && !live(context, screen, "FILL UP"),
+                    "with an empty account no buy button is live");
+            CompoundTag args = new CompoundTag();
+            args.putInt(FuelPump.LITRES_KEY, 1);
+            context.runOnClient(
+                    client -> ClientPlayNetworking.send(new TerminalActionPayload(scene.pump(), FuelPump.BUY, args)));
+            context.waitTicks(20);
+            float afterRefusal = singleplayer
+                    .getServer()
+                    .computeOnServer(server -> pod(server).fuel());
+            require(
+                    afterRefusal == 0f,
+                    "a purchase with an empty account must not fuel the pod, fuel is " + afterRefusal);
+            context.setScreen(() -> null);
+        }
+    }
 
-	/** The test's own pod: the colony's hangar holds a derelict Mole too. */
-	private static PodEntity pod(MinecraftServer server) {
-		return server.overworld().getEntities(PodRegistry.POD, entity -> entity.entityTags().contains(FROZEN)).getFirst();
-	}
+    /**
+     * The player founds a charter with {@link #START_BALANCE} dollars, with a repaired pump two blocks east and its own pod three
+     * blocks west, which has {@link #START_FUEL_PERCENT} of its tank. Public for the evidence scenario.
+     */
+    public static Scene setUp(MinecraftServer server) {
+        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+        require(
+                Charters.found(server, player.getUUID(), "Pump Test Charter").isEmpty(),
+                "founding the charter should succeed");
+        CharterId charter = Charters.charterOfOrThrow(server, player.getUUID())
+                .orElseThrow()
+                .id();
+        require(Charters.deposit(server, charter, START_BALANCE).isEmpty(), "the deposit should succeed");
+        RepairState repairs = RepairState.get(server);
+        TerminalTypes.FUEL_PUMP.parts().forEach(part -> repairs.insert(TerminalTypes.FUEL_PUMP, part));
+        BlockPos pump = player.blockPosition().relative(Direction.EAST, 2);
+        server.overworld().setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
+        PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+        pod.setPos(player.position().relative(Direction.WEST, 3));
+        player.level().addFreshEntity(pod);
+        PodComponents.register(pod, charter);
+        pod.setFuel(START_FUEL_PERCENT);
+        pod.addTag(FROZEN);
+        return new Scene(pump, charter);
+    }
 
-	private static float litres(Minecraft client, Scene scene) {
-		List<PodEntity> pods = Terminals.parkedPods(client.level, scene.pump());
-		return pods.isEmpty() ? -1f : FuelPump.litres(pods.getFirst());
-	}
+    /** The test's own pod: the colony's hangar holds a derelict Mole too. */
+    private static PodEntity pod(MinecraftServer server) {
+        return server.overworld()
+                .getEntities(PodRegistry.POD, entity -> entity.entityTags().contains(FROZEN))
+                .getFirst();
+    }
 
-	private static boolean live(ClientGameTestContext context, FuelPumpScreen screen, String label) {
-		return context.computeOnClient(client -> ClientChecks.button(screen, label).active);
-	}
+    private static float litres(Minecraft client, Scene scene) {
+        List<PodEntity> pods = Terminals.parkedPods(client.level, scene.pump());
+        return pods.isEmpty() ? -1f : FuelPump.litres(pods.getFirst());
+    }
+
+    private static boolean live(ClientGameTestContext context, FuelPumpScreen screen, String label) {
+        return context.computeOnClient(client -> ClientChecks.button(screen, label).active);
+    }
 }

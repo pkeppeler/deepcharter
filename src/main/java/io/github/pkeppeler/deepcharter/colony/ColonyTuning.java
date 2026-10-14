@@ -19,8 +19,21 @@ package io.github.pkeppeler.deepcharter.colony;
  * @param scatterPercent the share of columns by the pad's edge, in percent, that show rock
  * @param scatterPackedFactor packed regolith shows on this many times as many columns as rock
  */
-public record ColonyTuning(int padSize, int clearHeight, int fillDepth, int conduitRadius, int conduitStack,
-		int searchStepChunks, int searchRings, int freshWorldTicks, int edgeMargin, int edgeMarginCap, int edgeWobble, int edgeLattice, int rimWidth, int scatterPercent,
-		int scatterPackedFactor) {
-	public static final ColonyTuning DEFAULT = new ColonyTuning(80, 36, 48, 1, 10, 4, 8, 2400, 32, 64, 4, 12, 3, 6, 3);
+public record ColonyTuning(
+        int padSize,
+        int clearHeight,
+        int fillDepth,
+        int conduitRadius,
+        int conduitStack,
+        int searchStepChunks,
+        int searchRings,
+        int freshWorldTicks,
+        int edgeMargin,
+        int edgeMarginCap,
+        int edgeWobble,
+        int edgeLattice,
+        int rimWidth,
+        int scatterPercent,
+        int scatterPackedFactor) {
+    public static final ColonyTuning DEFAULT = new ColonyTuning(80, 36, 48, 1, 10, 4, 8, 2400, 32, 64, 4, 12, 3, 6, 3);
 }

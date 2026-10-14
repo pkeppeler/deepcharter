@@ -11,17 +11,17 @@ package io.github.pkeppeler.deepcharter.pod;
  * @param spoilMass      pod mass of one spoil, which cuts lift like ore does
  * @param brickMass      pod mass of one brick in the rack
  */
-public record PodLiningTuning(int spoilCapacity, int spoilPerBrick, int brickCapacity, int ticksPerBrick,
-		float spoilMass, float brickMass) {
-	/** The rack holds 24 bricks, so a bay's 32 bricks fill it and 8 go to the pack (#442). */
-	public static final PodLiningTuning DEFAULT = new PodLiningTuning(64, 2, 24, 8, 0.1f, 0.2f);
+public record PodLiningTuning(
+        int spoilCapacity, int spoilPerBrick, int brickCapacity, int ticksPerBrick, float spoilMass, float brickMass) {
+    /** The rack holds 24 bricks, so a bay's 32 bricks fill it and 8 go to the pack (#442). */
+    public static final PodLiningTuning DEFAULT = new PodLiningTuning(64, 2, 24, 8, 0.1f, 0.2f);
 
-	public PodLiningTuning {
-		if (spoilCapacity < 1 || spoilPerBrick < 1 || brickCapacity < 1 || ticksPerBrick < 1) {
-			throw new IllegalArgumentException("lining capacities, ratio and time must be at least 1");
-		}
-		if (!(spoilMass >= 0f) || !(brickMass >= 0f)) {
-			throw new IllegalArgumentException("lining masses must be numbers, not negative");
-		}
-	}
+    public PodLiningTuning {
+        if (spoilCapacity < 1 || spoilPerBrick < 1 || brickCapacity < 1 || ticksPerBrick < 1) {
+            throw new IllegalArgumentException("lining capacities, ratio and time must be at least 1");
+        }
+        if (!(spoilMass >= 0f) || !(brickMass >= 0f)) {
+            throw new IllegalArgumentException("lining masses must be numbers, not negative");
+        }
+    }
 }

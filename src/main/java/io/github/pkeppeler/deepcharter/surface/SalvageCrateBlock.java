@@ -13,18 +13,19 @@ import net.minecraft.world.level.block.state.StateDefinition;
  * fills the whole cell.
  */
 final class SalvageCrateBlock extends HorizontalDirectionalBlock {
-	SalvageCrateBlock(Properties properties) {
-		super(properties);
-		registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
-	}
+    SalvageCrateBlock(Properties properties) {
+        super(properties);
+        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
+    }
 
-	@Override
-	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-		builder.add(FACING);
-	}
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(FACING);
+    }
 
-	@Override
-	public BlockState getStateForPlacement(BlockPlaceContext context) {
-		return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
-	}
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        return defaultBlockState()
+                .setValue(FACING, context.getHorizontalDirection().getOpposite());
+    }
 }

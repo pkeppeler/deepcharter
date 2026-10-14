@@ -1,11 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import java.util.Optional;
-import java.util.UUID;
-
-import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
-import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterView;
@@ -13,83 +8,136 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
-
-import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import java.util.Optional;
+import java.util.UUID;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 /**
  * Client GameTest for #52: the real client is told its charter's name and balance, is told again when they change, is told
  * when it joins as crew and when its Director changes, and is told its charter again when it reconnects.
  */
 public class CharterCoreClientTest implements FabricClientGameTest {
-	private static final String NAME = "Client Test Charter";
-	private static final long FIRST_BALANCE = 250;
-	private static final long SECOND_BALANCE = 175;
-	private static final String TWO_PLAYER_NAME = "Two Player Charter";
-	/** A fuse on client ticks for a wait that has no other limit. About 3 minutes at 20 ticks a second. */
-	private static final int CLIENT_TICK_FUSE = 3600;
-	/** Player count once the client has dropped: the mock stays online. */
-	private static final int MOCK_ONLY = 1;
+    private static final String NAME = "Client Test Charter";
+    private static final long FIRST_BALANCE = 250;
+    private static final long SECOND_BALANCE = 175;
+    private static final String TWO_PLAYER_NAME = "Two Player Charter";
+    /** A fuse on client ticks for a wait that has no other limit. About 3 minutes at 20 ticks a second. */
+    private static final int CLIENT_TICK_FUSE = 3600;
+    /** Player count once the client has dropped: the mock stays online. */
+    private static final int MOCK_ONLY = 1;
 
-	@Override
-	public void runTest(ClientGameTestContext context) {
-		ClientTestLog.start(this);
-		nameAndBalanceReachTheClient(context);
-		crewAndDirectorChangesReachTheClient(context);
-	}
+    @Override
+    public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
+        nameAndBalanceReachTheClient(context);
+        crewAndDirectorChangesReachTheClient(context);
+    }
 
-	private static void nameAndBalanceReachTheClient(ClientGameTestContext context) {
-		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			singleplayer.getServer().runOnServer(server -> {
-				UUID player = server.getPlayerList().getPlayers().getFirst().getUUID();
-				require(Charters.found(server, player, NAME).isEmpty(), "founding should succeed");
-				Charters.deposit(server, Charters.charterOfOrThrow(server, player).orElseThrow().id(), FIRST_BALANCE);
-			});
-			ClientWait.until(context, "the founded charter at its first balance", client -> ClientCharter.view().filter(view -> view.name().equals(NAME) && view.balance() == FIRST_BALANCE).isPresent(), client -> "charter " + ClientCharter.view());
+    private static void nameAndBalanceReachTheClient(ClientGameTestContext context) {
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            singleplayer.getServer().runOnServer(server -> {
+                UUID player = server.getPlayerList().getPlayers().getFirst().getUUID();
+                require(Charters.found(server, player, NAME).isEmpty(), "founding should succeed");
+                Charters.deposit(
+                        server,
+                        Charters.charterOfOrThrow(server, player).orElseThrow().id(),
+                        FIRST_BALANCE);
+            });
+            ClientWait.until(
+                    context,
+                    "the founded charter at its first balance",
+                    client -> ClientCharter.view()
+                            .filter(view -> view.name().equals(NAME) && view.balance() == FIRST_BALANCE)
+                            .isPresent(),
+                    client -> "charter " + ClientCharter.view());
 
-			singleplayer.getServer().runOnServer(server -> {
-				UUID player = server.getPlayerList().getPlayers().getFirst().getUUID();
-				Charters.spend(server, Charters.charterOfOrThrow(server, player).orElseThrow().id(), FIRST_BALANCE - SECOND_BALANCE);
-			});
-			ClientWait.until(context, "the second balance", client -> ClientCharter.view().map(CharterView::balance).equals(Optional.of(SECOND_BALANCE)), client -> "charter " + ClientCharter.view());
+            singleplayer.getServer().runOnServer(server -> {
+                UUID player = server.getPlayerList().getPlayers().getFirst().getUUID();
+                Charters.spend(
+                        server,
+                        Charters.charterOfOrThrow(server, player).orElseThrow().id(),
+                        FIRST_BALANCE - SECOND_BALANCE);
+            });
+            ClientWait.until(
+                    context,
+                    "the second balance",
+                    client -> ClientCharter.view().map(CharterView::balance).equals(Optional.of(SECOND_BALANCE)),
+                    client -> "charter " + ClientCharter.view());
 
-			singleplayer.getServer().runOnServer(server -> Charters.leave(server, server.getPlayerList().getPlayers().getFirst().getUUID()));
-			ClientWait.until(context, "the charter gone", client -> ClientCharter.view().isEmpty(), client -> "charter " + ClientCharter.view());
-		}
-	}
+            singleplayer
+                    .getServer()
+                    .runOnServer(server -> Charters.leave(
+                            server,
+                            server.getPlayerList().getPlayers().getFirst().getUUID()));
+            ClientWait.until(
+                    context,
+                    "the charter gone",
+                    client -> ClientCharter.view().isEmpty(),
+                    client -> "charter " + ClientCharter.view());
+        }
+    }
 
-	/**
-	 * The mock player founds the charter and the real client joins it. Then the mock Director leaves and the client is promoted.
-	 * Last, the client disconnects and reconnects: the login sync alone must give it the charter back.
-	 */
-	private static void crewAndDirectorChangesReachTheClient(ClientGameTestContext context) {
-		try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
-			UUID mock = two.mock().player().getUUID();
-			UUID real = two.server().computeOnServer(server -> server.getPlayerList().getPlayers().stream()
-					.map(player -> player.getUUID()).filter(uuid -> !uuid.equals(mock)).findFirst().orElseThrow());
+    /**
+     * The mock player founds the charter and the real client joins it. Then the mock Director leaves and the client is promoted.
+     * Last, the client disconnects and reconnects: the login sync alone must give it the charter back.
+     */
+    private static void crewAndDirectorChangesReachTheClient(ClientGameTestContext context) {
+        try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
+            UUID mock = two.mock().player().getUUID();
+            UUID real = two.server()
+                    .computeOnServer(server -> server.getPlayerList().getPlayers().stream()
+                            .map(player -> player.getUUID())
+                            .filter(uuid -> !uuid.equals(mock))
+                            .findFirst()
+                            .orElseThrow());
 
-			CharterId id = two.server().computeOnServer(server -> {
-				require(Charters.found(server, mock, TWO_PLAYER_NAME).isEmpty(), "founding should succeed");
-				return Charters.charterOfOrThrow(server, mock).orElseThrow().id();
-			});
-			two.server().runOnServer(server -> {
-				require(Charters.apply(server, real, id).isEmpty() && Charters.approve(server, mock, real).isEmpty(), "applying and approving should succeed");
-			});
-			ClientWait.until(context, "the two-person charter", client -> ClientCharter.view().filter(view -> view.name().equals(TWO_PLAYER_NAME) && view.people() == 2 && !view.director()).isPresent(), client -> "charter " + ClientCharter.view());
+            CharterId id = two.server().computeOnServer(server -> {
+                require(Charters.found(server, mock, TWO_PLAYER_NAME).isEmpty(), "founding should succeed");
+                return Charters.charterOfOrThrow(server, mock).orElseThrow().id();
+            });
+            two.server().runOnServer(server -> {
+                require(
+                        Charters.apply(server, real, id).isEmpty()
+                                && Charters.approve(server, mock, real).isEmpty(),
+                        "applying and approving should succeed");
+            });
+            ClientWait.until(
+                    context,
+                    "the two-person charter",
+                    client -> ClientCharter.view()
+                            .filter(view ->
+                                    view.name().equals(TWO_PLAYER_NAME) && view.people() == 2 && !view.director())
+                            .isPresent(),
+                    client -> "charter " + ClientCharter.view());
 
-			two.server().runOnServer(server -> {
-				require(Charters.leave(server, mock).isEmpty(), "the Director leaving should succeed");
-			});
-			ClientWait.until(context, "the charter down to one person with the director", client -> ClientCharter.view().filter(view -> view.people() == 1 && view.director()).isPresent(), client -> "charter " + ClientCharter.view());
+            two.server().runOnServer(server -> {
+                require(Charters.leave(server, mock).isEmpty(), "the Director leaving should succeed");
+            });
+            ClientWait.until(
+                    context,
+                    "the charter down to one person with the director",
+                    client -> ClientCharter.view()
+                            .filter(view -> view.people() == 1 && view.director())
+                            .isPresent(),
+                    client -> "charter " + ClientCharter.view());
 
-			two.connection().close();
-			ClientWait.until(context, "the client out of the world", client -> client.level == null);
-			for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > MOCK_ONLY; tick++) {
-				require(tick <= CLIENT_TICK_FUSE, "the server never dropped the disconnected client");
-				context.waitTick();
-			}
-			try (var connection = two.server().connect()) {
-				ClientWait.until(context, "the two-person charter led by the director", client -> ClientCharter.view().filter(view -> view.name().equals(TWO_PLAYER_NAME) && view.director()).isPresent(), client -> "charter " + ClientCharter.view());
-			}
-		}
-	}
+            two.connection().close();
+            ClientWait.until(context, "the client out of the world", client -> client.level == null);
+            for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > MOCK_ONLY; tick++) {
+                require(tick <= CLIENT_TICK_FUSE, "the server never dropped the disconnected client");
+                context.waitTick();
+            }
+            try (var connection = two.server().connect()) {
+                ClientWait.until(
+                        context,
+                        "the two-person charter led by the director",
+                        client -> ClientCharter.view()
+                                .filter(view -> view.name().equals(TWO_PLAYER_NAME) && view.director())
+                                .isPresent(),
+                        client -> "charter " + ClientCharter.view());
+            }
+        }
+    }
 }

@@ -64,8 +64,18 @@ BARE = "// entity-query:\n        return level.getEntitiesOfClass(PodEntity.clas
 IN_STRING = 'String note = "// entity-query: not a comment"; return level.getEntitiesOfClass(PodEntity.class, box).isEmpty();'
 IN_TEXT_BLOCK = 'String note = """\n            // entity-query: in a text block\n            """; return level.getEntitiesOfClass(PodEntity.class, box).isEmpty();'
 
+# palantir-java-format moves a marker within a wrapped statement; the shared markedNear must still not reach a marker that belongs elsewhere.
+NEXT_STATEMENT = "boolean empty = level.getEntitiesOfClass(PodEntity.class, box).isEmpty();\n        int gap = 0; // entity-query: belongs to the next statement\n        return empty;"
+BLANK_LINE = "// entity-query: separated by a blank line\n\n        return level.getEntitiesOfClass(PodEntity.class, box).isEmpty();"
+URL_LINE = '// entity-query: above a line whose string holds //\n        String url = "http://x";\n        return level.getEntitiesOfClass(PodEntity.class, box).isEmpty();'
+FAR_END = "return level.getEntitiesOfClass(PodEntity.class,\n" + ",\n".join(f"            arg{i}" for i in range(14)) + ",\n            box).isEmpty(); // entity-query: more than 12 lines away"
+
 MARKERS = {
     "a bare marker": (BARE, 5),
+    "a marker on the next statement": (NEXT_STATEMENT, 4),
+    "a marker above a line with // in a string": (URL_LINE, 6),
+    "a marker above a blank line": (BLANK_LINE, 6),
+    "a marker more than 12 lines down a wrapped statement": (FAR_END, 4),
     "two lines above": (TWO_ABOVE, 6),
     "a marker in a string": (IN_STRING, 4),
     "a marker in a text block": (IN_TEXT_BLOCK, 6),

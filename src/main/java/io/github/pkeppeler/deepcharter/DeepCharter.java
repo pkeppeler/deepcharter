@@ -1,10 +1,5 @@
 package io.github.pkeppeler.deepcharter;
 
-import net.fabricmc.api.ModInitializer;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.github.pkeppeler.deepcharter.charter.CharterInit;
 import io.github.pkeppeler.deepcharter.colony.ColonyInit;
 import io.github.pkeppeler.deepcharter.creature.CreatureInit;
@@ -23,33 +18,36 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalInit;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionInit;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeInit;
 import io.github.pkeppeler.deepcharter.wreck.WreckInit;
+import net.fabricmc.api.ModInitializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DeepCharter implements ModInitializer {
-	public static final String MOD_ID = "deepcharter";
-	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static final String MOD_ID = "deepcharter";
+    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	// One line per feature. Features register their own parts from their XInit.init(), so a new
-	// part never edits this class.
-	@Override
-	public void onInitialize() {
-		CharterInit.init();
-		ColonyInit.init();
-		CreatureInit.init();
-		FuelInit.init();
-		HandbookInit.init();
-		HangarInit.init();
-		LayerInit.init();
-		MarketInit.init();
-		OreInit.init();
-		PodInit.init();
-		RepairInit.init();
-		ScannerInit.init();
-		SoundInit.init();
-		SurfaceInit.init();
-		TerminalInit.init();
-		TransmissionInit.init();
-		UpgradeInit.init();
-		WreckInit.init();
-		LOGGER.info("Deep Charter initialised");
-	}
+    // One line per feature. Features register their own parts from their XInit.init(), so a new
+    // part never edits this class.
+    @Override
+    public void onInitialize() {
+        CharterInit.init();
+        ColonyInit.init();
+        CreatureInit.init();
+        FuelInit.init();
+        HandbookInit.init();
+        HangarInit.init();
+        LayerInit.init();
+        MarketInit.init();
+        OreInit.init();
+        PodInit.init();
+        RepairInit.init();
+        ScannerInit.init();
+        SoundInit.init();
+        SurfaceInit.init();
+        TerminalInit.init();
+        TransmissionInit.init();
+        UpgradeInit.init();
+        WreckInit.init();
+        LOGGER.info("Deep Charter initialised");
+    }
 }

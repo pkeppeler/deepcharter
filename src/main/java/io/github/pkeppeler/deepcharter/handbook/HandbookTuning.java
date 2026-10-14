@@ -11,21 +11,22 @@ package io.github.pkeppeler.deepcharter.handbook;
  * @param findProspectorBlocks how close a player must come to a Prospector wreck to have found it: a wreck site's bay reaches
  *                             six blocks from its middle
  */
-public record HandbookTuning(int progressPollTicks, int triggerPollTicks, int drillDownBlocks, int findProspectorBlocks) {
-	public static final HandbookTuning DEFAULT = new HandbookTuning(10, 10, 10, 10);
+public record HandbookTuning(
+        int progressPollTicks, int triggerPollTicks, int drillDownBlocks, int findProspectorBlocks) {
+    public static final HandbookTuning DEFAULT = new HandbookTuning(10, 10, 10, 10);
 
-	public HandbookTuning {
-		if (progressPollTicks < 1) {
-			throw new IllegalArgumentException("progressPollTicks must be at least 1, got " + progressPollTicks);
-		}
-		if (triggerPollTicks < 1) {
-			throw new IllegalArgumentException("triggerPollTicks must be at least 1, got " + triggerPollTicks);
-		}
-		if (drillDownBlocks < 1) {
-			throw new IllegalArgumentException("drillDownBlocks must be at least 1, got " + drillDownBlocks);
-		}
-		if (findProspectorBlocks < 1) {
-			throw new IllegalArgumentException("findProspectorBlocks must be at least 1, got " + findProspectorBlocks);
-		}
-	}
+    public HandbookTuning {
+        if (progressPollTicks < 1) {
+            throw new IllegalArgumentException("progressPollTicks must be at least 1, got " + progressPollTicks);
+        }
+        if (triggerPollTicks < 1) {
+            throw new IllegalArgumentException("triggerPollTicks must be at least 1, got " + triggerPollTicks);
+        }
+        if (drillDownBlocks < 1) {
+            throw new IllegalArgumentException("drillDownBlocks must be at least 1, got " + drillDownBlocks);
+        }
+        if (findProspectorBlocks < 1) {
+            throw new IllegalArgumentException("findProspectorBlocks must be at least 1, got " + findProspectorBlocks);
+        }
+    }
 }

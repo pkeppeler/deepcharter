@@ -5,10 +5,9 @@ package io.github.pkeppeler.deepcharter.client.layer;
  * Each part of the layer feature registers itself from here, one line per part.
  */
 public final class LayerClientInit {
-	private LayerClientInit() {
-	}
+    private LayerClientInit() {}
 
-	public static void init() {
-		LayerClientRegistry.register();
-	}
+    public static void init() {
+        LayerClientRegistry.register();
+    }
 }

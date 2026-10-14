@@ -1,23 +1,5 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Path;
-import java.util.Locale;
-import java.util.Set;
-import java.util.function.ToIntFunction;
-
-import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
-import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-
-import javax.imageio.ImageIO;
-
-import net.minecraft.client.Minecraft;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-
 import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
@@ -25,147 +7,175 @@ import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.util.Locale;
+import java.util.Set;
+import java.util.function.ToIntFunction;
+import javax.imageio.ImageIO;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 
 /** Client GameTest: the altimeter string matches the depth maths, and a crossing starts and clears the fade. */
 public class BreachHudTest implements FabricClientGameTest {
-	private static final double X = 2000.5;
-	private static final double Z = 2000.5;
-	/** Real ticks to wait for something that should take a handful. */
-	private static final int PATIENCE = 200;
+    private static final double X = 2000.5;
+    private static final double Z = 2000.5;
+    /** Real ticks to wait for something that should take a handful. */
+    private static final int PATIENCE = 200;
 
-	/** Written out here, not read from Depth, so the test checks the maths rather than repeating it. */
-	private static final int SEA_LEVEL = 63;
-	private static final int OVERWORLD_MIN_Y = -64;
-	private static final int LAYER_1_HEIGHT = 192;
-	private static final double FEET_PER_BLOCK = 3.28;
+    /** Written out here, not read from Depth, so the test checks the maths rather than repeating it. */
+    private static final int SEA_LEVEL = 63;
 
-	@Override
-	public void runTest(ClientGameTestContext context) {
-		ClientTestLog.start(this);
-		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			ClientWait.until(context, "the client in the world", client -> client.player != null && client.level != null);
+    private static final int OVERWORLD_MIN_Y = -64;
+    private static final int LAYER_1_HEIGHT = 192;
+    private static final double FEET_PER_BLOCK = 3.28;
 
-			assertFadeCoversPodHud(context, singleplayer);
+    @Override
+    public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            ClientWait.until(
+                    context, "the client in the world", client -> client.player != null && client.level != null);
 
-			// On the surface the altimeter reads sea level minus Y.
-			assertAltimeter(context, "the surface", client -> SEA_LEVEL - client.player.getBlockY());
+            assertFadeCoversPodHud(context, singleplayer);
 
-			// In layer 1 low enough that the reading is over a thousand feet, so it has a thousands separator.
-			teleport(singleplayer, 1, 5);
-			ClientWait.until(context, "the client in layer_1", client -> client.level.dimension().equals(LayerChain.dimension(1)));
-			assertAltimeter(context, "layer 1", client ->
-					SEA_LEVEL - OVERWORLD_MIN_Y + LAYER_1_HEIGHT - client.player.getBlockY());
-			String deep = context.computeOnClient(client -> Altimeter.reading(client).getString());
-			if (!deep.contains(",")) {
-				throw new AssertionError("A reading over 1,000 ft should group its digits, read: " + deep);
-			}
+            // On the surface the altimeter reads sea level minus Y.
+            assertAltimeter(context, "the surface", client -> SEA_LEVEL - client.player.getBlockY());
 
-			// A crossing: one block under the floor of layer 1, so it crosses on the next server tick.
-			teleport(singleplayer, 1, -1);
-			float peak = 0;
-			int startedAt = -1;
-			int clearedAt = -1;
-			for (int tick = 0; tick < PATIENCE && clearedAt < 0; tick++) {
-				float alpha = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
-				if (alpha > 0 && startedAt < 0) {
-					startedAt = tick;
-				}
-				peak = Math.max(peak, alpha);
-				if (startedAt >= 0 && alpha == 0) {
-					clearedAt = tick;
-				}
-				context.waitTick();
-			}
-			if (startedAt < 0) {
-				throw new AssertionError("The fade never started after a crossing");
-			}
-			if (peak < 0.8f) {
-				throw new AssertionError("The fade should reach black, peaked at " + peak);
-			}
-			if (clearedAt < 0) {
-				throw new AssertionError("The fade did not clear within " + PATIENCE + " ticks");
-			}
-			int length = clearedAt - startedAt;
-			// Sampling is per tick, so allow a few ticks either side of the nominal length.
-			if (length < BreachEffects.fadeTicks() - 3 || length > BreachEffects.fadeTicks() + 5) {
-				throw new AssertionError("The fade should last about " + BreachEffects.fadeTicks() + " ticks, lasted " + length);
-			}
-			if (!context.computeOnClient(client -> client.level.dimension().equals(LayerChain.dimension(2)))) {
-				throw new AssertionError("The crossing should have put the client in layer 2");
-			}
-		}
-	}
+            // In layer 1 low enough that the reading is over a thousand feet, so it has a thousands separator.
+            teleport(singleplayer, 1, 5);
+            ClientWait.until(
+                    context,
+                    "the client in layer_1",
+                    client -> client.level.dimension().equals(LayerChain.dimension(1)));
+            assertAltimeter(
+                    context,
+                    "layer 1",
+                    client -> SEA_LEVEL - OVERWORLD_MIN_Y + LAYER_1_HEIGHT - client.player.getBlockY());
+            String deep =
+                    context.computeOnClient(client -> Altimeter.reading(client).getString());
+            if (!deep.contains(",")) {
+                throw new AssertionError("A reading over 1,000 ft should group its digits, read: " + deep);
+            }
 
-	/**
-	 * The fade is a full blackout, so it must draw over the pod readout (registered by another part of
-	 * the mod). The registry does not expose its order, so this looks at pixels: the Ribbon along the top
-	 * edge has lit gauge segments before the fade and nothing at its black plateau.
-	 */
-	private static void assertFadeCoversPodHud(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
-		PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
-		ClientWait.until(context, "the client riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
-		context.waitTicks(5);
-		if (brightestInRibbon(context, context.takeScreenshot("breach-hud-before-fade")) < 200) {
-			throw new AssertionError("The Ribbon should be visible before the fade, or this check proves nothing");
-		}
-		context.runOnClient(client -> BreachEffects.begin());
-		ClientWait.until(context, "the breach fade complete", client -> BreachEffects.fadeAlpha(0f) >= 1f);
-		int brightest = brightestInRibbon(context, context.takeScreenshot("breach-hud-fade-peak"));
-		if (brightest > 8) {
-			throw new AssertionError("The fade should black out the Ribbon, but a pixel of brightness " + brightest + " shows through");
-		}
-		context.runOnClient(client -> BreachEffects.reset());
-		singleplayer.getServer().runOnServer(server -> server.getPlayerList().getPlayers().getFirst().stopRiding());
-		ClientWait.until(context, "the player out of the pod", client -> client.player.getVehicle() == null);
-	}
+            // A crossing: one block under the floor of layer 1, so it crosses on the next server tick.
+            teleport(singleplayer, 1, -1);
+            float peak = 0;
+            int startedAt = -1;
+            int clearedAt = -1;
+            for (int tick = 0; tick < PATIENCE && clearedAt < 0; tick++) {
+                float alpha = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
+                if (alpha > 0 && startedAt < 0) {
+                    startedAt = tick;
+                }
+                peak = Math.max(peak, alpha);
+                if (startedAt >= 0 && alpha == 0) {
+                    clearedAt = tick;
+                }
+                context.waitTick();
+            }
+            if (startedAt < 0) {
+                throw new AssertionError("The fade never started after a crossing");
+            }
+            if (peak < 0.8f) {
+                throw new AssertionError("The fade should reach black, peaked at " + peak);
+            }
+            if (clearedAt < 0) {
+                throw new AssertionError("The fade did not clear within " + PATIENCE + " ticks");
+            }
+            int length = clearedAt - startedAt;
+            // Sampling is per tick, so allow a few ticks either side of the nominal length.
+            if (length < BreachEffects.fadeTicks() - 3 || length > BreachEffects.fadeTicks() + 5) {
+                throw new AssertionError(
+                        "The fade should last about " + BreachEffects.fadeTicks() + " ticks, lasted " + length);
+            }
+            if (!context.computeOnClient(client -> client.level.dimension().equals(LayerChain.dimension(2)))) {
+                throw new AssertionError("The crossing should have put the client in layer 2");
+            }
+        }
+    }
 
-	/** The brightest colour channel in the screenshot where the Ribbon draws, along the top edge. */
-	private static int brightestInRibbon(ClientGameTestContext context, Path screenshot) {
-		int[] box = context.computeOnClient(client -> {
-			Decal band = CockpitLook.current().ribbon().band();
-			int scale = client.getWindow().getGuiScale();
-			int left = band.left(client.getWindow().getGuiScaledWidth());
-			int top = band.top(client.getWindow().getGuiScaledHeight());
-			return new int[] {left * scale, top * scale, (left + band.width()) * scale, (top + band.height()) * scale};
-		});
-		try {
-			BufferedImage image = ImageIO.read(screenshot.toFile());
-			int brightest = 0;
-			for (int x = box[0]; x < box[2]; x++) {
-				for (int y = box[1]; y < box[3]; y++) {
-					int argb = image.getRGB(x, y);
-					brightest = Math.max(brightest, Math.max((argb >> 16) & 0xFF, Math.max((argb >> 8) & 0xFF, argb & 0xFF)));
-				}
-			}
-			return brightest;
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
-	}
+    /**
+     * The fade is a full blackout, so it must draw over the pod readout (registered by another part of
+     * the mod). The registry does not expose its order, so this looks at pixels: the Ribbon along the top
+     * edge has lit gauge segments before the fade and nothing at its black plateau.
+     */
+    private static void assertFadeCoversPodHud(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
+        ClientWait.until(context, "the client riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
+        context.waitTicks(5);
+        if (brightestInRibbon(context, context.takeScreenshot("breach-hud-before-fade")) < 200) {
+            throw new AssertionError("The Ribbon should be visible before the fade, or this check proves nothing");
+        }
+        context.runOnClient(client -> BreachEffects.begin());
+        ClientWait.until(context, "the breach fade complete", client -> BreachEffects.fadeAlpha(0f) >= 1f);
+        int brightest = brightestInRibbon(context, context.takeScreenshot("breach-hud-fade-peak"));
+        if (brightest > 8) {
+            throw new AssertionError(
+                    "The fade should black out the Ribbon, but a pixel of brightness " + brightest + " shows through");
+        }
+        context.runOnClient(client -> BreachEffects.reset());
+        singleplayer
+                .getServer()
+                .runOnServer(
+                        server -> server.getPlayerList().getPlayers().getFirst().stopRiding());
+        ClientWait.until(context, "the player out of the pod", client -> client.player.getVehicle() == null);
+    }
 
-	/** Teleports the real player into layer {@code layer} at height {@code y}. */
-	private static void teleport(TestSingleplayerContext singleplayer, int layer, int y) {
-		singleplayer.getServer().runOnServer(server -> {
-			ServerLevel level = server.getLevel(LayerChain.dimension(layer));
-			ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-			player.teleportTo(level, X, y, Z, Set.of(), 0, 0, true);
-		});
-	}
+    /** The brightest colour channel in the screenshot where the Ribbon draws, along the top edge. */
+    private static int brightestInRibbon(ClientGameTestContext context, Path screenshot) {
+        int[] box = context.computeOnClient(client -> {
+            Decal band = CockpitLook.current().ribbon().band();
+            int scale = client.getWindow().getGuiScale();
+            int left = band.left(client.getWindow().getGuiScaledWidth());
+            int top = band.top(client.getWindow().getGuiScaledHeight());
+            return new int[] {left * scale, top * scale, (left + band.width()) * scale, (top + band.height()) * scale};
+        });
+        try {
+            BufferedImage image = ImageIO.read(screenshot.toFile());
+            int brightest = 0;
+            for (int x = box[0]; x < box[2]; x++) {
+                for (int y = box[1]; y < box[3]; y++) {
+                    int argb = image.getRGB(x, y);
+                    brightest = Math.max(
+                            brightest, Math.max((argb >> 16) & 0xFF, Math.max((argb >> 8) & 0xFF, argb & 0xFF)));
+                }
+            }
+            return brightest;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
 
-	/**
-	 * The reading and the block Y it was made from are taken in one client call, so the player cannot
-	 * move between them.
-	 */
-	private static void assertAltimeter(ClientGameTestContext context, String where,
-			ToIntFunction<Minecraft> blocksDeep) {
-		record Sample(String text, int blocks) {
-		}
-		Sample sample = context.computeOnClient(client -> new Sample(Altimeter.reading(client).getString(), blocksDeep.applyAsInt(client)));
-		int feet = (int) Math.round(sample.blocks() * FEET_PER_BLOCK);
-		String expected = String.format(Locale.US, "%,d", -feet) + " ft.";
-		if (!sample.text().equals(expected)) {
-			throw new AssertionError("Altimeter in " + where + " should read '" + expected + "' for " + sample.blocks()
-					+ " blocks of depth, read '" + sample.text() + "'");
-		}
-	}
+    /** Teleports the real player into layer {@code layer} at height {@code y}. */
+    private static void teleport(TestSingleplayerContext singleplayer, int layer, int y) {
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.teleportTo(level, X, y, Z, Set.of(), 0, 0, true);
+        });
+    }
+
+    /**
+     * The reading and the block Y it was made from are taken in one client call, so the player cannot
+     * move between them.
+     */
+    private static void assertAltimeter(
+            ClientGameTestContext context, String where, ToIntFunction<Minecraft> blocksDeep) {
+        record Sample(String text, int blocks) {}
+        Sample sample = context.computeOnClient(
+                client -> new Sample(Altimeter.reading(client).getString(), blocksDeep.applyAsInt(client)));
+        int feet = (int) Math.round(sample.blocks() * FEET_PER_BLOCK);
+        String expected = String.format(Locale.US, "%,d", -feet) + " ft.";
+        if (!sample.text().equals(expected)) {
+            throw new AssertionError("Altimeter in " + where + " should read '" + expected + "' for " + sample.blocks()
+                    + " blocks of depth, read '" + sample.text() + "'");
+        }
+    }
 }

@@ -8,23 +8,23 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
  * See tools/record-evidence.sh for how to add one.
  */
 public class CameraTurnScenario extends EvidenceScenario {
-	private static final int FRAMES = 45;
-	private static final float DEGREES_PER_FRAME = 360f / FRAMES;
+    private static final int FRAMES = 45;
+    private static final float DEGREES_PER_FRAME = 360f / FRAMES;
 
-	@Override
-	protected String name() {
-		return "camera-turn";
-	}
+    @Override
+    protected String name() {
+        return "camera-turn";
+    }
 
-	@Override
-	protected void run(ClientGameTestContext context) {
-		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.waitTicks(40);
-			screenshot(context, "world-loaded");
-			for (int i = 0; i < FRAMES; i++) {
-				context.runOnClient(client -> client.player.setYRot(client.player.getYRot() + DEGREES_PER_FRAME));
-				frame(context);
-			}
-		}
-	}
+    @Override
+    protected void run(ClientGameTestContext context) {
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            context.waitTicks(40);
+            screenshot(context, "world-loaded");
+            for (int i = 0; i < FRAMES; i++) {
+                context.runOnClient(client -> client.player.setYRot(client.player.getYRot() + DEGREES_PER_FRAME));
+                frame(context);
+            }
+        }
+    }
 }

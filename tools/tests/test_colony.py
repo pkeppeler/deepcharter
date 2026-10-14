@@ -130,11 +130,11 @@ class SteelBeamJoinTest(unittest.TestCase):
 class KitAgreesWithJavaTest(unittest.TestCase):
     def test_the_kit_registers_exactly_the_blocks_the_catalogue_draws(self):
         source = (JAVA / "ColonyKit.java").read_text()
-        registered = set(re.findall(r'(?:cube|window|facing|pillar|register|registerBlock)\("([a-z_]+)"', source))
+        registered = set(re.findall(r'(?:cube|window|facing|pillar|register|registerBlock)\(\s*"([a-z_]+)"', source))
         self.assertEqual(registered, set(kit.CATALOGUE))
 
     def test_the_sculpture_pieces_and_sign_tiles_match(self):
-        pieces = re.search(r"enum Piece implements StringRepresentable \{\s*([A-Z_, ]+);", (JAVA / "KitSculptureBlock.java").read_text())
+        pieces = re.search(r"enum Piece implements StringRepresentable \{\s*([A-Z_,\s]+);", (JAVA / "KitSculptureBlock.java").read_text())
         self.assertEqual([p.strip().lower() for p in pieces.group(1).split(",")], list(sculptures.PIECES))
         tiles = re.search(r"static final int TILES = (\d+);", (JAVA / "KitSignBlock.java").read_text())
         self.assertEqual(int(tiles.group(1)), kit.SIGN_TILES)
@@ -378,7 +378,7 @@ class TownTest(unittest.TestCase):
         self.assertEqual(self.cells[(ax, ay - 3, az)][0], "deepcharter:riveted_plate_red")
 
     def test_the_anchors_are_the_ones_the_game_names(self):
-        names = re.findall(r"^\t([A-Z_]+)[,;]", (JAVA / "ColonyAnchor.java").read_text(), re.MULTILINE)
+        names = re.findall(r"^ {4}([A-Z_]+)[,;]", (JAVA / "ColonyAnchor.java").read_text(), re.MULTILINE)
         self.assertEqual(sorted(n.lower() for n in names), sorted(town.ANCHORS))
 
 

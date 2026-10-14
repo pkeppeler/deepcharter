@@ -1,8 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 /**
  * The pod shields its pilot from lava on the server (#288), but the client also simulates lava on its own player and lights it,
@@ -10,14 +9,13 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
  * only cue is the HUD line, the hiss and the hull number.
  */
 public final class PilotFire {
-	private PilotFire() {
-	}
+    private PilotFire() {}
 
-	public static void init() {
-		ClientTickEvents.END_CLIENT_TICK.register(client -> {
-			if (client.player != null && client.player.getVehicle() instanceof PodEntity pod && pod.hullBurning()) {
-				client.player.clearFire();
-			}
-		});
-	}
+    public static void init() {
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (client.player != null && client.player.getVehicle() instanceof PodEntity pod && pod.hullBurning()) {
+                client.player.clearFire();
+            }
+        });
+    }
 }

@@ -1,22 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-
-import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
-import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-
-import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.input.MouseButtonInfo;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.Vec3;
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientNotes;
@@ -30,8 +14,21 @@ import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.HandbookDrawn;
 import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
-
-import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Client GameTest for #78. A screen driven by hand first: the Notes tab lists the notes, marks the unread ones, and opening one
@@ -39,136 +36,193 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
  * read on the server and for this player only, and the list tells the read one from the unread one.
  */
 public class NotesClientTest implements FabricClientGameTest {
-	private static final Identifier FIRST = Notes.id(1);
-	private static final Identifier TENTH = Notes.id(10);
-	private static final int LEFT_MOUSE = 1;
-	/** A window so small that the sheet is at its minimum size. */
-	private static final int MIN_WINDOW_WIDTH = 200;
-	private static final int MIN_WINDOW_HEIGHT = 100;
-	private static final int WINDOW_WIDTH = 427;
-	private static final int WINDOW_HEIGHT = 240;
+    private static final Identifier FIRST = Notes.id(1);
+    private static final Identifier TENTH = Notes.id(10);
+    private static final int LEFT_MOUSE = 1;
+    /** A window so small that the sheet is at its minimum size. */
+    private static final int MIN_WINDOW_WIDTH = 200;
 
-	@Override
-	public void runTest(ClientGameTestContext context) {
-		ClientTestLog.start(this);
-		theListMarksUnreadNotesAndOpeningOneReportsItOnce(context);
-		everyNoteOfTheSliceHasTextAndFitsTheListAtMinimumSize(context);
-		inTheRealGame(context);
-	}
+    private static final int MIN_WINDOW_HEIGHT = 100;
+    private static final int WINDOW_WIDTH = 427;
+    private static final int WINDOW_HEIGHT = 240;
 
-	private static List<HandbookNote> notes(int count) {
-		List<HandbookNote> notes = new ArrayList<>();
-		for (int number = 1; number <= count; number++) {
-			Identifier id = Notes.id(number);
-			notes.add(new HandbookNote(id, number, Component.literal("PLACEHOLDER: title " + number), Component.literal("PLACEHOLDER: text " + number)));
-		}
-		return notes;
-	}
+    @Override
+    public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
+        theListMarksUnreadNotesAndOpeningOneReportsItOnce(context);
+        everyNoteOfTheSliceHasTextAndFitsTheListAtMinimumSize(context);
+        inTheRealGame(context);
+    }
 
-	private static List<HandbookPage> noPages() {
-		return List.of(new HandbookPage.Cover());
-	}
+    private static List<HandbookNote> notes(int count) {
+        List<HandbookNote> notes = new ArrayList<>();
+        for (int number = 1; number <= count; number++) {
+            Identifier id = Notes.id(number);
+            notes.add(new HandbookNote(
+                    id,
+                    number,
+                    Component.literal("PLACEHOLDER: title " + number),
+                    Component.literal("PLACEHOLDER: text " + number)));
+        }
+        return notes;
+    }
 
-	private static MouseButtonEvent clickOn(HandbookScreen.NoteRow row) {
-		return new MouseButtonEvent((row.left() + row.right()) / 2.0, (row.top() + row.bottom()) / 2.0, new MouseButtonInfo(LEFT_MOUSE, 0));
-	}
+    private static List<HandbookPage> noPages() {
+        return List.of(new HandbookPage.Cover());
+    }
 
-	private static void theListMarksUnreadNotesAndOpeningOneReportsItOnce(ClientGameTestContext context) {
-		context.runOnClient(client -> {
-			List<Identifier> viewed = new ArrayList<>();
-			Set<Identifier> read = Set.of(FIRST);
-			List<HandbookNote> listed = notes(3);
-			HandbookScreen screen = new HandbookScreen(noPages(), read::contains, viewed::add, listed);
-			screen.init(WINDOW_WIDTH, WINDOW_HEIGHT);
-			screen.showNotes();
-			require(!HandbookDrawn.showsNotesEmptyState(screen), "with notes the Notes tab is not empty");
-			require(HandbookDrawn.showsNotesList(screen), "the Notes tab opens on the list");
-			require(!screen.noteUnread(FIRST) && screen.noteUnread(Notes.id(2)), "a read note and an unread note are told apart");
-			List<HandbookScreen.NoteRow> rows = screen.noteRows();
-			require(rows.size() == 3, "the list has a row for each note, got " + rows.size());
+    private static MouseButtonEvent clickOn(HandbookScreen.NoteRow row) {
+        return new MouseButtonEvent(
+                (row.left() + row.right()) / 2.0, (row.top() + row.bottom()) / 2.0, new MouseButtonInfo(LEFT_MOUSE, 0));
+    }
 
-			require(screen.mouseClicked(clickOn(rows.get(1)), false), "a row is a click target");
-			require(HandbookDrawn.showsNote(screen, listed.get(1)), "clicking a row opens that note");
-			require(viewed.equals(List.of(Notes.id(2))), "opening an unread note reports it, got " + viewed);
-			screen.closeNote();
-			require(HandbookDrawn.showsNotesList(screen), "back returns to the list");
-			screen.openNote(Notes.id(2));
-			require(viewed.size() == 1, "opening a note again reports nothing more, got " + viewed);
-			screen.openNote(FIRST);
-			require(viewed.size() == 1, "opening a note that is read reports nothing, got " + viewed);
-			screen.openNote(Notes.id(9));
-			require(HandbookDrawn.showsNote(screen, listed.get(0)), "a note the tab does not list cannot be opened");
-			require(viewed.size() == 1, "an unlisted note is never reported, got " + viewed);
+    private static void theListMarksUnreadNotesAndOpeningOneReportsItOnce(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            List<Identifier> viewed = new ArrayList<>();
+            Set<Identifier> read = Set.of(FIRST);
+            List<HandbookNote> listed = notes(3);
+            HandbookScreen screen = new HandbookScreen(noPages(), read::contains, viewed::add, listed);
+            screen.init(WINDOW_WIDTH, WINDOW_HEIGHT);
+            screen.showNotes();
+            require(!HandbookDrawn.showsNotesEmptyState(screen), "with notes the Notes tab is not empty");
+            require(HandbookDrawn.showsNotesList(screen), "the Notes tab opens on the list");
+            require(
+                    !screen.noteUnread(FIRST) && screen.noteUnread(Notes.id(2)),
+                    "a read note and an unread note are told apart");
+            List<HandbookScreen.NoteRow> rows = screen.noteRows();
+            require(rows.size() == 3, "the list has a row for each note, got " + rows.size());
 
-			HandbookScreen empty = new HandbookScreen(noPages(), id -> false, id -> { }, List.of());
-			empty.init(WINDOW_WIDTH, WINDOW_HEIGHT);
-			empty.showNotes();
-			require(HandbookDrawn.showsNotesEmptyState(empty) && empty.noteRows().isEmpty(), "with no notes the tab shows its empty state");
-		});
-	}
+            require(screen.mouseClicked(clickOn(rows.get(1)), false), "a row is a click target");
+            require(HandbookDrawn.showsNote(screen, listed.get(1)), "clicking a row opens that note");
+            require(viewed.equals(List.of(Notes.id(2))), "opening an unread note reports it, got " + viewed);
+            screen.closeNote();
+            require(HandbookDrawn.showsNotesList(screen), "back returns to the list");
+            screen.openNote(Notes.id(2));
+            require(viewed.size() == 1, "opening a note again reports nothing more, got " + viewed);
+            screen.openNote(FIRST);
+            require(viewed.size() == 1, "opening a note that is read reports nothing, got " + viewed);
+            screen.openNote(Notes.id(9));
+            require(HandbookDrawn.showsNote(screen, listed.get(0)), "a note the tab does not list cannot be opened");
+            require(viewed.size() == 1, "an unlisted note is never reported, got " + viewed);
 
-	/** Every shipped note has an entry for its row and fits when opened, and a long list scrolls at the smallest sheet. */
-	private static void everyNoteOfTheSliceHasTextAndFitsTheListAtMinimumSize(ClientGameTestContext context) {
-		context.runOnClient(client -> {
-			List<HandbookNote> shipped = ShippedNotes.ids().stream().map(ClientNotes::entry).toList();
-			HandbookScreen screen = new HandbookScreen(noPages(), id -> false, id -> { }, shipped);
-			screen.init(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
-			screen.showNotes();
-			List<HandbookScreen.NoteRow> rows = screen.noteRows();
-			require(!rows.isEmpty() && rows.size() < shipped.size(), "at the smallest size part of the list shows, got " + rows.size() + " of " + shipped.size());
-			int firstTop = rows.getFirst().top();
-			require(screen.mouseScrolled(0, 0, 0, -1), "the list scrolls");
-			require(screen.noteRows().getFirst().top() == firstTop && !screen.noteRows().getFirst().note().equals(rows.getFirst().note()),
-					"scrolling moves the next note into the first row");
-			for (HandbookNote note : shipped) {
-				screen.openNote(note.id());
-				require(HandbookDrawn.showsNote(screen, note), "note " + note.number() + " opens");
-			}
-		});
-	}
+            HandbookScreen empty = new HandbookScreen(noPages(), id -> false, id -> {}, List.of());
+            empty.init(WINDOW_WIDTH, WINDOW_HEIGHT);
+            empty.showNotes();
+            require(
+                    HandbookDrawn.showsNotesEmptyState(empty)
+                            && empty.noteRows().isEmpty(),
+                    "with no notes the tab shows its empty state");
+        });
+    }
 
-	private static void inTheRealGame(ClientGameTestContext context) {
-		try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-			context.runOnClient(client -> require(ClientNotes.entries().isEmpty(), "a new world has no notes"));
-			singleplayer.getServer().runOnServer(server -> {
-				ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-				require(Charters.found(server, player.getUUID(), "Notes Test Co").isEmpty(), "the player founds a charter");
-				useNoteBlock(player, 1);
-				useNoteBlock(player, 10);
-			});
-			ClientWait.until(context, "the notes the server sent", client -> ClientNotes.entries().stream().map(HandbookNote::id).toList().equals(List.of(FIRST, TENTH)), client -> "notes " + ClientNotes.entries().stream().map(HandbookNote::id).toList());
-			require(context.computeOnClient(client -> !ClientReadMarks.isRead(FIRST) && !ClientReadMarks.isRead(TENTH)), "the found notes are unread");
+    /** Every shipped note has an entry for its row and fits when opened, and a long list scrolls at the smallest sheet. */
+    private static void everyNoteOfTheSliceHasTextAndFitsTheListAtMinimumSize(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            List<HandbookNote> shipped =
+                    ShippedNotes.ids().stream().map(ClientNotes::entry).toList();
+            HandbookScreen screen = new HandbookScreen(noPages(), id -> false, id -> {}, shipped);
+            screen.init(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT);
+            screen.showNotes();
+            List<HandbookScreen.NoteRow> rows = screen.noteRows();
+            require(
+                    !rows.isEmpty() && rows.size() < shipped.size(),
+                    "at the smallest size part of the list shows, got " + rows.size() + " of " + shipped.size());
+            int firstTop = rows.getFirst().top();
+            require(screen.mouseScrolled(0, 0, 0, -1), "the list scrolls");
+            require(
+                    screen.noteRows().getFirst().top() == firstTop
+                            && !screen.noteRows()
+                                    .getFirst()
+                                    .note()
+                                    .equals(rows.getFirst().note()),
+                    "scrolling moves the next note into the first row");
+            for (HandbookNote note : shipped) {
+                screen.openNote(note.id());
+                require(HandbookDrawn.showsNote(screen, note), "note " + note.number() + " opens");
+            }
+        });
+    }
 
-			context.runOnClient(client -> HandbookScreen.open(client));
-			ClientWait.screen(context, HandbookScreen.class);
-			HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
-			context.runOnClient(client -> screen.showNotes());
-			context.waitTicks(2);
-			require(context.computeOnClient(client -> screen.noteRows().size() == 2 && screen.noteUnread(FIRST) && screen.noteUnread(TENTH)),
-					"the Notes tab lists the two found notes, both unread");
+    private static void inTheRealGame(ClientGameTestContext context) {
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            context.runOnClient(client -> require(ClientNotes.entries().isEmpty(), "a new world has no notes"));
+            singleplayer.getServer().runOnServer(server -> {
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                require(
+                        Charters.found(server, player.getUUID(), "Notes Test Co")
+                                .isEmpty(),
+                        "the player founds a charter");
+                useNoteBlock(player, 1);
+                useNoteBlock(player, 10);
+            });
+            ClientWait.until(
+                    context,
+                    "the notes the server sent",
+                    client -> ClientNotes.entries().stream()
+                            .map(HandbookNote::id)
+                            .toList()
+                            .equals(List.of(FIRST, TENTH)),
+                    client -> "notes "
+                            + ClientNotes.entries().stream()
+                                    .map(HandbookNote::id)
+                                    .toList());
+            require(
+                    context.computeOnClient(client -> !ClientReadMarks.isRead(FIRST) && !ClientReadMarks.isRead(TENTH)),
+                    "the found notes are unread");
 
-			context.runOnClient(client -> screen.mouseClicked(clickOn(screen.noteRows().getFirst()), false));
-			context.waitTicks(2);
-			context.takeScreenshot("notes-open");
-			require(context.computeOnClient(client -> HandbookDrawn.showsNote(screen, ClientNotes.entries().getFirst())), "clicking the first row opens the first note");
-			ClientWait.until(context, "the first note marked read", client -> ClientReadMarks.isRead(FIRST), client -> "read mark " + ClientReadMarks.isRead(FIRST));
-			require(singleplayer.getServer().computeOnServer(server -> ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), FIRST)),
-					"the server holds the read mark");
-			require(singleplayer.getServer().computeOnServer(server -> !ReadMarks.isRead(server.getPlayerList().getPlayers().getFirst(), TENTH)),
-					"the other note stays unread");
+            context.runOnClient(client -> HandbookScreen.open(client));
+            ClientWait.screen(context, HandbookScreen.class);
+            HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
+            context.runOnClient(client -> screen.showNotes());
+            context.waitTicks(2);
+            require(
+                    context.computeOnClient(client ->
+                            screen.noteRows().size() == 2 && screen.noteUnread(FIRST) && screen.noteUnread(TENTH)),
+                    "the Notes tab lists the two found notes, both unread");
 
-			context.runOnClient(client -> screen.closeNote());
-			context.waitTicks(2);
-			require(context.computeOnClient(client -> !screen.noteUnread(FIRST) && screen.noteUnread(TENTH)), "the list tells the read note from the unread one");
-			context.takeScreenshot("notes-tab");
-			context.setScreen(() -> null);
-		}
-	}
+            context.runOnClient(
+                    client -> screen.mouseClicked(clickOn(screen.noteRows().getFirst()), false));
+            context.waitTicks(2);
+            context.takeScreenshot("notes-open");
+            require(
+                    context.computeOnClient(client -> HandbookDrawn.showsNote(
+                            screen, ClientNotes.entries().getFirst())),
+                    "clicking the first row opens the first note");
+            ClientWait.until(
+                    context,
+                    "the first note marked read",
+                    client -> ClientReadMarks.isRead(FIRST),
+                    client -> "read mark " + ClientReadMarks.isRead(FIRST));
+            require(
+                    singleplayer
+                            .getServer()
+                            .computeOnServer(server -> ReadMarks.isRead(
+                                    server.getPlayerList().getPlayers().getFirst(), FIRST)),
+                    "the server holds the read mark");
+            require(
+                    singleplayer
+                            .getServer()
+                            .computeOnServer(server -> !ReadMarks.isRead(
+                                    server.getPlayerList().getPlayers().getFirst(), TENTH)),
+                    "the other note stays unread");
 
-	/** Puts a Note block next to the player and uses it, as the game does when a player right-clicks it. */
-	private static void useNoteBlock(ServerPlayer player, int number) {
-		BlockPos pos = player.blockPosition().relative(Direction.NORTH, 2);
-		player.level().setBlock(pos, NoteBlock.stateOf(number), 3);
-		player.level().getBlockState(pos).useWithoutItem(player.level(), player, new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
-	}
+            context.runOnClient(client -> screen.closeNote());
+            context.waitTicks(2);
+            require(
+                    context.computeOnClient(client -> !screen.noteUnread(FIRST) && screen.noteUnread(TENTH)),
+                    "the list tells the read note from the unread one");
+            context.takeScreenshot("notes-tab");
+            context.setScreen(() -> null);
+        }
+    }
+
+    /** Puts a Note block next to the player and uses it, as the game does when a player right-clicks it. */
+    private static void useNoteBlock(ServerPlayer player, int number) {
+        BlockPos pos = player.blockPosition().relative(Direction.NORTH, 2);
+        player.level().setBlock(pos, NoteBlock.stateOf(number), 3);
+        player.level()
+                .getBlockState(pos)
+                .useWithoutItem(
+                        player.level(), player, new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
+    }
 }

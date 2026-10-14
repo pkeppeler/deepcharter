@@ -1,23 +1,5 @@
 package io.github.pkeppeler.deepcharter.hangar;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-
-import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
-
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
@@ -37,6 +19,22 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * The hangar console: a terminal of its own, repaired by the four {@link HangarParts} (which repairs the founding Mole, see
@@ -51,181 +49,209 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
  * changes nothing. The catalyst and money go last.
  */
 public final class HangarTerminal {
-	public static final Identifier BUY_MOLE = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "buy_mole");
-	public static final Identifier RESTORE_WRECK = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "restore_wreck");
-	/**
-	 * The console's id is not {@code hangar}: the colony stands a terminal on the plinth of the anchor with the type's name, and the
-	 * hangar anchor is the bay, not a plinth. {@link Hangar} places the console beside the bay.
-	 */
-	public static final TerminalType TYPE = TerminalTypes.register(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hangar_console"), HangarParts.ALL);
+    public static final Identifier BUY_MOLE = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "buy_mole");
+    public static final Identifier RESTORE_WRECK = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "restore_wreck");
+    /**
+     * The console's id is not {@code hangar}: the colony stands a terminal on the plinth of the anchor with the type's name, and the
+     * hangar anchor is the bay, not a plinth. {@link Hangar} places the console beside the bay.
+     */
+    public static final TerminalType TYPE = TerminalTypes.register(
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hangar_console"), HangarParts.ALL);
 
-	private HangarTerminal() {
-	}
+    private HangarTerminal() {}
 
-	static void register() {
-		TerminalActions.register(TYPE, BUY_MOLE, HangarTerminal::buyMole);
-		TerminalActions.register(TYPE, RESTORE_WRECK, HangarTerminal::restoreWreck);
-		TerminalFeatures.register(TYPE, HangarView.STREAM_CODEC, HangarTerminal::view);
-	}
+    static void register() {
+        TerminalActions.register(TYPE, BUY_MOLE, HangarTerminal::buyMole);
+        TerminalActions.register(TYPE, RESTORE_WRECK, HangarTerminal::restoreWreck);
+        TerminalFeatures.register(TYPE, HangarView.STREAM_CODEC, HangarTerminal::view);
+    }
 
-	/** What the Prospector's advance has left for the viewing charter. Never throws: unreadable records show none. */
-	public static HangarView view(MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
-		Optional<HangarData> data = HangarData.readable(server);
-		if (data.isEmpty() || charter.isEmpty()) {
-			return new HangarView(0);
-		}
-		return new HangarView(data.get().advanceLeft(charter.get().id(), HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).advance()));
-	}
+    /** What the Prospector's advance has left for the viewing charter. Never throws: unreadable records show none. */
+    public static HangarView view(
+            MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
+        Optional<HangarData> data = HangarData.readable(server);
+        if (data.isEmpty() || charter.isEmpty()) {
+            return new HangarView(0);
+        }
+        return new HangarView(data.get()
+                .advanceLeft(
+                        charter.get().id(),
+                        HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR).advance()));
+    }
 
-	private static Optional<Component> refuse(String reason, Object... args) {
-		return Optional.of(Component.translatable("deepcharter.hangar.refusal." + reason, args));
-	}
+    private static Optional<Component> refuse(String reason, Object... args) {
+        return Optional.of(Component.translatable("deepcharter.hangar.refusal." + reason, args));
+    }
 
-	/** Buys a refurbished Mole: $500 and $250 for each pod the charter has. It stands in a free place in the bay. */
-	private static Optional<Component> buyMole(TerminalAction.Context context) {
-		MinecraftServer server = context.server();
-		Optional<HangarData> data = HangarData.readable(server);
-		if (data.isEmpty()) {
-			return refuse("unreadable");
-		}
-		if (!data.get().state().founded()) {
-			return refuse("founding_pending");
-		}
-		Optional<BlockPos> anchor = Colony.anchor(server, ColonyAnchor.HANGAR);
-		if (anchor.isEmpty()) {
-			return refuse("no_bay");
-		}
-		Charter charter = context.charter().orElseThrow(() -> new IllegalStateException("the hangar console is for charters only"));
-		long price = HangarTuning.DEFAULT.refurbishedPrice(data.get().podCount(charter.id()));
-		if (charter.account() < price) {
-			return refuse("insufficient_funds", price);
-		}
-		ServerLevel level = server.overworld();
-		Optional<Vec3> slot = Hangar.freeSlot(level, anchor.get(), Chassis.MOLE);
-		if (slot.isEmpty()) {
-			return refuse("bay_full");
-		}
-		PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.TRIGGERED);
-		if (pod == null) {
-			return refuse("pod_failed");
-		}
-		pod.setPos(slot.get());
-		if (!Serials.get(server).isReadable()) {
-			// No pod is registered without a serial: nothing has been taken yet.
-			return refuse("serials_unreadable");
-		}
-		PodComponents.register(pod, charter.id());
-		String serial = PodComponents.registration(pod).orElseThrow().serial();
-		// Spend before the pod enters the world: the hangar records a pod when it loads, so a refused spend leaves nothing to undo.
-		Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), price);
-		if (refusal.isPresent()) {
-			throw new IllegalStateException("a purchase that passed the funds check was refused: " + refusal.get());
-		}
-		if (!level.addFreshEntity(pod)) {
-			Charters.deposit(server, charter.id(), price).ifPresent(failed -> {
-				throw new IllegalStateException("the refund of a pod that did not spawn was refused: " + failed);
-			});
-			return refuse("pod_failed");
-		}
-		context.player().sendOverlayMessage(Component.translatable("deepcharter.hangar.bought", pod.chassis().id().toUpperCase(Locale.ROOT), serial, price));
-		return Optional.empty();
-	}
+    /** Buys a refurbished Mole: $500 and $250 for each pod the charter has. It stands in a free place in the bay. */
+    private static Optional<Component> buyMole(TerminalAction.Context context) {
+        MinecraftServer server = context.server();
+        Optional<HangarData> data = HangarData.readable(server);
+        if (data.isEmpty()) {
+            return refuse("unreadable");
+        }
+        if (!data.get().state().founded()) {
+            return refuse("founding_pending");
+        }
+        Optional<BlockPos> anchor = Colony.anchor(server, ColonyAnchor.HANGAR);
+        if (anchor.isEmpty()) {
+            return refuse("no_bay");
+        }
+        Charter charter = context.charter()
+                .orElseThrow(() -> new IllegalStateException("the hangar console is for charters only"));
+        long price = HangarTuning.DEFAULT.refurbishedPrice(data.get().podCount(charter.id()));
+        if (charter.account() < price) {
+            return refuse("insufficient_funds", price);
+        }
+        ServerLevel level = server.overworld();
+        Optional<Vec3> slot = Hangar.freeSlot(level, anchor.get(), Chassis.MOLE);
+        if (slot.isEmpty()) {
+            return refuse("bay_full");
+        }
+        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.TRIGGERED);
+        if (pod == null) {
+            return refuse("pod_failed");
+        }
+        pod.setPos(slot.get());
+        if (!Serials.get(server).isReadable()) {
+            // No pod is registered without a serial: nothing has been taken yet.
+            return refuse("serials_unreadable");
+        }
+        PodComponents.register(pod, charter.id());
+        String serial = PodComponents.registration(pod).orElseThrow().serial();
+        // Spend before the pod enters the world: the hangar records a pod when it loads, so a refused spend leaves
+        // nothing to undo.
+        Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), price);
+        if (refusal.isPresent()) {
+            throw new IllegalStateException("a purchase that passed the funds check was refused: " + refusal.get());
+        }
+        if (!level.addFreshEntity(pod)) {
+            Charters.deposit(server, charter.id(), price).ifPresent(failed -> {
+                throw new IllegalStateException("the refund of a pod that did not spawn was refused: " + failed);
+            });
+            return refuse("pod_failed");
+        }
+        context.player()
+                .sendOverlayMessage(Component.translatable(
+                        "deepcharter.hangar.bought", pod.chassis().id().toUpperCase(Locale.ROOT), serial, price));
+        return Optional.empty();
+    }
 
-	/** Restores the nearest wreck in reach of the console that the charter may access, for money and the catalyst. */
-	private static Optional<Component> restoreWreck(TerminalAction.Context context) {
-		MinecraftServer server = context.server();
-		HangarTuning tuning = HangarTuning.DEFAULT;
-		Optional<HangarData> data = HangarData.readable(server);
-		if (data.isEmpty()) {
-			return refuse("unreadable");
-		}
-		Charter charter = context.charter().orElseThrow(() -> new IllegalStateException("the hangar console is for charters only"));
-		ServerPlayer player = context.player();
-		Vec3 console = Vec3.atCenterOf(context.pos());
-		// entity-query: wreckRadius round the console the player stands within reach of is within 30 blocks of the player, which tick at the lowest simulation distance (EntityQueryAuditTest measures it); a miss refuses before anything is spent
-		List<PodEntity> inReach = player.level().getEntitiesOfClass(PodEntity.class, new AABB(context.pos()).inflate(tuning.wreckRadius())).stream()
-				.filter(pod -> Wrecks.isWreck(pod) && !Hangar.isUnrepairedDerelict(data.get(), pod) && pod.position().distanceTo(console) <= tuning.wreckRadius())
-				.sorted(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(console)))
-				.toList();
-		if (inReach.isEmpty()) {
-			return refuse("no_wreck");
-		}
-		Optional<PodEntity> usable = inReach.stream().filter(pod -> PodComponents.mayAccess(pod, Optional.of(charter))).findFirst();
-		if (usable.isEmpty()) {
-			return PodComponents.registration(inReach.getFirst()).map(registration -> refuse("not_your_wreck", registration.serial()))
-					.orElseGet(() -> refuse("wreck_unreadable"));
-		}
-		PodEntity wreck = usable.get();
-		HangarTuning.RestoreCost cost = tuning.restoreCost(wreck.chassis());
-		// A wreck nobody owns is registered to the charter that restores it. The lore wreck keeps its own serial; any other takes one.
-		boolean unowned = PodComponents.registration(wreck).isEmpty();
-		boolean lore = PodComponents.isFamousProspector(wreck);
-		if (unowned && !Serials.get(server).isReadable()) {
-			return refuse("serials_unreadable");
-		}
-		if (unowned && lore && Serials.get(server).isFamousProspectorHeld()) {
-			return refuse("serial_held", Serials.FAMOUS_PROSPECTOR);
-		}
-		if (charter.account() < cost.money()) {
-			return refuse("insufficient_funds", cost.money());
-		}
-		Item catalyst = OreRegistry.item(tuning.catalyst());
-		int fromPack = Math.min(count(player.getInventory(), catalyst), cost.catalysts());
-		int advanced = Math.min(cost.catalysts() - fromPack, data.get().advanceLeft(charter.id(), cost.advance()));
-		if (fromPack + advanced < cost.catalysts()) {
-			return refuse("missing_catalyst", cost.catalysts(), new ItemStack(catalyst).getHoverName().getString());
-		}
-		try {
-			Wrecks.restore(wreck, wreck.maxHull());
-		} catch (IllegalStateException unreadable) {
-			DeepCharter.LOGGER.error("Could not restore pod {}: {}", wreck.getUUID(), unreadable.getMessage());
-			return refuse("restore_failed");
-		}
-		if (unowned) {
-			if (lore) {
-				PodComponents.registerLoreWreck(wreck, charter.id());
-			} else {
-				PodComponents.register(wreck, charter.id());
-				// The name a wreck was given is the wreck's: the registration names the pod now.
-				wreck.setCustomName(null);
-			}
-		}
-		take(player.getInventory(), catalyst, fromPack);
-		if (advanced > 0) {
-			data.get().spendAdvance(charter.id(), advanced);
-		}
-		Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), cost.money());
-		if (refusal.isPresent()) {
-			throw new IllegalStateException("a restore that passed the funds check was refused: " + refusal.get());
-		}
-		player.sendOverlayMessage(advanced > 0
-				? Component.translatable("deepcharter.hangar.restored_advance", cost.money(), advanced, new ItemStack(catalyst).getHoverName().getString())
-				: Component.translatable("deepcharter.hangar.restored", cost.money()));
-		cost.transmission().ifPresent(transmission -> Transmissions.fire(server, charter.id(), transmission));
-		HangarEvents.RESTORED.invoker().onRestored(server, player, wreck);
-		return Optional.empty();
-	}
+    /** Restores the nearest wreck in reach of the console that the charter may access, for money and the catalyst. */
+    private static Optional<Component> restoreWreck(TerminalAction.Context context) {
+        MinecraftServer server = context.server();
+        HangarTuning tuning = HangarTuning.DEFAULT;
+        Optional<HangarData> data = HangarData.readable(server);
+        if (data.isEmpty()) {
+            return refuse("unreadable");
+        }
+        Charter charter = context.charter()
+                .orElseThrow(() -> new IllegalStateException("the hangar console is for charters only"));
+        ServerPlayer player = context.player();
+        Vec3 console = Vec3.atCenterOf(context.pos());
+        // entity-query: wreckRadius round the console the player stands within reach of is within 30 blocks of the
+        // player, which tick at the lowest simulation distance (EntityQueryAuditTest measures it); a miss refuses
+        // before anything is spent
+        List<PodEntity> inReach = player
+                .level()
+                .getEntitiesOfClass(PodEntity.class, new AABB(context.pos()).inflate(tuning.wreckRadius()))
+                .stream()
+                .filter(pod -> Wrecks.isWreck(pod)
+                        && !Hangar.isUnrepairedDerelict(data.get(), pod)
+                        && pod.position().distanceTo(console) <= tuning.wreckRadius())
+                .sorted(Comparator.comparingDouble(pod -> pod.position().distanceToSqr(console)))
+                .toList();
+        if (inReach.isEmpty()) {
+            return refuse("no_wreck");
+        }
+        Optional<PodEntity> usable = inReach.stream()
+                .filter(pod -> PodComponents.mayAccess(pod, Optional.of(charter)))
+                .findFirst();
+        if (usable.isEmpty()) {
+            return PodComponents.registration(inReach.getFirst())
+                    .map(registration -> refuse("not_your_wreck", registration.serial()))
+                    .orElseGet(() -> refuse("wreck_unreadable"));
+        }
+        PodEntity wreck = usable.get();
+        HangarTuning.RestoreCost cost = tuning.restoreCost(wreck.chassis());
+        // A wreck nobody owns is registered to the charter that restores it. The lore wreck keeps its own serial; any
+        // other takes one.
+        boolean unowned = PodComponents.registration(wreck).isEmpty();
+        boolean lore = PodComponents.isFamousProspector(wreck);
+        if (unowned && !Serials.get(server).isReadable()) {
+            return refuse("serials_unreadable");
+        }
+        if (unowned && lore && Serials.get(server).isFamousProspectorHeld()) {
+            return refuse("serial_held", Serials.FAMOUS_PROSPECTOR);
+        }
+        if (charter.account() < cost.money()) {
+            return refuse("insufficient_funds", cost.money());
+        }
+        Item catalyst = OreRegistry.item(tuning.catalyst());
+        int fromPack = Math.min(count(player.getInventory(), catalyst), cost.catalysts());
+        int advanced = Math.min(cost.catalysts() - fromPack, data.get().advanceLeft(charter.id(), cost.advance()));
+        if (fromPack + advanced < cost.catalysts()) {
+            return refuse(
+                    "missing_catalyst",
+                    cost.catalysts(),
+                    new ItemStack(catalyst).getHoverName().getString());
+        }
+        try {
+            Wrecks.restore(wreck, wreck.maxHull());
+        } catch (IllegalStateException unreadable) {
+            DeepCharter.LOGGER.error("Could not restore pod {}: {}", wreck.getUUID(), unreadable.getMessage());
+            return refuse("restore_failed");
+        }
+        if (unowned) {
+            if (lore) {
+                PodComponents.registerLoreWreck(wreck, charter.id());
+            } else {
+                PodComponents.register(wreck, charter.id());
+                // The name a wreck was given is the wreck's: the registration names the pod now.
+                wreck.setCustomName(null);
+            }
+        }
+        take(player.getInventory(), catalyst, fromPack);
+        if (advanced > 0) {
+            data.get().spendAdvance(charter.id(), advanced);
+        }
+        Optional<CharterRefusal> refusal = Charters.spend(server, charter.id(), cost.money());
+        if (refusal.isPresent()) {
+            throw new IllegalStateException("a restore that passed the funds check was refused: " + refusal.get());
+        }
+        player.sendOverlayMessage(
+                advanced > 0
+                        ? Component.translatable(
+                                "deepcharter.hangar.restored_advance",
+                                cost.money(),
+                                advanced,
+                                new ItemStack(catalyst).getHoverName().getString())
+                        : Component.translatable("deepcharter.hangar.restored", cost.money()));
+        cost.transmission().ifPresent(transmission -> Transmissions.fire(server, charter.id(), transmission));
+        HangarEvents.RESTORED.invoker().onRestored(server, player, wreck);
+        return Optional.empty();
+    }
 
-	private static int count(Inventory inventory, Item item) {
-		int total = 0;
-		for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
-			if (inventory.getItem(slot).is(item)) {
-				total += inventory.getItem(slot).getCount();
-			}
-		}
-		return total;
-	}
+    private static int count(Inventory inventory, Item item) {
+        int total = 0;
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            if (inventory.getItem(slot).is(item)) {
+                total += inventory.getItem(slot).getCount();
+            }
+        }
+        return total;
+    }
 
-	/** Takes {@code amount} of {@code item}; the caller has checked that the inventory holds that many. */
-	private static void take(Inventory inventory, Item item, int amount) {
-		int left = amount;
-		for (int slot = 0; slot < inventory.getContainerSize() && left > 0; slot++) {
-			if (inventory.getItem(slot).is(item)) {
-				left -= inventory.removeItem(slot, left).getCount();
-			}
-		}
-		if (left > 0) {
-			throw new IllegalStateException("the inventory held fewer than the " + amount + " that were counted");
-		}
-	}
+    /** Takes {@code amount} of {@code item}; the caller has checked that the inventory holds that many. */
+    private static void take(Inventory inventory, Item item, int amount) {
+        int left = amount;
+        for (int slot = 0; slot < inventory.getContainerSize() && left > 0; slot++) {
+            if (inventory.getItem(slot).is(item)) {
+                left -= inventory.removeItem(slot, left).getCount();
+            }
+        }
+        if (left > 0) {
+            throw new IllegalStateException("the inventory held fewer than the " + amount + " that were counted");
+        }
+    }
 }

@@ -5,5 +5,5 @@ package io.github.pkeppeler.deepcharter.wreck;
  * component per tunable and give it its value where {@code DEFAULT} is built.
  */
 public record WreckTuning() {
-	public static final WreckTuning DEFAULT = new WreckTuning();
+    public static final WreckTuning DEFAULT = new WreckTuning();
 }
