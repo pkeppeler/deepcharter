@@ -15,7 +15,7 @@ Code lives under `io.github.pkeppeler.deepcharter`. Detail beyond this file:
 ## Agent Toolchain
 
 - Build, with the server GameTest and all gates: `./gradlew build`
-- `just check` (`./gradlew check`, a subset of what CI's `build` job runs, `./gradlew build`); `just audit` (osv-scanner over the lockfiles and verification metadata; needs `osv-scanner` on PATH). The audit runs weekly and on PRs that touch dependency files (`.github/workflows/audit.yml`); a lapsed `ignoreUntil` or a new advisory shows up as a failed weekly `audit` run.
+- `just check` (`./gradlew check`, a subset of `./gradlew build`); `just audit` (osv-scanner; needs it on PATH). `audit.yml` runs it weekly and on PRs touching dependency files; a lapsed `ignoreUntil` or a new advisory fails the weekly run.
 - Fast test command (server GameTests): `./gradlew runGameTest`
 - One server GameTest, or a prefix: `tools/gametest.sh '<test_id or prefix*>'`
 - Server suite in reverse name order (leak check): `./gradlew runGameTest -PgametestOrder=reverse`
