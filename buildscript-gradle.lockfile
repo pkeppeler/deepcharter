@@ -1,0 +1,55 @@
+# This is a Gradle generated file for dependency locking.
+# Manual edits can break the build and are not advised.
+# This file is expected to be part of source control.
+# To regenerate this file, run: ./gradlew dependencies --write-locks
+com.autonomousapps.dependency-analysis:com.autonomousapps.dependency-analysis.gradle.plugin:3.19.2=classpath
+com.autonomousapps:antlr:4.13.2.2=classpath
+com.autonomousapps:asm-relocated:9.10.1.0=classpath
+com.autonomousapps:dependency-analysis-gradle-plugin:3.19.2=classpath
+com.autonomousapps:graph-support:0.12.0=classpath
+com.autonomousapps:kotlin-editor-relocated:0.25.0=classpath
+com.autonomousapps:variant-artifacts:0.7.0=classpath
+com.github.ben-manes.caffeine:caffeine:3.2.4=classpath
+com.google.code.gson:gson:2.14.0=classpath
+com.google.errorprone:error_prone_annotations:2.50.0=classpath
+com.google.guava:failureaccess:1.0.3=classpath
+com.google.guava:guava:33.7.1-jre=classpath
+com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava=classpath
+com.google.j2objc:j2objc-annotations:3.1=classpath
+com.squareup.moshi:moshi-adapters:1.15.2=classpath
+com.squareup.moshi:moshi-kotlin:1.15.2=classpath
+com.squareup.moshi:moshi:1.15.2=classpath
+com.squareup.okio:okio-bom:3.15.0=classpath
+com.squareup.okio:okio-jvm:3.15.0=classpath
+com.squareup.okio:okio:3.15.0=classpath
+dev.zacsweers.moshix:moshi-sealed-reflect:0.37.0=classpath
+dev.zacsweers.moshix:moshi-sealed-runtime:0.37.0=classpath
+net.fabricmc.fabric-loom:net.fabricmc.fabric-loom.gradle.plugin:1.18.2=classpath
+net.fabricmc.unpick:unpick-format-utils:3.0.0-beta.13=classpath
+net.fabricmc.unpick:unpick:3.0.0-beta.13=classpath
+net.fabricmc:class-tweaker:0.3.0=classpath
+net.fabricmc:fabric-loom:1.18.2=classpath
+net.fabricmc:lorenz-tiny:4.0.2=classpath
+net.fabricmc:mapping-io:0.8.0=classpath
+net.fabricmc:mercury:0.4.3=classpath
+net.fabricmc:mercurymixin:0.2.2=classpath
+net.fabricmc:stitch:0.6.2=classpath
+net.fabricmc:tiny-mappings-parser:0.3.0+build.17=classpath
+net.fabricmc:tiny-remapper:0.14.1=classpath
+org.cadixdev:at:0.1.0-rc1=classpath
+org.cadixdev:bombe:0.3.4=classpath
+org.cadixdev:lorenz:0.5.7=classpath
+org.jetbrains.kotlin:kotlin-bom:2.4.0=classpath
+org.jetbrains.kotlin:kotlin-metadata-jvm:2.4.0=classpath
+org.jetbrains.kotlin:kotlin-reflect:2.4.0=classpath
+org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.4.0=classpath
+org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.4.0=classpath
+org.jetbrains.kotlin:kotlin-stdlib:2.4.0=classpath
+org.jetbrains:annotations:13.0=classpath
+org.jspecify:jspecify:1.0.1=classpath
+org.ow2.asm:asm-analysis:9.10.1=classpath
+org.ow2.asm:asm-commons:9.10.1=classpath
+org.ow2.asm:asm-tree:9.10.1=classpath
+org.ow2.asm:asm-util:9.10.1=classpath
+org.ow2.asm:asm:9.10.1=classpath
+empty=

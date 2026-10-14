@@ -1,6 +1,14 @@
 import java.security.MessageDigest
 import java.util.zip.ZipFile
 
+// Plugin versions are locked too. Regenerate: see the deepcharter-conventions skill.
+buildscript {
+	dependencyLocking {
+		lockAllConfigurations()
+		lockMode = LockMode.STRICT
+	}
+}
+
 plugins {
 	alias(libs.plugins.loom)
 	alias(libs.plugins.dependency.analysis)
@@ -11,6 +19,22 @@ java {
 	// Runtime and test classpaths resolve to the versions the compile classpath chose, so what we compile against is what runs.
 	consistentResolution { useCompileClasspathVersions() }
 }
+
+dependencyLocking {
+	lockAllConfigurations()
+	lockMode = LockMode.STRICT
+	// Mojang's manifest rules make these OS-specific (macOS: Objective-C bridge, kqueue, Vulkan; Linux: epoll), so a lock
+	// written on one system fails on the other. Their checksums stay verified: the metadata holds both systems' artifacts.
+	ignoredDependencies.addAll(
+		"ca.weblite:java-objc-bridge",
+		"io.netty:netty-transport-native-kqueue",
+		"io.netty:netty-transport-native-epoll",
+		"org.lwjgl:lwjgl-vulkan",
+	)
+}
+
+// gradle/verification-metadata.xml trusts net.minecraft:minecraft-{merged,common,clientOnly}-*: Loom generates those jars per
+// machine with differing bytes, and checks the Mojang jars they come from against Mojang's manifest. All else is sha256-verified.
 
 group = providers.gradleProperty("maven_group").get()
 
@@ -141,8 +165,8 @@ dependencies {
 	include(libs.geckolib)
 }
 
-// Audit condition 2: the resolved GeckoLib jar must be the audited one. Gradle has no dependency verification here, so a
-// changed jar (a re-upload, a swapped repository) fails the build before it is packed into ours.
+// Audit condition 2: the resolved GeckoLib jar must be the audited one. Regenerating the verification metadata accepts whatever
+// jar resolves; this sha512 changes only with a repeated audit, so a swapped jar fails the build before it is packed into ours.
 abstract class CheckGeckoLib : DefaultTask() {
 	@get:InputFiles
 	abstract val jars: ConfigurableFileCollection

@@ -224,7 +224,7 @@ dependencies {
 ## Conditions
 
 1. **Pin exactly** the jar above. Update only by repeating this audit's hash and source checks.
-2. **Fail the build on a hash mismatch.** Our build has no Gradle dependency verification (there is no `gradle/verification-metadata.xml`). Add a small Gradle check that compares the resolved GeckoLib jar's sha512 to the pin, before `jar`. A gate beats remembering to look.
+2. **Fail the build on a hash mismatch.** Add a small Gradle check that compares the resolved GeckoLib jar's sha512 to the pin, before `jar`. A gate beats remembering to look. `gradle/verification-metadata.xml` (#557) also records the jar's sha256, but regenerating it accepts whatever jar resolves, and it never sees the copy in our jar. Keep both.
 3. **Use `exclusiveContent`** for `com.geckolib`, so no other repository can serve it.
 4. **Use `implementation` plus `include`, nothing else.** After the first build, check that our jar's `META-INF/jars/` holds only `geckolib-fabric-26.3-5.5.7.jar`, with the sha512 above. Loom's `include` should not be transitive; that is not verified for 1.18.2.
 5. **Add `"geckolib": "~5.5.7"` to our `depends`** (5.5.7 up to, not including, 5.6). Another mod's newer GeckoLib then fails at startup with a clear message, not at render time.
