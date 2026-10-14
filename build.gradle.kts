@@ -24,10 +24,20 @@ java {
 dependencyLocking {
 	lockAllConfigurations()
 	lockMode = LockMode.STRICT
+	// RELAXED: Minecraft's libraries depend on the operating system (Mojang's manifest rules, as Loom reads them). macOS adds
+	// the Objective-C bridge, the kqueue native and the Vulkan natives; Linux adds the epoll native. A strict lock written on one
+	// system fails on the other ("Resolved ... which is not part of the dependency lock state"), so these modules stay out of the
+	// lock. Their checksums are still verified: the metadata holds the artifacts of both systems.
+	ignoredDependencies.addAll(
+		"ca.weblite:java-objc-bridge",
+		"io.netty:netty-transport-native-kqueue",
+		"io.netty:netty-transport-native-epoll",
+		"org.lwjgl:lwjgl-vulkan",
+	)
 }
 
-// RELAXED: gradle/verification-metadata.xml trusts net.minecraft:minecraft-merged-*. Loom generates those jars on each machine
-// and their bytes differ on every generation, so no checksum holds. Mojang's jars they are built from are checked by Loom
+// RELAXED: gradle/verification-metadata.xml trusts net.minecraft:minecraft-{merged,common,clientOnly}-*. Loom generates those jars
+// on each machine (the split source sets add the common and clientOnly ones) and their bytes differ on every generation, so no checksum holds. Mojang's jars they are built from are checked by Loom
 // against Mojang's manifest. Every other artifact stays sha256-verified.
 
 group = providers.gradleProperty("maven_group").get()
