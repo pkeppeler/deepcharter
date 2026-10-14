@@ -280,15 +280,14 @@ if (lockOn) {
 }
 
 // The same for the server GameTest run, in a pool of its own: DEEPCHARTER_SERVER_TEST_SLOTS (default 2) at a time on a Mac.
-// DEEPCHARTER_SERVER_TEST_LOCK=1 forces it on and =0 off; DEEPCHARTER_SERVER_TEST_LOCK_TASKS replaces the task names (the test's stub).
+// DEEPCHARTER_SERVER_TEST_LOCK=1 forces it on and =0 off.
 // Slot files are server-test.lock[.N] and the queue is queue-server-test, beside the client ones. tools/tests/server-test-lock.test.sh.
 def serverSetting = System.getenv("DEEPCHARTER_SERVER_TEST_LOCK")
 def serverLockOn = serverSetting != null ? serverSetting == "1" : System.getProperty("os.name").toLowerCase().contains("mac")
 if (serverLockOn) {
 	def serverLock = gradle.sharedServices.registerIfAbsent("serverTestLock", ServerTestLock) {}
 	def serverWorktree = rootProject.projectDir.absolutePath
-	def serverTasks = (System.getenv("DEEPCHARTER_SERVER_TEST_LOCK_TASKS") ?: "runGameTest").split(",") as List
-	tasks.matching { it.name in serverTasks }.configureEach {
+	tasks.matching { it.name == "runGameTest" }.configureEach {
 		usesService(serverLock)
 		doFirst(new AcquireClientLock(serverLock, serverWorktree))
 	}
