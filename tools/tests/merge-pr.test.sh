@@ -454,8 +454,8 @@ refusal "main commit in src" "main changed since its CI run" "$code_log" STUB_SH
 refusal "refusal names the moved path" "src/main/java/Charters.java" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
 refusal "refusal names the CI run creation time" "CI run 9001 created 2026-10-08T03:40:43Z" "$code_log" STUB_SHOW_c1=src/A.java
 refusal "refusal gives the close/reopen fix" "$stale_hint" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
-refusal "main commit in a build file" "$stale_hint" "$code_log" STUB_SHOW_c1=build.gradle
-refusal "build file beside another path" "build.gradle" "$code_log" "STUB_SHOW_c1=gradle.properties${nl}build.gradle"
+refusal "main commit in a build file" "$stale_hint" "$code_log" STUB_SHOW_c1=build.gradle.kts
+refusal "build file beside another path" "build.gradle.kts" "$code_log" "STUB_SHOW_c1=gradle.properties${nl}build.gradle.kts"
 refusal "code beside docs still refuses" "tools/merge-pr.sh" "$code_log" "STUB_SHOW_c1=docs/ROADMAP.md${nl}tools/merge-pr.sh"
 refusal "code in a later commit refuses" "src/B.java" "STUB_MAIN_LOG=c1 $after${nl}c2 $after" STUB_SHOW_c1=docs/x.md STUB_SHOW_c2=src/B.java
 refusal "docs-looking directory outside docs/ refuses" "$stale_hint" "$code_log" STUB_SHOW_c1=docsx/a.txt

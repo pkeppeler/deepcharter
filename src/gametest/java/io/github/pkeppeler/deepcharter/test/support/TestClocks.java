@@ -6,7 +6,7 @@ import net.minecraft.world.clock.ClockInstance;
 import net.minecraft.world.clock.ServerClockManager;
 import net.minecraft.world.clock.WorldClock;
 
-/** The one way a server test writes a world clock; {@code gradle/gametest.gradle} fails the build for a direct write elsewhere. */
+/** The one way a server test writes a world clock; {@code gradle/gametest.gradle.kts} fails the build for a direct write elsewhere. */
 public final class TestClocks {
 	private TestClocks() {
 	}

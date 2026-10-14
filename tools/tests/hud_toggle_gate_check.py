@@ -1,4 +1,4 @@
-"""Tests the HUD-toggle gate in gradle/gametest.gradle: a direct HUD toggle (hud.toggle(), keyToggleGui, hideGui, KEY_F1) in src/gametest outside
+"""Tests the HUD-toggle gate in gradle/gametest.gradle.kts: a direct HUD toggle (hud.toggle(), keyToggleGui, hideGui, KEY_F1) in src/gametest outside
 ClientChecks fails the build unless a `// hud-toggle: <reason>` marker with a reason sits on its line or the one above.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the

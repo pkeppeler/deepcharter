@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests the server GameTest pool of gradle/clientlock.gradle (#541): DEEPCHARTER_SERVER_TEST_SLOTS runGameTest runs at a time.
+# Tests the server GameTest pool of gradle/clientlock.gradle.kts (#541): DEEPCHARTER_SERVER_TEST_SLOTS runGameTest runs at a time.
 # A scratch Gradle project applies the script to stub runGameTest and runClient tasks that hold until a release file appears;
 # DEEPCHARTER_LOCK_DIR points at a scratch lock dir. Covers: with one slot the second run waits until the first ends, and starts
 # after it; a held server slot does not block a client run (separate pools); the off switch. The lock code is shared with the client
@@ -35,20 +35,20 @@ exists() { [[ -e $1 ]]; }
 
 proj=$work/proj
 mkdir -p "$proj"
-echo "rootProject.name = 'serverlockprobe'" >"$proj/settings.gradle"
-cat >"$proj/build.gradle" <<S
-["runGameTest", "runClient"].each { taskName ->
+echo 'rootProject.name = "serverlockprobe"' >"$proj/settings.gradle.kts"
+cat >"$proj/build.gradle.kts" <<S
+listOf("runGameTest", "runClient").forEach { taskName ->
 	tasks.register(taskName) {
 		doLast {
-			println "RUNNING \${System.getenv("HOLD_NAME")}"
-			def release = new File(System.getenv("HOLD_RELEASE"))
-			def deadline = System.currentTimeMillis() + 120_000
+			println("RUNNING \${System.getenv("HOLD_NAME")}")
+			val release = File(System.getenv("HOLD_RELEASE"))
+			val deadline = System.currentTimeMillis() + 120_000
 			while (!release.exists() && System.currentTimeMillis() < deadline) { Thread.sleep(100) }
-			println "FINISHED \${System.getenv("HOLD_NAME")}"
+			println("FINISHED \${System.getenv("HOLD_NAME")}")
 		}
 	}
 }
-apply from: "$root/gradle/clientlock.gradle"
+apply(from = "$root/gradle/clientlock.gradle.kts")
 S
 
 export DEEPCHARTER_CLIENT_LOCK=1 DEEPCHARTER_SERVER_TEST_LOCK=1 DEEPCHARTER_SERVER_TEST_SLOTS=1 DEEPCHARTER_CLIENT_SLOTS=1

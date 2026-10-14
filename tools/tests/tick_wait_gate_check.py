@@ -1,4 +1,4 @@
-"""Tests the tick-wait gate in gradle/gametest.gradle: a waitFor or waitForScreen in a client GameTest, client test support file or evidence scenario fails the build.
+"""Tests the tick-wait gate in gradle/gametest.gradle.kts: a waitFor or waitForScreen in a client GameTest, client test support file or evidence scenario fails the build.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.

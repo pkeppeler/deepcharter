@@ -14,7 +14,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 home="${DEEPCHARTER_HOME:-$HOME/.local/share/deepcharter}"
 play_dir="$repo_root/run/play"
 template_dir="$repo_root/run/play-world"
-world_name="deepcharter-playtest"   # must match programArgs of runPlay in build.gradle
+world_name="deepcharter-playtest"   # must match programArgs of runPlay in build.gradle.kts
 bridge_port=25599                   # mcpfabric default; one bridge per machine
 lock_dir="$play_dir/.lock"
 stop_timeout_s="${PLAY_STOP_TIMEOUT:-60}"   # how long the world server gets to stop after `stop`
@@ -130,5 +130,5 @@ rm -f "$play_dir/saves/$world_name/session.lock"
 
 # exec drops the EXIT trap and keeps this PID, so the lock now names the client.
 trap - EXIT
-# --no-daemon: Ctrl-C of a build that waits for a client slot must end it (gradle/clientlock.gradle).
+# --no-daemon: Ctrl-C of a build that waits for a client slot must end it (gradle/clientlock.gradle.kts).
 exec ./gradlew --no-daemon runPlay "$@"

@@ -181,7 +181,7 @@ Sodium and Lithium matched the pins in [sodium-lithium-audit.md](sodium-lithium-
 
 ## How it would ship
 
-Our build uses `net.fabricmc.fabric-loom` 1.18.2 for unobfuscated 26.3. It puts mods on `implementation`, not `modImplementation` ([build.gradle:47-49](../../build.gradle)). GeckoLib's own Fabric build does the same (`fabric/build.gradle.kts:19-20`), and its manifest says `Fabric-Mapping-Namespace: official`, so nothing is remapped.
+Our build uses `net.fabricmc.fabric-loom` 1.18.2 for unobfuscated 26.3. It puts mods on `implementation`, not `modImplementation` ([build.gradle.kts:74-76](../../build.gradle.kts)). GeckoLib's own Fabric build does the same (`fabric/build.gradle.kts:19-20`), and its manifest says `Fabric-Mapping-Namespace: official`, so nothing is remapped.
 
 ```gradle
 repositories {
@@ -239,7 +239,7 @@ dependencies {
 
 **Checked:**
 
-- **Pin and packaging.** `checkGeckoLib` compares the resolved jar's sha512 with `gradle.properties` before `jar` (condition 2). After `./gradlew build`, our jar's `META-INF/jars/` holds one file, `geckolib-fabric-26.3-5.5.7.jar`, with the pinned sha512, so Loom's `include` is not transitive in 1.18.2 (condition 4). `fabric.mod.json` has `"geckolib": "~5.5.7"` (condition 5). The jar's `LICENSE.txt` is MIT, "Copyright (c) 2026 GeckoLib".
+- **Pin and packaging.** `checkGeckoLib` compares the resolved jar's sha512 with the pin in `gradle/libs.versions.toml` before `jar` (condition 2). After `./gradlew build`, our jar's `META-INF/jars/` holds one file, `geckolib-fabric-26.3-5.5.7.jar`, with the pinned sha512, so Loom's `include` is not transitive in 1.18.2 (condition 4). `fabric.mod.json` has `"geckolib": "~5.5.7"` (condition 5). The jar's `LICENSE.txt` is MIT, "Copyright (c) 2026 GeckoLib".
 - **Models.** GeckoLib baked both pod models, and every bone that `GeoModel` reads from the same file (`PodGeckoLibClientTest`). The log says "Loaded 2 models and 0 animations".
 - **Glowmasks under Vulkan on macOS.** The lamp lenses glow in the stills, with vanilla's `eyes` render type (condition 8).
 - **F3+T.** The `skin-swap` evidence scenario switches a resource pack on and reloads: the pod draws the pack's look file, texture and tier map.

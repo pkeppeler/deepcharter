@@ -50,7 +50,7 @@ public final class ClientChecks {
 
 	/**
 	 * Runs {@code body} with the HUD hidden (F1), then puts the HUD back as it was, in a finally, also when {@code body} throws. Every client
-	 * test shares one client, and a later one draws on the HUD. This is the one place a test toggles the HUD: {@code gradle/gametest.gradle}
+	 * test shares one client, and a later one draws on the HUD. This is the one place a test toggles the HUD: {@code gradle/gametest.gradle.kts}
 	 * fails the build for a direct toggle elsewhere.
 	 */
 	public static void withHudHidden(ClientGameTestContext context, Runnable body) {

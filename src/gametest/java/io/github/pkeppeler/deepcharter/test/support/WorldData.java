@@ -14,10 +14,10 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * The one way a test swaps a world-global saved record ({@code getDataStorage().set(TYPE, fresh)}). It captures the world's
  * record, sets the fresh one and runs the body in a {@code try}, and puts the world's back in the {@code finally}. All of it
  * happens synchronously, on the caller's tick, so no code can throw between the swap and the {@code try}, and no other test sees
- * the swap. {@code gradle/gametest.gradle} fails the build for a direct {@code getDataStorage().set(} call elsewhere.
+ * the swap. {@code gradle/gametest.gradle.kts} fails the build for a direct {@code getDataStorage().set(} call elsewhere.
  *
  * <p>Several records swap together with {@link #swap}. The body of a swap that must outlive its tick (a poll across listener
- * phases) cannot use this class; see the allow-list in {@code gradle/gametest.gradle}.
+ * phases) cannot use this class; see the allow-list in {@code gradle/gametest.gradle.kts}.
  */
 public final class WorldData {
 	/** Who swapped each record last, for {@link WorldDataGuard}'s message. */

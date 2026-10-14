@@ -1,4 +1,4 @@
-"""Runs every gate-check fixture tree through one Gradle invocation (checkGametestFixtures in gradle/gametest.gradle).
+"""Runs every gate-check fixture tree through one Gradle invocation (checkGametestFixtures in gradle/gametest.gradle.kts).
 
 Each *_gate_check.py module declares its fixtures as CASES; gate_checks.py gathers them, calls run once and publishes the outcome in
 RESULTS, which the modules' tests assert on.

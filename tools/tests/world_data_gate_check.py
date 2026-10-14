@@ -1,4 +1,4 @@
-"""Tests the world-data gate in gradle/gametest.gradle: a direct getDataStorage() swap in a gametest file fails the build unless a
+"""Tests the world-data gate in gradle/gametest.gradle.kts: a direct getDataStorage() swap in a gametest file fails the build unless a
 `// world-data: <reason>` marker with a reason sits on its line or the one above.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the

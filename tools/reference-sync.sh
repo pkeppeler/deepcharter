@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# Usage: tools/reference-sync.sh [PROPERTIES_FILE]
+# Usage: tools/reference-sync.sh [CATALOG_FILE]
 #
 # Shallow-clones Fabric's source into the git-ignored reference/ folder, at the
 # exact versions the build uses, so agents and humans can read the real code:
 #
-#   reference/fabric-api     github.com/FabricMC/fabric         fabric_api_version  tag "<v>"   (e.g. 0.162.0+26.3)
-#   reference/fabric-loom    github.com/FabricMC/fabric-loom    loom_version        tag "v<v>"  (e.g. v1.18.2)
-#   reference/fabric-loader  github.com/FabricMC/fabric-loader  loader_version      tag "<v>"   (e.g. 0.19.5)
+#   reference/fabric-api     github.com/FabricMC/fabric         fabricApi           tag "<v>"   (e.g. 0.162.0+26.3)
+#   reference/fabric-loom    github.com/FabricMC/fabric-loom    loom                tag "v<v>"  (e.g. v1.18.2)
+#   reference/fabric-loader  github.com/FabricMC/fabric-loader  fabricLoader        tag "<v>"   (e.g. 0.19.5)
 #
-# Versions are read from PROPERTIES_FILE (default: gradle.properties at the repo
-# root). A missing file, missing/empty key, or missing upstream tag is a hard
-# error. With a duplicate key the last one wins, as in Gradle.
+# Versions are read from the [versions] table of CATALOG_FILE (default:
+# gradle/libs.versions.toml at the repo root). A missing file, missing/empty
+# key, or missing upstream tag is a hard error. With a duplicate key the last
+# one wins.
 #
 # Idempotent: a re-run at the same versions only checks local state (and
 # re-applies the current checkout patterns, repairing an older clone). A version
@@ -24,14 +25,14 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-props="${1:-$repo_root/gradle.properties}"
+props="${1:-$repo_root/gradle/libs.versions.toml}"
 ref_dir="$repo_root/reference"
 
-# name | upstream repo | gradle.properties key | tag prefix
+# name | upstream repo | version catalog key | tag prefix
 specs=(
-  "fabric-api|FabricMC/fabric|fabric_api_version|"
-  "fabric-loom|FabricMC/fabric-loom|loom_version|v"
-  "fabric-loader|FabricMC/fabric-loader|loader_version|"
+  "fabric-api|FabricMC/fabric|fabricApi|"
+  "fabric-loom|FabricMC/fabric-loom|loom|v"
+  "fabric-loader|FabricMC/fabric-loader|fabricLoader|"
 )
 
 # Allowlist of checked-out files (sparse-checkout globs, matched at any depth).
@@ -51,15 +52,16 @@ agent_names=(
 
 die() { echo "reference-sync: error: $*" >&2; exit 1; }
 
-[[ -f "$props" ]] || die "properties file not found: $props"
+[[ -f "$props" ]] || die "version catalog not found: $props"
 
-# Prints the value of a key from the properties file (last match wins); fails if
-# absent or empty.
+# Prints the value of a key in the catalog's [versions] table (last match wins);
+# fails if absent or empty.
 prop() {
   local key="$1" value
   value="$(awk -F= -v k="$key" '
-    { sub(/\r$/, ""); gsub(/^[ \t]+|[ \t]+$/, "", $1) }
-    $1 == k { v = $0; sub(/^[^=]*=/, "", v); gsub(/^[ \t]+|[ \t]+$/, "", v); last = v }
+    { sub(/\r$/, ""); line = $0; name = $1; gsub(/^[ \t]+|[ \t]+$/, "", name) }
+    /^\[/ { in_versions = (line == "[versions]"); next }
+    in_versions && name == k { v = line; sub(/^[^=]*=/, "", v); gsub(/^[ \t]+|[ \t]+$/, "", v); gsub(/^"|"$/, "", v); last = v }
     END { print last }
   ' "$props")"
   [[ -n "$value" ]] || die "key '$key' is missing or empty in $props"

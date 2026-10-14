@@ -1,7 +1,7 @@
 import java.util.ArrayList;
 import java.util.List;
 
-// Run by checkRunJvmOom (gradle/run-jvm.gradle) in a 16 MB JVM. Fills the heap, catches the OutOfMemoryError the way a test
+// Run by checkRunJvmOom (gradle/run-jvm.gradle.kts) in a 16 MB JVM. Fills the heap, catches the OutOfMemoryError the way a test
 // harness or a server crash handler does, and returns normally. Without -XX:+ExitOnOutOfMemoryError that is a JVM that exits 0.
 public final class OomProbe {
 	private OomProbe() {

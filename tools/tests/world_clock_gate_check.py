@@ -1,4 +1,4 @@
-"""Tests the world-clock gate in gradle/gametest.gradle: a clock write (setTotalTicks, setPaused, addTicks, setRate) in a server test fails
+"""Tests the world-clock gate in gradle/gametest.gradle.kts: a clock write (setTotalTicks, setPaused, addTicks, setRate) in a server test fails
 the build unless it goes through TestClocks or a `// world-clock: <reason>` marker with a reason sits on its line or the one above.
 Client tests and evidence scenarios are exempt.
 
