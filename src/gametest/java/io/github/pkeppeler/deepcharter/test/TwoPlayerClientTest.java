@@ -20,6 +20,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
@@ -27,6 +28,7 @@ import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -49,6 +51,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 	private static final int ROOM_WEST = 6;
 	private static final int ROOM_EAST = 16;
 	private static final int ROOM_RADIUS_Z = 6;
+	/** Half the width of the shaft cut above the real pod, which lifts it out of the signal decay (#502) for the layer 1 scanner check. */
+	private static final int SHAFT_RADIUS = 2;
 	private static final float EAST = -90f;
 	private static final float LOOK_DOWN = 30f;
 
@@ -123,9 +127,18 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 			client.player.setXRot(LOOK_DOWN);
 		});
 		awaitPodTicks(context, two, rig, POD_TICKS_TO_SETTLE);
+		// The pods stand on the floor of layer 1, inside the signal decay, where the stock console loses the scanner first. This test is about two pods
+		// crossing, not about the decay, so the scanner is read with the real pod lifted to clear air.
+		Vec3 floorPosition = two.server().computeOnServer(server -> liftOutOfDecay(server, rig.realPod()));
 		context.waitTicks(2 * ScannerTuning.DEFAULT.rescanTicks() + 2);
 		frame.run();
 		expectScannerShowsPod(context, "m1-two-pods-layer-1");
+		two.server().runOnServer(server -> {
+			rig.realPod().setPos(floorPosition);
+			rig.realPod().setDeltaMovement(Vec3.ZERO);
+			rig.realPod().setNoGravity(false);
+		});
+		context.waitTicks(ScannerTuning.DEFAULT.rescanTicks() + 2);
 
 		BlockPos mockStone = rig.mockColumns().getFirst().atY(STONE_ROW_Y);
 		// A cell in a chunk the client has not loaded reads as air, so wait for the stone before expecting it gone.
@@ -205,6 +218,33 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 		ScannerPods.fit(server, real, realPod, 1);
 		require(mockPod.getId() == mockPodId && realPod != mockPod && realPod.level() == one && mockPod.level() == one, "Each player should ride their own pod in layer_1");
 		return new Rig(realPod, mockPod, columns(realPod), columns(mockPod));
+	}
+
+	/**
+	 * Cuts a shaft above {@code pod} up to one slab past the layer 1 onset of the decay, with a stone shell like the room's, and holds the pod at the top of it
+	 * with gravity off. Returns where it stood, for putting it back. The height is {@link SignalDecayTuning}'s, so a retuned curve moves the test with it.
+	 */
+	private static Vec3 liftOutOfDecay(MinecraftServer server, PodEntity pod) {
+		ServerLevel one = server.getLevel(LayerChain.dimension(1));
+		Vec3 floorPosition = pod.position();
+		int clearY = one.getMinY() + SignalDecayTuning.DEFAULT.band(1).onset() + 1;
+		int centerX = Mth.floor(floorPosition.x);
+		int centerZ = Mth.floor(floorPosition.z);
+		int roofY = FLOOR_Y + 10;
+		int topY = clearY + 4;
+		for (int x = centerX - SHAFT_RADIUS - 1; x <= centerX + SHAFT_RADIUS + 1; x++) {
+			for (int y = roofY; y <= topY + 1; y++) {
+				for (int z = centerZ - SHAFT_RADIUS - 1; z <= centerZ + SHAFT_RADIUS + 1; z++) {
+					one.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), 2);
+				}
+			}
+		}
+		RoomCarver.carve(one, new BlockPos(centerX - SHAFT_RADIUS, roofY, centerZ - SHAFT_RADIUS), new BlockPos(centerX + SHAFT_RADIUS, topY, centerZ + SHAFT_RADIUS),
+				Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+		pod.setNoGravity(true);
+		pod.setPos(floorPosition.x, clearY, floorPosition.z);
+		pod.setDeltaMovement(Vec3.ZERO);
+		return floorPosition;
 	}
 
 	/** The layer 1 columns a pod bores: its footprint on the block grid, as the drill picks it. */
