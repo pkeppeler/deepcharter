@@ -34,7 +34,7 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Server GameTests for #536 (ADR 0053, mechanics.md "Crafted first-tier parts"): what the crafted units cost a pilot, and that the
- * opening the first six make is no cheaper and no slower than the one the $200 purchases made. The seven hazard answers (lights, hopper, brace, sounder, liner,
+ * opening the first six make is no cheaper and no slower than the one the $200 purchases made. The hazard answers (lights, hopper, brace, sounder, liner,
  * heat shield, console) are tuned to the minutes their old prices took, and take ore from the pod's cargo, which the crates do not give. What a recipe asks comes from the shipped file,
  * what a crate holds from the real loot table, and a run's money and seconds from {@link EarlyRunModel} (the expected ore of a bore, so it
  * never flakes). {@link BootstrapCost} holds the method; no world is built.
@@ -55,7 +55,7 @@ public class FirstTierPartsCostTest {
 			ComponentTrack.HULL, ComponentTrack.ENGINE, ComponentTrack.RADIATOR);
 
 	/**
-	 * The seven hazard answers, by the layer of the hazard each meets first: the lights, the hopper, the brace and the console in layer 1 (the dark, the lava
+	 * The hazard answers, by the layer of the hazard each meets first: the lights, the hopper, the brace and the console in layer 1 (the dark, the lava
 	 * ladder's first rung, the crust, the signal decay at the foot of the layer), the sounder, liner and heat shield in layer 2 (gas, lava). Each was bought, before #536, with the layer's runs.
 	 */
 	private static final List<ComponentTrack> HAZARDS = List.of(ComponentTrack.LIGHTS, ComponentTrack.SPOIL_HOPPER, ComponentTrack.BRACE,

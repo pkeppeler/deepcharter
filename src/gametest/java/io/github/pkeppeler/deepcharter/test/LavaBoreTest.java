@@ -187,7 +187,6 @@ public class LavaBoreTest {
 	/** {@code leave} makes the pilot run from lava (the class comment says how); {@code ignore}, the default, is the bot that never reacts. */
 	static final String PILOT_ENV = "DEEPCHARTER_LAVA_BORES_PILOT";
 	private static final String REQUESTED_PILOT = System.getenv(PILOT_ENV);
-	/** Ticks of lava contact before the pilot reacts: half a second to read the HUD line and pull the rotor. */
 	static final String CONSOLE_ENV = "DEEPCHARTER_LAVA_BORES_CONSOLE";
 	private static final String REQUESTED_CONSOLE = System.getenv(CONSOLE_ENV);
 	static final String HEED_ENV = "DEEPCHARTER_LAVA_BORES_HEED";
@@ -197,6 +196,7 @@ public class LavaBoreTest {
 	private static final int CONSOLE_TIER = DECAY ? parseTier(REQUESTED_CONSOLE) : 0;
 	/** The pilot with no brace turns back when the plate shows the crust warning ({@value #HEED_ENV}{@code =1}); under the decay it can only when the plate is readable. */
 	private static final boolean HEED = REQUESTED_BORES != null && !REQUESTED_BORES.isBlank() && "1".equals(REQUESTED_HEED);
+	/** Ticks of lava contact before the pilot reacts: half a second to read the HUD line and pull the rotor. */
 	static final int REACTION_TICKS = 10;
 	/** Ticks clear of lava, and slabs above the first contact, before a pilot that ran drills on again. */
 	static final int CLEAR_TICKS = 10;

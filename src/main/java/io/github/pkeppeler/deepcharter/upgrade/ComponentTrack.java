@@ -12,8 +12,8 @@ import net.minecraft.util.StringRepresentable;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 
 /**
- * The fourteen tracks of pod parts (SPEC section 7). Tier 0 of a track is the stock part every pod has, so a part item is
- * tier 1 or more. The scanner, lights, spoil hopper, liner, sounder, brace and heat shield have no stock part: their tier 0 is "none". The console's tier 0 is the stock one every pod has.
+ * The tracks of pod parts (SPEC section 7). Tier 0 of a track is the stock part every pod has, so a part item is
+ * tier 1 or more. The scanner, lights, spoil hopper, liner, sounder, brace and heat shield have no stock part: their tier 0 is "none".
  * Tier 1 of every track is a crafted unit fitted by use ({@link PartUnits}, ADR 0048 and ADR 0053), so the upgrade terminal sells tier 2 and up.
  */
 public enum ComponentTrack implements StringRepresentable {
