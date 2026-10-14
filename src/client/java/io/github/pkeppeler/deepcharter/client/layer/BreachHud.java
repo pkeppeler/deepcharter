@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.layer;
 
+import java.util.Optional;
+
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 
@@ -41,7 +43,12 @@ public final class BreachHud {
 		if (client.player == null || client.level == null) {
 			return;
 		}
-		Component reading = Altimeter.reading(client);
+		// The depth instrument of the signal decay (#502) also fails the altimeter, which sits in the ribbon's recess: a dark depth gauge must not leave the depth readable.
+		Optional<Component> shown = CockpitHud.altimeter(client, Altimeter.reading(client));
+		if (shown.isEmpty()) {
+			return;
+		}
+		Component reading = shown.get();
 		BreachEffects.Offset jitter = BreachEffects.jitter();
 		int x = (graphics.guiWidth() - client.font.width(reading)) / 2 + jitter.x();
 		HudLook look = HudLook.current();

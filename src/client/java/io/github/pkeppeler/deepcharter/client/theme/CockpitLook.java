@@ -33,6 +33,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param lampGap the space between two warning lamps
  * @param tallyGap the space between two numbers of the plate's tally
  * @param camera the front camera's feed (#448)
+ * @param decay what the signal decay (#502) does to the instruments
  */
 public record CockpitLook(
 		boolean enabled,
@@ -54,7 +55,8 @@ public record CockpitLook(
 		int scannerTitleGap,
 		int lampGap,
 		int tallyGap,
-		CameraLook camera) {
+		CameraLook camera,
+		DecayLook decay) {
 	/** How a bar fills: segments lit from its start across, or up. */
 	public enum Kind {
 		ACROSS,
@@ -227,6 +229,52 @@ public record CockpitLook(
 		}
 	}
 
+	/**
+	 * The signal decay's look and timing (#502, {@code SignalDecay}): which instrument fails when is gameplay, how it looks and how long one fault lasts is the theme's.
+	 *
+	 * @param cellTicks the span of client ticks an instrument keeps one fault: a flicker, a false reading or a drop-out lasts this long, at least
+	 * @param deadColor what fills a dark gauge or scanner window
+	 * @param baseNoise the share of the full static that the scanner window always has while the signal decays and the scanner is not jumping, 0 to 1
+	 * @param staticDots how many specks of static cover the scanner window at full decay
+	 * @param dotSize the side of a speck, in GUI pixels
+	 * @param dotAlphaMin the faintest speck, 0 to 255
+	 * @param staticColor a speck, and a torn band
+	 * @param tearBands how many torn bands cross the scanner window at full decay
+	 * @param tearAlpha the strength of a torn band, 0 to 255
+	 * @param tagColor the tag that stands in for a dark readout plate while the signal is failing
+	 * @param lostColor the tag in the blackout
+	 * @param cueSlowTicks the ticks between crackles at the first slab of decay
+	 * @param cueFastTicks the ticks between crackles at full decay
+	 * @param alarmTicks the ticks between the hull alarm's beeps, which sounds while the decay is on and the hull is low
+	 */
+	public record DecayLook(
+			int cellTicks,
+			int deadColor,
+			double baseNoise,
+			int staticDots,
+			int dotSize,
+			int dotAlphaMin,
+			int staticColor,
+			int tearBands,
+			int tearAlpha,
+			int tagColor,
+			int lostColor,
+			int cueSlowTicks,
+			int cueFastTicks,
+			int alarmTicks) {
+		static DecayLook of(ThemeData d) {
+			int slow = d.integer("decayCueSlowTicks", 1, 1200);
+			int fast = d.integer("decayCueFastTicks", 1, 1200);
+			if (fast > slow) {
+				throw new IllegalArgumentException(d.conflict("decayCueFastTicks " + fast + " must not be over decayCueSlowTicks " + slow + ", or the crackle slows as the decay deepens",
+						"decayCueFastTicks").getMessage());
+			}
+			return new DecayLook(d.integer("decayCellTicks", 1, 100), d.color("decayDeadColor"), d.decimal("decayBaseNoise", 0, 1), d.integer("decayStaticDots", 0, 5000), d.integer("decayDotSize", 1, 8),
+					d.integer("decayDotAlphaMin", 0, 255), d.color("decayStaticColor"), d.integer("decayTearBands", 0, 32), d.integer("decayTearAlpha", 0, 255),
+					d.color("decayTagColor"), d.color("decayLostColor"), slow, fast, d.integer("decayAlarmTicks", 1, 1200));
+		}
+	}
+
 	public static CockpitLook current() {
 		return UiTheme.current().cockpit();
 	}
@@ -240,6 +288,6 @@ public record CockpitLook(
 		return new CockpitLook(d.integer("enabled", 0, 1) == 1, d.integer("minGuiWidth", 1, 4096), d.integer("minGuiHeight", 1, 4096), Layout.of(d), d.color("fuelColor"),
 				d.color("hullColor"), d.color("depthColor"), d.color("heatColor"), d.color("cargoColor"), d.color("lowColor"), d.color("offColor"),
 				d.decimal("hullLowFraction", 0, 1), d.decimal("heatRisePerTick", 0.001, 1), d.decimal("heatFallPerTick", 0.001, 1), d.integer("platePad", 0, 16),
-				d.decimal("heatWarning", 0, 1), d.integer("scannerTitleGap", 0, 16), d.integer("lampGap", 0, 8), d.integer("tallyGap", 0, 16), CameraLook.of(d));
+				d.decimal("heatWarning", 0, 1), d.integer("scannerTitleGap", 0, 16), d.integer("lampGap", 0, 8), d.integer("tallyGap", 0, 16), CameraLook.of(d), DecayLook.of(d));
 	}
 }

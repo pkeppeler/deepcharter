@@ -55,7 +55,7 @@ public class PartFittingTest {
 	/** Every track but the scanner, whose unit is {@link ScannerFittingTest}'s. */
 	private static final List<ComponentTrack> TRACKS = List.of(ComponentTrack.DRILL, ComponentTrack.HULL, ComponentTrack.ENGINE,
 			ComponentTrack.FUEL_TANK, ComponentTrack.RADIATOR, ComponentTrack.CARGO_BAY, ComponentTrack.LIGHTS, ComponentTrack.SPOIL_HOPPER,
-			ComponentTrack.LINER, ComponentTrack.SOUNDER, ComponentTrack.BRACE, ComponentTrack.HEAT_SHIELD);
+			ComponentTrack.LINER, ComponentTrack.SOUNDER, ComponentTrack.BRACE, ComponentTrack.HEAT_SHIELD, ComponentTrack.CONSOLE);
 
 	/** What a fit moves, by track: the pod's number for the track, which a tier 1 part must improve on the stock part's. */
 	private static final Map<ComponentTrack, Function<PodEntity, Float>> STATS = Map.of(
@@ -144,7 +144,7 @@ public class PartFittingTest {
 	public void theUnitIdsThatPacksAndChestsNameArePinned(GameTestHelper helper) {
 		List<String> expected = List.of("deepcharter:drill_unit", "deepcharter:hull_unit", "deepcharter:engine_unit", "deepcharter:fuel_tank_unit",
 				"deepcharter:radiator_unit", "deepcharter:cargo_bay_unit", "deepcharter:lights_unit", "deepcharter:spoil_hopper_unit",
-				"deepcharter:liner_unit", "deepcharter:sounder_unit", "deepcharter:brace_unit", "deepcharter:heat_shield_unit");
+				"deepcharter:liner_unit", "deepcharter:sounder_unit", "deepcharter:brace_unit", "deepcharter:heat_shield_unit", "deepcharter:console_unit");
 		List<String> actual = TRACKS.stream().map(track -> BuiltInRegistries.ITEM.getKey(unit(track)).toString()).toList();
 		if (!actual.equals(expected) || TRACKS.stream().anyMatch(track -> unit(track) == Items.AIR)) {
 			throw failure(helper, "the units' ids are permanent, got %s", actual);
@@ -375,9 +375,8 @@ public class PartFittingTest {
 	/** The tier 1 price is gone from the table of every track, and tier 2 keeps its price: the standard ladder's, or the one the track had. */
 	@GameTest
 	public void theTierTwoPricesAreTheOnesTheTracksHad(GameTestHelper helper) {
-		Map<ComponentTrack, Long> tierTwo = Map.of(ComponentTrack.DRILL, 500L, ComponentTrack.HULL, 500L, ComponentTrack.ENGINE, 500L,
-				ComponentTrack.FUEL_TANK, 500L, ComponentTrack.RADIATOR, 1250L, ComponentTrack.CARGO_BAY, 500L, ComponentTrack.LIGHTS, 375L,
-				ComponentTrack.LINER, 1000L, ComponentTrack.SOUNDER, 1000L, ComponentTrack.SCANNER, 500L);
+		Map<ComponentTrack, Long> tierTwo = Map.ofEntries(
+				Map.entry(ComponentTrack.DRILL, 500L), Map.entry(ComponentTrack.HULL, 500L), Map.entry(ComponentTrack.ENGINE, 500L), Map.entry(ComponentTrack.FUEL_TANK, 500L), Map.entry(ComponentTrack.RADIATOR, 1250L), Map.entry(ComponentTrack.CARGO_BAY, 500L), Map.entry(ComponentTrack.LIGHTS, 375L), Map.entry(ComponentTrack.LINER, 1000L), Map.entry(ComponentTrack.SOUNDER, 1000L), Map.entry(ComponentTrack.SCANNER, 500L), Map.entry(ComponentTrack.CONSOLE, 500L));
 		for (ComponentTrack track : ComponentTrack.values()) {
 			if (UpgradeTuning.DEFAULT.price(track, 1) != 0) {
 				throw failure(helper, "%s: tier 1 is crafted (price 0), got $%d", track, UpgradeTuning.DEFAULT.price(track, 1));

@@ -315,7 +315,7 @@ public class UpgradeTerminalTest {
 					expectEqual(helper, track + " at its price", 100_000 - spent, balance(helper, scene));
 					expectEqual(helper, track + " works as tier 2", 2, PodComponents.effectiveTier(scene.pod(), track));
 				}
-				expectEqual(helper, "the tracks with a tier 2 that needs no tier 1", 9, tracks);
+				expectEqual(helper, "the tracks with a tier 2 that needs no tier 1", 10, tracks);
 				helper.succeed();
 			} finally {
 				clean(helper, scene);

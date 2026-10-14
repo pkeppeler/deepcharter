@@ -41,6 +41,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
+import io.github.pkeppeler.deepcharter.client.pod.CockpitDecay;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
@@ -51,6 +52,8 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.pod.SignalDecay;
+import io.github.pkeppeler.deepcharter.pod.SignalDecay.Fault;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -58,6 +61,7 @@ import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
+import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
  * Client GameTest for the cockpit HUD (#247, the Ribbon): a seated pilot gets the Ribbon by default and the vanilla hotbar, hearts and held item name are not drawn (read from
@@ -70,6 +74,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 	private static final int ROOM_RADIUS = 8;
 	private static final int ROOM_HEIGHT = 30;
 	private static final int RISE = 20;
+	/** The pod's feet this high over the floor of layer 1 are inside the signal decay's blackout band, above the breach crust. */
+	private static final int BLACKOUT_FEET_Y = 4;
 	/** The middle of the bottom of the screen at GUI scale 2 (427 x 240): where the hotbar, the hearts, the held item name and the action bar are, clear of every console. */
 	private static final int[] VANILLA_BOX = {126, 165, 298, 232};
 	/** The rows of the held item name and the action bar (the dismount hint), over the hotbar and the hearts: a leaked line of text is a few percent of the box above but most of this strip. */
@@ -135,6 +141,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 				expectGaugesReadThePod(context, singleplayer, pod);
 				expectEveryReadoutLineIsOnThePlate(context);
 				expectThePlateKeepsEveryReadout(context, singleplayer, pod);
+				expectTheSignalDecayDarkensTheCockpitAndKeepsTheFairChannels(context, singleplayer, pod);
 				expectAPackCanTurnTheCockpitOff(context);
 				expectASmallGuiGivesBackThePlainHud(context);
 			} finally {
@@ -165,7 +172,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 			throw new UncheckedIOException(e);
 		}
 		Set<String> lines = lang.keySet().stream().filter(key -> key.startsWith("hud.deepcharter.pod.") && !key.startsWith("hud.deepcharter.pod.seepage_side.")
-				&& !key.startsWith("hud.deepcharter.pod.camera")).collect(Collectors.toSet());
+				&& !key.startsWith("hud.deepcharter.pod.camera") && !key.startsWith("hud.deepcharter.pod.signal_")).collect(Collectors.toSet());
 		if (!lines.equals(PodStatusHud.KINDS.keySet())) {
 			throw new AssertionError("Every line of the pod's readout has a kind and every kind is a line: lines without a kind " + difference(lines, PodStatusHud.KINDS.keySet())
 					+ ", kinds without a line " + difference(PodStatusHud.KINDS.keySet(), lines));
@@ -342,6 +349,88 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 		});
 		ClientWait.until(context, "the pod ready again on the client", client -> client.player.getVehicle() instanceof PodEntity shown && !shown.stranded()
 				&& shown.cargoUsed() == 0 && shown.fuel() == 50f);
+	}
+
+	/**
+	 * The signal decay (#502) in the last slabs of layer 1: the gauges and the scanner's window are the dead colour, the fuel lamp and the alert lamp that the stranded pod would
+	 * light are dark, the plate is the one tag line that says something is on the line, and the altimeter is gone; and the hull lamp, the pod's real hull state, is still lit in
+	 * its colour. A console part, read from the synced parts, pushes the decay back, and the pod rising out of the band gets its gauges back.
+	 */
+	private void expectTheSignalDecayDarkensTheCockpitAndKeepsTheFairChannels(ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
+		int floorFeetY = BLACKOUT_FEET_Y;
+		singleplayer.getServer().runOnServer(server -> {
+			ServerLevel one = server.getLevel(LayerChain.dimension(1));
+			RoomCarver.carve(one, -ROOM_RADIUS, ROOM_RADIUS, floorFeetY - 1, floorFeetY + ROOM_RADIUS, -ROOM_RADIUS, ROOM_RADIUS, Blocks.AIR);
+			pod.setHull(pod.maxHull() / 10f);
+			pod.setStranded(true);
+			pod.setPos(0.5, floorFeetY, 0.5);
+		});
+		ClientWait.until(context, "the pod in the blackout band on the client", client -> client.player.getVehicle() instanceof PodEntity shown && shown.getBlockY() <= floorFeetY
+				&& shown.stranded() && SignalDecay.intensity(shown) >= 1);
+		context.runOnClient(client -> {
+			CockpitDecay decay = CockpitDecay.of(client, (PodEntity) client.player.getVehicle(), CockpitLook.current());
+			for (CockpitHud.Part part : CockpitHud.Part.values()) {
+				if (decay.fault(part) != Fault.DROP) {
+					throw new AssertionError("In the blackout every part of the Ribbon is dark, and " + part + " is " + decay.fault(part));
+				}
+			}
+			boolean[] truth = {true, true, true, true};
+			if (!Arrays.equals(CockpitHud.decayedLamps(decay, truth), new boolean[] {false, true, true, false})) {
+				throw new AssertionError("In the blackout the fuel lamp and the alert lamp are dark and the hull lamp and the burning lamp stay lit, got "
+						+ Arrays.toString(CockpitHud.decayedLamps(decay, truth)));
+			}
+			if (CockpitHud.altimeter(client, Component.literal("-1,200 ft.")).isPresent()) {
+				throw new AssertionError("In the blackout the altimeter is dark with the depth gauge");
+			}
+			CockpitHud.Row tag = CockpitHud.tag(decay, CockpitLook.current());
+			if (!(tag.parts().getFirst().text().getContents() instanceof TranslatableContents contents) || !contents.getKey().equals("hud.deepcharter.pod.signal_lost")) {
+				throw new AssertionError("In the blackout the plate is the tag that says something is on the line, got " + tag);
+			}
+		});
+		BufferedImage dark = shot(context, "cockpit-decay-blackout", false);
+		CockpitLook look = CockpitLook.current();
+		CockpitLook.Layout layout = look.ribbon();
+		int deadColor = look.decay().deadColor() & 0xFFFFFF;
+		for (Map.Entry<String, CockpitLook.Gauge> gauge : Map.of("fuel", layout.fuel(), "hull", layout.hull(), "depth", layout.depth()).entrySet()) {
+			int[] area = box(gauge.getValue().area(), 427, 240);
+			int at = dark.getRGB((area[0] + area[2]) / 2 * GUI_SCALE, (area[1] + area[3]) / 2 * GUI_SCALE) & 0xFFFFFF;
+			if (at != deadColor) {
+				throw new AssertionError("In the blackout the " + gauge.getKey() + " gauge is the dead colour " + Integer.toHexString(deadColor) + " at its middle, got " + Integer.toHexString(at));
+			}
+		}
+		int[] lamps = box(layout.lamps(), 427, 240);
+		int lampPitch = (lamps[2] - lamps[0] + look.lampGap()) / CockpitHud.LAMPS;
+		int[] lampColors = new int[CockpitHud.LAMPS];
+		for (int k = 0; k < CockpitHud.LAMPS; k++) {
+			lampColors[k] = dark.getRGB((lamps[0] + k * lampPitch + (lampPitch - look.lampGap()) / 2) * GUI_SCALE, (lamps[1] + lamps[3]) / 2 * GUI_SCALE) & 0xFFFFFF;
+		}
+		if (lampColors[1] != (look.lowColor() & 0xFFFFFF) || lampColors[0] != (look.offColor() & 0xFFFFFF) || lampColors[3] != (look.offColor() & 0xFFFFFF)) {
+			throw new AssertionError("In the blackout a pod with a tenth of its hull lights the hull lamp in " + Integer.toHexString(look.lowColor() & 0xFFFFFF)
+					+ " and the stranded warning is dark on the alert lamp (off colour " + Integer.toHexString(look.offColor() & 0xFFFFFF) + "), got the lamps " + Arrays.stream(lampColors).mapToObj(Integer::toHexString).toList());
+		}
+		// A console of tier 2 is read from the synced parts: the pod climbs to the edge of its band and reads less decay than the stock console does there.
+		double stock = context.computeOnClient(client -> SignalDecay.intensity((PodEntity) client.player.getVehicle()));
+		singleplayer.getServer().runOnServer(server -> ScannerPods.fit(server, server.getPlayerList().getPlayers().getFirst(), pod, ComponentTrack.CONSOLE, 2));
+		ClientWait.until(context, "the console part on the client", client -> client.player.getVehicle() instanceof PodEntity shown && SignalDecay.intensity(shown) < stock);
+		double[] fitted = context.computeOnClient(client -> {
+			PodEntity shown = (PodEntity) client.player.getVehicle();
+			return new double[] {SignalDecay.intensity(shown), SignalDecay.intensity(1, Math.floor(shown.getY() + 1e-3) - client.level.getMinY(), 2)};
+		});
+		if (Math.abs(fitted[0] - fitted[1]) > 1e-6) {
+			throw new AssertionError("The client reads the decay of a tier 2 console at the pod's height: " + fitted[1] + ", got " + fitted[0]);
+		}
+		singleplayer.getServer().runOnServer(server -> {
+			pod.setStranded(false);
+			pod.setHull(pod.maxHull());
+			pod.setPos(0.5, FEET_Y, 0.5);
+		});
+		ClientWait.until(context, "the pod out of the band on the client", client -> client.player.getVehicle() instanceof PodEntity shown && !shown.stranded() && SignalDecay.intensity(shown) == 0);
+		BufferedImage clear = shot(context, "cockpit-decay-clear", false);
+		int[] fuel = box(layout.fuel().area(), 427, 240);
+		int first = clear.getRGB((fuel[0] + (fuel[2] - fuel[0]) / layout.fuel().segments() / 2) * GUI_SCALE, (fuel[1] + fuel[3]) / 2 * GUI_SCALE) & 0xFFFFFF;
+		if (first == deadColor) {
+			throw new AssertionError("Out of the band the fuel gauge reads again, but its first segment is still the dead colour");
+		}
 	}
 
 	/** The game's messages (a grab on the hull, a refusal) arrive on the action bar, which the Ribbon leaves alone: a message set while seated is drawn. */

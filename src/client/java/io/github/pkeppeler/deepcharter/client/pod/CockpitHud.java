@@ -29,6 +29,8 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
 import io.github.pkeppeler.deepcharter.pod.PodSeat;
+import io.github.pkeppeler.deepcharter.pod.SignalDecay.Fault;
+import io.github.pkeppeler.deepcharter.pod.SignalDecay.Instrument;
 
 /**
  * The cockpit HUD (#247, {@link CockpitLook}): while the local player sits in a pod and the GUI is big enough for the Ribbon, the ribbon along the top edge, its gauges and
@@ -36,7 +38,9 @@ import io.github.pkeppeler.deepcharter.pod.PodSeat;
  * action bar stays: the game says things there that a pilot must read (a grab on the hull, a refusal), and the Ribbon has no other place for them. On foot, and with a GUI
  * smaller than the Ribbon needs (or a pack that sets {@code enabled} to 0), nothing here draws or hides anything.
  *
- * <p>Every piece goes through {@link #draw}, so an effect on the instruments (the signal decay near the bottom of a layer, #502) wraps one place and not each gauge.
+ * <p>Every piece goes through {@link #draw}, so the signal decay near the bottom of a layer (#502, {@link CockpitDecay}) wraps one place and not each gauge. It darkens a
+ * gauge or the scanner's window, draws static over the scanner, makes a gauge or the plate's numbers jump, and swaps the plate for a tag. It never touches the hull lamp or
+ * the burning lamp, which stay true so that a pilot who dies in the dark still sees what killed them, and the scanner's cells are drawn by {@link ScannerHud} unchanged.
  */
 public final class CockpitHud {
 	/** How many warning lamps the Ribbon has: low fuel, low hull, burning, and any other warning of the readout. */
@@ -47,16 +51,26 @@ public final class CockpitHud {
 			VanillaHudElements.FOOD_BAR, VanillaHudElements.AIR_BAR, VanillaHudElements.MOUNT_HEALTH, VanillaHudElements.INFO_BAR,
 			VanillaHudElements.EXPERIENCE_LEVEL, VanillaHudElements.HELD_ITEM_TOOLTIP);
 
-	/** The pieces of the Ribbon that move or can fail, each drawn through {@link #draw}. */
+	/** The pieces of the Ribbon that move or can fail, each drawn through {@link #draw}, and the instrument of the signal decay that fails with it. */
 	public enum Part {
-		FUEL,
-		HULL,
-		CARGO,
-		DEPTH,
-		HEAT,
-		LAMPS,
-		SCANNER,
-		PLATE
+		FUEL(Instrument.FUEL),
+		HULL(Instrument.HULL),
+		CARGO(Instrument.CARGO),
+		DEPTH(Instrument.DEPTH),
+		HEAT(Instrument.HEAT),
+		LAMPS(Instrument.LAMPS),
+		SCANNER(Instrument.SCANNER),
+		PLATE(Instrument.PLATE);
+
+		private final Instrument instrument;
+
+		Part(Instrument instrument) {
+			this.instrument = instrument;
+		}
+
+		public Instrument instrument() {
+			return instrument;
+		}
 	}
 
 	private static double heat;
@@ -116,16 +130,16 @@ public final class CockpitHud {
 		CockpitLook look = CockpitLook.current();
 		int width = graphics.guiWidth();
 		int height = graphics.guiHeight();
+		CockpitDecay decay = CockpitDecay.of(client, seatedPod(client), look);
 		decal(graphics, layout.sprite("part_a"), layout.band(), width, height);
-		// A pod with no scanner has no map to show, so it hangs no bezel either.
-		draw(Part.SCANNER, () -> {
-			if (!ScannerHud.hasMap()) {
-				return;
-			}
-			ScannerHud.drawInWindow(graphics, client, layout.scanner());
+		// A pod with no scanner has no map to show, so it hangs no bezel either. The bezel is the cab's, not the signal's: it stays when the window goes dark.
+		if (ScannerHud.hasMap()) {
+			draw(graphics, decay, Part.SCANNER, layout.scanner(), () -> ScannerHud.drawInWindow(graphics, client, layout.scanner()));
 			decal(graphics, layout.sprite("cap"), layout.cap(), width, height);
-			ScannerHud.drawTitleUnder(graphics, client, layout.scanner());
-		});
+			if (decay.fault(Part.SCANNER) != Fault.DROP) {
+				ScannerHud.drawTitleUnder(graphics, client, layout.scanner());
+			}
+		}
 		if (!showsReadout(client)) {
 			return;
 		}
@@ -134,19 +148,50 @@ public final class CockpitHud {
 		List<Line> lines = PodStatusHud.readout(client, pod);
 		boolean fuelLow = PodFuel.isLow(pod.fuel());
 		boolean hullLow = reading.hull() <= look.hullLowFraction();
-		draw(Part.FUEL, () -> gauge(graphics, layout.fuel(), reading.fuel(), fuelLow ? look.lowColor() : look.fuelColor(), look));
-		draw(Part.HULL, () -> gauge(graphics, layout.hull(), reading.hull(), hullLow ? look.lowColor() : look.hullColor(), look));
-		draw(Part.CARGO, () -> gauge(graphics, layout.cargo(), reading.cargo(), look.cargoColor(), look));
-		draw(Part.DEPTH, () -> gauge(graphics, layout.depth(), reading.depth(), look.depthColor(), look));
-		draw(Part.HEAT, () -> gauge(graphics, layout.heat(), reading.heat(), look.heatColor(), look));
-		draw(Part.LAMPS, () -> lamps(graphics, layout.lamps(), lampsLit(fuelLow, hullLow, pod.hullBurning(), lines),
+		draw(graphics, decay, Part.FUEL, layout.fuel().area(), () -> gauge(graphics, layout.fuel(), decay.shown(Part.FUEL, reading.fuel()), fuelLow ? look.lowColor() : look.fuelColor(), look));
+		draw(graphics, decay, Part.HULL, layout.hull().area(), () -> gauge(graphics, layout.hull(), decay.shown(Part.HULL, reading.hull()), hullLow ? look.lowColor() : look.hullColor(), look));
+		draw(graphics, decay, Part.CARGO, layout.cargo().area(), () -> gauge(graphics, layout.cargo(), decay.shown(Part.CARGO, reading.cargo()), look.cargoColor(), look));
+		draw(graphics, decay, Part.DEPTH, layout.depth().area(), () -> gauge(graphics, layout.depth(), decay.shown(Part.DEPTH, reading.depth()), look.depthColor(), look));
+		draw(graphics, decay, Part.HEAT, layout.heat().area(), () -> gauge(graphics, layout.heat(), decay.shown(Part.HEAT, reading.heat()), look.heatColor(), look));
+		draw(graphics, decay, Part.LAMPS, null, () -> lamps(graphics, layout.lamps(), decayedLamps(decay, lampsLit(fuelLow, hullLow, pod.hullBurning(), lines)),
 				new int[] {look.lowColor(), look.lowColor(), look.heatColor(), look.depthColor()}, look));
-		draw(Part.PLATE, () -> plate(graphics, client, layout, look, rows(pod, reading, look, lines)));
+		draw(graphics, decay, Part.PLATE, null, () -> plate(graphics, client, layout, look, decay, rows(pod, reading, look, lines)));
 	}
 
-	/** Draws one piece of the Ribbon. The one place a later effect on the instruments (#502) wraps. */
-	private static void draw(Part part, Runnable piece) {
+	private static PodEntity seatedPod(Minecraft client) {
+		return (PodEntity) client.player.getVehicle();
+	}
+
+	/**
+	 * Draws one piece of the Ribbon in the signal decay's frame: a part that is dark is not drawn and its {@code slot} is filled with the dead colour (a piece with no slot, the
+	 * lamps and the plate, handles its own dark), and the scanner's window gets its static. A part that jumps draws through {@link CockpitDecay#shown}.
+	 */
+	private static void draw(GuiGraphicsExtractor graphics, CockpitDecay decay, Part part, Decal slot, Runnable piece) {
+		if (slot != null && decay.fault(part) == Fault.DROP) {
+			decay.dead(graphics, slot);
+			return;
+		}
 		piece.run();
+		if (part == Part.SCANNER && decay.intensity() > 0) {
+			decay.noise(graphics, slot);
+		}
+	}
+
+	/**
+	 * The lamps as the decay lets them read: the fuel lamp and the alert lamp go dark or show a false state, and the hull lamp and the burning lamp never change, so a pilot
+	 * who is dying in the dark still sees why.
+	 */
+	public static boolean[] decayedLamps(CockpitDecay decay, boolean[] lit) {
+		return new boolean[] {decay.lampShown(lit[0], 0), lit[1], lit[2], decay.lampShown(lit[3], 1)};
+	}
+
+	/** The altimeter's reading as the decay lets it read: gone when the depth gauge is dark, its digits jumping when it jumps. Not seated in a pod, the reading as given; empty only on a drop-out of the depth gauge. */
+	public static Optional<Component> altimeter(Minecraft client, Component reading) {
+		if (seated(client).isEmpty()) {
+			return Optional.of(reading);
+		}
+		CockpitDecay decay = CockpitDecay.of(client, seatedPod(client), CockpitLook.current());
+		return decay.fault(Part.DEPTH) == Fault.DROP ? Optional.empty() : Optional.of(decay.garbled(Part.DEPTH, reading));
 	}
 
 	private static void decal(GuiGraphicsExtractor graphics, Identifier sprite, Decal decal, int width, int height) {
@@ -276,10 +321,13 @@ public final class CockpitHud {
 		return font.lineHeight + HudLook.current().podStatusLineGap();
 	}
 
-	/** The readout, on a plate that is as big as its longest row and the number of rows. */
-	private static void plate(GuiGraphicsExtractor graphics, Minecraft client, Layout layout, CockpitLook look, List<Row> all) {
+	/**
+	 * The readout, on a plate that is as big as its longest row and the number of rows. In the signal decay a plate that is dark is a one-row tag that says why
+	 * ({@link #tag}), and one that jumps shows its numbers wrong.
+	 */
+	private static void plate(GuiGraphicsExtractor graphics, Minecraft client, Layout layout, CockpitLook look, CockpitDecay decay, List<Row> all) {
 		Font font = client.font;
-		List<Row> rows = fitting(all, roomForRows(font, layout, look, graphics.guiHeight()));
+		List<Row> rows = decay.fault(Part.PLATE) == Fault.DROP ? List.of(tag(decay, look)) : jumped(decay, fitting(all, roomForRows(font, layout, look, graphics.guiHeight())));
 		Box box = plateBox(font, layout, look, rows, graphics.guiWidth(), graphics.guiHeight());
 		CrtDraw.sprite(graphics, layout.sprite("plate"), box.left(), box.top(), box.width(), box.height());
 		int y = box.top() + look.platePad();
@@ -291,5 +339,18 @@ public final class CockpitHud {
 			}
 			y += rowPitch(font);
 		}
+	}
+
+	/** The one line that stands in for a dark plate: the signal is failing, or in the blackout that something is on the line. Not a fault of its own: it is always drawn. */
+	public static Row tag(CockpitDecay decay, CockpitLook look) {
+		return decay.blackout() ? Row.of(new Line(Component.translatable("hud.deepcharter.pod.signal_lost"), look.decay().lostColor()))
+				: Row.of(new Line(Component.translatable("hud.deepcharter.pod.signal_failing"), look.decay().tagColor()));
+	}
+
+	private static List<Row> jumped(CockpitDecay decay, List<Row> rows) {
+		if (decay.fault(Part.PLATE) != Fault.JUMP) {
+			return rows;
+		}
+		return rows.stream().map(row -> new Row(row.parts().stream().map(part -> new Line(decay.garbled(Part.PLATE, part.text()), part.color())).toList())).toList();
 	}
 }

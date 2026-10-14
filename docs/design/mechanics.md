@@ -1305,15 +1305,16 @@ The minutes use these (A) assumptions: the player sprints at 5.612 blocks a seco
 | Seep sounder | 2.5 | 1.7 ($270) | $400 | 2.5 | 0.99 |
 | Liner | 3.4 | 3.0 ($480) | $500 | 3.1 | 1.07 |
 | Heat shield | 4.9 | 4.4 ($700) | $750 | 4.7 | 1.05 |
+| Console (#502) | 1.9 | 1.2 ($120) | $200 | 2.1 | 0.92 |
 
 | The opening | Before (bought) | After (crafted) |
 |---|---|---|
 | The kit, then the first full layer 1 run of a stock Mole | 12.3 minutes, then 71 seconds, $115 | The same: no unit is needed for it |
 | The first six tier 1 parts | 8 runs, 10.9 minutes, **$1,500 spent** (the runs speed up as parts come in) | 11.9 minutes of crates, furnace and bench, **$0 spent** (10.7 if the kit's leftover metal is counted); 1.09 of the minutes of buying |
-| Crates for the kit and all twelve units | 30.6 mean, 37 at the 90th percentile (the kit) | 60.8 mean, 69 at the 90th percentile, of the 160 crates a 12-chunk survey holds |
+| Crates for the kit and all thirteen units | 30.6 mean, 37 at the 90th percentile (the kit) | 61.5 mean, 69 at the 90th percentile, of the 160 crates a 12-chunk survey holds |
 | A whole layer 1 bore by the bore bot (`DEEPCHARTER_LAVA_BORES=12`) | 6,306 pod ticks (5.3 minutes) and 10 tanks per bore of a stock Mole | Unchanged: the bot's pod and its parts are the same; the units only change how a part arrives |
 
-The first six crafted take 1.09 of the minutes the six bought took, inside the 0.75 to 1.25 the test allows, and each of the twelve is inside 0.5 to 1.5 of its own old price's minutes. The money moves, not the time: a charter spends no dollars on a first-tier part, so its first sales buy tier 2. The hazard units cost ore a pilot would have sold, $1,750 of it for all six.
+The first six crafted take 1.09 of the minutes the six bought took, inside the 0.75 to 1.25 the test allows, and each of the thirteen is inside 0.5 to 1.5 of its own old price's minutes. The money moves, not the time: a charter spends no dollars on a first-tier part, so its first sales buy tier 2. The hazard units cost ore a pilot would have sold, $1,870 of it for all seven.
 
 How soon the ore is in the cargo is a second guard: the expected haul of the zone where each hazard bites (`FirstTierPartsCostTest`), at the pace of the runs the unit was priced against. The runs below are the runs to haul the rarest ore of the recipe; the pilot sells the rest as always.
 
@@ -1325,6 +1326,7 @@ How soon the ore is in the cargo is a second guard: the expected haul of the zon
 | Seep sounder | 4 Bronzium | 3.7 | Stone Benches |
 | Liner | 3 Bronzium and 3 Silverium | 2.2 | Upper Levels |
 | Heat shield | 2 Goldium | 7.0 | Upper Levels |
+| Console | 2 Bronzium | 1.9 | Topsoil Claims |
 
 The heat shield's Goldium is the slow one: the sales forgone are 4.4 minutes of runs, but the ore turns up over about seven layer 2 runs, and the pilot earns on those runs as always.
 
@@ -1406,6 +1408,103 @@ The price was not run at $60: counted from the zone tables, 5.4 charges at $60 a
 - **Sideways.** Rung 1 blasts only down. A drift that meets Company Rock still steps round it. The shaped charge could take the pod's facing.
 - **Jettison.** A pilot who must hover could drop ore first (the cargo jettison exists). The bot never does, so the loaded-pod figure above is a bound.
 - **The look.** The Company Rock look is its own round ([#503](https://github.com/pkeppeler/deepcharter/issues/503), PR #523); it should read as blastable. Not touched here.
+
+## HUD signal decay (#502, A)
+
+**Problem.** The Ribbon ([#247](https://github.com/pkeppeler/deepcharter/issues/247)) tells the pilot everything: gauges, lamps, the scanner, a plate of warnings. The deep should take some of that away. The user's brief (2026-10-11): near the bottom of a layer the HUD fails at random, more often the deeper the pod goes, until near the floor it blinks off and the pilot flies blind, until they upgrade the console. It must feel like something down there is on the line, never like a bug, and a pilot who dies must still learn why.
+
+**What it is.** A pure function of three synced facts, so nothing is sent and a test reads what the client draws: the layer, the pod's slabs over the layer's floor (`PodFootprint.feetY - minY`) and its console part. `SignalDecay.intensity` is 0 from the *onset* up, 1 in the *blackout band* at the floor, and a straight line between. Whether an instrument fails in a given cell of time is a second pure function of that intensity, the pod's seed (its UUID) and the cell (game tick / `decayCellTicks`), so every pilot of a pod sees the same glitch at the same tick and a test pins it. The decay only hides information: the drill, the brace, the liner and the hull behave as they do above it.
+
+| Layer | Onset (slabs over the floor) | Blackout (and under) | Share of the layer in the band |
+|---|---|---|---|
+| 1 (192 tall) | 36 | 6 | 18.8% |
+| 2 (256 tall) | 56 | 8 | 21.9% |
+| 3 and deeper (the last row repeats) | 72 | 10 | |
+
+**What fails, in order.** Each instrument has a threshold on the intensity. Over it, the instrument is faulty in a share of cells that grows from 0 at the threshold to 0.75 just under 1; half the faults are a *jump* (a false reading) and half a *drop-out* (dark); in the blackout every instrument is dark in every cell.
+
+| Order | Instrument | Threshold | Layer 1 stock: starts failing at (slabs over the floor) | What a fault looks like |
+|---|---|---|---|---|
+| 1 | Scanner | 0 | 36 | Static all the time, in proportion to the decay (at most 70% of full); a jump is full static with torn bands; a drop-out is a dark window |
+| 2 | Heat gauge | 0.2 | 30 | Bar reads a false value, or goes dark |
+| 3 | Depth gauge, and the altimeter | 0.35 | 25 | As above; the altimeter's digits change, or it goes |
+| 4 | Cargo gauge | 0.38 | 24 | As above |
+| 5 | Fuel gauge | 0.42 | 23 | As above |
+| 6 | Plate (the tally and every warning line) | 0.45 | 22 | A jump changes its digits; a drop-out replaces it with one line: `SIGNAL FAILING`, or in the blackout `NO SIGNAL  SOMETHING IS ON THE LINE` |
+| 7 | Fuel lamp and alert lamp | 0.65 | 16 | A jump lights them or not at random; a drop-out puts them out |
+| 8 | Hull gauge | 0.85 | 10 | As the other gauges |
+| | Blackout | 1 | 6 | Everything above, dark |
+
+**What never fails (the fair channels).** A pilot who dies in the dark must see why.
+- **The hull lamp and the burning lamp** always show the pod's real state. They are what is killing the pilot now. The decay never faults them.
+- **The tag.** A dark plate is not blank: it is a one-line tag, so the pilot knows the instruments are being taken and not that the game broke.
+- **The hull alarm.** `alarm.hull_critical` (an existing sound nothing played) beeps every second while the decay is on and the hull is under the low fraction.
+- **Lore, in the handbook** ("Staying Safe", page 3) says what the pilot will see and what stays true.
+- The bezel of the scanner and the band of the ribbon are the cab's, not the signal's: they are drawn through every fault.
+
+**Audio.** `pod.signal_crackle`, a click on the line, with a gap that shrinks from 70 ticks at the onset to 12 at the blackout (the gap varies by the same hash from crackle to crackle, between half and one and a half intervals), louder and higher with depth; `pod.signal_lost`, a slow heartbeat, once as the cab goes dark. Both are vanilla placeholders (`sculk_sensor.clicking` at pitch 0.5, `warden.heartbeat` at 0.7); their lines in `tools/audio-pack-map.txt` name existing extracted files (`1971_clink`, `2006_lava`) as stand-ins until the private audio pack has a sound for them. All timings (cell length, crackle gaps, alarm gap) are theme data in `cockpit.json` (`decay*`), so a resource pack restyles the glitch.
+
+**The console part.** A track of its own, `console`. Tier 0 is the console every pod ships with. Its tier value is the share of both distances that is left:
+
+| Tier | Price | Share left | Layer 1 onset / blackout | Layer 2 onset / blackout | Priced as |
+|---|---|---|---|---|---|
+| 0 (stock) | 0 | 1 | 36 / 6 | 56 / 8 | |
+| 1 | crafted | 0.6 | 21.6 / 3.6 | 33.6 / 4.8 | a crafted unit like every tier 1 part ([#536](#crafted-first-tier-parts-536-a)): 2 Bronzium, 2 copper ingots and 2 redstone, 1.9 minutes against the 2.1 minutes of the old $200 (`FirstTierPartsCostTest`, share 0.92) |
+| 2 | $500 | 0.3 | 10.8 / 1.8 | 16.8 / 2.4 | two layer 2 runs of a Mole with tier 2 parts ($348 a run) |
+| 3 | $1,250 | 0 | immune | immune | four layer 2 runs |
+
+A Mole's cap is 2 and a Prospector's 3, so only a Prospector can be immune: the Mole's best console still has its last slab or two. That is the ladder's third rung ("mastery is a later chassis"), and it is deliberate: the top of the track is a reason to own the bigger pod.
+
+**Ladder.** By hand: the pilot learns the band and fills the hull before the dive (the brace, nanobots), reading the crust warning while the plate is still true (16 slabs out; the plate starts to fail 22 slabs out, so the dive that wants the warning needs a console or a lucky cell). Then the console, which moves the band down the layer. Mastery: the Prospector's immune tier.
+
+**Trade-offs.** Tier 1 costs a unit's ore and metal and tiers 2 and 3 cost money, and nothing else (no cargo slot, no weight); it is the one pod part that buys back information and not a number. The decay costs the pilot the readouts a careful dive needs: the sounder's line, the brace's prompt, the crust warning, the thermal scanner's lava.
+
+**Measured: the bore bot.** `LavaBoreTest`, `DEEPCHARTER_LAVA_BORES=100`, seed 0, tier 2 seep sounder, liner 2, rack 24, braking on, a pilot that never reacts to lava. New switches: `DEEPCHARTER_LAVA_BORES_CONSOLE=<tier>` (the pod carries that console and the bot reads the plate and the scanner only on ticks the decay leaves them true; 0 is the stock console) and `DEEPCHARTER_LAVA_BORES_HEED=1` (a pilot with no brace turns back, alive, when the plate shows the crust warning). What the bot reads: the sounder's line (it steps aside from the pocket), the brace's prompt (it lets go of the drill), the crust warning (HEED), the thermal scanner (the lining bot). A pilot already resting for the brace waits through a dark plate. The runs are deterministic. "Band" is the pod's ticks with the decay on.
+
+| 100 bores | No decay | Stock console | Console 1 | Console 2 |
+|---|---|---|---|---|
+| **Brace pod:** reach layer 2 | 60 | 49 | 56 | 58 |
+| deaths | 39 | 50 | 43 | 41 |
+| extra deaths against no decay | | +11 | +4 | +2 |
+| deaths in lava | 22 | 23 | 22 | 22 |
+| died inside the band | | 40 | 21 | 7 |
+| bores that went into the band | | 89 | 77 | 65 |
+| plate dark or jumping, of band ticks | | 32% | 36% | 40% |
+| **No brace, heeds the crust warning:** reach | 48 | 42 | 47 | 50 |
+| deaths | 24 | 34 | 27 | 24 |
+| extra deaths against no decay | | +10 | +3 | 0 |
+| turned back alive | 27 | 23 | 25 | 25 |
+| turned back after reading the warning inside the band | | 23 | 25 | 4 |
+| died inside the band | | 24 | 5 | 0 |
+| bores that went into the band | | 89 | 77 | 54 |
+| plate dark or jumping, of band ticks | | 30% | 36% | 41% |
+| **Hand lining bot (scanner, rack 32):** reach, deaths | 2, 97 | 1, 98 | | |
+| **Bare pod (no parts, reads nothing):** deaths | 100 | 100 | | |
+
+Before the retune (curve 24/4 and 40/6, `maxFaultChance` 0.55, plate threshold 0.7, `decayBaseNoise` 0.35) the same bots cost 2 of 60 reach and 2 deaths for the brace pod and 3 extra deaths for the heeding pilot: a table that shows almost no cost, which is a knob too weak to be a hazard. The table above was measured on main after #534 and #542 (the earlier retune run on the tree before them gave +14 and +12 for the stock console: the shaped charge changed the bore bot's baseline slightly, not the decay).
+
+Reading:
+- **The decay is a real tax.** A stock console costs the heeding pilot 10 deaths in 100 and the brace pod 11. Console 1 takes back most of it (+3 and +4), console 2 nearly all (0 and +2). A bot that reads nothing loses nothing (the bare pod is identical to the bore), which is why the pick is a pilot that reads the plate: the cost is the information a pilot uses.
+- **The plate now fails before the crust warning is needed.** The warning shows from 16 slabs out; the plate starts to fail 22 slabs out in layer 1, so in the stock column the plate is dark or false for about a third of the band and the warning is lost to those cells. Console 1 moves the plate's first failure to about 13 slabs out, after the warning has shown: 5 heeding pilots die in the band against 24. Console 2 moves the whole band to 11 slabs.
+- **Deaths pile up in the band.** 40 of the stock brace pod's 50 deaths happen inside it (89 bores went in): the foot of the layer is where the pockets are, and the decay takes the sounder's line and the brace prompt away from the pilot who needs them.
+- **The hand lining bot hardly feels it** (+1 death in 100): the lava it fears is high in the layer, not in the last 36 slabs, and it was already dying in 97.
+- **The immune tier needs no run:** its intensity is 0 at every height (`SignalDecayTest`), so its column is the no-decay one.
+
+**Default build harder than main.** Yes, by design: every pod now meets the decay at the foot of every layer, and the stock console cannot stop it. This restates and strengthens the earlier note (2 to 3 deaths in 100).
+
+| Build | Cost of the decay on the stock console | With console 1 (crafted unit) |
+|---|---|---|
+| **Unpacked** (the bot's pod: seep sounder 2, liner 2, and a brace or a pilot who heeds the crust warning) | +10 deaths in 100 for the heeding pilot, +11 for the brace pod (and 11 fewer bores reach layer 2) | +3 and +4 |
+| **Early game** (stock pod, tier 1 scanner, no parts; the bare bot) | 0 in the bot: it reads nothing from the plate, so there is nothing to take. A person loses the scanner's window from the first slab and the plate near the foot | 0 |
+
+For a person the early-game cost is the dark display and the noise: a first dive has no sounder or brace to lose, so the scanner and the gauges are the loss, and the first answer, the console unit (2 Bronzium of the layer 1 haul, 2 copper, 2 redstone, 1.9 minutes), is as dear as the other hazard units; it was a $200 purchase before #542 made every tier 1 part crafted. (A) The user can veto the strength at the milestone demo: the knobs below are one record and one theme file.
+
+**Tuning knobs.** `SignalDecayTuning`: the per-layer onset and blackout, the threshold of each instrument, `maxFaultChance` (0.75), `jumpShare` (0.5). `UpgradeTuning` `CONSOLE`: the shares (1, 0.6, 0.3, 0) and the prices (tier 1 is crafted, 0 at the terminal); `recipe/console_unit.json`. `cockpit.json` `decay*`: cell length (3 ticks), dead colour, scanner static (`decayBaseNoise` 0.7, `decayStaticDots` 400, size, alpha, bands), tag colours, crackle gaps, alarm gap. Sounds: `pod.signal_crackle`, `pod.signal_lost`, and the existing `alarm.hull_critical`.
+
+**Open questions.**
+- Should the Prospector's immunity be a Mole tier of its own, so the Mole is not the pod that always flies blind in the last slab? The Mole's tier 2 leaves 1.2 slabs in layer 1.
+- Should layer 3 and deeper get a wider band, or a different fault (the gauges lying in a way that is wrong but plausible)? The table's last row repeats until they exist.
+- The hull alarm sounds only in the decay. Should it sound anywhere the hull is low, or is that for a later pass on the cockpit's audio?
 
 ### The shaped charge (#526, A)
 

@@ -99,3 +99,12 @@ runs:
           echo "::error::The client did not use the OpenGL backend that options.txt asks for"
           exit 1
         fi
+    # The screenshots the tests took (the failing frame is the last one), for a failure that only the runner shows.
+    - name: Upload the test screenshots
+      if: failure()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: client-gametest-screenshots
+        path: build/run/clientGameTest/screenshots
+        if-no-files-found: ignore
+        retention-days: 7

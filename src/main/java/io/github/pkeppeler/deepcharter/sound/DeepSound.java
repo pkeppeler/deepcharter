@@ -24,6 +24,8 @@ public enum DeepSound {
 	POD_LINING_PLACE("pod.lining_place"),
 	POD_GLAZE_BURN("pod.glaze_burn"),
 	POD_SEEP_HISS("pod.seep_hiss"),
+	POD_SIGNAL_CRACKLE("pod.signal_crackle"),
+	POD_SIGNAL_LOST("pod.signal_lost"),
 	CREATURE_APPROACH("creature.approach"),
 	CREATURE_HURT("creature.hurt"),
 	CREATURE_DEATH("creature.death"),
