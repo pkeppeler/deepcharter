@@ -132,13 +132,25 @@ public class ScannerHudTest implements FabricClientGameTest {
 
 		/** The RGB of the middle of the HUD cell {@code ahead} and {@code up} from the pod. */
 		public int pixel(int ahead, int up) {
+			int[] at = pixelAt(ahead, up);
+			return image.getRGB(at[0], at[1]) & RGB;
+		}
+
+		/** Where {@link #pixel} reads and why, for a failure message: the screen pixel, the GUI scale and size, and whether the cockpit window places the cell. */
+		public String describePixel(int ahead, int up) {
+			int[] at = pixelAt(ahead, up);
+			return "pixel (%d, %d) of a %dx%d screenshot, GUI scale %d, GUI %dx%d, %s".formatted(at[0], at[1], image.getWidth(), image.getHeight(), scale, guiWidth, guiHeight,
+					window == null ? "plain panel" : "cockpit window");
+		}
+
+		private int[] pixelAt(int ahead, int up) {
 			int cell = window == null ? ScannerHud.cellSize(guiWidth, guiHeight, area) : ScannerHud.windowCellSize(window, area);
 			int left = window == null ? ScannerHud.cellLeft(guiWidth, guiHeight, area, ahead) : ScannerHud.windowCellLeft(guiWidth, window, area, ahead);
 			int top = window == null ? ScannerHud.cellTop(guiWidth, guiHeight, area, up) : ScannerHud.windowCellTop(guiHeight, window, area, up);
 			int half = cell * scale / 2;
 			int x = left * scale + half;
 			int y = top * scale + half;
-			return image.getRGB(x, y) & RGB;
+			return new int[] {x, y};
 		}
 
 		/** The screen pixels' side of one cell: GUI pixels per cell times the GUI scale. */
