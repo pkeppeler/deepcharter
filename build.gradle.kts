@@ -63,8 +63,6 @@ fabricApi {
 	}
 }
 
-// RELAXED: settings.gradle.kts has no FAIL_ON_PROJECT_REPOS, because Loom adds project repositories and that mode rejects them.
-// This check keeps its intent: only Loom's own repositories, plus GeckoLib's below, may exist. A new repository fails the build here.
 repositories {
 	// Only GeckoLib comes from here, and only this repository may serve it (audit condition 3).
 	exclusiveContent {
@@ -80,7 +78,7 @@ repositories {
 	}
 }
 
-// Allowed beyond Loom's own repositories: GeckoLib's, which serves only com.geckolib (exclusiveContent above; audit condition 3).
+// Stands in for FAIL_ON_PROJECT_REPOS (see settings.gradle.kts): only Loom's repositories and GeckoLib's may exist.
 val allowedRepositoryUrls = setOf(
 	"https://maven.fabricmc.net/",
 	"https://libraries.minecraft.net/",
