@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.Arrays;
 import javax.imageio.ImageIO;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -36,11 +37,15 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 /** Client GameTest: ore pixels in the scanner HUD. */
 public class ScannerHudTest implements FabricClientGameTest {
 	private static final ScannerTuning TUNING = ScannerTuning.DEFAULT;
 	public static final ScanArea TIER_ONE = TUNING.area(1);
 	private static final int RGB = 0xFFFFFF;
+	/** How many brightness levels (of 255) an ore cell must be above a stone cell: the contrast the old flat colours gave was far above it. */
+	private static final int MIN_ORE_LIFT = 20;
 
 	/** The ore sits this many blocks ahead of the pod and this many below its feet; the facing is the pod's. */
 	public static final int GOLD_AHEAD = 5;
@@ -135,22 +140,64 @@ public class ScannerHudTest implements FabricClientGameTest {
 			int y = top * scale + half;
 			return image.getRGB(x, y) & RGB;
 		}
-	}
 
-	private static void expectPixel(HudShot shot, String label, int ahead, int up, int colour) {
-		int actual = shot.pixel(ahead, up);
-		if (actual != (colour & RGB)) {
-			throw new AssertionError("%s: the pixel in cell (ahead %d, up %d) should be %06X, was %06X"
-					.formatted(label, ahead, up, colour & RGB, actual));
+		/** The screen pixels' side of one cell: GUI pixels per cell times the GUI scale. */
+		private int cellSize() {
+			return (window == null ? ScannerHud.cellSize(guiWidth, guiHeight, area) : ScannerHud.windowCellSize(window, area)) * scale;
+		}
+
+		/** The RGB of every screen pixel of the HUD cell {@code ahead} and {@code up} from the pod. */
+		public int[] cellPixels(int ahead, int up) {
+			int size = cellSize();
+			int left = (window == null ? ScannerHud.cellLeft(guiWidth, guiHeight, area, ahead) : ScannerHud.windowCellLeft(guiWidth, window, area, ahead)) * scale;
+			int top = (window == null ? ScannerHud.cellTop(guiWidth, guiHeight, area, up) : ScannerHud.windowCellTop(guiHeight, window, area, up)) * scale;
+			int[] pixels = new int[size * size];
+			for (int y = 0; y < size; y++) {
+				for (int x = 0; x < size; x++) {
+					pixels[y * size + x] = image.getRGB(left + x, top + y) & RGB;
+				}
+			}
+			return pixels;
+		}
+
+		/** Whether every pixel of the cell is the colour of open space. */
+		public boolean isOpenSpace(int ahead, int up) {
+			int air = ScannerLook.current().airColor() & RGB;
+			return Arrays.stream(cellPixels(ahead, up)).allMatch(pixel -> pixel == air);
+		}
+
+		/** Mean brightness (0 to 255) over the pixels of the cell. */
+		public double brightness(int ahead, int up) {
+			return Arrays.stream(cellPixels(ahead, up)).mapToDouble(HudShot::luma).average().orElseThrow();
+		}
+
+		/** Mean of one colour channel (shift 16 red, 8 green, 0 blue) over the pixels of the cell. */
+		public double channel(int ahead, int up, int shift) {
+			return Arrays.stream(cellPixels(ahead, up)).mapToDouble(pixel -> (pixel >> shift) & 0xFF).average().orElseThrow();
+		}
+
+		/** Brightness (0 to 255) of an RGB colour. */
+		public static double luma(int rgb) {
+			return 0.2126 * ((rgb >> 16) & 0xFF) + 0.7152 * ((rgb >> 8) & 0xFF) + 0.0722 * (rgb & 0xFF);
 		}
 	}
 
+	/**
+	 * The gold row as the scanner draws it: the cells are the blocks' own textures, so a cell is checked by what it shows and not by one
+	 * colour. Open space is the flat air colour; stone and ore are not; and the ore is brighter than the stone beside it, which is what
+	 * keeps ore as easy to spot as its flat colour was.
+	 */
 	private static void expectGoldRow(ClientGameTestContext context, String label) {
 		HudShot shot = HudShot.take(context, label, TIER_ONE);
-		expectPixel(shot, label + " gold", GOLD_AHEAD, GOLD_UP, ScannerLook.current().goldOreColor());
-		expectPixel(shot, label + " air before", GOLD_AHEAD - 1, GOLD_UP, ScannerLook.current().airColor());
-		expectPixel(shot, label + " air after", GOLD_AHEAD + 1, GOLD_UP, ScannerLook.current().airColor());
-		expectPixel(shot, label + " rock", GOLD_AHEAD + 2, GOLD_UP, ScannerLook.current().rockColor());
+		require(shot.isOpenSpace(GOLD_AHEAD - 1, GOLD_UP), label + ": the cell before the gold should be open space");
+		require(shot.isOpenSpace(GOLD_AHEAD + 1, GOLD_UP), label + ": the cell after the gold should be open space");
+		require(!shot.isOpenSpace(GOLD_AHEAD, GOLD_UP), label + ": the gold cell should draw the gold ore's texture");
+		require(!shot.isOpenSpace(GOLD_AHEAD + 2, GOLD_UP), label + ": the stone cell should draw the stone texture");
+		double gold = shot.brightness(GOLD_AHEAD, GOLD_UP);
+		double stone = shot.brightness(GOLD_AHEAD + 2, GOLD_UP);
+		require(gold > stone + MIN_ORE_LIFT, "%s: the gold cell (%.1f) should be at least %d brighter than the stone cell (%.1f)"
+				.formatted(label, gold, MIN_ORE_LIFT, stone));
+		require(shot.channel(GOLD_AHEAD, GOLD_UP, 16) > shot.channel(GOLD_AHEAD, GOLD_UP, 0), label + ": the gold cell should read yellow, red over blue");
 	}
 
 	/** Puts the first player out of the pod and removes the pod. */
@@ -167,8 +214,8 @@ public class ScannerHudTest implements FabricClientGameTest {
 	private static void dismountAndExpectNoHud(ClientGameTestContext context, TestServerContext server, String label) {
 		leavePod(context, server);
 		context.waitTicks(2 * TUNING.rescanTicks() + 2);
-		int actual = HudShot.take(context, label + "-dismounted", TIER_ONE).pixel(GOLD_AHEAD, GOLD_UP);
-		if (actual == (ScannerLook.current().goldOreColor() & RGB)) {
+		// The open cell next to the gold is the flat air colour in the panel, and a nine-pixel cell of that exact colour is not in the world.
+		if (HudShot.take(context, label + "-dismounted", TIER_ONE).isOpenSpace(GOLD_AHEAD - 1, GOLD_UP)) {
 			throw new AssertionError(label + ": the scanner HUD must not draw when the player is not riding a pod");
 		}
 	}
