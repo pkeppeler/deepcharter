@@ -18,9 +18,9 @@ public enum UpgradeRefusal {
 	SERIALS_UNREADABLE,
 	/** The pod has a part of this track that is as good or better, and works for the charter. */
 	NOT_AN_UPGRADE,
-	/** The part's first tier is crafted, not sold (the scanner's tier 1, SPEC section 7). */
+	/** The part's first tier is crafted, not sold (tier 1 of the scanner and of a Mole's six stock tracks, SPEC section 7). */
 	CRAFTED,
-	/** A later tier of a track whose first tier is crafted needs that first part fitted to the pod first. */
+	/** A later tier of a track with a crafted first tier and no stock part (the scanner) needs that first part fitted to the pod first. */
 	NEEDS_FIRST_TIER;
 
 	public String translationKey() {

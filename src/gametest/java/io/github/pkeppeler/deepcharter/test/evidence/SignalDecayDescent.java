@@ -45,6 +45,8 @@ final class SignalDecayDescent {
 	private static final int TICKS_PER_FRAME = 3;
 	/** The plate's threshold is 0.45: from here on a drop-out of the plate is likely enough to wait for one. */
 	private static final double FAILING_FROM = 0.6;
+	/** The scanner has been filling with static since the first slab; from here it is heavy enough to read as interference against the map's own specks. */
+	private static final double NOISE_FROM = 0.4;
 	private static final float HULL_SHARE = 0.25f;
 
 	private SignalDecayDescent() {
@@ -92,6 +94,9 @@ final class SignalDecayDescent {
 				context.waitTicks(30);
 				// Founding the charter queued the employer's transmission; it would cover the HUD this scenario shows.
 				context.runOnClient(client -> TransmissionOverlay.reset());
+				// The pod settles while the world loads; put it back where the descent starts, above the onset, so the first still is clear air.
+				lower(singleplayer, START_Y);
+				context.waitTicks(2);
 				scenario.screenshot(context, stillPrefix + "-clear");
 				boolean noisy = false;
 				boolean flicker = false;
@@ -100,7 +105,7 @@ final class SignalDecayDescent {
 					context.waitTicks(TICKS_PER_FRAME);
 					scenario.frame(context);
 					double intensity = intensity(context);
-					if (!noisy && intensity > 0.15) {
+					if (!noisy && intensity > NOISE_FROM) {
 						noisy = true;
 						scenario.screenshot(context, stillPrefix + "-noise");
 					}

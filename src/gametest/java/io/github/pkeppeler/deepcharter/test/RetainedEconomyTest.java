@@ -13,8 +13,6 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Run;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Zone;
-import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
-import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 
 /**
  * Server GameTests for #449 and #485: what a Retained's grip costs a run of {@link EarlyRunModel}. A grab takes litres from the tank until
@@ -38,6 +36,8 @@ public class RetainedEconomyTest {
 	private static final double UNANSWERED_SHARE_MIN = 0.9;
 	/** A lights part must pay for itself in this many unanswered grabs, at most: a part the dark pilot can believe in. */
 	private static final double LIGHTS_PAYBACK_GRABS_MAX = 10;
+	/** What the lights part cost at the terminal before its tier 1 became a crafted unit (#536): the recipe takes about the minutes that price took to earn. */
+	private static final long LIGHTS_OLD_PRICE = 125;
 
 	/**
 	 * Measured in #449, pinned: the game's spawner placed 6 figures in 12,000 ticks (10 minutes) of one player in layer 2 at a roll of 0.02, so
@@ -97,7 +97,7 @@ public class RetainedEconomyTest {
 		double unansweredLitres = unansweredLitres(stock, tuning);
 		Run unanswered = runWithLoss(zone, stock, 0, unansweredLitres);
 		double unansweredShare = unansweredLitres / whole.litres();
-		long lights = UpgradeTuning.DEFAULT.price(ComponentTrack.LIGHTS, 1);
+		long lights = LIGHTS_OLD_PRICE;
 		double unansweredLoss = whole.net() - Math.max(0, unanswered.net());
 		LOGGER.info("[retained-economy] the pick: cued {} L ({} of a run), uncued {} L ({}), unanswered {} L ({}): {} slabs net ${}; lights ${} = {} unanswered grabs",
 				cuedLitres, cuedShare, uncuedLitres, uncuedShare, unansweredLitres, unansweredShare, unanswered.slabs(), unanswered.net(), lights, lights / unansweredLoss);

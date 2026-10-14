@@ -11,7 +11,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 
 /** Registers the scanner unit, the crafted item that becomes the tier 1 scanner. ScanSlice is plain shared code and its ore tag is data. */
 public final class ScannerRegistry {
-	/** The tier 1 scanner as the player makes it (SPEC section 7). Using it on the player's pod fits the part; see {@link ScannerFitting}. */
+	/** The tier 1 scanner as the player makes it (SPEC section 7). Using it on the player's pod fits the part; see {@link io.github.pkeppeler.deepcharter.upgrade.PartFitting}. */
 	public static final Item SCANNER_UNIT = unit();
 
 	private ScannerRegistry() {

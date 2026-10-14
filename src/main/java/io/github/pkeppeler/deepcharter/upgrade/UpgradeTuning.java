@@ -72,41 +72,45 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks) {
 	 */
 	private static Map<ComponentTrack, Tiers> defaultTracks() {
 		Map<ComponentTrack, Tiers> tracks = new EnumMap<>(ComponentTrack.class);
-		List<Long> standardPrices = List.of(0L, 200L, 500L, 1250L, 5000L, 25000L, 125000L);
+		// Tier 1 of every track is a crafted unit fitted by use (#483, #536, ADR 0048, ADR 0053), so its price is 0 and the terminal does not sell it. The old tier 1 price
+		// is what the recipe's minutes are tuned to (FirstTierPartsCostTest): $200 here ($500 for the radiator), $125 lights, $100 hopper, $500 liner, $400 sounder,
+		// $200 brace, $750 heat shield. Tier 2 is still the standard ladder's $500.
+		List<Long> standardPrices = List.of(0L, 0L, 500L, 1250L, 5000L, 25000L, 125000L);
 		tracks.put(ComponentTrack.DRILL, new Tiers(List.of(2f, 2.8f, 4f, 5f, 7f, 9.5f, 12f), standardPrices));
 		tracks.put(ComponentTrack.HULL, new Tiers(List.of(10f, 17f, 30f, 50f, 80f, 120f, 180f), standardPrices));
 		tracks.put(ComponentTrack.ENGINE, new Tiers(List.of(150f, 160f, 170f, 180f, 190f, 200f, 210f), standardPrices));
 		tracks.put(ComponentTrack.FUEL_TANK, new Tiers(List.of(10f, 15f, 25f, 40f, 60f, 100f, 150f), standardPrices));
 		tracks.put(ComponentTrack.RADIATOR, new Tiers(List.of(1.0f, 0.9f, 0.75f, 0.6f, 0.4f, 0.2f),
-				List.of(0L, 500L, 1250L, 5000L, 25000L, 125000L)));
+				List.of(0L, 0L, 1250L, 5000L, 25000L, 125000L)));
 		tracks.put(ComponentTrack.CARGO_BAY, new Tiers(List.of(7f, 15f, 25f, 40f, 70f, 120f),
-				List.of(0L, 200L, 500L, 1250L, 5000L, 25000L)));
+				List.of(0L, 0L, 500L, 1250L, 5000L, 25000L)));
+		// The prices quoted in the comments below are the tier 1 prices before #536, now 0: tier 1 of each is a crafted unit, tuned to the minutes that price took to earn.
 		// Invented: the original has no scanner and no lights. The scanner's tier 1 is crafted from the bootstrap's metal (#483, ADR 0048), so its
 		// price is 0 and the terminal does not sell it; the tiers above it take the standard ladder. Tier 2, $500, is the thermal tier that marks lava
 		// (#300): priced with the other tier 2 parts, it takes two runs in layer 2 at most (EconomyAffordabilityTest), and a Mole can fit it. Lights are the
 		// cheaper part, a quarter of the first guess.
 		tracks.put(ComponentTrack.SCANNER, new Tiers(List.of(0f, 0.5f, 0.75f, 1f, 1.5f), List.of(0L, 0L, 500L, 1250L, 5000L)));
-		tracks.put(ComponentTrack.LIGHTS, new Tiers(List.of(0f, 6f, 9f, 12f, 15f), List.of(0L, 125L, 375L, 1250L, 3750L)));
+		tracks.put(ComponentTrack.LIGHTS, new Tiers(List.of(0f, 6f, 9f, 12f, 15f), List.of(0L, 0L, 375L, 1250L, 3750L)));
 		// Invented (#313): the original keeps no stone. The hopper is SPEC section 7's "keep stone" upgrade, as a bay for spoil. One tier, 1 for
 		// "fitted"; $100 is one early run of a stock Mole in layer 1 (EconomyAffordabilityTest), so it is bought before Deep Claim, where lava starts.
-		tracks.put(ComponentTrack.SPOIL_HOPPER, new Tiers(List.of(0f, 1f), List.of(0L, 100L)));
+		tracks.put(ComponentTrack.SPOIL_HOPPER, new Tiers(List.of(0f, 1f), List.of(0L, 0L)));
 		// Invented (#339): the liner has no stock part. Its value is the tier number; what each tier does is in PodLinerTuning. Both tiers fit a Mole (cap 2).
 		// Tier 1 is priced with the other tier 2 parts, tier 2 a little under the tier 3 parts: a layer 2 buy each (EconomyAffordabilityTest).
-		tracks.put(ComponentTrack.LINER, new Tiers(List.of(0f, 1f, 2f), List.of(0L, 500L, 1000L)));
+		tracks.put(ComponentTrack.LINER, new Tiers(List.of(0f, 1f, 2f), List.of(0L, 0L, 1000L)));
 		// Invented (#373): the seep sounder has no stock part. Its value is the tier number; what each tier does is in PodSounderTuning. Both tiers fit a Mole (cap 2).
 		// Tier 1 is $400, two layer 2 runs, and tier 2 is $1,000, as the liner's tier 2 (EconomyAffordabilityTest).
-		tracks.put(ComponentTrack.SOUNDER, new Tiers(List.of(0f, 1f, 2f), List.of(0L, 400L, 1000L)));
+		tracks.put(ComponentTrack.SOUNDER, new Tiers(List.of(0f, 1f, 2f), List.of(0L, 0L, 1000L)));
 		// Invented (#378): the breach brace has no stock part. One tier, 1 for "fitted"; what it does is in PodBraceTuning. $200 is two stock layer-1 runs,
 		// and the crust it answers ends layer 1 (EconomyAffordabilityTest).
-		tracks.put(ComponentTrack.BRACE, new Tiers(List.of(0f, 1f), List.of(0L, 200L)));
+		tracks.put(ComponentTrack.BRACE, new Tiers(List.of(0f, 1f), List.of(0L, 0L)));
 		// Invented (#482): the heat shield has no stock part. One tier, 1 for "fitted"; what it does is in PodHeatShieldTuning. $750 is three layer 2 runs of a hopper pod
 		// (EconomyAffordabilityTest): dearer than the liner's tier 1, because it is the pod that stays in lava, and under the liner's tier 2.
-		tracks.put(ComponentTrack.HEAT_SHIELD, new Tiers(List.of(0f, 1f), List.of(0L, 750L)));
+		tracks.put(ComponentTrack.HEAT_SHIELD, new Tiers(List.of(0f, 1f), List.of(0L, 0L)));
 		// Invented (#502): the console is the cab's signal gear and every pod ships with the stock one (tier 0). Its value is the share of the signal decay's
-		// distance from the floor that is left (SignalDecayTuning): 1 is the stock reach, 0 is none, so the top tier is immune. Tier 1, $200, is two stock layer 1
-		// runs (EconomyAffordabilityTest); tier 2, $500, is priced with the other tier 2 parts; tier 3, $1,250, with the other tier 3 parts. A Mole (cap 2) cannot
+		// distance from the floor that is left (SignalDecayTuning): 1 is the stock reach, 0 is none, so the top tier is immune. Tier 1 is a crafted unit (price 0 at the terminal; FirstTierPartsCostTest prices it in time, against the old $200: two stock layer 1
+		// runs); tier 2, $500, is priced with the other tier 2 parts; tier 3, $1,250, with the other tier 3 parts. A Mole (cap 2) cannot
 		// be immune: that is a Prospector's.
-		tracks.put(ComponentTrack.CONSOLE, new Tiers(List.of(1f, 0.6f, 0.3f, 0f), List.of(0L, 200L, 500L, 1250L)));
+		tracks.put(ComponentTrack.CONSOLE, new Tiers(List.of(1f, 0.6f, 0.3f, 0f), List.of(0L, 0L, 500L, 1250L)));
 		return tracks;
 	}
 }

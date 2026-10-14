@@ -71,25 +71,25 @@ public class UpgradeTerminalTest {
 		withRepairedTerminal(helper, () -> {
 			Scene scene = scene(helper, 10_000);
 			try {
-				expectDone(helper, buy(scene, ComponentTrack.HULL, 1), "buying a tier 1 hull");
-				expectEqual(helper, "account after the 200 hull", 9_800, balance(helper, scene));
+				expectDone(helper, buy(scene, ComponentTrack.HULL, 2), "buying a tier 2 hull");
+				expectEqual(helper, "account after the 500 hull", 9_500, balance(helper, scene));
 				PartLabel first = PodComponents.partOf(scene.pod(), ComponentTrack.HULL).orElseThrow();
-				if (first.tier() != 1 || !first.charter().equals(scene.charter())) {
-					throw failure(helper, "the hull should be a tier 1 part of the charter, got %s", first);
+				if (first.tier() != 2 || !first.charter().equals(scene.charter())) {
+					throw failure(helper, "the hull should be a tier 2 part of the charter, got %s", first);
 				}
 				if (!drops(helper, scene).isEmpty()) {
 					throw failure(helper, "the first hull replaced nothing, but %s dropped", drops(helper, scene));
 				}
 
-				expectDone(helper, buy(scene, ComponentTrack.HULL, 2), "buying a tier 2 hull");
-				expectEqual(helper, "account after the 500 hull", 9_300, balance(helper, scene));
+				expectDone(helper, buy(scene, ComponentTrack.HULL, 3), "buying a tier 3 hull");
+				expectEqual(helper, "account after the 1250 hull", 8_250, balance(helper, scene));
 				PartLabel second = PodComponents.partOf(scene.pod(), ComponentTrack.HULL).orElseThrow();
-				if (second.tier() != 2 || second.serial().equals(first.serial())) {
-					throw failure(helper, "the hull should be a new tier 2 part, got %s after %s", second, first);
+				if (second.tier() != 3 || second.serial().equals(first.serial())) {
+					throw failure(helper, "the hull should be a new tier 3 part, got %s after %s", second, first);
 				}
 				List<PartLabel> dropped = drops(helper, scene);
 				if (!dropped.equals(List.of(first))) {
-					throw failure(helper, "the replaced tier 1 hull should drop as it was, got %s", dropped);
+					throw failure(helper, "the replaced tier 2 hull should drop as it was, got %s", dropped);
 				}
 				helper.succeed();
 			} finally {
@@ -104,22 +104,22 @@ public class UpgradeTerminalTest {
 			Scene scene = scene(helper, 10_000);
 			PodEntity pod = scene.pod();
 			try {
+				// The shared install keeps litres and damage: only a purchase refills.
 				pod.setHull(40f);
 				pod.setFuel(30f);
-				expectDone(helper, buy(scene, ComponentTrack.HULL, 1), "buying a hull");
-				expectEqual(helper, "hull refilled to the new maximum", 170f, pod.hull());
+				PodComponents.install(pod, ComponentItems.mint(helper.getLevel().getServer(), ComponentTrack.HULL, 1, scene.charter()));
+				expectEqual(helper, "a plain install keeps the damage", 40f + 70f, pod.hull());
+				expectEqual(helper, "a plain install keeps the fuel", 30f, pod.fuel());
+
+				pod.setHull(40f);
+				expectDone(helper, buy(scene, ComponentTrack.HULL, 2), "buying a hull");
+				expectEqual(helper, "hull refilled to the new maximum", 300f, pod.hull());
 				expectEqual(helper, "a hull does not refill the tank", 30f, pod.fuel());
 
 				pod.setHull(50f);
-				expectDone(helper, buy(scene, ComponentTrack.FUEL_TANK, 1), "buying a tank");
+				expectDone(helper, buy(scene, ComponentTrack.FUEL_TANK, 2), "buying a tank");
 				expectEqual(helper, "tank refilled", 100f, pod.fuel());
 				expectEqual(helper, "a tank does not repair the hull", 50f, pod.hull());
-
-				// The shared install keeps litres and damage: only a purchase refills.
-				pod.setHull(60f);
-				pod.setFuel(30f);
-				PodComponents.install(pod, ComponentItems.mint(helper.getLevel().getServer(), ComponentTrack.HULL, 2, scene.charter()));
-				expectEqual(helper, "a plain install keeps the damage", 60f + 130f, pod.hull());
 				helper.succeed();
 			} finally {
 				clean(helper, scene);
@@ -133,7 +133,7 @@ public class UpgradeTerminalTest {
 			Scene scene = scene(helper, 10_000);
 			try {
 				scene.pod().setHull(0f);
-				expectDone(helper, buy(scene, ComponentTrack.HULL, 1), "buying a hull for a wreck");
+				expectDone(helper, buy(scene, ComponentTrack.HULL, 2), "buying a hull for a wreck");
 				expectEqual(helper, "a wreck stays a wreck", 0f, scene.pod().hull());
 				helper.succeed();
 			} finally {
@@ -171,19 +171,19 @@ public class UpgradeTerminalTest {
 	@GameTest
 	public void anInsufficientAccountRefusesAndChangesNothing(GameTestHelper helper) {
 		withRepairedTerminal(helper, () -> {
-			Scene scene = scene(helper, 199);
+			Scene scene = scene(helper, 499);
 			PodEntity pod = scene.pod();
 			try {
 				pod.setHull(40f);
 				pod.setFuel(30f);
-				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 1), "a 200 hull for 199");
-				expectEqual(helper, "the account", 199, balance(helper, scene));
+				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 2), "a 500 hull for 499");
+				expectEqual(helper, "the account", 499, balance(helper, scene));
 				expectEqual(helper, "hull", 40f, pod.hull());
 				expectEqual(helper, "fuel", 30f, pod.fuel());
 				if (PodComponents.partOf(pod, ComponentTrack.HULL).isPresent() || !drops(helper, scene).isEmpty()) {
 					throw failure(helper, "a refused purchase must install and drop nothing");
 				}
-				expectSame(helper, UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), ComponentTrack.HULL, 1),
+				expectSame(helper, UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), ComponentTrack.HULL, 2),
 						Optional.of(Charters.spend(helper.getLevel().getServer(), scene.charter(), 750).orElseThrow().message()), "the reason");
 				helper.succeed();
 			} finally {
@@ -202,7 +202,7 @@ public class UpgradeTerminalTest {
 				foreign = helper.spawn(PodRegistry.POD, 1, 1, 1);
 				PodComponents.register(foreign, otherCharter(helper));
 				// Two pods are parked: the player's own is used, the other charter's is left alone.
-				expectDone(helper, buy(scene, ComponentTrack.DRILL, 1), "buying with both pods parked");
+				expectDone(helper, buy(scene, ComponentTrack.DRILL, 2), "buying with both pods parked");
 				if (PodComponents.partOf(foreign, ComponentTrack.DRILL).isPresent()
 						|| PodComponents.partOf(scene.pod(), ComponentTrack.DRILL).isEmpty()) {
 					throw failure(helper, "the part belongs in the player's own pod");
@@ -211,8 +211,8 @@ public class UpgradeTerminalTest {
 				// Only the other charter's pod is parked.
 				scene.pod().setPos(scene.pod().position().add(20, 0, 0));
 				long before = balance(helper, scene);
-				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.ENGINE, 1), "a purchase for a pod of another charter");
-				expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.ENGINE, 1),
+				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.ENGINE, 2), "a purchase for a pod of another charter");
+				expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.ENGINE, 2),
 						Optional.of(UpgradeRefusal.NOT_YOUR_POD.message()), "the reason");
 				expectEqual(helper, "the account", before, balance(helper, scene));
 				if (PodComponents.partOf(foreign, ComponentTrack.ENGINE).isPresent()) {
@@ -225,7 +225,7 @@ public class UpgradeTerminalTest {
 
 				// Nothing parked at all.
 				foreign.setPos(foreign.position().add(20, 0, 0));
-				expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.ENGINE, 1),
+				expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.ENGINE, 2),
 						Optional.of(UpgradeRefusal.NO_POD.message()), "the reason with no pod near");
 				expectEqual(helper, "the account", before, balance(helper, scene));
 				helper.succeed();
@@ -268,25 +268,54 @@ public class UpgradeTerminalTest {
 		});
 	}
 
-	/** #483: the scanner's tier 1 is crafted and fitted from the unit, so the terminal does not sell it, whatever the account holds. */
+	/** #483, #536: tier 1 of every track is fitted from a crafted unit, so the terminal does not sell it, whatever the account holds. */
 	@GameTest
-	public void theTierOneScannerIsCraftedAndNotSoldAtTheTerminal(GameTestHelper helper) {
+	public void theTierOneOfEveryTrackIsCraftedAndNotSoldAtTheTerminal(GameTestHelper helper) {
 		withRepairedTerminal(helper, () -> {
 			Scene scene = scene(helper, 10_000);
 			try {
-				expectEqual(helper, "the price table has no price for the crafted tier", 0, UpgradeTuning.DEFAULT.price(ComponentTrack.SCANNER, 1));
-				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.SCANNER, 1), "a tier 1 scanner");
-				expectSame(helper, UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), ComponentTrack.SCANNER, 1),
-						Optional.of(UpgradeRefusal.CRAFTED.message()), "the reason");
-				expectEqual(helper, "the account", 10_000, balance(helper, scene));
-				if (PodComponents.partOf(scene.pod(), ComponentTrack.SCANNER).isPresent()) {
-					throw failure(helper, "a refused scanner must not be installed");
-				}
 				for (ComponentTrack track : ComponentTrack.values()) {
-					if (track != ComponentTrack.SCANNER && track.firstTierCrafted()) {
-						throw failure(helper, "only the scanner has a crafted first tier, %s says it has too", track);
+					expectEqual(helper, track + ": the price table has no price for the crafted tier", 0, UpgradeTuning.DEFAULT.price(track, 1));
+					expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, track, 1), "a tier 1 " + track);
+					expectSame(helper, UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), track, 1),
+							Optional.of(UpgradeRefusal.CRAFTED.message()), "the reason for " + track);
+					expectEqual(helper, "the account", 10_000, balance(helper, scene));
+					if (PodComponents.partOf(scene.pod(), track).isPresent()) {
+						throw failure(helper, "a refused %s must not be installed", track);
+					}
+					if (track.needsFirstTier() != (track == ComponentTrack.SCANNER)) {
+						throw failure(helper, "only the scanner needs its tier 1 fitted before tier 2 is sold, %s says %s", track, track.needsFirstTier());
 					}
 				}
+				helper.succeed();
+			} finally {
+				clean(helper, scene);
+			}
+		});
+	}
+
+	/**
+	 * #536: tier 2 of every track but the scanner is sold to a pod that never fitted tier 1 (over the stock part, or over nothing), at the price it always had.
+	 * Only the scanner, whose crafted tier is the first map a Mole has, needs it first.
+	 */
+	@GameTest
+	public void tierTwoIsSoldToAPodThatNeverFittedTierOne(GameTestHelper helper) {
+		withRepairedTerminal(helper, () -> {
+			Scene scene = scene(helper, 100_000);
+			try {
+				long spent = 0;
+				int tracks = 0;
+				for (ComponentTrack track : ComponentTrack.values()) {
+					if (track.needsFirstTier() || track.maxTier() < 2) {
+						continue;
+					}
+					tracks++;
+					expectDone(helper, buy(scene, track, 2), "buying tier 2 " + track + " with no tier 1 fitted");
+					spent += UpgradeTuning.DEFAULT.price(track, 2);
+					expectEqual(helper, track + " at its price", 100_000 - spent, balance(helper, scene));
+					expectEqual(helper, track + " works as tier 2", 2, PodComponents.effectiveTier(scene.pod(), track));
+				}
+				expectEqual(helper, "the tracks with a tier 2 that needs no tier 1", 10, tracks);
 				helper.succeed();
 			} finally {
 				clean(helper, scene);
@@ -361,8 +390,8 @@ public class UpgradeTerminalTest {
 					throw failure(helper, "an unowned pod has no serial, got %s", shown.serial());
 				}
 				unowned.setHull(40f);
-				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(bare, ComponentTrack.HULL, 1), "a purchase for an unregistered pod");
-				expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.HULL, 1),
+				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(bare, ComponentTrack.HULL, 2), "a purchase for an unregistered pod");
+				expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.HULL, 2),
 						Optional.of(UpgradeRefusal.NOT_REGISTERED.message()), "the reason");
 				expectEqual(helper, "the account", 10_000, balance(helper, bare));
 				expectEqual(helper, "a refused hull is no repair", 40f, unowned.hull());
@@ -385,7 +414,7 @@ public class UpgradeTerminalTest {
 				PodEntity missing = helper.spawn(PodRegistry.POD, 2, 1, 2);
 				PodComponents.register(missing, CharterId.random());
 				Scene toMissing = new Scene(scene.mock(), scene.player(), scene.charter(), scene.terminal(), missing);
-				expectDone(helper, buy(toMissing, ComponentTrack.DRILL, 1), "buying for a pod whose owner charter is gone");
+				expectDone(helper, buy(toMissing, ComponentTrack.DRILL, 2), "buying for a pod whose owner charter is gone");
 				if (PodComponents.partOf(missing, ComponentTrack.DRILL).isEmpty()) {
 					throw failure(helper, "the part should be in the pod of the missing owner");
 				}
@@ -404,7 +433,7 @@ public class UpgradeTerminalTest {
 				dormantPod = helper.spawn(PodRegistry.POD, 2, 1, 2);
 				PodComponents.register(dormantPod, dormant);
 				Scene toDormant = new Scene(scene.mock(), scene.player(), scene.charter(), scene.terminal(), dormantPod);
-				expectDone(helper, buy(toDormant, ComponentTrack.ENGINE, 1), "buying for a pod whose owner charter is dormant");
+				expectDone(helper, buy(toDormant, ComponentTrack.ENGINE, 2), "buying for a pod whose owner charter is dormant");
 				if (PodComponents.partOf(dormantPod, ComponentTrack.ENGINE).isEmpty()) {
 					throw failure(helper, "the part should be in the pod of the dormant owner");
 				}
@@ -426,7 +455,7 @@ public class UpgradeTerminalTest {
 			try {
 				farther = helper.spawn(PodRegistry.POD, 6, 1, 2);
 				PodComponents.register(farther, scene.charter());
-				expectDone(helper, buy(scene, ComponentTrack.CARGO_BAY, 1), "buying with two own pods parked");
+				expectDone(helper, buy(scene, ComponentTrack.CARGO_BAY, 2), "buying with two own pods parked");
 				if (PodComponents.partOf(scene.pod(), ComponentTrack.CARGO_BAY).isEmpty() || PodComponents.partOf(farther, ComponentTrack.CARGO_BAY).isPresent()) {
 					throw failure(helper, "the nearer pod should get the part, and only it");
 				}
@@ -471,11 +500,11 @@ public class UpgradeTerminalTest {
 			throw failure(helper, "a pod %s the radius should %sbe parked, parked: %s %s", where, inside ? "" : "not ", parked, context);
 		}
 		if (inside) {
-			expectDone(helper, buy(scene, ComponentTrack.DRILL, 1), "a pod " + where + " the radius " + context);
+			expectDone(helper, buy(scene, ComponentTrack.DRILL, 2), "a pod " + where + " the radius " + context);
 			return;
 		}
 		// Outside the radius the terminal has no pod of ours; an unowned stray inside it would be offered instead, and refused as unregistered.
-		Optional<Component> refusal = UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), ComponentTrack.DRILL, 1);
+		Optional<Component> refusal = UpgradeTerminal.buy(helper.getLevel().getServer(), scene.player(), scene.terminal(), ComponentTrack.DRILL, 2);
 		if (refusal.isEmpty() || PodComponents.partOf(scene.pod(), ComponentTrack.DRILL).isPresent()) {
 			throw failure(helper, "a pod %s the radius should be refused and get nothing, got %s %s", where, refusal, context);
 		}
@@ -500,7 +529,7 @@ public class UpgradeTerminalTest {
 				if (!view.pod().map(UpgradeView.Pod::serial).equals(Optional.of(serial))) {
 					throw failure(helper, "the view should show the own pod %s, got %s", serial, view);
 				}
-				expectDone(helper, buy(scene, ComponentTrack.DRILL, 1), "buying with an unowned pod parked nearer");
+				expectDone(helper, buy(scene, ComponentTrack.DRILL, 2), "buying with an unowned pod parked nearer");
 				if (PodComponents.partOf(scene.pod(), ComponentTrack.DRILL).isEmpty() || PodComponents.partOf(stray, ComponentTrack.DRILL).isPresent()) {
 					throw failure(helper, "the part should go in the own pod only: own %s, unowned %s",
 							PodComponents.partOf(scene.pod(), ComponentTrack.DRILL), PodComponents.partOf(stray, ComponentTrack.DRILL));
@@ -522,9 +551,9 @@ public class UpgradeTerminalTest {
 				int carriedBefore = carried(scene.player());
 				scene.pod().setHull(40f);
 				Map<String, Runnable> paths = new LinkedHashMap<>();
-				paths.put("purchase", () -> expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 1),
+				paths.put("purchase", () -> expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 2),
 						"a purchase with unreadable serials"));
-				paths.put("purchase reason", () -> expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.HULL, 1),
+				paths.put("purchase reason", () -> expectSame(helper, UpgradeTerminal.buy(server, scene.player(), scene.terminal(), ComponentTrack.HULL, 2),
 						Optional.of(UpgradeRefusal.SERIALS_UNREADABLE.message()), "the reason"));
 				UnreadableChecks.assertSavedDataNoThrow(helper, "serials", server, Serials.TYPE, paths);
 				expectEqual(helper, "the account", 10_000, balance(helper, scene));
@@ -547,7 +576,7 @@ public class UpgradeTerminalTest {
 			Scene scene = scene(helper, 10_000);
 			try {
 				scene.pod().setAttached(PodComponents.STATE, new Versioned.Unreadable<>(new CompoundTag()));
-				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 1), "a purchase for a pod with unreadable parts");
+				expectRefused(helper, TerminalRefusal.ACTION_REFUSED, buy(scene, ComponentTrack.HULL, 2), "a purchase for a pod with unreadable parts");
 				expectEqual(helper, "the account", 10_000, balance(helper, scene));
 				// The view is built on a request path: it must not throw either.
 				UpgradeTerminal.view(helper.getLevel().getServer(), scene.player(), Charters.charterOfOrThrow(helper.getLevel().getServer(), scene.player().getUUID()), scene.terminal());
@@ -563,7 +592,7 @@ public class UpgradeTerminalTest {
 		WorldData.with(helper.getLevel().getServer(), RepairState.TYPE, new RepairState(), () -> {
 			Scene scene = scene(helper, 10_000);
 			try {
-				expectRefused(helper, TerminalRefusal.UNREPAIRED, buy(scene, ComponentTrack.HULL, 1), "a purchase at an offline terminal");
+				expectRefused(helper, TerminalRefusal.UNREPAIRED, buy(scene, ComponentTrack.HULL, 2), "a purchase at an offline terminal");
 				expectEqual(helper, "the account", 10_000, balance(helper, scene));
 				helper.succeed();
 			} finally {

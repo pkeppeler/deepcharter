@@ -5,12 +5,15 @@ import java.util.Map;
 
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -113,14 +116,16 @@ public class SignalDecayTest {
 	}
 
 	@GameTest
-	public void theConsoleTiersAreSoldAtTheTerminalAndTierZeroIsTheStockOne(GameTestHelper helper) {
-		if (UpgradeTuning.DEFAULT.price(ComponentTrack.CONSOLE, 0) != 0 || UpgradeTuning.DEFAULT.ratio(ComponentTrack.CONSOLE, 0) != 1f
-				|| ComponentTrack.CONSOLE.firstTierCrafted()) {
-			throw failure(helper, "the console ships with every pod (tier 0 free, ratio 1) and its tier 1 is bought");
+	public void theConsoleTierOneIsACraftedUnitTheTerminalRefusesAndTiersTwoAndThreeAreSold(GameTestHelper helper) {
+		if (UpgradeTuning.DEFAULT.price(ComponentTrack.CONSOLE, 0) != 0 || UpgradeTuning.DEFAULT.ratio(ComponentTrack.CONSOLE, 0) != 1f) {
+			throw failure(helper, "the console ships with every pod (tier 0 free, ratio 1)");
 		}
-		if (UpgradeTuning.DEFAULT.price(ComponentTrack.CONSOLE, 1) != 200 || UpgradeTuning.DEFAULT.price(ComponentTrack.CONSOLE, 2) != 500
+		if (UpgradeTuning.DEFAULT.price(ComponentTrack.CONSOLE, 1) != 0 || UpgradeTuning.DEFAULT.price(ComponentTrack.CONSOLE, 2) != 500
 				|| UpgradeTuning.DEFAULT.price(ComponentTrack.CONSOLE, 3) != 1250) {
-			throw failure(helper, "the console costs $200, $500 and $1,250");
+			throw failure(helper, "the console's tier 1 is crafted (price 0 at the terminal), tiers 2 and 3 cost $500 and $1,250");
+		}
+		if (!BuiltInRegistries.ITEM.containsKey(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "console_unit"))) {
+			throw failure(helper, "the console has a crafted unit");
 		}
 		helper.succeed();
 	}

@@ -133,10 +133,10 @@ public class PodBraceTest {
 	}
 
 	@GameTest
-	public void theBraceHasOneTierAtItsPrice(GameTestHelper helper) {
+	public void theBraceHasOneCraftedTier(GameTestHelper helper) {
 		long price = UpgradeTuning.DEFAULT.price(ComponentTrack.BRACE, 1);
-		if (price != 200 || ComponentTrack.BRACE.maxTier() != 1) {
-			throw failure(helper, "the brace is one tier at $200; it is %s tiers at $%s", ComponentTrack.BRACE.maxTier(), price);
+		if (price != 0 || ComponentTrack.BRACE.maxTier() != 1) {
+			throw failure(helper, "the brace is one tier, crafted ($0); it is %s tiers at $%s", ComponentTrack.BRACE.maxTier(), price);
 		}
 		helper.succeed();
 	}

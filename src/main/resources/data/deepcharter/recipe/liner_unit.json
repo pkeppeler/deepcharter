@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "SSS",
+    "BCB",
+    " B "
+  ],
+  "key": {
+    "S": "deepcharter:silverium",
+    "B": "deepcharter:bronzium",
+    "C": "minecraft:copper_ingot"
+  },
+  "result": {
+    "id": "deepcharter:liner_unit",
+    "count": 1
+  }
+}

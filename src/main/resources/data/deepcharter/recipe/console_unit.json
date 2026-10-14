@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BRB",
+    "CRC"
+  ],
+  "key": {
+    "B": "deepcharter:bronzium",
+    "C": "minecraft:copper_ingot",
+    "R": "minecraft:redstone"
+  },
+  "result": {
+    "id": "deepcharter:console_unit",
+    "count": 1
+  }
+}

@@ -1,14 +1,17 @@
 package io.github.pkeppeler.deepcharter.market;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.WeakHashMap;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
@@ -30,8 +33,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 
 /**
- * The actions of the ore processor terminal: two sales of ore at {@link OreType#value()}, and the two uses of spoil: the fuse into slag
- * brick and the press into salvage crates. A sale is all or nothing: the account is credited first, and the ore is taken once the
+ * The actions of the ore processor terminal: two sales of ore at {@link OreType#value()}, the withdrawal of ore from a pod's cargo into the pack
+ * (for the units that ask for ore, #536), and the two uses of spoil: the fuse into slag brick and the press into salvage crates. A sale is all or nothing: the account is credited first, and the ore is taken once the
  * credit went through, so a refused credit (a full account) leaves the ore where it was. The terminal has already checked the player's range, the charter and the repair state.
  */
 public final class OreProcessor {
@@ -45,6 +48,13 @@ public final class OreProcessor {
 
 	/** Presses the spoil of every pod the player may access parked at the processor into salvage crates, at no price but the spoil (#470). */
 	public static final Identifier PRESS_CRATES = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "press_crates");
+
+	/** Moves ore from the cargo of the pods parked at the processor into the player's pack, for no money (#536). */
+	public static final Identifier WITHDRAW_ORE = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "withdraw_ore");
+	/** The argument of {@link #WITHDRAW_ORE} that names the ore: the path of its item id, such as {@code bronzium}. */
+	public static final String ORE_KEY = "ore";
+	/** The argument of {@link #WITHDRAW_ORE} that says how many: at least 1. */
+	public static final String COUNT_KEY = "count";
 
 	/** Pods whose unreadable cargo was logged, so each is logged once. */
 	private static final Set<PodEntity> SKIPPED_LOGGED = Collections.newSetFromMap(new WeakHashMap<>());
@@ -106,6 +116,66 @@ public final class OreProcessor {
 			}
 		}
 		return refusal;
+	}
+
+	/**
+	 * Moves up to {@code count} of one ore from the cargo of the pods parked at the processor into the pack (#536). No money changes hands: a
+	 * kept ore is a sale forgone, which is what the units that ask for ore cost. It takes what the cargo holds and the pack has room for, in
+	 * the pods' order, and refuses when that is none. The arguments are the client's and are checked here.
+	 */
+	public static Optional<Component> withdrawOre(TerminalAction.Context context) {
+		Charter charter = context.charter().orElseThrow();
+		Optional<OreType> ore = context.args().getString(ORE_KEY).flatMap(OreProcessor::oreNamed);
+		int wanted = context.args().getInt(COUNT_KEY).orElse(0);
+		if (ore.isEmpty() || wanted < 1) {
+			return Optional.of(Component.translatable("deepcharter.market.refusal.bad_withdrawal"));
+		}
+		List<PodEntity> pods = podsAt(context, charter);
+		if (pods.isEmpty()) {
+			return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
+		}
+		List<PodEntity> readable = pods.stream().filter(pod -> pod.cargo().isReadable()).toList();
+		if (readable.isEmpty()) {
+			return Optional.of(Component.translatable("deepcharter.market.refusal.unreadable_cargo"));
+		}
+		OreType kind = ore.get();
+		Component name = Component.translatable(OreRegistry.item(kind).getDescriptionId());
+		int held = readable.stream().mapToInt(pod -> pod.cargo().count(kind)).sum();
+		if (held == 0) {
+			return Optional.of(Component.translatable("deepcharter.market.refusal.no_ore_in_cargo", name));
+		}
+		int room = packRoom(context.player().getInventory(), OreRegistry.item(kind));
+		if (room == 0) {
+			return Optional.of(Component.translatable("deepcharter.market.refusal.no_room_for_ore", name));
+		}
+		int amount = Math.min(wanted, Math.min(held, room));
+		int left = amount;
+		for (PodEntity pod : readable) {
+			if (left > 0) {
+				left -= pod.cargo().take(pod, kind, left);
+			}
+		}
+		giveToPack(context.player(), OreRegistry.item(kind), amount);
+		context.player().sendOverlayMessage(Component.translatable("deepcharter.market.withdrawn", amount, name));
+		return Optional.empty();
+	}
+
+	/** The ore whose item id has the path {@code name}. */
+	private static Optional<OreType> oreNamed(String name) {
+		return Arrays.stream(OreType.values()).filter(type -> type.itemId().getPath().equals(name)).findFirst();
+	}
+
+	/** The processor's view: the work orders, and the ore in the cargo of the readable pods parked here that the player may use. Never throws on unreadable saved data. */
+	public static ProcessorView view(MinecraftServer server, ServerPlayer player, Optional<Charter> charter, BlockPos pos) {
+		List<ProcessorView.Hold> cargo = new ArrayList<>();
+		List<PodEntity> pods = Terminals.parkedPods(player.level(), pos, charter).stream().filter(pod -> pod.cargo().isReadable()).toList();
+		for (OreType type : OreType.values()) {
+			int count = pods.stream().mapToInt(pod -> pod.cargo().count(type)).sum();
+			if (count > 0) {
+				cargo.add(new ProcessorView.Hold(type, count));
+			}
+		}
+		return new ProcessorView(WorkOrders.view(server, player, charter, pos), cargo);
 	}
 
 	/** What the fuse does for one pod: the bricks it can make from the pod's spoil, and where each goes. */

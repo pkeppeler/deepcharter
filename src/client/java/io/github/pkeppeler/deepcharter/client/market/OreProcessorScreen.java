@@ -8,6 +8,7 @@ import java.util.Optional;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -20,9 +21,11 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalViewScreen;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
+import io.github.pkeppeler.deepcharter.market.ProcessorView;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrders;
 import io.github.pkeppeler.deepcharter.market.WorkOrdersView;
@@ -35,6 +38,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 /**
  * The online screen of the ore processor: the price of each ore, the charter's account, the two "sell all" buttons and, at the foot of the price column, the two buttons that use a pod's spoil: slag brick and salvage crates. A button
  * only asks the server; the server decides, and the account shown is the one it last synced, so it changes when a sale goes through.
+ *
+ * <p>WITHDRAW ORE swaps the sheet for a list of the ores the parked pods hold, each with buttons that move 1, 10 or all of it into the pack (#536). BACK returns to the sheet.
  */
 public final class OreProcessorScreen extends CrtScreen implements TerminalViewScreen {
 	private static final int MARGIN = 24;
@@ -42,6 +47,8 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	private static final int BUTTON_HEIGHT = 20;
 	private static final int GAP = 6;
 	private static final int CLOSE_WIDTH = 90;
+	/** The width of each of the three amount buttons of an ore row, which sit at the right edge with the ore's name and count to their left. */
+	private static final int AMOUNT_WIDTH = 56;
 	private static final int PAGER_WIDTH = 24;
 	/** The space kept between the order rows and what is above and below them. */
 	private static final int ORDER_GAP = 3;
@@ -54,6 +61,12 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	private final List<OrderRowButton> orderRows = new ArrayList<>();
 	private int page;
 	private int pages = 1;
+	/** True while the sheet is the list of ores to withdraw. */
+	private boolean withdrawing;
+	/** The ores listed by the last layout of the withdraw list and the y of each, for the text beside its buttons. */
+	private final List<ProcessorView.Hold> listedHolds = new ArrayList<>();
+	private final List<Integer> holdRows = new ArrayList<>();
+	private final ScrollList holds = new ScrollList("screen.deepcharter.processor.withdraw_scroll", () -> cargo().size(), this::holdsPerPage, this::rebuildWidgets);
 
 	public OreProcessorScreen(TerminalView view) {
 		super(Component.translatable(TerminalTypes.ORE_PROCESSOR.block().getDescriptionId()));
@@ -90,6 +103,10 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	@Override
 	protected void layout() {
 		orderRows.clear();
+		if (withdrawing()) {
+			layoutWithdrawal();
+			return;
+		}
 		int left = contentLeft(MARGIN);
 		int closeY = contentBottom(MARGIN) - BUTTON_HEIGHT;
 		addRenderableWidget(new CrtButton(left, closeY, CLOSE_WIDTH, BUTTON_HEIGHT,
@@ -107,7 +124,102 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		int pressLeft = left + CLOSE_WIDTH + GAP;
 		addRenderableWidget(new CrtButton(pressLeft, closeY, rightColumn() - GAP - pressLeft, BUTTON_HEIGHT,
 				Component.translatable("screen.deepcharter.processor.press"), button -> sell(OreProcessor.PRESS_CRATES)));
-		layoutOrders(cargoY);
+		int withdrawY = cargoY - GAP - BUTTON_HEIGHT;
+		addRenderableWidget(new CrtButton(left, withdrawY, BUTTON_WIDTH, BUTTON_HEIGHT,
+				Component.translatable("screen.deepcharter.processor.withdraw"), button -> startWithdrawing()));
+		layoutOrders(withdrawY);
+	}
+
+	private void startWithdrawing() {
+		withdrawing = true;
+		rebuildWidgets();
+	}
+
+	private void stopWithdrawing() {
+		withdrawing = false;
+		rebuildWidgets();
+	}
+
+	/** The ore in the cargo of the pods parked here, as the server last sent it. */
+	public List<ProcessorView.Hold> cargo() {
+		return view.feature(ProcessorView.class).map(ProcessorView::cargo).orElse(List.of());
+	}
+
+	/** True while the sheet is the list of ores to withdraw. */
+	public boolean withdrawing() {
+		return withdrawing;
+	}
+
+	/** How many ore rows fit between the heading and the back button. */
+	private int holdsPerPage() {
+		return Math.max(1, (contentBottom(MARGIN) - BUTTON_HEIGHT - GAP - holdsTop()) / (BUTTON_HEIGHT + GAP));
+	}
+
+	/** The y of the first ore row, under the heading and the one line that says what the list does. */
+	private int holdsTop() {
+		return contentTop(MARGIN) + font.lineHeight + 14 + 2 * (font.lineHeight + CrtTuning.current().lineSpacing()) + GAP;
+	}
+
+	/** The withdraw list: a row for each ore the parked pods hold, with the three amounts, and BACK. */
+	private void layoutWithdrawal() {
+		int left = contentLeft(MARGIN);
+		int backY = contentBottom(MARGIN) - BUTTON_HEIGHT;
+		addRenderableWidget(new CrtButton(left, backY, CLOSE_WIDTH, BUTTON_HEIGHT,
+				Component.translatable("screen.deepcharter.processor.back"), button -> stopWithdrawing()));
+		listedHolds.clear();
+		holdRows.clear();
+		holds.beginLayout();
+		List<ProcessorView.Hold> all = cargo();
+		int shown = Math.min(holdsPerPage(), all.size() - holds.first());
+		for (int row = 0; row < shown; row++) {
+			ProcessorView.Hold hold = all.get(holds.first() + row);
+			int y = holdsTop() + row * (BUTTON_HEIGHT + GAP);
+			listedHolds.add(hold);
+			holdRows.add(y);
+			int x = contentRight(MARGIN) - 3 * AMOUNT_WIDTH - 2 * GAP;
+			addRenderableWidget(holds.shown(new CrtButton(x, y, AMOUNT_WIDTH, BUTTON_HEIGHT,
+					Component.translatable("screen.deepcharter.processor.withdraw_one"), button -> withdraw(hold.ore(), 1))));
+			addRenderableWidget(new CrtButton(x + AMOUNT_WIDTH + GAP, y, AMOUNT_WIDTH, BUTTON_HEIGHT,
+					Component.translatable("screen.deepcharter.processor.withdraw_ten"), button -> withdraw(hold.ore(), 10)));
+			addRenderableWidget(new CrtButton(x + 2 * (AMOUNT_WIDTH + GAP), y, AMOUNT_WIDTH, BUTTON_HEIGHT,
+					Component.translatable("screen.deepcharter.processor.withdraw_all"), button -> withdraw(hold.ore(), hold.count())));
+		}
+	}
+
+	private void withdraw(OreType ore, int count) {
+		CompoundTag args = new CompoundTag();
+		args.putString(OreProcessor.ORE_KEY, ore.itemId().getPath());
+		args.putInt(OreProcessor.COUNT_KEY, count);
+		ClientPlayNetworking.send(new TerminalActionPayload(view.pos(), OreProcessor.WITHDRAW_ORE, args));
+	}
+
+	/** The text of the withdraw list: what it does, then the ore and its count in the cargo of each row shown, or the line that says there is none. */
+	public List<String> withdrawLines() {
+		List<String> lines = new ArrayList<>();
+		lines.add(Component.translatable("screen.deepcharter.processor.withdraw_heading").getString());
+		if (cargo().isEmpty()) {
+			lines.add(Component.translatable("screen.deepcharter.processor.withdraw_none").getString());
+		}
+		for (ProcessorView.Hold hold : listedHolds) {
+			lines.add(Component.translatable("screen.deepcharter.processor.withdraw_row",
+					Component.translatable(OreRegistry.item(hold.ore()).getDescriptionId()).getString().toUpperCase(Locale.ROOT), hold.count()).getString());
+		}
+		return lines;
+	}
+
+	@Override
+	public Component getNarrationMessage() {
+		return withdrawing() ? holds.narrate(super.getNarrationMessage()) : super.getNarrationMessage();
+	}
+
+	@Override
+	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+		return (withdrawing() && holds.mouseScrolled(scrollY)) || super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+	}
+
+	@Override
+	public boolean keyPressed(KeyEvent event) {
+		return (withdrawing() && holds.keyPressed(event, this)) || super.keyPressed(event);
 	}
 
 	/**
@@ -174,7 +286,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 	}
 
 	private Optional<WorkOrdersView> orders() {
-		return view.feature(WorkOrdersView.class);
+		return view.feature(ProcessorView.class).map(ProcessorView::orders);
 	}
 
 	/** Every order the charter is offered, done or not: a done order keeps its (inactive) row. */
@@ -226,10 +338,33 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 		return lines;
 	}
 
+	/** What the list does, then the ore of each row at the left of its buttons, or the line that says there is none. */
+	private void extractWithdrawal(GuiGraphicsExtractor graphics, CrtTuning tuning) {
+		List<String> lines = withdrawLines();
+		int y = contentTop(MARGIN) + font.lineHeight + 14;
+		for (String line : CrtText.wrap(font, lines.getFirst(), contentWidth(MARGIN))) {
+			CrtDraw.glowText(graphics, font, line, contentLeft(MARGIN), y, tuning.phosphorColor());
+			y += font.lineHeight + tuning.lineSpacing();
+		}
+		if (cargo().isEmpty()) {
+			CrtDraw.glowText(graphics, font, lines.get(1), contentLeft(MARGIN), holdsTop(), PanelLook.dimText(tuning.dimColor()));
+		}
+		for (int row = 0; row < listedHolds.size(); row++) {
+			CrtDraw.glowText(graphics, font, lines.get(1 + row), contentLeft(MARGIN), holdRows.get(row) + (BUTTON_HEIGHT - font.lineHeight) / 2, tuning.phosphorColor());
+		}
+		holds.hint().ifPresent(hint -> CrtDraw.glowText(graphics, font, hint, contentLeft(MARGIN) + CLOSE_WIDTH + GAP,
+				contentBottom(MARGIN) - BUTTON_HEIGHT + (BUTTON_HEIGHT - font.lineHeight) / 2, tuning.phosphorColor()));
+	}
+
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		CrtTuning tuning = CrtTuning.current();
 		CrtDraw.header(graphics, font, title.getString().toUpperCase(Locale.ROOT), contentLeft(MARGIN), contentTop(MARGIN), contentRight(MARGIN));
+		if (withdrawing()) {
+			extractWithdrawal(graphics, tuning);
+			super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+			return;
+		}
 		drawTypewriter(graphics, typewriter, contentLeft(MARGIN), contentTop(MARGIN) + font.lineHeight + 14, contentWidth(MARGIN));
 		int top = accountTop();
 		CrtDraw.glowText(graphics, font, accountLine(), contentLeft(MARGIN), top, tuning.phosphorColor());

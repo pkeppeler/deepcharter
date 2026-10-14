@@ -15,12 +15,15 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.market.OrderRowButton;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.market.ProcessorView;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrdersView;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -98,6 +101,38 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 			int spoilLeft = singleplayer.getServer().computeOnServer(server -> PodLining.of(parkedPod(server)).spoil());
 			require(spoilLeft == 0, "forty-eight spoil press two crates and leave none, left " + spoilLeft);
 
+			// #536: withdrawing moves cargo ore to the pack for no money. The ore is added after the screen's last view, so the processor is opened again to refresh it.
+			singleplayer.getServer().runOnServer(server -> {
+				PodEntity pod = parkedPod(server);
+				for (int i = 0; i < 4; i++) {
+					pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.BRONZIUM));
+				}
+			});
+			context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
+			ClientWait.until(context, "the screen listing the Bronzium", client -> screen.cargo().equals(List.of(new ProcessorView.Hold(OreType.BRONZIUM, 4))), client -> "cargo " + screen.cargo());
+			context.clickScreenButton("WITHDRAW ORE");
+			ClientWait.until(context, "the withdraw list", client -> screen.withdrawing(), client -> "withdrawing " + screen.withdrawing());
+			require(context.computeOnClient(client -> screen.withdrawLines()).contains("BRONZIUM  4 IN CARGO"),
+					"the list shows the Bronzium in the cargo, got " + context.computeOnClient(client -> screen.withdrawLines()));
+			checkLayout(context, screen, "the withdraw list");
+			context.clickScreenButton("TAKE ONE");
+			ClientWait.until(context, "one Bronzium in the pack", () -> carriedBronzium(singleplayer) == 1, () -> "packed " + carriedBronzium(singleplayer));
+			ClientWait.until(context, "the list showing three", client -> screen.withdrawLines().contains("BRONZIUM  3 IN CARGO"), client -> "lines " + screen.withdrawLines());
+			context.clickScreenButton("TAKE ALL");
+			ClientWait.until(context, "all four Bronzium in the pack", () -> carriedBronzium(singleplayer) == 4, () -> "packed " + carriedBronzium(singleplayer));
+			ClientWait.until(context, "the list showing none", client -> screen.cargo().isEmpty(), client -> "cargo " + screen.cargo());
+			require(hud(context).equals(CHARTER + "  $" + (cargo + carried)), "withdrawing is free, the HUD shows '" + hud(context) + "'");
+			context.clickScreenButton("BACK");
+			ClientWait.until(context, "the sheet back", client -> !screen.withdrawing(), client -> "withdrawing " + screen.withdrawing());
+			singleplayer.getServer().runOnServer(server -> {
+				Inventory pack = server.getPlayerList().getPlayers().getFirst().getInventory();
+				for (int slot = 0; slot < pack.getContainerSize(); slot++) {
+					if (pack.getItem(slot).is(OreRegistry.item(OreType.BRONZIUM))) {
+						pack.setItem(slot, ItemStack.EMPTY);
+					}
+				}
+			});
+
 			// #80: the work order is listed with no progress, and handing in ten Bronzium finishes it and restores the Founder's hands.
 			require(context.computeOnClient(client -> screen.orderLines()).equals(List.of("WORK ORDERS", "RESTORE THE FOUNDER'S HANDS", "0 / 10 BRONZIUM")),
 					"the screen lists the work order, got " + context.computeOnClient(client -> screen.orderLines()));
@@ -120,12 +155,17 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 			ClientWait.screen(context, OreProcessorScreen.class);
 			OreProcessorScreen two = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
 			ClientWait.until(context, "the second processor screen finished typing", client -> two.typewriter().done(), client -> "typewriter text '" + two.typewriter().text() + "'");
-			List<String> expectedLines = List.of("WORK ORDERS", "RESTORE THE FOUNDER'S HANDS", "DONE", "MORALE INITIATIVE", "0 / 10 SILVERIUM");
-			require(context.computeOnClient(client -> two.orderLines()).equals(expectedLines),
-					"two orders are listed, got " + context.computeOnClient(client -> two.orderLines()));
-			require(context.computeOnClient(client -> orderRows(two).stream().map(row -> row.active).toList()).equals(List.of(false, true)),
-					"the finished order's row is inactive and the open one's is not");
-			checkLayout(context, two, "the two orders");
+			// The sheet's four stacked buttons (WITHDRAW ORE is the fourth, #536) leave room for one order row at the default window, so the second order is on page 2.
+			require(context.computeOnClient(client -> two.orderLines()).equals(List.of("ORDERS  1/2", "RESTORE THE FOUNDER'S HANDS", "DONE")),
+					"the finished order is on page 1, got " + context.computeOnClient(client -> two.orderLines()));
+			require(context.computeOnClient(client -> orderRows(two).stream().map(row -> row.active).toList()).equals(List.of(false)),
+					"the finished order's row is inactive");
+			checkLayout(context, two, "the first of two orders");
+			context.clickScreenButton(">");
+			ClientWait.until(context, "page 2 of the orders", client -> two.orderLines().equals(List.of("ORDERS  2/2", "MORALE INITIATIVE", "0 / 10 SILVERIUM")),
+					client -> "order lines " + two.orderLines());
+			require(context.computeOnClient(client -> orderRows(two).stream().map(row -> row.active).toList()).equals(List.of(true)), "the open order's row is active");
+			checkLayout(context, two, "the second of two orders");
 			singleplayer.getServer().runOnServer(server -> {
 				for (int i = 0; i < 25; i++) {
 					server.getPlayerList().getPlayers().getFirst().getInventory().add(OreRegistry.stack(OreType.SILVERIUM));
@@ -143,7 +183,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 
 			// Several more orders than rows: the screen shows what fits, bounded, and pages to the rest. 320 by 240 is the smallest GUI.
 			WorkOrdersView many = new WorkOrdersView(true, List.of(entry(0), entry(1), entry(2), entry(3), entry(4)));
-			TerminalView manyView = new TerminalView(processor, TerminalTypes.ORE_PROCESSOR.id(), true, true, List.of(), Optional.of(many));
+			TerminalView manyView = new TerminalView(processor, TerminalTypes.ORE_PROCESSOR.id(), true, true, List.of(), Optional.of(new ProcessorView(many, List.of())));
 			for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
 				context.setScreen(() -> new OreProcessorScreen(manyView));
 				OreProcessorScreen crowded = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
@@ -152,22 +192,26 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 				int rows = context.computeOnClient(client -> orderRows(crowded).size());
 				require(rows >= 1 && rows < 5, "the rows are bounded by the room: " + rows + " of 5 at " + size[0] + " by " + size[1]);
 				int pages = (5 + rows - 1) / rows;
-				require(context.computeOnClient(client -> crowded.orderLines().getFirst()).equals("WORK ORDERS  1/" + pages),
+				require(context.computeOnClient(client -> crowded.orderLines().getFirst()).equals("ORDERS  1/" + pages),
 						"the heading shows the page, got " + context.computeOnClient(client -> crowded.orderLines().getFirst()));
 				checkLayout(context, crowded, "page 1 at " + size[0] + " by " + size[1]);
 				for (int page = 2; page <= pages; page++) {
 					context.clickScreenButton(">");
-					String heading = "WORK ORDERS  " + page + "/" + pages;
+					String heading = "ORDERS  " + page + "/" + pages;
 					ClientWait.until(context, "the crowded screen's first line at the heading", client -> crowded.orderLines().getFirst().equals(heading), client -> "order lines " + crowded.orderLines());
 					checkLayout(context, crowded, "page " + page + " at " + size[0] + " by " + size[1]);
 				}
 				require(context.computeOnClient(client -> orderRows(crowded).size()) == 5 - (pages - 1) * rows, "the last page holds the rest");
 				require(!context.computeOnClient(client -> ClientChecks.button(crowded, ">").active), "no page after the last");
 				context.clickScreenButton("<");
-				ClientWait.until(context, "the crowded screen back on the previous page", client -> crowded.orderLines().getFirst().equals("WORK ORDERS  " + (pages - 1) + "/" + pages), client -> "order lines " + crowded.orderLines());
+				ClientWait.until(context, "the crowded screen back on the previous page", client -> crowded.orderLines().getFirst().equals("ORDERS  " + (pages - 1) + "/" + pages), client -> "order lines " + crowded.orderLines());
 			}
 			context.setScreen(() -> null);
 		}
+	}
+
+	private static int carriedBronzium(TestSingleplayerContext singleplayer) {
+		return singleplayer.getServer().computeOnServer(server -> server.getPlayerList().getPlayers().getFirst().getInventory().countItem(OreRegistry.item(OreType.BRONZIUM)));
 	}
 
 	/** An entry of the crowded list: the Morale Initiative with {@code n} rounds done, so each row reads differently. */
