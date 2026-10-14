@@ -589,6 +589,22 @@
       "...kmmmmmmmmmk",
       "....kkkkkkkkk",
       ".....rr..rr"]}},
+    "item/shaped_charge": {"template": "sprite", "args": {"legend": {
+      "h": "steel.5", "l": "steel.4", "m": "steel.3", "k": "steel.1", "e": "hazard.2", "w": "warm.3", "y": "sodium.4", "c": "dust.2", "r": "signal.3"}, "rows": [
+      "",
+      ".......yw",
+      ".......c",
+      "...kkkkkkkkk",
+      "..khhhhhhhhhk",
+      "..kllllllllmk",
+      "..keeeeeeeeek",
+      "..kllllllllmk",
+      "...kllllllmk",
+      "....kllllmk",
+      ".....kllmk",
+      "......kmk",
+      ".......rk",
+      ".......r"]}},
     "item/plastic_explosives": {"template": "sprite", "args": {"legend": {
       "h": "fungus.4", "l": "fungus.3", "m": "fungus.2", "d": "fungus.1", "s": "steel.4", "t": "steel.2", "r": "signal.3", "R": "signal.4", "e": "hazard.2", "k": "iron.1"}, "rows": [
       "", "", "",

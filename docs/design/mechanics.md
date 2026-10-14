@@ -1263,8 +1263,8 @@ A charter's deepest point is the greatest depth any online member in survival or
 
 **The ladder.**
 1. **The blasting charge** (built, this section): $40, set from the seat on the slab under the pod, a 3 second fuse, clears Company Rock and natural rock in the bore square, 2 slab rows deep. The pilot climbs clear or takes the hull hit.
-2. **The shaped charge** (planned, [#526](https://github.com/pkeppeler/deepcharter/issues/526)): $100, the same rules, 6 rows deep (three slabs), for the thick stretches of Company Rock in layers 2 and 3 (about 1 slab in 5 and 1 in 3). It costs less than three blasting charges ($120) and needs one climb and one fuse, not three. Nothing else changes: same fuse, same reach, same damage.
-3. **A late drill tier** (planned, #526): a tier of the drill (tier 5 or 6) that bites Company Rock itself, slowly: about 10 seconds a slab against 1.2 for stone, fuel drain tripled while it bites, and the cutter overheats (1 hull a second, cut by the radiator). It is free of consumables, so a pilot who digs a lot buys the tier once; a pilot who needs one slab and no more still buys a charge. Charges keep their niche as the cheap answer, and a spare pod keeps the old steer-round.
+2. **The shaped charge** (built, [#526](https://github.com/pkeppeler/deepcharter/issues/526), [ADR 0052](../adr/0052-the-prospectors-best-drill-bites-company-rock-and-a-shaped-charge-clears-a-column.md)): $100, sold at the repair station. The same set-up, fuse, reach and damage as rung 1, and a directed blast: in each column of the bore square it clears the Company Rock from the slab under the pod down to the first block that is not Company Rock, at most 8 rows. It costs more than two blasting charges ($80) and less than three ($120), and one climb and one fuse replace them in a thick stretch. See [The shaped charge](#the-shaped-charge-526-a).
+3. **A drill that bites** (built, #526, ADR 0052): the drill at tier 3 or more, as the chassis' cap leaves it (a Prospector's best; a Mole never), bores Company Rock slowly. It takes ten times as long as stone, burns three times the fuel and heats the hull. It needs no consumables, so a pilot who digs a lot stops buying charges; a pilot who needs one slab, or flies a Mole, buys a charge. See [The drill that bites](#the-drill-that-bites-526-a).
 
 **The mechanic (rung 1).**
 - **Where it is sold.** The repair station, with dynamite and plastic explosives. Dynamite and plastic still skip Company Rock (they are the answer to stone and gas); the charge is the one thing that does not.
@@ -1418,3 +1418,49 @@ For a person the early-game cost is the dark display and the noise: a first dive
 - Should the Prospector's immunity be a Mole tier of its own, so the Mole is not the pod that always flies blind in the last slab? The Mole's tier 2 leaves 1.2 slabs in layer 1.
 - Should layer 3 and deeper get a wider band, or a different fault (the gauges lying in a way that is wrong but plausible)? The table's last row repeats until they exist.
 - The hull alarm sounds only in the decay. Should it sound anywhere the hull is low, or is that for a later pass on the cockpit's audio?
+
+### The shaped charge (#526, A)
+
+**Problem.** A thick Company Rock stretch in layers 2 and 3 (about 1 slab in 5 and 1 in 3 as seen from the zone tables) took a blasting charge for every two rows: three or four climbs, fuses and $40s for one run of rock.
+
+**The mechanic.** `PodCharge.Kind.SHAPED`, sold at the repair station, set exactly as a blasting charge is (from the seat, pod resting, a 60 tick fuse, "CLIMB CLEAR"). At the blast, each column of the pod's bore square is walked down from the slab under the pod: Company Rock goes, and the walk stops at the first block that is not Company Rock or after `shapedDepth` rows. Stone, ore, bricks, lining, structures, bedrock and fluids are never touched, and a gas pocket under the run is left shut. Reach 3 blocks and damage 20 hull as for rung 1, from the whole column (a pod standing on it takes the lot).
+
+**Refusals** (the item is kept; lang keys in `repair.json`, tests in `ShapedChargeTest`): a charge already burning, a pod in the air, hull of 20 or less, no Company Rock starting under the pod in any column (`charge_no_company_rock`; a blasting charge would clear one on the second row, this one cannot start), and a column's run that ends on lava (`charge_opens_lava`).
+
+**Counterplay for what it could open.**
+- **Lava.** Refused, and the message names the way round: a blasting charge, whose hole is shallow and wide, still works and lets lava flow as a bore does. The thermal scanner (tier 2) marks the lava a pilot should not open.
+- **Gas.** A pocket below the run is not cleared. The drill then meets it, and the sounder (#373) is the answer, as for any pocket.
+- **A cavern below.** The pod drops into it. The hard-landing rule applies; the climb-clear rule means the pilot is already hovering when the rock goes, which is the way to ride it out.
+- **Another pod in the shaft below** is inside the volume and takes the damage by distance, as in rung 1.
+
+**Numbers.**
+
+| | Blasting charge | Shaped charge |
+|---|---|---|
+| Price | $40 | $100 (layer 1 net $115: 0.87 runs, in the band 0.25 to 1) |
+| Rows cleared | 2 (any Company Rock or natural rock) | up to 8 (Company Rock only, contiguous from the top) |
+| Rows per dollar | 20 $/row | 12.5 $/row at 8 rows, 33 $/row at 3 rows |
+| Break-even against blasting charges | | 3 rows (3 blasting charges are $120 for 6 rows; the shaped charge is $100 for as many as 8) |
+| Fuse, reach, damage | 3 s, 3 blocks, 20 hull | the same |
+
+**Why $100 and 8 rows.** `EconomyAffordabilityTest` holds the price over two blasting charges and under three: the shaped charge is the buy for a stretch of three or more slabs, never for a short one. 8 rows is four blasting charges and the cap is what a cavern or a lava pocket one row past the rock would cost: a deeper blast is a longer unknown drop. Tuning knob: `RepairTuning.shapedDepth`.
+
+### The drill that bites (#526, A)
+
+**Problem.** Charges are a running cost. A charter that digs layer 3 for a season buys dozens. The user asked for enough upgrades to resolve the rock, not only consumables.
+
+**The mechanic.** A drill whose tier (`PodComponents.effectiveTier`, so the chassis' cap applies and a part of another charter is void) is at least `PodRockBiteTuning.minTier` bores a slab with Company Rock in it. `PodDrill` reads the rock as hardness 15 (stone is 1.5), so the usual timing and depth factor apply. While a slab with Company Rock is under the cutter, the fuel rate is multiplied by 3 (`PodFuel`) and the hull takes 1.5 points a second, less by the radiator's ratio. A hull of 20 or less stops the bite with the action bar line "the cutter runs hot" (`company_rock_cutter_hot`), so it is never a way to burn the hull to nothing. A drill below the tier, a Mole (cap 2) with any part, and a hand all still refuse, with the old message.
+
+**Why tier 3.** The design log said tier 5 or 6. No chassis fits them: the Mole caps at 2, the Prospector at 3 (the others are an open SPEC question). A tier 5 bite would be unreachable and "enough upgrades resolve it" would be false. Tier 3 is the Prospector's best drill, $1,250. The Mole keeps the charges as its answer, the Prospector's pilot digs through. When a later chassis allows tier 4 or more, the bite can move up: `minTier` is one number.
+
+**Numbers** (`EarlyRunModel.biteSlab`, a drill of tier 3, 242 blocks down (layer 2), the log line of `aBittenCompanyRockSlabCostsOneToTwoBlastingChargeSlabsAndTakesMuchLongerThanStone`).
+
+| | Stone slab | Bitten slab | Blasting charge, a slab's share |
+|---|---|---|---|
+| Time | 0.9 s | 8.65 s | 3 s fuse plus the climb |
+| Fuel | 1x | 3x | |
+| Hull | 0 | 13.0 (no radiator) | up to 20 a charge, 10 a slab |
+| Dollars | | $21.82 (8.85 L at $1, 12.98 hull at $1) | $20 |
+
+The bite is 9.6 times slower than stone and costs about a charge's price per slab ($21.82 against $20, in fuel and hull repair); the tier 3 drill itself costs $1,250, 3.6 layer 2 runs of $348. The tier buys freedom from carrying charges, not a discount: charges stay the cheaper, quicker answer for a few slabs (3 s fuse against an 8.65 s bite), and the bite is the one that never runs out. A full stock hull reaches the 20 hull floor after about 6 slabs, so a long bite wants repair stops. The first tuning had 1 and then 0.5 hull a second ($17.50 and $13.17 a slab), and made the bite cheaper and handier than a charge, so charges had no niche. A radiator cuts the heat (tier 3: 0.6). The test holds a bitten slab between one and two times a charge's price per slab. Tuning knobs: `PodRockBiteTuning` (`minTier` 3, `hardness` 15, `fuelMultiplier` 3, `heatHullPerSecond` 1.5, `hullFloor` 20).
+
