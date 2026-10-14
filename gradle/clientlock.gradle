@@ -31,6 +31,12 @@ import org.gradle.api.services.BuildServiceParameters
 
 abstract class ClientLock implements BuildService<BuildServiceParameters.None>, AutoCloseable {
 	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("deepcharter.clientlock")
+	// The pool this service guards. A subclass renames it: its own slot count, lock files, queue and wording.
+	protected String slotsEnv() { return "DEEPCHARTER_CLIENT_SLOTS" }
+	protected String lockName() { return "client.lock" }
+	protected String queueName() { return "queue" }
+	protected String label() { return "game client" }
+
 	private Path dir
 	private FileChannel channel
 	private FileLock held
@@ -45,11 +51,11 @@ abstract class ClientLock implements BuildService<BuildServiceParameters.None>, 
 		def env = System.getenv()
 		dir = env["DEEPCHARTER_LOCK_DIR"] ? Path.of(env["DEEPCHARTER_LOCK_DIR"]) : Path.of(System.getProperty("user.home"), ".cache", "deepcharter")
 		long pollMs = (env["DEEPCHARTER_LOCK_POLL_MS"] ?: "2000") as long
-		int slots = (env["DEEPCHARTER_CLIENT_SLOTS"] ?: "2") as int
+		int slots = (env[slotsEnv()] ?: "2") as int
 		if (slots < 1) {
-			throw new GradleException("DEEPCHARTER_CLIENT_SLOTS must be at least 1, got ${slots}")
+			throw new GradleException("${slotsEnv()} must be at least 1, got ${slots}")
 		}
-		Path queueDir = dir.resolve("queue")
+		Path queueDir = dir.resolve(queueName())
 		Files.createDirectories(queueDir)
 		long pid = ProcessHandle.current().pid()
 		ticket = writeTicket(queueDir, pid)
@@ -72,7 +78,7 @@ abstract class ClientLock implements BuildService<BuildServiceParameters.None>, 
 				String note = "queue position ${position} of ${live.size()}"
 				long now = System.currentTimeMillis()
 				if (note != lastNote || now - lastNoteAt >= 10_000) {
-					LOG.lifecycle("Waiting for a game client slot (${note}). ${describeSlots(slots)} (Ctrl-C while waiting? also run ./gradlew --stop)")
+					LOG.lifecycle("Waiting for a ${label()} slot (${note}). ${describeSlots(slots)} (Ctrl-C while waiting? also run ./gradlew --stop)")
 					lastNote = note
 					lastNoteAt = now
 				}
@@ -81,7 +87,7 @@ abstract class ClientLock implements BuildService<BuildServiceParameters.None>, 
 			holderFile = holderOf(slot)
 			Files.writeString(holderFile, "worktree ${worktree}, task ${task}, Gradle daemon PID ${pid}\n", StandardCharsets.UTF_8)
 			deleteTicket()
-			LOG.lifecycle("Took game client slot ${slot} (${slotFile(slot)})")
+			LOG.lifecycle("Took ${label()} slot ${slot} (${slotFile(slot)})")
 		} catch (Throwable failed) {
 			closeChannel() // a cancelled or failed wait must not leak a channel, a held slot or a ticket
 			deleteTicket()
@@ -90,7 +96,7 @@ abstract class ClientLock implements BuildService<BuildServiceParameters.None>, 
 	}
 
 	private Path slotFile(int slot) {
-		return dir.resolve(slot == 0 ? "client.lock" : "client.lock.${slot}")
+		return dir.resolve(slot == 0 ? lockName() : "${lockName()}.${slot}")
 	}
 
 	private Path holderOf(int slot) {
@@ -238,6 +244,14 @@ abstract class ClientLock implements BuildService<BuildServiceParameters.None>, 
 	}
 }
 
+// The server GameTest JVM has its own pool (#541): -Xmx6G each, so three at once do not fit in 16 GB.
+abstract class ServerTestLock extends ClientLock {
+	@Override protected String slotsEnv() { return "DEEPCHARTER_SERVER_TEST_SLOTS" }
+	@Override protected String lockName() { return "server-test.lock" }
+	@Override protected String queueName() { return "queue-server-test" }
+	@Override protected String label() { return "server GameTest" }
+}
+
 class AcquireClientLock implements Action<Task> {
 	final Provider<ClientLock> lock
 	final String worktree
@@ -262,5 +276,20 @@ if (lockOn) {
 	tasks.matching { it.name in clientTasks }.configureEach {
 		usesService(lock)
 		doFirst(new AcquireClientLock(lock, worktree))
+	}
+}
+
+// The same for the server GameTest run, in a pool of its own: DEEPCHARTER_SERVER_TEST_SLOTS (default 2) at a time on a Mac.
+// DEEPCHARTER_SERVER_TEST_LOCK=1 forces it on and =0 off; DEEPCHARTER_SERVER_TEST_LOCK_TASKS replaces the task names (the test's stub).
+// Slot files are server-test.lock[.N] and the queue is queue-server-test, beside the client ones. tools/tests/server-test-lock.test.sh.
+def serverSetting = System.getenv("DEEPCHARTER_SERVER_TEST_LOCK")
+def serverLockOn = serverSetting != null ? serverSetting == "1" : System.getProperty("os.name").toLowerCase().contains("mac")
+if (serverLockOn) {
+	def serverLock = gradle.sharedServices.registerIfAbsent("serverTestLock", ServerTestLock) {}
+	def serverWorktree = rootProject.projectDir.absolutePath
+	def serverTasks = (System.getenv("DEEPCHARTER_SERVER_TEST_LOCK_TASKS") ?: "runGameTest").split(",") as List
+	tasks.matching { it.name in serverTasks }.configureEach {
+		usesService(serverLock)
+		doFirst(new AcquireClientLock(serverLock, serverWorktree))
 	}
 }

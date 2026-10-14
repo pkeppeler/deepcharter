@@ -12,8 +12,9 @@ loom.runs.configureEach {
 // the suite and was still rising, so 6 GB leaves about 1.6 GB (27%) of headroom. The live set grows with the test count: most of it
 // is GameTestHelper.onEachTick, which queues one lambda per remaining tick of the test's maxTicks and keeps every finished test's
 // queue until the run ends. Re-measure when the suite grows by a tenth.
+def gameTestHeap = "-Xmx6G"
 loom.runs.named("gameTest") {
-	vmArg "-Xmx6G"
+	vmArg gameTestHeap // lower after #548
 }
 
 // Proof the gate holds: every run carries the flag, and a JVM that catches its OutOfMemoryError exits non-zero with the flag and
@@ -53,6 +54,9 @@ tasks.register("checkRunJvmOom") {
 		def missing = runArgs.get().findAll { name, args -> !args.contains(exitOnOom) }.keySet()
 		if (!missing.isEmpty()) {
 			throw new GradleException("run(s) ${missing} lack ${exitOnOom}: an OutOfMemoryError there would not end the JVM, so the build could pass after one (#541)")
+		}
+		if (!runArgs.get()["gameTest"].contains(gameTestHeap)) {
+			throw new GradleException("the gameTest run lacks ${gameTestHeap}: its heap would be the JVM default (a quarter of RAM), which the suite outgrows (#541)")
 		}
 		def withFlag = flagged.get().asFile.text.trim() as int
 		def without = bare.get().asFile.text.trim() as int
