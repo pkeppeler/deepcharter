@@ -26,7 +26,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 /**
  * Evidence scenario "pod-lava-watch" (#454): a pilot sits in a pod that faces down a stone tunnel. At the far end of the tunnel, 9 blocks off and past the 3 blocks
  * the liner sees, lava pours out of the wall, falls to the floor and runs toward the pod. The plain HUD shows "LAVA IN THE SHAFT 6 OFF  LINE OR LEAVE" while the lava glows
- * dead ahead, and a compact cockpit (the ribbon) shows the same line and lights its warning lamp. The hull is untouched at every still.
+ * dead ahead, and the Ribbon cockpit (the mod's own look, #247) shows the same line and lights its warning lamp. The first stills are shot with the cockpit off, a test pack. The hull is untouched at every still.
  */
 public class PodLavaWatchScenario extends EvidenceScenario {
 	private static final int X = 5600;
@@ -66,6 +66,7 @@ public class PodLavaWatchScenario extends EvidenceScenario {
 				client.options.setCameraType(CameraType.FIRST_PERSON);
 				client.player.setXRot(0f);
 			});
+			ClientPacks.enable(context, TestPacks.COCKPIT_OFF);
 			context.waitTicks(60);
 			for (int i = 0; i < 4; i++) {
 				frame(context);
@@ -86,7 +87,7 @@ public class PodLavaWatchScenario extends EvidenceScenario {
 			}
 			screenshot(context, "pod-lava-watch-plain");
 
-			ClientPacks.enable(context, TestPacks.COCKPIT_RIBBON);
+			ClientPacks.disable(context, TestPacks.COCKPIT_OFF);
 			ClientWait.until(context, "the ribbon cockpit", client -> CockpitHud.seated(client).isPresent());
 			boolean lamp = context.computeOnClient(client -> CockpitHud.lampsLit(false, false, false,
 					PodStatusHud.readout(client, (PodEntity) client.player.getVehicle()))[3]);
@@ -98,7 +99,6 @@ public class PodLavaWatchScenario extends EvidenceScenario {
 				context.waitTicks(TICKS_PER_FRAME);
 			}
 			screenshot(context, "pod-lava-watch-ribbon");
-			ClientPacks.disable(context, TestPacks.COCKPIT_RIBBON);
 
 			float hull = singleplayer.getServer().computeOnServer(server -> ((PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle()).hull());
 			float maxHull = singleplayer.getServer().computeOnServer(server -> ((PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle()).maxHull());

@@ -17,7 +17,7 @@ import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 
 /**
- * What each of the seven items does (SPEC sections 10 and 11). All of them work on the pod the player is piloting, and
+ * What each item does (SPEC sections 10 and 11). All of them work on the pod the player is piloting, and
  * on no other: an item used on foot, or in a wreck, is refused and kept.
  */
 final class Consumables {
@@ -38,7 +38,8 @@ final class Consumables {
 			case HULL_NANOBOTS -> nanobots(pod, tuning);
 			case DYNAMITE -> blast(pod, tuning.dynamiteRadius(), DeepSound.DRILL_DYNAMITE);
 			case PLASTIC_EXPLOSIVES -> blast(pod, tuning.plasticRadius(), DeepSound.DRILL_PLASTIC);
-			case BLASTING_CHARGE -> PodCharge.set(pod, tuning);
+			case BLASTING_CHARGE -> PodCharge.set(pod, tuning, PodCharge.Kind.BLASTING);
+			case SHAPED_CHARGE -> PodCharge.set(pod, tuning, PodCharge.Kind.SHAPED);
 			case QUANTUM_TELEPORTER -> Teleports.send(pod, tuning.quantumScatter());
 			case MATTER_TRANSMITTER -> Teleports.send(pod, 0.0);
 		};

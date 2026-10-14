@@ -157,6 +157,7 @@ public final class BreachService {
 
 	private static void carve(ServerLevel level, BlockPos bottom, LayerTuning tuning) {
 		int radius = tuning.pocketRadius();
+		BlockState ground = LayerBlocks.groundOf(level).defaultBlockState();
 		// The shell first: the cut below tells its neighbours, and lava among them would flow in.
 		RoomSeal.seal(level, bottom.offset(-radius, 0, -radius), bottom.offset(radius, tuning.pocketHeight() - 1, radius));
 		for (int dx = -radius; dx <= radius; dx++) {
@@ -164,7 +165,7 @@ public final class BreachService {
 				BlockPos floor = bottom.offset(dx, -1, dz);
 				BlockState below = level.getBlockState(floor);
 				if (below.isAir() || !below.getFluidState().isEmpty()) {
-					level.setBlock(floor, Blocks.STONE.defaultBlockState(), 3);
+					level.setBlock(floor, ground, 3);
 				}
 				for (int dy = 0; dy < tuning.pocketHeight(); dy++) {
 					BlockPos pos = bottom.offset(dx, dy, dz);

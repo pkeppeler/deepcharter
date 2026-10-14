@@ -30,7 +30,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 
 /**
- * The feature map (#510, docs/FEATURE-MAP.md) covers the game. Every registered {@code deepcharter:} item, block, entity type, terminal,
+ * The feature map (#510) covers the game. Every registered {@code deepcharter:} item, block, entity type, terminal,
  * upgrade track and consumable must be named in the {@code covers} list of a node of {@code docs/feature-map/map.json}, and every such
  * entry must name something that is registered, so a removed feature leaves the map too. Entries look like {@code item:scrap_iron},
  * {@code block:company_rock}, {@code entity:pod}, {@code terminal:fuel_pump}, {@code consumable:dynamite} and {@code track:drill}.

@@ -10,8 +10,10 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.block.Blocks;
 
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -19,6 +21,8 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodBrace;
 import io.github.pkeppeler.deepcharter.pod.PodBraceTuning;
+import io.github.pkeppeler.deepcharter.pod.PodDrill;
+import io.github.pkeppeler.deepcharter.pod.PodRockBiteTuning;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
@@ -73,6 +77,7 @@ public class EconomyAffordabilityTest {
 			Consumable.QUANTUM_TELEPORTER, new Target(true, 1.5, 2),
 			Consumable.PLASTIC_EXPLOSIVES, new Target(true, 0.25, 1),
 			Consumable.BLASTING_CHARGE, new Target(false, 0.25, 1),
+			Consumable.SHAPED_CHARGE, new Target(false, 0.25, 1),
 			Consumable.HULL_NANOBOTS, new Target(true, 0.25, 1),
 			Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4));
 
@@ -445,6 +450,49 @@ public class EconomyAffordabilityTest {
 		if (cost > STRAIGHT_SHAFT_RUNS * run.net()) {
 			throw failure(helper, "a straight layer 1 shaft needs about %.1f charges at $%d, $%.0f, more than %d stock runs of $%.0f", refusedSlabs,
 					Consumable.BLASTING_CHARGE.price(), cost, STRAIGHT_SHAFT_RUNS, run.net());
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The shaped charge (#526) is the dearer rung: it must cost more than the two blasting charges that clear a short stretch and less than the three that clear a thick one, so
+	 * it is the buy for a thick stretch and never for a short one.
+	 */
+	@GameTest
+	public void theShapedChargeCostsMoreThanTwoBlastingChargesAndLessThanThree(GameTestHelper helper) {
+		long blasting = Consumable.BLASTING_CHARGE.price();
+		long shaped = Consumable.SHAPED_CHARGE.price();
+		if (shaped <= 2 * blasting || shaped >= 3 * blasting) {
+			throw failure(helper, "the shaped charge costs $%d, it must be over two blasting charges ($%d) and under three ($%d)", shaped, 2 * blasting, 3 * blasting);
+		}
+		if (RepairTuning.DEFAULT.shapedDepth() < 3 * RepairTuning.DEFAULT.chargeDepth()) {
+			throw failure(helper, "a shaped charge reaches %d rows, it must reach the 3 x %d that three blasting charges do", RepairTuning.DEFAULT.shapedDepth(), RepairTuning.DEFAULT.chargeDepth());
+		}
+		helper.succeed();
+	}
+
+	/**
+	 * The drill that bites Company rock (#526) is slow and no cheaper per slab than a blasting charge: the tier buys freedom from carrying charges, not a discount, so charges stay the
+	 * cheaper, quicker answer for a few slabs. A bitten slab at layer 2 depth, in fuel and hull repair, must cost between one and two times a blasting charge's share of a slab (its price
+	 * over the rows it clears), and take at least five times as long as a stone slab. The tier's price is in the log: it is the Prospector's best drill, which a pilot buys for its speed.
+	 */
+	@GameTest
+	public void aBittenCompanyRockSlabCostsOneToTwoBlastingChargeSlabsAndTakesMuchLongerThanStone(GameTestHelper helper) {
+		int tier = PodRockBiteTuning.DEFAULT.minTier();
+		PodStats drill = EarlyRunModel.mole(tier, 0, 0);
+		double depth = EarlyRunModel.layerOneBlocks() + 50;
+		EarlyRunModel.Bite bite = EarlyRunModel.biteSlab(drill, depth);
+		double chargePerSlab = (double) Consumable.BLASTING_CHARGE.price() / RepairTuning.DEFAULT.chargeDepth();
+		double stoneSeconds = PodDrill.drillTicks(drill, Blocks.STONE.defaultDestroyTime(), (int) (depth * LayerTuning.DEFAULT.feetPerBlock())) / 20.0;
+		long price = UpgradeTuning.DEFAULT.price(ComponentTrack.DRILL, tier);
+		Run layerTwo = upgradedRunInLayerTwo();
+		LOGGER.info("[economy] bitten slab at depth {}: {} s, {} L, {} hull, ${} against ${} a slab of a blasting charge and {} s of stone; the tier {} drill costs ${}, {} layer 2 runs of ${}",
+				depth, bite.seconds(), bite.litres(), bite.hull(), bite.dollars(), chargePerSlab, stoneSeconds, tier, price, price / layerTwo.net(), Math.round(layerTwo.net()));
+		if (bite.dollars() < chargePerSlab || bite.dollars() > 2 * chargePerSlab) {
+			throw failure(helper, "a bitten slab costs $%.2f, it must be between one and two times a blasting charge's $%.2f a slab", bite.dollars(), chargePerSlab);
+		}
+		if (bite.seconds() < 5 * stoneSeconds) {
+			throw failure(helper, "a bitten slab takes %.1f s, it must take at least five times a stone slab's %.1f s", bite.seconds(), stoneSeconds);
 		}
 		helper.succeed();
 	}

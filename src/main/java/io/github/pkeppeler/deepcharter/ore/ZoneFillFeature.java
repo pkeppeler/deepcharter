@@ -12,12 +12,12 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.feature.Feature;
 
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 
 /**
@@ -28,7 +28,7 @@ import io.github.pkeppeler.deepcharter.layer.Zones;
  *
  * <p>It is a placed feature of the zone's own biome with no placement modifiers, so it runs once for each chunk, at
  * the chunk's corner, and it only touches that chunk's blocks of {@code zone} (a third of the layer, by
- * {@link Zones#index}). Only {@code minecraft:stone} is replaced: caves, the crust and anything an earlier step
+ * {@link Zones#index}). Only the layer's own rock ({@link LayerBlocks#GROUND}) is replaced: caves, the crust and anything an earlier step
  * placed stay as they are.
  *
  * @param zone    0 for the top third of the layer, 2 for the bottom
@@ -84,14 +84,14 @@ public record ZoneFillFeature(int zone, List<Entry> ores, List<Entry> hazards) i
 		}
 		for (int index = chunk.getSectionIndex(low); index <= chunk.getSectionIndex(high); index++) {
 			LevelChunkSection section = chunk.getSection(index);
-			if (section.hasOnlyAir() || !section.maybeHas(state -> state.is(Blocks.STONE))) {
+			if (section.hasOnlyAir() || !section.maybeHas(state -> state.is(LayerBlocks.GROUND))) {
 				continue;
 			}
 			int sectionY = chunk.getSectionYFromSectionIndex(index) << 4;
 			for (int y = Math.max(low, sectionY); y <= Math.min(high, sectionY + 15); y++) {
 				for (int x = 0; x < 16; x++) {
 					for (int z = 0; z < 16; z++) {
-						if (!section.getBlockState(x, y & 15, z).is(Blocks.STONE)) {
+						if (!section.getBlockState(x, y & 15, z).is(LayerBlocks.GROUND)) {
 							continue;
 						}
 						Block block = roll(ores, random);

@@ -1,0 +1,1112 @@
+{
+  "recipes": {
+    "block/packed_shale_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "ddcccccccbbbccdd",
+            "ddccbedcbbbabcdd",
+            "dddddddbaabbbccc",
+            "ccddddcbbbabbabc",
+            "ccddddcbabbbbccb",
+            "cddddcbbbbabbbbb",
+            "ccdddcabcddcbbbb",
+            "bcccccccdeddbbbb",
+            "bcdcccdbddedcbcb",
+            "bccbbbcccddddccb",
+            "cccbbbbcdcdddddc",
+            "dcbbbccdccdddcbb",
+            "cbbbbbcdccdddccc",
+            "bbbbccccddddcccc",
+            "bbbcccbcdbccdddc",
+            "cccbbabcccbcdddd"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "ddccdccbbbbddcdd",
+            "dddcdcdcbbaccccd",
+            "dddccddcaabbbbcd",
+            "ddcccdddcbbaabcd",
+            "ddddccddcabbbcbc",
+            "ceddcbcddcbabbbb",
+            "bcddcbccddcbbbbb",
+            "bccbbbcdedddbbbb",
+            "cccbbcbdcddecbcc",
+            "ccccccbbccdcbccc",
+            "bbdedcbacdcccccb",
+            "bbcdedbbccccccba",
+            "bbbcdcbccdcccccc",
+            "bbbccccccdddcbdc",
+            "cbbbcbbbaccddddc",
+            "cccbbabbbbcddddd"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4"
+          },
+          "rows": [
+            "dbbddcbbbbbcdcdd",
+            "ddcccabcbbadcddd",
+            "dddcbccccbbbbbcd",
+            "dddaacddcbbbbbbc",
+            "dcdcbdcdcbbbbbbc",
+            "cddcbdddcbbbbbcb",
+            "bcddcdddccccbbbb",
+            "bbbccccdddddcbbc",
+            "cbbcdbbcdcdddbcc",
+            "cccdcbbbcdddcccc",
+            "bbdddccbaddcdccc",
+            "bbcddcbbbccdcdca",
+            "bbcccdcccccccdcb",
+            "bbabbccccddccddc",
+            "bbbbcccabccddddc",
+            "cbbccbbbbbcddddd"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "dddeecbbbbbccabc",
+            "dddcbbbbcbcbcccd",
+            "dcbbbbabddcbcddd",
+            "dbabbabcddcbbddd",
+            "cbbbbbbbdddbcddd",
+            "bbbbbabcdddccddc",
+            "bbbbcccddcdcddcb",
+            "bbbcddedcccccbcc",
+            "bbbddedcbcbccbdc",
+            "bbccdddcbbbcdccc",
+            "cecccddcbacddebb",
+            "cddccccbbbdddcba",
+            "bddcccccccdcccbb",
+            "ccdbcddccccbbbcb",
+            "cdddddbbbcbbbbbc",
+            "dddddcbbbbbccbbc"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_4": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "dddeecbbbbcbbbcc",
+            "dddccbbaaedcccdd",
+            "dcbbaabbcddccddd",
+            "dbbbbbacdddcccdd",
+            "cccaabbcddccdddd",
+            "bbbbbbbddcbceddc",
+            "bbbbbcdddcacddcb",
+            "bbbbdedddcbbbccc",
+            "bbbcddecccdabddc",
+            "bccbcdccbbccccdc",
+            "ccdcdcccbbbdddcb",
+            "ccccccccbcdddcba",
+            "ccccccdccbcdcbbb",
+            "ccccdddccccccbbc",
+            "cddddccbbbbbbbbc",
+            "cddddcbbbbbbbccc"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_5": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "dddddbbcccbbbbdd",
+            "ddccbbabdbdcbcdd",
+            "dccbaabbbdddddcd",
+            "ccbbbbbabcddddcc",
+            "ccbbbabbbcddddcc",
+            "ccbbbbbabbcddedc",
+            "bbbbcddcbbccddcc",
+            "bbbbedddcccccccb",
+            "bbbcdddeccbdddcb",
+            "bbcddddcccbbbcdc",
+            "ccdedeccccbabbcc",
+            "dccdddccecbbbbbb",
+            "cccdddccdcbbbbbc",
+            "cbcdddddccccbbbb",
+            "cdddccddcbbbccbc",
+            "ddddcbcccbbbbccc"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_6": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "ddddcbcccbbbcabd",
+            "dccbbbbccbbcdcbd",
+            "ccaabbbbbcdddddd",
+            "bbbccbbabcdddddc",
+            "bbaccabbbddddddc",
+            "bbbccbbbbdeddddc",
+            "cbbcddcccddcaccc",
+            "bbbddddddccccbcc",
+            "bbbbcddddbbdebcc",
+            "bbcccddddbbbcccc",
+            "ccecddddecbbabcc",
+            "cdddddcddcbbbbbb",
+            "ccdddcccddcbbbbb",
+            "bcdddcbcccccbbcb",
+            "cddcccccbbbcccbc",
+            "ddddcbccbbbbcbbc"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_7": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "ddccddddcbbbcbcd",
+            "dcbbbcddcccddbcd",
+            "cbaabbbbcdddddcc",
+            "babccbabcdddddcb",
+            "bbbbbbbbcdddddcb",
+            "babccbbcdddeddcb",
+            "bcddcbbcddcbcccc",
+            "ddedcbbccbbccccd",
+            "dedcbbbccbddbccd",
+            "cddcccccccccbbcc",
+            "ddddceccddbbbabc",
+            "ccdddddcccbbbbdb",
+            "cccddddcbcbbbccc",
+            "cccdddcbbbbbccdc",
+            "cdccddccbbbbcdcc",
+            "ddccdcdcbbbbcccd"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_8": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "cbceedcbbbcddcdc",
+            "bccddddbbbbcddcc",
+            "bbcddbbbbbcddecc",
+            "bbcddcbbcddccdbb",
+            "bccccbbcdddddcbb",
+            "cdccccccddddcbab",
+            "ddccbccdddcbbbbc",
+            "ddcbccdddcbbbbcd",
+            "ccdccbcdccbbbcdd",
+            "ceddccccbdbbbcdc",
+            "cddcbbbccccbbccc",
+            "cccbcbcdddcbbbcb",
+            "ccbbbcddddccbbbd",
+            "dcbbbcccccccbddd",
+            "dccccccbbbbccddd",
+            "dccddccbbbbcdddd"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_9": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "cbceeddcbbbbbbcc",
+            "cbaccccccccbdcdd",
+            "cabbbbccdddccddd",
+            "cbbaabcdddcccddd",
+            "cabbbcbdddddccdd",
+            "ccbabbbcdeddcbcd",
+            "ddcbbbbbbcddcbcd",
+            "ddddbbbbbccbbbcd",
+            "cddecbbbddcbbcbc",
+            "bcdcbccccdcccccb",
+            "cdcccccdbbdedcbb",
+            "ccccccccbbcdedba",
+            "cdccccccbbbcdcbb",
+            "cdddcbcdcbbccccc",
+            "ccddddccbbbbcccc",
+            "bcdddccbbbbbcccc"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_end_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "bbbcddccdbbcddcc",
+            "cbbacdcecbbbcddc",
+            "cbbbbccbcbccdddc",
+            "cbbbbccbbcdddddc",
+            "ccbbbbbbbcdddddd",
+            "dddcbbbbbcddccdd",
+            "ddddabbccbccbbcd",
+            "ddddcbcdccbbbbcd",
+            "ddddbbccdccbbbbd",
+            "dcddcbbcdddccbbc",
+            "cccddccbbcddcbcc",
+            "cdddedcbbccbbbbc",
+            "cdddddddccbbbbbb",
+            "bbccceddddbbbcba",
+            "bbbbcccdddddddcb",
+            "bbbcdddccdddddbb"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_end_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "bbbcddccdbbcdccd",
+            "dcbbdcddcbbbcccd",
+            "dcbbaccccccddcdd",
+            "cbbbbcccccdddccc",
+            "dccbbbbbbcdddccd",
+            "dddcbbbbbcddcccd",
+            "ddddbbbabbccbccd",
+            "dddddbccccbbbccd",
+            "ddddbbcbcccbbccc",
+            "ccddcbbccdccbdcc",
+            "bccddcbbdccccddc",
+            "bccdddcdccbbbccc",
+            "cccddddddcbbbbbb",
+            "bbbcddedddcbbbba",
+            "bbbbcdddddddddbb",
+            "bbbcdddccccdddbb"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_end_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4",
+            "e": "shale1.5"
+          },
+          "rows": [
+            "bbbcddcbdddddbbc",
+            "bbbcdddbcccccbbb",
+            "bbcdddddcbbccbbb",
+            "bdddddddcbbccbbb",
+            "cdddcccccccccbbc",
+            "dddcbcbbbcddcbbc",
+            "ddbbbbbbbdddcccd",
+            "dcbbbbcccdddeddd",
+            "ccdcbbcccddccccd",
+            "ccddaacdcccbbccd",
+            "ccccbbcdccbbbddd",
+            "cdcbbccddbbbcddd",
+            "ccbcbccccbbbcddd",
+            "dcbbccbccbbbcddc",
+            "bbbbcddcddddcccb",
+            "bbbcdddccddddbab"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_end_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.1",
+            "b": "shale1.2",
+            "c": "shale1.3",
+            "d": "shale1.4"
+          },
+          "rows": [
+            "bbcccccccbbcdddd",
+            "bccbacdcccbacdcc",
+            "bbccbccdcdcbbcdc",
+            "bbcddddccccbbbcc",
+            "bbcdddddccbbbcbc",
+            "ccdcddddccccbbbb",
+            "cddddcccdddcbbbb",
+            "dccdcbcdddcddcbc",
+            "dccbbbbcdccddddd",
+            "dcbbbbbcddddccdd",
+            "ddbacbbcdcbddddd",
+            "ddcbbbbccbccbccd",
+            "ddddccbbbcccccbc",
+            "cccddccbbcdcccba",
+            "bcccdddcbbdddccb",
+            "bbcccddcbbcdddcc"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_rubble_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "aaabdcaaadccbaaa",
+            "aaaacdccdbaabaaa",
+            "aaaabdeccabbcaaa",
+            "bbababbcabbbaaaa",
+            "babbcbccabbaabaa",
+            "aaabcbacacaaacab",
+            "aaaaddddeddcbbba",
+            "aaaaceddefcbddba",
+            "aaaaccccbcddddaa",
+            "aaaabbbabccddcaa",
+            "baaaaacccccddaaa",
+            "baaaaabdcbbbabbc",
+            "aaaabbbabcbbbaaa",
+            "abccbbabcbbbccaa",
+            "abccbbacbabbcbda",
+            "aaaccaaaaabcbbaa"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_rubble_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4",
+            "f": "shale1.5"
+          },
+          "rows": [
+            "aaabbfbccdcbbaaa",
+            "aaaacdedddaaaaaa",
+            "aaaabddccabbaaaa",
+            "cccbaabaaabbaaaa",
+            "cdccabaaaabababc",
+            "bbcbbaabbabbccdc",
+            "ababccccdbcbcddd",
+            "aaaaddccdbbcddda",
+            "aaaacddbabccdcaa",
+            "aaaacccbcddddbaa",
+            "aaaaabcddddddaaa",
+            "baaaaaccdddcaaba",
+            "baaabbbaaaaadaaa",
+            "aabbcccaaaacccaa",
+            "aabbcccaaabbbcba",
+            "aaabccbbbacbbbaa"
+          ]
+        }
+      ]
+    },
+    "block/packed_shale_rubble_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale1.0",
+            "b": "shale1.1",
+            "c": "shale1.2",
+            "d": "shale1.3",
+            "e": "shale1.4"
+          },
+          "rows": [
+            "aaaabddbbedcbaaa",
+            "aaaacdddddcaaaaa",
+            "bcbaccdccabbaaaa",
+            "cccbabaaaabbaaac",
+            "bcdcabbaabbbaaab",
+            "bccaaabbaaabaaac",
+            "bbcaccccddcbcbab",
+            "aaaacccdcbbdcccb",
+            "aaaaddcbaccddcaa",
+            "aaaacccbccdddbaa",
+            "aaaaaccddddddaaa",
+            "aaaaaabddddbabaa",
+            "aaaabbbaaaaacaba",
+            "aabbccbaaaabcdaa",
+            "aabbcccbbabbccda",
+            "aaabbcbbbbbbbdaa"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "bbcccccddcccdccb",
+            "bbccccccdccccdcb",
+            "bcccbbbccdcbcddc",
+            "bcccbbcccdcbcddb",
+            "bccddddcccccccbb",
+            "bcdddddcbbbddcbb",
+            "ccddcccbbbdddcbb",
+            "cccdcbbbccdddcbc",
+            "ddcccbbbddcccccd",
+            "ddcccbbbdbbbbcdc",
+            "ddcccbabbcbbbcdd",
+            "dcbbdccccdcbbcdc",
+            "bbccddddbccbbbcb",
+            "bccbddddbbbabccb",
+            "ccbabdddcbcccccc",
+            "bbbbbddcdcccccdc"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "cbbbccdddcccdccc",
+            "ccabcccccccddddc",
+            "ccccbbbbbcdddddc",
+            "ccccccbbbccccddb",
+            "ccccdddcccbbbbcc",
+            "ddccdddddcbabbcd",
+            "ddccdcccddbbbbcd",
+            "ddcdcbbcddcbbbdd",
+            "ddddcbbbccddccdd",
+            "dcddcbbbabcddddc",
+            "ccddcbbbcbcdddcc",
+            "bbcccdddddcdddba",
+            "bbccddddcbccccbb",
+            "bccbddddbbabccbb",
+            "cbbbcdddccccddcb",
+            "bbbbcddcdcccdccb"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "cbbbcdddcdccccdd",
+            "ccbccbcbbccccddd",
+            "cddcbbbbbbcddddc",
+            "cddcbbbbbcdddccb",
+            "cddcbccdddccbbbc",
+            "dddcccddddbbabbc",
+            "dddcccccdcbbbbcd",
+            "ddddccbbccccbbcd",
+            "ddddcbcbbcddcccd",
+            "ddddcbcbbbcdddcb",
+            "ccddccccbbcdddbc",
+            "bbccddddcccdddba",
+            "bbbddddddbbcccab",
+            "bbbcdddddbbbcbcc",
+            "dbbbdcdddcbccdcc",
+            "cbbbcddcddccccdc"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "ccdcbbbdccbbcddc",
+            "bbccbcddddcbcdcb",
+            "bbbbcddddddddcbb",
+            "bbbbcdddcccdddca",
+            "cccbcdddcbbbcccc",
+            "ddcccdddcbbbbacd",
+            "dccccdddccbbbbdd",
+            "ccccdddcccbbccdd",
+            "cbbcddddccccddcd",
+            "ccbcdddbbcdddcaa",
+            "dcccddbbbcdddcbc",
+            "ddddcbbbbbdddcdb",
+            "ddddcbbbbbcccbbc",
+            "ddddcbbcdcccabbc",
+            "ddddabbcdccccccd",
+            "dddcbbbbccbcdddd"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_4": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "dcccbccdbbbcdddd",
+            "bbbbccdcdccdddcb",
+            "bbbbcccdddddddcb",
+            "bbcccccddddcccca",
+            "cdddcccddcbbbbbc",
+            "dddddcdddcbbbbbd",
+            "dccdccdddcbbbbdd",
+            "cbbcdccddcbbbcdd",
+            "cbbcddcddcccddcd",
+            "dbbcddccccdddbbb",
+            "dbacddbbbcddcccd",
+            "dcccccbbbcdddddc",
+            "cddccccbbbccbccb",
+            "cdddbccbbcccbbbb",
+            "dddcbccabccccccb",
+            "dddcbbbabbbcdddd"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_5": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "ccbbbccdcccdcccc",
+            "bcbbcddcbccdbccc",
+            "bbbabcddcccccddb",
+            "bbbbbcdddddccdca",
+            "bbdbbcdddddccbbb",
+            "bbccddddddcbbbbb",
+            "cccdddddddbbbbbb",
+            "ddcdddbccdbbbbbc",
+            "ddddddcbccbbbbbd",
+            "ddddddcbbbbbbbcc",
+            "dddddbbbbbbbbccd",
+            "ccddcbbbbabcdddc",
+            "bbcdcbbbbbccdddb",
+            "bbccbbbbabcddddc",
+            "dcbbbbbcccddcddc",
+            "ccbbbbcccccddcdd"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_6": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "cdcccbbcbbccdddd",
+            "bbbbcdcbbcddcdcc",
+            "bbbbccdccdddcccc",
+            "bbbbdddccbcdcccb",
+            "bccddddcbbbccccb",
+            "bddddddcbbacddbb",
+            "cbccdddcbbcddcbb",
+            "dcbbbddcbbcddddd",
+            "ccbbbdddccccccdd",
+            "cdbbccddddcbbbcc",
+            "cccbbbddcdcbbbcc",
+            "cddccbcdddbbcccb",
+            "cddddbbcbcbbbbbb",
+            "ccdddbbbccccbbbb",
+            "ddccdbbbcdcccccc",
+            "dddccbbabbbcdddd"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_7": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "bbccccdddcbbbccc",
+            "bbddccdddcbbbbbb",
+            "bddcabbccccccccb",
+            "cddcbbbbcbdccddc",
+            "cddcbbbccbbbcddd",
+            "bbcdbccddbbadddc",
+            "bbbccdddccbcdddb",
+            "bbbcdddccccdddcb",
+            "ddcddddbbbccccbc",
+            "ddddddcbbbccbbcc",
+            "ddccddbbbbdcbbbd",
+            "ddccddcbbcccbbcc",
+            "ccbcdddcbbccbbbc",
+            "cbbbccdccdddcbbc",
+            "dbaabbcddddddccc",
+            "cbbcccccddcbccdd"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_8": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "bbccccddddcccccc",
+            "bbbdccdddddbbccb",
+            "bbccbbbbdddcbcdc",
+            "ccccbbbbcddcccdc",
+            "dcccbbbbbccccddd",
+            "cbbdccccbcbbcddd",
+            "bbbbdddddccccddc",
+            "cbbcddddccccddcc",
+            "ddccdddcbbbcdcbd",
+            "dddddddbbbbcccbc",
+            "ddddddcbbbaccbcd",
+            "dddcdddcbbbccccb",
+            "bddccdddbbaccccb",
+            "bcdcbbcddccccdcb",
+            "cbcbbbdddddddcbb",
+            "cccbbcdcddcccccc"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_9": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "ccbccdcdccdccccc",
+            "cbbbddcbbddccccc",
+            "cccddbabbdddcccc",
+            "cccccbbbcdddddcb",
+            "dcbbbbbbbcddddcd",
+            "ddcbccbbbacddddd",
+            "dbabcccccccddddd",
+            "cbbccdddccccbcdd",
+            "dccddddddbbbbbcd",
+            "ddddccdddcbbcbcc",
+            "cdddbcdddbbabbbc",
+            "bdddcddddbbbccba",
+            "bddccdddcbbacccb",
+            "bcdccccccccccccb",
+            "cbcccccccddddccb",
+            "cccccccbccdddccb"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_end_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "ddcbbbcccdccbbcd",
+            "ddcccbbbccdcbbcd",
+            "cccccccccddcabbc",
+            "ccdccddddddcbbbb",
+            "cbbbcdddcddcbbbd",
+            "dbbadddccbcdbcdd",
+            "ccbcdddbabbccddd",
+            "cccdddbbbbbcdddd",
+            "bbccccbbcccdddca",
+            "bbccbbccddddddcb",
+            "badcbbbdddccddcb",
+            "acccbbbdddccddca",
+            "bbccbbbddcbcddcb",
+            "cdddcbbccbbbcccc",
+            "dddccccccbaabbcd",
+            "ddcbbcddcbbbbbcd"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_end_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "dddccbcccdcbbbcd",
+            "dddccbcccbbccbbc",
+            "dddcbcddccccbbbb",
+            "cddcccdddcccbbbb",
+            "cccccddddcccbbbb",
+            "ccbbcddddbbdccdd",
+            "dccccdccbbbbdddd",
+            "ccccddcbbbbcdddd",
+            "bbbcdcbbccccddca",
+            "bbbcccbcdddddddb",
+            "bbaccbccddddddcb",
+            "abbcccccdddcdddb",
+            "cbaccccbbddccddc",
+            "dccccdcbbcdcbbcd",
+            "ddddccbbabcbbbcd",
+            "ddcccccccccbbbcd"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_end_2": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "ddddccbccdcbbccc",
+            "cdddccbcdcbbdcbb",
+            "bdddcccddccddbab",
+            "cddddddddccccbbb",
+            "bcdddddddcbbbbbb",
+            "bacdddddddcbcccc",
+            "cccdddddcbabccdc",
+            "ccccbccccbbccddd",
+            "cbbbbbcccccddddc",
+            "cbbbcbbccdddccdd",
+            "dbbabbbbbdddbcdd",
+            "cbbbccbbbdddcddc",
+            "dbbacccbbddccdcc",
+            "cccccccccddcccbc",
+            "cdddcccbabdcbbbc",
+            "ddddcccbbcdbbbcc"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_end_3": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.2",
+            "b": "shale2.3",
+            "c": "shale2.4",
+            "d": "shale2.5"
+          },
+          "rows": [
+            "ddbbbbcdddcbbbcd",
+            "ddcabcccccbccccd",
+            "ddccccdbbbbbcdcc",
+            "cdcddcccbcbbcdcb",
+            "cccbccccdddccccc",
+            "ccbbbcdddcdcbbcc",
+            "ccddcddddbbcbbbc",
+            "bcddddddcbbccbbc",
+            "bbdddddccccddbba",
+            "bbcddcccccdddcbb",
+            "cccccdbcccccccdc",
+            "cdbddcbbccbbbcdc",
+            "cbcddccccbbbbbdc",
+            "cbbcdcbbcdddcddd",
+            "dcabbbbbcddddddd",
+            "dcbbbbbcdddcccdd"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_rubble_0": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4"
+          },
+          "rows": [
+            "bcdaaaaabbbccbbb",
+            "bcbaabbaaadeccab",
+            "bbaabbaaacdcccab",
+            "aaaaaaaacddcccab",
+            "aaaaaaabdddcbaaa",
+            "aaabbcbbdccbaaaa",
+            "babbcdcbbbaacccc",
+            "bbcccdbbbaabccba",
+            "bbcbbabbbbaccbca",
+            "cbaaabaaaabccccc",
+            "dbabaaaaabbcbbbc",
+            "baaaaaaabcccdcbb",
+            "aaaaaaaacbcddddb",
+            "aaaaaaabbccdddca",
+            "aaaaaaaaabddcbaa",
+            "bcdcaaaaaabcbaaa"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_rubble_1": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4"
+          },
+          "rows": [
+            "bbbabbadaaaadccb",
+            "bbbaabcaaadedcbb",
+            "bbaaaaaaaceeddab",
+            "aaaaaaaabddedcba",
+            "baaaaaacccdddaaa",
+            "aaabaccacdccaaaa",
+            "bbccbbbacccbbbbc",
+            "bbcccbabccbcccba",
+            "bcbcbaabcbcbbbac",
+            "ccaabaaaacddcccc",
+            "baaaaaaadccddbdd",
+            "babbaaadccbcbcbb",
+            "abbcbaccbbcbbbab",
+            "aaccdacabcbbbcbb",
+            "dccbcaaaaabbcccd",
+            "abbbbbbaaaaabcdc"
+          ]
+        }
+      ]
+    },
+    "block/green_shale_rubble_end": {
+      "kind": "opaque",
+      "layers": [
+        {
+          "op": "pixels",
+          "legend": {
+            "a": "shale2.0",
+            "b": "shale2.1",
+            "c": "shale2.2",
+            "d": "shale2.3",
+            "e": "shale2.4"
+          },
+          "rows": [
+            "bbcbcbaaaaaadccc",
+            "bbaaabcaaadddcab",
+            "caaaaaaacbdedcac",
+            "aaaaaaabbdeddeaa",
+            "aaaaabccbcddcaab",
+            "aaabaccbccedaaaa",
+            "bbbbcbbabcccdbba",
+            "abcccaabccbcdcba",
+            "cbdccaaabbbcdabc",
+            "cbbaaaaaabbbcddc",
+            "cbbaaaaaacbabcdc",
+            "babbbaaaccbbbbcb",
+            "bbbbaabcdcbbbbab",
+            "aacbbabcccbbbcbc",
+            "cddbbaaababbcccc",
+            "bcccbbbaaaaabccb"
+          ]
+        }
+      ]
+    }
+  }
+}

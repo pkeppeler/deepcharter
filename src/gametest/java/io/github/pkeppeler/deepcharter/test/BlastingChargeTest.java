@@ -8,13 +8,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
@@ -26,6 +22,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
+import io.github.pkeppeler.deepcharter.test.support.ChargeUse;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -86,7 +83,7 @@ public class BlastingChargeTest {
 			}
 			if (setAt[0] < 0) {
 				hull[0] = pod[0].hull();
-				InteractionResult result = use(pilot.player());
+				InteractionResult result = ChargeUse.use(pilot.player(), Consumable.BLASTING_CHARGE);
 				if (!result.consumesAction()) {
 					throw failure(helper, "the charge should be set, the use gave %s and the bar says %s", result, pilot.actionBarMessages());
 				}
@@ -107,18 +104,6 @@ public class BlastingChargeTest {
 				helper.succeed();
 			}
 		});
-	}
-
-	private static InteractionResult use(ServerPlayer player) {
-		player.getInventory().setItem(player.getInventory().getSelectedSlot(), new ItemStack(RepairRegistry.item(Consumable.BLASTING_CHARGE)));
-		player.getCooldowns().removeCooldown(player.getCooldowns().getCooldownGroup(player.getItemInHand(InteractionHand.MAIN_HAND)));
-		return player.gameMode.useItem(player, player.level(), player.getItemInHand(InteractionHand.MAIN_HAND), InteractionHand.MAIN_HAND);
-	}
-
-	private static void expectBlock(GameTestHelper helper, ServerLevel level, BlockPos pos, Block expected, String what) {
-		if (!level.getBlockState(pos).is(expected)) {
-			throw failure(helper, "%s: %s should be %s, was %s", what, pos, expected, level.getBlockState(pos).getBlock());
-		}
 	}
 
 	private static void expectAir(GameTestHelper helper, ServerLevel level, BlockPos pos, String what) {
@@ -150,9 +135,9 @@ public class BlastingChargeTest {
 					}
 				}
 			}
-			expectBlock(helper2, level, cell(x + 1, -2, 0), HazardBlocks.COMPANY_ROCK, "Company rock beside the volume stays");
-			expectBlock(helper2, level, cell(x + 1, -1, 0), Blocks.STONE, "stone beside the volume stays");
-			expectBlock(helper2, level, cell(x, -3, 0), Blocks.STONE, "stone under the volume stays");
+			ChargeUse.expectBlock(helper2, level, cell(x + 1, -2, 0), HazardBlocks.COMPANY_ROCK, "Company rock beside the volume stays");
+			ChargeUse.expectBlock(helper2, level, cell(x + 1, -1, 0), Blocks.STONE, "stone beside the volume stays");
+			ChargeUse.expectBlock(helper2, level, cell(x, -3, 0), Blocks.STONE, "stone under the volume stays");
 		});
 	}
 
@@ -167,12 +152,12 @@ public class BlastingChargeTest {
 			level.setBlock(cell(x, -2, 0), HazardBlocks.GAS_POCKET.defaultBlockState(), 2); // a corner of the volume
 			level.setBlock(cell(x + 1, -2, 0), Blocks.STONE.defaultBlockState(), 2); // a gas blast would clear it
 		}, pod -> pod.setPos(pod.getX() + FAR, pod.getY(), pod.getZ()), (helper2, level, pod, pilot, hull) -> {
-			expectBlock(helper2, level, cell(x - 1, -2, -1), Blocks.OAK_PLANKS, "planks");
-			expectBlock(helper2, level, cell(x - 1, -1, 0), SlagBrick.BLOCK, "a slag brick");
-			expectBlock(helper2, level, cell(x, -1, -1), Blocks.BEDROCK, "bedrock");
-			expectBlock(helper2, level, cell(x, -2, -1), Blocks.LAVA, "lava");
+			ChargeUse.expectBlock(helper2, level, cell(x - 1, -2, -1), Blocks.OAK_PLANKS, "planks");
+			ChargeUse.expectBlock(helper2, level, cell(x - 1, -1, 0), SlagBrick.BLOCK, "a slag brick");
+			ChargeUse.expectBlock(helper2, level, cell(x, -1, -1), Blocks.BEDROCK, "bedrock");
+			ChargeUse.expectBlock(helper2, level, cell(x, -2, -1), Blocks.LAVA, "lava");
 			expectAir(helper2, level, cell(x, -2, 0), "the gas pocket goes with the blast");
-			expectBlock(helper2, level, cell(x + 1, -2, 0), Blocks.STONE, "a pocket in the blast vents no more");
+			ChargeUse.expectBlock(helper2, level, cell(x + 1, -2, 0), Blocks.STONE, "a pocket in the blast vents no more");
 		});
 	}
 
@@ -259,7 +244,7 @@ public class BlastingChargeTest {
 				pending[0] = expectRefusedAndKept(helper, pilot, "a pod in the air", "charge_not_resting");
 				step[0] = 2;
 			} else if (step[0] == 2 && pod[0].onGround()) {
-				if (!use(pilot.player()).consumesAction()) {
+				if (!ChargeUse.use(pilot.player(), Consumable.BLASTING_CHARGE).consumesAction()) {
 					throw failure(helper, "the charge should be set once the pod rests on Company rock; the bar says %s", pilot.actionBarMessages());
 				}
 				if (pilot.player().getInventory().countItem(RepairRegistry.item(Consumable.BLASTING_CHARGE)) != 0) {
@@ -276,7 +261,7 @@ public class BlastingChargeTest {
 
 	/** Uses a charge that must be refused and stay in the pack; returns the message that the bar should show. */
 	private static Component expectRefusedAndKept(GameTestHelper helper, MockPlayer pilot, String what, String key) {
-		if (use(pilot.player()).consumesAction()) {
+		if (ChargeUse.use(pilot.player(), Consumable.BLASTING_CHARGE).consumesAction()) {
 			throw failure(helper, "a charge should be refused with %s", what);
 		}
 		if (pilot.player().getInventory().countItem(RepairRegistry.item(Consumable.BLASTING_CHARGE)) != 1) {

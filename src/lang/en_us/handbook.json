@@ -118,7 +118,7 @@
   "deepcharter.handbook.directive.meet_the_mole.repair_mole": "Repair the Mole.",
   "deepcharter.handbook.directive.meet_the_mole.board_mole": "Board the Mole.",
   "deepcharter.handbook.chapter.deepcharter.fuel_is_life.title": "Fuel Is Life",
-  "deepcharter.handbook.chapter.deepcharter.fuel_is_life.text.1": "Fuel is the lifeblood of every Colom pod! Your Mole burns fuel whenever she is powered on, faster while moving and fastest while drilling. Drive on her treads, fly with her rotor, and drill down or sideways, but never up. Watch the gauge, listen for the low-fuel tone, and always plan your trip home. A pod that runs dry is Stranded: she powers down and goes dark until someone rescues her or she's refuelled from a reserve tank.",
+  "deepcharter.handbook.chapter.deepcharter.fuel_is_life.text.1": "Fuel is the lifeblood of every Colom pod! Your Mole burns fuel whenever she is powered on, faster while moving and fastest while drilling. Drive on her treads, fly with her rotor, and drill down or sideways, but never up. Watch the F bar on the ribbon along the top of your view (it turns red when she runs low), listen for the low-fuel tone, and always plan your trip home. A pod that runs dry is Stranded: she powers down and goes dark until someone rescues her or she's refuelled from a reserve tank.",
   "deepcharter.handbook.chapter.deepcharter.fuel_is_life.margin": "Don't let her go dark in the Workings. —R.",
   "deepcharter.handbook.directive.fuel_is_life.refuel_mole": "Refuel the Mole at the colony pump.",
   "deepcharter.handbook.directive.fuel_is_life.fly_mole": "Fly the Mole.",
