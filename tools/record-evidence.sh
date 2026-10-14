@@ -11,7 +11,7 @@
 #   <scenario>.gif          inlined in the PR (about 854px wide, kept under 5 MB)
 # Publish with: tools/pr-media.sh <pr-number> build/evidence/<scenario>/*.gif ...
 #
-# Only the scenario's own class runs (-PclientTests=<class>, see gradle/gametest.gradle), so a recording
+# Only the scenario's own class runs (-PclientTests=<class>, see gradle/gametest.gradle.kts), so a recording
 # takes the scenario's time plus client start-up. The class is found by scanning src/gametest/java for the
 # EvidenceScenario subclass whose name() returns the scenario id; there is no table to keep in step.
 # --full-suite runs the whole client suite instead (the scenario still records along the way).
@@ -30,7 +30,7 @@
 # To add a scenario: copy src/gametest/java/.../test/evidence/CameraTurnScenario.java,
 # change name() (this script's argument) and run(), and call frame(context) once per
 # recorded frame and screenshot(context, "name") for stills. The class is registered by
-# the generator in gradle/gametest.gradle; do not edit fabric.mod.json.
+# the generator in gradle/gametest.gradle.kts; do not edit fabric.mod.json.
 set -euo pipefail
 
 FPS=15
@@ -103,7 +103,7 @@ if (( ! no_run || print_class )); then
   if (( ! full_suite )); then
     filter=("-PclientTests=$classes")
   fi
-  # --no-daemon: Ctrl-C of a build that waits for a client slot must end it (gradle/clientlock.gradle).
+  # --no-daemon: Ctrl-C of a build that waits for a client slot must end it (gradle/clientlock.gradle.kts).
   # ${filter[@]+...}: an empty array is an unbound variable to bash 3.2 under set -u.
   DEEPCHARTER_EVIDENCE=$scenario DEEPCHARTER_EVIDENCE_DIR=$root ./gradlew --no-daemon runClientGameTest ${filter[@]+"${filter[@]}"}
 fi

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests gradle/clientlock.gradle, the machine-wide game client slots.
+# Tests gradle/clientlock.gradle.kts, the machine-wide game client slots.
 # A scratch Gradle project applies the script to a stub runClient task that holds until a release
 # file appears; DEEPCHARTER_LOCK_DIR points at a scratch lock dir. Covers two concurrent holders,
 # a third waiting with both holders named, arrival order with two waiters and a control ticket, stale-ticket skip,
@@ -44,19 +44,19 @@ check() { # check <description> <condition-result: 0 = ok>
 # make_proj <dir>: a scratch project with the stub runClient task and the script applied.
 make_proj() {
   mkdir -p "$1"
-  echo "rootProject.name = 'lockprobe'" >"$1/settings.gradle"
-  cat >"$1/build.gradle" <<S
+  echo 'rootProject.name = "lockprobe"' >"$1/settings.gradle.kts"
+  cat >"$1/build.gradle.kts" <<S
 tasks.register("runClient") {
 	doLast {
-		new File(System.getenv("ORDER_LOG")).append(System.getenv("HOLD_NAME") + "\n")
-		println "RUNNING client"
-		def release = new File(System.getenv("HOLD_RELEASE"))
-		def deadline = System.currentTimeMillis() + 120_000
+		File(System.getenv("ORDER_LOG")).appendText(System.getenv("HOLD_NAME") + "\n")
+		println("RUNNING client")
+		val release = File(System.getenv("HOLD_RELEASE"))
+		val deadline = System.currentTimeMillis() + 120_000
 		while (!release.exists() && System.currentTimeMillis() < deadline) { Thread.sleep(100) }
-		println "FINISHED client"
+		println("FINISHED client")
 	}
 }
-apply from: "$root/gradle/clientlock.gradle"
+apply(from = "$root/gradle/clientlock.gradle.kts")
 S
 }
 

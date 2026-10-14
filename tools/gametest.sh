@@ -9,7 +9,7 @@
 #
 # --client runs ./gradlew runClientGameTest -PclientTests=<list>: only the client
 # test classes matching a comma-separated list of simple names or globs
-# (`HangarClientTest`, `Pod*ClientTest`). gradle/gametest.gradle fails the build
+# (`HangarClientTest`, `Pod*ClientTest`). gradle/gametest.gradle.kts fails the build
 # when a term matches no class. Opens a game window and takes a client lock slot.
 set -euo pipefail
 

@@ -1,4 +1,4 @@
-"""Tests the test-only gate (tools/TestOnlyGate.java, gradle/test-only-gate.gradle): a non-private mod member that only src/gametest references
+"""Tests the test-only gate (tools/TestOnlyGate.java, gradle/test-only-gate.gradle.kts): a non-private mod member that only src/gametest references
 fails the build, unless production references it too, it overrides a supertype's method, it is a registered object's field, or a
 `// test-seam: <reason>` marker with a reason binds to its exact declaration. Nothing is grandfathered.
 

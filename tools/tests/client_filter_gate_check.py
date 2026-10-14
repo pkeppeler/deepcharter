@@ -1,4 +1,4 @@
-"""Tests the -PclientTests filter in gradle/gametest.gradle: it narrows the client entrypoint list and fails on a term that matches nothing.
+"""Tests the -PclientTests filter in gradle/gametest.gradle.kts: it narrows the client entrypoint list and fails on a term that matches nothing.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.

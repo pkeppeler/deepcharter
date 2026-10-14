@@ -1,4 +1,4 @@
-"""Tests the entity-query gate in gradle/entity-query-gate.gradle: an entity query (getEntitiesOfClass, getEntities, getNearbyEntities,
+"""Tests the entity-query gate in gradle/entity-query-gate.gradle.kts: an entity query (getEntitiesOfClass, getEntities, getNearbyEntities,
 getNearestEntity, getEntityGetter, getAllEntities, or getEntity with an id) in production code fails the build unless a `// entity-query: <reason>` marker with a
 reason sits on its line or the one above.
 
