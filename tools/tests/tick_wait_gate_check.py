@@ -152,7 +152,7 @@ class TickWaitGateTest(unittest.TestCase):
                 self.check_fails(f"violation/{label}")
 
     def test_marker_without_a_reason_or_in_a_string_does_not_count(self):
-        for label in ("a bare marker", "a marker in a string", "a marker in a text block"):
+        for label in (key.removeprefix("marker/") for key in BAD if key.startswith("marker/")):
             with self.subTest(label):
                 self.check_fails(f"marker/{label}")
 
