@@ -95,7 +95,7 @@ public class ScannerFrameTimeClientTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
-		ClientTestLog.startUntimed(this);
+		ClientTestLog.start(this);
 		// The largest scan the game allows: the best chassis' tier cap, which is below the scanner track's own top tier.
 		Chassis chassis = Chassis.PROSPECTOR;
 		int tier = chassis.tierCap();
