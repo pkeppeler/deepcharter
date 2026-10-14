@@ -251,6 +251,7 @@ if (System.getProperty("os.name").lowercase().contains("mac") && System.getenv("
 	}
 }
 
+// REPLACES: JUnit/AssertJ/JaCoCo — no src/test; tests are GameTests in Loom run JVMs, which JaCoCo cannot see, and an unused JUnit dependency fails buildHealth.
 dependencyAnalysis {
 	issues {
 		all {
@@ -268,9 +269,3 @@ dependencyAnalysis {
 }
 // check already runs runGameTest (Fabric API wires it in), the checkstyle tasks and the gates above; buildHealth is not part of check by default.
 tasks.check { dependsOn(tasks.named("buildHealth")) }
-
-// REPLACES the baseline's JUnit, AssertJ and JaCoCo. This repo has no src/test: its tests are server and client GameTests, which
-// run inside Loom's Minecraft JVMs under src/gametest (runGameTest, runClientGameTest) with Fabric's test API, not as Gradle
-// test tasks. JaCoCo instruments only the Gradle test JVM, so it would report nothing about them, and a JUnit/AssertJ
-// dependency with no test source would fail buildHealth as unused. checkLang, checkColourGate and the other gates in
-// gradle/*.gradle.kts, and the unit tests under tools/tests, cover what unit tests would.
