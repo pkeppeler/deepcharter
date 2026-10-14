@@ -1502,7 +1502,7 @@ For a person the early-game cost is the dark display and the noise: a first dive
 **Tuning knobs.** `SignalDecayTuning`: the per-layer onset and blackout, the threshold of each instrument, `maxFaultChance` (0.75), `jumpShare` (0.5). `UpgradeTuning` `CONSOLE`: the shares (1, 0.6, 0.3, 0) and the prices (tier 1 is crafted, 0 at the terminal); `recipe/console_unit.json`. `cockpit.json` `decay*`: cell length (3 ticks), dead colour, scanner static (`decayBaseNoise` 0.7, `decayStaticDots` 400, size, alpha, bands), tag colours, crackle gaps, alarm gap. Sounds: `pod.signal_crackle`, `pod.signal_lost`, and the existing `alarm.hull_critical`.
 
 **Open questions.**
-- Should the Prospector's immunity be a Mole tier of its own, so the Mole is not the pod that always flies blind in the last slab? The Mole's tier 2 leaves 1.2 slabs in layer 1.
+- Should the Prospector's immunity be a Mole tier of its own, so the Mole is not the pod that always flies blind in the last slab? The Mole's tier 2 leaves 1.8 slabs in layer 1.
 - Should layer 3 and deeper get a wider band, or a different fault (the gauges lying in a way that is wrong but plausible)? The table's last row repeats until they exist.
 - The hull alarm sounds only in the decay. Should it sound anywhere the hull is low, or is that for a later pass on the cockpit's audio?
 

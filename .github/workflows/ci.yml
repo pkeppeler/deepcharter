@@ -1,15 +1,17 @@
-# Runs on every PR. Label events are deliberately not triggers here (they live in
+# build and tool-tests run on every PR. Label events are deliberately not triggers here (they live in
 # client-tests.yml), so adding a label never re-runs or cancels the build.
 # The job names below are the REQUIRED_CHECKS in tools/merge-pr.sh; renaming one
-# means changing both.
+# means changing both. audit also runs weekly, so new advisories land on unchanged code.
 name: CI
 
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    - cron: "0 6 * * 1"
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number }}
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 permissions:
@@ -18,7 +20,7 @@ permissions:
 jobs:
   build:
     name: build
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ github.event_name == 'pull_request' && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -46,7 +48,7 @@ jobs:
 
   tool-tests:
     name: tool-tests
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ github.event_name == 'pull_request' && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 15 # tests take ~2.5 min; leave headroom for test growth
     steps:
@@ -70,3 +72,18 @@ jobs:
           export PATH="$RUNNER_TEMP/shellcheck:$PATH"
           shellcheck --version
           tools/shellcheck.sh
+
+  # Not a required check. Runs on PRs too, so a Renovate or hand-edited lockfile change is
+  # audited before merge, and weekly for new advisories on unchanged code.
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: just,osv-scanner
+      - run: just audit
