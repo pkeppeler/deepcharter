@@ -1,7 +1,3 @@
-// Loom deprecated runDir(String) and programArgs(...) for the runDirectory and programArguments properties. The Loom runs keep the
-// calls the build always used (and gradle/run-jvm.gradle.kts reads vmArgs), so a run's arguments cannot change in this conversion.
-@file:Suppress("DEPRECATION")
-
 import java.security.MessageDigest
 import java.util.zip.ZipFile
 
@@ -22,9 +18,12 @@ loom {
 		}
 	}
 
+	// Loom deprecated runDir(String) and programArgs(...) for the runDirectory and programArguments properties. The two runs keep the
+	// calls the build always used, so their arguments cannot change in this conversion.
 	runs {
 		// Play-test client. Its own run dir, so the mcpfabric jar that tools/play.sh
 		// places in run/play/mods is loaded here and nowhere else (audit condition 1).
+		@Suppress("DEPRECATION")
 		create("play") {
 			client()
 			runDir("run/play")
@@ -32,6 +31,7 @@ loom {
 		}
 		// Throwaway dedicated server that tools/play.sh uses once to generate the
 		// test world template (quick play cannot create a missing world).
+		@Suppress("DEPRECATION")
 		create("playWorld") {
 			server()
 			runDir("run/play-world")
@@ -40,9 +40,14 @@ loom {
 }
 
 // Applied scripts compile without the Loom plugin's types, so the Loom runs are offered to gradle/run-jvm.gradle.kts as plain functions.
-extra["addVmArgToRuns"] = { arg: String -> loom.runs.configureEach { vmArg(arg) } }
-extra["addVmArgToRun"] = { run: String, arg: String -> loom.runs.named(run) { vmArg(arg) } }
-extra["runVmArgs"] = { loom.runs.associate { it.name to it.vmArgs.toList() } }
+val addVmArgToRuns: (String) -> Unit = { arg -> loom.runs.configureEach { vmArg(arg) } }
+val addVmArgToRun: (String, String) -> Unit = { run, arg ->
+	loom.runs.named(run) { vmArg(arg) }
+}
+val runVmArgs: () -> Map<String, List<String>> = { loom.runs.associate { it.name to it.vmArgs.toList() } }
+extra["addVmArgToRuns"] = addVmArgToRuns
+extra["addVmArgToRun"] = addVmArgToRun
+extra["runVmArgs"] = runVmArgs
 
 fabricApi {
 	configureTests {
@@ -182,6 +187,7 @@ java {
 // backend on macOS: OpenGL hangs in SDL_GL_SwapWindow while the screen is locked (#251, #253). Set
 // DEEPCHARTER_GL=1 to keep OpenGL, for example for Iris shader tryouts. Linux and CI are unchanged.
 if (System.getProperty("os.name").lowercase().contains("mac") && System.getenv("DEEPCHARTER_GL") != "1") {
+	@Suppress("DEPRECATION")
 	loom.runs.matching { it.name in listOf("clientGameTest", "play") }.configureEach {
 		programArgs("--graphicsBackend", "vulkan")
 	}

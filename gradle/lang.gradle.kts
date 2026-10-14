@@ -106,7 +106,7 @@ val checkLang = tasks.register("checkLang") {
 		if (keys != keys.sorted()) throw GradleException("Generated en_us.json is not sorted")
 
 		val u = File(dir, "u.json")
-		u.writeText("""{"x.u": "a — b é \"q\""}""", Charsets.UTF_8)
+		u.writeText("""{"x.u": "a \u2014 b \u00e9 \"q\""}""", Charsets.UTF_8)
 		val text = LangMerge.write(LangMerge.merge(mapOf("u" to u)))
 		if (!text.contains("a — b é \\\"q\\\"")) throw GradleException("Non-ASCII characters were not written literally: $text")
 		if ((JsonSlurper().parseText(text) as Map<*, *>)["x.u"] != "a — b é \"q\"") throw GradleException("Non-ASCII output does not round-trip")

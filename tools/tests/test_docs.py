@@ -1,10 +1,12 @@
-"""Docs gate: no docs/**/*.md file repeats a heading under the same parent.
+"""Docs gate: no docs/**/*.md file repeats a heading under the same parent, and no markdown link points at a file that is gone.
 
 A heading is a duplicate when the same text appears at the same level with the same chain of ancestor headings, so a repeated
 sub-heading such as "Knobs" under two different sections is fine, and a section pasted twice (the corruption this guards against)
 is not. Headings inside fenced code blocks do not count.
 """
+import os
 import re
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -37,6 +39,84 @@ def duplicates(text):
             seen[key] = number
         stack.append((level, title))
     return found
+
+
+# [text](target) and ![alt](target); a target may carry a "title" after a space.
+LINK = re.compile(r"!?\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+[^)]*)?\)")
+INLINE_CODE = re.compile(r"`[^`\n]*`")
+# Never committed (XGen's assets, never committed), so absent in CI and in a fresh checkout; docs may still point at them.
+IGNORED_DIRS = ("original_flash_game", "private")
+EXTERNAL = re.compile(r"^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|#|//)")
+
+
+def link_targets(text):
+    """(line, target) for each markdown link outside code fences and inline code."""
+    found = []
+    fence = None
+    for number, line in enumerate(text.splitlines(), 1):
+        fenced = FENCE.match(line)
+        if fenced:
+            fence = None if fence == fenced.group(1) else fence or fenced.group(1)
+            continue
+        if fence:
+            continue
+        for match in LINK.finditer(INLINE_CODE.sub("", line)):
+            found.append((number, match.group(1)))
+    return found
+
+
+def dangling(path, root):
+    """(line, target) for each relative link in the markdown file `path` whose file does not exist.
+
+    Skips URLs with a scheme (http, https, mailto), pure #anchors, links under pr-media (media hosted on a branch) and the
+    IGNORED_DIRS (never committed).
+    Targets resolve against the linking file; a #fragment or ?query is dropped; a leading / is the repo root.
+    """
+    missing = []
+    for line, target in link_targets(path.read_text(encoding="utf-8")):
+        if EXTERNAL.match(target) or "pr-media" in target:
+            continue
+        file_part = re.split(r"[#?]", target, maxsplit=1)[0]
+        if not file_part:
+            continue
+        base = root if file_part.startswith("/") else path.parent
+        resolved = Path(os.path.normpath(base / file_part.lstrip("/")))
+        inside = resolved.relative_to(root).parts if resolved.is_relative_to(root) else ()
+        if inside[:1] and inside[0] in IGNORED_DIRS:
+            continue
+        if not resolved.exists():
+            missing.append((line, target))
+    return missing
+
+
+def tracked_markdown():
+    """README.md, docs/**/*.md (ADRs included: none cites a moved file today) and .claude/**/*.md."""
+    paths = [ROOT / "README.md"]
+    paths += sorted((ROOT / "docs").rglob("*.md"))
+    paths += sorted((ROOT / ".claude").rglob("*.md"))
+    return [p for p in paths if "worktrees" not in p.relative_to(ROOT).parts]
+
+
+class DocLinks(unittest.TestCase):
+    def test_no_markdown_link_points_at_a_missing_file(self):
+        problems = [
+            f"{path.relative_to(ROOT)}:{line}: {target}" for path in tracked_markdown() for line, target in dangling(path, ROOT)
+        ]
+        self.assertEqual([], problems, "links to files that do not exist (a renamed or deleted file?)")
+
+    def test_a_dangling_link_is_caught(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / "gradle").mkdir()
+            (root / "gradle" / "here.kts").write_text("")
+            page = root / "docs" / "page.md"
+            page.write_text(
+                "[ok](../gradle/here.kts#L3) [gone](../gradle/gone.gradle) [abs](/gradle/gone.kts)\n"
+                "[web](https://example.com/x) [mail](mailto:a@b.c) [top](#top) [media](pr-media/a.gif) [ign](../original_flash_game/R.md)\n"
+                "`[code](nope.md)`\n```\n[fenced](nope.md)\n```\n"
+            )
+            self.assertEqual([(1, "../gradle/gone.gradle"), (1, "/gradle/gone.kts")], dangling(page, root))
 
 
 class DocHeadings(unittest.TestCase):

@@ -4,9 +4,7 @@
 val exitOnOom = "-XX:+ExitOnOutOfMemoryError"
 
 // The Loom runs, as the functions build.gradle.kts offers (applied scripts cannot see the Loom plugin's types).
-@Suppress("UNCHECKED_CAST")
 val addVmArgToRuns = project.extra["addVmArgToRuns"] as (String) -> Unit
-@Suppress("UNCHECKED_CAST")
 val addVmArgToRun = project.extra["addVmArgToRun"] as (String, String) -> Unit
 @Suppress("UNCHECKED_CAST")
 val runVmArgs = project.extra["runVmArgs"] as () -> Map<String, List<String>>
