@@ -44,7 +44,6 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
     private TerminalView view;
     private final Typewriter typewriter;
     private final List<CrtButton> buyButtons = new ArrayList<>();
-    /** Absent until {@code init()} runs {@link #layout()}; rendering always follows it. */
     private @Nullable CrtButton fillButton;
 
     public FuelPumpScreen(TerminalView view) {
@@ -143,8 +142,8 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
             int litres = steps.get(i);
             buyButtons.get(i).active = room >= litres - 0.001f && balance() >= litres * price;
         }
-        Objects.requireNonNull(fillButton, "FILL UP button is built by layout() in init(), before any render").active =
-                room > 0.001f && balance() >= price;
+        CrtButton fill = Objects.requireNonNull(fillButton, "FILL UP button is built by layout() in init()");
+        fill.active = room > 0.001f && balance() >= price;
     }
 
     @Override
