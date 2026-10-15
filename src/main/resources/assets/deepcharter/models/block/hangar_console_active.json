@@ -1,5 +1,5 @@
 {
-  "parent": "deepcharter:block/terminal_lit",
+  "parent": "deepcharter:block/terminal",
   "textures": {
     "top": "deepcharter:block/terminal_top",
     "bottom": "deepcharter:block/terminal_side",

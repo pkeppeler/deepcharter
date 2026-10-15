@@ -8,10 +8,6 @@ import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.terminal.RepairState;
-import io.github.pkeppeler.deepcharter.terminal.TerminalActivity;
-import io.github.pkeppeler.deepcharter.terminal.TerminalType;
-import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
@@ -27,12 +23,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -160,7 +154,6 @@ public class GlowBeamsScenario extends EvidenceScenario {
             }
             PodComponents.install(pods[0], ComponentItems.mint(server, ComponentTrack.LIGHTS, 3, charter));
         });
-        terminalRow(context, singleplayer, floor);
         Vec3 pod = Vec3.atBottomCenterOf(floor.above()).add(0, 0, 2);
         view(singleplayer, pod.add(-10, 2.6, -7), pod.add(0, 1.2, 3));
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
@@ -179,40 +172,6 @@ public class GlowBeamsScenario extends EvidenceScenario {
         singleplayer.getServer().runOnServer(server -> pods[0].setStranded(true));
         context.waitTicks(SETTLE_TICKS);
         screenshot(context, "pod-beams-stranded-dark");
-    }
-
-    /** Three online terminals in a row in the dark room, their screens facing the player: the screens carry a cold glow. */
-    private void terminalRow(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos floor) {
-        List<TerminalType> types =
-                List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR, TerminalTypes.UPGRADE_TERMINAL);
-        singleplayer.getServer().runOnServer(server -> {
-            RepairState repairs = RepairState.get(server);
-            for (int i = 0; i < types.size(); i++) {
-                // Repaired, the type is online and its screen is lit, as a charter that fixed it sees.
-                for (Item part : types.get(i).parts()) {
-                    repairs.insert(types.get(i), part);
-                }
-                BlockPos pos = floor.offset(-2 + 2 * i, 1, -14);
-                server.overworld()
-                        .setBlock(
-                                pos,
-                                types.get(i)
-                                        .block()
-                                        .defaultBlockState()
-                                        .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.SOUTH),
-                                3);
-                TerminalActivity.sync(server.overworld(), pos);
-            }
-        });
-        Vec3 row = Vec3.atBottomCenterOf(floor.above()).add(0, 0, -14);
-        view(singleplayer, row.add(1.5, 1.7, 5), row.add(0, 1.0, 0));
-        context.waitTicks(SETTLE_TICKS);
-        screenshot(context, "terminal-screens-glow-dark");
-        singleplayer.getServer().runOnServer(server -> {
-            for (int i = 0; i < types.size(); i++) {
-                server.overworld().setBlock(floor.offset(-2 + 2 * i, 1, -14), Blocks.AIR.defaultBlockState(), 3);
-            }
-        });
     }
 
     private static void view(TestSingleplayerContext singleplayer, Vec3 eye, Vec3 target) {
