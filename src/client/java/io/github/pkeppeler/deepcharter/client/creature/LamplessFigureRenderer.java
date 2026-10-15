@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import net.minecraft.world.phys.AABB;
+import org.jspecify.annotations.Nullable;
 
 /** Draws the lampless figure, the Reacher of #250, from the model, texture and animations of {@link LamplessFigureAssets}; a dead one dissolves by going see-through. */
 public final class LamplessFigureRenderer
@@ -76,7 +77,7 @@ public final class LamplessFigureRenderer
     }
 
     @Override
-    public RenderType getRenderType(LamplessFigureRenderState state, Identifier texture) {
+    public @Nullable RenderType getRenderType(LamplessFigureRenderState state, Identifier texture) {
         return state.fade > 0 ? RenderTypes.entityTranslucent(texture) : super.getRenderType(state, texture);
     }
 
