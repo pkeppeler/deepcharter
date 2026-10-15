@@ -77,8 +77,8 @@ final class TextureTestWorld {
 
     static final int WALL = 3;
     private static final int HALF_WIDTH = 6;
-    static final int HEIGHT = 5;
-    static final int LAMP = 12;
+    private static final int HEIGHT = 5;
+    private static final int LAMP = 12;
     /** The bored shaft: 3 x 3 blocks, from its mouth at {@link #SHAFT} down {@link #SHAFT_DEPTH} blocks. */
     private static final BlockPos SHAFT = new BlockPos(2640, 150, 2600);
 

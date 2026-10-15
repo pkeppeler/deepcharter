@@ -41,8 +41,7 @@ final class ScannerSprites {
     static List<TextureAtlasSprite> of(ScanSlice slice, Cell cell, int ahead, int up) {
         return switch (cell) {
             case Cell.Air air -> List.of();
-            case Cell.Rock rock -> ofState(slice.state(ahead, up));
-            case Cell.Ore ore -> ofState(slice.state(ahead, up));
+            case Cell.Rock _, Cell.Ore _ -> ofState(slice.state(ahead, up));
             case Cell.Lava lava -> lava();
             case Cell.LavaNear near -> lava();
             case Cell.Gas gas -> ofState(HazardBlocks.GAS_POCKET.defaultBlockState());
