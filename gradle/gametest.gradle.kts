@@ -249,7 +249,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 }
 
-// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query" to run the entity-query gate over the tree instead)}, ...]. Runs the scan over each tree and writes
+// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query" or "record_holder" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
 tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
@@ -260,6 +260,10 @@ tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
 	val entityQueryProblems = project.extra["entityQueryProblems"] as (File, File, (String) -> String, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
 	val entityQueryAdvice = project.extra["entityQueryAdvice"] as String
+	// The record-holder gate's scan (record-holder-gate.gradle.kts), run the same way.
+	@Suppress("UNCHECKED_CAST")
+	val recordHolderProblems = project.extra["recordHolderProblems"] as (File, File, (String) -> String, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
+	val recordHolderAdvice = project.extra["recordHolderAdvice"] as String
 	val mainSources = fileTree("src/main/java") { include("**/*.java") }
 	val guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
 	val cases = file(providers.gradleProperty("fixtureCases").getOrElse("missing -PfixtureCases"))
@@ -279,6 +283,15 @@ tasks.register("checkGametestFixtures") {
 					val problems = entityQueryProblems(root, root, blankLiterals, markedNear)
 					if (problems.isNotEmpty()) {
 						throw GradleException("Entity queries in production code. $entityQueryAdvice\n  " + problems.joinToString("\n  "))
+					}
+					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
+					continue
+				}
+				if (c["gate"] == "record_holder") {
+					val root = File(c["root"] as String)
+					val problems = recordHolderProblems(root, root, blankLiterals, markedNear)
+					if (problems.isNotEmpty()) {
+						throw GradleException("Value-holder classes that are not records. $recordHolderAdvice\n  " + problems.joinToString("\n  "))
 					}
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue
