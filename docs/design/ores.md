@@ -4,7 +4,7 @@ Issue [#367](https://github.com/pkeppeler/deepcharter/issues/367). It is your pi
 
 > For ores, do a mix of B1 and B3, and B4. Maybe some are combined versions of these, or some are B1 or some are B3, or some are B4, etc.
 
-Every ore is the host stone with our ore art over it. The art is one of three families, or a blend of two:
+Every ore is the rock of its layer with our ore art over it. The art is one of three families, or a blend of two:
 
 - **B1, clumps:** domed nuggets or faceted crystals, each with a dark rim, a lit side and a glint.
 - **B3, threads:** a level thread of ore that runs off the sides of the block, with a swell or two.
@@ -34,13 +34,13 @@ The pick is in [tools/textures/recipes/ores.json](../../tools/textures/recipes/o
 
 ## The rules from round 2 hold
 
-- **Overlays on the real stone.** Each ore block draws `minecraft:block/stone` by name, and the ore art over it as a cutout layer. The stone shows through everywhere else.
+- **Overlays on the layer's rock.** Each ore block draws the rock of its `host` state (`packed_shale` in layer 1, `green_shale` in layer 2; [ADR 0055](../adr/0055-an-ore-block-has-a-host-state-that-says-which-layer-rock-it-sits-in.md)) by name, and the ore art over it as a cutout layer. The rock shows through everywhere else, and its top and bottom use the rock's end textures, as the rock block does. Until #549 the host was vanilla stone, which showed as grey patches in the brown and green rock.
 - **No vanilla texture is overridden.** The mod ships no file in `assets/minecraft/` for a block or an item. The one vanilla file it ships is the sky's sun (ADR 0030), and a test pins that.
 - **No glow.** A lampless ore is as dark as its stone.
-- **Edges blend into plain stone.** Only a thread or a vein of the ore reaches the edge of the block. A test fails on any other pixel on the edge.
+- **Edges blend into the rock.** Only a thread or a vein of the ore reaches the edge of the block. A test fails on any other pixel on the edge, and another holds the ore over each rock it sits in to the rock's seam check (the wrap and rim ratios of `tools/layer_concepts/seams.py`).
 - **Everything is generated.** The textures, the blockstates and the models come from `tools/textures/texgen.py`, and `--check` fails on a difference. The list of ore blocks and the host are in [tools/textures/overlays.json](../../tools/textures/overlays.json).
 
-When layer rock gets blocks of its own (#241), an ore names that block's texture as its host in `overlays.json`, and its edge follows it.
+A layer's rock is a host in `overlays.json` and a value of the `host` state, so an ore's edge follows its rock.
 
 ## What changed
 
