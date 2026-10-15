@@ -9,7 +9,7 @@ public final class OreBlocks {
     private OreBlocks() {}
 
     /**
-     * The block of {@code type}.
+     * Looks up the ore's block.
      *
      * @throws IllegalStateException if the registry has no block with the ore's id: the registry would answer air, and a test would pass vacuously */
     public static Block of(OreType type) {

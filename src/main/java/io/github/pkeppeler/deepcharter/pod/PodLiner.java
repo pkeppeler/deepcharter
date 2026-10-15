@@ -66,7 +66,7 @@ public final class PodLiner {
     }
 
     /**
-     * The liner's state on a pod.
+     * Per-pod liner state.
      *
      * @param anchor where the next ring is counted from, or empty before the first tick with a liner
      */

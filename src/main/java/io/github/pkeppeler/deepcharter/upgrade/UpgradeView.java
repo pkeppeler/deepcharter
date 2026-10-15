@@ -24,7 +24,7 @@ public record UpgradeView(Optional<Pod> pod, boolean foreignPod) implements Term
             UpgradeView::new);
 
     /**
-     * One pod in the upgrade terminal's view.
+     * A pod as the upgrade terminal shows it.
      *
      * @param serial the pod's serial, such as {@code MOLE-0001}
      * @param cap    the best part tier its chassis works at
@@ -46,7 +46,7 @@ public record UpgradeView(Optional<Pod> pod, boolean foreignPod) implements Term
     }
 
     /**
-     * One track of a pod in the upgrade terminal's view.
+     * A pod's part on one track.
      *
      * @param installed the tier of the part in the pod, void or not, or 0 for none
      * @param effective the tier the pod works at from it: 0 for none or a void part, and never above the cap

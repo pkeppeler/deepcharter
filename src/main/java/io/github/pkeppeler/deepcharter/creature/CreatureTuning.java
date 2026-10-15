@@ -85,7 +85,7 @@ public record CreatureTuning(
     }
 
     /**
-     * The natural-spawn tunables of a figure.
+     * Natural-spawn tunables.
      *
      * @param chancePerTry       the chance that a place the game tries for a natural spawn in layer 2, and that passes every rule, gets a figure; the deeper layer rolls more often
      * @param layerOneChancePerTry the same in layer 1, where a pilot is newer and the runs short: rarer than layer 2, and a real presence all the same (#506)

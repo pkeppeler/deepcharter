@@ -19,7 +19,7 @@ public interface TerminalAction {
     Optional<Component> run(Context context);
 
     /**
-     * What an action runs with.
+     * Everything {@link #run} receives.
      *
      * @param charter the player's charter: always present for a {@link TerminalType.Access#CHARTER_ONLY} terminal
      * @param args what the client sent with the action. It is untrusted: read it defensively. */

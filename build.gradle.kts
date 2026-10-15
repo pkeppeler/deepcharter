@@ -273,28 +273,25 @@ spotless {
 	}
 }
 
-// RELAXED: Error Prone's UnusedMethod and UnusedVariable would flag every injector method and its Mixin-supplied parameters,
-// so these annotations exempt them; any other unused code is still reported.
+// RELAXED: Error Prone's unused checks would flag every injector method and its Mixin-supplied parameters; any other unused code is still reported.
 val mixinHandlers = listOf("Inject", "Redirect", "ModifyArg", "ModifyArgs", "ModifyVariable", "ModifyConstant")
 	.joinToString(",") { "org.spongepowered.asm.mixin.injection.$it" }
 
-// Error Prone runs inside javac on every source set (main, client, gametest); -Werror turns every warning into a failure.
-// -processing: javac warns about annotations no processor claims, and -Werror would fail on it.
-// RELAXED -classfile: third-party class files only. Gson's @InlineMe needs error_prone_annotations, which main and client do not have, and JOML's
-// classes carry type annotations that javac ignores in old class-file versions; each warns per class and -Werror fails. Checked again with the annotations on the gametest classpath: still needed
+// Error Prone runs on every source set; -Werror fails on any warning.
+// RELAXED -processing: javac warns about annotations no processor claims.
+// RELAXED -classfile: third-party class files warn per class (Gson's @InlineMe needs error_prone_annotations; JOML's type annotations predate the class-file version javac reads them from).
 tasks.withType<JavaCompile>().configureEach {
 	options.release = 25
 	options.compilerArgs.addAll(listOf("-Xlint:all,-processing,-classfile", "-Werror"))
 	options.errorprone {
 		disableWarningsInGeneratedCode = true
-		// RELAXED: Readable and Unreadable are the domain's own pair (Versioned, CONTEXT.md); renaming them to dodge java.lang.Readable would split the vocabulary the M2 rules use
+		// RELAXED: Readable and Unreadable are the domain's own pair (Versioned, CONTEXT.md)
 		disable("AvoidCommonTypeNames")
-		// RELAXED: vanilla and this mod compare Entity, Level, Item, Block and registry objects with == throughout (Entity.equals is its id), and so do
-		// our own records used as constants (Chassis, TerminalType, ScanSlice.Cell): production only ever holds the constants, so == and equals agree
+		// RELAXED: vanilla compares Entity, Level, Item, Block and registry objects with ==, and our constant records (Chassis, TerminalType, ScanSlice.Cell) only ever exist as the constants
 		disable("ReferenceEquality")
 		// RELAXED: enum order is the contract of stream codecs, theme data indices and seeded hashes, so ordinal() is the stable key there
 		disable("EnumOrdinal")
-		// RELAXED: enums here hold Minecraft types (SoundEvent, Identifier, MapCodec) that are immutable in practice but cannot carry @Immutable
+		// RELAXED: enums hold Minecraft types (SoundEvent, Identifier, MapCodec) that cannot carry @Immutable
 		disable("ImmutableEnumChecker")
 		option("UnusedMethod:ExemptingMethodAnnotations", mixinHandlers)
 		option("Unused:methodAnnotationsExemptingParameters", mixinHandlers)

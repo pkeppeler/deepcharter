@@ -54,7 +54,7 @@ public final class HangarData extends SavedData {
     }
 
     /**
-     * What the hangar remembers of the founding Mole and of each charter's pods.
+     * The hangar's saved state.
      *
      * @param derelict the founding Mole's pod, once placed: the hangar places it once, so a world that has one never gets a second
      * @param founder  the charter whose last part repaired the founding Mole
