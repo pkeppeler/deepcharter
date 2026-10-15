@@ -34,7 +34,7 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
   - Once context passes about 200k tokens, hand over instead of stopping: let in-flight agents finish, rewrite the handoff, stop the loop, then start the successor from the main checkout and put its id in the handoff:
     `claude --bg --permission-mode auto -n "deepcharter $(date -u +%m-%d-%H%M)" "/loop continue Deep Charter"`
     Use the current session's permission mode, never a wider one. Run one orchestrator at a time.
-    Then check `claude logs <id>`: a background session cannot answer a startup dialog (workspace trust, MCP approval). If one is showing, tell the user to `claude attach <id>` and answer it.
+    Then check `claude logs <id>`: a background session cannot answer a startup dialog (workspace trust, MCP approval). If one is showing, ask the user to answer it. Always end the turn by giving the user the attach command, `claude attach <id>` (it runs in VS Code's terminal), and say whether the successor got past startup.
 
 ## Handoff between sessions
 
