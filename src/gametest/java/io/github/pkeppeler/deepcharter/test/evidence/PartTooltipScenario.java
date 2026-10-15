@@ -50,14 +50,8 @@ public class PartTooltipScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "both parts in the client's hotbar",
-                    client -> !client.player
-                                    .getInventory()
-                                    .getItem(LABELLED_HOTBAR)
-                                    .isEmpty()
-                            && !client.player
-                                    .getInventory()
-                                    .getItem(UNLABELLED_HOTBAR)
-                                    .isEmpty());
+                    client -> !hotbarStack(client, LABELLED_HOTBAR).isEmpty()
+                            && !hotbarStack(client, UNLABELLED_HOTBAR).isEmpty());
             context.setScreen(() -> new InventoryScreen(Minecraft.getInstance().player));
             ClientWait.screen(context, InventoryScreen.class);
             hover(context, LABELLED_HOTBAR);
@@ -67,6 +61,10 @@ public class PartTooltipScenario extends EvidenceScenario {
             screenshot(context, "part-tooltip-unlabelled");
             frame(context);
         }
+    }
+
+    private static ItemStack hotbarStack(Minecraft client, int hotbar) {
+        return client.player.getInventory().getItem(hotbar);
     }
 
     private static void hover(ClientGameTestContext context, int hotbar) {
