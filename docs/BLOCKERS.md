@@ -2,6 +2,18 @@
 
 The orchestrator writes this log during unattended runs. It never stops for a blocker: it records the blocker here and moves on to the next ready work. Newest entries come first. When an entry is resolved, its status changes to **resolved**, with the date and the reason.
 
+## 2026-10-14: Renovate opens no PRs: the wrong Renovate app reaches this repo
+
+**Status:** open, needs the user.
+
+`renovate.json` extends `github>pkeppeler/renovate`, the private shared preset of the self-hosted Renovate that `pkeppeler/renovate`'s workflow runs. That workflow's GitHub App is not installed on this repo: its 2026-10-14 22:57 UTC run autodiscovered only `pkeppeler/renovate`. The Mend-hosted "Renovate" app is installed here instead. It cannot read the private preset, so it opened #564 ("Cannot find preset's package") and stopped.
+
+The fix is in GitHub App settings, so it is the user's:
+- add `pkeppeler/deepcharter` to the self-hosted App's "Only select repositories" (step 4 of the `pkeppeler/renovate` README);
+- uninstall the Mend "Renovate" app from this repo, then close #564.
+
+Until then nothing bumps dependencies. The weekly `audit.yml` still reports advisories.
+
 ## 2026-10-08: GitHub Actions stopped running (billing), so nothing can merge
 
 **Status:** resolved 2026-10-08. The user made the repo public, so standard runners cost no minutes. The held PRs merged through the gate. The text below is the original report.
