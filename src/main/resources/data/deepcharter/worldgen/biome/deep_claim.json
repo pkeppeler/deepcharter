@@ -1,5 +1,18 @@
 {
   "attributes": {
+    "minecraft:audio/ambient_sounds": {
+      "loop": "deepcharter:ambient.layer_1_loop",
+      "additions": [
+        {
+          "sound": "deepcharter:ambient.layer_1_creak",
+          "tick_chance": 0.0008
+        },
+        {
+          "sound": "deepcharter:ambient.layer_1_knock",
+          "tick_chance": 0.0008
+        }
+      ]
+    },
     "minecraft:gameplay/creature_world_gen_spawn_probability": 0.0,
     "minecraft:gameplay/natural_mob_spawns": {
       "argument": {
