@@ -81,7 +81,7 @@ public class PodLavaWatchClientTest implements FabricClientGameTest {
                     () -> "the server reads " + serverReading(singleplayer) + ", the client " + clientReading(context)
                             + "; " + surroundings(singleplayer));
             PodStatusHud.Line line = context.computeOnClient(
-                    client -> PodStatusHud.readout(client, (PodEntity) client.player.getVehicle()).stream()
+                    client -> PodStatusHud.readout(client.player, (PodEntity) client.player.getVehicle()).stream()
                             .filter(shown -> key(shown.text()).equals("hud.deepcharter.pod.lava_near"))
                             .findFirst()
                             .orElseThrow(() -> new AssertionError("The readout should hold the lava line")));

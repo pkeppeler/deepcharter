@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jspecify.annotations.Nullable;
 
 /** A powered pod with a lights part holds one vanilla light block in its own column and moves it with the pod; a ledger sweep removes the ones a crash leaves (ADR 0024). */
 public final class PodLights {
@@ -112,7 +113,7 @@ public final class PodLights {
     }
 
     /** The first air cell of the pod's column, from its middle upward and then down; null when the column is solid. */
-    private static BlockPos freeCell(PodEntity pod, LoadedBlocks blocks) {
+    private static @Nullable BlockPos freeCell(PodEntity pod, LoadedBlocks blocks) {
         int low = (int) Math.floor(pod.getBoundingBox().minY);
         int high = (int) Math.floor(pod.getBoundingBox().maxY);
         int middle = Math.clamp((int) Math.floor(pod.getY() + pod.getBbHeight() / 2.0), low, high);

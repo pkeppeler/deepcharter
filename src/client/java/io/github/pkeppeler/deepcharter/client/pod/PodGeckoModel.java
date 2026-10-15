@@ -22,7 +22,7 @@ final class PodGeckoModel extends GeoModel<PodGeoAnimatable> {
 
     @Override
     public Identifier getTextureResource(GeoRenderState renderState) {
-        return ((PodGeoRenderState) renderState).texture;
+        return ((PodGeoRenderState) renderState).texture();
     }
 
     @Override
