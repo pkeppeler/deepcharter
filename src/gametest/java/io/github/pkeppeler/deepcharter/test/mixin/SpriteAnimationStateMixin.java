@@ -20,6 +20,7 @@ public abstract class SpriteAnimationStateMixin {
     private int subFrame;
 
     @Shadow
+    @SuppressWarnings("UnusedVariable") // written for the game to read
     private boolean isDirty;
 
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true)

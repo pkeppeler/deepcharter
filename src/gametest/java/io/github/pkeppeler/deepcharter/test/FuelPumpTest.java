@@ -714,6 +714,13 @@ public class FuelPumpTest {
                 .orElseThrow(() -> helper.assertionException("the saved pod did not load"));
     }
 
+    private static void expectEqual(GameTestHelper helper, String what, long expected, long actual) {
+        if (expected != actual) {
+            throw helper.assertionException(
+                    Component.literal(String.format("%s: expected %s, got %s", what, expected, actual)));
+        }
+    }
+
     private static void expectEqual(GameTestHelper helper, String what, float expected, float actual) {
         if (Math.abs(expected - actual) > EPSILON) {
             throw helper.assertionException(

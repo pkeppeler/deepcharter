@@ -564,7 +564,7 @@ public class ThemeLooksTest {
     /** Runs {@code action}, which must throw naming {@code key} and the test pack, and returns the message. */
     private static String rejected(GameTestHelper helper, Supplier<?> action, String key) {
         try {
-            action.get();
+            Object _ = action.get();
         } catch (IllegalArgumentException | IllegalStateException e) {
             String message = String.valueOf(e.getMessage());
             requireContains(helper, message, key);

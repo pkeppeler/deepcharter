@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -35,6 +36,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.server.permissions.PermissionSet;
 import net.minecraft.world.level.storage.SavedDataStorage;
 
@@ -576,8 +578,11 @@ public class CharterCoreTest {
                         "reviving nothing should say %s, got %s", CharterRefusal.NO_SUCH_CHARTER, missing);
             }
             run(server, director, "leave");
-            List<Component> done =
-                    run(server, reviver, LevelBasedPermissionSet.GAMEMASTER, "revive \"" + name.toUpperCase() + "\"");
+            List<Component> done = run(
+                    server,
+                    reviver,
+                    LevelBasedPermissionSet.GAMEMASTER,
+                    "revive \"" + name.toUpperCase(Locale.ROOT) + "\"");
             if (done.stream()
                     .noneMatch(message ->
                             message.contains(Component.translatable("deepcharter.charter.revive.success", name)))) {
@@ -614,7 +619,7 @@ public class CharterCoreTest {
         expectRefused(
                 helper,
                 CharterRefusal.NAME_TAKEN,
-                data.found(stranger, name.toUpperCase(), CharterId.random()),
+                data.found(stranger, name.toUpperCase(Locale.ROOT), CharterId.random()),
                 "reusing a name");
         expectRefused(
                 helper, CharterRefusal.INVALID_NAME, data.found(stranger, "   ", CharterId.random()), "a blank name");
@@ -832,7 +837,7 @@ public class CharterCoreTest {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer player = MockPlayers.join(helper, "CmdNoRights");
 
-        run(server, player, LevelBasedPermissionSet.ALL, "found \"" + uniqueName() + "\"");
+        run(server, player, LevelBasedPermissionSet.forLevel(PermissionLevel.ALL), "found \"" + uniqueName() + "\"");
         if (Charters.charterOfOrThrow(server, player.player().getUUID()).isPresent()) {
             throw helper.assertionException("a player without permission must not found a charter");
         }

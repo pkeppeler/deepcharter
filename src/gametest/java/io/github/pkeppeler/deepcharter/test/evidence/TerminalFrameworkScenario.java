@@ -69,13 +69,13 @@ public class TerminalFrameworkScenario extends EvidenceScenario {
                         context,
                         "the fuel pump screen, or the terminal with " + inserted + " parts inserted",
                         client -> client.gui.screen() instanceof FuelPumpScreen
-                                || client.gui.screen() instanceof TerminalScreen open
+                                || (client.gui.screen() instanceof TerminalScreen open
                                         && ClientChecks.buttons(open).stream()
                                                         .filter(button -> button.getMessage()
                                                                 .getString()
                                                                 .startsWith("[X] "))
                                                         .count()
-                                                == inserted);
+                                                == inserted));
                 hold(context);
             }
 

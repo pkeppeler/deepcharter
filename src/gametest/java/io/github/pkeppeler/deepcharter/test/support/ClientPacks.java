@@ -23,6 +23,7 @@ public final class ClientPacks {
      * Selects the pack and reloads, for a pack whose reload must fail. Vanilla then unselects all packs and reloads again, so this
      * returns once the game has settled again.
      */
+    @SuppressWarnings("FutureReturnValueIgnored")
     public static void enableExpectingFailure(ClientGameTestContext context, String pack) {
         String id = context.computeOnClient(client -> {
             PackRepository repository = client.getResourcePackRepository();

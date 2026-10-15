@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
@@ -297,7 +299,10 @@ public class ColonyTest {
                     "the respawn radius should be 0 so a new player stands in the office, it is %s",
                     server.getGameRules().get(GameRules.RESPAWN_RADIUS));
         }
-        if (!overworld.getBlockState(office.below()).isSolid()
+        // Mojang deprecated BlockStateBase.isSolid but keeps it as the stand-on-it test
+        @SuppressWarnings("deprecation")
+        boolean floorSolid = overworld.getBlockState(office.below()).isSolid();
+        if (!floorSolid
                 || !overworld.getBlockState(office).isAir()
                 || !overworld.getBlockState(office.above()).isAir()) {
             throw failure(helper, "a player cannot stand at the world spawn %s", office.toShortString());
@@ -990,7 +995,8 @@ public class ColonyTest {
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

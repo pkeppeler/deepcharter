@@ -114,8 +114,8 @@ public class LamplessFigure extends PathfinderMob {
     @Override
     public boolean checkSpawnRules(LevelAccessor level, EntitySpawnReason reason) {
         return reason != EntitySpawnReason.NATURAL
-                || level instanceof ServerLevelAccessor accessor
-                        && LamplessFigures.mayAppearNaturally(accessor.getLevel(), blockPosition(), level.getRandom());
+                || (level instanceof ServerLevelAccessor accessor
+                        && LamplessFigures.mayAppearNaturally(accessor.getLevel(), blockPosition(), level.getRandom()));
     }
 
     @Override

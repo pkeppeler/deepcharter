@@ -185,7 +185,7 @@ public class RepairStationTest {
     }
 
     /** Puts one of the item in the selected hotbar slot, makes the player the pod's pilot, and uses it as a right click does. */
-    private static InteractionResult useFromHotbar(GameTestHelper helper, Station station, Consumable consumable) {
+    private static InteractionResult useFromHotbar(Station station, Consumable consumable) {
         ServerPlayer player = station.pilot().player();
         player.getInventory()
                 .setItem(player.getInventory().getSelectedSlot(), new ItemStack(RepairRegistry.item(consumable)));
@@ -479,7 +479,7 @@ public class RepairStationTest {
             PodEntity pod = station.pod();
             ServerPlayer player = station.pilot().player();
             pod.setFuel(10f);
-            if (useFromHotbar(helper, station, Consumable.RESERVE_FUEL_TANK).consumesAction()) {
+            if (useFromHotbar(station, Consumable.RESERVE_FUEL_TANK).consumesAction()) {
                 throw helper.assertionException("the tank should not work while the player is not piloting");
             }
             if (pod.fuel() != 10f) {
@@ -488,7 +488,7 @@ public class RepairStationTest {
             expectSpent(helper, player, Consumable.RESERVE_FUEL_TANK, 1, "an unpiloted use keeps the item");
 
             board(helper, station);
-            if (!useFromHotbar(helper, station, Consumable.RESERVE_FUEL_TANK).consumesAction()) {
+            if (!useFromHotbar(station, Consumable.RESERVE_FUEL_TANK).consumesAction()) {
                 throw helper.assertionException("the tank should work while piloting");
             }
             if (pod.fuel() <= 10f) {
@@ -506,17 +506,17 @@ public class RepairStationTest {
             ServerPlayer player = station.pilot().player();
             pod.setHull(pod.maxHull() - 50f);
             board(helper, station);
-            if (!useFromHotbar(helper, station, Consumable.HULL_NANOBOTS).consumesAction()) {
+            if (!useFromHotbar(station, Consumable.HULL_NANOBOTS).consumesAction()) {
                 throw helper.assertionException("the nanobots should work while piloting");
             }
             expectHull(helper, pod, pod.maxHull() - 20f, "after 30 HP of nanobots");
             expectSpent(helper, player, Consumable.HULL_NANOBOTS, 0, "after use");
 
             pod.setHull(pod.maxHull() - 10f);
-            useFromHotbar(helper, station, Consumable.HULL_NANOBOTS);
+            useFromHotbar(station, Consumable.HULL_NANOBOTS);
             expectHull(helper, pod, pod.maxHull(), "nanobots cap at the maximum");
 
-            if (useFromHotbar(helper, station, Consumable.HULL_NANOBOTS).consumesAction()) {
+            if (useFromHotbar(station, Consumable.HULL_NANOBOTS).consumesAction()) {
                 throw helper.assertionException("nanobots on a full hull should not be used up");
             }
             expectSpent(helper, player, Consumable.HULL_NANOBOTS, 1, "a full hull keeps the item");
@@ -531,7 +531,7 @@ public class RepairStationTest {
             pod.damageHull(pod.maxHull());
             // A wreck throws its pilot out and cannot be boarded, so the player is on foot beside it: the use is
             // refused either way.
-            useFromHotbar(helper, station, Consumable.HULL_NANOBOTS);
+            useFromHotbar(station, Consumable.HULL_NANOBOTS);
             expectHull(helper, pod, 0f, "a wreck stays at 0");
             if (!Wrecks.isWreck(pod)) {
                 throw helper.assertionException("nanobots must not restore a wreck");
@@ -567,7 +567,7 @@ public class RepairStationTest {
                 kept.add(inside);
             }
             board(helper, station);
-            if (!useFromHotbar(helper, station, explosive).consumesAction()) {
+            if (!useFromHotbar(station, explosive).consumesAction()) {
                 throw helper.assertionException("%s should work while piloting", explosive);
             }
             for (int dx = -ARENA; dx <= ARENA; dx++) {
@@ -618,7 +618,7 @@ public class RepairStationTest {
             BlockPos middle = BlockPos.containing(station.pod().getBoundingBox().getCenter());
             BlockPos neighbour = middle.above(2);
             level.setBlock(neighbour, Blocks.STONE.defaultBlockState(), 3);
-            if (useFromHotbar(helper, station, Consumable.DYNAMITE).consumesAction()) {
+            if (useFromHotbar(station, Consumable.DYNAMITE).consumesAction()) {
                 throw helper.assertionException("dynamite should not work for a player on foot");
             }
             if (!level.getBlockState(neighbour).is(Blocks.STONE)) {
@@ -793,7 +793,7 @@ public class RepairStationTest {
             PodEntity pod = station.pod();
             board(helper, station);
             Vec3 before = pod.position();
-            if (!useFromHotbar(helper, station, Consumable.MATTER_TRANSMITTER).consumesAction()) {
+            if (!useFromHotbar(station, Consumable.MATTER_TRANSMITTER).consumesAction()) {
                 throw helper.assertionException("the transmitter should work");
             }
             MinecraftServer server = helper.getLevel().getServer();
@@ -825,8 +825,7 @@ public class RepairStationTest {
                     Level.OVERWORLD, new BlockPos(office.getX() + 5000, 64, office.getZ()), 0f, 0f));
             try {
                 board(helper, station);
-                if (!useFromHotbar(helper, station, Consumable.MATTER_TRANSMITTER)
-                        .consumesAction()) {
+                if (!useFromHotbar(station, Consumable.MATTER_TRANSMITTER).consumesAction()) {
                     throw helper.assertionException("the transmitter should work");
                 }
             } finally {
@@ -853,8 +852,7 @@ public class RepairStationTest {
             }
             withSpawnColumn(helper, x, false, ground -> {
                 board(helper, station);
-                if (!useFromHotbar(helper, station, Consumable.MATTER_TRANSMITTER)
-                        .consumesAction()) {
+                if (!useFromHotbar(station, Consumable.MATTER_TRANSMITTER).consumesAction()) {
                     throw helper.assertionException("the transmitter should work into an unloaded chunk");
                 }
                 if (Math.abs(station.pod().getX() - (x + 0.5)) > 1.0
@@ -918,7 +916,7 @@ public class RepairStationTest {
         ServerLevel level = (ServerLevel) pod.level();
         int cargo = pod.cargo().entries().size();
         board(helper, station);
-        if (useFromHotbar(helper, station, teleporter).consumesAction()) {
+        if (useFromHotbar(station, teleporter).consumesAction()) {
             throw helper.assertionException(
                     "%s: the teleporter should have been refused; pod at %s, spawn %s, level %s",
                     why,
@@ -1002,7 +1000,7 @@ public class RepairStationTest {
                         board(helper, station);
                         boolean worked = false;
                         for (int attempt = 0; attempt < 10 && !worked; attempt++) {
-                            worked = useFromHotbar(helper, station, Consumable.QUANTUM_TELEPORTER)
+                            worked = useFromHotbar(station, Consumable.QUANTUM_TELEPORTER)
                                     .consumesAction();
                         }
                         if (!worked) {
@@ -1034,7 +1032,7 @@ public class RepairStationTest {
             }
             Vec3 before = pod.position();
             board(helper, station);
-            if (useFromHotbar(helper, station, Consumable.MATTER_TRANSMITTER).consumesAction()) {
+            if (useFromHotbar(station, Consumable.MATTER_TRANSMITTER).consumesAction()) {
                 throw helper.assertionException("a pod with unreadable cargo must not teleport");
             }
             if (!pod.position().equals(before) || pod.cargo().isReadable()) {

@@ -43,7 +43,7 @@ public class LayoutGateScenario extends EvidenceScenario {
 
     @Override
     protected void run(ClientGameTestContext context) {
-        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+        try (TestSingleplayerContext _ = context.worldBuilder().create()) {
             String name = "W".repeat(CharterTuning.DEFAULT.maxNameLength());
             TerminalView view = new TerminalView(
                     new BlockPos(0, 64, 0), ContractTerminal.TYPE.id(), true, true, List.of(), Optional.empty());

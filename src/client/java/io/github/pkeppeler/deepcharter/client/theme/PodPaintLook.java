@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The paint colours of the pods' hulls ({@code theme/pod.json}, #383): {@code paintCount} colours, {@code paint0} to {@code paint<n-1>}.
+ * The paint colours of the pods' hulls ({@code theme/pod.json}, #383): {@code paintCount} colours, the keys named for the colour number from 0.
  * A charter's pods carry the one its id picks, so every pod of a charter is one colour and a pack restyles the palette on F3+T. A pack
  * adds a colour by raising {@code paintCount} and naming the new key.
  *

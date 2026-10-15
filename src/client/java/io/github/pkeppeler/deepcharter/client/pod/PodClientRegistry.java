@@ -7,6 +7,8 @@ import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 public final class PodClientRegistry {
     private PodClientRegistry() {}
 
+    // Fabric deprecated EntityRendererRegistry; vanilla EntityRenderers.register is private
+    @SuppressWarnings("deprecation")
     public static void register() {
         // Every chassis draws with GeckoLib from its look file, so a new chassis is files only. The renderer is built
         // again on every resource reload.

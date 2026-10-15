@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -1044,8 +1046,8 @@ public class TowingTest {
                 throw failure(
                         helper, "the rider should be on the same tower after crossing, is on %s", player.getVehicle());
             }
-            if (!(player.level() instanceof ServerLevel two)
-                    || !(two.getEntity(pods[1].getUUID()) instanceof PodEntity crossed)) {
+            ServerLevel two = player.level();
+            if (!(two.getEntity(pods[1].getUUID()) instanceof PodEntity crossed)) {
                 throw failure(helper, "the towed pod did not arrive in layer 2");
             }
             if (crossed == pods[1] || !pods[1].isRemoved()) {
@@ -1404,7 +1406,8 @@ public class TowingTest {
         return level;
     }
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

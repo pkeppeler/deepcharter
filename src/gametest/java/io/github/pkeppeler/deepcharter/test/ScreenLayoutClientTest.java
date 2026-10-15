@@ -167,7 +167,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         checkTheGateSeesAnOverflow(context);
         List<String> problems = new ArrayList<>();
-        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+        try (TestSingleplayerContext _ = context.worldBuilder().create()) {
             List<Case> cases = new ArrayList<>();
             cases.addAll(terminalCases());
             cases.addAll(menuCases());
@@ -444,7 +444,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
             field.setAccessible(true);
             ((Map<?, ?>) field.get(screen)).keySet().forEach(writer -> ((Typewriter) writer).advance(TYPING_SECONDS));
         } catch (ReflectiveOperationException e) {
-            throw new AssertionError("CrtScreen has no field typewriters; the gate reads it by name", e);
+            throw new LinkageError("CrtScreen has no field typewriters; the gate reads it by name", e);
         }
     }
 
@@ -461,7 +461,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
             field.setAccessible(true);
             return field.getInt(target);
         } catch (ReflectiveOperationException e) {
-            throw new AssertionError("a container screen has no field " + name + "; the gate reads it by name", e);
+            throw new LinkageError("a container screen has no field " + name + "; the gate reads it by name", e);
         }
     }
 
@@ -616,7 +616,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
             field.setAccessible(true);
             return (Map<?, ?>) field.get(null);
         } catch (ReflectiveOperationException e) {
-            throw new AssertionError(
+            throw new LinkageError(
                     "MenuScreens has no field SCREENS; the gate reads the registered screens from it", e);
         }
     }
@@ -629,7 +629,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
             Minecraft client = Minecraft.getInstance();
             return (Screen) create.invoke(constructor, menu, client.player.getInventory(), title);
         } catch (ReflectiveOperationException e) {
-            throw new AssertionError("could not build a menu screen", e);
+            throw new LinkageError("could not build a menu screen", e);
         }
     }
 

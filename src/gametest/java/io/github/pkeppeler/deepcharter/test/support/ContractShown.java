@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.support;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTextField;
 import java.util.List;
+import java.util.Locale;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 
@@ -50,12 +51,12 @@ public final class ContractShown {
 
     /** True when the Director's list offers {@code charter} to apply to. */
     public static boolean offers(ContractScreen screen, String charter) {
-        return labels(screen).contains(APPLY + charter.toUpperCase());
+        return labels(screen).contains(APPLY + charter.toUpperCase(Locale.ROOT));
     }
 
     /** True when the screen has a button to revive {@code charter}. */
     public static boolean offersRevive(ContractScreen screen, String charter) {
-        return labels(screen).contains(REVIVE + charter.toUpperCase());
+        return labels(screen).contains(REVIVE + charter.toUpperCase(Locale.ROOT));
     }
 
     /** The applicants on the Director's list, in capitals as the buttons show them. */

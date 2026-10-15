@@ -41,7 +41,6 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
     private static final float TOWARD_CAMERA = 90f;
 
     private ClientGameTestContext ctx;
-    private TestSingleplayerContext world;
     private RetainedChamber chamber;
     private int figureId;
 
@@ -58,7 +57,6 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
     private void runHidden(ClientGameTestContext context) {
         ctx = context;
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-            world = singleplayer;
             chamber = new RetainedChamber(context, singleplayer);
             CameraType cameraType = context.computeOnClient(client -> client.options.getCameraType());
             EvidencePins.lightFlickerOff = true;

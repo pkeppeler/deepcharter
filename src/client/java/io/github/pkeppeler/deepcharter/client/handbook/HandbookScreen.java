@@ -38,7 +38,7 @@ import net.minecraft.util.Mth;
  * the owner of the screen sends that to the server ({@link #open}). The Notes tab lists the Notes the charter has found, unread ones
  * marked; opening a Note shows its text and reports it the same way, once, if it is not read yet.
  */
-public class HandbookScreen extends Screen {
+public final class HandbookScreen extends Screen {
     /** The sheet is wide enough for a margin column from this width on. */
     private static final int MARGIN_MIN_PAPER_WIDTH = 220;
 
@@ -750,7 +750,7 @@ public class HandbookScreen extends Screen {
                 textWidth,
                 tuning().faintInkColor());
         y = titleRule(graphics, y);
-        for (String clause : I18n.get(contractKey(contract.part())).split("\n")) {
+        for (String clause : I18n.get(contractKey(contract.part())).lines().toList()) {
             y = PaperDraw.redacted(graphics, font, clause, textLeft, y, textWidth, tuning().inkColor())
                     + tuning().paragraphGap();
         }

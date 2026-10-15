@@ -796,7 +796,7 @@ public class HandbookChaptersSixToNineTest {
                     "the pod should face south, faces %s",
                     pod.getDirection());
             pod.setPos(Vec3.atBottomCenterOf(origin));
-            expect(helper, !level.hasChunkAt(origin), "the pod's chunk should be unloaded");
+            expect(helper, !LoadedBlocks.isLoaded(level, origin), "the pod's chunk should be unloaded");
             expect(
                     helper,
                     !ScanSlice.hasOre(new LoadedBlocks(level), pod),

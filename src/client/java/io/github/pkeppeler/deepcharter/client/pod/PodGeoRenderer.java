@@ -35,7 +35,7 @@ import net.minecraft.world.phys.AABB;
  *
  * <p>It is a replaced-entity renderer: {@link PodEntity} knows nothing of GeckoLib, so a server never loads it.
  */
-public class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, PodEntity, PodGeoRenderState> {
+public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimatable, PodEntity, PodGeoRenderState> {
     /** How far the hull shakes while the drill bites, in blocks. */
     public static final float SHAKE = 0.02f;
 

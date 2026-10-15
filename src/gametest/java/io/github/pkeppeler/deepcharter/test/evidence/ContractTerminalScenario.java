@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ContractShown;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -84,12 +85,14 @@ public class ContractTerminalScenario extends EvidenceScenario {
                                 .orElseThrow()
                                 .id());
             });
-            awaitState(context, open -> ContractShown.applicants(open).equals(List.of(MOCK_NAME.toUpperCase())));
+            awaitState(
+                    context,
+                    open -> ContractShown.applicants(open).equals(List.of(MOCK_NAME.toUpperCase(Locale.ROOT))));
             hold(context);
             clearToasts(context);
             screenshot(context, "contract-application");
 
-            context.clickScreenButton("APPROVE " + MOCK_NAME.toUpperCase());
+            context.clickScreenButton("APPROVE " + MOCK_NAME.toUpperCase(Locale.ROOT));
             awaitState(context, open -> ContractShown.applicants(open).isEmpty());
             hold(context);
             clearToasts(context);

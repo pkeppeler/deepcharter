@@ -16,9 +16,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = LightmapRenderStateExtractor.class, remap = false)
 public abstract class LightmapFlickerMixin {
     @Shadow
+    @SuppressWarnings("UnusedVariable") // written for the game to read
     private float blockLightFlicker;
 
     @Shadow
+    @SuppressWarnings("UnusedVariable") // written for the game to read
     private boolean needsUpdate;
 
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true)

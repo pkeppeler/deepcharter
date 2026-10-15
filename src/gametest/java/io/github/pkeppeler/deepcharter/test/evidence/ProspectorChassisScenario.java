@@ -249,17 +249,17 @@ public class ProspectorChassisScenario extends EvidenceScenario {
             two.server().runOnServer(server -> pilot[0] = board(server.overworld(), two));
             context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
             context.waitTicks(CHAT_FADE_TICKS);
-            look(context, two);
+            look(context);
             screenshot(context, "two-players-ride-the-prospector");
 
             two.server().runOnServer(server -> two.mock().setInput(FORWARD));
             for (int ticks = 0; ticks < DRIVE_TICKS; ticks += TICKS_PER_FRAME) {
                 context.waitTicks(TICKS_PER_FRAME);
-                look(context, two);
+                look(context);
             }
             two.server().runOnServer(server -> two.mock().releaseInput());
             context.waitTicks(10);
-            look(context, two);
+            look(context);
 
             double startY = podY(two, pilot[0]);
             two.server().runOnServer(server -> two.mock().setInput(SPRINT));
@@ -268,7 +268,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
             while (startY - podY(two, pilot[0]) < DRILL_DEPTH && ticks < MAX_DRILL_TICKS) {
                 context.waitTicks(DRILL_TICKS_PER_FRAME);
                 ticks += DRILL_TICKS_PER_FRAME;
-                look(context, two);
+                look(context);
                 if (!shot && startY - podY(two, pilot[0]) >= 1) {
                     screenshot(context, "the-3x3-bore");
                     shot = true;
@@ -281,14 +281,14 @@ public class ProspectorChassisScenario extends EvidenceScenario {
             }
             for (int i = 0; i < 6; i++) {
                 context.waitTicks(TICKS_PER_FRAME);
-                look(context, two);
+                look(context);
             }
             screenshot(context, "the-bore-from-the-navigators-seat");
         }
     }
 
     /** One frame with no toast or chat line over the pod. */
-    private void look(ClientGameTestContext context, TwoPlayerServer two) {
+    private void look(ClientGameTestContext context) {
         context.runOnClient(client -> {
             client.gui.toastManager().clear();
             client.player.setXRot(LOOK_DOWN);

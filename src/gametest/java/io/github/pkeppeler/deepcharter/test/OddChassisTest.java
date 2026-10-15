@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -14,6 +16,7 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -40,7 +43,8 @@ public class OddChassisTest {
         return all;
     }
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -158,7 +162,8 @@ public class OddChassisTest {
     @GameTest
     public void everyChassisPassesTheColonysBayDoors(GameTestHelper helper) {
         JsonObject layout;
-        try (Reader reader = new InputStreamReader(OddChassisTest.class.getResourceAsStream(LAYOUT))) {
+        try (Reader reader =
+                new InputStreamReader(OddChassisTest.class.getResourceAsStream(LAYOUT), StandardCharsets.UTF_8)) {
             layout = JsonParser.parseReader(reader).getAsJsonObject();
         } catch (IOException e) {
             throw failure(helper, "the colony layout %s cannot be read: %s", LAYOUT, e);

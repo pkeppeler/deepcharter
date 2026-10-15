@@ -15,7 +15,7 @@ public class HandbookCoreScenario extends EvidenceScenario {
 
     @Override
     protected void run(ClientGameTestContext context) {
-        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+        try (TestSingleplayerContext _ = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the handbook in the hotbar", client -> handbookSlot(client.player.getInventory()) >= 0);
             context.runOnClient(

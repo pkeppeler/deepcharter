@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -194,7 +195,7 @@ public class ContractTerminalTest {
                 "founding with an oversized name");
         expectRefused(
                 helper,
-                Terminals.act(stranger, pos, ContractActions.FOUND, name(charter.toUpperCase())),
+                Terminals.act(stranger, pos, ContractActions.FOUND, name(charter.toUpperCase(Locale.ROOT))),
                 "founding a name another charter has");
         expectRefused(
                 helper,

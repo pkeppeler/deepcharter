@@ -64,6 +64,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -393,7 +394,7 @@ public class DesignTourScenario extends EvidenceScenario {
         Set<String> seen = new HashSet<>();
         for (int index = 0; index < pages.size(); index++) {
             HandbookPage page = pages.get(index);
-            String kind = page.getClass().getSimpleName().toLowerCase();
+            String kind = page.getClass().getSimpleName().toLowerCase(Locale.ROOT);
             boolean classified =
                     page instanceof HandbookPage.Chapter chapter && chapter.visibility() != HandbookVisibility.FULL;
             String key = classified ? "chapter-classified" : kind;
@@ -1145,7 +1146,7 @@ public class DesignTourScenario extends EvidenceScenario {
         // The structures of layer 1: the three shafts, one in each zone.
         for (StructureKind kind : StructureKind.inLayer(1)) {
             StructureSite site = siteOf(kind, null);
-            String name = kind.name().toLowerCase().replace('_', '-');
+            String name = kind.name().toLowerCase(Locale.ROOT).replace('_', '-');
             int niche = site.height() / 2;
             view(1, at(site, 0, site.height() - 1.2, 0), at(site, 0, 0, 0), 120);
             still("structure-" + name + "-looking-down");

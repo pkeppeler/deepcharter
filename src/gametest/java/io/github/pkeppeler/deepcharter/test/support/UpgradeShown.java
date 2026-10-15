@@ -39,7 +39,7 @@ public final class UpgradeShown {
         try {
             return MARKED.getBoolean(button);
         } catch (IllegalAccessException e) {
-            throw new AssertionError("cannot read CrtButton.marked", e);
+            throw new LinkageError("cannot read CrtButton.marked", e);
         }
     }
 
@@ -49,8 +49,7 @@ public final class UpgradeShown {
             field.setAccessible(true);
             return field;
         } catch (ReflectiveOperationException e) {
-            throw new AssertionError(
-                    "CrtButton has no field marked; the upgrade tests read the chosen track by name", e);
+            throw new LinkageError("CrtButton has no field marked; the upgrade tests read the chosen track by name", e);
         }
     }
 }

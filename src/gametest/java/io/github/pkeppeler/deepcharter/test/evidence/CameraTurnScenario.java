@@ -18,7 +18,7 @@ public class CameraTurnScenario extends EvidenceScenario {
 
     @Override
     protected void run(ClientGameTestContext context) {
-        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+        try (TestSingleplayerContext _ = context.worldBuilder().create()) {
             context.waitTicks(40);
             screenshot(context, "world-loaded");
             for (int i = 0; i < FRAMES; i++) {

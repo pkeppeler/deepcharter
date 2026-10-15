@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.Serials;
+import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -128,7 +129,8 @@ public final class Hangar {
         return slots.stream()
                 .filter(slot -> {
                     AABB box = type.getDimensions().makeBoundingBox(slot);
-                    return level.hasChunkAt(BlockPos.containing(slot))
+                    BlockPos slotPos = BlockPos.containing(slot);
+                    return LoadedBlocks.isLoaded(level, slotPos)
                             && level.noCollision(box)
                             // entity-query: the bay is within a few blocks of the player at the console (a terminal's
                             // reach), so its chunks are entity-ticking

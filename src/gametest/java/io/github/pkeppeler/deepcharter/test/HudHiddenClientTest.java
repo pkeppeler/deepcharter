@@ -13,7 +13,9 @@ import net.minecraft.server.level.ParticleStatus;
  * is shared by every client test, so a leak here would fail the next test that draws on the HUD.
  */
 public class HudHiddenClientTest implements FabricClientGameTest {
-    private static final class Boom extends RuntimeException {}
+    private static final class Boom extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+    }
 
     @Override
     public void runTest(ClientGameTestContext context) {
