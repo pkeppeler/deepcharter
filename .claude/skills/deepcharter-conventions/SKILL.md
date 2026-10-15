@@ -36,7 +36,7 @@ Code lives under `io.github.pkeppeler.deepcharter`. Detail beyond this file:
 - Git, for agents that edit (implementer, simplifier): work only in the worktree the brief names, never the main checkout. Commit as you go (a WIP commit is fine). Push the branch (`git push -u origin <branch>`) after the first commit and again before you report; on the first push, open a draft PR whose body says `Closes #<issue>`. Never push `main`, merge, or run `tools/mark-review-passed.sh`: those are the orchestrator's. Why: nothing in flight may live only on this Mac, and a restart once left 26 uncommitted files on #482.
 - Client slots: on macOS at most two game clients run at a time (`DEEPCHARTER_CLIENT_SLOTS`, default 2); a run that finds both taken waits. Details, and what to do after a Ctrl-C, in [tests.md](tests.md#client-slots).
 - On macOS, client GameTests, `tools/record-evidence.sh` and `tools/play.sh` render with Vulkan (MoltenVK), so they run with the screen locked. `DEEPCHARTER_GL=1` uses OpenGL instead (for example for Iris shaders).
-- Client tests are slow and open a window: run them only for the class you changed. CI runs the full set on `gameplay` PRs.
+- Client tests are slow and open a window: run them only for the class you changed, plus every class that reads shared visuals you touched ([tests.md](tests.md)). CI runs the full set on `gameplay` PRs.
 
 ## Code layout
 
@@ -58,8 +58,8 @@ Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features
   ```
 
   Fix the findings with `org.jspecify.annotations.Nullable`, the one the dependency and options are wired for. The first PR that marks a mixin package checks whether `@Unique` fields and `@Shadow` methods need NullAway exclusions (only `@Shadow` fields are excluded today). A `CrtScreen` widget field that `layout()` assigns is `@Nullable` and read through `Objects.requireNonNull(field, "<built by layout() in init()>")`; prefer a local when nothing reads the widget later.
-  Put no Javadoc on a nullability annotation unless the why is not obvious. Pass a checked value as a parameter instead of re-reading a global and asserting. Make the null state unrepresentable instead of writing an accessor that only asserts.
-- A private immutable holder class is a record.
+  Javadoc on a nullability annotation needs a non-obvious why. Pass a checked value as a parameter instead of re-reading a global and asserting. Make the null state unrepresentable instead of writing an accessor that only asserts.
+A private immutable holder class is a record.
 
 Do not spell out counts of enum members or registry entries in prose ("the seven ores"): they drift. Name them, or point at the code.
 
