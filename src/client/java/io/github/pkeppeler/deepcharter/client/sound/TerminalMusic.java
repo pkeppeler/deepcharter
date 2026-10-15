@@ -9,13 +9,14 @@ import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The terminal's music: one loop from the tick a terminal screen opens to the tick it closes. The level's own background music is
  * stopped when it starts, and the level may start its music again while the terminal is open.
  */
 public final class TerminalMusic {
-    private static Music playing;
+    private static @Nullable Music playing;
 
     private TerminalMusic() {}
 

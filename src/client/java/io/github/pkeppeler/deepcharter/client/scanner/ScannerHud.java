@@ -14,8 +14,10 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Side-view minimap of the ridden pod's surroundings, top right. Pod facing runs left to right. Drawn only while the pod has a
@@ -35,7 +37,9 @@ public final class ScannerHud {
     /** GUI pixels kept clear between the altimeter and the panel. */
     private static final int ALTIMETER_GAP = 4;
 
-    private static ScanSlice slice;
+    /** The ridden pod's scan; null while the player rides no pod or its scanner is not working. */
+    private static @Nullable ScanSlice slice;
+
     private static int ticksUntilScan;
 
     private ScannerHud() {}
@@ -198,7 +202,9 @@ public final class ScannerHud {
         graphics.fill(left, top, left + area.columns() * cell, top + area.rows() * cell, look.airColor());
         ScannerMap.draw(graphics, scanned, look, cell, left, top);
         // The cells above the feet cell that the ridden pod fills: 1 for a Mole (two blocks tall), 2 for a Prospector.
-        int podCellsUp = client.player.getVehicle() instanceof PodEntity pod
+        // The player is null for a frame after a disconnect, before the tick clears the slice.
+        LocalPlayer player = client.player;
+        int podCellsUp = player != null && player.getVehicle() instanceof PodEntity pod
                 ? pod.chassis().boreHeight() - 1
                 : 0;
         for (int up = 0; up <= podCellsUp; up++) {

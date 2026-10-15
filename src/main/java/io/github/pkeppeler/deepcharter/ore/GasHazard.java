@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.AABB;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Gas pockets (SPEC section 10). A pocket that is mined, by a pod drill's bore or a player's hand, blasts the blocks
@@ -54,7 +55,7 @@ public final class GasHazard {
      *
      * @param drillingShare the share of the blast the drilling pod takes before its sounder bleeds it: below 1 for a pocket opened in a sideways bore (#424)
      */
-    public static void vent(ServerLevel level, BlockPos pos, PodEntity drilling, float drillingShare) {
+    public static void vent(ServerLevel level, BlockPos pos, @Nullable PodEntity drilling, float drillingShare) {
         if (venting) {
             return;
         }

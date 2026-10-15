@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
 import java.util.Map;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Every art value of the client UI, as read from the resource packs by {@link UiThemeLoader} (ADR 0032): one typed record for each area
@@ -40,7 +41,7 @@ public record UiTheme(
     static final Set<String> AREAS = Set.of(
             "crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod", "panel", "cockpit", "tow");
 
-    private static volatile UiTheme current;
+    private static volatile @Nullable UiTheme current;
 
     /** The theme in force. Throws before the first resource reload has loaded one. */
     public static UiTheme current() {
@@ -55,32 +56,41 @@ public record UiTheme(
         current = theme;
     }
 
+    /** An area of a map whose keys {@link #of} has already checked against {@link #AREAS}. */
+    private static ThemeData area(Map<String, ThemeData> areas, String name) {
+        ThemeData data = areas.get(name);
+        if (data == null) {
+            throw new IllegalStateException("The UI theme has no area '" + name + "'");
+        }
+        return data;
+    }
+
     /** Builds the theme from its areas, which must all be there, and logs any key that nothing read. */
     public static UiTheme of(Map<String, ThemeData> areas) {
         if (!areas.keySet().equals(AREAS)) {
             throw new IllegalStateException("The UI theme needs the areas " + AREAS + ", has " + areas.keySet());
         }
         UiTheme theme = new UiTheme(
-                CrtTuning.of(areas.get("crt")),
-                HandbookScreenTuning.of(areas.get("handbook")),
-                ScannerLook.of(areas.get("scanner")),
-                HudLook.of(areas.get("hud")),
-                TransmissionLook.of(areas.get("transmission")),
-                BreachLook.of(areas.get("breach")),
-                CargoLook.of(areas.get("cargo")),
-                PodPaintLook.of(areas.get("pod")),
-                PanelLook.of(areas.get("panel")),
-                CockpitLook.of(areas.get("cockpit")),
-                TowChainLook.of(areas.get("tow")));
+                CrtTuning.of(area(areas, "crt")),
+                HandbookScreenTuning.of(area(areas, "handbook")),
+                ScannerLook.of(area(areas, "scanner")),
+                HudLook.of(area(areas, "hud")),
+                TransmissionLook.of(area(areas, "transmission")),
+                BreachLook.of(area(areas, "breach")),
+                CargoLook.of(area(areas, "cargo")),
+                PodPaintLook.of(area(areas, "pod")),
+                PanelLook.of(area(areas, "panel")),
+                CockpitLook.of(area(areas, "cockpit")),
+                TowChainLook.of(area(areas, "tow")));
         if (theme.transmission().maxWidth() <= 2 * theme.crt().padding()) {
-            throw new IllegalArgumentException(areas.get("transmission")
+            throw new IllegalArgumentException(area(areas, "transmission")
                             .conflict(
                                     "maxWidth must be more than twice the padding of the crt area, "
                                             + "or the panel has no room for text",
                                     "maxWidth")
                             .getMessage()
                     + "; "
-                    + areas.get("crt")
+                    + area(areas, "crt")
                             .conflict("padding is " + theme.crt().padding(), "padding")
                             .getMessage());
         }

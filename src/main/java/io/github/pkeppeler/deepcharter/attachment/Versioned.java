@@ -5,6 +5,7 @@ import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.MapCodec;
 import io.netty.buffer.ByteBuf;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
@@ -116,7 +117,10 @@ public sealed interface Versioned<T> {
     static <T> Optional<T> readable(AttachmentTarget owner, AttachmentType<Versioned<T>> type) {
         Versioned<T> versioned = owner.getAttached(type);
         if (versioned == null) {
-            versioned = type.initializer().get();
+            var initializer = Objects.requireNonNull(
+                    type.initializer(),
+                    "attachment type " + type.identifier() + " has no initializer to read a default from");
+            versioned = initializer.get();
         }
         return switch (versioned) {
             case Readable<T> readable -> Optional.of(readable.value());
