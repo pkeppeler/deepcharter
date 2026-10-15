@@ -32,7 +32,7 @@ public class FarChunksTest {
         helper.succeed();
     }
 
-    /** #569: a chunk left forced pins up to 17 x 17 chunks of proto chunks, and the live heap grew with the suite. */
+    /** #569 */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS)
     public void aChunkIsNotForcedAfterTheTestThatForcedItFinished(GameTestHelper helper) {
         FarChunks.Deadline deadline = FarChunks.deadline();

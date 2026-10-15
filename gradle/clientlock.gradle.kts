@@ -235,7 +235,7 @@ abstract class ClientLock : BuildService<BuildServiceParameters.None>, AutoClose
 	}
 }
 
-// The server GameTest JVM has its own pool (#541): -Xmx2G each (6G until #569), so the default of 2 at once is conservative. The default is unchanged: it was not measured with more at once.
+// The server GameTest JVM has its own pool (#541): -Xmx2G each.
 abstract class ServerTestLock : ClientLock() {
 	override fun slotsEnv(): String = "DEEPCHARTER_SERVER_TEST_SLOTS"
 	override fun lockName(): String = "server-test.lock"
