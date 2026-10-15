@@ -7,6 +7,7 @@ overlay pack (docs/design/texture-density-2.md) holds no vanilla file, and its o
 ores (docs/design/ores.md) are overlays too: the tests below hold them to the same rules, and to the table of looks in that page.
 """
 import json
+import math
 import re
 import struct
 import sys
@@ -17,8 +18,10 @@ from pathlib import Path
 TOOLS = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(TOOLS))
 sys.path.insert(0, str(TOOLS / "textures"))
+sys.path.insert(0, str(TOOLS / "layer_concepts"))
 
 import pngio  # noqa: E402
+import seams  # noqa: E402
 import texgen  # noqa: E402
 
 MOD_ASSETS = texgen.ROOT / "src/main/resources/assets"
@@ -29,6 +32,11 @@ VANILLA_FILES = {"textures/environment/celestial/sun.png", *(f"textures/block/{n
                                                            for suffix in (".png", ".png.mcmeta"))}
 # The vanilla blocks a pack may redraw: the texture density packs redraw stone and deepslate. The layer concept packs (docs/design/layer-concepts-2.md)
 # stand in vanilla andesite and diorite for the rock and rubble of layer 3, which has no blocks of its own until M3 (#504).
+# Delta E of a fleck pixel from the host rock's mean at which the two are plainly different colours (a just noticeable difference is about 2.3).
+DISTINCT = 20.0
+# The floors of the flecks' contrast against a host rock (test_every_ore_stands_out_of_every_rock_it_sits_in).
+MIN_FLECK_MEAN_DELTA_E = 38.0
+MIN_FLECK_CLEAR_SHARE = 0.9
 VANILLA_BLOCKSTATES = {f"minecraft/blockstates/{name}.json" for name in ("stone", "deepslate", "andesite", "diorite")}
 
 
@@ -53,6 +61,29 @@ def model_refs(body) -> list[str]:
     return []
 
 
+def ore_models(assets: Path) -> list[Path]:
+    """The models of the ore blocks in a pack: those that inherit the overlay parent."""
+    return [model for model in sorted((assets / "deepcharter/models/block").glob("*.json"))
+            if json.loads(model.read_text()).get("parent") == "deepcharter:block/ore_overlay"]
+
+
+def lab(rgb) -> tuple[float, float, float]:
+    """CIE L*a*b* (D65) of an sRGB colour."""
+    def linear(channel: float) -> float:
+        channel /= 255
+        return channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (linear(c) for c in rgb[:3])
+    xyz = ((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047, 0.2126 * r + 0.7152 * g + 0.0722 * b,
+           (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883)
+    x, y, z = (v ** (1 / 3) if v > 0.008856 else 7.787 * v + 16 / 116 for v in xyz)
+    return 116 * y - 16, 500 * (x - y), 200 * (y - z)
+
+
+def delta_e(a, b) -> float:
+    return math.dist(lab(a), lab(b))
+
+
 def png_size(path: Path) -> tuple[int, int]:
     return struct.unpack(">II", path.read_bytes()[16:24])
 
@@ -75,19 +106,84 @@ class TexturePacksTest(unittest.TestCase):
         shipped = {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
         self.assertEqual(VANILLA_FILES, shipped, "a file under assets/minecraft/ overrides a vanilla one; draw over it by reference")
 
-    def test_an_overlay_replaces_nothing_of_vanilla_and_draws_each_ore_over_the_host_by_reference(self):
-        """The mod's own ores and every overlay pack: each ore model names the host's texture, vanilla's, and not a copy of it."""
+    def test_an_overlay_replaces_nothing_of_vanilla_and_draws_each_ore_over_a_rock_of_the_mod_by_reference(self):
+        """The mod's own ores and every overlay pack: each ore model names the textures of a rock block of the mod, and not a copy of
+        vanilla's stone."""
         places = [("the mod", MOD_ASSETS)] + [(name, texgen.ROOT / entry["pack"] / "assets")
                                               for name, entry in sorted(texgen.variants().items()) if "overlays" in entry]
         for name, assets in places:
             with self.subTest(overlay=name):
                 if assets != MOD_ASSETS:
                     self.assertFalse((assets / "minecraft").exists(), "an overlay pack holds a vanilla file")
-                models = sorted((assets / "deepcharter/models/block").glob("*_overlay_*.json"))
+                models = ore_models(assets)
                 self.assertTrue(models)
                 for model in models:
-                    host = json.loads(model.read_text())["textures"]["host"]
-                    self.assertIsNone(resolve(assets, host, "textures", ".png"), f"{model.name}: the host {host} is not vanilla's")
+                    textures = json.loads(model.read_text())["textures"]
+                    for use in ("side", "end", "overlay"):
+                        self.assertTrue(resolve(assets, textures[use], "textures", ".png").is_file(),
+                                        f"{model.name}: the {use} texture {textures[use]} is not a texture of the mod")
+
+    def test_each_ore_block_has_a_model_of_every_rock_it_can_sit_in_and_each_draws_that_rock(self):
+        """The shipped ore blocks (overlays.json): a state for each host, with a model for each of its variants, and that model's side and
+        end textures are the host's own rock."""
+        body = json.loads(texgen.OVERLAYS.read_text())
+        for block in body["blocks"]:
+            state = json.loads((MOD_ASSETS / f"deepcharter/blockstates/{block}.json").read_text())["variants"]
+            self.assertEqual({f"{body['property']}={host}" for host in body["hosts"]}, set(state), block)
+            for host, rock in body["hosts"].items():
+                models = state[f"{body['property']}={host}"]
+                self.assertEqual(body["variants"], len(models), f"{block} in {host}")
+                for entry in models:
+                    textures = json.loads(resolve(MOD_ASSETS, entry["model"], "models", ".json").read_text())["textures"]
+                    self.assertRegex(textures["side"], rf"^deepcharter:block/{rock}_\d$", entry["model"])
+                    self.assertRegex(textures["end"], rf"^deepcharter:block/{rock}_end_\d$", entry["model"])
+
+    def test_an_ore_tiles_like_the_rock_it_sits_in(self):
+        """#549: the ore over its host rock, as a block face draws it, passes the seam check of tools/layer_concepts/seams.py (the colour step
+        across the wrap seams, and across the outer rings, is no bigger than the steps inside the texture, within its margin). An overlay's edge
+        is only ore ramp colours (the test above), so this holds the composite to what the rock alone is held to."""
+        shipped = texgen.shipped()
+        body = json.loads(texgen.OVERLAYS.read_text())
+        for block in body["blocks"]:
+            for host, rock in body["hosts"].items():
+                for index in range(body["variants"]):
+                    overlay = pngio.decode((shipped.out / f"block/{block}_overlay_{index % body['textures']}.png").read_bytes())
+                    for host_texture in (f"{rock}_{index}", f"{rock}_end_{index % body['ends']}"):
+                        rock_image = pngio.decode((shipped.out / f"block/{host_texture}.png").read_bytes())
+                        pixels = bytearray(rock_image.pixels)
+                        for at in range(0, len(pixels), 4):
+                            if overlay.pixels[at + 3]:
+                                pixels[at:at + 3] = overlay.pixels[at:at + 3]
+                        found = seams.measure(bytes(pixels), rock_image.width)
+                        with self.subTest(block=block, host=host_texture, overlay=index % body["textures"]):
+                            self.assertTrue(found.seamless(), f"wrap {found.wrap_ratio:.2f}, rim {found.rim_ratio:.2f}")
+
+    def test_every_ore_stands_out_of_every_rock_it_sits_in(self):
+        """#549: a player reads a wall by lamplight, with no scanner, so the flecks of an ore must differ from the rock they sit in. The measure
+        is CIE76 delta E (a distance in a space built so that equal steps look equal, and that counts hue as well as lightness: teal on green rock
+        and red on brown rock are not told by lightness alone) between each fleck pixel and the mean colour of the host's side textures. A lamp
+        dims every colour alike, so the order holds in the dark. The flecks are the ore's ramp but its darkest shade, which is the rim. A fleck
+        pixel is clear when its delta E is DISTINCT or more. Measured: the lowest means are silverium in green shale at 41.5 and platinium in green shale at 43.8, and the floors sit under them."""
+        shipped = texgen.shipped()
+        body = json.loads(texgen.OVERLAYS.read_text())
+
+        def pixels(name: str) -> list[tuple[int, ...]]:
+            image = pngio.decode((shipped.out / f"block/{name}.png").read_bytes())
+            return [tuple(image.pixels[at:at + 4]) for at in range(0, len(image.pixels), 4)]
+
+        for host, rock in body["hosts"].items():
+            rock_pixels = [p for index in range(body["variants"]) for p in pixels(f"{rock}_{index}")]
+            mean = tuple(sum(p[channel] for p in rock_pixels) / len(rock_pixels) for channel in range(3))
+            for block in body["blocks"]:
+                flecks = [p for index in range(body["textures"]) for p in pixels(f"{block}_overlay_{index}")
+                          if p[3] == 255 and p in {colour for layer in shipped.book.recipes[f"block/{block}_overlay_{index}"].layers
+                                                   if layer["op"] in ("cluster", "seams")
+                                                   for colour in shipped.book.palette.ramp(layer["ramp"], block)[1:]}]
+                with self.subTest(block=block, host=host):
+                    self.assertTrue(flecks)
+                    steps = [delta_e(p, mean) for p in flecks]
+                    self.assertGreaterEqual(sum(steps) / len(steps), MIN_FLECK_MEAN_DELTA_E)
+                    self.assertGreaterEqual(sum(step >= DISTINCT for step in steps) / len(steps), MIN_FLECK_CLEAR_SHARE)
 
     def test_only_ore_reaches_the_edge_of_an_overlay(self):
         """Over the host's texture, any pixel on a block's outer ring that is not the ore itself (a shadow, a socket, a tint) draws
@@ -131,8 +227,9 @@ class TexturePacksTest(unittest.TestCase):
             return []
 
         assets = MOD_ASSETS / "deepcharter"
-        files = sorted(assets.glob("models/block/*ore_overlay*.json")) + sorted(assets.glob("blockstates/*ium_ore.json"))
-        self.assertEqual(29 + 7, len(files))
+        files = [assets / "models/block/ore_overlay.json", *ore_models(MOD_ASSETS), *sorted(assets.glob("blockstates/*ium_ore.json"))]
+        body = json.loads(texgen.OVERLAYS.read_text())
+        self.assertEqual(1 + len(body["blocks"]) * len(body["hosts"]) * body["variants"] + len(body["blocks"]), len(files))
         for path in files:
             with self.subTest(file=path.name):
                 self.assertEqual([], lit(json.loads(path.read_text())))

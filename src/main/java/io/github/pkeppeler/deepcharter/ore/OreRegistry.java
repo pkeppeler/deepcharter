@@ -40,7 +40,7 @@ public final class OreRegistry {
             Block block = Registry.register(
                     BuiltInRegistries.BLOCK,
                     blockKey,
-                    new Block(BlockBehaviour.Properties.of()
+                    new OreBlock(BlockBehaviour.Properties.of()
                             .setId(blockKey)
                             .strength(3.0F, 3.0F)
                             .sound(SoundType.STONE)));

@@ -387,7 +387,8 @@ class VariantTest(unittest.TestCase):
         write_json(self.root / "o" / "recipes" / "r.json", {"recipes": {
             f"block/goldium_ore_overlay_{i}": {"kind": "cutout", "layers": [{"op": "fill", "colour": "host.1", "rect": [4, 4, 2, 2]}]}
             for i in range(2)}})
-        self.overlays = {"host": "minecraft:block/stone", "textures": 2, "blocks": ["goldium_ore"]}
+        self.overlays = {"property": "host", "hosts": {"alpha": "alpha_rock"}, "variants": 3, "ends": 2, "textures": 2,
+                         "blocks": ["goldium_ore"]}
         self.variants({"palettes": ["o/palette.json"], "recipes": ["o/recipes"], "pack": "opack", "overlays": self.overlays})
         patches = [mock.patch.object(texgen, "VARIANTS", self.root / "variants.json"), mock.patch.object(texgen, "ROOT", self.root)]
         for patch in patches:
@@ -427,16 +428,18 @@ class VariantTest(unittest.TestCase):
         assets = self.root / "opack" / "assets"
         self.assertEqual((0x20, 0x20, 0x20, 255), Canvas.from_rgba(pngio.decode(
             (assets / "deepcharter/textures/block/goldium_ore_overlay_1.png").read_bytes())).get(4, 4))
-        self.assertEqual({"variants": {"": [{"model": "deepcharter:block/goldium_ore_overlay_0"},
-                                            {"model": "deepcharter:block/goldium_ore_overlay_1"}]}},
+        self.assertEqual({"variants": {"host=alpha": [{"model": f"deepcharter:block/goldium_ore_alpha_{i}"} for i in range(3)]}},
                          json.loads((assets / "deepcharter/blockstates/goldium_ore.json").read_text()))
-        self.assertEqual({"parent": "deepcharter:block/ore_overlay", "textures": {
-            "host": "minecraft:block/stone", "overlay": "deepcharter:block/goldium_ore_overlay_1"}},
-            json.loads((assets / "deepcharter/models/block/goldium_ore_overlay_1.json").read_text()))
+        for index, (end, overlay) in enumerate([(0, 0), (1, 1), (0, 0)]):
+            self.assertEqual({"parent": "deepcharter:block/ore_overlay", "textures": {
+                "side": f"deepcharter:block/alpha_rock_{index}", "end": f"deepcharter:block/alpha_rock_end_{end}",
+                "overlay": f"deepcharter:block/goldium_ore_overlay_{overlay}"}},
+                json.loads((assets / f"deepcharter/models/block/goldium_ore_alpha_{index}.json").read_text()))
         parent = json.loads((assets / "deepcharter/models/block/ore_overlay.json").read_text())
-        self.assertEqual(("minecraft:block/block", {"particle": "#host"}), (parent["parent"], parent["textures"]))
-        self.assertEqual([{face: {"texture": layer, "cullface": face} for face in ("down", "up", "north", "south", "west", "east")}
-                          for layer in ("#host", "#overlay")], [element["faces"] for element in parent["elements"]])
+        self.assertEqual(("minecraft:block/block", {"particle": "#side"}), (parent["parent"], parent["textures"]))
+        faces = ("down", "up", "north", "south", "west", "east")
+        self.assertEqual([{face: {"texture": "#end" if face in ("down", "up") else "#side", "cullface": face} for face in faces},
+                          {face: {"texture": "#overlay", "cullface": face} for face in faces}], [element["faces"] for element in parent["elements"]])
         self.assertEqual([([0, 0, 0], [16, 16, 16])] * 2, [(element["from"], element["to"]) for element in parent["elements"]])
         self.assertEqual(0, run("--variant", "o", "--check")[0])
 
@@ -456,13 +459,13 @@ class VariantTest(unittest.TestCase):
 
     def test_a_changed_overlay_model_fails_the_check_and_a_build_restores_it(self):
         self.assertEqual(0, run("--variant", "o")[0])
-        model = self.root / "opack/assets/deepcharter/models/block/goldium_ore_overlay_0.json"
+        model = self.root / "opack/assets/deepcharter/models/block/goldium_ore_alpha_0.json"
         model.write_text("{}")
         code, _, err = run("--variant", "o", "--check")
         self.assertEqual(1, code)
-        self.assertIn("\n  opack/assets/deepcharter/models/block/goldium_ore_overlay_0.json", err)
+        self.assertIn("\n  opack/assets/deepcharter/models/block/goldium_ore_alpha_0.json", err)
         self.assertEqual(0, run("--variant", "o")[0])
-        self.assertIn("minecraft:block/stone", model.read_text())
+        self.assertIn("alpha_rock_0", model.read_text())
 
     def test_an_overlay_block_whose_texture_has_no_recipe_or_is_opaque_fails_naming_it(self):
         self.variants({"palettes": ["o/palette.json"], "recipes": ["o/recipes"], "pack": "opack",
@@ -476,8 +479,8 @@ class VariantTest(unittest.TestCase):
         self.assertEqual(2, code)
         self.assertIn("block/goldium_ore_overlay_0: an overlay is a cutout texture", err)
 
-    def test_overlays_with_a_missing_key_a_bare_host_or_a_true_count_are_refused(self):
-        for overlays in ({"host": "minecraft:block/stone", "textures": 2}, {**self.overlays, "host": "stone"},
+    def test_overlays_with_a_missing_key_a_bad_property_no_hosts_or_a_true_count_are_refused(self):
+        for overlays in ({"property": "host", "textures": 2}, {**self.overlays, "property": "Host"}, {**self.overlays, "hosts": {}},
                          {**self.overlays, "textures": True}):
             with self.subTest(overlays=overlays):
                 self.variants({"palettes": [], "recipes": ["o/recipes"], "pack": "opack", "overlays": overlays})

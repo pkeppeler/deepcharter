@@ -11,13 +11,13 @@
             "op": "cluster",
             "seed": "$seed",
             "ramp": [
-              "ironium.0",
-              "rust.1",
-              "rust.3",
-              "ironium.3",
-              "ironium.4"
+              "ironium_fleck.0",
+              "ironium_fleck.2",
+              "ironium_fleck.3",
+              "ironium_fleck.3",
+              "ironium_fleck.4"
             ],
-            "shadow": "host.1",
+            "shadow": "ore_shadow.1",
             "count": 4,
             "radius": [
               1.6,
@@ -42,8 +42,8 @@
           {
             "op": "cluster",
             "seed": "$seed",
-            "ramp": "bronzium",
-            "shadow": "host.1",
+            "ramp": "bronzium_fleck",
+            "shadow": "ore_shadow.1",
             "count": 2,
             "radius": [
               2.5,
@@ -68,8 +68,8 @@
           {
             "op": "seams",
             "seed": "$seed",
-            "ramp": "silverium",
-            "shadow": "host.1",
+            "ramp": "silverium_fleck",
+            "shadow": "ore_shadow.1",
             "count": 1,
             "thickness": [
               1,
@@ -83,8 +83,8 @@
           {
             "op": "cluster",
             "seed": "$seed",
-            "ramp": "silverium",
-            "shadow": "host.1",
+            "ramp": "silverium_fleck",
+            "shadow": "ore_shadow.1",
             "count": 2,
             "radius": [
               1.7,
@@ -110,8 +110,8 @@
           {
             "op": "seams",
             "seed": "$seed",
-            "ramp": "goldium",
-            "shadow": "host.1",
+            "ramp": "goldium_fleck",
+            "shadow": "ore_shadow.1",
             "count": 1,
             "thickness": [
               1,
@@ -125,8 +125,8 @@
           {
             "op": "cluster",
             "seed": "$seed",
-            "ramp": "goldium",
-            "shadow": "host.1",
+            "ramp": "goldium_fleck",
+            "shadow": "ore_shadow.1",
             "count": 1,
             "radius": [
               2.7,
@@ -151,8 +151,8 @@
           {
             "op": "seams",
             "seed": "$seed",
-            "ramp": "platinium",
-            "shadow": "host.1",
+            "ramp": "platinium_fleck",
+            "shadow": "ore_shadow.1",
             "count": 2,
             "thickness": [
               2,
@@ -176,8 +176,8 @@
           {
             "op": "cluster",
             "seed": "$seed",
-            "ramp": "einsteinium",
-            "shadow": "host.0",
+            "ramp": "einsteinium_fleck",
+            "shadow": "ore_shadow.0",
             "count": 2,
             "radius": [
               1.7,
@@ -190,11 +190,11 @@
             "crystal": true,
             "socket": [
               [
-                "host.0",
+                "ore_shadow.0",
                 0.9
               ],
               [
-                "host.1",
+                "ore_shadow.1",
                 0.55
               ]
             ]
@@ -212,8 +212,8 @@
           {
             "op": "seams",
             "seed": "$seed",
-            "ramp": "cicatrium",
-            "shadow": "host.1",
+            "ramp": "cicatrium_fleck",
+            "shadow": "ore_shadow.1",
             "count": 1,
             "thickness": [
               1,
@@ -227,8 +227,8 @@
           {
             "op": "cluster",
             "seed": "$seed",
-            "ramp": "cicatrium",
-            "shadow": "host.0",
+            "ramp": "cicatrium_fleck",
+            "shadow": "ore_shadow.0",
             "count": 1,
             "radius": [
               1.9,
@@ -240,11 +240,11 @@
             "glints": 1,
             "socket": [
               [
-                "host.0",
+                "ore_shadow.0",
                 0.9
               ],
               [
-                "host.1",
+                "ore_shadow.1",
                 0.55
               ]
             ]

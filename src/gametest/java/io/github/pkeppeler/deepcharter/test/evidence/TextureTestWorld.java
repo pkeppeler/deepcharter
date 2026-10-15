@@ -3,8 +3,10 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
@@ -61,8 +63,8 @@ import net.minecraft.world.phys.Vec3;
  * variant, named {@code <variant>-<view>}; a variant's test pack is turned on, as a player does in the pack screen, and off again.
  *
  * <p>The light is what a player has: a pod lamp is a level 12 light (a tier 3 lights part), with no night vision. The rooms: a
- * cavern in layer 1 with its south wall made plain stone and every ore set in it, the lamp three blocks out; a bored shaft lit every
- * four blocks down; three terminals and two Company rocks in a lamp-lit room; and the seam wall, where the ores sit in plain stone
+ * cavern in layer 1 with its south wall made of the layer's rock and every ore set in it, the lamp three blocks out; a bored shaft lit every
+ * four blocks down; three terminals and two Company rocks in a lamp-lit room; and the seam wall, where the ores sit in plain rock
  * in a checkerboard, so that every edge of an ore meets stone, with the lamp two blocks out.
  */
 final class TextureTestWorld {
@@ -73,7 +75,7 @@ final class TextureTestWorld {
     /** The cavern room in layer 1: its floor is at {@link #ROOM}, and its south wall, where the ores are, at {@code z + WALL}. */
     private static final BlockPos ROOM = new BlockPos(2600, 100, 2600);
 
-    private static final int WALL = 3;
+    static final int WALL = 3;
     private static final int HALF_WIDTH = 6;
     private static final int HEIGHT = 5;
     private static final int LAMP = 12;
@@ -83,9 +85,9 @@ final class TextureTestWorld {
     private static final int SHAFT_DEPTH = 28;
     /** The terminal room: three terminals against its south wall, for the 32x terminals of C. */
     private static final BlockPos TERMINAL_ROOM = new BlockPos(2600, 100, 2570);
-    /** The seam room: its south wall, at {@code z + WALL}, is plain stone with the ores in a checkerboard. */
+    /** The seam room: its south wall, at {@code z + WALL}, is plain rock with the ores in a checkerboard. */
     private static final BlockPos SEAM_ROOM = new BlockPos(2600, 100, 2630);
-    /** The reference room: its south wall, at {@code z + WALL}, is plain stone with every ore in a column of its own. */
+    /** The reference room: its south wall, at {@code z + WALL}, is plain rock with every ore in a column of its own. */
     private static final BlockPos REFERENCE_ROOM = new BlockPos(2600, 100, 2660);
 
     private static final int REFERENCE_HALF_WIDTH = 7;
@@ -100,7 +102,7 @@ final class TextureTestWorld {
             Map.entry(new BlockPos(2, 3, 0), OreBlocks.of(OreType.SILVERIUM)),
             Map.entry(new BlockPos(4, 2, 0), OreBlocks.of(OreType.PLATINIUM)),
             Map.entry(new BlockPos(5, 0, 0), HazardBlocks.COMPANY_ROCK));
-    /** The ores in the seam wall, 5 wide and 3 high from the floor, each with plain stone on all four sides. */
+    /** The ores in the seam wall, 5 wide and 3 high from the floor, each with plain rock on all four sides. */
     private static final Map<BlockPos, Block> SEAM_BLOCKS = Map.ofEntries(
             Map.entry(new BlockPos(-2, 0, 0), OreBlocks.of(OreType.BRONZIUM)),
             Map.entry(new BlockPos(0, 0, 0), OreBlocks.of(OreType.SILVERIUM)),
@@ -174,7 +176,7 @@ final class TextureTestWorld {
     }
 
     /**
-     * A sealed room in the layer 1 rock with its south wall made plain stone and the ores (and one Company rock) set into it, and a
+     * A sealed room in the layer 1 rock with its south wall made of the layer's rock and the ores (and one Company rock) set into it, and a
      * pod lamp three blocks out from the wall. The room's other walls, floor and ceiling are the layer's own rock.
      */
     void buildCavern() {
@@ -185,7 +187,7 @@ final class TextureTestWorld {
         });
     }
 
-    /** A sealed room like the cavern, whose south wall holds the ores in a checkerboard of plain stone, lit two blocks out. */
+    /** A sealed room like the cavern, whose south wall holds the ores in a checkerboard of plain rock, lit two blocks out. */
     void buildSeamWall() {
         serverDo(server -> {
             ServerLevel level = server.getLevel(LayerChain.dimension(1));
@@ -195,8 +197,8 @@ final class TextureTestWorld {
     }
 
     /**
-     * A sealed room like the cavern, whose south wall holds each ore in a column of its own, three high, with plain stone between
-     * every two ores, in the order of {@link OreType}, lit two blocks out: every ore on its host stone, at the size it shows.
+     * A sealed room like the cavern, whose south wall holds each ore in a column of its own, three high, with plain rock between
+     * every two ores, in the order of {@link OreType}, lit two blocks out: every ore on its host rock, at the size it shows.
      */
     void buildReferenceWall() {
         serverDo(server -> {
@@ -213,20 +215,27 @@ final class TextureTestWorld {
         });
     }
 
-    private static void buildWall(ServerLevel level, BlockPos room, int halfWidth, Map<BlockPos, Block> blocks) {
+    /**
+     * A sealed room in a layer with its south wall (at {@code z + WALL}) made of the layer's own rock, and {@code blocks} set into it:
+     * an ore sits in that rock ({@link OreBlock#in}).
+     */
+    static void buildWall(ServerLevel level, BlockPos room, int halfWidth, Map<BlockPos, Block> blocks) {
         loadChunks(level, room, 2);
         RoomCarver.carve(
                 level,
                 room.offset(-halfWidth, 0, -WALL - 5),
                 room.offset(halfWidth, HEIGHT - 1, WALL - 1),
                 Blocks.AIR.defaultBlockState());
+        Block rock = LayerBlocks.groundOf(level);
         for (int dx = -halfWidth - 1; dx <= halfWidth + 1; dx++) {
             for (int dy = -1; dy <= HEIGHT; dy++) {
-                level.setBlock(room.offset(dx, dy, WALL), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+                level.setBlock(room.offset(dx, dy, WALL), rock.defaultBlockState(), Block.UPDATE_ALL);
             }
         }
-        blocks.forEach((at, block) ->
-                level.setBlock(room.offset(at.getX(), at.getY(), WALL), block.defaultBlockState(), Block.UPDATE_ALL));
+        blocks.forEach((at, block) -> level.setBlock(
+                room.offset(at.getX(), at.getY(), WALL),
+                block instanceof OreBlock ore ? ore.in(rock.defaultBlockState()) : block.defaultBlockState(),
+                Block.UPDATE_ALL));
     }
 
     /**
@@ -309,7 +318,7 @@ final class TextureTestWorld {
         still(variant + "-shaft-wall-mid");
     }
 
-    /** The seam wall square on: the whole checkerboard, then its goldium close up, with the plain stone on its four sides. */
+    /** The seam wall square on: the whole checkerboard, then its goldium close up, with the plain rock on its four sides. */
     void seamWall(String variant) {
         Vec3 wall = Vec3.atBottomCenterOf(SEAM_ROOM).add(0, 1.5, WALL);
         view(1, wall.add(0, 0, -2.8), wall, 40);
