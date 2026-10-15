@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -28,6 +29,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The Employee Handbook: a paper booklet, with a Handbook tab (cover, issue slip, Founder's letter, contents, the chapters and the
@@ -76,7 +78,9 @@ public final class HandbookScreen extends Screen {
     private int previousPage;
     private int flipTicks;
     private boolean notesTab;
-    private Identifier openNote;
+    /** The Note being read on the Notes tab; absent while the list shows. */
+    private @Nullable Identifier openNote;
+
     private final ScrollList noteScroll =
             new ScrollList(this::noteCount, () -> Math.max(1, noteRows().size()), () -> {});
     /** The sheet of the open Note being read, from 0: a Note longer than one sheet runs on to the next. */
@@ -90,11 +94,16 @@ public final class HandbookScreen extends Screen {
     private int textWidth;
     private int marginLeft;
     private int marginWidth;
-    private PaperButton back;
-    private PaperButton next;
-    private PaperButton handbookTab;
-    private PaperButton notesButton;
-    private PaperButton noteBack;
+    /** The widgets {@link #init} builds. */
+    private record Buttons(
+            PaperButton back,
+            PaperButton next,
+            PaperButton handbookTab,
+            PaperButton notesButton,
+            PaperButton noteBack) {}
+
+    /** Absent until {@link #init} has built the widgets. */
+    private @Nullable Buttons buttons;
 
     /**
      * @param pages    the pages of the Handbook tab, from {@link HandbookPages#of}
@@ -146,7 +155,10 @@ public final class HandbookScreen extends Screen {
     /** The pages of the Handbook tab, from the chapters and progress the server synced. */
     public static List<HandbookPage> currentPages(Minecraft client) {
         Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
-        HandbookChapters.all(client.getConnection().registryAccess())
+        HandbookChapters.all(Objects.requireNonNull(
+                                client.getConnection(),
+                                "the handbook pages need a connection to the server for its chapters")
+                        .registryAccess())
                 .forEach(chapter -> chapters.put(chapter.key().identifier(), chapter.value()));
         return HandbookPages.of(chapters, ClientHandbook.completed());
     }
@@ -288,14 +300,14 @@ public final class HandbookScreen extends Screen {
 
         int tabY = paperTop - tuning().tabHeight() + 1;
         int tabX = paperLeft + tuning().bindingWidth() + 4;
-        handbookTab = addRenderableWidget(new PaperButton(
+        PaperButton handbookTab = addRenderableWidget(new PaperButton(
                 tabX,
                 tabY,
                 tuning().tabWidth(),
                 tuning().tabHeight(),
                 Component.translatable("deepcharter.handbook.screen.tab.handbook"),
                 button -> showHandbook()));
-        notesButton = addRenderableWidget(new PaperButton(
+        PaperButton notesButton = addRenderableWidget(new PaperButton(
                 tabX + tuning().tabWidth() + 2,
                 tabY,
                 tuning().tabWidth(),
@@ -303,27 +315,28 @@ public final class HandbookScreen extends Screen {
                 Component.translatable("deepcharter.handbook.screen.tab.notes"),
                 button -> showNotes()));
         int buttonY = paperTop + paperHeight - tuning().buttonHeight() - 4;
-        noteBack = addRenderableWidget(new PaperButton(
+        PaperButton noteBack = addRenderableWidget(new PaperButton(
                 textLeft,
                 buttonY,
                 tuning().buttonWidth(),
                 tuning().buttonHeight(),
                 Component.translatable("deepcharter.handbook.notes.back"),
                 button -> closeNote()));
-        back = addRenderableWidget(new PaperButton(
+        PaperButton back = addRenderableWidget(new PaperButton(
                 textLeft,
                 buttonY,
                 tuning().buttonWidth(),
                 tuning().buttonHeight(),
                 Component.translatable("deepcharter.handbook.screen.back"),
                 button -> goTo(page - 1)));
-        next = addRenderableWidget(new PaperButton(
+        PaperButton next = addRenderableWidget(new PaperButton(
                 paperLeft + paperWidth - tuning().padding() - tuning().buttonWidth(),
                 buttonY,
                 tuning().buttonWidth(),
                 tuning().buttonHeight(),
                 Component.translatable("deepcharter.handbook.screen.next"),
                 button -> pressNext()));
+        buttons = new Buttons(back, next, handbookTab, notesButton, noteBack);
         // A resize can change how many sheets a Note takes, so the sheet that was on screen may be gone.
         if (openNote != null) {
             notePage = Mth.clamp(notePage, 0, noteSheets() - 1);
@@ -334,7 +347,9 @@ public final class HandbookScreen extends Screen {
     /** The next button turns a page of the handbook, or a sheet of an open Note, and from the last sheet of a Note goes back to its first. */
     private void pressNext() {
         if (notesTab) {
-            turnNote((notePage + 1) % notePages(note(openNote)));
+            turnNote((notePage + 1)
+                    % notePages(note(Objects.requireNonNull(
+                            openNote, "the next button turns Note sheets only while a Note is open"))));
         } else {
             goTo(page + 1);
         }
@@ -355,16 +370,17 @@ public final class HandbookScreen extends Screen {
     }
 
     private void updateButtons() {
-        if (back == null) {
+        Buttons built = buttons;
+        if (built == null) {
             return;
         }
-        back.visible = !notesTab;
-        next.visible = !notesTab || (openNote != null && notePages(note(openNote)) > 1);
-        back.active = !notesTab && page > 0;
-        next.active = notesTab || page < pages.size() - 1;
-        noteBack.visible = notesTab && openNote != null;
-        handbookTab.setSelected(!notesTab);
-        notesButton.setSelected(notesTab);
+        built.back().visible = !notesTab;
+        built.next().visible = !notesTab || (openNote != null && notePages(note(openNote)) > 1);
+        built.back().active = !notesTab && page > 0;
+        built.next().active = notesTab || page < pages.size() - 1;
+        built.noteBack().visible = notesTab && openNote != null;
+        built.handbookTab().setSelected(!notesTab);
+        built.notesButton().setSelected(notesTab);
     }
 
     @Override
@@ -457,13 +473,14 @@ public final class HandbookScreen extends Screen {
             drawNotes(graphics);
         } else {
             drawPage(graphics, pages.get(shown));
+            Buttons built = widgets();
             graphics.centeredText(
                     font,
                     PaperDraw.ink(
                             Component.translatable("deepcharter.handbook.screen.page", shown + 1, pages.size()),
                             tuning().faintInkColor()),
-                    (next.getX() + back.getRight()) / 2,
-                    back.getY() + 3,
+                    (built.next().getX() + built.back().getRight()) / 2,
+                    built.back().getY() + 3,
                     Colors.opaque(tuning().faintInkColor()));
         }
         graphics.pose().popMatrix();
@@ -566,11 +583,18 @@ public final class HandbookScreen extends Screen {
         List<ContentsEntry> entries = new ArrayList<>();
         int y = contentsTop();
         for (int number = contents.firstChapter(); number < contents.firstChapter() + contents.count(); number++) {
-            int pageIndex = chapterPages.get(number);
+            int chapterNumber = number;
+            int pageIndex = Objects.requireNonNull(
+                    chapterPages.get(chapterNumber), () -> "chapter " + chapterNumber + " has no page in the handbook");
             entries.add(new ContentsEntry(pageIndex, textLeft, y - 1, textLeft + textWidth, y + font.lineHeight + 2));
             y += font.lineHeight + 4;
         }
         return entries;
+    }
+
+    /** The widgets, for code that runs only on a screen that has been initialised. */
+    private Buttons widgets() {
+        return Objects.requireNonNull(buttons, () -> "the handbook buttons are built in init(), which has not run");
     }
 
     private int contentsTop() {
@@ -584,7 +608,9 @@ public final class HandbookScreen extends Screen {
         PaperDraw.centered(
                 graphics, font, heading, centerX(), paperTop + tuning().topMargin(), 1.25f, tuning().inkColor());
         for (ContentsEntry box : contentsEntries(contents)) {
-            HandbookPage.Chapter chapter = chapters.get(chapterNumberAt(box.page()));
+            int chapterNumber = chapterNumberAt(box.page());
+            HandbookPage.Chapter chapter = Objects.requireNonNull(
+                    chapters.get(chapterNumber), () -> "chapter " + chapterNumber + " has no chapter page");
             int y = box.top() + 1;
             if (chapter.visibility() == HandbookVisibility.CLASSIFIED) {
                 PaperDraw.redacted(
@@ -835,13 +861,14 @@ public final class HandbookScreen extends Screen {
         }
         int sheets = notePages(note);
         if (sheets > 1) {
+            Buttons built = widgets();
             graphics.centeredText(
                     font,
                     PaperDraw.ink(
                             Component.translatable("deepcharter.handbook.screen.page", notePage + 1, sheets),
                             tuning().faintInkColor()),
-                    (next.getX() + noteBack.getRight()) / 2,
-                    noteBack.getY() + 3,
+                    (built.next().getX() + built.noteBack().getRight()) / 2,
+                    built.noteBack().getY() + 3,
                     Colors.opaque(tuning().faintInkColor()));
         }
     }
