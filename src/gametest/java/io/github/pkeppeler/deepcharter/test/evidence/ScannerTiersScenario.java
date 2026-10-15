@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -40,7 +41,11 @@ public class ScannerTiersScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the client in layer 2",
-                    client -> client.level.dimension().identifier().getPath().equals("layer_2"));
+                    client -> ClientLight.clientLevel(client)
+                            .dimension()
+                            .identifier()
+                            .getPath()
+                            .equals("layer_2"));
             context.waitTicks(40);
             RoomCarver.carveAroundFirstPlayer(server);
 

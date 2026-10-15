@@ -10,12 +10,15 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -29,13 +32,13 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "reacher-figure" (#250): the lampless figure, the Reacher, in the place and light where it is met.
@@ -90,12 +93,24 @@ public class ReacherFigureScenario extends EvidenceScenario {
 
     private static final int FADE_LEAD_FRAMES = 10;
 
-    private ClientGameTestContext ctx;
-    private TestSingleplayerContext world;
+    private @Nullable ClientGameTestContext ctx;
+    private @Nullable TestSingleplayerContext world;
     private int figureId;
     private int podId;
-    private MockPlayer miner;
+    private @Nullable MockPlayer miner;
     private int framesTaken;
+
+    private ClientGameTestContext ctx() {
+        return Objects.requireNonNull(ctx, "ctx was read before the scenario set it");
+    }
+
+    private TestSingleplayerContext world() {
+        return Objects.requireNonNull(world, "world was read before the scenario set it");
+    }
+
+    private MockPlayer miner() {
+        return Objects.requireNonNull(miner, "miner was read before the scenario set it");
+    }
 
     @Override
     protected String name() {
@@ -128,7 +143,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
 
     /** Takes the camera into layer 1, builds the chamber there, lights the pod, hides the HUD and makes the camera a creative flier that nothing can hurt. */
     private void setUp() {
-        ctx.waitTicks(40); // tick-wait: the world's spawn settles before the camera is moved
+        ctx().waitTicks(40); // tick-wait: the world's spawn settles before the camera is moved
         serverDo(server -> {
             GameRules rules = server.getGameRules();
             rules.set(GameRules.SPAWN_MOBS, false, server);
@@ -145,7 +160,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
                     layer(server), FLOOR.getX() + 0.5, FLOOR.getY() + 3, FLOOR.getZ() + 0.5, Set.of(), 0f, 0f, true);
         });
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the camera in layer " + LAYER,
                 client -> client.level != null
                         && client.level.dimension().equals(LayerChain.dimension(LAYER))
@@ -154,7 +169,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
             ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
             ServerLevel level = layer(server);
             buildChamber(level);
-            PodEntity pod = PodRegistry.typeOf(Chassis.PROSPECTOR).create(level, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.typeOf(Chassis.PROSPECTOR), level);
             pod.setPos(at(POD));
             pod.setYRot(POD_YAW);
             level.addFreshEntity(pod);
@@ -164,7 +179,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
                     .id();
             PodComponents.register(pod, charter);
             PodComponents.install(pod, ComponentItems.mint(server, ComponentTrack.LIGHTS, LIGHTS_TIER, charter));
-            LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+            LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
             figure.setNoAi(true);
             figure.setPos(at(EDGE));
             level.addFreshEntity(figure);
@@ -172,10 +187,10 @@ public class ReacherFigureScenario extends EvidenceScenario {
         });
         stand(EDGE, TOWARD_POD);
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the figure on the client",
                 client -> client.level != null && client.level.getEntity(figureId) instanceof LamplessFigure);
-        ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+        ctx().runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
     }
 
     /**
@@ -184,17 +199,17 @@ public class ReacherFigureScenario extends EvidenceScenario {
      */
     private void stand(Vec3 inChamber, float yaw) {
         serverDo(server -> {
-            LamplessFigure figure = (LamplessFigure) layer(server).getEntity(figureId);
+            LamplessFigure figure = TestEntities.require(layer(server), figureId, LamplessFigure.class);
             figure.setPos(at(inChamber));
             figure.setYRot(yaw);
             figure.setYBodyRot(yaw);
             figure.setYHeadRot(yaw);
         });
-        ctx.waitTicks(IDLE_TICKS); // tick-wait: the walk the move started ends and the idle runs
+        ctx().waitTicks(IDLE_TICKS); // tick-wait: the walk the move started ends and the idle runs
     }
 
     private static ServerLevel layer(MinecraftServer server) {
-        return server.getLevel(LayerChain.dimension(LAYER));
+        return ClientLight.serverLevel(server, LayerChain.dimension(LAYER));
     }
 
     /** Logs the block light (0 to 15) at the pod, under the figure in both places, on the wall behind it in the lit stills and on the far wall: how far the lamp reaches. */
@@ -224,24 +239,24 @@ public class ReacherFigureScenario extends EvidenceScenario {
         // behind it.
         look(at(new Vec3(0.9, 3.7, 0.5)), at(EDGE).add(0, 1.4, 0));
         settle();
-        screenshot(ctx, "reacher-rock");
+        screenshot(ctx(), "reacher-rock");
 
         // In the rock, lit: the figure nearer the pod, seen side-on across the chamber, with the lamp lighting the wall
         // behind it.
         stand(LIT, TOWARD_POD);
         look(at(new Vec3(LIT.x, 2.2, 3.4)), at(LIT).add(0, 1.4, 0));
         settle();
-        screenshot(ctx, "reacher-rock-lit");
+        screenshot(ctx(), "reacher-rock-lit");
 
         // Front, from the far end, with the lit wall behind it, and the idle running on a few frames.
         stand(LIT, TOWARD_FAR_END);
         int first = framesTaken + 1;
         look(at(new Vec3(9.6, 2.3, 0.5)), at(LIT).add(0, 1.5, 0));
         settle();
-        screenshot(ctx, "reacher-front");
+        screenshot(ctx(), "reacher-front");
         for (int i = 0; i < CLIP_FRAMES; i++) {
-            ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-            frame(ctx);
+            ctx().waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+            frame(ctx());
             framesTaken++;
         }
         System.out.println("[reacher-figure-segment] reacher-idle " + first + "-" + framesTaken);
@@ -249,33 +264,36 @@ public class ReacherFigureScenario extends EvidenceScenario {
         // The head: the hat and the empty bracket, a block off and a little above, with the pod's light close by.
         look(at(new Vec3(7.3, 3.8, 0.9)), at(LIT).add(0.3, 2.3, 0));
         settle();
-        screenshot(ctx, "reacher-head");
+        screenshot(ctx(), "reacher-head");
 
         // Beside a miner, for scale, side-on across the chamber.
         stand(LIT, TOWARD_POD);
         serverDo(server -> {
             miner = MockPlayers.join(server, "Miner");
-            miner.teleportTo(layer(server), at(MINER), 90f, 0f);
-            miner.player().setPermanentlyInvulnerable(true);
+            miner().teleportTo(layer(server), at(MINER), 90f, 0f);
+            miner().player().setPermanentlyInvulnerable(true);
         });
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the miner on the client",
                 client -> client.level != null
-                        && client.level.getEntity(miner.player().getId()) != null);
-        ctx.waitTicks(2); // tick-wait: the miner's skin and place reach the client
+                        && client.level.getEntity(miner().player().getId()) != null);
+        ctx().waitTicks(2); // tick-wait: the miner's skin and place reach the client
         look(at(new Vec3((LIT.x + MINER.x) / 2, 2.3, 3.6)), at(new Vec3((LIT.x + MINER.x) / 2, 2.2, 0.5)));
         settle();
-        screenshot(ctx, "reacher-scale");
-        int minerId = miner.player().getId();
-        serverDo(server -> miner.leave());
-        ClientWait.until(ctx, "the miner gone from the client", client -> client.level.getEntity(minerId) == null);
+        screenshot(ctx(), "reacher-scale");
+        int minerId = miner().player().getId();
+        serverDo(server -> miner().leave());
+        ClientWait.until(
+                ctx(),
+                "the miner gone from the client",
+                client -> ClientLight.clientLevel(client).getEntity(minerId) == null);
     }
 
     /** The pod's lights go out and the camera sees by night vision: the figure may walk without a light on it, and still be seen. */
     private void darkenForWalk() {
         serverDo(server -> {
-            ((PodEntity) layer(server).getEntity(podId)).setStranded(true);
+            TestEntities.require(layer(server), podId, PodEntity.class).setStranded(true);
             server.getPlayerList()
                     .getPlayers()
                     .getFirst()
@@ -291,7 +309,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
      */
     private void walk() {
         serverDo(server -> {
-            LamplessFigure figure = (LamplessFigure) layer(server).getEntity(figureId);
+            LamplessFigure figure = TestEntities.require(layer(server), figureId, LamplessFigure.class);
             figure.setPos(at(WALK_START));
             figure.setHeading(Direction.SOUTH);
             figure.setNoAi(false);
@@ -300,18 +318,19 @@ public class ReacherFigureScenario extends EvidenceScenario {
         settle();
         int first = framesTaken + 1;
         for (int i = 0; i < WALK_FRAMES; i++) {
-            ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-            frame(ctx);
+            ctx().waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+            frame(ctx());
             framesTaken++;
         }
         System.out.println("[reacher-figure-segment] reacher-walk " + first + "-" + framesTaken);
-        serverDo(server -> ((LamplessFigure) layer(server).getEntity(figureId)).setNoAi(true));
+        serverDo(server -> TestEntities.require(layer(server), figureId, LamplessFigure.class)
+                .setNoAi(true));
     }
 
     /** The pod's lights come back on and the night vision goes: the camera sees as a player does. */
     private void lightForDissolve() {
         serverDo(server -> {
-            ((PodEntity) layer(server).getEntity(podId)).setStranded(false);
+            TestEntities.require(layer(server), podId, PodEntity.class).setStranded(false);
             server.getPlayerList().getPlayers().getFirst().removeEffect(MobEffects.NIGHT_VISION);
         });
         settle();
@@ -323,38 +342,41 @@ public class ReacherFigureScenario extends EvidenceScenario {
      */
     private void dissolve() {
         serverDo(server -> {
-            LamplessFigure figure = (LamplessFigure) layer(server).getEntity(figureId);
+            LamplessFigure figure = TestEntities.require(layer(server), figureId, LamplessFigure.class);
             figure.setPos(at(EDGE));
             figure.setNoAi(true);
         });
         look(at(new Vec3(0.9, 3.7, 0.5)), at(EDGE).add(0, 1.4, 0));
         settle();
-        serverDo(server -> layer(server).getEntity(figureId).kill(layer(server)));
+        serverDo(server -> TestEntities.require(layer(server), figureId).kill(layer(server)));
         int first = framesTaken + 1;
         boolean[] shot = new boolean[3];
         float[] at = {0.2f, 0.5f, 0.8f};
         String[] names = {"reacher-fade-early", "reacher-fade-half", "reacher-fade-late"};
         for (int i = 0; i < FADE_FRAMES_LIMIT; i++) {
-            ctx.waitTick(); // tick-wait: the dissolve is cut at one frame a tick
-            frame(ctx);
+            ctx().waitTick(); // tick-wait: the dissolve is cut at one frame a tick
+            frame(ctx());
             framesTaken++;
-            float fade = ctx.computeOnClient(
-                    client -> client.level.getEntity(figureId) instanceof LamplessFigure f ? f.fadeFraction() : 1f);
-            boolean gone = ctx.computeOnClient(client -> !(client.level.getEntity(figureId) instanceof LamplessFigure));
+            float fade = ctx().computeOnClient(
+                            client -> ClientLight.clientLevel(client).getEntity(figureId) instanceof LamplessFigure f
+                                    ? f.fadeFraction()
+                                    : 1f);
+            boolean gone = ctx().computeOnClient(
+                            client -> !(ClientLight.clientLevel(client).getEntity(figureId) instanceof LamplessFigure));
             for (int k = 0; k < at.length; k++) {
                 if (!shot[k] && fade >= at[k]) {
-                    screenshot(ctx, names[k]);
+                    screenshot(ctx(), names[k]);
                     shot[k] = true;
                 }
             }
             if (gone) {
                 for (int tail = 0; tail < FADE_LEAD_FRAMES; tail++) {
-                    ctx.waitTick(); // tick-wait: the empty chamber after the dissolve
-                    frame(ctx);
+                    ctx().waitTick(); // tick-wait: the empty chamber after the dissolve
+                    frame(ctx());
                     framesTaken++;
                 }
                 System.out.println("[reacher-figure-segment] reacher-fade " + first + "-" + framesTaken);
-                screenshot(ctx, "reacher-fade-gone");
+                screenshot(ctx(), "reacher-fade-gone");
                 return;
             }
         }
@@ -397,23 +419,23 @@ public class ReacherFigureScenario extends EvidenceScenario {
     private void settle() {
         int[] stable = {0};
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the view settled",
                 () -> {
                     boolean ready =
                             !serverGet(server -> layer(server).getLightEngine().hasLightWork())
-                                    && ctx.computeOnClient(client -> client.levelRenderer.hasRenderedAllSections());
+                                    && ctx().computeOnClient(client -> client.levelRenderer.hasRenderedAllSections());
                     stable[0] = ready ? stable[0] + 1 : 0;
                     return stable[0] >= SETTLE_POLLS;
                 },
-                () -> ctx.computeOnClient(ClientWait::describe));
+                () -> ctx().computeOnClient(ClientWait::describe));
     }
 
     private void serverDo(Consumer<MinecraftServer> action) {
-        world.getServer().runOnServer(action::accept);
+        world().getServer().runOnServer(action::accept);
     }
 
     private <T> T serverGet(Function<MinecraftServer, T> query) {
-        return world.getServer().computeOnServer(query::apply);
+        return world().getServer().computeOnServer(query::apply);
     }
 }

@@ -113,11 +113,11 @@ public final class ClientLight {
         });
     }
 
-    static ClientLevel clientLevel(Minecraft client) {
+    public static ClientLevel clientLevel(Minecraft client) {
         return Objects.requireNonNull(client.level, "the client is not in a level");
     }
 
-    private static ServerLevel serverLevel(MinecraftServer server, ResourceKey<Level> dimension) {
+    public static ServerLevel serverLevel(MinecraftServer server, ResourceKey<Level> dimension) {
         return Objects.requireNonNull(server.getLevel(dimension), () -> "the server has no level " + dimension);
     }
 

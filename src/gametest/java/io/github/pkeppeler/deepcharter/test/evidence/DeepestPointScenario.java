@@ -11,8 +11,11 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -83,7 +86,7 @@ public class DeepestPointScenario extends EvidenceScenario {
                 return Colony.placed(minecraftServer)
                         .orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
             });
-            BlockPos processor = colony.anchors().get(ColonyAnchor.ORE_PROCESSOR);
+            BlockPos processor = TestColony.anchor(colony, ColonyAnchor.ORE_PROCESSOR);
             Vec3 viewpoint = Vec3.atBottomCenterOf(colony.center()).add(-4, 1, -4);
             stand(server, viewpoint, Vec3.atCenterOf(processor));
             context.waitTicks(SETTLE_TICKS);
@@ -130,7 +133,8 @@ public class DeepestPointScenario extends EvidenceScenario {
     private int orderLines(ClientGameTestContext context, BlockPos processor) {
         context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
         ClientWait.screen(context, OreProcessorScreen.class);
-        OreProcessorScreen screen = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
+        OreProcessorScreen screen =
+                context.computeOnClient(client -> ClientSession.screen(client, OreProcessorScreen.class));
         for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);
@@ -158,7 +162,7 @@ public class DeepestPointScenario extends EvidenceScenario {
     private void descend(ClientGameTestContext context, TestServerContext server, int layer, int rowsAboveFloor) {
         BlockPos wall = server.computeOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-            ServerLevel level = minecraftServer.getLevel(LayerChain.dimension(layer));
+            ServerLevel level = ClientLight.serverLevel(minecraftServer, LayerChain.dimension(layer));
             int y = level.getMinY() + rowsAboveFloor;
             RoomCarver.carve(
                     level,

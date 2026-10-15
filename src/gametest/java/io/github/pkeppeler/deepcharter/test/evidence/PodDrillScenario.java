@@ -4,8 +4,11 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -13,7 +16,6 @@ import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
@@ -41,11 +43,11 @@ public class PodDrillScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 buildShaftRoom(one);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
-                PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 one.addFreshEntity(pod);
                 if (!player.startRiding(pod)) {
@@ -57,20 +59,18 @@ public class PodDrillScenario extends EvidenceScenario {
                     "the player riding a pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && client.level.dimension().equals(LayerChain.dimension(1)));
+                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-                client.player.setXRot(LOOK_DOWN);
+                ClientSession.player(client).setXRot(LOOK_DOWN);
             });
             context.waitTicks(20);
             frame(context);
 
             singleplayer
                     .getServer()
-                    .runOnServer(server -> ((PodEntity) server.getPlayerList()
-                                    .getPlayers()
-                                    .getFirst()
-                                    .getVehicle())
+                    .runOnServer(server -> TestEntities.vehicle(
+                                    server.getPlayerList().getPlayers().getFirst(), PodEntity.class)
                             .setFuel(100f));
             context.getInput().holdKey(options -> options.keySprint);
             int ticks = 0;
@@ -84,7 +84,7 @@ public class PodDrillScenario extends EvidenceScenario {
                 throw new AssertionError(
                         "The pod did not drill through the crust into layer_2 within " + MAX_TICKS + " ticks");
             }
-            context.runOnClient(client -> client.player.setXRot(LOOK_DOWN));
+            context.runOnClient(client -> ClientSession.player(client).setXRot(LOOK_DOWN));
             for (int i = 0; i < ARRIVAL_FRAMES; i++) {
                 context.waitTicks(8);
                 frame(context);

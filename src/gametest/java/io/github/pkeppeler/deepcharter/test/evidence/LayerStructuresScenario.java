@@ -9,6 +9,8 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import java.util.Locale;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -91,7 +93,7 @@ public class LayerStructuresScenario extends EvidenceScenario {
                 ColonySite.Placed colony = Colony.placed(server)
                         .orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
                 ServerLevel overworld = server.overworld();
-                BlockPos at = colony.anchors().get(building);
+                BlockPos at = TestColony.anchor(colony, building);
                 for (BlockPos pos : BlockPos.betweenClosed(
                         at.offset(-COLONY_NOTE_REACH, -1, -COLONY_NOTE_REACH),
                         at.offset(COLONY_NOTE_REACH, 3, COLONY_NOTE_REACH))) {
@@ -116,7 +118,7 @@ public class LayerStructuresScenario extends EvidenceScenario {
     /** Finds the kind's site, and generates its chunks, on the server. */
     private static StructureSite prepare(TestSingleplayerContext singleplayer, StructureKind kind) {
         return singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(kind.layer()));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(kind.layer()));
             StructureSite site = kind == StructureKind.WRECK
                     ? LayerStructures.prospector(server)
                             .orElseThrow(() -> new AssertionError("the colony was not built when the world started"))
@@ -235,7 +237,7 @@ public class LayerStructuresScenario extends EvidenceScenario {
             player.setNoGravity(true);
             player.getAbilities().flying = true;
             player.onUpdateAbilities();
-            player.teleportTo(server.getLevel(dimension), at.x, at.y, at.z, Set.of(), yaw, pitch, true);
+            player.teleportTo(ClientLight.serverLevel(server, dimension), at.x, at.y, at.z, Set.of(), yaw, pitch, true);
         });
     }
 }

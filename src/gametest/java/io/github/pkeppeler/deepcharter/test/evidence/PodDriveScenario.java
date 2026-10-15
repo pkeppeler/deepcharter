@@ -2,7 +2,9 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.PodShellClientTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
@@ -25,11 +27,13 @@ public class PodDriveScenario extends EvidenceScenario {
             context.waitTicks(40);
             PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
             ClientWait.until(
-                    context, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
+                    context,
+                    "the player riding a pod",
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
             // The shared mount helper starts the pod damaged; the picture is of a sound pod.
             singleplayer.getServer().runOnServer(server -> {
-                PodEntity pod = (PodEntity)
-                        server.getPlayerList().getPlayers().getFirst().getVehicle();
+                PodEntity pod =
+                        TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
                 pod.setHull(pod.maxHull());
             });
             context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));

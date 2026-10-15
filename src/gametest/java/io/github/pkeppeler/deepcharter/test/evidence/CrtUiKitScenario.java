@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -23,7 +24,7 @@ public class CrtUiKitScenario extends EvidenceScenario {
     protected void run(ClientGameTestContext context) {
         context.setScreen(CrtDemoScreen::new);
         ClientWait.screen(context, CrtDemoScreen.class);
-        CrtDemoScreen screen = context.computeOnClient(client -> (CrtDemoScreen) client.gui.screen());
+        CrtDemoScreen screen = context.computeOnClient(client -> ClientSession.screen(client, CrtDemoScreen.class));
         for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);

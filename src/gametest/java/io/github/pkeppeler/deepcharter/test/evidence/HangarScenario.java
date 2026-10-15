@@ -9,10 +9,12 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.Set;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -21,7 +23,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -89,7 +90,7 @@ public class HangarScenario extends EvidenceScenario {
 
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(console)));
             ClientWait.screen(context, HangarScreen.class);
-            HangarScreen screen = context.computeOnClient(client -> (HangarScreen) client.gui.screen());
+            HangarScreen screen = context.computeOnClient(client -> ClientSession.screen(client, HangarScreen.class));
             for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
                 context.waitTicks(TICKS_PER_FRAME);
                 frame(context);
@@ -119,7 +120,7 @@ public class HangarScenario extends EvidenceScenario {
             // the pack.
             Vec3 wreckAt = Vec3.atBottomCenterOf(console.west(6));
             singleplayer.getServer().runOnServer(server -> {
-                PodEntity wreck = PodRegistry.PROSPECTOR.create(server.overworld(), EntitySpawnReason.COMMAND);
+                PodEntity wreck = TestEntities.create(PodRegistry.PROSPECTOR, server.overworld());
                 wreck.setPos(wreckAt);
                 wreck.setHull(0f);
                 server.overworld().addFreshEntity(wreck);
@@ -130,7 +131,7 @@ public class HangarScenario extends EvidenceScenario {
             screenshot(context, "a-prospector-wreck-by-the-console");
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(console)));
             ClientWait.screen(context, HangarScreen.class);
-            HangarScreen advance = context.computeOnClient(client -> (HangarScreen) client.gui.screen());
+            HangarScreen advance = context.computeOnClient(client -> ClientSession.screen(client, HangarScreen.class));
             for (int i = 0; i < TYPING_FRAMES && !advance.typewriter().done(); i++) {
                 context.waitTicks(TICKS_PER_FRAME);
                 frame(context);

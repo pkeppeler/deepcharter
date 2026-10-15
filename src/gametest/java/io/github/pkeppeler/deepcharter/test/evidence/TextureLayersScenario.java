@@ -9,10 +9,12 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActivity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.texture.TextureProperties;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -33,6 +35,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "texture-layers" for #242: the texture system's layers in a sealed stone room with no light of its own.
@@ -49,9 +52,21 @@ public class TextureLayersScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 2;
     private static final int SCAN_FRAMES = 24;
 
-    private ClientGameTestContext ctx;
-    private TestSingleplayerContext sp;
-    private BlockPos floor;
+    private @Nullable ClientGameTestContext ctx;
+    private @Nullable TestSingleplayerContext sp;
+    private @Nullable BlockPos floor;
+
+    private ClientGameTestContext ctx() {
+        return Objects.requireNonNull(ctx, "ctx was read before the scenario set it");
+    }
+
+    private TestSingleplayerContext sp() {
+        return Objects.requireNonNull(sp, "sp was read before the scenario set it");
+    }
+
+    private BlockPos floor() {
+        return Objects.requireNonNull(floor, "floor was read before the scenario set it");
+    }
 
     @Override
     protected String name() {
@@ -142,7 +157,7 @@ public class TextureLayersScenario extends EvidenceScenario {
                     boolean shell =
                             dy == 0 || dy == HEIGHT + 1 || Math.abs(dx) == RADIUS + 1 || Math.abs(dz) == RADIUS + 1;
                     level.setBlock(
-                            floor.offset(dx, dy, dz),
+                            floor().offset(dx, dy, dz),
                             (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(),
                             Block.UPDATE_ALL);
                 }
@@ -163,7 +178,7 @@ public class TextureLayersScenario extends EvidenceScenario {
                 TerminalTypes.REPAIR_STATION,
                 HangarTerminal.TYPE);
         for (int i = 0; i < row.size(); i++) {
-            BlockPos pos = floor.offset(-5 + 2 * i, 1, RADIUS);
+            BlockPos pos = floor().offset(-5 + 2 * i, 1, RADIUS);
             level.setBlock(
                     pos,
                     row.get(i)
@@ -176,19 +191,19 @@ public class TextureLayersScenario extends EvidenceScenario {
         OreType[] oresInWall = OreType.values();
         for (int i = 0; i < oresInWall.length; i++) {
             level.setBlock(
-                    floor.offset(-RADIUS - 1, 2 + (i % 2), -3 + i),
+                    floor().offset(-RADIUS - 1, 2 + (i % 2), -3 + i),
                     OreBlocks.of(oresInWall[i]).defaultBlockState(),
                     Block.UPDATE_ALL);
         }
         for (int dz = -2; dz <= 2; dz++) {
             for (int dy = 1; dy <= 4; dy++) {
                 level.setBlock(
-                        floor.offset(RADIUS + 1, dy, dz), ColonyBlocks.CONDUIT.defaultBlockState(), Block.UPDATE_ALL);
+                        floor().offset(RADIUS + 1, dy, dz), ColonyBlocks.CONDUIT.defaultBlockState(), Block.UPDATE_ALL);
             }
         }
         for (BlockPos l :
                 List.of(new BlockPos(RADIUS, 1, -2), new BlockPos(RADIUS, 1, -1), new BlockPos(RADIUS, 2, -2))) {
-            level.setBlock(floor.offset(l), ColonyBlocks.CONDUIT.defaultBlockState(), Block.UPDATE_ALL);
+            level.setBlock(floor().offset(l), ColonyBlocks.CONDUIT.defaultBlockState(), Block.UPDATE_ALL);
         }
         for (BlockPos lamp : List.of(
                 new BlockPos(0, 1, 4),
@@ -197,25 +212,26 @@ public class TextureLayersScenario extends EvidenceScenario {
                 new BlockPos(1, 1, -3),
                 new BlockPos(-1, 1, -3))) {
             level.setBlock(
-                    floor.offset(lamp),
+                    floor().offset(lamp),
                     ColonyBlocks.COMPANY_LAMP.defaultBlockState().setValue(TextureProperties.ACTIVE, false),
                     Block.UPDATE_ALL);
         }
         player(server)
-                .teleportTo(level, floor.getX() + 0.5, floor.getY() + 1, floor.getZ() + 0.5, Set.of(), 0, 0, true);
+                .teleportTo(
+                        level, floor().getX() + 0.5, floor().getY() + 1, floor().getZ() + 0.5, Set.of(), 0, 0, true);
     }
 
     private void lamp(BlockPos offset, boolean lit) {
         serverDo(server -> {
             ServerLevel level = player(server).level();
-            BlockPos pos = floor.offset(offset);
+            BlockPos pos = floor().offset(offset);
             level.setBlock(pos, level.getBlockState(pos).setValue(TextureProperties.ACTIVE, lit), Block.UPDATE_ALL);
         });
     }
 
     /** A point dx east, dy up and dz south of the bottom centre of the block above the floor's middle. */
     private Vec3 centre(double dx, double dy, double dz) {
-        return Vec3.atBottomCenterOf(floor.above()).add(dx, dy - 1, dz);
+        return Vec3.atBottomCenterOf(floor().above()).add(dx, dy - 1, dz);
     }
 
     private void view(Vec3 eye, Vec3 target, int wait) {
@@ -227,14 +243,15 @@ public class TextureLayersScenario extends EvidenceScenario {
             player.teleportTo(player.level(), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
         });
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the camera at the eye, facing yaw " + yaw + " and pitch " + pitch,
-                client -> client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
-                        && Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.01f
-                        && Math.abs(client.player.getXRot() - pitch) < 0.01f,
-                client -> "the player at " + client.player.position() + " facing yaw " + client.player.getYRot()
-                        + " and pitch " + client.player.getXRot());
-        ctx.waitTicks(wait);
+                client -> ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
+                        && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - yaw)) < 0.01f
+                        && Math.abs(ClientSession.player(client).getXRot() - pitch) < 0.01f,
+                client -> "the player at " + ClientSession.player(client).position() + " facing yaw "
+                        + ClientSession.player(client).getYRot() + " and pitch "
+                        + ClientSession.player(client).getXRot());
+        ctx().waitTicks(wait);
     }
 
     /** Waits until the light engine has no work left, then a few ticks for the chunk meshes, and shoots the still. */
@@ -245,16 +262,16 @@ public class TextureLayersScenario extends EvidenceScenario {
             if (poll > 200) {
                 throw new AssertionError("the light did not settle before the still " + stillName);
             }
-            ctx.waitTicks(2);
+            ctx().waitTicks(2);
         }
-        ctx.waitTicks(10);
-        screenshot(ctx, stillName);
+        ctx().waitTicks(10);
+        screenshot(ctx(), stillName);
     }
 
     private void record(int frames) {
         for (int i = 0; i < frames; i++) {
-            ctx.waitTicks(TICKS_PER_FRAME);
-            frame(ctx);
+            ctx().waitTicks(TICKS_PER_FRAME);
+            frame(ctx());
         }
     }
 
@@ -263,10 +280,10 @@ public class TextureLayersScenario extends EvidenceScenario {
     }
 
     private <T> T serverGet(Function<MinecraftServer, T> action) {
-        return sp.getServer().computeOnServer(action::apply);
+        return sp().getServer().computeOnServer(action::apply);
     }
 
     private void serverDo(Consumer<MinecraftServer> action) {
-        sp.getServer().runOnServer(action::accept);
+        sp().getServer().runOnServer(action::accept);
     }
 }

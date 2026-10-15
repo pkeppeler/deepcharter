@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
@@ -49,13 +50,13 @@ public class TransmissionsScenario extends EvidenceScenario {
                     throw new AssertionError("founding the charter should succeed");
                 }
                 // Generate the arrival area in layer 2 now so the client has less to wait for after the crossing.
-                ServerLevel two = server.getLevel(LayerChain.dimension(2));
+                ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
                 for (int dx = -2; dx <= 2; dx++) {
                     for (int dz = -2; dz <= 2; dz++) {
                         two.getChunk((int) X / 16 + dx, (int) Z / 16 + dz);
                     }
                 }
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 player.teleportTo(one, X, one.getMinY() + 40, Z, Set.of(), 0, 0, true);
                 return Charters.charterOfOrThrow(server, player.getUUID())
                         .orElseThrow()
@@ -64,11 +65,11 @@ public class TransmissionsScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the client in layer 1",
-                    client -> client.level.dimension().equals(LayerChain.dimension(1)));
+                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
             context.waitTicks(SETTLE_TICKS);
 
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 // One block under the floor of layer 1, so it crosses on the next server tick.
                 player.teleportTo(one, X, one.getMinY() - 1, Z, Set.of(), 0, 0, true);

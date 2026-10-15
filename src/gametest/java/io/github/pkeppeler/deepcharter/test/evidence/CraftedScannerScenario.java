@@ -7,10 +7,14 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -24,7 +28,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
@@ -36,6 +39,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "crafted-scanner" (#483): in a sealed room of layer 1 rock, a player lays the scanner unit's recipe out in a crafting
@@ -76,7 +80,11 @@ public class CraftedScannerScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the client in layer 1",
-                    client -> client.level.dimension().identifier().getPath().equals("layer_1"));
+                    client -> ClientLight.clientLevel(client)
+                            .dimension()
+                            .identifier()
+                            .getPath()
+                            .equals("layer_1"));
             context.waitTicks(40); // tick-wait: the chunks round the arrival come in before the room is cut
             RoomCarver.carveAroundFirstPlayer(server);
             BlockPos[] spots = server.computeOnServer(CraftedScannerScenario::furnish);
@@ -84,7 +92,8 @@ public class CraftedScannerScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the crafting table in the client's world",
-                    client -> client.level.getBlockState(table).is(Blocks.CRAFTING_TABLE));
+                    client ->
+                            ClientLight.clientLevel(client).getBlockState(table).is(Blocks.CRAFTING_TABLE));
             context.waitTicks(20); // tick-wait: the lamps' light reaches the client's chunk
             waitOutTheTransmission(context);
             hold(context);
@@ -93,7 +102,8 @@ public class CraftedScannerScenario extends EvidenceScenario {
             takeTheUnit(context, server);
 
             ClientWait.until(context, "the pod in the client's world", client -> podOf(client) != null);
-            PodEntity pod = context.computeOnClient(CraftedScannerScenario::podOf);
+            PodEntity pod = Objects.requireNonNull(
+                    context.computeOnClient(CraftedScannerScenario::podOf), "the pod is in the client's world");
             ride(context, server);
             screenshot(context, "bare-mole-no-scanner");
             hold(context);
@@ -132,7 +142,7 @@ public class CraftedScannerScenario extends EvidenceScenario {
         }
         BlockPos table = feet.offset(TABLE_SIDE, 0, TABLE_AHEAD);
         level.setBlock(table, Blocks.CRAFTING_TABLE.defaultBlockState(), 3);
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         Vec3 at = Vec3.atBottomCenterOf(feet.offset(POD_SIDE, 0, POD_AHEAD));
         pod.setPos(at);
         level.addFreshEntity(pod);
@@ -182,7 +192,11 @@ public class CraftedScannerScenario extends EvidenceScenario {
         ClientWait.until(
                 context,
                 "the unit in the table's result slot",
-                client -> client.player.containerMenu.getSlot(0).getItem().is(ScannerRegistry.SCANNER_UNIT));
+                client -> ClientSession.player(client)
+                        .containerMenu
+                        .getSlot(0)
+                        .getItem()
+                        .is(ScannerRegistry.SCANNER_UNIT));
         hold(context);
         screenshot(context, "recipe-in-the-crafting-table");
     }
@@ -210,17 +224,18 @@ public class CraftedScannerScenario extends EvidenceScenario {
                 context,
                 "the unit in the client's pack",
                 client -> client.gui.screen() == null && hotbarSlotOfTheUnit(client) >= 0);
-        context.runOnClient(client -> client.player.getInventory().setSelectedSlot(hotbarSlotOfTheUnit(client)));
+        context.runOnClient(
+                client -> ClientSession.player(client).getInventory().setSelectedSlot(hotbarSlotOfTheUnit(client)));
         ClientWait.until(
                 context,
                 "the unit in the client's hand",
-                client -> client.player.getMainHandItem().is(ScannerRegistry.SCANNER_UNIT));
+                client -> ClientSession.player(client).getMainHandItem().is(ScannerRegistry.SCANNER_UNIT));
         hold(context);
         screenshot(context, "the-unit-in-hand");
     }
 
     private static int hotbarSlotOfTheUnit(Minecraft client) {
-        Inventory inventory = client.player.getInventory();
+        Inventory inventory = ClientSession.player(client).getInventory();
         for (int slot = 0; slot < Inventory.getSelectionSize(); slot++) {
             if (inventory.getItem(slot).is(ScannerRegistry.SCANNER_UNIT)) {
                 return slot;
@@ -235,14 +250,14 @@ public class CraftedScannerScenario extends EvidenceScenario {
         hold(context);
         context.runOnClient(client -> {
             EntityHitResult hit = new EntityHitResult(pod, pod.position().add(0, 1, 0));
-            client.gameMode.interact(client.player, pod, hit, InteractionHand.MAIN_HAND);
-            client.player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
+            ClientSession.gameMode(client).interact(ClientSession.player(client), pod, hit, InteractionHand.MAIN_HAND);
+            ClientSession.player(client).swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
         });
         context.waitTicks(TICKS_PER_FRAME); // tick-wait: the use packet reaches the server
     }
 
-    private static PodEntity podOf(Minecraft client) {
-        for (Entity entity : client.level.entitiesForRendering()) {
+    private static @Nullable PodEntity podOf(Minecraft client) {
+        for (Entity entity : ClientLight.clientLevel(client).entitiesForRendering()) {
             if (entity instanceof PodEntity found) {
                 return found;
             }
@@ -269,14 +284,19 @@ public class CraftedScannerScenario extends EvidenceScenario {
             }
         });
         ClientWait.until(
-                context, "the client riding the pod", client -> client.player.getVehicle() instanceof PodEntity);
+                context,
+                "the client riding the pod",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
         context.waitTicks(20); // tick-wait: the HUD's first scan after the mount
     }
 
     private void leave(ClientGameTestContext context, TestServerContext server) {
         server.runOnServer(
                 minecraft -> minecraft.getPlayerList().getPlayers().getFirst().stopRiding());
-        ClientWait.until(context, "the player out of the pod", client -> client.player.getVehicle() == null);
+        ClientWait.until(
+                context,
+                "the player out of the pod",
+                client -> ClientSession.player(client).getVehicle() == null);
     }
 
     /** The charter's founding transmission types over the screen; the first still waits until it has come and gone. */

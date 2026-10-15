@@ -4,7 +4,10 @@ import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -12,7 +15,6 @@ import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -41,7 +43,7 @@ public class PodLavaScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 box(one, FLOOR_Y - 1, FLOOR_Y - 1, 6, Blocks.STONE);
                 box(one, FLOOR_Y, FLOOR_Y + 8, 6, Blocks.STONE);
                 // room-carver: a room cut inside the solid stone box built just above, so no worldgen lava is in or
@@ -56,7 +58,7 @@ public class PodLavaScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
-                PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 one.addFreshEntity(pod);
                 if (!player.startRiding(pod)) {
@@ -68,10 +70,10 @@ public class PodLavaScenario extends EvidenceScenario {
                     "the player riding a pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && client.level.dimension().equals(LayerChain.dimension(1)));
+                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-                client.player.setXRot(LOOK_DOWN);
+                ClientSession.player(client).setXRot(LOOK_DOWN);
             });
             context.waitTicks(20);
             for (int i = 0; i < 6; i++) {
@@ -81,7 +83,7 @@ public class PodLavaScenario extends EvidenceScenario {
             screenshot(context, "pod-lava-before");
 
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 for (int x = X - 2; x <= X + 2; x++) {
                     for (int z = Z - 2; z <= Z + 2; z++) {
                         one.setBlock(new BlockPos(x, FLOOR_Y, z), Blocks.LAVA.defaultBlockState(), 3);
@@ -112,13 +114,13 @@ public class PodLavaScenario extends EvidenceScenario {
                 throw new AssertionError(
                         "The seated pilot should be unhurt and not on fire in the lava, but: " + pilot);
             }
-            boolean cue =
-                    context.computeOnClient(client -> PodStatusHud.burningLine((PodEntity) client.player.getVehicle())
-                            .isPresent());
+            boolean cue = context.computeOnClient(client -> PodStatusHud.burningLine(
+                            TestEntities.vehicle(ClientSession.player(client), PodEntity.class))
+                    .isPresent());
             if (!cue) {
                 throw new AssertionError("The status readout should show the hull burning");
             }
-            if (context.computeOnClient(client -> client.player.isOnFire())) {
+            if (context.computeOnClient(client -> ClientSession.player(client).isOnFire())) {
                 throw new AssertionError("The local pilot should show no flames while the pod rides in lava");
             }
             screenshot(context, "pod-lava-after");
@@ -128,8 +130,8 @@ public class PodLavaScenario extends EvidenceScenario {
     private static float podHull(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
-                .computeOnServer(server -> ((PodEntity)
-                                server.getPlayerList().getPlayers().getFirst().getVehicle())
+                .computeOnServer(server -> TestEntities.vehicle(
+                                server.getPlayerList().getPlayers().getFirst(), PodEntity.class)
                         .hull());
     }
 

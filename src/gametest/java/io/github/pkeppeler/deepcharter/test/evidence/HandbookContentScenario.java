@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -37,7 +38,7 @@ public class HandbookContentScenario extends EvidenceScenario {
             context.runOnClient(client -> client.options.guiScale().set(GUI_SCALE));
             Map<Identifier, HandbookChapter> chapters = context.computeOnClient(client -> {
                 Map<Identifier, HandbookChapter> shipped = new LinkedHashMap<>();
-                HandbookChapters.all(client.getConnection().registryAccess()).stream()
+                HandbookChapters.all(ClientSession.connection(client).registryAccess()).stream()
                         .filter(chapter -> !chapter.key().identifier().getPath().equals("sample"))
                         .forEach(chapter -> shipped.put(chapter.key().identifier(), chapter.value()));
                 return shipped;
@@ -51,7 +52,8 @@ public class HandbookContentScenario extends EvidenceScenario {
             context.setScreen(() -> new HandbookScreen(pages, id -> true, id -> {}, List.of()));
             ClientWait.screen(context, HandbookScreen.class);
             context.waitTicks(2);
-            HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
+            HandbookScreen screen =
+                    context.computeOnClient(client -> ClientSession.screen(client, HandbookScreen.class));
             for (int page = 0; page < pages.size(); page++) {
                 int target = page;
                 if (page > 0) {

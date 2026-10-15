@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -81,7 +82,7 @@ public class TowLineGroundScenario extends EvidenceScenario {
 
     private void look(ClientGameTestContext context, TwoPlayerServer two, UUID tower) {
         two.server().runOnServer(server -> {
-            Vec3 at = server.overworld().getEntity(tower).position();
+            Vec3 at = TestEntities.require(server.overworld(), tower).position();
             TowStage.film(server.overworld(), two, at.add(-CAMERA_WEST, CAMERA_ABOVE, -3), at.add(0, 0, -3));
         });
         context.runOnClient(client -> client.gui.toastManager().clear());

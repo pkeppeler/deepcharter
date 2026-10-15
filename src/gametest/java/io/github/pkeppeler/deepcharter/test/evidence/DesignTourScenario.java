@@ -48,6 +48,7 @@ import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
@@ -56,6 +57,9 @@ import io.github.pkeppeler.deepcharter.test.support.HangarPods;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -65,7 +69,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -77,7 +81,6 @@ import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -96,7 +99,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.Mob;
@@ -118,6 +120,7 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "design-tour" for #223: a fixed set of named stills of everything in the game as it looks today, so the design
@@ -179,15 +182,35 @@ public class DesignTourScenario extends EvidenceScenario {
     /** A room carved by the tour, in its dimension. */
     private record LitRoom(ResourceKey<Level> dimension, Box box) {}
 
-    private ClientGameTestContext ctx;
-    private TestSingleplayerContext sp;
-    private BlockPos ground;
-    private Map<ColonyAnchor, BlockPos> anchors;
-    private CharterId charter;
+    private @Nullable ClientGameTestContext ctx;
+    private @Nullable TestSingleplayerContext sp;
+    private @Nullable BlockPos ground;
+    private ColonySite.@Nullable Placed colony;
+    private @Nullable CharterId charter;
     /** The rooms the tour carved whose light settle waits on: it waits until the client reads the light the server holds in each room it is in. */
     private final List<LitRoom> litRooms = new CopyOnWriteArrayList<>();
     /** The mobs the tour made itself (the lampless figures it poses): settle leaves them, and clears every other mob. */
     private final Set<UUID> tourMobs = ConcurrentHashMap.newKeySet();
+
+    private ClientGameTestContext ctx() {
+        return Objects.requireNonNull(ctx, "ctx was read before the scenario set it");
+    }
+
+    private TestSingleplayerContext sp() {
+        return Objects.requireNonNull(sp, "sp was read before the scenario set it");
+    }
+
+    private BlockPos ground() {
+        return Objects.requireNonNull(ground, "ground was read before the scenario set it");
+    }
+
+    private ColonySite.Placed colony() {
+        return Objects.requireNonNull(colony, "colony was read before the scenario set it");
+    }
+
+    private CharterId charter() {
+        return Objects.requireNonNull(charter, "charter was read before the scenario set it");
+    }
 
     @Override
     protected String name() {
@@ -210,14 +233,12 @@ public class DesignTourScenario extends EvidenceScenario {
             sp = singleplayer;
             awaitWorld(context);
             context.waitTicks(80);
-            ColonySite.Placed colony =
-                    serverGet(server -> Colony.placed(server).orElseThrow(() -> new AssertionError("no colony")));
-            ground = colony.center();
-            anchors = colony.anchors();
+            colony = serverGet(server -> Colony.placed(server).orElseThrow(() -> new AssertionError("no colony")));
+            ground = colony().center();
 
-            EvidenceWorld.pin(ctx, sp);
+            EvidenceWorld.pin(ctx(), sp());
             // The handbook and item stills have the HUD under their screen; it is hidden from setUpCamera on.
-            ClientChecks.withHudShown(ctx, () -> {
+            ClientChecks.withHudShown(ctx(), () -> {
                 pinTheClient();
                 handbook();
                 itemGallery();
@@ -253,7 +274,7 @@ public class DesignTourScenario extends EvidenceScenario {
         EvidencePins.figureSpawningOff = true;
         EvidencePins.figureAnimationAge = 0f;
         // The textures go back to their first frame on the next client tick.
-        ctx.waitTicks(2);
+        ctx().waitTicks(2);
     }
 
     // ------------------------------------------------------------------------------------------------ determinism
@@ -290,11 +311,11 @@ public class DesignTourScenario extends EvidenceScenario {
                     strays.forEach(Entity::discard);
                 }
             });
-            ctx.runOnClient(client -> client.particleEngine.clearParticles());
-            if (ctx.computeOnClient(client -> client.gui.screen() != null)) {
-                ctx.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
+            ctx().runOnClient(client -> client.particleEngine.clearParticles());
+            if (ctx().computeOnClient(client -> client.gui.screen() != null)) {
+                ctx().getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
             }
-            ctx.waitTicks(SETTLE_POLL_TICKS);
+            ctx().waitTicks(SETTLE_POLL_TICKS);
             boolean lit = serverGet(server -> {
                 for (ServerLevel level : server.getAllLevels()) {
                     if (level.getLightEngine().hasLightWork()) {
@@ -304,8 +325,8 @@ public class DesignTourScenario extends EvidenceScenario {
                 return true;
             });
             boolean ready = lit
-                    && ctx.computeOnClient(client -> {
-                        for (Entity entity : client.level.entitiesForRendering()) {
+                    && ctx().computeOnClient(client -> {
+                        for (Entity entity : ClientLight.clientLevel(client).entitiesForRendering()) {
                             if (isStray(entity)) {
                                 return false;
                             }
@@ -315,7 +336,7 @@ public class DesignTourScenario extends EvidenceScenario {
             if (ready) {
                 ready = roomsInStep().isEmpty();
             }
-            String pose = ctx.computeOnClient(DesignTourScenario::pose);
+            String pose = ctx().computeOnClient(DesignTourScenario::pose);
             stable = ready && pose.equals(lastPose) ? stable + 1 : 0;
             lastPose = pose;
             if (stable >= SETTLE_STABLE_POLLS) {
@@ -341,9 +362,9 @@ public class DesignTourScenario extends EvidenceScenario {
      */
     private Optional<String> roomsInStep() {
         for (LitRoom room : litRooms) {
-            if (ClientLight.clientHolds(ctx, room.dimension(), room.box())) {
+            if (ClientLight.clientHolds(ctx(), room.dimension(), room.box())) {
                 Optional<String> mismatch =
-                        ClientLight.describeMismatch(ctx, sp.getServer(), room.dimension(), room.box());
+                        ClientLight.describeMismatch(ctx(), sp().getServer(), room.dimension(), room.box());
                 if (mismatch.isPresent()) {
                     return mismatch;
                 }
@@ -354,7 +375,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
     /** Where the camera is, and the pod it rides if it rides one: a pod still gliding to a halt is not settled. */
     private static String pose(Minecraft client) {
-        Entity camera = client.getCameraEntity();
+        Entity camera = ClientSession.camera(client);
         String pose = camera.position() + " " + camera.getYRot() + " " + camera.getXRot();
         Entity vehicle = camera.getVehicle();
         return vehicle == null ? pose : pose + " " + vehicle.position() + " " + vehicle.getYRot();
@@ -363,11 +384,11 @@ public class DesignTourScenario extends EvidenceScenario {
     /** True when the client holds every chunk of the square of its render distance round the player: the far trees are in the picture. */
     private static boolean chunksLoaded(Minecraft client) {
         int radius = client.options.getEffectiveRenderDistance();
-        int centreX = client.player.chunkPosition().x();
-        int centreZ = client.player.chunkPosition().z();
+        int centreX = ClientSession.player(client).chunkPosition().x();
+        int centreZ = ClientSession.player(client).chunkPosition().z();
         for (int x = centreX - radius; x <= centreX + radius; x++) {
             for (int z = centreZ - radius; z <= centreZ + radius; z++) {
-                if (client.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) {
+                if (ClientLight.clientLevel(client).getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) {
                     return false;
                 }
             }
@@ -378,19 +399,19 @@ public class DesignTourScenario extends EvidenceScenario {
     // ------------------------------------------------------------------------------------------------ handbook, items
 
     private void handbook() {
-        ClientWait.until(ctx, "the handbook in the hotbar", client -> handbookSlot(client) >= 0);
-        ctx.runOnClient(client -> client.player.getInventory().setSelectedSlot(handbookSlot(client)));
-        ctx.getInput().pressKey(options -> options.keyUse);
-        ClientWait.screen(ctx, HandbookScreen.class);
-        ctx.waitTicks(HandbookScreenTuning.current().flipTicks() + 10);
+        ClientWait.until(ctx(), "the handbook in the hotbar", client -> handbookSlot(client) >= 0);
+        ctx().runOnClient(client -> ClientSession.player(client).getInventory().setSelectedSlot(handbookSlot(client)));
+        ctx().getInput().pressKey(options -> options.keyUse);
+        ClientWait.screen(ctx(), HandbookScreen.class);
+        ctx().waitTicks(HandbookScreenTuning.current().flipTicks() + 10);
         still("handbook-opened-from-the-item");
-        ctx.setScreen(() -> null);
+        ctx().setScreen(() -> null);
 
         // Built as HandbookScreen.open builds it: the shipped chapters only, with the progress the server synced.
-        List<HandbookPage> pages = ctx.computeOnClient(ShippedHandbook::pages);
-        ctx.setScreen(() -> new HandbookScreen(pages, id -> true, id -> {}, List.of()));
-        ClientWait.screen(ctx, HandbookScreen.class);
-        HandbookScreen screen = ctx.computeOnClient(client -> (HandbookScreen) client.gui.screen());
+        List<HandbookPage> pages = ctx().computeOnClient(ShippedHandbook::pages);
+        ctx().setScreen(() -> new HandbookScreen(pages, id -> true, id -> {}, List.of()));
+        ClientWait.screen(ctx(), HandbookScreen.class);
+        HandbookScreen screen = ctx().computeOnClient(client -> ClientSession.screen(client, HandbookScreen.class));
         Set<String> seen = new HashSet<>();
         for (int index = 0; index < pages.size(); index++) {
             HandbookPage page = pages.get(index);
@@ -402,19 +423,20 @@ public class DesignTourScenario extends EvidenceScenario {
                 continue;
             }
             int target = index;
-            ctx.runOnClient(client -> screen.goTo(target));
-            ctx.waitTicks(HandbookScreenTuning.current().flipTicks() + 6);
+            ctx().runOnClient(client -> screen.goTo(target));
+            ctx().waitTicks(HandbookScreenTuning.current().flipTicks() + 6);
             still("handbook-page-" + key);
         }
-        ctx.runOnClient(client -> screen.showNotes());
-        ctx.waitTicks(6);
+        ctx().runOnClient(client -> screen.showNotes());
+        ctx().waitTicks(6);
         still("handbook-notes-tab");
-        ctx.setScreen(() -> null);
+        ctx().setScreen(() -> null);
     }
 
     private static int handbookSlot(Minecraft client) {
         for (int slot = 0; slot < Inventory.getSelectionSize(); slot++) {
-            if (HandbookItems.isHandbook(client.player.getInventory().getItem(slot))) {
+            if (HandbookItems.isHandbook(
+                    ClientSession.player(client).getInventory().getItem(slot))) {
                 return slot;
             }
         }
@@ -437,12 +459,12 @@ public class DesignTourScenario extends EvidenceScenario {
                     player.getInventory().setItem(slot, new ItemStack(items.get(first + slot)));
                 }
             });
-            ctx.waitTicks(4);
-            ctx.setScreen(() -> new InventoryScreen(Minecraft.getInstance().player));
-            ClientWait.screen(ctx, InventoryScreen.class);
-            ctx.waitTicks(6);
+            ctx().waitTicks(4);
+            ctx().setScreen(() -> new InventoryScreen(ClientSession.player(Minecraft.getInstance())));
+            ClientWait.screen(ctx(), InventoryScreen.class);
+            ctx().waitTicks(6);
             still("items-gallery-" + (page + 1));
-            ctx.setScreen(() -> null);
+            ctx().setScreen(() -> null);
         }
     }
 
@@ -464,9 +486,9 @@ public class DesignTourScenario extends EvidenceScenario {
             charter = Charters.charterOfOrThrow(server, player.getUUID())
                     .orElseThrow()
                     .id();
-            Charters.deposit(server, charter, FUNDS);
+            Charters.deposit(server, charter(), FUNDS);
         });
-        ctx.runOnClient(client -> {
+        ctx().runOnClient(client -> {
             client.options.setCameraType(CameraType.FIRST_PERSON);
             setHidden(client, true);
         });
@@ -481,7 +503,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
     /** A point {@code dx} east, {@code dy} up and {@code dz} south of the bottom centre of the block of {@code anchor}. */
     private Vec3 rel(ColonyAnchor anchor, double dx, double dy, double dz) {
-        return Vec3.atBottomCenterOf(anchors.get(anchor)).add(dx, dy, dz);
+        return Vec3.atBottomCenterOf(TestColony.anchor(colony(), anchor)).add(dx, dy, dz);
     }
 
     /** What a still is of: a block that must stand within {@code radius} blocks of the point the camera looks at. */
@@ -501,7 +523,7 @@ public class DesignTourScenario extends EvidenceScenario {
      */
     private void verify(String stillName, int layer, Vec3 eye, Vec3 target, Subject subject) {
         String problem = serverGet(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
             BlockPos centre = BlockPos.containing(target);
             int reach = (int) Math.ceil(subject.radius());
             boolean found = BlockPos.betweenClosedStream(
@@ -564,19 +586,19 @@ public class DesignTourScenario extends EvidenceScenario {
         view(0, stand, p(0, EYE + 90, 70), 20);
         still("sky-up-noon");
         serverDo(server -> command(server, "time set 12500"));
-        EvidenceWorld.skyPhase(ctx, sp, EvidenceWorld.SKY_HALFWAY);
+        EvidenceWorld.skyPhase(ctx(), sp(), EvidenceWorld.SKY_HALFWAY);
         view(0, stand, targets[0], 40);
         still("surface-south-dusk");
         view(0, stand, p(0, EYE + 70, 120), 20);
         still("sky-up-dusk");
         serverDo(server -> command(server, "time set 18000"));
-        EvidenceWorld.skyPhase(ctx, sp, EvidenceWorld.SKY_DARKEST);
+        EvidenceWorld.skyPhase(ctx(), sp(), EvidenceWorld.SKY_DARKEST);
         view(0, stand, targets[3], 40);
         still("surface-north-night");
         view(0, stand, p(0, EYE + 90, 70), 20);
         still("sky-up-night");
         serverDo(server -> command(server, "time set noon"));
-        EvidenceWorld.skyPhase(ctx, sp, EvidenceWorld.SKY_BRIGHTEST);
+        EvidenceWorld.skyPhase(ctx(), sp(), EvidenceWorld.SKY_BRIGHTEST);
     }
 
     private static Set<Block> kitBlocks() {
@@ -625,7 +647,7 @@ public class DesignTourScenario extends EvidenceScenario {
             if (i == 0) {
                 verify("colony-orbit", 0, eye, middle, town);
             }
-            frame(ctx);
+            frame(ctx());
         }
 
         // Close-ups, each from the open side of the building (the square for the plinths, the street for the doors).
@@ -770,13 +792,13 @@ public class DesignTourScenario extends EvidenceScenario {
             ColonyAnchor.REPAIR_STATION
         };
         for (int i = 0; i < order.size(); i++) {
-            openTerminal(anchors.get(anchorOf[i]), TerminalScreen.class);
+            openTerminal(TestColony.anchor(colony(), anchorOf[i]), TerminalScreen.class);
             still("screen-" + order.get(i).id().getPath().replace('_', '-') + "-offline");
-            ctx.setScreen(() -> null);
+            ctx().setScreen(() -> null);
         }
         openAt(console, consoleEye, TerminalScreen.class);
         still("screen-hangar-console-offline");
-        ctx.setScreen(() -> null);
+        ctx().setScreen(() -> null);
 
         // Repair the four colony terminals at once, and park a worked pod at each one so the screens have something to
         // show.
@@ -802,14 +824,14 @@ public class DesignTourScenario extends EvidenceScenario {
                 pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
                 pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.PLATINIUM));
             });
-            openTerminal(anchors.get(anchorOf[i]), online[i]);
+            openTerminal(TestColony.anchor(colony(), anchorOf[i]), online[i]);
             still("screen-" + order.get(i).id().getPath().replace('_', '-') + "-online");
-            ctx.setScreen(() -> null);
+            ctx().setScreen(() -> null);
             serverDo(server -> pod.discard());
         }
-        openTerminal(anchors.get(ColonyAnchor.CONTRACT_TERMINAL), ContractScreen.class);
+        openTerminal(TestColony.anchor(colony(), ColonyAnchor.CONTRACT_TERMINAL), ContractScreen.class);
         still("screen-contract-terminal");
-        ctx.setScreen(() -> null);
+        ctx().setScreen(() -> null);
 
         // The hangar console takes its four parts and repairs the founding Mole.
         view(0, consoleEye, Vec3.atCenterOf(console), 20);
@@ -822,10 +844,10 @@ public class DesignTourScenario extends EvidenceScenario {
                 });
             }
         });
-        ctx.waitTicks(40);
+        ctx().waitTicks(40);
         openAt(console, consoleEye, HangarScreen.class);
         still("screen-hangar-console-online");
-        ctx.setScreen(() -> null);
+        ctx().setScreen(() -> null);
         view(0, consoleEye, derelict.add(0, 1, 0), 40);
         still("hangar-founding-mole-repaired");
         serverDo(server -> player(server).getInventory().clearContent());
@@ -838,26 +860,26 @@ public class DesignTourScenario extends EvidenceScenario {
 
     private void openAt(BlockPos terminal, Vec3 eye, Class<?> screen) {
         view(0, eye, Vec3.atCenterOf(terminal), 20);
-        ctx.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
-        ClientWait.screen(ctx, screen.asSubclass(Screen.class));
+        ctx().runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
+        ClientWait.screen(ctx(), screen.asSubclass(Screen.class));
         if (!TerminalViewScreen.class.isAssignableFrom(screen)) {
             throw new AssertionError(screen + " is not a terminal screen");
         }
-        ctx.waitTicks(TERMINAL_TYPING_TICKS);
+        ctx().waitTicks(TERMINAL_TYPING_TICKS);
     }
 
     // ------------------------------------------------------------------------------------------------ pods
 
     private PodEntity spawnPod(EntityType<PodEntity> type, int layer, Vec3 at, float yaw, boolean lights) {
         return serverGet(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(layer));
-            PodEntity pod = type.create(level, EntitySpawnReason.COMMAND);
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            PodEntity pod = TestEntities.create(type, level);
             pod.setPos(at);
             pod.setYRot(yaw);
             level.addFreshEntity(pod);
-            PodComponents.register(pod, charter);
+            PodComponents.register(pod, charter());
             if (lights) {
-                PodComponents.install(pod, ComponentItems.mint(server, ComponentTrack.LIGHTS, 2, charter));
+                PodComponents.install(pod, ComponentItems.mint(server, ComponentTrack.LIGHTS, 2, charter()));
             }
             return pod;
         });
@@ -920,7 +942,7 @@ public class DesignTourScenario extends EvidenceScenario {
                 .sorted()
                 .map(BuiltInRegistries.BLOCK::getValue)
                 .toList();
-        BlockPos row = ground.offset(-8, 1, 28);
+        BlockPos row = ground().offset(-8, 1, 28);
         serverDo(server -> {
             ServerLevel level = server.overworld();
             for (int i = 0; i < blocks.size(); i++) {
@@ -942,7 +964,7 @@ public class DesignTourScenario extends EvidenceScenario {
     // ------------------------------------------------------------------------------------------------ dark room
 
     private void darkRoom() {
-        BlockPos floor = ground.offset(ROOM_OFFSET, 0, ROOM_OFFSET).atY(ROOM_Y);
+        BlockPos floor = ground().offset(ROOM_OFFSET, 0, ROOM_OFFSET).atY(ROOM_Y);
         serverDo(server -> {
             ServerLevel level = server.overworld();
             loadChunks(level, floor.getX(), floor.getZ(), 2);
@@ -986,12 +1008,12 @@ public class DesignTourScenario extends EvidenceScenario {
         // Lit: the lights part is a light source round the pod.
         PodEntity litMole = spawnPod(PodRegistry.POD, 0, base, 0f, true);
         awaitLight(litMole);
-        ctx.waitTicks(30);
+        ctx().waitTicks(30);
         podAngles("mole-lit-dark", 0, base, 5.5, Chassis.MOLE.height(), FSB);
         serverDo(server -> litMole.discard());
         PodEntity litProspector = spawnPod(PodRegistry.PROSPECTOR, 0, base, 0f, true);
         awaitLight(litProspector);
-        ctx.waitTicks(30);
+        ctx().waitTicks(30);
         podAngles("prospector-lit-dark", 0, base, 7.5, 2.9, FSB);
         serverDo(server -> litProspector.discard());
 
@@ -999,7 +1021,7 @@ public class DesignTourScenario extends EvidenceScenario {
         // would see it.
         LamplessFigure figure = serverGet(server -> {
             ServerLevel level = server.overworld();
-            LamplessFigure f = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+            LamplessFigure f = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
             f.setPos(base);
             f.setNoAi(true);
             // A new entity gets a random yaw: face south, as the pods do, or the figure stands turned a little
@@ -1014,7 +1036,7 @@ public class DesignTourScenario extends EvidenceScenario {
         view(0, base.add(0, 1.8, 5), base.add(0, 1.2, 0), 40);
         still("lampless-figure-dark-no-night-vision");
         nightVision();
-        ctx.waitTicks(10);
+        ctx().waitTicks(10);
         for (String angle : FSB) {
             Vec3 eye = switch (angle) {
                 case "front" -> base.add(0, 1.8, 4.5);
@@ -1033,7 +1055,7 @@ public class DesignTourScenario extends EvidenceScenario {
         awaitLight(lamp);
         LamplessFigure walker = serverGet(server -> {
             ServerLevel level = server.overworld();
-            LamplessFigure f = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+            LamplessFigure f = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
             f.setPos(base.add(-1, 0, 0));
             f.setNoAi(true);
             f.setYRot(-90f);
@@ -1066,13 +1088,13 @@ public class DesignTourScenario extends EvidenceScenario {
             }
             ServerPlayer player = player(server);
             player.setShiftKeyDown(true);
-            UseEntityCallback.EVENT.invoker().interact(player, player.level(), InteractionHand.MAIN_HAND, pod, null);
+            UseEntity.on(player, player.level(), InteractionHand.MAIN_HAND, pod);
             player.setShiftKeyDown(false);
         });
-        ClientWait.screen(ctx, OreCargoScreen.class);
-        ctx.waitTicks(10);
+        ClientWait.screen(ctx(), OreCargoScreen.class);
+        ctx().waitTicks(10);
         still("screen-pod-cargo");
-        ctx.setScreen(() -> null);
+        ctx().setScreen(() -> null);
         serverDo(server -> pod.discard());
     }
 
@@ -1080,21 +1102,24 @@ public class DesignTourScenario extends EvidenceScenario {
         cargoScreen();
         Vec3 stage = stage();
         view(0, stage.add(0, EYE, 0), stage.add(0, EYE, 20), 60);
-        ScannerHudTest.mountFirstPlayer(sp.getServer(), 0);
-        ClientWait.until(ctx, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
+        ScannerHudTest.mountFirstPlayer(sp().getServer(), 0);
+        ClientWait.until(
+                ctx(),
+                "the player riding a pod",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
         fillPodForHud();
         hud(true);
-        ctx.waitTicks(20);
+        ctx().waitTicks(20);
         still("hud-pod-status-and-altimeter-surface");
-        ctx.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
-        ctx.waitTicks(20);
+        ctx().runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+        ctx().waitTicks(20);
         still("hud-pod-in-third-person-surface");
-        ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+        ctx().runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         leavePod();
 
-        ScannerHudTest.rideWithGoldAhead(ctx, sp.getServer(), 1);
+        ScannerHudTest.rideWithGoldAhead(ctx(), sp().getServer(), 1);
         fillPodForHud();
-        ctx.waitTicks(20);
+        ctx().waitTicks(20);
         still("hud-scanner-tier-1-surface");
         leavePod();
         hud(false);
@@ -1109,12 +1134,15 @@ public class DesignTourScenario extends EvidenceScenario {
                 pod.discard();
             }
         });
-        ClientWait.until(ctx, "the player out of the pod", client -> client.player.getVehicle() == null);
+        ClientWait.until(
+                ctx(),
+                "the player out of the pod",
+                client -> ClientSession.player(client).getVehicle() == null);
     }
 
     private void fillPodForHud() {
         serverDo(server -> {
-            PodEntity pod = (PodEntity) player(server).getVehicle();
+            PodEntity pod = TestEntities.vehicle(player(server), PodEntity.class);
             pod.setFuel(62f);
             pod.damageHull(pod.maxHull() * 0.3f);
             pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
@@ -1130,17 +1158,17 @@ public class DesignTourScenario extends EvidenceScenario {
     }
 
     private void hud(boolean shown) {
-        ctx.runOnClient(client -> setHidden(client, !shown));
+        ctx().runOnClient(client -> setHidden(client, !shown));
     }
 
     // ------------------------------------------------------------------------------------------------ layer 1
 
     private void layerOne() {
         serverDo(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             loadChunks(one, LAYER_X, LAYER_Z, 3);
         });
-        Vec3 cell = serverGet(server -> openCell(server.getLevel(LayerChain.dimension(1))));
+        Vec3 cell = serverGet(server -> openCell(ClientLight.serverLevel(server, LayerChain.dimension(1))));
         terrainViews(1, cell);
 
         // The structures of layer 1: the three shafts, one in each zone.
@@ -1165,7 +1193,7 @@ public class DesignTourScenario extends EvidenceScenario {
         int x = LAYER_X + 200;
         int z = LAYER_Z + 200;
         serverDo(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             loadChunks(one, x, z, 2);
             BlockPos min = new BlockPos(x - 3, 3, z - 3);
             BlockPos max = new BlockPos(x + 3, 8, z + 3);
@@ -1179,7 +1207,7 @@ public class DesignTourScenario extends EvidenceScenario {
         view(1, new Vec3(x - 2.5, 4.5, z - 2.5), new Vec3(x + 1.5, 3, z + 1.5), 20);
         still("layer-1-breach-crust-floor-low");
         serverDo(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dz = -1; dz <= 1; dz++) {
                     for (int y = one.getMinY(); y <= one.getMinY() + 3; y++) {
@@ -1198,11 +1226,11 @@ public class DesignTourScenario extends EvidenceScenario {
         int x = LAYER_X + 200;
         int z = LAYER_Z + 200;
         serverDo(server -> {
-            ServerLevel two = server.getLevel(LayerChain.dimension(2));
+            ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
             loadChunks(two, x, z, 3);
         });
         hud(true);
-        ctx.runOnClient(client -> client.player.getInventory().clearContent());
+        ctx().runOnClient(client -> ClientSession.player(client).getInventory().clearContent());
         view(1, new Vec3(x + 0.5, 4.0, z + 0.5), new Vec3(x + 0.5, 0.5, z + 1.5), 30);
         clearTransmissions();
         still("hud-altimeter-layer-1-floor");
@@ -1211,17 +1239,17 @@ public class DesignTourScenario extends EvidenceScenario {
         // so the still does not depend on the client tick that it lands on, or on how long the new level takes to load.
         EvidencePins.breachFadeAlpha = FADE_SHOT_ALPHA;
         serverDo(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             player(server).teleportTo(one, x + 0.5, one.getMinY() - 1, z + 0.5, Set.of(), 0, 60, true);
         });
         ClientWait.until(
-                ctx,
+                ctx(),
                 "layer 2 with the breach fade running and no screen",
-                client -> client.level.dimension().equals(LayerChain.dimension(2))
+                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2))
                         && client.gui.screen() == null
                         && BreachEffects.fadeAlpha(0f) > 0f);
         settle("hud-breach-fade");
-        screenshot(ctx, "hud-breach-fade");
+        screenshot(ctx(), "hud-breach-fade");
         EvidencePins.breachFadeAlpha = -1f;
 
         // Then the two transmissions of the crossing, each shot once it has typed out.
@@ -1229,34 +1257,36 @@ public class DesignTourScenario extends EvidenceScenario {
         int tail = 0;
         Identifier last = null;
         for (int tick = 0; tick < 1500 && !(shot.size() >= 2 && tail >= 12); tick++) {
-            Identifier current = ctx.computeOnClient(client ->
+            Identifier current = ctx().computeOnClient(client ->
                     TransmissionOverlay.transmission().map(Transmission::id).orElse(null));
-            boolean typed = ctx.computeOnClient(client -> TransmissionOverlay.typed());
+            boolean typed = ctx().computeOnClient(client -> TransmissionOverlay.typed());
             if (typed && current != null && shot.add(current)) {
-                screenshot(ctx, "hud-transmission-" + current.getPath());
+                screenshot(ctx(), "hud-transmission-" + current.getPath());
             }
             tail = typed && current != null && current.equals(last) ? tail + 1 : 0;
             last = current;
-            ctx.waitTick();
+            ctx().waitTick();
         }
         ClientWait.until(
-                ctx, "the client in layer 2", client -> client.level.dimension().equals(LayerChain.dimension(2)));
+                ctx(),
+                "the client in layer 2",
+                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)));
         clearTransmissions();
     }
 
     private void layerTwo() {
         serverDo(server -> {
-            ServerLevel two = server.getLevel(LayerChain.dimension(2));
+            ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
             loadChunks(two, LAYER_X, LAYER_Z, 3);
         });
         hud(false);
-        Vec3 cell = serverGet(server -> openCell(server.getLevel(LayerChain.dimension(2))));
+        Vec3 cell = serverGet(server -> openCell(ClientLight.serverLevel(server, LayerChain.dimension(2))));
         terrainViews(2, cell);
 
         // A pod in the dark with a scanner: the HUD at depth.
         // A sealed hall, so that no lava or gas of the cave reaches the pod.
         Vec3 hall = serverGet(server -> {
-            ServerLevel two = server.getLevel(LayerChain.dimension(2));
+            ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
             int x = LAYER_X + 120;
             int z = LAYER_Z + 120;
             int floor = (two.getMinY() + two.getMaxY()) / 2;
@@ -1274,10 +1304,13 @@ public class DesignTourScenario extends EvidenceScenario {
         view(2, hall, hall.add(1, 0, 0), 60);
         hud(true);
         serverDo(server -> player(server).removeEffect(MobEffects.NIGHT_VISION));
-        ScannerHudTest.mountFirstPlayer(sp.getServer(), 4);
-        ClientWait.until(ctx, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
+        ScannerHudTest.mountFirstPlayer(sp().getServer(), 4);
+        ClientWait.until(
+                ctx(),
+                "the player riding a pod",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
         fillPodForHud();
-        ctx.waitTicks(80);
+        ctx().waitTicks(80);
         still("hud-scanner-tier-4-layer-2");
         leavePod();
         hud(false);
@@ -1449,9 +1482,9 @@ public class DesignTourScenario extends EvidenceScenario {
 
     // ------------------------------------------------------------------------------------------------ structures
 
-    private StructureSite siteOf(StructureKind kind, BlockPos near) {
+    private StructureSite siteOf(StructureKind kind, @Nullable BlockPos near) {
         StructureSite site = serverGet(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(kind.layer()));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(kind.layer()));
             BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT).orElseThrow();
             return LayerStructures.nearest(
                     level.getSeed(), kind, level.getMinY(), level.getHeight(), near == null ? conduit : near, conduit);
@@ -1462,7 +1495,8 @@ public class DesignTourScenario extends EvidenceScenario {
 
     private void loadSite(StructureSite site) {
         serverDo(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(site.kind().layer()));
+            ServerLevel level = ClientLight.serverLevel(
+                    server, LayerChain.dimension(site.kind().layer()));
             BoundingBox box = site.bounds();
             for (int cx = box.minX() >> 4; cx <= box.maxX() >> 4; cx++) {
                 for (int cz = box.minZ() >> 4; cz <= box.maxZ() >> 4; cz++) {
@@ -1488,14 +1522,14 @@ public class DesignTourScenario extends EvidenceScenario {
         for (String id : List.of("t02", "surface_arrival")) {
             Identifier transmission = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, id);
             settle("hud-transmission-" + id);
-            serverDo(server -> Transmissions.fire(server, charter, transmission));
+            serverDo(server -> Transmissions.fire(server, charter(), transmission));
             boolean typed = false;
             for (int tick = 0; tick < 1200 && !typed; tick++) {
-                typed = ctx.computeOnClient(client -> TransmissionOverlay.typed());
-                ctx.waitTick();
+                typed = ctx().computeOnClient(client -> TransmissionOverlay.typed());
+                ctx().waitTick();
             }
-            ctx.waitTicks(10);
-            screenshot(ctx, "hud-transmission-" + id);
+            ctx().waitTicks(10);
+            screenshot(ctx(), "hud-transmission-" + id);
             clearTransmissions();
         }
     }
@@ -1503,10 +1537,10 @@ public class DesignTourScenario extends EvidenceScenario {
     private void clearTransmissions() {
         for (int tick = 0;
                 tick < 1500
-                        && ctx.computeOnClient(
-                                client -> TransmissionOverlay.transmission().isPresent());
+                        && ctx().computeOnClient(client ->
+                                TransmissionOverlay.transmission().isPresent());
                 tick += 4) {
-            ctx.waitTicks(4);
+            ctx().waitTicks(4);
         }
     }
 
@@ -1523,7 +1557,7 @@ public class DesignTourScenario extends EvidenceScenario {
             player.getAbilities().flying = true;
             player.onUpdateAbilities();
             player.teleportTo(
-                    server.getLevel(LayerChain.dimension(layer)),
+                    ClientLight.serverLevel(server, LayerChain.dimension(layer)),
                     eye.x,
                     eye.y - EYE,
                     eye.z,
@@ -1534,16 +1568,17 @@ public class DesignTourScenario extends EvidenceScenario {
         });
         // Arrived exactly, looking exactly: a camera still a block short, or a turn short, makes a different picture.
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the camera at the eye in layer " + layer + ", facing yaw " + yaw + " and pitch " + pitch,
-                client -> client.level.dimension().equals(LayerChain.dimension(layer))
-                        && client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
-                        && Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.01f
-                        && Math.abs(client.player.getXRot() - pitch) < 0.01f,
-                client -> "the player at " + client.player.position() + " in "
-                        + client.level.dimension().identifier() + " facing yaw " + client.player.getYRot()
-                        + " and pitch " + client.player.getXRot());
-        ctx.waitTicks(wait);
+                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer))
+                        && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
+                        && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - yaw)) < 0.01f
+                        && Math.abs(ClientSession.player(client).getXRot() - pitch) < 0.01f,
+                client -> "the player at " + ClientSession.player(client).position() + " in "
+                        + ClientLight.clientLevel(client).dimension().identifier() + " facing yaw "
+                        + ClientSession.player(client).getYRot()
+                        + " and pitch " + ClientSession.player(client).getXRot());
+        ctx().waitTicks(wait);
     }
 
     /**
@@ -1553,7 +1588,7 @@ public class DesignTourScenario extends EvidenceScenario {
     private void awaitLight(PodEntity pod) {
         long deadline = System.nanoTime() + SETTLE_LIMIT_NANOS;
         while (!serverGet(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(0));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(0));
             return BlockPos.betweenClosedStream(
                             BlockPos.containing(pod.getX(), pod.getBoundingBox().minY, pod.getZ()),
                             BlockPos.containing(pod.getX(), pod.getBoundingBox().maxY, pod.getZ()))
@@ -1562,13 +1597,13 @@ public class DesignTourScenario extends EvidenceScenario {
             if (System.nanoTime() > deadline) {
                 throw new AssertionError("the lights part of " + pod + " never placed its light");
             }
-            ctx.waitTicks(SETTLE_POLL_TICKS);
+            ctx().waitTicks(SETTLE_POLL_TICKS);
         }
     }
 
     /** A named still, with no toast, chat line or transmission over it. */
     private void still(String stillName) {
-        ctx.runOnClient(client -> {
+        ctx().runOnClient(client -> {
             client.gui.toastManager().clear();
             client.gui.hud.getChat().clearMessages(false);
             // The vanilla "Press Left Shift to dismount" hint fades by its own timer, so it is never in a still.
@@ -1576,7 +1611,7 @@ public class DesignTourScenario extends EvidenceScenario {
         });
         clearTransmissions();
         settle(stillName);
-        screenshot(ctx, stillName);
+        screenshot(ctx(), stillName);
     }
 
     private void nightVision() {
@@ -1602,11 +1637,11 @@ public class DesignTourScenario extends EvidenceScenario {
         server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
     }
 
-    private <T> T serverGet(Function<MinecraftServer, T> action) {
-        return sp.getServer().computeOnServer(action::apply);
+    private <T extends @Nullable Object> T serverGet(Function<MinecraftServer, T> action) {
+        return sp().getServer().computeOnServer(action::apply);
     }
 
     private void serverDo(Consumer<MinecraftServer> action) {
-        sp.getServer().runOnServer(action::accept);
+        sp().getServer().runOnServer(action::accept);
     }
 }

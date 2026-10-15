@@ -11,7 +11,9 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -59,7 +61,7 @@ public class WorkOrdersScenario extends EvidenceScenario {
                 return Colony.placed(server)
                         .orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
             });
-            BlockPos processor = colony.anchors().get(ColonyAnchor.ORE_PROCESSOR);
+            BlockPos processor = TestColony.anchor(colony, ColonyAnchor.ORE_PROCESSOR);
             // The Host's raised hand is near the top of him: his plinth is 5 blocks high and he stands 10. Seen from
             // the south street.
             Vec3 hands = Vec3.atCenterOf(colony.center()).add(0, 12, 0);
@@ -75,7 +77,8 @@ public class WorkOrdersScenario extends EvidenceScenario {
             context.waitTicks(SETTLE_TICKS);
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
             ClientWait.screen(context, OreProcessorScreen.class);
-            OreProcessorScreen screen = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
+            OreProcessorScreen screen =
+                    context.computeOnClient(client -> ClientSession.screen(client, OreProcessorScreen.class));
             for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
                 context.waitTicks(TICKS_PER_FRAME);
                 frame(context);

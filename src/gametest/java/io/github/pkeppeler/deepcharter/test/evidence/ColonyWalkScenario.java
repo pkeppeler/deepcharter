@@ -2,9 +2,12 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -17,6 +20,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "colony-walk" for #244, the colony rebuild: a player's walk through the town the world builds at spawn, at eye
@@ -41,12 +45,29 @@ public class ColonyWalkScenario extends EvidenceScenario {
     private static final int SETTLE_POLL_TICKS = 2;
     private static final int SETTLE_STABLE_POLLS = 5;
 
-    private ClientGameTestContext ctx;
-    private TestSingleplayerContext sp;
-    private BlockPos centre;
+    private @Nullable ClientGameTestContext ctx;
+    private @Nullable TestSingleplayerContext sp;
+    private @Nullable BlockPos centre;
+
+    private ClientGameTestContext ctx() {
+        return Objects.requireNonNull(ctx, "ctx was read before the scenario set it");
+    }
+
+    private TestSingleplayerContext sp() {
+        return Objects.requireNonNull(sp, "sp was read before the scenario set it");
+    }
+
+    private BlockPos centre() {
+        return Objects.requireNonNull(centre, "centre was read before the scenario set it");
+    }
 
     /** A stop on the walk: where the feet are, what the eyes look at, whether the walk holds there, and the still it takes there. */
-    private record Stop(double x, double z, Vec3 look, boolean hold, String still) {
+    private record Stop(
+            double x,
+            double z,
+            Vec3 look,
+            boolean hold,
+            @Nullable String still) {
         Stop(double x, double z, Vec3 look) {
             this(x, z, look, false, null);
         }
@@ -86,11 +107,11 @@ public class ColonyWalkScenario extends EvidenceScenario {
                 .adjustSettings(state -> state.setSeed("deepcharter-design-tour"))
                 .create()) {
             sp = singleplayer;
-            ClientWait.until(ctx, "the player in the world", client -> client.player != null && client.level != null);
+            ClientWait.until(ctx(), "the player in the world", client -> client.player != null && client.level != null);
             centre = serverGet(server -> Colony.placed(server)
                     .orElseThrow(() -> new AssertionError("the colony was not built"))
                     .center());
-            EvidenceWorld.pin(ctx, sp);
+            EvidenceWorld.pin(ctx(), sp());
             setUpCamera();
             walk();
         }
@@ -105,7 +126,7 @@ public class ColonyWalkScenario extends EvidenceScenario {
             // Feet on the ground, never flying: the view is a walking player's.
             player.setNoGravity(true);
         });
-        ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+        ctx().runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
     }
 
     private void walk() {
@@ -125,8 +146,8 @@ public class ColonyWalkScenario extends EvidenceScenario {
             for (int step = 1; step <= steps; step++) {
                 double t = smooth((double) step / steps);
                 go(Mth.lerp(t, here.x(), next.x()), Mth.lerp(t, here.z(), next.z()), lookFrom.lerp(next.look(), t));
-                ctx.waitTicks(TICKS_PER_FRAME);
-                frame(ctx);
+                ctx().waitTicks(TICKS_PER_FRAME);
+                frame(ctx());
             }
             hold(next);
             here = next;
@@ -137,12 +158,12 @@ public class ColonyWalkScenario extends EvidenceScenario {
     private void hold(Stop stop) {
         if (stop.still() != null) {
             settle(stop.still());
-            screenshot(ctx, stop.still());
+            screenshot(ctx(), stop.still());
         }
         if (stop.hold()) {
             for (int i = 0; i < HOLD; i++) {
-                ctx.waitTicks(TICKS_PER_FRAME);
-                frame(ctx);
+                ctx().waitTicks(TICKS_PER_FRAME);
+                frame(ctx());
             }
         }
     }
@@ -153,19 +174,19 @@ public class ColonyWalkScenario extends EvidenceScenario {
 
     /** Puts the player's feet at {@code x}, {@code z} from the centre, on the ground, looking at {@code look}, and waits for the client to stand there. */
     private void go(double x, double z, Vec3 look) {
-        Vec3 feet = Vec3.atLowerCornerOf(centre).add(x, 1, z);
-        Vec3 target = Vec3.atLowerCornerOf(centre).add(look);
+        Vec3 feet = Vec3.atLowerCornerOf(centre()).add(x, 1, z);
+        Vec3 target = Vec3.atLowerCornerOf(centre()).add(look);
         Vec3 d = target.subtract(feet.add(0, EYE, 0));
         float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
         float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
         serverDo(server ->
                 player(server).teleportTo(server.overworld(), feet.x, feet.y, feet.z, Set.of(), yaw, pitch, true));
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the camera at " + feet,
-                client -> client.player.distanceToSqr(feet.x, feet.y, feet.z) < 0.0001
-                        && Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.01f
-                        && Math.abs(client.player.getXRot() - pitch) < 0.01f);
+                client -> ClientSession.player(client).distanceToSqr(feet.x, feet.y, feet.z) < 0.0001
+                        && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - yaw)) < 0.01f
+                        && Math.abs(ClientSession.player(client).getXRot() - pitch) < 0.01f);
     }
 
     /**
@@ -177,14 +198,14 @@ public class ColonyWalkScenario extends EvidenceScenario {
         int stable = 0;
         String lastPose = null;
         while (stable < SETTLE_STABLE_POLLS) {
-            ctx.runOnClient(client -> client.particleEngine.clearParticles());
-            ctx.waitTicks(SETTLE_POLL_TICKS);
+            ctx().runOnClient(client -> client.particleEngine.clearParticles());
+            ctx().waitTicks(SETTLE_POLL_TICKS);
             boolean lit =
                     serverGet(server -> !server.overworld().getLightEngine().hasLightWork());
-            boolean drawn = ctx.computeOnClient(
-                    client -> chunksLoaded(client) && client.levelRenderer.hasRenderedAllSections());
-            String pose = ctx.computeOnClient(client -> client.getCameraEntity().position() + " "
-                    + client.getCameraEntity().getYRot());
+            boolean drawn = ctx().computeOnClient(
+                            client -> chunksLoaded(client) && client.levelRenderer.hasRenderedAllSections());
+            String pose = ctx().computeOnClient(client -> ClientSession.camera(client)
+                            .position() + " " + ClientSession.camera(client).getYRot());
             stable = lit && drawn && pose.equals(lastPose) ? stable + 1 : 0;
             lastPose = pose;
             if (System.nanoTime() > deadline) {
@@ -196,11 +217,12 @@ public class ColonyWalkScenario extends EvidenceScenario {
 
     private static boolean chunksLoaded(Minecraft client) {
         int radius = client.options.getEffectiveRenderDistance();
-        int x = client.player.chunkPosition().x();
-        int z = client.player.chunkPosition().z();
+        int x = ClientSession.player(client).chunkPosition().x();
+        int z = ClientSession.player(client).chunkPosition().z();
         for (int cx = x - radius; cx <= x + radius; cx++) {
             for (int cz = z - radius; cz <= z + radius; cz++) {
-                if (client.level.getChunkSource().getChunk(cx, cz, ChunkStatus.FULL, false) == null) {
+                if (ClientLight.clientLevel(client).getChunkSource().getChunk(cx, cz, ChunkStatus.FULL, false)
+                        == null) {
                     return false;
                 }
             }
@@ -213,10 +235,10 @@ public class ColonyWalkScenario extends EvidenceScenario {
     }
 
     private <T> T serverGet(java.util.function.Function<MinecraftServer, T> action) {
-        return sp.getServer().computeOnServer(action::apply);
+        return sp().getServer().computeOnServer(action::apply);
     }
 
     private void serverDo(java.util.function.Consumer<MinecraftServer> action) {
-        sp.getServer().runOnServer(action::accept);
+        sp().getServer().runOnServer(action::accept);
     }
 }

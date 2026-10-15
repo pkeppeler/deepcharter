@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -12,6 +14,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "m2-ore-placement": a room cut into the rock of Deep Claim (layer 1) and of Prospector's Run
@@ -63,8 +66,8 @@ public class OrePlacementScenario extends EvidenceScenario {
             String shot,
             boolean pan) {
         BlockPos room = singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(layer));
-            BlockPos best = null;
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            @Nullable BlockPos best = null;
             int most = -1;
             for (int i = 0; i < ROOMS_TRIED; i++) {
                 BlockPos candidate = new BlockPos(START_X + STEP * i, y, START_Z);
@@ -74,18 +77,19 @@ public class OrePlacementScenario extends EvidenceScenario {
                     best = candidate;
                 }
             }
-            cut(level, best);
-            return best;
+            BlockPos found = Objects.requireNonNull(best, "no room was tried");
+            cut(level, found);
+            return found;
         });
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.teleportTo(level, room.getX() - 5.5, room.getY(), room.getZ() + 0.5, Set.of(), EAST, 0f, true);
         });
         ClientWait.until(
                 context,
                 "the client in layer " + layer,
-                client -> client.level.dimension().equals(LayerChain.dimension(layer)));
+                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer)));
         context.waitTicks(40);
         screenshot(context, shot);
         if (pan) {
@@ -94,7 +98,7 @@ public class OrePlacementScenario extends EvidenceScenario {
                 singleplayer.getServer().runOnServer(server -> {
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     player.teleportTo(
-                            server.getLevel(LayerChain.dimension(layer)),
+                            ClientLight.serverLevel(server, LayerChain.dimension(layer)),
                             room.getX() - 5.5,
                             room.getY(),
                             room.getZ() + 0.5,

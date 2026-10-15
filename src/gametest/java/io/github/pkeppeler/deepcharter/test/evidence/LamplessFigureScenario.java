@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
@@ -19,7 +20,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
@@ -76,7 +76,7 @@ public class LamplessFigureScenario extends EvidenceScenario {
                 player.addEffect(new MobEffectInstance(
                         MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
                 Charters.found(server, player.getUUID(), "Demo Charter");
-                pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                pod[0] = TestEntities.create(PodRegistry.POD, level);
                 pod[0].setPos(Vec3.atBottomCenterOf(floor.above().east(POD_BESIDE_RAIL)));
                 level.addFreshEntity(pod[0]);
                 PodComponents.register(
@@ -84,7 +84,7 @@ public class LamplessFigureScenario extends EvidenceScenario {
                         Charters.charterOfOrThrow(server, player.getUUID())
                                 .orElseThrow()
                                 .id());
-                figure[0] = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+                figure[0] = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
                 figure[0].setPos(Vec3.atBottomCenterOf(floor.above().south(FIGURE_START)));
                 figure[0].setHeading(Direction.SOUTH);
                 level.addFreshEntity(figure[0]);

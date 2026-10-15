@@ -2,7 +2,9 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -19,7 +21,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.server.packs.resources.Resource;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Blocks;
 
 /**
@@ -47,7 +48,7 @@ public class SkinSwapScenario extends EvidenceScenario {
                 // The player faces +z (south); the Mole stands 5 blocks ahead, facing the player, on a stone floor.
                 player.teleportTo(player.level(), player.getX(), player.getY(), player.getZ(), Set.of(), 0f, 5f, true);
                 clearStage(player);
-                PodEntity mole = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+                PodEntity mole = TestEntities.create(PodRegistry.POD, player.level());
                 mole.setPos(player.position().add(0, 0, 5));
                 player.level().addFreshEntity(mole);
                 moleId[0] = mole.getId();
@@ -79,7 +80,7 @@ public class SkinSwapScenario extends EvidenceScenario {
                 screenshot(context, "skin-swapped");
 
                 context.runOnClient(client -> {
-                    PodEntity mole = (PodEntity) client.level.getEntity(moleId[0]);
+                    PodEntity mole = TestEntities.require(ClientLight.clientLevel(client), moleId[0], PodEntity.class);
                     mole.setDrillDirection(Direction.NORTH);
                     mole.setDrilling(true);
                 });

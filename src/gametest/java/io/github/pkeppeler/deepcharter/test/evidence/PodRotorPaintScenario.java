@@ -8,10 +8,13 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -24,7 +27,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Input;
@@ -34,6 +36,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "pod-rotor-paint" (#383): two Moles of two charters stand side by side, each in its own paint colour, with their
@@ -66,12 +69,32 @@ public class PodRotorPaintScenario extends EvidenceScenario {
 
     private static final Input LIFT = new Input(false, false, false, false, true, false, false);
 
-    private ClientGameTestContext ctx;
-    private TestSingleplayerContext world;
-    private BlockPos stage;
-    private MockPlayer pilot;
-    private CharterId pilotCharter;
+    private @Nullable ClientGameTestContext ctx;
+    private @Nullable TestSingleplayerContext world;
+    private @Nullable BlockPos stage;
+    private @Nullable MockPlayer pilot;
+    private @Nullable CharterId pilotCharter;
     private int framesTaken;
+
+    private ClientGameTestContext ctx() {
+        return Objects.requireNonNull(ctx, "ctx was read before the scenario set it");
+    }
+
+    private TestSingleplayerContext world() {
+        return Objects.requireNonNull(world, "world was read before the scenario set it");
+    }
+
+    private BlockPos stage() {
+        return Objects.requireNonNull(stage, "stage was read before the scenario set it");
+    }
+
+    private MockPlayer pilot() {
+        return Objects.requireNonNull(pilot, "pilot was read before the scenario set it");
+    }
+
+    private CharterId pilotCharter() {
+        return Objects.requireNonNull(pilotCharter, "pilotCharter was read before the scenario set it");
+    }
 
     @Override
     protected String name() {
@@ -90,28 +113,28 @@ public class PodRotorPaintScenario extends EvidenceScenario {
             EvidenceWorld.pin(context, singleplayer);
             setUp();
             // The pilot's pod, and beside it a pod of a charter whose colour is the next one of the palette.
-            PodEntity lifted = spawn(PodRegistry.POD, new Vec3(-1.5, 0, 4), pilotCharter);
+            PodEntity lifted = spawn(PodRegistry.POD, new Vec3(-1.5, 0, 4), pilotCharter());
             CharterId other = new CharterId(new UUID(
                     0L,
-                    (PodPaintLook.current().slotOf(pilotCharter) + 1)
+                    (PodPaintLook.current().slotOf(pilotCharter()) + 1)
                             % PodPaintLook.current().paints().size()));
             spawn(PodRegistry.POD, new Vec3(1.5, 0, 4), other);
             board(lifted);
             look(new Vec3(0, 4.2, -0.8), new Vec3(0, 3.0, 4));
             settle();
-            screenshot(ctx, "two-charters-folded");
+            screenshot(ctx(), "two-charters-folded");
             int first = framesTaken + 1;
             for (int i = 0; i < PARKED_FRAMES; i++) {
-                ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+                ctx().waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
                 frame();
             }
             fly(lifted);
             System.out.println("[pod-rotor-paint-segment] fold " + first + "-" + framesTaken);
             disembark(lifted);
-            spawn(PodRegistry.PROSPECTOR, new Vec3(0, 0, 9), pilotCharter);
+            spawn(PodRegistry.PROSPECTOR, new Vec3(0, 0, 9), pilotCharter());
             look(new Vec3(0, 4.5, 0), new Vec3(0, 1.8, 7));
             settle();
-            screenshot(ctx, "prospector-behind");
+            screenshot(ctx(), "prospector-behind");
         }
     }
 
@@ -134,29 +157,29 @@ public class PodRotorPaintScenario extends EvidenceScenario {
             }
             serverDo(server -> {
                 if (thrust) {
-                    pilot.setInput(LIFT);
+                    pilot().setInput(LIFT);
                 } else {
-                    pilot.releaseInput();
+                    pilot().releaseInput();
                 }
             });
-            ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+            ctx().waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
             frame();
             if (!shot && hovered > HOVER_FRAMES / 2) {
-                screenshot(ctx, "rotor-out");
+                screenshot(ctx(), "rotor-out");
                 shot = true;
             }
         }
-        serverDo(server -> pilot.releaseInput());
+        serverDo(server -> pilot().releaseInput());
         for (int i = 0; i < SETTLED_FRAMES; i++) {
-            ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+            ctx().waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
             frame();
         }
-        screenshot(ctx, "rotor-folded-after-landing");
+        screenshot(ctx(), "rotor-folded-after-landing");
     }
 
     /** Levels a stone pad where the player starts, makes the player a creative flier camera with the HUD hidden, and joins a pilot with a charter. */
     private void setUp() {
-        ClientWait.until(ctx, "the client in the world", client -> client.player != null && client.level != null);
+        ClientWait.until(ctx(), "the client in the world", client -> client.player != null && client.level != null);
         serverDo(server -> {
             ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
             stage = camera.blockPosition();
@@ -165,7 +188,7 @@ public class PodRotorPaintScenario extends EvidenceScenario {
                 for (int dz = -PAD_HALF; dz <= PAD_HALF; dz++) {
                     for (int dy = -4; dy < PAD_CLEARANCE; dy++) {
                         level.setBlock(
-                                stage.offset(dx, dy, dz),
+                                stage().offset(dx, dy, dz),
                                 dy < 0 ? Blocks.STONE.defaultBlockState() : Blocks.AIR.defaultBlockState(),
                                 Block.UPDATE_ALL);
                     }
@@ -178,17 +201,17 @@ public class PodRotorPaintScenario extends EvidenceScenario {
             camera.setNoGravity(true);
             camera.setPermanentlyInvulnerable(true);
             pilot = MockPlayers.join(server, "Pilot");
-            pilot.teleportTo(level, Vec3.atBottomCenterOf(stage).add(0, 0, 2), FACING_CAMERA, 0f);
-            pilot.player().setInvisible(true);
-            pilot.player().setPermanentlyInvulnerable(true);
-            if (Charters.found(server, pilot.player().getUUID(), "Pod Works").isPresent()) {
+            pilot().teleportTo(level, Vec3.atBottomCenterOf(stage()).add(0, 0, 2), FACING_CAMERA, 0f);
+            pilot().player().setInvisible(true);
+            pilot().player().setPermanentlyInvulnerable(true);
+            if (Charters.found(server, pilot().player().getUUID(), "Pod Works").isPresent()) {
                 throw new AssertionError("founding the pilot's charter should succeed");
             }
-            pilotCharter = Charters.charterOfOrThrow(server, pilot.player().getUUID())
+            pilotCharter = Charters.charterOfOrThrow(server, pilot().player().getUUID())
                     .orElseThrow()
                     .id();
         });
-        ctx.runOnClient(client -> {
+        ctx().runOnClient(client -> {
             client.options.setCameraType(CameraType.FIRST_PERSON);
         });
     }
@@ -198,8 +221,8 @@ public class PodRotorPaintScenario extends EvidenceScenario {
         PodEntity[] made = {null};
         serverDo(server -> {
             ServerLevel level = server.overworld();
-            PodEntity pod = type.create(level, EntitySpawnReason.COMMAND);
-            pod.setPos(Vec3.atBottomCenterOf(stage).add(offset));
+            PodEntity pod = TestEntities.create(type, level);
+            pod.setPos(Vec3.atBottomCenterOf(stage()).add(offset));
             pod.setYRot(FACING_CAMERA);
             level.addFreshEntity(pod);
             PodComponents.register(pod, owner);
@@ -208,11 +231,11 @@ public class PodRotorPaintScenario extends EvidenceScenario {
         });
         PodEntity pod = made[0];
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the pod drawn in its charter's paint",
-                client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) instanceof PodEntity shown
                         && renderer(client, shown).appearanceOf(shown).paint().isPresent(),
-                client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) instanceof PodEntity shown
                         ? String.valueOf(renderer(client, shown).appearanceOf(shown))
                         : "no pod");
         return pod;
@@ -228,18 +251,18 @@ public class PodRotorPaintScenario extends EvidenceScenario {
 
     private void board(PodEntity pod) {
         serverDo(server -> {
-            if (!pilot.player().startRiding(pod)) {
+            if (!pilot().player().startRiding(pod)) {
                 throw new AssertionError("the pilot could not board " + pod);
             }
         });
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the pilot aboard on the client",
-                client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) instanceof PodEntity shown
                         && shown.getControllingPassenger() != null);
         // An invisible player still draws what it holds: empty the hands of the client's copy only.
-        ctx.runOnClient(client -> {
-            if (client.level.getEntity(pilot.player().getId()) instanceof Player shown) {
+        ctx().runOnClient(client -> {
+            if (ClientLight.clientLevel(client).getEntity(pilot().player().getId()) instanceof Player shown) {
                 shown.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
                 shown.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
             }
@@ -247,17 +270,17 @@ public class PodRotorPaintScenario extends EvidenceScenario {
     }
 
     private void disembark(PodEntity pod) {
-        serverDo(server -> pilot.player().stopRiding());
+        serverDo(server -> pilot().player().stopRiding());
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the pilot off the pod on the client",
-                client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) instanceof PodEntity shown
                         && shown.getControllingPassenger() == null);
     }
 
     /** Puts the camera's eye {@code eye} blocks from the stage, looking at {@code target} (also from the stage). */
     private void look(Vec3 eye, Vec3 target) {
-        Vec3 from = Vec3.atBottomCenterOf(stage).add(eye);
+        Vec3 from = Vec3.atBottomCenterOf(stage()).add(eye);
         Vec3 d = target.subtract(eye);
         float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
         float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
@@ -271,28 +294,28 @@ public class PodRotorPaintScenario extends EvidenceScenario {
     private void settle() {
         int[] stable = {0};
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the view settled",
                 () -> {
                     boolean ready = !serverGet(server ->
                                     server.overworld().getLightEngine().hasLightWork())
-                            && ctx.computeOnClient(client -> client.levelRenderer.hasRenderedAllSections());
+                            && ctx().computeOnClient(client -> client.levelRenderer.hasRenderedAllSections());
                     stable[0] = ready ? stable[0] + 1 : 0;
                     return stable[0] >= SETTLE_POLLS;
                 },
-                () -> ctx.computeOnClient(ClientWait::describe));
+                () -> ctx().computeOnClient(ClientWait::describe));
     }
 
     private void frame() {
-        frame(ctx);
+        frame(ctx());
         framesTaken++;
     }
 
     private void serverDo(Consumer<MinecraftServer> action) {
-        world.getServer().runOnServer(action::accept);
+        world().getServer().runOnServer(action::accept);
     }
 
     private <T> T serverGet(Function<MinecraftServer, T> query) {
-        return world.getServer().computeOnServer(query::apply);
+        return world().getServer().computeOnServer(query::apply);
     }
 }

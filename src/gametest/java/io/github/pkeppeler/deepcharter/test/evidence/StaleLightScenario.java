@@ -77,7 +77,7 @@ public class StaleLightScenario extends EvidenceScenario {
                 int at = cell;
                 StructureSite site = server.computeOnServer(s -> {
                     BlockPos conduit = Colony.anchor(s, ColonyAnchor.CONDUIT).orElseThrow();
-                    ServerLevel level = s.getLevel(layer);
+                    ServerLevel level = ClientLight.serverLevel(s, layer);
                     return StructureSite.in(
                             s.overworld().getSeed(),
                             StructureKind.GALLERY,
@@ -94,7 +94,7 @@ public class StaleLightScenario extends EvidenceScenario {
                         .getPlayers()
                         .getFirst()
                         .teleportTo(
-                                s.getLevel(layer),
+                                ClientLight.serverLevel(s, layer),
                                 stand.getX() + 0.5,
                                 stand.getY(),
                                 stand.getZ() + 0.5,
@@ -109,8 +109,8 @@ public class StaleLightScenario extends EvidenceScenario {
                 ClientWait.until(
                         context,
                         "the client to hold the gallery of cell " + cell,
-                        client ->
-                                client.level.dimension().equals(layer) && ClientLight.chunksPresent(client.level, box),
+                        client -> ClientLight.clientLevel(client).dimension().equals(layer)
+                                && ClientLight.chunksPresent(ClientLight.clientLevel(client), box),
                         ClientWait::describe);
                 ClientWait.until(
                         context,
@@ -125,7 +125,7 @@ public class StaleLightScenario extends EvidenceScenario {
                     frame(context);
                     // What the old workaround did: send the light of the chunks again.
                     server.runOnServer(s -> {
-                        ServerLevel level = s.getLevel(layer);
+                        ServerLevel level = ClientLight.serverLevel(s, layer);
                         ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
                         for (int x = box.min().getX() >> 4; x <= box.max().getX() >> 4; x++) {
                             for (int z = box.min().getZ() >> 4; z <= box.max().getZ() >> 4; z++) {
