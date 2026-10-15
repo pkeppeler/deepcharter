@@ -47,7 +47,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class MockPlayers {
     /** Where a helper-joined mock stands, relative to the test structure. */
-    private static final Vec3 STRUCTURE_SPAWN = new Vec3(1.5, 1, 1.5);
+    public static final Vec3 STRUCTURE_SPAWN = new Vec3(1.5, 1, 1.5);
 
     private static final List<MockPlayer> ACTIVE = new ArrayList<>();
 
@@ -64,10 +64,7 @@ public final class MockPlayers {
 
     private MockPlayers() {}
 
-    /**
-     * Join a mock player owned by a GameTest: it is removed when that test ends, however it ends. It stands inside
-     * the test structure, one block above its floor, because a bare join lands at the origin and suffocates.
-     */
+    /** Join a mock player owned by a GameTest, inside its structure (a bare join suffocates at the origin); removed when that test ends. */
     public static MockPlayer join(GameTestHelper helper, String name) {
         return joinInStructure(helper, name, UUID.randomUUID(), true);
     }
