@@ -12,10 +12,10 @@ import gate_batch
 from gate_batch import Case
 
 
-def holder(body: str, above: str = "") -> str:
+def holder(body: str) -> str:
     return f"""
 public class HolderFixture {{
-    {above}{body}
+    {body}
 }}
 """
 
