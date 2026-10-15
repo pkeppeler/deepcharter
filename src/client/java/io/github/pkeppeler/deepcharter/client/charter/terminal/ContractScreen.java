@@ -51,7 +51,6 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
     private final TerminalView view;
     private final Typewriter typewriter;
     private Optional<ContractState> state = Optional.empty();
-    /** The name box, present only while the player has no charter to found one in; {@code layout()} clears and rebuilds it. */
     private @Nullable CrtTextField nameField;
     /** The last status line {@link #fitted} measured, with the text and width it was measured for. */
     private String fitKey = "";
