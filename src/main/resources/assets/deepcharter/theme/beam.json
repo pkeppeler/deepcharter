@@ -15,9 +15,9 @@
   "floodlightLength": 30,
   "floodlightStartRadius": 0.25,
   "floodlightEndRadius": 5.0,
-  "floodlightAlpha": 0.025,
+  "floodlightAlpha": 0.015,
   "floodlightCoreScale": 0.35,
-  "floodlightCoreAlpha": 0.09,
+  "floodlightCoreAlpha": 0.05,
   "floodlightPitch": 24,
   "floodlightForward": 0.4,
   "floodlightHeight": 0.55
