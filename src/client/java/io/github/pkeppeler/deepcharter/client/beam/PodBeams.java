@@ -29,10 +29,11 @@ public final class PodBeams {
 
     /** How far the pod's beam reaches in open air, 0 when it shows none. Used to widen the box the game culls the pod by, so a beam in view keeps its pod drawn. */
     public static double reach(PodEntity pod) {
-        return BeamCast.reach(
-                PodEvents.isPowered(pod),
-                PodLights.partLevel(pod),
-                BeamLook.current().headlamp().length());
+        return reach(pod, BeamLook.current().headlamp());
+    }
+
+    private static double reach(PodEntity pod, BeamStyle style) {
+        return BeamCast.reach(PodEvents.isPowered(pod), PodLights.partLevel(pod), style.length());
     }
 
     /**
@@ -42,7 +43,7 @@ public final class PodBeams {
     public static @Nullable BeamDraw beamFor(PodEntity pod, PodGeoRenderState state) {
         BeamLook look = BeamLook.current();
         BeamStyle style = look.headlamp();
-        double reach = BeamCast.reach(PodEvents.isPowered(pod), PodLights.partLevel(pod), style.length());
+        double reach = reach(pod, style);
         ClientLevel level = Minecraft.getInstance().level;
         double drawDistance = look.drawDistance();
         if (reach <= 0 || level == null || state.distanceToCameraSq > drawDistance * drawDistance) {

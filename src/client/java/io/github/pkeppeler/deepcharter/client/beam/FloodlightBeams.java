@@ -32,21 +32,7 @@ public final class FloodlightBeams {
     /** Client ticks between looks: one second. */
     private static final int LOOK_TICKS = 20;
 
-    private static final class Lamp {
-        final BlockPos pos;
-        final BeamDraw beam;
-        final double x;
-        final double y;
-        final double z;
-
-        Lamp(BlockPos pos, BeamDraw beam, double x, double y, double z) {
-            this.pos = pos;
-            this.beam = beam;
-            this.x = x;
-            this.y = y;
-            this.z = z;
-        }
-    }
+    private record Lamp(BlockPos pos, BeamDraw beam, double x, double y, double z) {}
 
     private static List<Lamp> lamps = new ArrayList<>();
     private static int ticks;
@@ -125,7 +111,7 @@ public final class FloodlightBeams {
 
     /** Whether the block of {@code lamp} is still a floodlight: a beam of one that was broken goes at once, before the next look. */
     private static boolean standing(ClientLevel level, Lamp lamp) {
-        return level.getBlockState(lamp.pos).is(ColonyKit.FLOODLIGHT);
+        return level.getBlockState(lamp.pos()).is(ColonyKit.FLOODLIGHT);
     }
 
     /**
@@ -140,8 +126,8 @@ public final class FloodlightBeams {
             return null;
         }
         for (Lamp lamp : lamps) {
-            if (lamp.pos.equals(pos) && standing(level, lamp)) {
-                return lamp.beam;
+            if (lamp.pos().equals(pos) && standing(level, lamp)) {
+                return lamp.beam();
             }
         }
         return null;
@@ -156,14 +142,14 @@ public final class FloodlightBeams {
         Vec3 camera = context.levelState().cameraRenderState.pos;
         for (int i = 0; i < lamps.size(); i++) {
             Lamp lamp = lamps.get(i);
-            double dx = lamp.x - camera.x;
-            double dy = lamp.y - camera.y;
-            double dz = lamp.z - camera.z;
+            double dx = lamp.x() - camera.x;
+            double dy = lamp.y() - camera.y;
+            double dz = lamp.z() - camera.z;
             if (dx * dx + dy * dy + dz * dz > drawDistance * drawDistance || !standing(level, lamp)) {
                 continue;
             }
-            lamp.beam.moveTo(dx, dy, dz);
-            context.submitNodeCollector().submitCustomGeometry(context.poseStack(), BeamDraw.renderType(), lamp.beam);
+            lamp.beam().moveTo(dx, dy, dz);
+            context.submitNodeCollector().submitCustomGeometry(context.poseStack(), BeamDraw.renderType(), lamp.beam());
         }
     }
 }

@@ -61,7 +61,6 @@ public final class BeamMesh {
         double ul = Math.sqrt(ux * ux + uz * uz);
         if (ul < 1e-4) {
             ux = 1;
-            uy = 0;
             uz = 0;
             ul = 1;
         }
