@@ -21,6 +21,8 @@ public final class ComponentItem extends Item {
     }
 
     @Override
+    // Item.appendHoverText is the only tooltip hook an item has; overriding it is the use
+    @SuppressWarnings("deprecation")
     public void appendHoverText(
             ItemStack stack,
             TooltipContext context,

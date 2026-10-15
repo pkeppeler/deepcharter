@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -495,7 +496,7 @@ public class SurfaceTerrainTest {
         if (stream == null) {
             throw fail(helper, "missing resource %s", resource);
         }
-        try (Reader reader = new InputStreamReader(stream)) {
+        try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader);
         }
     }

@@ -28,7 +28,7 @@ public class HangarClientTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
-        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+        try (TestSingleplayerContext _ = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the client in the world", client -> client.player != null && client.level != null);
             // The advance line shows while the charter has advance left, and is gone once it is used.

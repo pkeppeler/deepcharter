@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -244,7 +245,7 @@ public class PartFittingTest {
                         .orElseThrow(() -> failure(helper, "the pod should hold a %s part now", track));
                 if (part.tier() != 1
                         || !part.charter().equals(charter)
-                        || !part.serial().startsWith(track.id().toUpperCase())) {
+                        || !part.serial().startsWith(track.id().toUpperCase(Locale.ROOT))) {
                     throw failure(
                             helper,
                             "the %s part should be tier 1 of the charter with its own serial, got %s",
@@ -253,7 +254,7 @@ public class PartFittingTest {
                 }
                 float after = stat(track, pod);
                 boolean better = !STATS.containsKey(track)
-                        || (track == ComponentTrack.DRILL || track == ComponentTrack.RADIATOR
+                        || ((track == ComponentTrack.DRILL || track == ComponentTrack.RADIATOR)
                                 ? after < before
                                 : after > before);
                 if (!better) {

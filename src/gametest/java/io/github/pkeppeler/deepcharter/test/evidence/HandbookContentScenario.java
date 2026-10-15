@@ -33,7 +33,7 @@ public class HandbookContentScenario extends EvidenceScenario {
 
     @Override
     protected void run(ClientGameTestContext context) {
-        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+        try (TestSingleplayerContext _ = context.worldBuilder().create()) {
             context.runOnClient(client -> client.options.guiScale().set(GUI_SCALE));
             Map<Identifier, HandbookChapter> chapters = context.computeOnClient(client -> {
                 Map<Identifier, HandbookChapter> shipped = new LinkedHashMap<>();

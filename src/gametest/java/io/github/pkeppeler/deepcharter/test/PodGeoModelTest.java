@@ -397,15 +397,6 @@ public class PodGeoModelTest {
         }
     }
 
-    /** Width and height from a PNG's IHDR chunk. */
-    private static int[] pngSize(GameTestHelper helper, Identifier id) throws IOException {
-        try (InputStream in = stream(helper, id)) {
-            ByteBuffer header = ByteBuffer.wrap(in.readNBytes(24));
-            require(helper, header.limit() == 24 && header.getLong(0) == 0x89504E470D0A1A0AL, id + " is not a PNG");
-            return new int[] {header.getInt(16), header.getInt(20)};
-        }
-    }
-
     static InputStream stream(GameTestHelper helper, Identifier id) {
         String path = "/assets/%s/%s".formatted(id.getNamespace(), id.getPath());
         InputStream in = PodGeoModelTest.class.getResourceAsStream(path);

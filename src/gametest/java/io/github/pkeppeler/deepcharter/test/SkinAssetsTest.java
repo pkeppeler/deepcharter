@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -120,7 +121,7 @@ public class SkinAssetsTest {
             if (stream == null) {
                 throw failure(helper, "%s is not on the classpath", path);
             }
-            try (Reader reader = new InputStreamReader(stream)) {
+            try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
                 return JsonParser.parseReader(reader).getAsJsonObject();
             }
         }

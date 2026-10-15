@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -64,7 +65,7 @@ public class SoundEventsTest {
             throw failure(helper, "assets/deepcharter/sounds.json is not on the classpath");
         }
         Set<String> placeholders;
-        try (Reader reader = new InputStreamReader(stream)) {
+        try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             placeholders = JsonParser.parseReader(reader).getAsJsonObject().keySet();
         }
         for (DeepSound sound : DeepSound.values()) {
@@ -90,7 +91,7 @@ public class SoundEventsTest {
         for (String line : lines) {
             String trimmed = line.strip();
             if (!trimmed.isEmpty() && !trimmed.startsWith("#")) {
-                ids.add(trimmed.split("\\s+")[0]);
+                ids.add(trimmed.split("\\s+", 2)[0]);
             }
         }
         return ids;

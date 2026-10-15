@@ -706,8 +706,6 @@ public class ProspectorChassisTest {
                     FoundingMoleHangarTest.repairTheConsole(helper);
                     MockPlayer owner = FoundingMoleHangarTest.member(helper, "Second Claimant");
                     BlockPos console = FoundingMoleHangarTest.console(helper, owner);
-                    CharterId charter =
-                            FoundingMoleHangarTest.charterOf(helper, owner).id();
                     FoundingMoleHangarTest.deposit(helper, owner, 2 * PRICE);
                     FoundingMoleHangarTest.give(owner.player(), FoundingMoleHangarTest.CATALYST, 2 * CATALYSTS);
                     PodEntity holder = prospectorWreck(helper);
@@ -1203,16 +1201,6 @@ public class ProspectorChassisTest {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }
         return level;
-    }
-
-    private static void fill(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2, Block block) {
-        for (int x = x1; x <= x2; x++) {
-            for (int y = y1; y <= y2; y++) {
-                for (int z = z1; z <= z2; z++) {
-                    level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), 2);
-                }
-            }
-        }
     }
 
     private static int air(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2) {

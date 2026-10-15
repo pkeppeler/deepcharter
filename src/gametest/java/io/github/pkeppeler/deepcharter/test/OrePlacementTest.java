@@ -768,7 +768,7 @@ public class OrePlacementTest {
         return census;
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private static Map<Block, Integer>[] newCounters(int count) {
         Map<Block, Integer>[] counters = new Map[count];
         for (int i = 0; i < count; i++) {

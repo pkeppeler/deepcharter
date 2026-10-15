@@ -147,7 +147,7 @@ public class AssetCompletenessTest {
     }
 
     /**
-     * Every string under a key called {@code model}, at any depth (a blockstate's variants and parts, an item definition's tree),
+     * Every string under a key called "model", at any depth (a blockstate's variants and parts, an item definition's tree),
      * into {@code models}; the tiles of each connected-casing model into {@code textures}. Any other custom model type is a problem.
      */
     private static void collectRefs(

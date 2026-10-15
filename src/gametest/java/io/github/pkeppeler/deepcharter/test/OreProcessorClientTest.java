@@ -72,7 +72,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
                     client -> screen.typewriter().done(),
                     client -> "typewriter text '" + screen.typewriter().text() + "'");
 
-            long cargo = OreType.GOLDIUM.value() + OreType.PLATINIUM.value();
+            long cargo = (long) OreType.GOLDIUM.value() + OreType.PLATINIUM.value();
             context.clickScreenButton("SELL ALL POD CARGO");
             ClientWait.until(
                     context,
@@ -88,7 +88,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
                     "the screen shows the new balance, got '"
                             + context.computeOnClient(client -> OreProcessorScreen.accountLine()) + "'");
 
-            long carried = OreType.IRONIUM.value() + OreType.SILVERIUM.value();
+            long carried = (long) OreType.IRONIUM.value() + OreType.SILVERIUM.value();
             context.clickScreenButton("SELL ALL CARRIED ORE");
             ClientWait.until(
                     context,

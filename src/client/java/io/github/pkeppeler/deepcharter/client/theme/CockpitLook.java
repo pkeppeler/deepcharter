@@ -217,7 +217,7 @@ public record CockpitLook(
             Anchor badge) {
         /** {@code color}'s red, green and blue with the opacity {@code alpha}, 0 to 255. */
         public static int withAlpha(int alpha, int color) {
-            return alpha << 24 | color & 0xFFFFFF;
+            return alpha << 24 | (color & 0xFFFFFF);
         }
 
         static CameraLook of(ThemeData d) {

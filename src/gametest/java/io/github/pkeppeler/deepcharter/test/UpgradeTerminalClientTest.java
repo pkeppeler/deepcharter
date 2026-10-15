@@ -26,7 +26,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
@@ -95,7 +94,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the tier 2 install label",
-                    client -> labels(client, screen).contains("TIER 2  INSTALLED"));
+                    client -> labels(screen).contains("TIER 2  INSTALLED"));
             require(
                     singleplayer
                             .getServer()
@@ -108,7 +107,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the tier 4 install label",
-                    client -> labels(client, screen).contains("TIER 4  INSTALLED  (WORKS AS TIER 2)"));
+                    client -> labels(screen).contains("TIER 4  INSTALLED  (WORKS AS TIER 2)"));
             boolean cappedAndDropped = singleplayer.getServer().computeOnServer(server2 -> {
                 PodEntity pod = pod(server2, scene);
                 boolean capped = PodComponents.effectiveTier(pod, ComponentTrack.HULL) == 2;
@@ -187,7 +186,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the tier 2 install label",
-                    client -> labels(client, fitted).contains("TIER 2  INSTALLED"));
+                    client -> labels(fitted).contains("TIER 2  INSTALLED"));
             require(
                     singleplayer
                             .getServer()
@@ -241,10 +240,10 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
     }
 
     private static List<String> labels(ClientGameTestContext context, UpgradeScreen screen) {
-        return context.computeOnClient(client -> labels(client, screen));
+        return context.computeOnClient(client -> labels(screen));
     }
 
-    private static List<String> labels(Minecraft client, UpgradeScreen screen) {
+    private static List<String> labels(UpgradeScreen screen) {
         return screen.children().stream()
                 .filter(CrtButton.class::isInstance)
                 .map(button -> ((CrtButton) button).getMessage().getString())

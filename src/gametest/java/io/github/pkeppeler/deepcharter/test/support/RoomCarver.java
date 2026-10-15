@@ -52,7 +52,7 @@ public final class RoomCarver {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
             BlockPos feet = player.blockPosition();
             carve(
-                    (ServerLevel) player.level(),
+                    player.level(),
                     feet.offset(-ARRIVAL_RADIUS, 0, -ARRIVAL_RADIUS),
                     feet.offset(ARRIVAL_RADIUS, ARRIVAL_HEIGHT, ARRIVAL_RADIUS),
                     Blocks.AIR.defaultBlockState());

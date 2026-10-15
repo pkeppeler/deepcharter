@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ContractShown;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -80,7 +81,7 @@ public class CharterReviveScenario extends EvidenceScenario {
             clearToasts(context);
             screenshot(context, "stranger-refused");
 
-            context.clickScreenButton("REVIVE: " + OURS.toUpperCase());
+            context.clickScreenButton("REVIVE: " + OURS.toUpperCase(Locale.ROOT));
             awaitState(context, open -> ContractShown.directs(open, OURS));
             hold(context);
             clearToasts(context);

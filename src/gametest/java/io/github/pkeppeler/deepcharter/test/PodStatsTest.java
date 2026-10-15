@@ -41,7 +41,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
@@ -551,13 +550,6 @@ public class PodStatsTest {
                     Component.literal("dimension " + LayerChain.dimension(layer) + " did not load"));
         }
         return level;
-    }
-
-    private static void box(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2, Block block) {
-        BlockState state = block.defaultBlockState();
-        for (BlockPos pos : BlockPos.betweenClosed(x1, y1, z1, x2, y2, z2)) {
-            level.setBlock(pos, state, Block.UPDATE_CLIENTS);
-        }
     }
 
     @GameTest(maxTicks = FAR_TICKS)

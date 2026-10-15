@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.RegistryAccess;
@@ -22,6 +23,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
 
@@ -140,7 +142,9 @@ public class LayerDimensionsTest {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer mock = MockPlayers.join(server, "layer-goto-denied");
         try {
-            var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.ALL);
+            var source = mock.player()
+                    .createCommandSourceStack()
+                    .withPermission(LevelBasedPermissionSet.forLevel(PermissionLevel.ALL));
             var before = mock.player().level().dimension();
             try {
                 server.getCommands().getDispatcher().execute("deepcharter layer goto 1", source);
@@ -243,7 +247,7 @@ public class LayerDimensionsTest {
         if (stream == null) {
             throw helper.assertionException("missing classpath resource %s", resource);
         }
-        try (Reader reader = new InputStreamReader(stream)) {
+        try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader);
         }
     }

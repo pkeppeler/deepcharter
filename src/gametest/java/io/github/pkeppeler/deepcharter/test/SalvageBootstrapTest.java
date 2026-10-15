@@ -391,7 +391,8 @@ public class SalvageBootstrapTest {
             String[] rows = PART_GRIDS.get(part);
             List<Item> cells = new ArrayList<>();
             for (String row : rows) {
-                for (char cell : row.toCharArray()) {
+                for (int column = 0; column < row.length(); column++) {
+                    char cell = row.charAt(column);
                     cells.add(
                             cell == 'I'
                                     ? Items.IRON_INGOT

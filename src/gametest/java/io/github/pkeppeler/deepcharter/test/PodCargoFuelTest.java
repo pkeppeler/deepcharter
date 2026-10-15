@@ -22,6 +22,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -339,7 +340,9 @@ public class PodCargoFuelTest {
                         .getServer()
                         .getCommands()
                         .getDispatcher()
-                        .execute("deepcharter pod dump", source(pilot, LevelBasedPermissionSet.ALL));
+                        .execute(
+                                "deepcharter pod dump",
+                                source(pilot, LevelBasedPermissionSet.forLevel(PermissionLevel.ALL)));
             } catch (CommandSyntaxException expected) {
                 refused = true;
             }
@@ -361,7 +364,8 @@ public class PodCargoFuelTest {
             var dispatcher = helper.getLevel().getServer().getCommands().getDispatcher();
             boolean refused = false;
             try {
-                dispatcher.execute("deepcharter pod spawn", source(player, LevelBasedPermissionSet.ALL));
+                dispatcher.execute(
+                        "deepcharter pod spawn", source(player, LevelBasedPermissionSet.forLevel(PermissionLevel.ALL)));
             } catch (CommandSyntaxException expected) {
                 refused = true;
             }

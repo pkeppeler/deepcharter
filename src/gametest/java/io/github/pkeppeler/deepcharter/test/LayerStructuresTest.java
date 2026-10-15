@@ -688,12 +688,7 @@ public class LayerStructuresTest {
         }
     }
 
-    /** No fluid and no gas pocket in the site's bounds and the shell round them. */
-    private static void requireNoFluidOrGas(GameTestHelper helper, ServerLevel level, StructureSite site) {
-        requireNoFluidOrGas(helper, level, site, null);
-    }
-
-    /** As above, limited to the blocks of {@code only} when it is given. */
+    /** No fluid and no gas pocket in the site's bounds and the shell round them, limited to the blocks of {@code only}. */
     private static void requireNoFluidOrGas(
             GameTestHelper helper, ServerLevel level, StructureSite site, ChunkPos only) {
         String found = fluidOrGasAt(level, site, only);

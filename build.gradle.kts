@@ -1,4 +1,5 @@
 import java.security.MessageDigest
+import net.ltgt.gradle.errorprone.errorprone
 import java.util.zip.ZipFile
 
 // Plugin versions are locked too. Regenerate: see the deepcharter-conventions skill.
@@ -13,6 +14,7 @@ plugins {
 	alias(libs.plugins.loom)
 	alias(libs.plugins.dependency.analysis)
 	alias(libs.plugins.spotless)
+	alias(libs.plugins.errorprone)
 	checkstyle
 }
 
@@ -164,6 +166,8 @@ dependencies {
 	"clientImplementation"(libs.geckolib)
 	"gametestImplementation"(libs.geckolib)
 	include(libs.geckolib)
+
+	errorprone(libs.errorprone.core)
 }
 
 // Audit condition 2: the resolved GeckoLib jar must be the audited one. Regenerating the verification metadata accepts whatever
@@ -267,8 +271,32 @@ spotless {
 	}
 }
 
+// RELAXED: Error Prone's UnusedMethod and UnusedVariable would flag every injector method and its Mixin-supplied parameters,
+// so these annotations exempt them; any other unused code is still reported.
+val mixinHandlers = listOf("Inject", "Redirect", "ModifyArg", "ModifyArgs", "ModifyVariable", "ModifyConstant")
+	.joinToString(",") { "org.spongepowered.asm.mixin.injection.$it" }
+
+// Error Prone runs inside javac on every source set (main, client, gametest); -Werror turns every warning into a failure.
+// -processing: javac warns about annotations no processor claims, and -Werror would fail on it.
+// RELAXED -classfile: Minecraft's classpath carries Guava without its Error Prone annotations, so javac warns per class and -Werror fails; third-party class files only
 tasks.withType<JavaCompile>().configureEach {
 	options.release = 25
+	options.compilerArgs.addAll(listOf("-Xlint:all,-processing,-classfile", "-Werror"))
+	options.errorprone {
+		disableWarningsInGeneratedCode = true
+		// RELAXED: Readable and Unreadable are the domain's own pair (Versioned, CONTEXT.md); renaming them to dodge java.lang.Readable would split the vocabulary the M2 rules use
+		disable("AvoidCommonTypeNames")
+		// RELAXED: vanilla and this mod compare Entity, Level, Item, Block and other registry objects with == throughout; Entity.equals is its id
+		disable("ReferenceEquality")
+		// RELAXED: enum order is the contract of stream codecs, theme data indices and seeded hashes, so ordinal() is the stable key there
+		disable("EnumOrdinal")
+		// RELAXED: enums here hold Minecraft types (SoundEvent, Identifier, MapCodec) that are immutable in practice but cannot carry @Immutable
+		disable("ImmutableEnumChecker")
+		// RELAXED: annotating @FormatMethod needs error_prone_annotations on every source set's compile classpath, which Minecraft's does not carry (see -classfile)
+		disable("AnnotateFormatMethod")
+		option("UnusedMethod:ExemptingMethodAnnotations", mixinHandlers)
+		option("Unused:methodAnnotationsExemptingParameters", mixinHandlers)
+	}
 }
 
 java {

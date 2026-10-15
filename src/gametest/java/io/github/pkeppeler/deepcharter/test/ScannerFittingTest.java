@@ -110,7 +110,8 @@ public class ScannerFittingTest {
     public void theUnitIsCraftedFromIronCopperAndRedstoneAlone(GameTestHelper helper) {
         List<ItemStack> grid = new ArrayList<>();
         for (String row : GRID) {
-            for (char cell : row.toCharArray()) {
+            for (int column = 0; column < row.length(); column++) {
+                char cell = row.charAt(column);
                 grid.add(
                         cell == 'I'
                                 ? new ItemStack(Items.IRON_INGOT)

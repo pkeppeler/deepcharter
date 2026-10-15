@@ -169,7 +169,10 @@ public class SignalDecayTest {
             for (Instrument instrument : Instrument.values()) {
                 Fault first = SignalDecay.fault(instrument, 0.95, SEED, cell);
                 if (first != SignalDecay.fault(instrument, 0.95, SEED, cell)
-                        || SignalDecay.jump(instrument, SEED, cell) != SignalDecay.jump(instrument, SEED, cell)) {
+                        || Double.compare(
+                                        SignalDecay.jump(instrument, SEED, cell),
+                                        SignalDecay.jump(instrument, SEED, cell))
+                                != 0) {
                     throw failure(helper, "the fault of %s in cell %d changed between two reads", instrument, cell);
                 }
                 differs |= first != SignalDecay.fault(instrument, 0.95, SEED + 1, cell);

@@ -539,16 +539,6 @@ public class LayerTerrainTest {
         }
     }
 
-    private static void box(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2, Block block) {
-        for (int x = x1; x <= x2; x++) {
-            for (int y = y1; y <= y2; y++) {
-                for (int z = z1; z <= z2; z++) {
-                    level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), 2);
-                }
-            }
-        }
-    }
-
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));

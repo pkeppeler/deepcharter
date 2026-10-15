@@ -233,7 +233,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     missed.equals(List.of(id("t07"), id("t09"))),
                     "The offline client has not been sent t07 and t09, in order: " + missed);
 
-            try (var connection = two.server().connect()) {
+            try (var _ = two.server().connect()) {
                 ClientWait.until(
                         context,
                         "transmission t07 on the overlay",

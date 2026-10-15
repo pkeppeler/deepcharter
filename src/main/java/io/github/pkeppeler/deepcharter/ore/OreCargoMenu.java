@@ -144,7 +144,7 @@ public final class OreCargoMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        return pod == null || pod.isAlive() && player.distanceToSqr(pod) <= REACH_SQUARED;
+        return pod == null || (pod.isAlive() && player.distanceToSqr(pod) <= REACH_SQUARED);
     }
 
     private static final class ViewSlot extends Slot {

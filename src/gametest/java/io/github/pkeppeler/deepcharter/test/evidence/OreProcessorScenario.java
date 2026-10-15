@@ -73,7 +73,7 @@ public class OreProcessorScenario extends EvidenceScenario {
             hold(context);
             screenshot(context, "processor-before-sale");
 
-            long cargo = OreType.GOLDIUM.value() + OreType.PLATINIUM.value();
+            long cargo = (long) OreType.GOLDIUM.value() + OreType.PLATINIUM.value();
             context.clickScreenButton("SELL ALL POD CARGO");
             ClientWait.until(
                     context,

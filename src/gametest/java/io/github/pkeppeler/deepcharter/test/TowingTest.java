@@ -1043,8 +1043,8 @@ public class TowingTest {
                 throw failure(
                         helper, "the rider should be on the same tower after crossing, is on %s", player.getVehicle());
             }
-            if (!(player.level() instanceof ServerLevel two)
-                    || !(two.getEntity(pods[1].getUUID()) instanceof PodEntity crossed)) {
+            ServerLevel two = player.level();
+            if (!(two.getEntity(pods[1].getUUID()) instanceof PodEntity crossed)) {
                 throw failure(helper, "the towed pod did not arrive in layer 2");
             }
             if (crossed == pods[1] || !pods[1].isRemoved()) {

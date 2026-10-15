@@ -296,7 +296,10 @@ public class ColonyTest {
                     "the respawn radius should be 0 so a new player stands in the office, it is %s",
                     server.getGameRules().get(GameRules.RESPAWN_RADIUS));
         }
-        if (!overworld.getBlockState(office.below()).isSolid()
+        // Mojang deprecated BlockStateBase.isSolid but keeps it as the stand-on-it test
+        @SuppressWarnings("deprecation")
+        boolean floorSolid = overworld.getBlockState(office.below()).isSolid();
+        if (!floorSolid
                 || !overworld.getBlockState(office).isAir()
                 || !overworld.getBlockState(office.above()).isAir()) {
             throw failure(helper, "a player cannot stand at the world spawn %s", office.toShortString());

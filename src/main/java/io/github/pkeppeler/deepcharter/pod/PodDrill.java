@@ -191,7 +191,7 @@ public final class PodDrill {
                     }
                 } else if (breakable(state)
                         && (state.getDestroySpeed(level, pos) < 0
-                                || state.is(LayerBlocks.BREACH_CRUST) && !crustLeadsOn())) {
+                                || (state.is(LayerBlocks.BREACH_CRUST) && !crustLeadsOn()))) {
                     return false;
                 }
             }

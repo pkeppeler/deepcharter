@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ContractShown;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -73,7 +74,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
                             .contains("NO CHARTER"),
                     "a player with no charter is told so");
 
-            refusalsShowTheirMessage(context, screen);
+            refusalsShowTheirMessage(context);
             foundByTypingAName(context);
             Charter charter = two.server()
                     .computeOnServer(
@@ -151,7 +152,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
     }
 
     /** An empty name is refused by the server, and the screen shows why. */
-    private static void refusalsShowTheirMessage(ClientGameTestContext context, ContractScreen screen) {
+    private static void refusalsShowTheirMessage(ClientGameTestContext context) {
         type(context, "");
         context.clickScreenButton("FOUND CHARTER");
         awaitState(context, open -> open.refusal().isPresent());
@@ -184,8 +185,8 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
         two.server().runOnServer(server -> {
             require(Charters.apply(server, mock, charter.id()).isEmpty(), "the mock's application should succeed");
         });
-        awaitState(context, open -> ContractShown.applicants(open).equals(List.of(MOCK_NAME.toUpperCase())));
-        context.clickScreenButton("DENY " + MOCK_NAME.toUpperCase());
+        awaitState(context, open -> ContractShown.applicants(open).equals(List.of(MOCK_NAME.toUpperCase(Locale.ROOT))));
+        context.clickScreenButton("DENY " + MOCK_NAME.toUpperCase(Locale.ROOT));
         awaitState(context, open -> ContractShown.applicants(open).isEmpty());
         boolean turnedDown = two.server()
                 .computeOnServer(
@@ -200,8 +201,8 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
     private static void anotherPlayerAppliesAndIsApproved(
             ClientGameTestContext context, TwoPlayerServer two, UUID mock, UUID real, Charter charter) {
         two.server().runOnServer(server -> Charters.apply(server, mock, charter.id()));
-        awaitState(context, open -> ContractShown.applicants(open).equals(List.of(MOCK_NAME.toUpperCase())));
-        context.clickScreenButton("APPROVE " + MOCK_NAME.toUpperCase());
+        awaitState(context, open -> ContractShown.applicants(open).equals(List.of(MOCK_NAME.toUpperCase(Locale.ROOT))));
+        context.clickScreenButton("APPROVE " + MOCK_NAME.toUpperCase(Locale.ROOT));
         awaitState(context, open -> ContractShown.applicants(open).isEmpty());
         Charter after = two.server()
                 .computeOnServer(
@@ -240,7 +241,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
                 }),
                 "a dormant charter the player was never in is not offered, and a dormant one is not offered to apply to");
 
-        context.clickScreenButton("REVIVE: " + CHARTER.toUpperCase());
+        context.clickScreenButton("REVIVE: " + CHARTER.toUpperCase(Locale.ROOT));
         awaitState(context, open -> ContractShown.directs(open, CHARTER));
         boolean directs = two.server()
                 .computeOnServer(server ->
@@ -256,7 +257,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
         awaitState(context, open -> ContractShown.hasNoCharter(open) && ContractShown.offers(open, CHARTER));
 
         // Founding a name that is taken is refused with its message.
-        type(context, CHARTER.toUpperCase());
+        type(context, CHARTER.toUpperCase(Locale.ROOT));
         context.clickScreenButton("FOUND CHARTER");
         awaitState(context, open -> open.refusal().isPresent());
         String taken =
@@ -266,7 +267,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
                 refusalShown(context).contains(taken),
                 "a taken name's refusal reads '" + taken + "', the screen shows '" + refusalShown(context) + "'");
 
-        context.clickScreenButton("APPLY: " + CHARTER.toUpperCase());
+        context.clickScreenButton("APPLY: " + CHARTER.toUpperCase(Locale.ROOT));
         awaitState(context, open -> ContractShown.applied(open, CHARTER));
         two.server().runOnServer(server -> {
             require(Charters.approve(server, mock, real).isEmpty(), "the mock Director's approval should succeed");
