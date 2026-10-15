@@ -21,11 +21,13 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The online screen of the fuel pump: the account, the tank of the pod parked at the pump, and the original's buttons, a few
@@ -42,7 +44,8 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
     private TerminalView view;
     private final Typewriter typewriter;
     private final List<CrtButton> buyButtons = new ArrayList<>();
-    private CrtButton fillButton;
+    /** Absent until {@code init()} runs {@link #layout()}; rendering always follows it. */
+    private @Nullable CrtButton fillButton;
 
     public FuelPumpScreen(TerminalView view) {
         super(Component.translatable(typeOf(view).block().getDescriptionId()));
@@ -140,7 +143,8 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
             int litres = steps.get(i);
             buyButtons.get(i).active = room >= litres - 0.001f && balance() >= litres * price;
         }
-        fillButton.active = room > 0.001f && balance() >= price;
+        Objects.requireNonNull(fillButton, "FILL UP button is built by layout() in init(), before any render").active =
+                room > 0.001f && balance() >= price;
     }
 
     @Override
