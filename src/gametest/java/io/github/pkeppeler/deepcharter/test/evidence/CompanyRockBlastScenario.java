@@ -9,8 +9,10 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -19,7 +21,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
@@ -68,7 +69,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
         // Only the layer 2 run is a recording: the GIF is the layer that glows.
         boolean recording = layer == 2;
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
             build(level, layer);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
@@ -78,8 +79,10 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
                 context,
                 "the slab of Company rock in layer " + layer,
                 client -> client.player != null
-                        && client.level.dimension().equals(LayerChain.dimension(layer))
-                        && client.level.getBlockState(slabCell()).is(HazardBlocks.COMPANY_ROCK));
+                        && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer))
+                        && ClientLight.clientLevel(client)
+                                .getBlockState(slabCell())
+                                .is(HazardBlocks.COMPANY_ROCK));
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         context.waitTicks(SETTLE_TICKS);
         screenshot(context, "l%d-rest".formatted(layer));
@@ -90,9 +93,9 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
 
         // Seat the player, set the charge from the seat, climb out and go back to the trench.
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(X, FLOOR_Y, Z);
             level.addFreshEntity(pod);
             player.teleportTo(level, X, FLOOR_Y, Z, Set.of(), 0, 0, true);
@@ -106,7 +109,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
                 client ->
                         client.player != null && client.player.getVehicle() instanceof PodEntity pod && pod.onGround());
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.getInventory()
                     .setItem(
@@ -157,7 +160,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
     /** The slab's crack on the client, or -1 once the rock is gone from it. */
     private static int crack(ClientGameTestContext context) {
         return context.computeOnClient(client -> {
-            BlockState state = client.level.getBlockState(slabCell());
+            BlockState state = ClientLight.clientLevel(client).getBlockState(slabCell());
             return state.is(HazardBlocks.COMPANY_ROCK) ? state.getValue(CompanyRockBlock.CRACK) : -1;
         });
     }

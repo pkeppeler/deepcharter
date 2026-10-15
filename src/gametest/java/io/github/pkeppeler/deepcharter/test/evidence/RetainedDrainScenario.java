@@ -11,8 +11,10 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -20,7 +22,7 @@ import net.minecraft.client.CameraType;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "retained-drain" (#449, #485): a Retained comes to a dark pod, grabs it and drains the tank, and only its death frees the pod.
@@ -60,9 +62,17 @@ public class RetainedDrainScenario extends EvidenceScenario {
 
     private int framesTaken;
     private int podId;
-    private ClientGameTestContext ctx;
-    private RetainedChamber chamber;
+    private @Nullable ClientGameTestContext ctx;
+    private @Nullable RetainedChamber chamber;
     private int figureId;
+
+    private ClientGameTestContext ctx() {
+        return Objects.requireNonNull(ctx, "ctx was read before the scenario set it");
+    }
+
+    private RetainedChamber chamber() {
+        return Objects.requireNonNull(chamber, "chamber was read before the scenario set it");
+    }
 
     @Override
     protected String name() {
@@ -93,18 +103,19 @@ public class RetainedDrainScenario extends EvidenceScenario {
     }
 
     private void setUp() {
-        chamber.enterLayer(
-                RetainedChamber.FLOOR.getX() + POD_X,
-                RetainedChamber.FLOOR.getY() + 3,
-                RetainedChamber.FLOOR.getZ() + POD_Z,
-                DOWN_THE_CHAMBER,
-                12f);
-        chamber.serverDo(server -> {
+        chamber()
+                .enterLayer(
+                        RetainedChamber.FLOOR.getX() + POD_X,
+                        RetainedChamber.FLOOR.getY() + 3,
+                        RetainedChamber.FLOOR.getZ() + POD_Z,
+                        DOWN_THE_CHAMBER,
+                        12f);
+        chamber().serverDo(server -> {
             ServerLevel level = RetainedChamber.layer(server);
             RetainedChamber.buildChamber(level, LENGTH, HALF_WIDTH, HEIGHT);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             Charters.found(server, player.getUUID(), "Demo Charter");
-            PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(RetainedChamber.at(POD_X, 1, POD_Z));
             pod.setYRot(DOWN_THE_CHAMBER);
             level.addFreshEntity(pod);
@@ -114,45 +125,48 @@ public class RetainedDrainScenario extends EvidenceScenario {
                 throw new AssertionError("the player could not mount the pod");
             }
         });
-        chamber.nightVision(true);
+        chamber().nightVision(true);
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the pilot seated",
                 client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
-        ctx.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
-        chamber.settle();
-        ctx.waitTicks(20); // tick-wait: the transmission and the camera settle
+        ctx().runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+        chamber().settle();
+        ctx().waitTicks(20); // tick-wait: the transmission and the camera settle
     }
 
     private float fuel() {
-        return chamber.serverGet(
-                server -> ((PodEntity) RetainedChamber.layer(server).getEntity(podId)).fuel());
+        return chamber()
+                .serverGet(server -> TestEntities.require(RetainedChamber.layer(server), podId, PodEntity.class)
+                        .fuel());
     }
 
     private boolean clinging() {
-        return chamber.serverGet(
-                server -> ((LamplessFigure) RetainedChamber.layer(server).getEntity(figureId)).isClinging());
+        return chamber()
+                .serverGet(server -> TestEntities.require(RetainedChamber.layer(server), figureId, LamplessFigure.class)
+                        .isClinging());
     }
 
     private boolean drilling() {
-        return chamber.serverGet(
-                server -> ((PodEntity) RetainedChamber.layer(server).getEntity(podId)).drilling());
+        return chamber()
+                .serverGet(server -> TestEntities.require(RetainedChamber.layer(server), podId, PodEntity.class)
+                        .drilling());
     }
 
     private boolean dying() {
-        return chamber.serverGet(
-                server -> RetainedChamber.layer(server).getEntity(figureId) instanceof LamplessFigure figure
+        return chamber()
+                .serverGet(server -> RetainedChamber.layer(server).getEntity(figureId) instanceof LamplessFigure figure
                         && !figure.isAlive());
     }
 
     private boolean gone() {
-        return chamber.serverGet(server -> RetainedChamber.layer(server).getEntity(figureId) == null);
+        return chamber().serverGet(server -> RetainedChamber.layer(server).getEntity(figureId) == null);
     }
 
     private void sendFigure() {
-        chamber.serverDo(server -> {
+        chamber().serverDo(server -> {
             ServerLevel level = RetainedChamber.layer(server);
-            LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+            LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
             figure.setLamp(true);
             figure.setPos(RetainedChamber.at(FIGURE_X, 1, FIGURE_Z));
             figure.setHeading(Direction.SOUTH);
@@ -163,9 +177,9 @@ public class RetainedDrainScenario extends EvidenceScenario {
 
     private void record(int frames) {
         for (int i = 0; i < frames; i++) {
-            ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-            ctx.runOnClient(client -> TransmissionOverlay.reset());
-            frame(ctx);
+            ctx().waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+            ctx().runOnClient(client -> TransmissionOverlay.reset());
+            frame(ctx());
             framesTaken++;
         }
     }
@@ -183,19 +197,19 @@ public class RetainedDrainScenario extends EvidenceScenario {
                         + " frames after it set off");
             }
             if (!shotApproach
-                    && chamber.serverGet(server -> RetainedChamber.layer(server)
-                                    .getEntity(figureId)
-                                    .distanceTo(RetainedChamber.layer(server).getEntity(podId))
-                            < APPROACH_STILL_BLOCKS)) {
-                screenshot(ctx, "retained-approach");
+                    && chamber()
+                            .serverGet(server -> TestEntities.require(RetainedChamber.layer(server), figureId)
+                                            .distanceTo(TestEntities.require(RetainedChamber.layer(server), podId))
+                                    < APPROACH_STILL_BLOCKS)) {
+                screenshot(ctx(), "retained-approach");
                 shotApproach = true;
             }
         }
         float before = fuel();
         record(8);
-        screenshot(ctx, "retained-clinging");
+        screenshot(ctx(), "retained-clinging");
         record(DRAIN_FRAMES - 8);
-        screenshot(ctx, "retained-drained");
+        screenshot(ctx(), "retained-drained");
         System.out.println("[retained-drain] fuel " + before + " at the grab, " + fuel() + " after " + DRAIN_FRAMES
                 + " frames of the grip");
         System.out.println("[retained-drain-segment] retained-grab " + first + "-" + framesTaken);
@@ -207,7 +221,7 @@ public class RetainedDrainScenario extends EvidenceScenario {
      */
     private void driveAndKill() {
         int first = framesTaken + 1;
-        ctx.getInput().holdKey(options -> options.keyUp);
+        ctx().getInput().holdKey(options -> options.keyUp);
         int driven = 0;
         boolean shotRide = false;
         while (!drilling()) {
@@ -216,7 +230,7 @@ public class RetainedDrainScenario extends EvidenceScenario {
                 if (!clinging()) {
                     throw new AssertionError("the figure let go of a pod that drove off: driving must not free it");
                 }
-                screenshot(ctx, "retained-rides-along");
+                screenshot(ctx(), "retained-rides-along");
                 shotRide = true;
             }
             if (driven > FREED_FRAMES_LIMIT) {
@@ -227,7 +241,7 @@ public class RetainedDrainScenario extends EvidenceScenario {
         System.out.println("[retained-drain-segment] retained-ride " + first + "-" + framesTaken);
         first = framesTaken + 1;
         record(BITE_STILL_FRAMES);
-        screenshot(ctx, "retained-bitten");
+        screenshot(ctx(), "retained-bitten");
         int bitten = 0;
         while (!dying()) {
             record(1);
@@ -236,9 +250,9 @@ public class RetainedDrainScenario extends EvidenceScenario {
                         "the figure still lived " + FREED_FRAMES_LIMIT + " frames after the cutter began to bite");
             }
         }
-        ctx.getInput().releaseKey(options -> options.keyUp);
+        ctx().getInput().releaseKey(options -> options.keyUp);
         record(3);
-        screenshot(ctx, "retained-dissolving");
+        screenshot(ctx(), "retained-dissolving");
         int dissolving = 0;
         while (!gone()) {
             record(1);
@@ -248,14 +262,14 @@ public class RetainedDrainScenario extends EvidenceScenario {
             }
         }
         record(DISSOLVE_TAIL_FRAMES);
-        screenshot(ctx, "retained-gone");
+        screenshot(ctx(), "retained-gone");
         System.out.println("[retained-drain-segment] retained-kill " + first + "-" + framesTaken);
     }
 
     /** The pod's lights part is fitted, and a second figure walks the chamber and does not come to it. */
     private void litPodIsLeftAlone() {
-        chamber.serverDo(server -> {
-            PodEntity pod = (PodEntity) RetainedChamber.layer(server).getEntity(podId);
+        chamber().serverDo(server -> {
+            PodEntity pod = TestEntities.require(RetainedChamber.layer(server), podId, PodEntity.class);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             CharterId charter = Charters.charterOfOrThrow(server, player.getUUID())
                     .orElseThrow()
@@ -268,14 +282,14 @@ public class RetainedDrainScenario extends EvidenceScenario {
                     RetainedChamber.at(POD_X, 1, POD_Z).y,
                     RetainedChamber.at(POD_X, 1, POD_Z).z);
         });
-        chamber.settle();
+        chamber().settle();
         int first = framesTaken + 1;
         sendFigure();
         record(LIT_WATCH_FRAMES);
         if (clinging()) {
             throw new AssertionError("a figure clung to a lit pod");
         }
-        screenshot(ctx, "retained-lit-left-alone");
+        screenshot(ctx(), "retained-lit-left-alone");
         System.out.println("[retained-drain-segment] retained-light " + first + "-" + framesTaken);
     }
 }

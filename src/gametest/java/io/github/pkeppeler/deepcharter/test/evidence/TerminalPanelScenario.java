@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScreens;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.BlockPos;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "terminal-panel" for #246 (docs/design/terminal-concepts.md): the seven terminal screens as a player sees them, with no test
@@ -50,7 +51,8 @@ public class TerminalPanelScenario extends EvidenceScenario {
         }
     }
 
-    private void shoot(ClientGameTestContext context, String screen, Scene scene, BlockPos elsewhere) {
+    private void shoot(
+            ClientGameTestContext context, String screen, @Nullable Scene scene, @Nullable BlockPos elsewhere) {
         TerminalPanelScreens.open(context, screen, scene, elsewhere);
         context.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
         for (int i = 0; i < HOLD_FRAMES; i++) {

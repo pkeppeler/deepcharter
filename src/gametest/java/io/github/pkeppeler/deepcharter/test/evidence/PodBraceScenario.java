@@ -6,9 +6,12 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -17,7 +20,6 @@ import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -52,12 +54,12 @@ public class PodBraceScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 build(one);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_EAST, LOOK_DOWN, true);
-                PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 pod.setYRot(FACING_EAST);
                 one.addFreshEntity(pod);
@@ -76,10 +78,10 @@ public class PodBraceScenario extends EvidenceScenario {
                     "the pilot seated in the pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && client.level.dimension().equals(LayerChain.dimension(1)));
+                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.FIRST_PERSON);
-                client.player.setXRot(LOOK_DOWN);
+                ClientSession.player(client).setXRot(LOOK_DOWN);
             });
             context.waitTicks(60);
             for (int i = 0; i < 4; i++) {
@@ -114,14 +116,15 @@ public class PodBraceScenario extends EvidenceScenario {
             // ore: 8 hull to 20, to 32.
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                ScannerPods.fit(server, player, (PodEntity) player.getVehicle(), ComponentTrack.BRACE, 1);
+                ScannerPods.fit(server, player, TestEntities.vehicle(player, PodEntity.class), ComponentTrack.BRACE, 1);
             });
             context.waitTicks(2);
             screenshot(context, "pod-brace-bracing");
             ClientWait.until(
                     context,
                     "the hull patched over the crust's price",
-                    client -> client.player.getVehicle() instanceof PodEntity pod && pod.hull() > CRUST + 1);
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
+                            && pod.hull() > CRUST + 1);
             for (int i = 0; i < 4; i++) {
                 frame(context);
                 context.waitTicks(TICKS_PER_FRAME);
@@ -131,7 +134,8 @@ public class PodBraceScenario extends EvidenceScenario {
             // Through the crust: three rows, 8 hull each.
             context.getInput().holdKey(options -> options.keySprint);
             ticks = 0;
-            while (!context.computeOnClient(client -> client.level.dimension().equals(LayerChain.dimension(2)))
+            while (!context.computeOnClient(client ->
+                            ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)))
                     && ticks < MAX_TICKS) {
                 context.waitTicks(TICKS_PER_FRAME);
                 ticks += TICKS_PER_FRAME;
@@ -141,7 +145,7 @@ public class PodBraceScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the pod in layer 2",
-                    client -> client.level.dimension().equals(LayerChain.dimension(2)));
+                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)));
             context.waitTicks(120);
             for (int i = 0; i < 6; i++) {
                 frame(context);
@@ -149,10 +153,8 @@ public class PodBraceScenario extends EvidenceScenario {
             }
             float hull = singleplayer
                     .getServer()
-                    .computeOnServer(server -> ((PodEntity) server.getPlayerList()
-                                    .getPlayers()
-                                    .getFirst()
-                                    .getVehicle())
+                    .computeOnServer(server -> TestEntities.vehicle(
+                                    server.getPlayerList().getPlayers().getFirst(), PodEntity.class)
                             .hull());
             screenshot(context, "pod-brace-crossed");
             if (hull < 1f) {
@@ -164,10 +166,8 @@ public class PodBraceScenario extends EvidenceScenario {
     private static double feetY(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
-                .computeOnServer(server -> server.getPlayerList()
-                        .getPlayers()
-                        .getFirst()
-                        .getVehicle()
+                .computeOnServer(server -> TestEntities.vehicle(
+                                server.getPlayerList().getPlayers().getFirst())
                         .getY());
     }
 

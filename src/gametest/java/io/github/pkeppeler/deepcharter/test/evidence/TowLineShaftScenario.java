@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -104,8 +105,8 @@ public class TowLineShaftScenario extends EvidenceScenario {
 
     private void look(ClientGameTestContext context, TwoPlayerServer two, UUID tower) {
         two.server().runOnServer(server -> {
-            double aim =
-                    Math.max(LOWEST_AIM, server.overworld().getEntity(tower).getY() - AIM_BELOW);
+            double aim = Math.max(
+                    LOWEST_AIM, TestEntities.require(server.overworld(), tower).getY() - AIM_BELOW);
             Vec3 focus = new Vec3(X + 1, aim, Z + 5);
             TowStage.film(server.overworld(), two, focus.add(-CAMERA_WEST, 0, 0), focus);
         });

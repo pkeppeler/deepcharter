@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -51,7 +52,7 @@ public class StatueHandsScenario extends EvidenceScenario {
                 server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "time set noon");
                 server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "weather clear");
                 Vec3 anchor = Vec3.atBottomCenterOf(
-                        Colony.placed(server).orElseThrow().anchors().get(ColonyAnchor.STATUE));
+                        TestColony.anchor(Colony.placed(server).orElseThrow(), ColonyAnchor.STATUE));
                 requireHandsAt(server, anchor);
                 return anchor;
             });

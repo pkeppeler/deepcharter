@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -50,7 +51,7 @@ public class ColonyScenario extends EvidenceScenario {
                         .orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
             });
             Vec3 centre = Vec3.atCenterOf(colony.center());
-            Vec3 office = Vec3.atCenterOf(colony.anchors().get(ColonyAnchor.CONTINUITY_OFFICE));
+            Vec3 office = Vec3.atCenterOf(TestColony.anchor(colony, ColonyAnchor.CONTINUITY_OFFICE));
 
             // Where a new player stands: in the Continuity Office, at the world spawn.
             fly(singleplayer, office.add(-10, 2.5, 0), office.add(0, 1.5, 0));
@@ -70,9 +71,9 @@ public class ColonyScenario extends EvidenceScenario {
             }
 
             // A low pass from the west end of the square to the east, past the plinths, over the statue, to the office.
-            Vec3 plinths = Vec3.atCenterOf(colony.anchors().get(ColonyAnchor.UPGRADE_TERMINAL));
-            Vec3 statue =
-                    Vec3.atCenterOf(colony.anchors().get(ColonyAnchor.STATUE)).add(0, 3, 0);
+            Vec3 plinths = Vec3.atCenterOf(TestColony.anchor(colony, ColonyAnchor.UPGRADE_TERMINAL));
+            Vec3 statue = Vec3.atCenterOf(TestColony.anchor(colony, ColonyAnchor.STATUE))
+                    .add(0, 3, 0);
             Vec3 start = centre.add(-14, PASS_HEIGHT, 6);
             Vec3 end = centre.add(22, PASS_HEIGHT, 6);
             for (int i = 0; i < PASS_FRAMES; i++) {
@@ -89,8 +90,8 @@ public class ColonyScenario extends EvidenceScenario {
             }
 
             // The Conduit, behind the ore processor.
-            Vec3 conduit =
-                    Vec3.atCenterOf(colony.anchors().get(ColonyAnchor.CONDUIT)).add(0, 4, 0);
+            Vec3 conduit = Vec3.atCenterOf(TestColony.anchor(colony, ColonyAnchor.CONDUIT))
+                    .add(0, 4, 0);
             fly(singleplayer, conduit.add(0, 3, 12), conduit);
             context.waitTicks(SETTLE_TICKS);
             screenshot(context, "conduit");

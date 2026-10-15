@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
@@ -20,7 +21,7 @@ public class UiThemeScenario extends EvidenceScenario {
     protected void run(ClientGameTestContext context) {
         context.setScreen(CrtDemoScreen::new);
         ClientWait.screen(context, CrtDemoScreen.class);
-        CrtDemoScreen screen = context.computeOnClient(client -> (CrtDemoScreen) client.gui.screen());
+        CrtDemoScreen screen = context.computeOnClient(client -> ClientSession.screen(client, CrtDemoScreen.class));
         ClientWait.until(
                 context, "the typewriter done", client -> screen.typewriter().done());
         context.waitTicks(5);

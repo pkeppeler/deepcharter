@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 import java.util.LinkedHashMap;
@@ -49,7 +50,7 @@ public class LayoutGateScenario extends EvidenceScenario {
                     new BlockPos(0, 64, 0), ContractTerminal.TYPE.id(), true, true, List.of(), Optional.empty());
             context.setScreen(() -> TerminalScreens.create(view));
             ClientWait.screen(context, ContractScreen.class);
-            context.runOnClient(client -> ((ContractScreen) client.gui.screen())
+            context.runOnClient(client -> ClientSession.screen(client, ContractScreen.class)
                     .show(new ContractState(
                             ContractState.Role.DIRECTOR,
                             name,
@@ -68,16 +69,18 @@ public class LayoutGateScenario extends EvidenceScenario {
             context.setScreen(() -> {
                 Minecraft client = Minecraft.getInstance();
                 Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
-                HandbookChapters.all(client.getConnection().registryAccess())
+                HandbookChapters.all(ClientSession.connection(client).registryAccess())
                         .forEach(chapter -> chapters.put(chapter.key().identifier(), chapter.value()));
                 return new HandbookScreen(
                         HandbookPages.of(chapters, ClientHandbook.completed()), id -> true, id -> {}, notes);
             });
             ClientWait.screen(context, HandbookScreen.class);
-            context.runOnClient(client -> ((HandbookScreen) client.gui.screen()).openNote(Notes.id(10)));
+            context.runOnClient(
+                    client -> ClientSession.screen(client, HandbookScreen.class).openNote(Notes.id(10)));
             hold(context);
             screenshot(context, "handbook-note-10-first-sheet");
-            context.runOnClient(client -> ((HandbookScreen) client.gui.screen()).turnNote(1));
+            context.runOnClient(
+                    client -> ClientSession.screen(client, HandbookScreen.class).turnNote(1));
             hold(context);
             screenshot(context, "handbook-note-10-second-sheet");
             context.setScreen(() -> null);

@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import java.util.Objects;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -36,7 +37,8 @@ public class CharterCoreScenario extends EvidenceScenario {
             command(context, server, "deepcharter charter found \"" + CHARTER + "\"");
             server.runOnServer(minecraftServer -> {
                 MockPlayers.join(minecraftServer, CREW);
-                ServerPlayer crew = minecraftServer.getPlayerList().getPlayerByName(CREW);
+                ServerPlayer crew = Objects.requireNonNull(
+                        minecraftServer.getPlayerList().getPlayerByName(CREW), "the crewmate did not join");
                 Charters.apply(
                         minecraftServer,
                         crew.getUUID(),

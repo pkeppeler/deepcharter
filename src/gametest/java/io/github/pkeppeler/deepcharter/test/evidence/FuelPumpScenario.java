@@ -5,6 +5,8 @@ import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.FuelPumpClientTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -30,14 +32,17 @@ public class FuelPumpScenario extends EvidenceScenario {
             FuelPumpClientTest.Scene scene = singleplayer.getServer().computeOnServer(FuelPumpClientTest::setUp);
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.pump())));
             ClientWait.screen(context, FuelPumpScreen.class);
-            FuelPumpScreen screen = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
+            FuelPumpScreen screen =
+                    context.computeOnClient(client -> ClientSession.screen(client, FuelPumpScreen.class));
             ClientWait.until(
                     context,
                     "the charter view and a pod parked at the pump",
                     client -> ClientCharter.view().isPresent()
-                            && !Terminals.parkedPods(client.level, scene.pump()).isEmpty(),
+                            && !Terminals.parkedPods(ClientLight.clientLevel(client), scene.pump())
+                                    .isEmpty(),
                     client -> "charter " + ClientCharter.view().isPresent() + ", parked pods "
-                            + Terminals.parkedPods(client.level, scene.pump()).size());
+                            + Terminals.parkedPods(ClientLight.clientLevel(client), scene.pump())
+                                    .size());
             for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
                 context.waitTicks(TICKS_PER_FRAME);
                 frame(context);

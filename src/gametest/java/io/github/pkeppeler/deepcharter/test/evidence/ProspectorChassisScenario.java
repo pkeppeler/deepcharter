@@ -16,8 +16,11 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.Set;
@@ -33,7 +36,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -111,7 +113,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
                 player.setPermanentlyInvulnerable(true);
                 player.getInventory().clearContent();
                 player.teleportTo(level, X + 0.5, FLOOR_Y, Z - 4.5, Set.of(), 0f, 10f, true);
-                PodEntity pod = PodRegistry.PROSPECTOR.create(level, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, level);
                 pod.setPos(X + 0.5, FLOOR_Y, Z + 0.5);
                 pod.setHull(0f);
                 pod.setCustomName(Component.literal(Serials.FAMOUS_PROSPECTOR));
@@ -131,7 +133,9 @@ public class ProspectorChassisScenario extends EvidenceScenario {
                 }
             });
             ClientWait.until(
-                    context, "the wreck in the client's world", client -> client.level.getEntity(wreck[0]) != null);
+                    context,
+                    "the wreck in the client's world",
+                    client -> ClientLight.clientLevel(client).getEntity(wreck[0]) != null);
             context.waitTicks(SETTLE_TICKS); // tick-wait: lets the room's light and the pod's model settle
             screenshot(context, "wreck-before-the-restore");
             frame(context);
@@ -157,7 +161,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
                                         throw new AssertionError("the restore was refused: " + refusal);
                                     });
                         });
-                return PodComponents.registration((PodEntity) server.overworld().getEntity(wreck[0]))
+                return PodComponents.registration(TestEntities.require(server.overworld(), wreck[0], PodEntity.class))
                         .orElseThrow()
                         .serial();
             });
@@ -167,7 +171,8 @@ public class ProspectorChassisScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the restored pod whole in the client's world",
-                    client -> client.level.getEntity(wreck[0]) instanceof PodEntity pod && pod.hull() > 0);
+                    client -> ClientLight.clientLevel(client).getEntity(wreck[0]) instanceof PodEntity pod
+                            && pod.hull() > 0);
             context.setScreen(() -> null);
             ClientWait.until(
                     context,
@@ -198,8 +203,8 @@ public class ProspectorChassisScenario extends EvidenceScenario {
                         MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
                 StructureSite prospector = LayerStructures.prospector(server)
                         .orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
-                ServerLevel level =
-                        server.getLevel(LayerChain.dimension(prospector.kind().layer()));
+                ServerLevel level = ClientLight.serverLevel(
+                        server, LayerChain.dimension(prospector.kind().layer()));
                 BoundingBox box = prospector.bounds();
                 for (int chunkX = box.minX() >> 4; chunkX <= box.maxX() >> 4; chunkX++) {
                     for (int chunkZ = box.minZ() >> 4; chunkZ <= box.maxZ() >> 4; chunkZ++) {
@@ -243,7 +248,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "stone under the pad",
-                    client -> client.level
+                    client -> ClientLight.clientLevel(client)
                             .getBlockState(new BlockPos(X, FLOOR_Y - 1, Z))
                             .is(Blocks.STONE));
             two.server().runOnServer(server -> pilot[0] = board(server.overworld(), two));
@@ -291,14 +296,15 @@ public class ProspectorChassisScenario extends EvidenceScenario {
     private void look(ClientGameTestContext context) {
         context.runOnClient(client -> {
             client.gui.toastManager().clear();
-            client.player.setXRot(LOOK_DOWN);
+            ClientSession.player(client).setXRot(LOOK_DOWN);
         });
         frame(context);
     }
 
     private static double podY(TwoPlayerServer two, UUID pod) {
         return two.server()
-                .computeOnServer(server -> server.overworld().getEntity(pod).getY());
+                .computeOnServer(
+                        server -> TestEntities.require(server.overworld(), pod).getY());
     }
 
     /** Builds the slab and puts both players on it. */
@@ -320,7 +326,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
     /** Seats the mock first and the real player second in a new Prospector. Returns the pod's UUID. */
     private static UUID board(ServerLevel level, TwoPlayerServer two) {
         ServerPlayer real = real(level, two);
-        PodEntity pod = PodRegistry.PROSPECTOR.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, level);
         pod.setPos(X + 0.5, FLOOR_Y, Z - 6.5);
         pod.setFuel(100f);
         pod.setCustomName(Component.literal("PROSPECTOR"));
@@ -362,7 +368,8 @@ public class ProspectorChassisScenario extends EvidenceScenario {
             player.getAbilities().flying = true;
             player.onUpdateAbilities();
             player.teleportTo(
-                    server.getLevel(LayerChain.dimension(site.kind().layer())),
+                    ClientLight.serverLevel(
+                            server, LayerChain.dimension(site.kind().layer())),
                     at.x,
                     at.y,
                     at.z,

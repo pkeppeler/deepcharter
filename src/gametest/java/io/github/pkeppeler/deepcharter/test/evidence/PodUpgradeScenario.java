@@ -7,12 +7,15 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.UpgradeTerminalClientTest;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -22,6 +25,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "pod-upgrade" (#243, #536): a Mole with its stock drill stands beside the upgrade terminal and turns slowly; the pilot
@@ -64,8 +68,8 @@ public class PodUpgradeScenario extends EvidenceScenario {
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             Vec3 pod = singleplayer
                     .getServer()
-                    .computeOnServer(
-                            server -> server.overworld().getEntity(scene.pod()).position());
+                    .computeOnServer(server -> TestEntities.require(server.overworld(), scene.pod())
+                            .position());
             singleplayer
                     .getServer()
                     .runOnServer(
@@ -101,14 +105,12 @@ public class PodUpgradeScenario extends EvidenceScenario {
             UpgradeTerminalClientTest.Scene scene) {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            Entity pod = server.overworld().getEntity(scene.pod());
+            Entity pod = TestEntities.require(server.overworld(), scene.pod());
             player.setItemInHand(
                     InteractionHand.MAIN_HAND,
                     new ItemStack(BuiltInRegistries.ITEM.getValue(
                             Identifier.fromNamespaceAndPath("deepcharter", "drill_unit"))));
-            if (!UseEntityCallback.EVENT
-                    .invoker()
-                    .interact(player, pod.level(), InteractionHand.MAIN_HAND, pod, null)
+            if (!UseEntity.on(player, pod.level(), InteractionHand.MAIN_HAND, pod)
                     .consumesAction()) {
                 throw new AssertionError("the drill unit should fit the Mole");
             }
@@ -130,7 +132,7 @@ public class PodUpgradeScenario extends EvidenceScenario {
             String cutter) {
         context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
         ClientWait.screen(context, UpgradeScreen.class);
-        UpgradeScreen screen = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
+        UpgradeScreen screen = context.computeOnClient(client -> ClientSession.screen(client, UpgradeScreen.class));
         for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
             turn(context, singleplayer, scene);
             context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
@@ -187,7 +189,8 @@ public class PodUpgradeScenario extends EvidenceScenario {
         float turned = yaw;
         singleplayer
                 .getServer()
-                .runOnServer(server -> server.overworld().getEntity(scene.pod()).setYRot(turned));
+                .runOnServer(server ->
+                        TestEntities.require(server.overworld(), scene.pod()).setYRot(turned));
         context.runOnClient(client -> {
             Entity pod = clientPod(client, scene);
             if (pod != null) {
@@ -223,8 +226,8 @@ public class PodUpgradeScenario extends EvidenceScenario {
     }
 
     /** The client's copy of the pod, which the scene names by its UUID, or null while it has not arrived. */
-    private static Entity clientPod(Minecraft client, UpgradeTerminalClientTest.Scene scene) {
-        for (Entity entity : client.level.entitiesForRendering()) {
+    private static @Nullable Entity clientPod(Minecraft client, UpgradeTerminalClientTest.Scene scene) {
+        for (Entity entity : ClientLight.clientLevel(client).entitiesForRendering()) {
             if (entity.getUUID().equals(scene.pod())) {
                 return entity;
             }

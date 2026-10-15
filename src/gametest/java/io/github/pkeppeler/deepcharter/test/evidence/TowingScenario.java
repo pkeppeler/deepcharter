@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.Set;
 import java.util.UUID;
@@ -11,7 +12,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -131,7 +131,8 @@ public class TowingScenario extends EvidenceScenario {
     /** The tower's height. Looked up by UUID: a pod whose chunk is unloaded and loaded again is a new entity. */
     private static double towerY(TwoPlayerServer two, UUID tower) {
         return two.server()
-                .computeOnServer(server -> server.overworld().getEntity(tower).getY());
+                .computeOnServer(server ->
+                        TestEntities.require(server.overworld(), tower).getY());
     }
 
     /** Builds the slab and the platform, seats the mock in a tower with a pod on a cable, and puts the real player on the platform. */
@@ -161,7 +162,7 @@ public class TowingScenario extends EvidenceScenario {
 
     /** Slides the watcher along the platform edge to the tower's z, so the pods stay in the frame. */
     private static void follow(ServerLevel level, TwoPlayerServer two, UUID tower) {
-        watch(level, two, level.getEntity(tower).getZ(), WATCH_PITCH);
+        watch(level, two, TestEntities.require(level, tower).getZ(), WATCH_PITCH);
     }
 
     /** The mock pilot's name would hover over the tower; the pods' own TOWER and TOWED labels are the ones the picture is meant to show. */
@@ -175,7 +176,7 @@ public class TowingScenario extends EvidenceScenario {
     }
 
     private static PodEntity spawn(ServerLevel level, Vec3 at, String name) {
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(at);
         pod.setCustomName(Component.literal(name));
         pod.setCustomNameVisible(true);

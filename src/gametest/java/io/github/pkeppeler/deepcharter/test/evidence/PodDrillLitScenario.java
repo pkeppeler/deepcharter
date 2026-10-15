@@ -6,8 +6,11 @@ import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -18,7 +21,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
@@ -50,13 +52,13 @@ public class PodDrillLitScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 buildBoreRoom(one);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.addEffect(new MobEffectInstance(
                         MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
-                PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 pod.setFuel(100f);
                 one.addFreshEntity(pod);
@@ -69,10 +71,10 @@ public class PodDrillLitScenario extends EvidenceScenario {
                     "the player mounts the pod",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && client.level.dimension().equals(LayerChain.dimension(1)));
+                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-                client.player.setXRot(LOOK_DOWN);
+                ClientSession.player(client).setXRot(LOOK_DOWN);
             });
             context.waitTicks(SETTLE_TICKS); // tick-wait: first frame is tinted until the mount fade ends
             frame(context);
@@ -101,7 +103,8 @@ public class PodDrillLitScenario extends EvidenceScenario {
     }
 
     private static double podY(ClientGameTestContext context) {
-        return context.computeOnClient(client -> client.player.getVehicle().getY());
+        return context.computeOnClient(
+                client -> TestEntities.vehicle(ClientSession.player(client)).getY());
     }
 
     /** Slabs of the layer's rock under the pod with ore in the column it drills, an open room above, and glowstone on the walls. */

@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.Set;
 import java.util.UUID;
@@ -11,7 +12,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
@@ -81,7 +81,8 @@ final class TowStage {
     /** The tower's place. Looked up by UUID: a pod whose chunk is unloaded and loaded again is a new entity. */
     static Vec3 where(TwoPlayerServer two, UUID pod) {
         return two.server()
-                .computeOnServer(server -> server.overworld().getEntity(pod).position());
+                .computeOnServer(
+                        server -> TestEntities.require(server.overworld(), pod).position());
     }
 
     /** Seats the mock pilot in a new tower pod at {@code at}, fuelled, and puts a pod on its cable at {@code towedAt}. Returns the two pods' ids. */
@@ -101,7 +102,7 @@ final class TowStage {
     }
 
     static PodEntity spawn(ServerLevel level, Vec3 at, String name) {
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(at);
         pod.setCustomName(Component.literal(name));
         pod.setCustomNameVisible(true);

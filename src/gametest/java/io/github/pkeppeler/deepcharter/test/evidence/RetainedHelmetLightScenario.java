@@ -3,17 +3,20 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import java.util.Objects;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "retained-helmet-light" (#449, #506): the dim lamp in a Retained's helmet, seen in the dark of layer 2 (no night vision, no
@@ -40,9 +43,17 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
     /** Yaw 90 faces -x, toward the camera from a figure east of it. */
     private static final float TOWARD_CAMERA = 90f;
 
-    private ClientGameTestContext ctx;
-    private RetainedChamber chamber;
+    private @Nullable ClientGameTestContext ctx;
+    private @Nullable RetainedChamber chamber;
     private int figureId;
+
+    private ClientGameTestContext ctx() {
+        return Objects.requireNonNull(ctx, "ctx was read before the scenario set it");
+    }
+
+    private RetainedChamber chamber() {
+        return Objects.requireNonNull(chamber, "chamber was read before the scenario set it");
+    }
 
     @Override
     protected String name() {
@@ -74,13 +85,14 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
     }
 
     private void setUp() {
-        chamber.enterLayer(
-                RetainedChamber.FLOOR.getX() + CAMERA_X,
-                RetainedChamber.FLOOR.getY() + 3,
-                RetainedChamber.FLOOR.getZ() + 0.5,
-                270f,
-                0f);
-        chamber.serverDo(server -> {
+        chamber()
+                .enterLayer(
+                        RetainedChamber.FLOOR.getX() + CAMERA_X,
+                        RetainedChamber.FLOOR.getY() + 3,
+                        RetainedChamber.FLOOR.getZ() + 0.5,
+                        270f,
+                        0f);
+        chamber().serverDo(server -> {
             ServerLevel level = RetainedChamber.layer(server);
             RetainedChamber.buildChamber(level, LENGTH, HALF_WIDTH, HEIGHT);
             ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
@@ -90,24 +102,23 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
             camera.onUpdateAbilities();
             camera.setNoGravity(true);
             camera.setPermanentlyInvulnerable(true);
-            LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+            LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
             figure.setNoAi(true);
             figure.setPos(RetainedChamber.at(CAMERA_X + FAR, 1, 0.5));
             level.addFreshEntity(figure);
             figureId = figure.getId();
         });
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the figure on the client",
                 client -> client.level != null && client.level.getEntity(figureId) instanceof LamplessFigure);
-        ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+        ctx().runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
     }
 
     /** Puts the figure {@code distance} east of the camera, facing it, with or without a lamp, and the camera looking at it. */
     private void stand(double distance, boolean lamp) {
-        chamber.serverDo(server -> {
-            LamplessFigure figure =
-                    (LamplessFigure) RetainedChamber.layer(server).getEntity(figureId);
+        chamber().serverDo(server -> {
+            LamplessFigure figure = TestEntities.require(RetainedChamber.layer(server), figureId, LamplessFigure.class);
             figure.setLamp(lamp);
             figure.setPos(RetainedChamber.at(CAMERA_X + distance, 1, 0.5));
             figure.setYRot(TOWARD_CAMERA);
@@ -115,18 +126,20 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
             figure.setYHeadRot(TOWARD_CAMERA);
         });
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the figure's lamp on the client",
-                client -> client.level.getEntity(figureId) instanceof LamplessFigure f && f.hasLamp() == lamp);
-        chamber.look(RetainedChamber.at(CAMERA_X, 1.9, 0.5), RetainedChamber.at(CAMERA_X + distance, 1.2, 0.5));
-        ctx.waitTicks(10); // tick-wait: the move plays the walk on the client until the figure has been still a moment
-        chamber.settle();
+                client -> ClientLight.clientLevel(client).getEntity(figureId) instanceof LamplessFigure f
+                        && f.hasLamp() == lamp);
+        chamber().look(RetainedChamber.at(CAMERA_X, 1.9, 0.5), RetainedChamber.at(CAMERA_X + distance, 1.2, 0.5));
+        ctx().waitTicks(10); // tick-wait: the move plays the walk on the client until the figure has been still a
+        // moment
+        chamber().settle();
     }
 
     private void unlit() {
-        chamber.nightVision(false);
+        chamber().nightVision(false);
         stand(FAR, false);
-        screenshot(ctx, "lamp-off-far");
+        screenshot(ctx(), "lamp-off-far");
     }
 
     /**
@@ -135,53 +148,53 @@ public class RetainedHelmetLightScenario extends EvidenceScenario {
      * {@code [retained-helmet-light-segment] retained-helmet-light-walk <first>-<last>}.
      */
     private void walk() {
-        chamber.nightVision(false);
+        chamber().nightVision(false);
         stand(FARTHEST, true);
-        chamber.serverDo(server -> {
-            LamplessFigure figure =
-                    (LamplessFigure) RetainedChamber.layer(server).getEntity(figureId);
+        chamber().serverDo(server -> {
+            LamplessFigure figure = TestEntities.require(RetainedChamber.layer(server), figureId, LamplessFigure.class);
             figure.setHeading(Direction.WEST);
             figure.setNoAi(false);
         });
         int first = framesTaken + 1;
         for (int i = 0; i < WALK_FRAMES; i++) {
-            ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-            frame(ctx);
+            ctx().waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
+            frame(ctx());
             framesTaken++;
         }
         System.out.println("[retained-helmet-light-segment] retained-helmet-light-walk " + first + "-" + framesTaken);
-        chamber.serverDo(
-                server -> RetainedChamber.layer(server).getEntity(figureId).discard());
+        chamber()
+                .serverDo(server -> TestEntities.require(RetainedChamber.layer(server), figureId)
+                        .discard());
         resetFigure();
     }
 
     /** The walker is taken away; a new figure stands in for the stills that follow. */
     private void resetFigure() {
-        chamber.serverDo(server -> {
+        chamber().serverDo(server -> {
             ServerLevel level = RetainedChamber.layer(server);
-            LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+            LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
             figure.setNoAi(true);
             figure.setPos(RetainedChamber.at(CAMERA_X + FAR, 1, 0.5));
             level.addFreshEntity(figure);
             figureId = figure.getId();
         });
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the new figure on the client",
                 client -> client.level != null && client.level.getEntity(figureId) instanceof LamplessFigure);
     }
 
     private void lit() {
-        chamber.nightVision(false);
+        chamber().nightVision(false);
         stand(FAR, true);
-        screenshot(ctx, "lamp-far");
+        screenshot(ctx(), "lamp-far");
         stand(NEAR, true);
-        screenshot(ctx, "lamp-near");
-        chamber.nightVision(true);
-        ctx.waitTicks(10); // tick-wait: the effect reaches the client
+        screenshot(ctx(), "lamp-near");
+        chamber().nightVision(true);
+        ctx().waitTicks(10); // tick-wait: the effect reaches the client
         Vec3 eye = RetainedChamber.at(CAMERA_X, 1.9, 0.5);
-        chamber.look(eye, RetainedChamber.at(CAMERA_X + NEAR, 1.3, 0.5));
-        chamber.settle();
-        screenshot(ctx, "lamp-near-seen");
+        chamber().look(eye, RetainedChamber.at(CAMERA_X + NEAR, 1.3, 0.5));
+        chamber().settle();
+        screenshot(ctx(), "lamp-near-seen");
     }
 }

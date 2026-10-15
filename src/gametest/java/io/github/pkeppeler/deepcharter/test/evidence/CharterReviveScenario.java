@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ContractShown;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
@@ -62,7 +63,8 @@ public class CharterReviveScenario extends EvidenceScenario {
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
             ClientWait.screen(context, ContractScreen.class);
             awaitState(context, open -> ContractShown.hasNoCharter(open) && ContractShown.offersRevive(open, OURS));
-            ContractScreen screen = context.computeOnClient(client -> (ContractScreen) client.gui.screen());
+            ContractScreen screen =
+                    context.computeOnClient(client -> ClientSession.screen(client, ContractScreen.class));
             for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
                 context.waitTicks(TICKS_PER_FRAME);
                 clearToastsAndFrame(context);

@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
@@ -22,7 +23,8 @@ public class CameraTurnScenario extends EvidenceScenario {
             context.waitTicks(40);
             screenshot(context, "world-loaded");
             for (int i = 0; i < FRAMES; i++) {
-                context.runOnClient(client -> client.player.setYRot(client.player.getYRot() + DEGREES_PER_FRAME));
+                context.runOnClient(client -> ClientSession.player(client)
+                        .setYRot(ClientSession.player(client).getYRot() + DEGREES_PER_FRAME));
                 frame(context);
             }
         }

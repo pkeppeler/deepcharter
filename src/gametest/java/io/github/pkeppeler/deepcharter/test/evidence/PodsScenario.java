@@ -11,14 +11,17 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -35,7 +38,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.clock.ClockInstance;
 import net.minecraft.world.clock.WorldClock;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
@@ -51,6 +53,7 @@ import net.minecraft.world.level.gamerules.GameRule;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "pods" (#243): the real Mole and Prospector, drawn with GeckoLib, each cutter in turn, and the wrecks.
@@ -136,17 +139,49 @@ public class PodsScenario extends EvidenceScenario {
     private static final Input BORE_DOWN = new Input(false, false, false, false, false, false, true);
     private static final Input LIFT = new Input(false, false, false, false, true, false, false);
 
-    private ClientGameTestContext ctx;
-    private TestSingleplayerContext world;
-    private BlockPos stage;
-    private BlockPos clipGround;
-    private CharterId charter;
-    private PodEntity parked;
-    private PodEntity driven;
-    private MockPlayer pilot;
+    private @Nullable ClientGameTestContext ctx;
+    private @Nullable TestSingleplayerContext world;
+    private @Nullable BlockPos stage;
+    private @Nullable BlockPos clipGround;
+    private @Nullable CharterId charter;
+    private @Nullable PodEntity parked;
+    private @Nullable PodEntity driven;
+    private @Nullable MockPlayer pilot;
     private int framesTaken;
     private final List<Consumer<Minecraft>> clientUndo = new ArrayList<>();
     private final List<Consumer<MinecraftServer>> serverUndo = new ArrayList<>();
+
+    private ClientGameTestContext ctx() {
+        return Objects.requireNonNull(ctx, "ctx was read before the scenario set it");
+    }
+
+    private TestSingleplayerContext world() {
+        return Objects.requireNonNull(world, "world was read before the scenario set it");
+    }
+
+    private BlockPos stage() {
+        return Objects.requireNonNull(stage, "stage was read before the scenario set it");
+    }
+
+    private BlockPos clipGround() {
+        return Objects.requireNonNull(clipGround, "clipGround was read before the scenario set it");
+    }
+
+    private CharterId charter() {
+        return Objects.requireNonNull(charter, "charter was read before the scenario set it");
+    }
+
+    private PodEntity parked() {
+        return Objects.requireNonNull(parked, "parked was read before the scenario set it");
+    }
+
+    private PodEntity driven() {
+        return Objects.requireNonNull(driven, "driven was read before the scenario set it");
+    }
+
+    private MockPlayer pilot() {
+        return Objects.requireNonNull(pilot, "pilot was read before the scenario set it");
+    }
 
     @Override
     protected String name() {
@@ -185,7 +220,7 @@ public class PodsScenario extends EvidenceScenario {
 
     /** Puts back, newest first, everything {@link #setUp} changed: the client's camera, the clocks, the weather, the game rules and the camera player. */
     private void undo() {
-        ctx.runOnClient(client -> clientUndo.reversed().forEach(step -> step.accept(client)));
+        ctx().runOnClient(client -> clientUndo.reversed().forEach(step -> step.accept(client)));
         serverDo(server -> serverUndo.reversed().forEach(step -> step.accept(server)));
     }
 
@@ -196,7 +231,7 @@ public class PodsScenario extends EvidenceScenario {
      */
     private void setUp() {
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the colony built",
                 () -> serverGet(server -> Colony.placed(server)
                         .filter(ColonySite.Placed::finished)
@@ -239,7 +274,7 @@ public class PodsScenario extends EvidenceScenario {
             });
             ServerLevel overworld = server.overworld();
             stage = flatGroundSouthOf(overworld, colony);
-            clipGround = stage.offset(CLIP_EAST, 0, 0);
+            clipGround = stage().offset(CLIP_EAST, 0, 0);
             ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
             GameType mode = camera.gameMode();
             boolean mayfly = camera.getAbilities().mayfly;
@@ -262,25 +297,25 @@ public class PodsScenario extends EvidenceScenario {
             camera.setNoGravity(true);
             camera.setPermanentlyInvulnerable(true);
             camera.teleportTo(
-                    overworld, stage.getX() + 0.5, stage.getY() + 2, stage.getZ() - 4, Set.of(), 0f, 0f, true);
+                    overworld, stage().getX() + 0.5, stage().getY() + 2, stage().getZ() - 4, Set.of(), 0f, 0f, true);
         });
         setTime(NOON, EvidenceWorld.SKY_BRIGHTEST);
         serverDo(server -> {
             ServerLevel overworld = server.overworld();
-            levelPad(overworld, stage);
-            levelPad(overworld, clipGround);
+            levelPad(overworld, stage());
+            levelPad(overworld, clipGround());
             pilot = MockPlayers.join(server, "Pilot");
-            pilot.teleportTo(overworld, Vec3.atBottomCenterOf(clipGround).add(0, 0, 2), CLIP_YAW, 0f);
-            pilot.player().setInvisible(true);
-            pilot.player().setPermanentlyInvulnerable(true);
-            if (Charters.found(server, pilot.player().getUUID(), "Pod Works").isPresent()) {
+            pilot().teleportTo(overworld, Vec3.atBottomCenterOf(clipGround()).add(0, 0, 2), CLIP_YAW, 0f);
+            pilot().player().setInvisible(true);
+            pilot().player().setPermanentlyInvulnerable(true);
+            if (Charters.found(server, pilot().player().getUUID(), "Pod Works").isPresent()) {
                 throw new AssertionError("founding the pilot's charter should succeed");
             }
-            charter = Charters.charterOfOrThrow(server, pilot.player().getUUID())
+            charter = Charters.charterOfOrThrow(server, pilot().player().getUUID())
                     .orElseThrow()
                     .id();
         });
-        ctx.runOnClient(client -> {
+        ctx().runOnClient(client -> {
             CameraType cameraType = client.options.getCameraType();
             clientUndo.add(undoClient -> undoClient.options.setCameraType(cameraType));
             client.options.setCameraType(CameraType.FIRST_PERSON);
@@ -293,12 +328,12 @@ public class PodsScenario extends EvidenceScenario {
      */
     private void setTime(int time, long sky) {
         serverDo(server -> command(server, "time set " + time));
-        EvidenceWorld.skyPhase(ctx, world, sky);
+        EvidenceWorld.skyPhase(ctx(), world(), sky);
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the client to read the time " + time,
-                client -> client.level.getOverworldClockTime() % 24_000 == time,
-                client -> "the time " + client.level.getOverworldClockTime());
+                client -> ClientLight.clientLevel(client).getOverworldClockTime() % 24_000 == time,
+                client -> "the time " + ClientLight.clientLevel(client).getOverworldClockTime());
     }
 
     private static void command(MinecraftServer server, String command) {
@@ -318,25 +353,26 @@ public class PodsScenario extends EvidenceScenario {
         serverDo(server -> {
             ServerLevel overworld = server.overworld();
             EntityType<PodEntity> type = PodRegistry.typeOf(subject.chassis());
-            PodEntity pod = type.create(overworld, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(type, overworld);
             pod.setPos(at);
             pod.setYRot(yaw);
             overworld.addFreshEntity(pod);
-            PodComponents.register(pod, charter);
+            PodComponents.register(pod, charter());
             if (subject.drillTier() > 0) {
                 PodComponents.install(
-                        pod, ComponentItems.mint(server, ComponentTrack.DRILL, subject.drillTier(), charter));
+                        pod, ComponentItems.mint(server, ComponentTrack.DRILL, subject.drillTier(), charter()));
             }
             pod.setFuel(100f);
             made[0] = pod;
         });
         PodEntity pod = made[0];
         ClientWait.until(
-                ctx,
+                ctx(),
                 subject.id() + " drawn with the " + subject.cutter(),
-                client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
-                        && renderer(client, shown).appearanceOf(shown).cutter().equals(subject.cutter()),
-                client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) instanceof PodEntity shown
+                        && Objects.equals(
+                                renderer(client, shown).appearanceOf(shown).cutter(), subject.cutter()),
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) instanceof PodEntity shown
                         ? String.valueOf(renderer(client, shown).appearanceOf(shown))
                         : "no pod");
         return pod;
@@ -355,35 +391,38 @@ public class PodsScenario extends EvidenceScenario {
             pod.getPassengers().forEach(Entity::stopRiding);
             pod.discard();
         });
-        ClientWait.until(ctx, "the pod gone from the client", client -> client.level.getEntity(pod.getId()) == null);
+        ClientWait.until(
+                ctx(),
+                "the pod gone from the client",
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) == null);
     }
 
     private void wreckIt(PodEntity pod) {
         serverDo(server -> pod.setHull(0f));
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the pod a wreck on the client",
-                client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) instanceof PodEntity shown
                         && renderer(client, shown).appearanceOf(shown).wrecked());
     }
 
     /** The pilot boards {@code pod}, which then has power: lamps on. */
     private void board(PodEntity pod) {
         serverDo(server -> {
-            if (!pilot.player().startRiding(pod)) {
+            if (!pilot().player().startRiding(pod)) {
                 throw new AssertionError("the pilot could not board " + pod);
             }
         });
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the pilot aboard on the client",
-                client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) instanceof PodEntity shown
                         && shown.getControllingPassenger() != null);
         // An invisible player still draws what it holds, and the handbook it must carry would float over the pod. Empty
         // the hands of the
         // client's copy only: the server's pilot keeps its handbook.
-        ctx.runOnClient(client -> {
-            if (client.level.getEntity(pilot.player().getId()) instanceof Player shown) {
+        ctx().runOnClient(client -> {
+            if (ClientLight.clientLevel(client).getEntity(pilot().player().getId()) instanceof Player shown) {
                 shown.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
                 shown.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
             }
@@ -391,11 +430,11 @@ public class PodsScenario extends EvidenceScenario {
     }
 
     private void disembark(PodEntity pod) {
-        serverDo(server -> pilot.player().stopRiding());
+        serverDo(server -> pilot().player().stopRiding());
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the pilot off the pod on the client",
-                client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) instanceof PodEntity shown
                         && shown.getControllingPassenger() == null);
     }
 
@@ -403,10 +442,10 @@ public class PodsScenario extends EvidenceScenario {
 
     /** The turntable of {@code subject} and its stills, then its lit still if it can be lit. */
     private void showcase(Subject subject) {
-        Vec3 at = Vec3.atBottomCenterOf(stage);
+        Vec3 at = Vec3.atBottomCenterOf(stage());
         parked = spawn(subject, at, FACING_CAMERA);
         if (subject.wreck()) {
-            wreckIt(parked);
+            wreckIt(parked());
         }
         int first = framesTaken + 1;
         turntable(subject);
@@ -419,26 +458,26 @@ public class PodsScenario extends EvidenceScenario {
             shot(subject, "night");
             setTime(NOON, EvidenceWorld.SKY_BRIGHTEST);
         } else {
-            board(parked);
+            board(parked());
             setTime(NIGHT, EvidenceWorld.SKY_DARKEST);
             turnParked(FACING_CAMERA + 35f);
             look(orbit(at, 22, subject.chassis()), at, subject.chassis());
             settle();
             shot(subject, "lit");
             setTime(NOON, EvidenceWorld.SKY_BRIGHTEST);
-            disembark(parked);
+            disembark(parked());
         }
-        remove(parked);
+        remove(parked());
     }
 
     private void turntable(Subject subject) {
-        Vec3 pod = Vec3.atBottomCenterOf(stage);
+        Vec3 pod = Vec3.atBottomCenterOf(stage());
         Chassis chassis = subject.chassis();
         look(orbit(pod, TURNTABLE_PITCH, chassis), pod, chassis);
         settle();
         for (int i = 0; i < TURN_FRAMES; i++) {
             turnParked(FACING_CAMERA + i * 360f / TURN_FRAMES);
-            ctx.waitTick();
+            ctx().waitTick();
             frame();
             if (i == 0) {
                 shot(subject, "front");
@@ -456,7 +495,7 @@ public class PodsScenario extends EvidenceScenario {
                     orbit(pod, TURNTABLE_PITCH + (ABOVE_PITCH - TURNTABLE_PITCH) * i / RISE_FRAMES, chassis),
                     pod,
                     chassis);
-            ctx.waitTick();
+            ctx().waitTick();
             frame();
         }
         settle();
@@ -469,9 +508,9 @@ public class PodsScenario extends EvidenceScenario {
 
     /** The parked pod faces {@code yaw}: on the server, so a position sync carries the same turn, and on the client at once. */
     private void turnParked(float yaw) {
-        serverDo(server -> parked.setYRot(yaw));
-        ctx.runOnClient(client -> {
-            var pod = client.level.getEntity(parked.getId());
+        serverDo(server -> parked().setYRot(yaw));
+        ctx().runOnClient(client -> {
+            var pod = TestEntities.require(ClientLight.clientLevel(client), parked().getId());
             pod.setYRot(yaw);
             pod.yRotO = yaw;
         });
@@ -481,17 +520,17 @@ public class PodsScenario extends EvidenceScenario {
 
     /** Where the clip's pod starts: a block short of the ledge, its footprint on whole blocks so it bores a clean bore. */
     private Vec3 clipStart() {
-        return new Vec3(clipGround.getX(), clipGround.getY(), clipGround.getZ());
+        return new Vec3(clipGround().getX(), clipGround().getY(), clipGround().getZ());
     }
 
     private void clip(Subject subject) {
         double middle = middleOf(subject.chassis());
         Vec3 start = clipStart();
         driven = spawn(subject, start, CLIP_YAW);
-        board(driven);
+        board(driven());
         int first = framesTaken + 1;
         placeDriven(start);
-        Vec3 eye = serverGet(server -> pilot.player().getEyePosition());
+        Vec3 eye = serverGet(server -> pilot().player().getEyePosition());
         lookFrom(eye, CLIP_YAW, FIRST_PERSON_PITCH);
         settle();
         shot(subject, "first-person");
@@ -504,15 +543,15 @@ public class PodsScenario extends EvidenceScenario {
         Vec3 cutter = new Vec3(1.6 * scale, 0.1, 0);
         look(start.add(chewOffset), start.add(cutter), middle);
         settle();
-        serverDo(server -> pilot.setInput(DRIVE));
+        serverDo(server -> pilot().setInput(DRIVE));
         for (int i = 0; i < APPROACH_FRAMES; i++) {
-            ctx.waitTicks(TICKS_PER_APPROACH_FRAME); // tick-wait: the clip is cut at fixed frames
+            ctx().waitTicks(TICKS_PER_APPROACH_FRAME); // tick-wait: the clip is cut at fixed frames
             frame();
         }
         for (int i = 0; i < CHEW_FRAMES; i++) {
-            Vec3 pod = serverGet(server -> driven.position());
+            Vec3 pod = serverGet(server -> driven().position());
             look(start.add(chewOffset).add(pod.x - start.x, 0, 0), pod.add(cutter), middle);
-            ctx.waitTick();
+            ctx().waitTick();
             frame();
             if (i == CHEW_FRAMES / 3) {
                 shot(subject, "chewing-the-ledge");
@@ -525,21 +564,21 @@ public class PodsScenario extends EvidenceScenario {
         placeDriven(floor);
         look(floor.add(2.9 * scale, 1.5 * scale, -2.6 * scale), floor.add(0.2, 0.2, 0), middle);
         settle();
-        serverDo(server -> pilot.setInput(BORE_DOWN));
+        serverDo(server -> pilot().setInput(BORE_DOWN));
         for (int i = 0; i < FLOOR_FRAMES; i++) {
-            ctx.waitTick();
+            ctx().waitTick();
             frame();
             if (i == BORE_STILL_FRAME) {
                 shot(subject, "boring-the-floor");
             }
         }
         // And fly up out of the hole.
-        serverDo(server -> pilot.setInput(LIFT));
+        serverDo(server -> pilot().setInput(LIFT));
         for (int i = 0; i < FLY_FRAMES; i++) {
-            Vec3 pod = serverGet(server -> driven.position());
+            Vec3 pod = serverGet(server -> driven().position());
             Vec3 at = pod.add(3.6 * scale, 1.0, -3.4 * scale);
             look(new Vec3(at.x, Math.max(at.y, floor.y + 1.2), at.z), pod, middle);
-            ctx.waitTicks(TICKS_PER_FLY_FRAME); // tick-wait: the clip is cut at fixed frames
+            ctx().waitTicks(TICKS_PER_FLY_FRAME); // tick-wait: the clip is cut at fixed frames
             frame();
             if (i == FLY_FRAMES / 2) {
                 shot(subject, "flying");
@@ -547,26 +586,26 @@ public class PodsScenario extends EvidenceScenario {
         }
         releasePilot();
         segment(subject.id() + "-clip", first);
-        disembark(driven);
-        remove(driven);
+        disembark(driven());
+        remove(driven());
     }
 
     /** Sets the clip's pod down at {@code at}, full of fuel and whole, with the pilot aboard looking along the clip. */
     private void placeDriven(Vec3 at) {
         serverDo(server -> {
-            driven.setDeltaMovement(Vec3.ZERO);
-            driven.setPos(at);
-            driven.setYRot(CLIP_YAW);
-            driven.setFuel(100f);
-            driven.setHull(driven.maxHull());
-            driven.setStranded(false);
-            pilot.player().setYRot(CLIP_YAW);
+            driven().setDeltaMovement(Vec3.ZERO);
+            driven().setPos(at);
+            driven().setYRot(CLIP_YAW);
+            driven().setFuel(100f);
+            driven().setHull(driven().maxHull());
+            driven().setStranded(false);
+            pilot().player().setYRot(CLIP_YAW);
         });
-        ctx.waitTick();
+        ctx().waitTick();
     }
 
     private void releasePilot() {
-        serverDo(server -> pilot.releaseInput());
+        serverDo(server -> pilot().releaseInput());
     }
 
     // ------------------------------------------------------------------------------------------------ the ground
@@ -575,7 +614,7 @@ public class PodsScenario extends EvidenceScenario {
     private void rebuildGround() {
         serverDo(server -> {
             ServerLevel overworld = server.overworld();
-            levelPad(overworld, clipGround);
+            levelPad(overworld, clipGround());
             buildLedge(overworld);
             clearMobs(overworld);
         });
@@ -588,7 +627,7 @@ public class PodsScenario extends EvidenceScenario {
      * flattest is rougher than {@value #STAGE_ROUGHNESS} blocks.
      */
     private static BlockPos flatGroundSouthOf(ServerLevel level, BlockPos colony) {
-        BlockPos best = null;
+        @Nullable BlockPos best = null;
         int bestRoughness = Integer.MAX_VALUE;
         for (int south = STAGE_SOUTH; south <= STAGE_SEARCH; south += STAGE_STEP) {
             BlockPos candidate = colony.offset(0, 0, south);
@@ -606,7 +645,7 @@ public class PodsScenario extends EvidenceScenario {
                 best = candidate.atY(groundY(level, candidate.getX(), candidate.getZ()));
             }
         }
-        if (bestRoughness > STAGE_ROUGHNESS) {
+        if (best == null || bestRoughness > STAGE_ROUGHNESS) {
             throw new AssertionError("the flattest stage south of the colony at " + colony + " rises and falls "
                     + bestRoughness + " blocks, at " + best);
         }
@@ -645,14 +684,14 @@ public class PodsScenario extends EvidenceScenario {
         BlockState rock = SurfaceBlocks.REGOLITH_ROCK.defaultBlockState();
         for (int dx = 3; dx <= 6; dx++) {
             for (int dz = -4; dz <= 3; dz++) {
-                level.setBlock(clipGround.offset(dx, 0, dz), rock, Block.UPDATE_ALL);
+                level.setBlock(clipGround().offset(dx, 0, dz), rock, Block.UPDATE_ALL);
             }
         }
     }
 
     /** Mobs the world made before the rules stopped them, which would walk through the stills. */
     private void clearMobs(ServerLevel level) {
-        AABB around = new AABB(stage).inflate(48);
+        AABB around = new AABB(stage()).inflate(48);
         level.getEntitiesOfClass(Mob.class, around).forEach(Entity::discard);
     }
 
@@ -699,25 +738,25 @@ public class PodsScenario extends EvidenceScenario {
     private void settle() {
         int[] stable = {0};
         ClientWait.until(
-                ctx,
+                ctx(),
                 "the view settled",
                 () -> {
                     boolean ready = !serverGet(server ->
                                     server.overworld().getLightEngine().hasLightWork())
-                            && ctx.computeOnClient(client -> client.levelRenderer.hasRenderedAllSections());
+                            && ctx().computeOnClient(client -> client.levelRenderer.hasRenderedAllSections());
                     stable[0] = ready ? stable[0] + 1 : 0;
                     return stable[0] >= SETTLE_POLLS;
                 },
-                () -> ctx.computeOnClient(ClientWait::describe));
+                () -> ctx().computeOnClient(ClientWait::describe));
     }
 
     private void frame() {
-        frame(ctx);
+        frame(ctx());
         framesTaken++;
     }
 
     private void shot(Subject subject, String view) {
-        screenshot(ctx, subject.id() + "-" + view);
+        screenshot(ctx(), subject.id() + "-" + view);
     }
 
     /** Logs the frames from {@code first} to the last one taken, which is how the GIF of this segment is cut. */
@@ -726,10 +765,10 @@ public class PodsScenario extends EvidenceScenario {
     }
 
     private void serverDo(Consumer<MinecraftServer> action) {
-        world.getServer().runOnServer(action::accept);
+        world().getServer().runOnServer(action::accept);
     }
 
     private <T> T serverGet(Function<MinecraftServer, T> query) {
-        return world.getServer().computeOnServer(query::apply);
+        return world().getServer().computeOnServer(query::apply);
     }
 }

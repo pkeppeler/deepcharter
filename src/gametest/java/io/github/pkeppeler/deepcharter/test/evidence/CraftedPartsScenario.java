@@ -15,9 +15,12 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,6 +28,7 @@ import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -41,7 +45,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
@@ -53,6 +56,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "crafted-parts" (#536): in a sealed room of layer 1 rock, a player lays the fuel tank unit's recipe and then the drill unit's
@@ -96,19 +100,25 @@ public class CraftedPartsScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the client in layer 1",
-                    client -> client.level.dimension().identifier().getPath().equals("layer_1"));
+                    client -> ClientLight.clientLevel(client)
+                            .dimension()
+                            .identifier()
+                            .getPath()
+                            .equals("layer_1"));
             context.waitTicks(40); // tick-wait: the chunks round the arrival come in before the room is cut
             RoomCarver.carveAroundFirstPlayer(server);
             BlockPos table = server.computeOnServer(CraftedPartsScenario::furnish);
             ClientWait.until(
                     context,
                     "the crafting table in the client's world",
-                    client -> client.level.getBlockState(table).is(Blocks.CRAFTING_TABLE));
+                    client ->
+                            ClientLight.clientLevel(client).getBlockState(table).is(Blocks.CRAFTING_TABLE));
             context.waitTicks(20); // tick-wait: the lamps' light reaches the client's chunk
             waitOutTheTransmission(context);
             hold(context);
             ClientWait.until(context, "the pod in the client's world", client -> podOf(client) != null);
-            PodEntity pod = context.computeOnClient(CraftedPartsScenario::podOf);
+            PodEntity pod = Objects.requireNonNull(
+                    context.computeOnClient(CraftedPartsScenario::podOf), "the pod is in the client's world");
             screenshot(context, "bare-mole");
 
             for (ComponentTrack track : new ComponentTrack[] {ComponentTrack.FUEL_TANK, ComponentTrack.DRILL}) {
@@ -142,12 +152,15 @@ public class CraftedPartsScenario extends EvidenceScenario {
         ClientWait.until(
                 context,
                 "the ore processor in the client's world",
-                client -> client.level.getBlockState(processor).is(TerminalTypes.ORE_PROCESSOR.block()));
+                client -> ClientLight.clientLevel(client)
+                        .getBlockState(processor)
+                        .is(TerminalTypes.ORE_PROCESSOR.block()));
         context.getInput().lookAt(processor);
         hold(context);
         context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
         ClientWait.screen(context, OreProcessorScreen.class);
-        OreProcessorScreen screen = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
+        OreProcessorScreen screen =
+                context.computeOnClient(client -> ClientSession.screen(client, OreProcessorScreen.class));
         for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
             context.waitTicks(TICKS_PER_FRAME); // tick-wait: one frame of the processor's typing
             frame(context);
@@ -234,7 +247,7 @@ public class CraftedPartsScenario extends EvidenceScenario {
         }
         BlockPos table = feet.offset(TABLE_SIDE, 0, TABLE_AHEAD);
         level.setBlock(table, Blocks.CRAFTING_TABLE.defaultBlockState(), 3);
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(Vec3.atBottomCenterOf(feet.offset(POD_SIDE, 0, POD_AHEAD)));
         level.addFreshEntity(pod);
         PodComponents.register(
@@ -296,7 +309,11 @@ public class CraftedPartsScenario extends EvidenceScenario {
         ClientWait.until(
                 context,
                 "the " + track.id() + " unit in the table's result slot",
-                client -> client.player.containerMenu.getSlot(0).getItem().is(unit));
+                client -> ClientSession.player(client)
+                        .containerMenu
+                        .getSlot(0)
+                        .getItem()
+                        .is(unit));
         hold(context);
         screenshot(context, track.id() + "-recipe-in-the-crafting-table");
     }
@@ -324,17 +341,18 @@ public class CraftedPartsScenario extends EvidenceScenario {
                 context,
                 "the unit in the client's pack",
                 client -> client.gui.screen() == null && hotbarSlotOf(client, unit) >= 0);
-        context.runOnClient(client -> client.player.getInventory().setSelectedSlot(hotbarSlotOf(client, unit)));
+        context.runOnClient(
+                client -> ClientSession.player(client).getInventory().setSelectedSlot(hotbarSlotOf(client, unit)));
         ClientWait.until(
                 context,
                 "the unit in the client's hand",
-                client -> client.player.getMainHandItem().is(unit));
+                client -> ClientSession.player(client).getMainHandItem().is(unit));
         hold(context);
         screenshot(context, track.id() + "-unit-in-hand");
     }
 
     private static int hotbarSlotOf(Minecraft client, Item unit) {
-        Inventory inventory = client.player.getInventory();
+        Inventory inventory = ClientSession.player(client).getInventory();
         for (int slot = 0; slot < Inventory.getSelectionSize(); slot++) {
             if (inventory.getItem(slot).is(unit)) {
                 return slot;
@@ -347,14 +365,14 @@ public class CraftedPartsScenario extends EvidenceScenario {
     private void useTheUnit(ClientGameTestContext context, PodEntity pod) {
         context.runOnClient(client -> {
             EntityHitResult hit = new EntityHitResult(pod, pod.position().add(0, 1, 0));
-            client.gameMode.interact(client.player, pod, hit, InteractionHand.MAIN_HAND);
-            client.player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
+            ClientSession.gameMode(client).interact(ClientSession.player(client), pod, hit, InteractionHand.MAIN_HAND);
+            ClientSession.player(client).swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
         });
         context.waitTicks(TICKS_PER_FRAME); // tick-wait: the use packet reaches the server
     }
 
-    private static PodEntity podOf(Minecraft client) {
-        for (Entity entity : client.level.entitiesForRendering()) {
+    private static @Nullable PodEntity podOf(Minecraft client) {
+        for (Entity entity : ClientLight.clientLevel(client).entitiesForRendering()) {
             if (entity instanceof PodEntity found) {
                 return found;
             }

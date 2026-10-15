@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -74,7 +75,9 @@ public class SurfaceBreachScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the client on the surface",
-                    client -> client.level.dimension().equals(LayerChain.dimension(LayerChain.SURFACE)));
+                    client -> ClientLight.clientLevel(client)
+                            .dimension()
+                            .equals(LayerChain.dimension(LayerChain.SURFACE)));
             context.waitTicks(SETTLE_TICKS);
             screenshot(context, "overworld-surface");
             for (int i = 0; i < SURFACE_FRAMES; i++) {
@@ -91,7 +94,7 @@ public class SurfaceBreachScenario extends EvidenceScenario {
                     surface.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);
                 }
                 // Generate the arrival area in layer 1 now so the client has less to wait for after the crossing.
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 for (int dx = -2; dx <= 2; dx++) {
                     for (int dz = -2; dz <= 2; dz++) {
                         one.getChunk(column.getX() / 16 + dx, column.getZ() / 16 + dz);

@@ -9,9 +9,12 @@ import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -20,7 +23,6 @@ import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -65,12 +67,12 @@ public class PodLinerDryScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 build(one);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_NORTH, LOOK_DOWN, true);
-                PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 pod.setYRot(FACING_NORTH);
                 one.addFreshEntity(pod);
@@ -88,10 +90,10 @@ public class PodLinerDryScenario extends EvidenceScenario {
                     "the pilot seated in the pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && client.level.dimension().equals(LayerChain.dimension(1)));
+                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-                client.player.setXRot(LOOK_DOWN);
+                ClientSession.player(client).setXRot(LOOK_DOWN);
             });
             context.waitTicks(60);
             for (int i = 0; i < 4; i++) {
@@ -140,8 +142,8 @@ public class PodLinerDryScenario extends EvidenceScenario {
     private static void expectLining(TestSingleplayerContext singleplayer, String when, boolean dry) {
         int[] seen = singleplayer.getServer().computeOnServer(server -> {
             PodEntity pod =
-                    (PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle();
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                    TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             int bricks = 0;
             for (int y = LENS_Y; y < FLOOR_Y; y++) {
                 for (int x = X - 1; x <= X; x++) {
@@ -163,10 +165,8 @@ public class PodLinerDryScenario extends EvidenceScenario {
     private static double feetY(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
-                .computeOnServer(server -> server.getPlayerList()
-                        .getPlayers()
-                        .getFirst()
-                        .getVehicle()
+                .computeOnServer(server -> TestEntities.vehicle(
+                                server.getPlayerList().getPlayers().getFirst())
                         .getY());
     }
 
@@ -174,7 +174,7 @@ public class PodLinerDryScenario extends EvidenceScenario {
     private static boolean ringedAtOrBelow(TestSingleplayerContext singleplayer, int ringY) {
         return singleplayer.getServer().computeOnServer(server -> {
             PodEntity pod =
-                    (PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle();
+                    TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
             return Versioned.readable(pod, PodLiner.STATE)
                             .orElseThrow()
                             .anchor()
@@ -187,8 +187,8 @@ public class PodLinerDryScenario extends EvidenceScenario {
     private static void assertNotTouching(TestSingleplayerContext singleplayer) {
         boolean touching = singleplayer
                 .getServer()
-                .computeOnServer(server -> LavaHazard.touchesLava((PodEntity)
-                        server.getPlayerList().getPlayers().getFirst().getVehicle()));
+                .computeOnServer(server -> LavaHazard.touchesLava(
+                        TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class)));
         if (touching) {
             throw new AssertionError("Lava touched the pod, so the liner did not hold it back");
         }

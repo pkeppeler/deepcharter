@@ -5,11 +5,14 @@ import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -21,7 +24,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -122,7 +124,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
         ClientWait.until(
                 context,
                 "the pod's hull burning on the client",
-                client -> client.player.getVehicle() instanceof PodEntity shown && shown.hullBurning());
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown && shown.hullBurning());
         shoot(context, "ribbon-burning");
         singleplayer.getServer().runOnServer(server -> {
             pod.setFuel(0f);
@@ -131,7 +133,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
         ClientWait.until(
                 context,
                 "the pod stranded on the client",
-                client -> client.player.getVehicle() instanceof PodEntity shown && shown.stranded());
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown && shown.stranded());
         shoot(context, "ribbon-burning-stranded");
         singleplayer.getServer().runOnServer(server -> {
             lava(pod, false);
@@ -141,7 +143,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
         ClientWait.until(
                 context,
                 "the pod's hull cool on the client",
-                client -> client.player.getVehicle() instanceof PodEntity shown
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
                         && !shown.hullBurning()
                         && !shown.stranded());
         context.waitTicks(COOL_TICKS); // tick-wait: the heat gauge eases back to 0 over client ticks
@@ -174,7 +176,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
         PodEntity pod = enter(context, singleplayer, room, DRIVE_LENGTH - 2, FACING_WEST);
         singleplayer.getServer().runOnServer(server -> pod.setFuel(CALM_FUEL));
         context.runOnClient(client -> {
-            client.player.setXRot(EYE_PITCH);
+            ClientSession.player(client).setXRot(EYE_PITCH);
             client.gui.toastManager().clear();
             TransmissionOverlay.reset();
         });
@@ -203,7 +205,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.stopRiding();
             player.teleportTo(
-                    server.getLevel(room.dimension()),
+                    ClientLight.serverLevel(server, room.dimension()),
                     X + 0.5,
                     room.floorY(),
                     Z + 0.5 - ON_FOOT_BACK,
@@ -212,7 +214,10 @@ public class CockpitRibbonScenario extends EvidenceScenario {
                     0f,
                     true);
         });
-        ClientWait.until(context, "the pilot on foot", client -> client.player.getVehicle() == null);
+        ClientWait.until(
+                context,
+                "the pilot on foot",
+                client -> ClientSession.player(client).getVehicle() == null);
         ClientWait.until(
                 context,
                 "the cockpit gone on foot",
@@ -229,11 +234,11 @@ public class CockpitRibbonScenario extends EvidenceScenario {
             ClientGameTestContext context, TestSingleplayerContext singleplayer, Room room, int east, float yaw) {
         PodEntity[] made = {null};
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = server.getLevel(room.dimension());
+            ServerLevel level = ClientLight.serverLevel(server, room.dimension());
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(level, X + east + 0.5, room.floorY(), Z + 0.5, Set.of(), yaw, 0f, true);
-            PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(X + east + 0.5, room.floorY(), Z + 0.5);
             pod.setYRot(yaw);
             level.addFreshEntity(pod);
@@ -248,7 +253,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
                 "the pilot seated in the pod on the client",
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
-                        && client.level.dimension().equals(room.dimension()));
+                        && ClientLight.clientLevel(client).dimension().equals(room.dimension()));
         context.waitTicks(
                 TRANSMISSION_TICKS); // tick-wait: a charter's first transmission arrives a moment after the first
         // mount, and every shot clears it
@@ -260,7 +265,10 @@ public class CockpitRibbonScenario extends EvidenceScenario {
             server.getPlayerList().getPlayers().getFirst().stopRiding();
             pod.discard();
         });
-        ClientWait.until(context, "the pilot out of the pod", client -> client.player.getVehicle() == null);
+        ClientWait.until(
+                context,
+                "the pilot out of the pod",
+                client -> ClientSession.player(client).getVehicle() == null);
     }
 
     /** Lava, or air again, in a square under the pod, so the hull burns while it sits there. */
@@ -276,7 +284,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
 
     /** A sealed room: a shell of stone, air inside, and glowstone so the pod and the walls are lit. {@code length} is how far it reaches east and west of its middle. */
     private static void buildRoom(MinecraftServer server, Room room, int radius, int length) {
-        ServerLevel level = server.getLevel(room.dimension());
+        ServerLevel level = ClientLight.serverLevel(server, room.dimension());
         int floor = room.floorY();
         RoomCarver.carve(
                 level,
@@ -302,9 +310,9 @@ public class CockpitRibbonScenario extends EvidenceScenario {
     /** Takes a still, and a frame of the GIF too when {@code asFrame} (both must be the default window's size). */
     private void shoot(ClientGameTestContext context, String still, boolean asFrame) {
         context.runOnClient(client -> {
-            client.player.setYRot(client.player.getYRot());
-            client.player.setXRot(EYE_PITCH);
-            client.player.xRotO = EYE_PITCH;
+            ClientSession.player(client).setYRot(ClientSession.player(client).getYRot());
+            ClientSession.player(client).setXRot(EYE_PITCH);
+            ClientSession.player(client).xRotO = EYE_PITCH;
             client.gui.toastManager().clear();
             TransmissionOverlay.reset();
         });

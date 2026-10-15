@@ -11,10 +11,12 @@ import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene.Scene;
 import java.util.List;
+import java.util.Objects;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
+import org.jspecify.annotations.Nullable;
 
 /** Opens the seven terminal screens on the real server, and waits until each has typed out its intro. */
 public final class TerminalPanelScreens {
@@ -27,15 +29,21 @@ public final class TerminalPanelScreens {
 
     private TerminalPanelScreens() {}
 
+    private static Scene sceneOf(@Nullable Scene scene, String id) {
+        return Objects.requireNonNull(scene, () -> "the screen " + id + " needs the scene of the first world");
+    }
+
     /** Opens the screen {@code id} at its terminal and waits until its intro has typed out and its content is there. Returns the screen. */
-    public static Screen open(ClientGameTestContext context, String id, Scene scene, BlockPos elsewhere) {
+    public static Screen open(
+            ClientGameTestContext context, String id, @Nullable Scene scene, @Nullable BlockPos elsewhere) {
         BlockPos at = switch (id) {
-            case "hangar" -> scene.hangar();
-            case "processor" -> scene.processor();
-            case "upgrade" -> scene.upgrade();
-            case "repair" -> scene.repair();
-            case "pump" -> scene.pump();
-            case CONTRACT, GENERIC -> elsewhere;
+            case "hangar" -> sceneOf(scene, id).hangar();
+            case "processor" -> sceneOf(scene, id).processor();
+            case "upgrade" -> sceneOf(scene, id).upgrade();
+            case "repair" -> sceneOf(scene, id).repair();
+            case "pump" -> sceneOf(scene, id).pump();
+            case CONTRACT, GENERIC ->
+                Objects.requireNonNull(elsewhere, () -> "the screen " + id + " needs the position of its terminal");
             default -> throw new IllegalArgumentException("no terminal concept screen " + id);
         };
         Class<? extends Screen> type = switch (id) {

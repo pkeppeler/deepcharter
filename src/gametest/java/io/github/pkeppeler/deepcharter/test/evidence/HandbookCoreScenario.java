@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -17,9 +18,12 @@ public class HandbookCoreScenario extends EvidenceScenario {
     protected void run(ClientGameTestContext context) {
         try (TestSingleplayerContext _ = context.worldBuilder().create()) {
             ClientWait.until(
-                    context, "the handbook in the hotbar", client -> handbookSlot(client.player.getInventory()) >= 0);
-            context.runOnClient(
-                    client -> client.player.getInventory().setSelectedSlot(handbookSlot(client.player.getInventory())));
+                    context,
+                    "the handbook in the hotbar",
+                    client -> handbookSlot(ClientSession.player(client).getInventory()) >= 0);
+            context.runOnClient(client -> ClientSession.player(client)
+                    .getInventory()
+                    .setSelectedSlot(handbookSlot(ClientSession.player(client).getInventory())));
             context.waitTicks(2);
             screenshot(context, "handbook-in-hotbar");
             frame(context);

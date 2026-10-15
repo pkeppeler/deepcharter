@@ -6,11 +6,14 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DecayCells;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -18,7 +21,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -62,7 +64,7 @@ final class SignalDecayDescent {
             EvidencePins.handsHidden = true;
             try {
                 singleplayer.getServer().runOnServer(server -> {
-                    ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                    ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                     RoomCarver.carve(
                             one,
                             X - ROOM_RADIUS - 1,
@@ -91,7 +93,7 @@ final class SignalDecayDescent {
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     player.setGameMode(GameType.SURVIVAL);
                     player.teleportTo(one, X + 0.5, START_Y, Z + 0.5, Set.of(), 0f, 25f, true);
-                    PodEntity pod = PodRegistry.typeOf(chassis).create(one, EntitySpawnReason.COMMAND);
+                    PodEntity pod = TestEntities.create(PodRegistry.typeOf(chassis), one);
                     pod.setPos(X + 0.5, START_Y, Z + 0.5);
                     pod.setNoGravity(true);
                     one.addFreshEntity(pod);
@@ -109,10 +111,10 @@ final class SignalDecayDescent {
                         "the pilot seated in the pod in layer 1",
                         client -> client.player != null
                                 && client.player.getVehicle() instanceof PodEntity
-                                && client.level.dimension().equals(LayerChain.dimension(1)));
+                                && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
                 context.runOnClient(client -> {
-                    client.player.setXRot(25f);
-                    client.player.setYRot(0f);
+                    ClientSession.player(client).setXRot(25f);
+                    ClientSession.player(client).setYRot(0f);
                 });
                 context.waitTicks(30);
                 // Founding the charter queued the employer's transmission; it would cover the HUD this scenario shows.
@@ -159,7 +161,7 @@ final class SignalDecayDescent {
     private static void lower(TestSingleplayerContext singleplayer, double y) {
         singleplayer.getServer().runOnServer(server -> {
             PodEntity pod =
-                    (PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle();
+                    TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
             pod.setPos(X + 0.5, y, Z + 0.5);
             pod.setDeltaMovement(0, 0, 0);
         });
@@ -168,10 +170,10 @@ final class SignalDecayDescent {
     /** Whether the readout plate is in a drop-out in the cell the client is drawing, so the "failing" still shows the plate's tag and not a lucky true cell. */
     private static boolean plateIsDark(ClientGameTestContext context) {
         return context.computeOnClient(client -> {
-            if (!(client.player.getVehicle() instanceof PodEntity pod)) {
+            if (!(ClientSession.player(client).getVehicle() instanceof PodEntity pod)) {
                 return false;
             }
-            long cell = Math.floorDiv(client.level.getGameTime(), (long) DecayCells.ticks());
+            long cell = Math.floorDiv(ClientLight.clientLevel(client).getGameTime(), (long) DecayCells.ticks());
             return SignalDecay.fault(
                             SignalDecay.Instrument.PLATE,
                             SignalDecay.intensity(pod),
@@ -182,7 +184,7 @@ final class SignalDecayDescent {
     }
 
     private static double intensity(ClientGameTestContext context) {
-        return context.computeOnClient(
-                client -> client.player.getVehicle() instanceof PodEntity pod ? SignalDecay.intensity(pod) : 0.0);
+        return context.computeOnClient(client ->
+                ClientSession.player(client).getVehicle() instanceof PodEntity pod ? SignalDecay.intensity(pod) : 0.0);
     }
 }
