@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.support;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -84,10 +85,9 @@ public final class EvidenceWorld {
     }
 
     private static ClockInstance skyOnClient(Minecraft client) {
-        return client.level
-                .clockManager()
-                .getInstance(client.level
-                        .registryAccess()
+        ClientLevel level = ClientLight.clientLevel(client);
+        return level.clockManager()
+                .getInstance(level.registryAccess()
                         .lookupOrThrow(Registries.WORLD_CLOCK)
                         .getOrThrow(SKY));
     }
