@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.ore;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
 import net.minecraft.core.Registry;
@@ -75,7 +76,8 @@ public final class OreRegistry {
     }
 
     public static Item item(OreType type) {
-        return ITEMS.get(type);
+        return Objects.requireNonNull(
+                ITEMS.get(type), "no item registered for ore " + type + ": the ore blocks register them all");
     }
 
     /** A new stack of one ore. */
