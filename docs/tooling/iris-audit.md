@@ -1,12 +1,11 @@
 # Iris audit
 
-Read-only audit of [Iris](https://github.com/IrisShaders/Iris) (the shaders mod) for Minecraft 26.3, done 2026-10-15 ([#639](https://github.com/pkeppeler/deepcharter/issues/639), split from [#629](https://github.com/pkeppeler/deepcharter/issues/629)). Companion page: [lambdynamiclights-audit.md](lambdynamiclights-audit.md). Iris needs the Sodium we already audited ([sodium-lithium-audit.md](sodium-lithium-audit.md)). Nothing from the project was executed, built or loaded. The jar was downloaded into an empty directory and unpacked with `unzip`. The source (branch `26.3`) was cloned with `git clone --depth 1` into a separate empty directory and only read.
+Read-only audit of [Iris](https://github.com/IrisShaders/Iris) (the shaders mod) for Minecraft 26.3, done 2026-10-15 ([#639](https://github.com/pkeppeler/deepcharter/issues/639), split from [#629](https://github.com/pkeppeler/deepcharter/issues/629)). Companion page: [lambdynamiclights-audit.md](lambdynamiclights-audit.md). Iris needs the Sodium we already audited ([sodium-lithium-audit.md](sodium-lithium-audit.md)). Nothing from the project was executed, built or loaded (see Method).
 
 ## Verdict: try only as an opt-in, on OpenGL, with the update check off; never a dependency
 
-- **Network:** one feature, an update checker, on by default (details below). It contacts `github.com`, then downloads a second URL that the first response names, and writes `irisUpdateInfo.json`. Turn it off in `config/iris.properties`.
-- No other network code, no telemetry, no process spawn and no native code.
-- Iris replaces the whole render pipeline (about 180 mixins, GL state, the chunk vertex format, Sodium internals). It is a large, invasive mod. It is the most likely mod in our set to break Deep Charter's rendering (HUD, beams, glow masks, terminals), and that is the point of the #629 try-out.
+- **Network:** one feature, an update checker, on by default. It contacts `github.com`, downloads a second URL that the first response names, and writes `irisUpdateInfo.json`. Turn it off in `config/iris.properties`. There is no other network code, no telemetry, no process spawn and no native code.
+- Iris replaces the whole render pipeline (about 180 mixins, GL state, the chunk vertex format, Sodium internals). It is the most likely mod in our set to break Deep Charter's rendering (HUD, beams, glow masks, terminals), and that is the point of the #629 try-out.
 - **Platform:** Iris works only on the OpenGL backend. Iris's own docs mark **Apple Silicon Macs "not supported"** (drivers crash on common shader packs) and say they will not investigate macOS issues. Our dev Mac is an M2. Expect problems that are not ours.
 - **Shader packs are separate third-party content** (GLSL code and `shaders.properties`). This audit does not cover any pack. Each pack needs its own read-only review before the dev client loads it.
 - The try-out in #629 may load it after the user has read this page.
@@ -29,7 +28,7 @@ Minecraft 26.3, Fabric Loader 0.19.5. Modrinth has three 26.3 Fabric builds, all
 
 The sha1 and sha512 computed from the downloaded file equal the Modrinth API values.
 
-- **No GitHub release or tag matches.** The repo's newest release is `1.7.3+1.21` (2024). Builds for 26.x come only from the `26.3` branch and Modrinth. So I could not compare the jar with a GitHub build. The branch head I read is `671a5c87` (2026-10-08), up to three commits newer than the jar; its `build.gradle.kts` still says `MOD_VERSION` `1.11.6`. The jar scan below is the primary evidence. Source reading is context only.
+- **No GitHub release or tag matches.** The repo's newest release is `1.7.3+1.21` (2024). Builds for 26.x come only from the `26.3` branch and Modrinth. So I could not compare the jar with a GitHub build. The branch head I read is `671a5c87` (2026-10-08), up to three commits newer than the jar; its `build.gradle.kts` still says `MOD_VERSION` `1.11.6`. The jar scan is the primary evidence. The source is context only.
 - Newer fixes exist on the branch after 1.11.7 (chunk borders with shaders, a mixin injection fix). No release has them yet.
 
 Nested jars (inside `META-INF/jars/`):
@@ -55,10 +54,9 @@ The jar has no licence file. The repo file `LICENSE-DEPENDENCIES` says: "glsl-tr
 
 What this means for us:
 
-- **The `.mrpack` links CDN URLs; it contains no jar.** We do not redistribute Iris or its bundled libraries, so the redistribution terms should not apply to us. This is our reading, not a lawyer's. Friends' launchers download from `cdn.modrinth.com`. Same rule as in the Sodium audit.
+- **The `.mrpack` links CDN URLs; it contains no jar.** We do not redistribute Iris or its bundled libraries, so the redistribution terms should not apply to us. This is our reading, not a lawyer's. Friends' launchers download from `cdn.modrinth.com`. Same rule as the Sodium audit.
 - **If we did redistribute** the jar, the LGPL and the AGPL would both apply (licence text and a way to get the source; the AGPL adds network-use source duties for modified versions). Linking avoids both. Do not bundle.
 - **LGPL linking** is moot: our mod does not depend on, call or embed Iris.
-- Iris is client-only and stays out of the server zip.
 
 ## Dependencies and compatibility
 
@@ -114,9 +112,9 @@ Scan of every `.class`, `.json` and `.properties` in the jar and the five nested
 
 1. **Pin exactly** `iris-fabric-1.11.7+mc26.3.jar` (sha512 above) with **Sodium 0.9.2+mc26.3**. No alpha. Update only after repeating the hash checks and scans.
 2. **Never a Gradle dependency, never in `depends` or `recommends`.** The mod must run without it and the build must not pull it in.
-3. **Set `disableUpdateMessage=true` before the first launch.** Create `config/iris.properties` in the dev run directory with exactly that one line. Iris rewrites the file in full when it saves settings. From the source it keeps the value, but **check the file again after the first launch** and restore the line if it is missing or reads `false`. Then check `latest.log` for `[Iris Update Check]` lines and look for `irisUpdateInfo.json`; neither should appear.
+3. **Set `disableUpdateMessage=true` before the first launch.** Create `config/iris.properties` in the dev run directory with exactly that one line. Iris rewrites the file in full when it saves settings. The source says it keeps the value, but **check the file after the first launch** and restore the line if it is missing or reads `false`. Then check `latest.log` for `[Iris Update Check]` lines and look for `irisUpdateInfo.json`; neither should appear.
 4. **OpenGL only:** run with `DEEPCHARTER_GL=1`. Not on Vulkan.
-5. **Dev client only, opt-in.** Not in the server zip. Not in the friends `.mrpack`. A friend who wants shaders installs it themselves.
+5. **Dev client only, opt-in.** Iris is client-only. Not in the server zip. Not in the friends `.mrpack`. A friend who wants shaders installs it themselves.
 6. **Link, don't bundle.** Don't commit or attach the jar.
 7. **Audit each shader pack before use**, the same read-only way: download into an empty directory, check the hash, read the `shaders.properties` and GLSL, then load it. Do not trust a pack because Iris loads it.
 8. Expect macOS problems. Iris marks Apple Silicon "not supported", so a crash or a visual fault there is first an Iris-on-Mac issue. Reproduce on another platform or with shaders off before filing anything against Deep Charter.
@@ -125,8 +123,7 @@ Scan of every `.class`, `.json` and `.properties` in the jar and the five nested
 
 ## Not verified
 
-- I ran nothing. Whether Deep Charter's HUD, beams, glow masks and terminals survive Iris is for the #629 try-out.
-- The Vulkan and `options.txt` interplay is from reading the plugin source.
+- I ran nothing. Whether Deep Charter's HUD, beams, glow masks and terminals survive Iris is for the #629 try-out. The Vulkan and `options.txt` interplay is from the plugin source only.
 - I did not confirm that the jar was built from the branch source; there is no GitHub tag or release to compare.
 - I did not read the shader-pack loader for zip-handling bugs (such as path traversal). It matters only once a pack is chosen.
 - The licences of ANTLR and jcpp are not stated in the jar and I did not check them.

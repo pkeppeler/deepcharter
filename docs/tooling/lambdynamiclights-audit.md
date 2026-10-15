@@ -1,13 +1,13 @@
 # LambDynamicLights audit
 
-Read-only audit of LambdAurora's [LambDynamicLights](https://github.com/LambdAurora/LambDynamicLights) (LDL) for Minecraft 26.3, done 2026-10-15 ([#639](https://github.com/pkeppeler/deepcharter/issues/639), split from [#629](https://github.com/pkeppeler/deepcharter/issues/629)). Companion page: [iris-audit.md](iris-audit.md). Nothing from the project was executed, built or loaded. The jar was downloaded into an empty directory and unpacked with `unzip`. The source was cloned (`git clone --depth 1`) into a separate empty directory and only read.
+Read-only audit of LambdAurora's [LambDynamicLights](https://github.com/LambdAurora/LambDynamicLights) (LDL) for Minecraft 26.3, done 2026-10-15 ([#639](https://github.com/pkeppeler/deepcharter/issues/639), split from [#629](https://github.com/pkeppeler/deepcharter/issues/629)). Companion page: [iris-audit.md](iris-audit.md). Nothing from the project was executed, built or loaded (see Method).
 
 ## Verdict: safe to try as an optional client mod, pinned; never a dependency
 
 - No network code, no update check, no telemetry, no process spawn, no native code, and no OpenGL or Vulkan calls in the jar.
-- It writes one config file. It hooks vanilla classes only, so it does not depend on Sodium or Iris internals.
+- It writes one config file. It hooks vanilla classes only, not Sodium or Iris internals.
 - **Risk 1, licence:** sharing the jar needs the authors' approval, so we link and never bundle.
-- **Risk 2, mixins:** 25 are `required`. After a Minecraft update that moves a hook, the client crashes at launch. This is a risk for the next update, not now.
+- **Risk 2, mixins:** 25 are `required`. A Minecraft update that moves a hook crashes the client at launch. This is a risk for the next update, not now.
 - The try-out in #629 may load it after the user has read this page.
 
 ## Version and hashes
@@ -27,7 +27,7 @@ Minecraft 26.3, Fabric Loader 0.19.5 (`gradle/libs.versions.toml`). Modrinth has
 | GitHub tag | `v4.13.0+26.3` = `b9c8a4603215f1c60221358467afaa5bcf4c1295` ("Update to Minecraft 26.3.") |
 | Published | 2026-09-15 |
 
-The sha1 and sha512 computed from the downloaded file equal the Modrinth API values. The GitHub release `v4.13.0+26.3` has the same jar with digest `sha256:b7550288...2ab2`, equal to the Modrinth jar's sha256: **byte-identical**. The source I read is the tagged commit. I did not rebuild the jar from source.
+The sha1 and sha512 computed from the downloaded file equal the Modrinth API values. The GitHub release `v4.13.0+26.3` has a jar with digest `sha256:b7550288...2ab2`, equal to the Modrinth jar's sha256: **byte-identical**. The source I read is the tagged commit.
 
 Nested jars (inside `META-INF/jars/`, loaded by Fabric Loader):
 
@@ -48,16 +48,15 @@ Nested jars (inside `META-INF/jars/`, loaded by Fabric Loader):
 
 What this means for us:
 
-- **The `.mrpack` links CDN URLs; it contains no jar.** We do not share the binary, so section 3 should not apply to us. This is our reading, not a lawyer's: section 3 also covers licensing "the right to do so". Friends' launchers download from `cdn.modrinth.com`. Same rule as in [sodium-lithium-audit.md](sodium-lithium-audit.md).
+- **The `.mrpack` links CDN URLs; it contains no jar.** We do not share the binary, so section 3 should not apply to us. This is our reading, not a lawyer's: section 3 also covers licensing "the right to do so". Friends' launchers download from `cdn.modrinth.com`. Same rule as [sodium-lithium-audit.md](sodium-lithium-audit.md).
 - **Do not bundle or attach the jar** in a zip, a release asset or the repo. That would be sharing a binary and needs the approval above.
 - **We do not modify it and do not link to it**, so section 4 is moot.
-- LDL is client-only. It stays out of the server zip.
 
 ## Dependencies and compatibility
 
 `fabric.mod.json`: environment `client`; `fabricloader >=0.19.5`, `minecraft ~26.3-`, `java >=25`; `fabric-lifecycle-events-v1 >=4.1.9`, `fabric-resource-loader-v1 >=3.0.4`, `fabric-resource-conditions-api-v1 >=6.1.5`. Modrinth lists Fabric API as the only required dependency. Mod Menu is recommended, not required.
 
-- Fabric API 0.162.0+26.3 (our pin; sha512 recomputed and equal to the value in the Sodium audit) ships `fabric-lifecycle-events-v1 4.1.9`, `fabric-resource-loader-v1 3.0.4` and `fabric-resource-conditions-api-v1 6.2.0`. All satisfy the floors. This is a version-string comparison; the real test is the #629 try-out.
+- Fabric API 0.162.0+26.3 (our pin; sha512 recomputed and equal to the value in the Sodium audit) ships `fabric-lifecycle-events-v1 4.1.9`, `fabric-resource-loader-v1 3.0.4` and `fabric-resource-conditions-api-v1 6.2.0`. All satisfy the floors. This compares version strings only; the real test is the #629 try-out.
 - Fabric Loader 0.19.5 is the exact floor. Our pin meets it.
 - `breaks`: `optifabric`, `sodiumdynamiclights`, `ryoamiclights`. None applies. Sodium 0.9.2 does not conflict. LDL registers an options page through Sodium's config API (`sodium:config_api_user`) and Mod Menu, and works without both.
 - Bundled libraries: LDL API, PrideLib, SpruceUI, Yumi Foundation (table above). It also shades NightConfig under `dev/lambdaurora/lambdynlights/shadow/`.
@@ -96,10 +95,9 @@ Definitions are **plain resource-pack data**, read by a reload listener from `as
 - `"silence_error": true` in a file hides its parse errors.
 - LDL ships 11 item and 17 entity definitions in its own jar (torch, blaze, glow squid, item frames, creeper, enderman and others).
 
-**Could our pods register?** Yes, without a dependency. `deepcharter:pod` and `deepcharter:prospector` are `EntityType`s (`PodEntity extends Entity`), so `EntityMixin` already ticks them. A file such as `assets/deepcharter/dynamiclights/entity/pod.json` with `"match": {"type": "deepcharter:pod"}` and `"luminance": 12` would make a pod emit light when LDL is present. Without LDL the file is an unused resource and does nothing. Nothing is compiled against LDL.
+**Could our pods register?** Yes, without a dependency. `deepcharter:pod` and `deepcharter:prospector` are `EntityType`s (`PodEntity extends Entity`), so `EntityMixin` already ticks them. A file such as `assets/deepcharter/dynamiclights/entity/pod.json` with `"match": {"type": "deepcharter:pod"}` and `"luminance": 12` would make a pod emit light when LDL is present. Without LDL the file does nothing. Nothing is compiled against LDL.
 
-- LDL also has a Java API (`DynamicLightsInitializer`, entrypoint key `lambdynlights:initializer`). **Do not use it**; it would make LDL a dependency.
-- A JSON file needs no `depends` entry and no build change. The mod must still run without LDL.
+- LDL also has a Java API (`DynamicLightsInitializer`, entrypoint key `lambdynlights:initializer`). **Do not use it**; it would make LDL a dependency. A JSON file needs no `depends` entry and no build change.
 - A player's held torch or lava bucket already lights through LDL's own shipped definitions, with no change from us.
 - Not tested. #629 should check that a pod emits, that the per-entity-type toggle shows up, and how `TowChainRenderer` (it reads light with `LightCoordsUtil.getLightCoords`) looks next to a lit pod.
 
@@ -122,15 +120,15 @@ Scan of every `.class`, `.json`, `.toml` and `.md` in the jar and the four neste
 1. **Pin exactly** `lambdynamiclights-4.13.0+26.3.jar` with the sha512 above. Update only after repeating the hash checks and this page's scans.
 2. **Never a Gradle dependency, never in `depends`, never in `recommends`.** The mod must run without it. The build must not pull it in.
 3. **Link, don't bundle.** Don't commit or attach the jar. See the licence section.
-4. **Client only, optional.** Not in the server zip. Not in the `.mrpack` unless the user decides it is a recommended mod; then as a CDN link with the pinned hash.
+4. **Client only, optional.** LDL stays out of the server zip. Not in the `.mrpack` unless the user decides it is a recommended mod; then as a CDN link with the pinned hash.
 5. A pod light file under `assets/deepcharter/dynamiclights/` is allowed (data only). Review it as a gameplay change: brightness, and the lit-chunk rebuild cost around a moving pod.
 6. **Triage rule for friends' bug reports:** reproduce without LDL first. A light flicker or a stutter that only shows with it is LDL's, not ours.
 7. If a Minecraft update breaks a hook, the game stops at launch with a mixin error. Remove the jar; do not wait for a fix.
 
 ## Not verified
 
-- I did not run anything. Behaviour beyond the scan (such as the look of pod light, or interplay with Sodium and Iris) is for the #629 try-out.
-- I did not rebuild the jar from source. The GitHub release jar is byte-identical to the Modrinth jar, and the tag source matches what I read, but "the source builds this jar" rests on the project's CI.
+- I ran nothing. Behaviour beyond the scan (the look of pod light, interplay with Sodium and Iris) is for the #629 try-out.
+- I did not rebuild the jar from source. "The source builds this jar" rests on the project's CI.
 - The licences of PrideLib, SpruceUI and Yumi are read from their `fabric.mod.json`, not from licence files.
 
 ## Method
