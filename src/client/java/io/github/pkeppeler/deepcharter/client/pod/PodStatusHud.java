@@ -15,12 +15,14 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -132,7 +134,9 @@ public final class PodStatusHud {
 
     /** Whether the ridden pod is at rest as the local pilot sees it: on the ground, with no drill, drive or rotor key held. */
     private static boolean resting(Minecraft client, PodEntity pod) {
-        return pod.onGround() && PodBrace.idle(client.player.input.keyPresses);
+        LocalPlayer player =
+                Objects.requireNonNull(client.player, "the HUD rests a pod only for the local player riding it");
+        return pod.onGround() && PodBrace.idle(player.input.keyPresses);
     }
 
     /** The line shown, in its own colour, while the pilot lines the slab: the bricks placed so far. */

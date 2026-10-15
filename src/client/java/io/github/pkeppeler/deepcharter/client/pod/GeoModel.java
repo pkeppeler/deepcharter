@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
@@ -23,6 +24,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * What the game knows of a pod model, read from the Bedrock entity geometry, the {@code .geo.json} that Blockbench exports and
@@ -189,7 +191,7 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
         return reachOf(cutter);
     }
 
-    private double reachOf(String cutter) {
+    private double reachOf(@Nullable String cutter) {
         double reach = 0;
         for (Bone spinning : bones.stream()
                 .filter(bone -> bone.role() == BoneRole.DRILL_HEAD || bone.role() == BoneRole.DRILL_RING)
@@ -460,7 +462,10 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
 
     private static boolean hasAncestor(Map<String, Bone> byName, Bone bone, BoneRole role) {
         for (Bone current = bone; current.parent().isPresent(); ) {
-            current = byName.get(current.parent().get());
+            Bone child = current;
+            String parent = current.parent().get();
+            current = Objects.requireNonNull(
+                    byName.get(parent), () -> "bone '" + child.name() + "' names parent '" + parent + "', not a bone");
             if (current.role() == role) {
                 return true;
             }

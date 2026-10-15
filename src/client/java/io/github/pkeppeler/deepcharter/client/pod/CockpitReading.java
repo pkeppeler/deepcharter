@@ -4,7 +4,9 @@ import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import java.util.Objects;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
@@ -26,11 +28,12 @@ public record CockpitReading(double fuel, double hull, double depth, double heat
     private static final double FULL_TANK_PERCENT = 100.0;
 
     public static CockpitReading of(Minecraft client, PodEntity pod, double heat) {
-        double deepest = deepestBlocks(client.level.registryAccess());
+        ClientLevel level = Objects.requireNonNull(client.level, "a pod is read only while its pilot is in a level");
+        double deepest = deepestBlocks(level.registryAccess());
         return new CockpitReading(
                 clamp(pod.fuel() / FULL_TANK_PERCENT),
                 pod.maxHull() > 0f ? clamp(pod.hull() / pod.maxHull()) : 0.0,
-                clamp(Depth.of(client.level, pod.getBlockY()) / deepest),
+                clamp(Depth.of(level, pod.getBlockY()) / deepest),
                 clamp(heat),
                 cargoShare(pod));
     }
