@@ -246,6 +246,83 @@ public class PodMovementTest {
     }
 
     @GameTest(maxTicks = 100)
+    public void noGravityPodStaysWhereItIsHeld(GameTestHelper helper) {
+        PodEntity pod = Rig.buildEmpty(helper, 3);
+        pod.setNoGravity(true);
+        double startY = pod.getY();
+        helper.runAfterDelay(30, () -> {
+            try {
+                if (pod.getY() != startY || pod.getDeltaMovement().y != 0) {
+                    throw helper.assertionException(
+                            "a pod with no gravity should hold at y %s with no vertical speed, got y %s, velocity %s",
+                            startY, pod.getY(), pod.getDeltaMovement());
+                }
+                helper.succeed();
+            } finally {
+                pod.discard();
+                clearFloor(helper);
+            }
+        });
+    }
+
+    @GameTest(maxTicks = 100)
+    public void noGravityPodDropsNoSpeedItHeld(GameTestHelper helper) {
+        PodEntity pod = Rig.buildEmpty(helper, 3);
+        pod.setNoGravity(true);
+        pod.setDeltaMovement(0, -0.5, 0);
+        helper.runAfterDelay(60, () -> {
+            try {
+                if (pod.getDeltaMovement().y < -1e-3 || pod.getDeltaMovement().y > 0 || pod.onGround()) {
+                    throw helper.assertionException(
+                            "a no-gravity pod launched downwards should coast to rest in the air, velocity %s, onGround %s",
+                            pod.getDeltaMovement(), pod.onGround());
+                }
+                helper.succeed();
+            } finally {
+                pod.discard();
+                clearFloor(helper);
+            }
+        });
+    }
+
+    @GameTest(maxTicks = 100)
+    public void podWithGravityStillFalls(GameTestHelper helper) {
+        PodEntity pod = Rig.buildEmpty(helper, 3);
+        double startY = pod.getY();
+        helper.runAfterDelay(5, () -> {
+            try {
+                if (pod.getY() >= startY) {
+                    throw helper.assertionException(
+                            "a pod with gravity should fall from y %s, got y %s", startY, pod.getY());
+                }
+                helper.succeed();
+            } finally {
+                pod.discard();
+                clearFloor(helper);
+            }
+        });
+    }
+
+    @GameTest(maxTicks = 100)
+    public void noGravityPodStillClimbsOnThrust(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 3, SOUTH);
+        rig.pod.setNoGravity(true);
+        double startY = rig.pod.getY();
+        rig.pilot.setInput(JUMP);
+        helper.runAfterDelay(10, () -> {
+            try {
+                if (rig.pod.getY() <= startY) {
+                    throw helper.assertionException(
+                            "a no-gravity pod should still climb on thrust from y %s, got y %s", startY, rig.pod.getY());
+                }
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = 100)
     public void ceilingStopsTheClimb(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0, SOUTH);
         BlockPos ceiling = new BlockPos(FLOOR_RADIUS, FLOOR_Y + 5, FLOOR_RADIUS);
