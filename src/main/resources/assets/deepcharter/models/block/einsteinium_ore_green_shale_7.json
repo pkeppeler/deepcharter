@@ -1,0 +1,8 @@
+{
+  "parent": "deepcharter:block/ore_overlay",
+  "textures": {
+    "side": "deepcharter:block/green_shale_7",
+    "end": "deepcharter:block/green_shale_end_3",
+    "overlay": "deepcharter:block/einsteinium_ore_overlay_3"
+  }
+}

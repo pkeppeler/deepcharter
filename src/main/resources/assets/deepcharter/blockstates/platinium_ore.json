@@ -1,17 +1,67 @@
 {
   "variants": {
-    "": [
+    "host=packed_shale": [
       {
-        "model": "deepcharter:block/platinium_ore_overlay_0"
+        "model": "deepcharter:block/platinium_ore_packed_shale_0"
       },
       {
-        "model": "deepcharter:block/platinium_ore_overlay_1"
+        "model": "deepcharter:block/platinium_ore_packed_shale_1"
       },
       {
-        "model": "deepcharter:block/platinium_ore_overlay_2"
+        "model": "deepcharter:block/platinium_ore_packed_shale_2"
       },
       {
-        "model": "deepcharter:block/platinium_ore_overlay_3"
+        "model": "deepcharter:block/platinium_ore_packed_shale_3"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_packed_shale_4"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_packed_shale_5"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_packed_shale_6"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_packed_shale_7"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_packed_shale_8"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_packed_shale_9"
+      }
+    ],
+    "host=green_shale": [
+      {
+        "model": "deepcharter:block/platinium_ore_green_shale_0"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_green_shale_1"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_green_shale_2"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_green_shale_3"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_green_shale_4"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_green_shale_5"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_green_shale_6"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_green_shale_7"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_green_shale_8"
+      },
+      {
+        "model": "deepcharter:block/platinium_ore_green_shale_9"
       }
     ]
   }

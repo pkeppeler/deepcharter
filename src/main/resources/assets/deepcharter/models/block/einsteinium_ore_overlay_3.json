@@ -1,7 +1,0 @@
-{
-  "parent": "deepcharter:block/ore_overlay",
-  "textures": {
-    "host": "minecraft:block/stone",
-    "overlay": "deepcharter:block/einsteinium_ore_overlay_3"
-  }
-}

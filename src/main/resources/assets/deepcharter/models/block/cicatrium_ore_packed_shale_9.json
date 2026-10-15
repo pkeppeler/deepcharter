@@ -1,0 +1,8 @@
+{
+  "parent": "deepcharter:block/ore_overlay",
+  "textures": {
+    "side": "deepcharter:block/packed_shale_9",
+    "end": "deepcharter:block/packed_shale_end_1",
+    "overlay": "deepcharter:block/cicatrium_ore_overlay_1"
+  }
+}

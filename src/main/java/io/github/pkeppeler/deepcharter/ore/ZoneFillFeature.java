@@ -12,6 +12,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -26,7 +27,7 @@ import net.minecraft.world.level.levelgen.feature.Feature;
  * <p>It is a placed feature of the zone's own biome with no placement modifiers, so it runs once for each chunk, at
  * the chunk's corner, and it only touches that chunk's blocks of {@code zone} (a third of the layer, by
  * {@link Zones#index}). Only the layer's own rock ({@link LayerBlocks#GROUND}) is replaced: caves, the crust and anything an earlier step
- * placed stay as they are.
+ * placed stay as they are. An ore is placed in the rock it replaces ({@link OreBlock#in}).
  *
  * @param zone    0 for the top third of the layer, 2 for the bottom
  * @param ores    ore blocks and the chance of each for a block of stone
@@ -92,7 +93,8 @@ public record ZoneFillFeature(int zone, List<Entry> ores, List<Entry> hazards) i
             for (int y = Math.max(low, sectionY); y <= Math.min(high, sectionY + 15); y++) {
                 for (int x = 0; x < 16; x++) {
                     for (int z = 0; z < 16; z++) {
-                        if (!section.getBlockState(x, y & 15, z).is(LayerBlocks.GROUND)) {
+                        BlockState rock = section.getBlockState(x, y & 15, z);
+                        if (!rock.is(LayerBlocks.GROUND)) {
                             continue;
                         }
                         Block block = roll(ores, random);
@@ -102,7 +104,7 @@ public record ZoneFillFeature(int zone, List<Entry> ores, List<Entry> hazards) i
                         if (block != null) {
                             chunk.setBlockState(
                                     pos.set(firstX + x, y, firstZ + z),
-                                    block.defaultBlockState(),
+                                    block instanceof OreBlock ore ? ore.in(rock) : block.defaultBlockState(),
                                     Block.UPDATE_CLIENTS);
                             placed = true;
                         }

@@ -1,7 +1,7 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "particle": "#host"
+    "particle": "#side"
   },
   "elements": [
     {
@@ -17,27 +17,27 @@
       ],
       "faces": {
         "down": {
-          "texture": "#host",
+          "texture": "#end",
           "cullface": "down"
         },
         "up": {
-          "texture": "#host",
+          "texture": "#end",
           "cullface": "up"
         },
         "north": {
-          "texture": "#host",
+          "texture": "#side",
           "cullface": "north"
         },
         "south": {
-          "texture": "#host",
+          "texture": "#side",
           "cullface": "south"
         },
         "west": {
-          "texture": "#host",
+          "texture": "#side",
           "cullface": "west"
         },
         "east": {
-          "texture": "#host",
+          "texture": "#side",
           "cullface": "east"
         }
       }

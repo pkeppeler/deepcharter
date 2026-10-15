@@ -17,8 +17,10 @@ from pathlib import Path
 TOOLS = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(TOOLS))
 sys.path.insert(0, str(TOOLS / "textures"))
+sys.path.insert(0, str(TOOLS / "layer_concepts"))
 
 import pngio  # noqa: E402
+import seams  # noqa: E402
 import texgen  # noqa: E402
 
 MOD_ASSETS = texgen.ROOT / "src/main/resources/assets"
@@ -53,6 +55,12 @@ def model_refs(body) -> list[str]:
     return []
 
 
+def ore_models(assets: Path) -> list[Path]:
+    """The models of the ore blocks in a pack: those that inherit the overlay parent."""
+    return [model for model in sorted((assets / "deepcharter/models/block").glob("*.json"))
+            if json.loads(model.read_text()).get("parent") == "deepcharter:block/ore_overlay"]
+
+
 def png_size(path: Path) -> tuple[int, int]:
     return struct.unpack(">II", path.read_bytes()[16:24])
 
@@ -75,19 +83,57 @@ class TexturePacksTest(unittest.TestCase):
         shipped = {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
         self.assertEqual(VANILLA_FILES, shipped, "a file under assets/minecraft/ overrides a vanilla one; draw over it by reference")
 
-    def test_an_overlay_replaces_nothing_of_vanilla_and_draws_each_ore_over_the_host_by_reference(self):
-        """The mod's own ores and every overlay pack: each ore model names the host's texture, vanilla's, and not a copy of it."""
+    def test_an_overlay_replaces_nothing_of_vanilla_and_draws_each_ore_over_a_rock_of_the_mod_by_reference(self):
+        """The mod's own ores and every overlay pack: each ore model names the textures of a rock block of the mod, and not a copy of
+        vanilla's stone."""
         places = [("the mod", MOD_ASSETS)] + [(name, texgen.ROOT / entry["pack"] / "assets")
                                               for name, entry in sorted(texgen.variants().items()) if "overlays" in entry]
         for name, assets in places:
             with self.subTest(overlay=name):
                 if assets != MOD_ASSETS:
                     self.assertFalse((assets / "minecraft").exists(), "an overlay pack holds a vanilla file")
-                models = sorted((assets / "deepcharter/models/block").glob("*_overlay_*.json"))
+                models = ore_models(assets)
                 self.assertTrue(models)
                 for model in models:
-                    host = json.loads(model.read_text())["textures"]["host"]
-                    self.assertIsNone(resolve(assets, host, "textures", ".png"), f"{model.name}: the host {host} is not vanilla's")
+                    textures = json.loads(model.read_text())["textures"]
+                    for use in ("side", "end", "overlay"):
+                        self.assertTrue(resolve(assets, textures[use], "textures", ".png").is_file(),
+                                        f"{model.name}: the {use} texture {textures[use]} is not a texture of the mod")
+
+    def test_each_ore_block_has_a_model_of_every_rock_it_can_sit_in_and_each_draws_that_rock(self):
+        """The shipped ore blocks (overlays.json): a state for each host, with a model for each of its variants, and that model's side and
+        end textures are the host's own rock."""
+        body = json.loads(texgen.OVERLAYS.read_text())
+        for block in body["blocks"]:
+            state = json.loads((MOD_ASSETS / f"deepcharter/blockstates/{block}.json").read_text())["variants"]
+            self.assertEqual({f"{body['property']}={host}" for host in body["hosts"]}, set(state), block)
+            for host, rock in body["hosts"].items():
+                models = state[f"{body['property']}={host}"]
+                self.assertEqual(body["variants"], len(models), f"{block} in {host}")
+                for entry in models:
+                    textures = json.loads(resolve(MOD_ASSETS, entry["model"], "models", ".json").read_text())["textures"]
+                    self.assertRegex(textures["side"], rf"^deepcharter:block/{rock}_\d$", entry["model"])
+                    self.assertRegex(textures["end"], rf"^deepcharter:block/{rock}_end_\d$", entry["model"])
+
+    def test_an_ore_tiles_like_the_rock_it_sits_in(self):
+        """#549: the ore over its host rock, as a block face draws it, passes the seam check of tools/layer_concepts/seams.py (the colour step
+        across the wrap seams, and across the outer rings, is no bigger than the steps inside the texture, within its margin). An overlay's edge
+        is only ore ramp colours (the test above), so this holds the composite to what the rock alone is held to."""
+        shipped = texgen.shipped()
+        body = json.loads(texgen.OVERLAYS.read_text())
+        for block in body["blocks"]:
+            for host, rock in body["hosts"].items():
+                for index in range(body["variants"]):
+                    overlay = pngio.decode((shipped.out / f"block/{block}_overlay_{index % body['textures']}.png").read_bytes())
+                    for host_texture in (f"{rock}_{index}", f"{rock}_end_{index % body['ends']}"):
+                        rock_image = pngio.decode((shipped.out / f"block/{host_texture}.png").read_bytes())
+                        pixels = bytearray(rock_image.pixels)
+                        for at in range(0, len(pixels), 4):
+                            if overlay.pixels[at + 3]:
+                                pixels[at:at + 3] = overlay.pixels[at:at + 3]
+                        found = seams.measure(bytes(pixels), rock_image.width)
+                        with self.subTest(block=block, host=host_texture, overlay=index % body["textures"]):
+                            self.assertTrue(found.seamless(), f"wrap {found.wrap_ratio:.2f}, rim {found.rim_ratio:.2f}")
 
     def test_only_ore_reaches_the_edge_of_an_overlay(self):
         """Over the host's texture, any pixel on a block's outer ring that is not the ore itself (a shadow, a socket, a tint) draws
@@ -131,8 +177,9 @@ class TexturePacksTest(unittest.TestCase):
             return []
 
         assets = MOD_ASSETS / "deepcharter"
-        files = sorted(assets.glob("models/block/*ore_overlay*.json")) + sorted(assets.glob("blockstates/*ium_ore.json"))
-        self.assertEqual(29 + 7, len(files))
+        files = [assets / "models/block/ore_overlay.json", *ore_models(MOD_ASSETS), *sorted(assets.glob("blockstates/*ium_ore.json"))]
+        body = json.loads(texgen.OVERLAYS.read_text())
+        self.assertEqual(1 + len(body["blocks"]) * len(body["hosts"]) * body["variants"] + len(body["blocks"]), len(files))
         for path in files:
             with self.subTest(file=path.name):
                 self.assertEqual([], lit(json.loads(path.read_text())))
