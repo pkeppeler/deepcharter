@@ -5,7 +5,7 @@
       "additions": [
         {
           "sound": "deepcharter:ambient.layer_1_creak",
-          "tick_chance": 0.0008
+          "tick_chance": 0.0013
         },
         {
           "sound": "deepcharter:ambient.layer_1_knock",

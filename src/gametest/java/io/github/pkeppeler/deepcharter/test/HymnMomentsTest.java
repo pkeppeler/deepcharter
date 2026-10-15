@@ -118,6 +118,81 @@ public class HymnMomentsTest {
     }
 
     @GameTest
+    public void joiningACharterPlaysTheColonyHymnToTheNewCrewAndTheFounderHearsNothingMore(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        MockPlayer founder = MockPlayers.join(helper, "Director");
+        MockPlayer crew = MockPlayers.join(helper, "Crew");
+        expect(
+                helper,
+                Charters.found(server, founder.player().getUUID(), "Hymn Join Charter")
+                        .isEmpty(),
+                "founding should succeed");
+        var charter = Charters.charterOfOrThrow(server, founder.player().getUUID())
+                .orElseThrow()
+                .id();
+        expect(
+                helper,
+                Charters.apply(server, crew.player().getUUID(), charter).isEmpty()
+                        && Charters.approve(
+                                        server,
+                                        founder.player().getUUID(),
+                                        crew.player().getUUID())
+                                .isEmpty(),
+                "the second player should join the charter");
+        helper.runAfterDelay(DRAIN_TICKS, () -> {
+            expect(
+                    helper,
+                    crew.soundsHeard().equals(List.of(id("hymn.colony"))),
+                    "the new crew heard %s",
+                    crew.soundsHeard());
+            expect(
+                    helper,
+                    founder.soundsHeard().equals(List.of(id("hymn.colony"))),
+                    "the founder heard %s",
+                    founder.soundsHeard());
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void twoQuickDescentsToTheSameLayerPlayOneHymn(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        MockPlayer pilot = MockPlayers.join(helper, "Bouncer");
+        ServerLevel surface = server.overworld();
+        ServerLevel layer1 = server.getLevel(LayerChain.dimension(1));
+        BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
+        BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
+        helper.runAfterDelay(DRAIN_TICKS, () -> {
+            expect(
+                    helper,
+                    pilot.soundsHeard().equals(List.of(id("hymn.layer_1"))),
+                    "the pilot heard %s",
+                    pilot.soundsHeard());
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void bouncingBetweenALayerAndTheColonyStartsEachVersionOnceAndNeverStacksOne(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        MockPlayer pilot = MockPlayers.join(helper, "Yo-yo");
+        ServerLevel surface = server.overworld();
+        ServerLevel layer1 = server.getLevel(LayerChain.dimension(1));
+        BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
+        BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), layer1, surface, 1, LayerChain.SURFACE);
+        BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
+        BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
+        helper.runAfterDelay(DRAIN_TICKS, () -> {
+            expect(
+                    helper,
+                    pilot.soundsHeard().equals(List.of(id("hymn.layer_1"), id("hymn.colony"), id("hymn.layer_1"))),
+                    "the pilot heard %s",
+                    pilot.soundsHeard());
+            helper.succeed();
+        });
+    }
+
+    @GameTest
     public void aCrossingThatIsNotAPlayerIsSilent(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer watcher = MockPlayers.join(helper, "Watcher");

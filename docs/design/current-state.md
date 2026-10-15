@@ -35,7 +35,7 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | Screens | 10 shot (handbook, offline terminal, fuel pump, ore processor, upgrade, repair station, hangar console, contract, pod cargo, vanilla inventory), 1 not reachable (CRT demo) |
 | HUDs | 6 (pod status, scanner, altimeter, account, transmission overlay, breach fade) |
 | Particles | 1 (`deepcharter:dust_mote`; the tow line is a rendered chain since #508) |
-| Sound events | 61; the drones, the Lamp Hymn and the pod, drill, terminal and UI sounds are ours (#249), the rest are vanilla placeholders; 3 music events |
+| Sound events | The drones, the Lamp Hymn and the pod, drill, terminal and UI sounds are ours (#249), the rest are vanilla placeholders; plus the music events |
 | Fonts | 1 (`deepcharter:terminal`, Unscii, for the terminal screens since #246; everything else is the vanilla font) |
 | Tour stills | 144 |
 
@@ -605,7 +605,7 @@ Not shot: it needs two pods and a tow cable in motion (the `m2-towing` scenario 
 
 Only names and uses are given here. No audio is copied, played into a recording, or published.
 
-- 61 sound events in `main/sound/DeepSound.java`, registered in `main/sound/SoundRegistry.java`. Each is mapped in `assets/deepcharter/sounds.json`. Since #249 the pod engines and rotor,
+- The sound events are in `main/sound/DeepSound.java`, registered in `main/sound/SoundRegistry.java`. Each is mapped in `assets/deepcharter/sounds.json`. Since #249 the pod engines and rotor,
   the drill's dig and blocked, the terminal's power-on and the UI sounds point at OGGs of ours (`assets/deepcharter/sounds/`, each made by a recipe in `tools/sounds/`), the layers' music
   slots are silent, and the rest are still a **vanilla Minecraft sound** as a placeholder, with pitch or volume tweaks. A private audio pack (built by `tools/build-audio-pack.sh` from files that stay out of the repo) replaces
   them at play time through `tools/audio-pack-map.txt`; the drone beds and the Lamp Hymn have no original and are not in it. Vanilla: **partly**.

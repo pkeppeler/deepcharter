@@ -2,6 +2,8 @@
 import contextlib
 import io
 import json
+import math
+import re
 import shutil
 import struct
 import subprocess
@@ -83,6 +85,15 @@ class CommittedSoundsTest(unittest.TestCase):
             error = sum((heard[i] - pcm[i]) ** 2 for i in range(0, frames, 7))
             energy = sum(pcm[i] ** 2 for i in range(0, frames, 7)) or 1
             self.assertLess(error / energy, 0.25, f"{name}: the OGG is not the sound its recipe makes")
+
+
+class HymnLengthTest(unittest.TestCase):
+    def test_the_game_knows_how_long_each_hymn_plays(self):
+        # HymnMoments does not start a hymn on top of the player's last one; it counts SoundTuning.hymnTicks, which must match the files.
+        java = (Path(__file__).resolve().parents[2] / "src/main/java/io/github/pkeppeler/deepcharter/sound/SoundTuning.java").read_text()
+        ticks = [int(n) for n in re.search(r"hymnTicks\b.*?List\.of\(([\d, ]+)\)", java, re.S).group(1).split(",")]
+        made = [math.ceil(len(recipes.render(f"hymn/{name}").left) / recipes.RATE * 20) for name in ("colony", "layer_1", "layer_2")]
+        self.assertEqual(made, ticks)
 
 
 class GateTest(unittest.TestCase):

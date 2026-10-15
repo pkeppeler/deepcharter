@@ -14,6 +14,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -159,22 +160,86 @@ public class SoundAmbienceTest {
         helper.succeed();
     }
 
+    /** What a player in each place could hear as music, in every mode: the biome's own music over the dimension's, creative and underwater too. */
     @GameTest
-    public void noLayerBiomeOverridesItsLayersMusicWithAVanillaTrack(GameTestHelper helper) {
+    public void noLayerMusicInAnyModeIsAVanillaTrack(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         var registry = server.registryAccess().lookupOrThrow(Registries.BIOME);
         for (int layer = 1; layer <= LayerChain.count(server.registryAccess()); layer++) {
+            BackgroundMusic dimension = server.getLevel(LayerChain.dimension(layer))
+                    .dimensionType()
+                    .attributes()
+                    .applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, BackgroundMusic.EMPTY);
             for (Identifier biomeId : layerBiomes(server, layer)) {
                 BackgroundMusic music = registry.getValue(biomeId)
                         .getAttributes()
-                        .applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, BackgroundMusic.EMPTY);
-                music.defaultMusic()
-                        .ifPresent(track -> expect(
-                                helper,
-                                name(track.sound()).getNamespace().equals(DeepCharter.MOD_ID),
-                                "the biome %s plays %s",
-                                biomeId,
-                                name(track.sound())));
+                        .applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, dimension);
+                for (boolean creative : List.of(false, true)) {
+                    for (boolean underwater : List.of(false, true)) {
+                        music.select(creative, underwater)
+                                .ifPresent(track -> expect(
+                                        helper,
+                                        name(track.sound()).getNamespace().equals(DeepCharter.MOD_ID),
+                                        "the biome %s plays %s (creative %s, underwater %s)",
+                                        biomeId,
+                                        name(track.sound()),
+                                        creative,
+                                        underwater));
+                    }
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    /** The zones of each layer, top to bottom. The deeper the zone, the more often it creaks and knocks. */
+    private static final Map<Integer, List<String>> ZONES = Map.of(
+            1, List.of("topsoil_claims", "stone_benches", "deep_claim"),
+            2, List.of("upper_levels", "shift_change", "prospectors_run"));
+
+    private static double chance(Biome biome, String sound) {
+        return biome
+                .getAttributes()
+                .applyModifier(EnvironmentAttributes.AMBIENT_SOUNDS, AmbientSounds.EMPTY)
+                .additions()
+                .stream()
+                .filter(addition -> name(addition.soundEvent()).getPath().equals(sound))
+                .findFirst()
+                .orElseThrow()
+                .tickChance();
+    }
+
+    @GameTest
+    public void theDeeperTheZoneTheMoreOftenItCreaksAndKnocks(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        var registry = server.registryAccess().lookupOrThrow(Registries.BIOME);
+        for (int layer = 1; layer <= LayerChain.count(server.registryAccess()); layer++) {
+            List<String> zones = ZONES.get(layer);
+            expect(helper, zones != null, "layer %s has no zone list in this test", layer);
+            Set<Identifier> listed = new TreeSet<>();
+            zones.forEach(zone -> listed.add(id(zone)));
+            expect(
+                    helper,
+                    listed.equals(layerBiomes(server, layer)),
+                    "layer %s has biomes %s, this test lists %s",
+                    layer,
+                    layerBiomes(server, layer),
+                    listed);
+            for (String kind : List.of("creak", "knock")) {
+                double above = 0;
+                for (String zone : zones) {
+                    double now = chance(registry.getValue(id(zone)), "ambient.layer_" + layer + "_" + kind);
+                    expect(
+                            helper,
+                            now > above,
+                            "layer %s: %s of %s (%s) is not more often than the zone above (%s)",
+                            layer,
+                            kind,
+                            zone,
+                            now,
+                            above);
+                    above = now;
+                }
             }
         }
         helper.succeed();
