@@ -57,7 +57,7 @@ Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features
   import org.jspecify.annotations.NullMarked;
   ```
 
-  Fix the findings with `org.jspecify.annotations.Nullable`, the one the dependency and options are wired for. The first PR that marks a mixin package checks whether `@Unique` fields and `@Shadow` methods need NullAway exclusions (only `@Shadow` fields are excluded today). A `CrtScreen` widget field that `layout()` assigns is `@Nullable` and read through `Objects.requireNonNull(field, "<built by layout() in init()>")`; prefer a local when nothing reads the widget later.
+  Fix the findings with `org.jspecify.annotations.Nullable`, the one the dependency and options are wired for. The first PR that marks a mixin with `@Unique` fields or `@Shadow` methods (`test.mixin`) checks whether they need NullAway exclusions (only `@Shadow` fields are excluded today). A `CrtScreen` widget field that `layout()` assigns is `@Nullable` and read through `Objects.requireNonNull(field, "<built by layout() in init()>")`; prefer a local when nothing reads the widget later. A `requireNonNull` on a per-tick, per-frame or per-cell path takes the `Supplier` message overload, so the message is built only when it fails.
 
 Do not spell out counts of enum members or registry entries in prose ("the seven ores"): they drift. Name them, or point at the code.
 
