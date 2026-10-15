@@ -188,9 +188,10 @@ def railing() -> Model:
     ], ambient_occlusion=False)
 
 
-def halo_x(x: float, y: tuple[float, float], z: tuple[float, float]) -> Box:
-    """A flat glow plane across x at {x}, seen from both sides: a halo round a lens (texture variable #halo, a translucent soft glow)."""
-    return Box((x, y[0], z[0]), (x, y[1], z[1]), {"east": "#halo", "west": "#halo"}, glow=True, full_uv=True)
+def halo_x(y: tuple[float, float], z: tuple[float, float]) -> Box:
+    """A flat glow plane across x through the middle of the block, seen from both sides: a halo round a lens (texture variable #halo,
+    a translucent soft glow)."""
+    return Box((8, y[0], z[0]), (8, y[1], z[1]), {"east": "#halo", "west": "#halo"}, glow=True, full_uv=True)
 
 
 def halo_z(z: float, x: tuple[float, float], y: tuple[float, float], both: bool = True) -> Box:
@@ -208,7 +209,7 @@ def wall_lamp() -> Model:
         Box((5, 6.5, 4), (11, 10, 9), {"*": "#iron"}),
         Box((5.5, 3, 4.5), (10.5, 6.5, 8.5), {"*": "#lit", "up": None}, glow=True),
         Box((6.5, 2.5, 5.5), (9.5, 3, 7.5), {"*": "#iron"}),
-        halo_x(8, (-3, 13), (-1, 15)),
+        halo_x((-3, 13), (-1, 15)),
         halo_z(5, (0, 16), (-3, 13)),
     ], ambient_occlusion=False)
 
@@ -221,7 +222,7 @@ def floodlight() -> Model:
         Box((3, 5, 4), (13, 13, 12), {"*": "#iron"}, rotation=(-25, 0, 0), pivot=(8, 9, 8)),
         Box((3.5, 5.5, 3.95), (12.5, 12.5, 4), {"north": "#lens"}, rotation=(-25, 0, 0), pivot=(8, 9, 8), glow=True),
         halo_z(2.5, (-1, 17), (0, 18)),
-        halo_x(8, (0, 18), (-3, 12)),
+        halo_x((0, 18), (-3, 12)),
     ], ambient_occlusion=False)
 
 
