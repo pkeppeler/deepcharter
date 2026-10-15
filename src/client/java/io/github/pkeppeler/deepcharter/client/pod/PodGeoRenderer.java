@@ -188,8 +188,7 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
             PodGeoAnimatable animatable, @Nullable PodEntity podOrNull, PodGeoRenderState state, float partialTick) {
         PodEntity pod = Objects.requireNonNull(podOrNull, "GeckoLib gives addRenderData the pod it draws");
         Appearance appearance = appearanceOf(pod);
-        state.appearance = appearance;
-        state.texture = textureOf(appearance);
+        state.show(appearance, textureOf(appearance));
         state.cabHidden = FrontCameraFeed.hidesCab(pod);
         motions.computeIfAbsent(pod, ignored -> new PodMotion())
                 .advance(pod, state, pose.mountRestPitch(), spinScaleOf(appearance));

@@ -32,9 +32,14 @@ public class PodGeoRenderState extends EntityRenderState {
     /** The local pilot looks out through a live front camera in first person, so none of the pod is drawn (#448). */
     public boolean cabHidden;
     /** What the pod shows this frame, from its drill tier and whether it is a wreck ({@link PodGeoRenderer#appearanceOf}). */
-    public PodGeoRenderer.@Nullable Appearance appearance;
+    private PodGeoRenderer.@Nullable Appearance appearance;
     /** The texture the pod is drawn with this frame: its variant's, or that painted in its charter's colour. */
-    public @Nullable Identifier texture;
+    private @Nullable Identifier texture;
+
+    public void show(PodGeoRenderer.Appearance appearance, Identifier texture) {
+        this.appearance = appearance;
+        this.texture = texture;
+    }
 
     public PodGeoRenderer.Appearance appearance() {
         return Objects.requireNonNull(appearance, "PodGeoRenderer.addRenderData sets the appearance each frame");
