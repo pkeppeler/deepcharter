@@ -1,10 +1,12 @@
 package io.github.pkeppeler.deepcharter.attachment;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The state of a versioned {@code SavedData}: either the live value, or saved data of a version this build cannot read, kept
@@ -25,13 +27,14 @@ public final class SavedState<T> {
     private final Identifier id;
     private final int currentVersion;
     /** The live value, or null when the saved data is unreadable. */
-    private T value;
+    private @Nullable T value;
     /** The saved data as read, or null when it is readable. */
-    private final Versioned.Unreadable<?> unreadable;
+    private final Versioned.@Nullable Unreadable<?> unreadable;
 
     private final AtomicBoolean logged = new AtomicBoolean();
 
-    private SavedState(Identifier id, int currentVersion, T value, Versioned.Unreadable<?> unreadable) {
+    private SavedState(
+            Identifier id, int currentVersion, @Nullable T value, Versioned.@Nullable Unreadable<?> unreadable) {
         this.id = id;
         this.currentVersion = currentVersion;
         this.value = value;
@@ -76,7 +79,7 @@ public final class SavedState<T> {
             throw new IllegalStateException("the saved " + id + " has version " + unreadable.version()
                     + " that this build cannot read (it reads " + currentVersion + ")");
         }
-        return value;
+        return Objects.requireNonNull(value, "the saved " + id + " is readable but has no live value");
     }
 
     /** Replaces the live value, for a value that is not mutated in place. Throws if the saved data is unreadable. */
@@ -91,6 +94,7 @@ public final class SavedState<T> {
         if (unreadable != null) {
             return (Versioned<B>) unreadable;
         }
-        return Versioned.of(toBody.apply(value));
+        return Versioned.of(
+                toBody.apply(Objects.requireNonNull(value, "the saved " + id + " is readable but has no live value")));
     }
 }
