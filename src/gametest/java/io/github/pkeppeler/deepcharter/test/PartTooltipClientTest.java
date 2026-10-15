@@ -7,16 +7,20 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
+import java.util.LinkedHashSet;
 import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 
 /** Client GameTest for #573: the tooltip of a part stack shows its name, then its tier and serial, or says it is no real part. */
 public class PartTooltipClientTest implements FabricClientGameTest {
@@ -51,6 +55,16 @@ public class PartTooltipClientTest implements FabricClientGameTest {
             require(
                     lines(context, unlabelled).equals(List.of(name, "No tier, charter or serial: not a real part")),
                     "A part without a label should say it is not a real part, listed " + lines(context, unlabelled));
+
+            ItemStack hidden = new ItemStack(ComponentItems.item(ComponentTrack.HULL));
+            hidden.set(DataComponents.TOOLTIP_DISPLAY, new TooltipDisplay(true, new LinkedHashSet<>()));
+            require(
+                    lines(context, hidden).isEmpty(),
+                    "A part whose tooltip is hidden should show no tooltip lines, listed " + lines(context, hidden));
+            ItemStack stick = new ItemStack(Items.STICK);
+            require(
+                    lines(context, stick).equals(List.of(stick.getHoverName().getString())),
+                    "An item that is not a part should get no part lines, listed " + lines(context, stick));
         }
     }
 

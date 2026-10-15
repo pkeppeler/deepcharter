@@ -5,9 +5,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItem;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.component.TooltipDisplay;
 
 /** Registers the upgrade terminal's online screen and the tooltip of a part that has no label. */
 public final class UpgradeClientRegistry {
@@ -20,9 +18,7 @@ public final class UpgradeClientRegistry {
         TerminalScreens.register(TerminalTypes.UPGRADE_TERMINAL, UpgradeScreen::new);
         // A label's own lines come from the PartLabel component; a stack without one has no component to carry them.
         ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> {
-            boolean hidden = stack.getOrDefault(DataComponents.TOOLTIP_DISPLAY, TooltipDisplay.DEFAULT)
-                    .hideTooltip();
-            if (stack.getItem() instanceof ComponentItem && !stack.has(ComponentItems.LABEL) && !hidden) {
+            if (stack.getItem() instanceof ComponentItem && !stack.has(ComponentItems.LABEL)) {
                 lines.add(AFTER_NAME, Component.translatable("item.deepcharter.part.unlabelled"));
             }
         });

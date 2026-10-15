@@ -132,13 +132,14 @@ val fabricApiModules = mapOf(
 	"api" to listOf("fabric-api-base", "fabric-data-attachment-api-v1", "fabric-menu-api-v1"),
 	"implementation" to listOf(
 		"fabric-command-api-v2", "fabric-entity-events-v1", "fabric-events-interaction-v0", "fabric-item-api-v1",
-		"fabric-lifecycle-events-v1", "fabric-networking-api-v1", "fabric-object-builder-api-v1", "fabric-particles-v1", "fabric-registry-sync-v0",
-		"fabric-resource-loader-v1",
+		"fabric-lifecycle-events-v1", "fabric-networking-api-v1", "fabric-object-builder-api-v1", "fabric-particles-v1",
+		"fabric-registry-sync-v0", "fabric-resource-loader-v1",
 	),
 	"clientImplementation" to listOf(
 		"fabric-api-base", "fabric-data-attachment-api-v1", "fabric-events-interaction-v0", "fabric-item-api-v1",
-		"fabric-key-mapping-api-v1", "fabric-lifecycle-events-v1", "fabric-menu-api-v1", "fabric-model-loading-api-v1", "fabric-networking-api-v1",
-		"fabric-particles-v1", "fabric-renderer-api-v1", "fabric-rendering-v1", "fabric-resource-loader-v1",
+		"fabric-key-mapping-api-v1", "fabric-lifecycle-events-v1", "fabric-menu-api-v1", "fabric-model-loading-api-v1",
+		"fabric-networking-api-v1", "fabric-particles-v1", "fabric-renderer-api-v1", "fabric-rendering-v1",
+		"fabric-resource-loader-v1",
 	),
 	"gametestImplementation" to listOf(
 		"fabric-api-base", "fabric-client-gametest-api-v1", "fabric-data-attachment-api-v1", "fabric-events-interaction-v0",
