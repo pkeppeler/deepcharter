@@ -48,6 +48,17 @@ Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features
 - Lang keys: one fragment per feature, `src/lang/en_us/<feature>.json` (outside the resources source set, so it stays out of the jar), merged and sorted into `assets/deepcharter/lang/en_us.json` at build time. That file is generated: never edit it. A key lives in exactly one fragment; a duplicate fails the build. An empty fragment is `{}`.
 - Commands, always added with `FeatureCommands.register("<feature>", ...)`, which puts them under `/deepcharter <feature>`. `charter` and `handbook` have a `XCommands` stub; add one to any other feature that needs it.
 
+- Null safety: NullAway checks only `@NullMarked` packages (`OnlyNullMarked`, JSpecify mode, ERROR on every source set). To bring a feature under it, add a `package-info.java` with `@NullMarked` to its main package, each sub-package and the mirror under `client/<feature>`, all in one PR:
+
+  ```java
+  @NullMarked
+  package io.github.pkeppeler.deepcharter.<feature>;
+
+  import org.jspecify.annotations.NullMarked;
+  ```
+
+  Fix the findings with `@Nullable` from `org.jspecify.annotations` (never `javax`), the same annotation Mojang's code carries. A gametest package is marked the same way. `command` is the first marked package.
+
 Do not spell out counts of enum members or registry entries in prose ("the seven ores"): they drift. Name them, or point at the code.
 
 A new part that needs its own `init()` and has no feature of its own gets a stub in its feature, wired into that feature's `XInit` already: `pod/PodComponents` (#65), `pod/PodTowing` (#76) and `layer/LayerStructures` (#79).

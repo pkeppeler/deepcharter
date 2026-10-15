@@ -1,4 +1,5 @@
 import java.security.MessageDigest
+import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
 import java.util.zip.ZipFile
 
@@ -168,6 +169,11 @@ dependencies {
 	include(libs.geckolib)
 
 	errorprone(libs.errorprone.core)
+	errorprone(libs.nullaway)
+	// @NullMarked and @Nullable are source-retention annotations: not needed at run time.
+	compileOnly(libs.jspecify)
+	"clientCompileOnly"(libs.jspecify)
+	"gametestCompileOnly"(libs.jspecify)
 	// @FormatMethod on the gametest failure helpers, so Error Prone checks their format strings
 	"gametestCompileOnly"(libs.errorprone.annotations)
 }
@@ -293,6 +299,12 @@ tasks.withType<JavaCompile>().configureEach {
 		disable("EnumOrdinal")
 		// RELAXED: enums hold Minecraft types (SoundEvent, Identifier, MapCodec) that cannot carry @Immutable
 		disable("ImmutableEnumChecker")
+		// Only @NullMarked packages are checked: a feature package opts in with a package-info.java (deepcharter-conventions)
+		check("NullAway", CheckSeverity.ERROR)
+		option("NullAway:OnlyNullMarked", "true")
+		option("NullAway:JSpecifyMode", "true")
+		// RELAXED: Mixin fills a @Shadow field, so NullAway would report it uninitialized
+		option("NullAway:ExcludedFieldAnnotations", "org.spongepowered.asm.mixin.Shadow")
 		option("UnusedMethod:ExemptingMethodAnnotations", mixinHandlers)
 		option("Unused:methodAnnotationsExemptingParameters", mixinHandlers)
 	}
@@ -322,7 +334,7 @@ dependencyAnalysis {
 			// Libraries that com.mojang:minecraft's metadata supplies and its release pins, and Loom's merged Minecraft artifact
 			// (its name carries a hash). Declaring them would add a second source of truth for versions that move with Minecraft.
 			onUsedTransitiveDependencies {
-				exclude("com.mojang:brigadier", "com.mojang:datafixerupper", "io.netty:netty-buffer", "org.jspecify:jspecify", "org.slf4j:slf4j-api")
+				exclude("com.mojang:brigadier", "com.mojang:datafixerupper", "io.netty:netty-buffer", "org.slf4j:slf4j-api")
 				excludeRegex("net\\.minecraft:minecraft-common-.*")
 			}
 		}
