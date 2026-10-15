@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
  * <p>It is a placed feature of the zone's own biome with no placement modifiers, so it runs once for each chunk, at
  * the chunk's corner, and it only touches that chunk's blocks of {@code zone} (a third of the layer, by
  * {@link Zones#index}). Only the layer's own rock ({@link LayerBlocks#GROUND}) is replaced: caves, the crust and anything an earlier step
- * placed stay as they are. An ore is placed in the rock it replaces ({@link OreBlock#in}).
+ * placed stay as they are. An ore, and Company rock, is placed in the rock it replaces ({@link OreBlock#in}, {@link CompanyRockBlock#in}).
  *
  * @param zone    0 for the top third of the layer, 2 for the bottom
  * @param ores    ore blocks and the chance of each for a block of stone
@@ -118,7 +118,9 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
                         } else {
                             Block hazard = roll(hazards, random);
                             if (hazard != null) {
-                                state = hazard.defaultBlockState();
+                                state = hazard instanceof CompanyRockBlock company
+                                        ? company.in(rock)
+                                        : hazard.defaultBlockState();
                             }
                         }
                         if (state != null) {

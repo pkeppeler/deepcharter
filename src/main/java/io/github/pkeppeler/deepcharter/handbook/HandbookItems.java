@@ -25,6 +25,7 @@ import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.block.entity.BaseContainerBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.LecternBlockEntity;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The handbook item is bound to its holder: a player keeps exactly one, and a player who has none is given one. The item carries
@@ -165,7 +166,7 @@ public final class HandbookItems {
     }
 
     /** A block that keeps an item without opening a menu, so the menu rule cannot catch it: lectern, jukebox, decorated pot and the like. */
-    private static boolean storesWithoutMenu(BlockEntity block) {
+    private static boolean storesWithoutMenu(@Nullable BlockEntity block) {
         return (block instanceof Container || block instanceof LecternBlockEntity)
                 && !(block instanceof BaseContainerBlockEntity);
     }

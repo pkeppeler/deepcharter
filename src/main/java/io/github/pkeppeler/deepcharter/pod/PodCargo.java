@@ -25,6 +25,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A pod's cargo bay: ore items, one per slot, each with a mass. Only the mod's ore is cargo: a vanilla ore or any
@@ -93,7 +94,7 @@ public final class PodCargo {
 
     private final List<Entry> entries = new ArrayList<>();
     /** The saved cargo this build cannot read, or null when the cargo is readable. */
-    private Unreadable unreadable;
+    private @Nullable Unreadable unreadable;
 
     private boolean discardLogged;
 

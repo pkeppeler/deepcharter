@@ -16,6 +16,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /** A pod: a vehicle with seats and no walkable interior (ADR 0004). Part logic hooks in through tick() and the accessors. */
 public class PodEntity extends Entity {
@@ -28,10 +29,10 @@ public class PodEntity extends Entity {
     private final Chassis chassis;
     private final PodCargo cargo = new PodCargo();
     // Neither saved nor synced: a loaded pod starts its slab over. Server only.
-    private PodDrill.Progress drillProgress;
+    private PodDrill.@Nullable Progress drillProgress;
     // Neither saved nor synced: the burning fuse of a blasting charge (PodCharge); a pod that unloads loses it. Server
     // only.
-    private PodCharge.Fuse fuse;
+    private PodCharge.@Nullable Fuse fuse;
 
     public PodEntity(EntityType<? extends PodEntity> type, Level level) {
         super(type, level);
@@ -47,20 +48,20 @@ public class PodEntity extends Entity {
     }
 
     /** The slab the drill is partway through, or null. Written only by PodDrill. */
-    PodDrill.Progress drillProgress() {
+    PodDrill.@Nullable Progress drillProgress() {
         return drillProgress;
     }
 
-    void setDrillProgress(PodDrill.Progress progress) {
+    void setDrillProgress(PodDrill.@Nullable Progress progress) {
         drillProgress = progress;
     }
 
     /** The blasting charge this pod has set and that is still burning, or null. Written only by PodCharge. */
-    PodCharge.Fuse fuse() {
+    PodCharge.@Nullable Fuse fuse() {
         return fuse;
     }
 
-    void setFuse(PodCharge.Fuse fuse) {
+    void setFuse(PodCharge.@Nullable Fuse fuse) {
         this.fuse = fuse;
     }
 
@@ -250,7 +251,7 @@ public class PodEntity extends Entity {
     }
 
     @Override
-    public LivingEntity getControllingPassenger() {
+    public @Nullable LivingEntity getControllingPassenger() {
         return getFirstPassenger() instanceof Player player ? player : null;
     }
 

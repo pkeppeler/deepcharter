@@ -1,10 +1,13 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import io.github.pkeppeler.deepcharter.ore.CompanyRockBlock;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -38,6 +41,8 @@ import net.minecraft.world.phys.Vec3;
 public final class PodCharge {
     private static final int TICKS_PER_SECOND = 20;
     private static final int SPARK_EVERY_TICKS = 4;
+    /** Ticks after the blast is due that a widened joint waits before it closes again: a fuse that was lost leaves no crack behind. */
+    private static final int CLOSE_GRACE_TICKS = 40;
 
     /** Which charge: the blasting charge clears a small volume of rock, the shaped charge a Company rock column. */
     public enum Kind {
@@ -170,7 +175,25 @@ public final class PodCharge {
                     0.3,
                     0.01);
         }
+        widenJoints(level, fuse);
         pod.setFuse(fuse.burned());
+    }
+
+    /**
+     * The joints of the Company rock the blast will clear widen in {@link CompanyRockBlock#MAX_CRACK} steps, evenly through the fuse, so the pilot
+     * sees the rock give before it goes. Each step is one block change in the cells that hold Company rock, on one tick of the fuse: the rock never
+     * ticks while it waits, and an idle rock costs nothing.
+     */
+    private static void widenJoints(ServerLevel level, Fuse fuse) {
+        int steps = CompanyRockBlock.MAX_CRACK + 1;
+        for (int stage = 1; stage <= CompanyRockBlock.MAX_CRACK; stage++) {
+            if (fuse.ticksLeft() != fuse.startTicks() * (steps - stage) / steps) {
+                continue;
+            }
+            for (BlockPos cell : cleared(level, new LoadedBlocks(level), fuse)) {
+                CompanyRockBlock.widen(level, cell, stage, fuse.ticksLeft() + CLOSE_GRACE_TICKS);
+            }
+        }
     }
 
     /** The seconds left, on the pilot's action bar. */
@@ -195,26 +218,34 @@ public final class PodCharge {
                 pod.damageHull((float) (fuse.damage() * share));
             }
         }
-        LoadedBlocks blocks = new LoadedBlocks(level);
+        for (BlockPos cell : cleared(level, new LoadedBlocks(level), fuse)) {
+            level.destroyBlock(cell, false);
+        }
+        level.sendParticles(ParticleTypes.EXPLOSION, middle.x, middle.y, middle.z, 6, 1.0, 0.5, 1.0, 0.0);
+        level.playSound(null, middle.x, middle.y, middle.z, DeepSound.DRILL_PLASTIC.event(), SoundSource.PLAYERS);
+    }
+
+    /** The cells this fuse's blast clears: a shaped charge's runs of Company rock, or a blasting charge's volume of rock that may go. */
+    private static List<BlockPos> cleared(ServerLevel level, LoadedBlocks blocks, Fuse fuse) {
+        List<BlockPos> cells = new ArrayList<>();
         if (fuse.kind() == Kind.SHAPED) {
             for (int x = fuse.low().getX(); x <= fuse.high().getX(); x++) {
                 for (int z = fuse.low().getZ(); z <= fuse.high().getZ(); z++) {
                     int run = runLength(
                             level, blocks, x, z, fuse.high().getY(), fuse.low().getY());
                     for (int row = 0; row < run; row++) {
-                        level.destroyBlock(new BlockPos(x, fuse.high().getY() - row, z), false);
+                        cells.add(new BlockPos(x, fuse.high().getY() - row, z));
                     }
                 }
             }
         } else {
             for (BlockPos cell : BlockPos.betweenClosed(fuse.low(), fuse.high())) {
                 if (clears(level, blocks, cell)) {
-                    level.destroyBlock(cell.immutable(), false);
+                    cells.add(cell.immutable());
                 }
             }
         }
-        level.sendParticles(ParticleTypes.EXPLOSION, middle.x, middle.y, middle.z, 6, 1.0, 0.5, 1.0, 0.0);
-        level.playSound(null, middle.x, middle.y, middle.z, DeepSound.DRILL_PLASTIC.event(), SoundSource.PLAYERS);
+        return cells;
     }
 
     private static boolean clears(ServerLevel level, LoadedBlocks blocks, BlockPos cell) {

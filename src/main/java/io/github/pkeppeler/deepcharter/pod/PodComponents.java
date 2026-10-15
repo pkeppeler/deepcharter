@@ -31,6 +31,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -388,13 +389,17 @@ public final class PodComponents {
                 .orElse(true);
     }
 
-    /** The charter that owns the pod. Empty when the pod is unowned or the owner is gone or dormant (anyone's); never throws. */
+    /** The charter that owns the pod. Empty when the pod is unowned or the owner is gone or dormant (anyone's); never throws on unreadable data; throws on a client-side pod, which has no charter registry. */
     public static Optional<Charter> ownerCharter(PodEntity pod) {
         Optional<Registration> registration = read(pod).registration();
         if (registration.isEmpty()) {
             return Optional.empty();
         }
-        return Charters.readableFind(pod.level().getServer(), registration.get().owner())
+        if (!(pod.level() instanceof ServerLevel level)) {
+            throw new IllegalStateException(
+                    "ownerCharter reads the charter registry, which only a server-side pod has: " + pod.getUUID());
+        }
+        return Charters.readableFind(level.getServer(), registration.get().owner())
                 .filter(owner -> !owner.dormant());
     }
 

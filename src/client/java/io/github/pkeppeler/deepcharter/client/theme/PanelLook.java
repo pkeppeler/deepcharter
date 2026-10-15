@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The machine panel round the CRT terminals ({@code theme/panel.json}, #246). The mod ships it on, as Hatch; a resource pack restyles it by
@@ -151,8 +152,13 @@ public record PanelLook(
      * never {@link #enabled()}. The HUD, with no screen open, and any other screen are not in the panel: they keep the game's font.
      */
     public static boolean drawn() {
+        return drawnScreen() != null;
+    }
+
+    /** The open {@link PanelScreen} while the panel is {@link #drawn drawn}, else null: a button that draws its panel face needs the screen too. */
+    public static @Nullable Screen drawnScreen() {
         Screen screen = Minecraft.getInstance().gui.screen();
-        return screen instanceof PanelScreen && current().fits(screen.width, screen.height);
+        return screen instanceof PanelScreen && current().fits(screen.width, screen.height) ? screen : null;
     }
 
     /** The colour of a screen's dim text: the panel's {@link #dimTextColor} while the panel is drawn, else the CRT's own dim colour. */

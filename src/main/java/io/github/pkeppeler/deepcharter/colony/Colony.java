@@ -25,7 +25,7 @@ public final class Colony {
 
     /** Where {@code anchor} is in the overworld, or empty before the colony is built or when its data is unreadable. */
     public static Optional<BlockPos> anchor(MinecraftServer server, ColonyAnchor anchor) {
-        return placed(server).map(placed -> placed.anchors().get(anchor));
+        return placed(server).map(placed -> anchor.in(placed.anchors()));
     }
 
     /**

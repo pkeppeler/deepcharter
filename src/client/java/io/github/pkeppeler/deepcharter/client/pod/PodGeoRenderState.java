@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
+import java.util.Objects;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.Nullable;
 
 /** Per-frame copy of what a pod model's bones need ({@link PodMotion} fills it). Angles are degrees, distances model pixels. */
 public class PodGeoRenderState extends EntityRenderState {
@@ -30,7 +32,20 @@ public class PodGeoRenderState extends EntityRenderState {
     /** The local pilot looks out through a live front camera in first person, so none of the pod is drawn (#448). */
     public boolean cabHidden;
     /** What the pod shows this frame, from its drill tier and whether it is a wreck ({@link PodGeoRenderer#appearanceOf}). */
-    public PodGeoRenderer.Appearance appearance;
+    private PodGeoRenderer.@Nullable Appearance appearance;
     /** The texture the pod is drawn with this frame: its variant's, or that painted in its charter's colour. */
-    public Identifier texture;
+    private @Nullable Identifier texture;
+
+    public void show(PodGeoRenderer.Appearance appearance, Identifier texture) {
+        this.appearance = appearance;
+        this.texture = texture;
+    }
+
+    public PodGeoRenderer.Appearance appearance() {
+        return Objects.requireNonNull(appearance, "PodGeoRenderer.addRenderData sets the appearance each frame");
+    }
+
+    public Identifier texture() {
+        return Objects.requireNonNull(texture, "PodGeoRenderer.addRenderData sets the texture each frame");
+    }
 }

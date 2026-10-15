@@ -848,6 +848,28 @@ def op_source(canvas: Canvas, layer: dict, ctx: Context) -> None:
     canvas.paste(frames[ctx.frame if len(frames) > 1 else 0], 0, 0)
 
 
+def op_trace(canvas: Canvas, layer: dict, ctx: Context) -> None:
+    """Follows another texture's pixels of one colour: every pixel within radius steps (up, down, left, right) of one takes a colour from the
+    ramp, picked at random. The reach wraps at the texture's edges, so a line that runs on across a block's edge widens across it too. A glow or a
+    widening of a drawn line (a rock's joints) is traced from the texture it follows, never drawn again by hand."""
+    ctx.need(layer, "recipe", "of", "radius", "colours", "seed")
+    frames = ctx.book.render(layer["recipe"])
+    source = frames[min(ctx.frame, len(frames) - 1)]
+    size = ctx.size
+    if source.width != size:
+        raise RecipeError(f"{ctx.where}: {layer['recipe']} is {source.width} x {source.width} and this texture {size} x {size}; a trace does not scale")
+    line = ctx.colour(layer["of"])
+    radius = layer["radius"]
+    colours = ctx.ramp(layer["colours"])
+    rng = Rng(layer["seed"])
+    reach = [(dx, dy) for dy in range(-radius, radius + 1) for dx in range(-radius, radius + 1) if abs(dx) + abs(dy) <= radius]
+    for y in range(size):
+        for x in range(size):
+            pick = rng.below(len(colours))
+            if any(source.get((x + dx) % size, (y + dy) % size) == line for dx, dy in reach):
+                canvas.put(x, y, colours[pick])
+
+
 def op_frames(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """The sub-layers only on the listed frames (a blink, a flicker)."""
     ctx.need(layer, "on", "layers")
@@ -881,4 +903,5 @@ OPS: dict[str, Callable[[Canvas, dict, Context], None]] = {
     "scan": op_scan,
     "frames": op_frames,
     "source": op_source,
+    "trace": op_trace,
 }

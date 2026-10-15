@@ -118,6 +118,23 @@ class RecipeRulesTest(unittest.TestCase):
         with self.assertRaisesRegex(RecipeError, "block/nope"):
             book.render("block/x")
 
+    def test_a_trace_follows_the_pixels_of_one_colour_of_another_texture_and_wraps_at_the_edge(self):
+        book = self.book({
+            "block/line": {"kind": "opaque", "layers": [{"op": "fill", "colour": "ramp.2"}, {"op": "pixels", "legend": {"x": "ink"}, "rows": ["x"]}]},
+            "block/glow": {"kind": "cutout", "layers": [{"op": "trace", "recipe": "block/line", "of": "ink", "radius": 1, "colours": ["ramp.0"], "seed": 1}]},
+        })
+        canvas = book.render("block/glow")[0]
+        lit = {(x, y) for y in range(16) for x in range(16) if canvas.get(x, y)[3]}
+        self.assertEqual({(0, 0), (1, 0), (15, 0), (0, 1), (0, 15)}, lit)
+
+    def test_a_trace_of_radius_0_lights_the_line_and_nothing_else(self):
+        book = self.book({
+            "block/line": {"kind": "opaque", "layers": [{"op": "fill", "colour": "ramp.2"}, {"op": "pixels", "at": [3, 4], "legend": {"x": "ink"}, "rows": ["xx"]}]},
+            "block/glow": {"kind": "cutout", "layers": [{"op": "trace", "recipe": "block/line", "of": "ink", "radius": 0, "colours": ["ramp.0"], "seed": 1}]},
+        })
+        canvas = book.render("block/glow")[0]
+        self.assertEqual({(3, 4), (4, 4)}, {(x, y) for y in range(16) for x in range(16) if canvas.get(x, y)[3]})
+
     def test_an_unknown_op_fails(self):
         book = self.book({"block/x": {"kind": "opaque", "layers": [{"op": "blur"}]}})
         with self.assertRaisesRegex(RecipeError, "unknown op 'blur'"):

@@ -6,15 +6,21 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.netty.buffer.ByteBuf;
 import java.util.Objects;
+import java.util.function.Consumer;
+import net.minecraft.core.component.DataComponentGetter;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipProvider;
 import org.jspecify.annotations.Nullable;
 
 /**
  * What a part is stamped with: its tier, the charter it belongs to and its serial number. Parts are company property
  * (SPEC section 6): a pod ignores a part stamped with another charter's id.
  */
-public record PartLabel(int tier, CharterId charter, String serial) {
+public record PartLabel(int tier, CharterId charter, String serial) implements TooltipProvider {
     /** Invalid saved data decodes to an error, never to an exception: a versioned attachment's decode must not throw. */
     public static final Codec<PartLabel> CODEC = RecordCodecBuilder.<Fields>create(instance -> instance.group(
                             Codec.INT.fieldOf("tier").forGetter(Fields::tier),
@@ -40,6 +46,16 @@ public record PartLabel(int tier, CharterId charter, String serial) {
         if (problem != null) {
             throw new IllegalArgumentException(problem);
         }
+    }
+
+    @Override
+    public void addToTooltip(
+            Item.TooltipContext context,
+            Consumer<Component> consumer,
+            TooltipFlag flag,
+            DataComponentGetter components) {
+        consumer.accept(Component.translatable("item.deepcharter.part.tier", tier));
+        consumer.accept(Component.translatable("item.deepcharter.part.serial", serial));
     }
 
     private static @Nullable String problem(int tier, String serial) {

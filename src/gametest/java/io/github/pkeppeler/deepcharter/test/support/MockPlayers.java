@@ -14,8 +14,10 @@ import net.minecraft.gametest.framework.GameTestInfo;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Joins real {@link ServerPlayer}s to a server with no network client behind them. This mirrors
@@ -62,20 +64,27 @@ public final class MockPlayers {
     /** Join a mock player owned by a GameTest: it is removed when that test ends, however it ends. */
     public static MockPlayer join(GameTestHelper helper, String name) {
         GameTestInfo info = testInfo(helper);
-        return join(helper.getLevel().getServer(), name, info::isDone);
-    }
-
-    /** Join a mock player that stays until the server stops or {@link MockPlayer#leave} is called. */
-    public static MockPlayer join(MinecraftServer server, String name) {
-        return join(server, name, () -> false);
+        return join(helper.getLevel().getServer(), name, info::isDone, true);
     }
 
     /**
-     * Join a mock player that is removed once {@code ownerDone} turns true. It is checked every
-     * server tick.
+     * Join a mock player at {@code spawn} in {@code level}; it stays until the server stops or {@link MockPlayer#leave}
+     * is called. The spawn is required because a bare join lands at the origin, inside the rock of the surface (the
+     * ground is at y 63), where the mock suffocates within seconds and a dead mock cannot be teleported.
      */
-    public static MockPlayer join(MinecraftServer server, String name, BooleanSupplier ownerDone) {
-        return join(server, name, ownerDone, true);
+    public static MockPlayer join(MinecraftServer server, String name, ServerLevel level, Vec3 spawn) {
+        return join(server, name, level, spawn, () -> false);
+    }
+
+    /**
+     * Join a mock player at {@code spawn} in {@code level}, removed once {@code ownerDone} turns true. It is checked
+     * every server tick.
+     */
+    public static MockPlayer join(
+            MinecraftServer server, String name, ServerLevel level, Vec3 spawn, BooleanSupplier ownerDone) {
+        MockPlayer mock = join(server, name, ownerDone, true);
+        mock.teleportTo(level, spawn, 0f, 0f);
+        return mock;
     }
 
     /** Join a mock player owned by a GameTest with the given id, as a player who comes back to the server. */

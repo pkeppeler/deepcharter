@@ -23,6 +23,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The lava watch (#454): the pod warns its pilot of flowing lava that is joined to the pod's box by open cells, the lava the liner's view
@@ -130,7 +131,7 @@ public final class PodLavaWatch {
     }
 
     /** A cell of the walk and the way its path left the box; {@code first} is null for a cell of the box itself. */
-    private record Step(BlockPos pos, Direction first) {}
+    private record Step(BlockPos pos, @Nullable Direction first) {}
 
     /** A breadth-first walk from the pod's box through open cells ({@link PodLining#open}), a block at a time, to the first flowing lava. */
     private static Optional<Sighting> scan(PodEntity pod) {

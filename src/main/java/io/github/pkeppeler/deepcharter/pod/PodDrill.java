@@ -21,6 +21,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Pod drilling (SPEC section 7): sprint bores down, pushing into a wall bores sideways, never up. The bore is the
@@ -105,7 +106,7 @@ public final class PodDrill {
     }
 
     /** Down on sprint, a horizontal direction on a push into a wall; null when the pod is not on the ground or is not asked to drill. */
-    private static Direction wantedDirection(PodEntity pod) {
+    private static @Nullable Direction wantedDirection(PodEntity pod) {
         if (!pod.onGround() || !(pod.getControllingPassenger() instanceof ServerPlayer pilot)) {
             return null;
         }
