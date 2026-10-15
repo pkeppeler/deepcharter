@@ -17,6 +17,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The engine, drill and rotor loops of every pod with a pilot, heard from where the pod is. Each loop runs while the pod is in
@@ -49,7 +50,7 @@ public final class PodLoops {
     private static final Map<Integer, Integer> MOVING = new HashMap<>();
 
     private static Map<Integer, Vec3> lastPositions = new HashMap<>();
-    private static ClientLevel trackedLevel;
+    private static @Nullable ClientLevel trackedLevel;
 
     private PodLoops() {}
 
@@ -59,7 +60,7 @@ public final class PodLoops {
     }
 
     /** Ends every loop and forgets every pod: the pods of the old level are not the pods of {@code level}. */
-    private static void reset(ClientLevel level) {
+    private static void reset(@Nullable ClientLevel level) {
         LOOPS.values().forEach(Loop::end);
         LOOPS.clear();
         MOVING.clear();
@@ -78,12 +79,12 @@ public final class PodLoops {
     }
 
     /** Records which pods moved since the last client tick. A pod's own old position is not that: a remote pod is lerped. */
-    private static void trackMovement(Minecraft client) {
+    private static void trackMovement(ClientLevel level) {
         double speed = SoundTuning.DEFAULT.movingSpeed();
         Map<Integer, Vec3> positions = new HashMap<>();
         MOVING.replaceAll((id, ticks) -> ticks - 1);
         MOVING.values().removeIf(ticks -> ticks <= 0);
-        for (Entity entity : client.level.entitiesForRendering()) {
+        for (Entity entity : level.entitiesForRendering()) {
             if (entity instanceof PodEntity pod) {
                 Vec3 last = lastPositions.get(pod.getId());
                 if (last != null && last.distanceToSqr(pod.position()) > speed * speed) {
@@ -97,14 +98,15 @@ public final class PodLoops {
 
     private static void tick(Minecraft client) {
         LOOPS.values().removeIf(Loop::isStopped);
-        if (client.level != trackedLevel) {
-            reset(client.level);
+        ClientLevel level = client.level;
+        if (level != trackedLevel) {
+            reset(level);
         }
-        if (client.level == null) {
+        if (level == null) {
             return;
         }
-        trackMovement(client);
-        for (Entity entity : client.level.entitiesForRendering()) {
+        trackMovement(level);
+        for (Entity entity : level.entitiesForRendering()) {
             // A pod the client has not ticked yet may be one it drops again at once: the engine would tick its loop for
             // ever.
             if (entity instanceof PodEntity pod && !pod.isRemoved() && pod.tickCount > 0) {
