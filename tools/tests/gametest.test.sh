@@ -88,11 +88,11 @@ check "--client succeeds" "$status"
 same "--client runs runClientGameTest with the list" "$(cat "$work/args")" "runClientGameTest -PclientTests=HangarClientTest,Pod*ClientTest"
 same "--client runs from the repo root" "$(cat "$work/cwd")" "$(cd "$repo" && pwd -P)"
 
-# Files the shell would expand the glob to if the script left $clients unquoted.
-touch "$repo/PodDrillClientTest" "$repo/PodShellClientTest"
+# Files named like the -PclientTests=Pod*ClientTest word: an unquoted $clients would expand into them.
+touch -- "$repo/-PclientTests=PodDrillClientTest" "$repo/-PclientTests=PodShellClientTest"
 run --client 'Pod*ClientTest'
 same "--client glob is not expanded by the shell" "$(cat "$work/args")" "runClientGameTest -PclientTests=Pod*ClientTest"
-rm "$repo/PodDrillClientTest" "$repo/PodShellClientTest"
+rm -- "$repo/-PclientTests=PodDrillClientTest" "$repo/-PclientTests=PodShellClientTest"
 
 # A property in the repo's gradle.properties would reach every run, whatever the script passes.
 # (This cannot see ~/.gradle/gradle.properties or GRADLE_OPTS.)
