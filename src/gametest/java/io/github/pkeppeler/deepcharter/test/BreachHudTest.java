@@ -58,8 +58,8 @@ public class BreachHudTest implements FabricClientGameTest {
                     context,
                     "layer 1",
                     client -> SEA_LEVEL - OVERWORLD_MIN_Y + LAYER_1_HEIGHT - client.player.getBlockY());
-            String deep =
-                    context.computeOnClient(client -> Altimeter.reading(client).getString());
+            String deep = context.computeOnClient(client ->
+                    Altimeter.reading(client.level, client.player.getBlockY()).getString());
             if (!deep.contains(",")) {
                 throw new AssertionError("A reading over 1,000 ft should group its digits, read: " + deep);
             }
@@ -169,8 +169,8 @@ public class BreachHudTest implements FabricClientGameTest {
     private static void assertAltimeter(
             ClientGameTestContext context, String where, ToIntFunction<Minecraft> blocksDeep) {
         record Sample(String text, int blocks) {}
-        Sample sample = context.computeOnClient(
-                client -> new Sample(Altimeter.reading(client).getString(), blocksDeep.applyAsInt(client)));
+        Sample sample = context.computeOnClient(client -> new Sample(
+                Altimeter.reading(client.level, client.player.getBlockY()).getString(), blocksDeep.applyAsInt(client)));
         int feet = (int) Math.round(sample.blocks() * FEET_PER_BLOCK);
         String expected = String.format(Locale.US, "%,d", -feet) + " ft.";
         if (!sample.text().equals(expected)) {
