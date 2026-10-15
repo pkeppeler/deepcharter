@@ -16,6 +16,7 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A look into a pod's cargo bay: one read-only slot per bay slot, and the cargo mass. It follows the bay while open.
@@ -34,7 +35,7 @@ public final class OreCargoMenu extends AbstractContainerMenu {
     private static final double REACH_SQUARED = 64;
 
     /** The pod whose bay this shows. Null on the client, which only mirrors what the server sends. */
-    private final PodEntity pod;
+    private final @Nullable PodEntity pod;
 
     private final int slotCount;
     private final SimpleContainer view;
@@ -45,7 +46,7 @@ public final class OreCargoMenu extends AbstractContainerMenu {
         this(containerId, null, slotCount, new SimpleContainerData(1));
     }
 
-    private OreCargoMenu(int containerId, PodEntity pod, int slotCount, ContainerData data) {
+    private OreCargoMenu(int containerId, @Nullable PodEntity pod, int slotCount, ContainerData data) {
         super(OreRegistry.CARGO_MENU, containerId);
         this.pod = pod;
         this.slotCount = slotCount;

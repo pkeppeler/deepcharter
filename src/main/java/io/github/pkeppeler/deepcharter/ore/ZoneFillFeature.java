@@ -17,6 +17,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.feature.Feature;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Fills one zone of a layer, one stone block at a time: each block becomes an ore with the chance of its entry
@@ -132,7 +133,7 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
     }
 
     /** One roll over the entries: the first whose chance the roll falls in, or null for none. */
-    private static <B extends Block> B roll(List<Entry<B>> entries, RandomSource random) {
+    private static <B extends Block> @Nullable B roll(List<Entry<B>> entries, RandomSource random) {
         if (entries.isEmpty()) {
             return null;
         }
