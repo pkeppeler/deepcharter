@@ -10,7 +10,7 @@ import io.github.pkeppeler.deepcharter.client.theme.BeamStyle;
  */
 public final class BeamMesh {
     /** How many cones nest, from the wide faint one to the narrow bright core. */
-    public static final int SHELLS = 4;
+    public static final int SHELLS = 6;
 
     private BeamMesh() {}
 
