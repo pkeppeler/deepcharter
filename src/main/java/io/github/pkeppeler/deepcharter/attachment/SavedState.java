@@ -79,7 +79,7 @@ public final class SavedState<T> {
             throw new IllegalStateException("the saved " + id + " has version " + unreadable.version()
                     + " that this build cannot read (it reads " + currentVersion + ")");
         }
-        return Objects.requireNonNull(value, "the saved " + id + " is readable but has no live value");
+        return liveValue();
     }
 
     /** Replaces the live value, for a value that is not mutated in place. Throws if the saved data is unreadable. */
@@ -94,7 +94,10 @@ public final class SavedState<T> {
         if (unreadable != null) {
             return (Versioned<B>) unreadable;
         }
-        return Versioned.of(
-                toBody.apply(Objects.requireNonNull(value, "the saved " + id + " is readable but has no live value")));
+        return Versioned.of(toBody.apply(liveValue()));
+    }
+
+    private T liveValue() {
+        return Objects.requireNonNull(value, "the saved " + id + " is readable but has no live value");
     }
 }
