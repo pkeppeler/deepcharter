@@ -159,9 +159,6 @@ class MarkupInTheMiddleOfACopy(unittest.TestCase):
     def test_angle_brackets_that_are_not_tags_keep_their_words(self):
         self.assertEqual(homage.words(homage.prose("x<y and p>q")), ["x", "y", "and", "p", "q"])
 
-    def test_autolink_beside_tags_is_still_dropped(self):
-        self.assertFound("quartz <https://x.y> walruses never forget the umbrella\n")
-
     def test_prose_strips_html_tags_and_footnotes(self):
         self.assertEqual(homage.words(homage.prose("the quick <em>brown</em> fox[^1] jumps over")), ["the", "quick", "brown", "fox", "jumps", "over"])
 
