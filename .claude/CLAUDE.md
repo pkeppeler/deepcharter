@@ -31,12 +31,12 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
 - **CI runs on free standard runners** (the repo is public), so minutes are not rationed. Client tests still run only on `gameplay` PRs, for run time. Run recording jobs locally.
 - **Sessions:**
   - For unattended runs, use `/loop` in dynamic mode.
-  - Once context passes about 200k tokens, hand over instead of stopping: let in-flight agents finish, rewrite the handoff, stop the loop, then start the successor:
-    - **Launch** from the main checkout (the repo root, not a `.claude/worktrees/` worktree or any other directory): a session started elsewhere loads none of this repo's hooks or skills.
+  - Once context passes about 200k tokens, hand over: let in-flight agents finish, rewrite the handoff, stop the loop, then start the successor:
+    - **Launch** from the main checkout (the repo root, not a worktree or other directory): a session started elsewhere loads none of this repo's hooks or skills.
       `claude --bg --permission-mode <mode> -n "deepcharter $(date -u +%m-%d-%H%M)" "/loop continue Deep Charter"`
       `<mode>` is the current session's permission mode (`auto` today), never a wider one.
-    - **Verify** with `claude agents --json` that the successor is running past startup, and that it is the only orchestrator: stop any duplicate with `claude stop <id>`. A background session cannot answer a startup dialog (workspace trust, MCP approval); if the successor stalls on one, ask the user to answer it once in an interactive `claude` in the repo root.
-    - **Record** its id in the handoff's Updated line. End the turn by giving the user `claude attach <id>` (it runs in VS Code's terminal) and saying whether the successor got past startup.
+    - **Verify** with `claude agents --json` that the successor is past startup and is the only orchestrator. Stop a duplicate with `claude stop <id>`. A background session cannot answer a startup dialog (workspace trust, MCP approval). If the successor stalls on one, ask the user to answer it once in an interactive `claude` in the repo root.
+    - **Record** its id in the handoff's Updated line. End the turn with `claude attach <id>` for the user (it runs in VS Code's terminal), and say whether the successor got past startup.
 
 ## Handoff between sessions
 
