@@ -143,7 +143,7 @@ public final class ScanSlice {
             boolean showsGas,
             int lavaSpread) {
         if (state.is(ORES)) {
-            return new Cell.Ore(state);
+            return new Cell.Ore(state.getBlock());
         }
         if (showsGas && state.is(HazardBlocks.GAS_POCKET)) {
             return Cell.GAS;
@@ -206,10 +206,6 @@ public final class ScanSlice {
         /** A gas pocket, seen by a scanner of {@link ScannerTuning#gasTier()} or better. */
         record Gas() implements Cell {}
 
-        record Ore(BlockState state) implements Cell {
-            public Block block() {
-                return state.getBlock();
-            }
-        }
+        record Ore(Block block) implements Cell {}
     }
 }
