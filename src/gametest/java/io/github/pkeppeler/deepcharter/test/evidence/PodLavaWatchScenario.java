@@ -94,8 +94,9 @@ public class PodLavaWatchScenario extends EvidenceScenario {
                     context,
                     "the ribbon cockpit",
                     client -> CockpitHud.seated(client).isPresent());
-            boolean lamp = context.computeOnClient(client -> CockpitHud.lampsLit(
-                    false, false, false, PodStatusHud.readout(client, (PodEntity) client.player.getVehicle()))[3]);
+            boolean lamp = context.computeOnClient(
+                    client -> CockpitHud.lampsLit(false, false, false, PodStatusHud.readout(client.player, (PodEntity)
+                            client.player.getVehicle()))[3]);
             if (!lamp) {
                 throw new AssertionError("The cockpit's warning lamp should be lit by the lava line");
             }

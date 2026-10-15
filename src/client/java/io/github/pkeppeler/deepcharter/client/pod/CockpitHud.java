@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.pod.SignalDecay.Fault;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay.Instrument;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
@@ -140,16 +141,17 @@ public final class CockpitHud {
 
     private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
+        LocalPlayer player = client.player;
+        PodEntity pod = seatedPod(client);
         Optional<Layout> seated = seated(client);
-        PodEntity seatedPod = seatedPod(client);
-        if (seated.isEmpty() || seatedPod == null) {
+        if (player == null || pod == null || seated.isEmpty()) {
             return;
         }
         Layout layout = seated.get();
         CockpitLook look = CockpitLook.current();
         int width = graphics.guiWidth();
         int height = graphics.guiHeight();
-        CockpitDecay decay = CockpitDecay.of(client, seatedPod, look);
+        CockpitDecay decay = CockpitDecay.of(client, pod, look);
         decal(graphics, layout.sprite("part_a"), layout.band(), width, height);
         // A pod with no scanner has no map to show, so it hangs no bezel either. The bezel is the cab's, not the
         // signal's: it stays when the window goes dark.
@@ -168,9 +170,8 @@ public final class CockpitHud {
         if (!showsReadout(client)) {
             return;
         }
-        PodEntity pod = seatedPod;
-        CockpitReading reading = CockpitReading.of(client, pod, heat);
-        List<Line> lines = PodStatusHud.readout(client, pod);
+        CockpitReading reading = CockpitReading.of(pod, heat);
+        List<Line> lines = PodStatusHud.readout(player, pod);
         boolean fuelLow = PodFuel.isLow(pod.fuel());
         boolean hullLow = reading.hull() <= look.hullLowFraction();
         draw(
@@ -250,8 +251,8 @@ public final class CockpitHud {
             return;
         }
         piece.run();
-        if (slot != null && part == Part.SCANNER && decay.intensity() > 0) {
-            decay.noise(graphics, slot);
+        if (part == Part.SCANNER && decay.intensity() > 0) {
+            decay.noise(graphics, Objects.requireNonNull(slot, "the scanner is drawn into its window"));
         }
     }
 
@@ -266,7 +267,7 @@ public final class CockpitHud {
     /** The altimeter's reading as the decay lets it read: gone when the depth gauge is dark, its digits jumping when it jumps. Not seated in a pod, the reading as given; empty only on a drop-out of the depth gauge. */
     public static Optional<Component> altimeter(Minecraft client, Component reading) {
         PodEntity pod = seatedPod(client);
-        if (seated(client).isEmpty() || pod == null) {
+        if (pod == null || seated(client).isEmpty()) {
             return Optional.of(reading);
         }
         CockpitDecay decay = CockpitDecay.of(client, pod, CockpitLook.current());

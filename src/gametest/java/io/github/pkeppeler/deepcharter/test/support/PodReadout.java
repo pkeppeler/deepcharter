@@ -11,7 +11,7 @@ public final class PodReadout {
     private PodReadout() {}
 
     public static List<Component> texts(Minecraft client, PodEntity pod) {
-        return PodStatusHud.readout(client, pod).stream()
+        return PodStatusHud.readout(client.player, pod).stream()
                 .map(PodStatusHud.Line::text)
                 .toList();
     }

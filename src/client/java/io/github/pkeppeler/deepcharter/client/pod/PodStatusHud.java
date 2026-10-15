@@ -15,7 +15,6 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
@@ -133,9 +132,7 @@ public final class PodStatusHud {
     }
 
     /** Whether the ridden pod is at rest as the local pilot sees it: on the ground, with no drill, drive or rotor key held. */
-    private static boolean resting(Minecraft client, PodEntity pod) {
-        LocalPlayer player =
-                Objects.requireNonNull(client.player, "the HUD rests a pod only for the local player riding it");
+    private static boolean resting(LocalPlayer player, PodEntity pod) {
         return pod.onGround() && PodBrace.idle(player.input.keyPresses);
     }
 
@@ -255,7 +252,7 @@ public final class PodStatusHud {
     }
 
     /** Every line the pilot's readout shows now, in the order it is drawn: the plain HUD's text and the cockpit's plate show the same. */
-    public static List<Line> readout(Minecraft client, PodEntity pod) {
+    public static List<Line> readout(LocalPlayer player, PodEntity pod) {
         HudLook look = HudLook.current();
         List<Line> readout = new ArrayList<>(statusLines(pod));
         burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
@@ -263,7 +260,7 @@ public final class PodStatusHud {
         lavaNearLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         linerLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLinerColor())));
         sounderLines(pod).forEach(line -> readout.add(new Line(line, look.podSounderColor())));
-        crustLines(pod, resting(client, pod)).forEach(line -> readout.add(new Line(line, look.podHardLandingColor())));
+        crustLines(pod, resting(player, pod)).forEach(line -> readout.add(new Line(line, look.podHardLandingColor())));
         liningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLiningColor())));
         outOfBrickLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLiningDryColor())));
         hardLandingLine(pod).ifPresent(line -> readout.add(new Line(line, look.podHardLandingColor())));
@@ -272,16 +269,17 @@ public final class PodStatusHud {
 
     private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
-        if (client.player == null
-                || !(client.player.getVehicle() instanceof PodEntity pod)
-                || !PodSeat.showsPodStatus(pod, client.player)
+        LocalPlayer player = client.player;
+        if (player == null
+                || !(player.getVehicle() instanceof PodEntity pod)
+                || !PodSeat.showsPodStatus(pod, player)
                 || CockpitHud.seated(client).isPresent()) {
             return;
         }
         Font font = client.font;
         HudLook look = HudLook.current();
         int y = look.podStatusMargin();
-        for (Line line : readout(client, pod)) {
+        for (Line line : readout(player, pod)) {
             graphics.text(font, line.text(), look.podStatusMargin(), y, line.color());
             y += font.lineHeight + look.podStatusLineGap();
         }
