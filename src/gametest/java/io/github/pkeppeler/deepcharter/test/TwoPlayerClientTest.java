@@ -8,7 +8,6 @@ import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
-import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay;
 import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
@@ -19,7 +18,6 @@ import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntSupplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -80,26 +78,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     private static final int ARRIVAL_TICKS_PER_FRAME = 8;
     private static final int RGB = 0xFFFFFF;
 
-    /** The pod {@link #liftOutOfDecay} holds in clear air, and where; null when none is held. */
-    private static final AtomicReference<Held> HELD = new AtomicReference<>();
-
-    static {
-        // PodMovement applies the pod's own gravity whatever Entity.setNoGravity says, so a lifted pod falls back into
-        // the decay a little every tick. Pinning it
-        // after each of its ticks keeps it where the test put it, however many ticks the server runs while a slow
-        // client catches up.
-        PodEvents.AFTER_TICK.register(pod -> {
-            Held held = HELD.get();
-            if (held != null && held.pod().equals(pod.getUUID())) {
-                pod.setPos(held.at());
-                pod.setDeltaMovement(Vec3.ZERO);
-            }
-        });
-    }
-
     private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-
-    private record Held(UUID pod, Vec3 at) {}
 
     /** What the server holds for the flow: both pods, and the layer 1 columns each one bores. */
     private record Rig(PodEntity realPod, PodEntity mockPod, List<BlockPos> realColumns, List<BlockPos> mockColumns) {}
@@ -161,7 +140,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         frame.run();
         expectScannerShowsPod(context, "m1-two-pods-layer-1");
         two.server().runOnServer(server -> {
-            HELD.set(null);
+            rig.realPod().setNoGravity(false);
             rig.realPod().setPos(floorPosition);
             rig.realPod().setDeltaMovement(Vec3.ZERO);
         });
@@ -264,8 +243,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Cuts a shaft above {@code pod} up to one slab past the layer 1 onset of the decay, with a stone shell like the room's, and holds the pod at the top of it
-     * and holds it there. Returns where it stood, for putting it back. The height is {@link SignalDecayTuning}'s, so a retuned curve moves the test with it.
+     * Cuts a shaft above {@code pod} up to one slab past the layer 1 onset of the decay, with a stone shell like the room's, and holds the pod at the top of it with no gravity. Returns where it stood, for putting it back. The height is {@link SignalDecayTuning}'s, so a retuned curve moves the test with it.
      */
     private static Vec3 liftOutOfDecay(MinecraftServer server, PodEntity pod) {
         ServerLevel one = server.getLevel(LayerChain.dimension(1));
@@ -289,7 +267,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
         Vec3 clearPosition = new Vec3(floorPosition.x, clearY, floorPosition.z);
-        HELD.set(new Held(pod.getUUID(), clearPosition));
+        pod.setNoGravity(true);
         pod.setPos(clearPosition);
         pod.setDeltaMovement(Vec3.ZERO);
         return floorPosition;

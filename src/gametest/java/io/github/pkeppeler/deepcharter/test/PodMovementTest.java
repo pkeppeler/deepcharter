@@ -313,7 +313,8 @@ public class PodMovementTest {
             try {
                 if (rig.pod.getY() <= startY) {
                     throw helper.assertionException(
-                            "a no-gravity pod should still climb on thrust from y %s, got y %s", startY, rig.pod.getY());
+                            "a no-gravity pod should still climb on thrust from y %s, got y %s",
+                            startY, rig.pod.getY());
                 }
                 helper.succeed();
             } finally {
