@@ -113,7 +113,7 @@ public final class ClientLight {
         });
     }
 
-    private static ClientLevel clientLevel(Minecraft client) {
+    static ClientLevel clientLevel(Minecraft client) {
         return Objects.requireNonNull(client.level, "the client is not in a level");
     }
 
