@@ -142,7 +142,7 @@ object RecordHolderGate {
 			if (open < 0) continue
 			val header = code.substring(declaration.range.last + 1, open)
 			if (Regex("""\bextends\b""").containsMatchIn(header) || header.contains(';')) continue
-			// A class that is not at member level (inside a method) or that follows an annotation line is left alone.
+			// A class on the line after an annotation is left alone.
 			val previous = lines.getOrNull(line - 1)?.trim().orEmpty()
 			if (previous.startsWith("@")) continue
 			val end = matching(code, open)
