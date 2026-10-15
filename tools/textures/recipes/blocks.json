@@ -130,6 +130,126 @@
         {"op": "pixels", "at": [4, 3], "legend": {"x": "hardpan.2", "L": "hardpan.4"}, "rows": ["....LL....", "..LLxxLL..", "LLxx..xxLL", "xx......xx"]}
       ]
     },
+    "block/company_rock_joint_0_glow": {
+      "kind": "cutout",
+      "glow": {"over": "block/company_rock_joint_0"},
+      "animation": {"frames": 8, "frametime": 10},
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_0", "of": "hardpan.1", "radius": 0, "colours": ["lavaglow.2", "lavaglow.2", "lavaglow.3", "lavaglow.3", "lavaglow.4"], "seed": 7301},
+        {"op": "frames", "on": [3, 4, 5], "layers": [
+          {"op": "replace", "from": "lavaglow.2", "to": "lavaglow.1"},
+          {"op": "replace", "from": "lavaglow.3", "to": "lavaglow.2"},
+          {"op": "replace", "from": "lavaglow.4", "to": "lavaglow.3"}
+        ]}
+      ]
+    },
+    "block/company_rock_joint_0_wide_1": {
+      "kind": "cutout",
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_0", "of": "hardpan.1", "radius": 1, "colours": ["hardpan.0"], "seed": 7302}
+      ]
+    },
+    "block/company_rock_joint_0_blaze_1": {
+      "kind": "cutout",
+      "glow": {"over": "block/company_rock_joint_0"},
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_0", "of": "hardpan.1", "radius": 0, "colours": ["lavaglow.4", "lavaglow.4", "lavaglow.5"], "seed": 7303}
+      ]
+    },
+    "block/company_rock_joint_0_wide_2": {
+      "kind": "cutout",
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_0", "of": "hardpan.1", "radius": 2, "colours": ["hardpan.0"], "seed": 7304}
+      ]
+    },
+    "block/company_rock_joint_0_blaze_2": {
+      "kind": "cutout",
+      "glow": {"over": "block/company_rock_joint_0"},
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_0", "of": "hardpan.1", "radius": 1, "colours": ["lavaglow.3", "lavaglow.3", "lavaglow.4"], "seed": 7305},
+        {"op": "trace", "recipe": "block/company_rock_joint_0", "of": "hardpan.1", "radius": 0, "colours": ["lavaglow.4", "lavaglow.5", "lavaglow.5"], "seed": 7309}
+      ]
+    },
+    "block/company_rock_joint_1_glow": {
+      "kind": "cutout",
+      "glow": {"over": "block/company_rock_joint_1"},
+      "animation": {"frames": 8, "frametime": 10},
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_1", "of": "hardpan.1", "radius": 0, "colours": ["lavaglow.2", "lavaglow.2", "lavaglow.3", "lavaglow.3", "lavaglow.4"], "seed": 7311},
+        {"op": "frames", "on": [3, 4, 5], "layers": [
+          {"op": "replace", "from": "lavaglow.2", "to": "lavaglow.1"},
+          {"op": "replace", "from": "lavaglow.3", "to": "lavaglow.2"},
+          {"op": "replace", "from": "lavaglow.4", "to": "lavaglow.3"}
+        ]}
+      ]
+    },
+    "block/company_rock_joint_1_wide_1": {
+      "kind": "cutout",
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_1", "of": "hardpan.1", "radius": 1, "colours": ["hardpan.0"], "seed": 7312}
+      ]
+    },
+    "block/company_rock_joint_1_blaze_1": {
+      "kind": "cutout",
+      "glow": {"over": "block/company_rock_joint_1"},
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_1", "of": "hardpan.1", "radius": 0, "colours": ["lavaglow.4", "lavaglow.4", "lavaglow.5"], "seed": 7313}
+      ]
+    },
+    "block/company_rock_joint_1_wide_2": {
+      "kind": "cutout",
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_1", "of": "hardpan.1", "radius": 2, "colours": ["hardpan.0"], "seed": 7314}
+      ]
+    },
+    "block/company_rock_joint_1_blaze_2": {
+      "kind": "cutout",
+      "glow": {"over": "block/company_rock_joint_1"},
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_1", "of": "hardpan.1", "radius": 1, "colours": ["lavaglow.3", "lavaglow.3", "lavaglow.4"], "seed": 7315},
+        {"op": "trace", "recipe": "block/company_rock_joint_1", "of": "hardpan.1", "radius": 0, "colours": ["lavaglow.4", "lavaglow.5", "lavaglow.5"], "seed": 7319}
+      ]
+    },
+    "block/company_rock_joint_2_glow": {
+      "kind": "cutout",
+      "glow": {"over": "block/company_rock_joint_2"},
+      "animation": {"frames": 8, "frametime": 10},
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_2", "of": "hardpan.1", "radius": 0, "colours": ["lavaglow.2", "lavaglow.2", "lavaglow.3", "lavaglow.3", "lavaglow.4"], "seed": 7321},
+        {"op": "frames", "on": [3, 4, 5], "layers": [
+          {"op": "replace", "from": "lavaglow.2", "to": "lavaglow.1"},
+          {"op": "replace", "from": "lavaglow.3", "to": "lavaglow.2"},
+          {"op": "replace", "from": "lavaglow.4", "to": "lavaglow.3"}
+        ]}
+      ]
+    },
+    "block/company_rock_joint_2_wide_1": {
+      "kind": "cutout",
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_2", "of": "hardpan.1", "radius": 1, "colours": ["hardpan.0"], "seed": 7322}
+      ]
+    },
+    "block/company_rock_joint_2_blaze_1": {
+      "kind": "cutout",
+      "glow": {"over": "block/company_rock_joint_2"},
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_2", "of": "hardpan.1", "radius": 0, "colours": ["lavaglow.4", "lavaglow.4", "lavaglow.5"], "seed": 7323}
+      ]
+    },
+    "block/company_rock_joint_2_wide_2": {
+      "kind": "cutout",
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_2", "of": "hardpan.1", "radius": 2, "colours": ["hardpan.0"], "seed": 7324}
+      ]
+    },
+    "block/company_rock_joint_2_blaze_2": {
+      "kind": "cutout",
+      "glow": {"over": "block/company_rock_joint_2"},
+      "layers": [
+        {"op": "trace", "recipe": "block/company_rock_joint_2", "of": "hardpan.1", "radius": 1, "colours": ["lavaglow.3", "lavaglow.3", "lavaglow.4"], "seed": 7325},
+        {"op": "trace", "recipe": "block/company_rock_joint_2", "of": "hardpan.1", "radius": 0, "colours": ["lavaglow.4", "lavaglow.5", "lavaglow.5"], "seed": 7329}
+      ]
+    },
     "block/conduit": {"template": "conduit_tile", "args": {"edges": "tblr", "corners": ""}},
     "block/conduit_horizontal": {"template": "conduit_tile", "args": {"edges": "tb", "corners": ""}},
     "block/conduit_vertical": {"template": "conduit_tile", "args": {"edges": "lr", "corners": ""}},
