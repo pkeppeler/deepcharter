@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -149,7 +150,8 @@ public final class LayerStructures {
                 }
             }
         }
-        return nearest;
+        return Objects.requireNonNull(
+                nearest, "no structure site found in the search window: the cell loop always visits at least one cell");
     }
 
     /**
