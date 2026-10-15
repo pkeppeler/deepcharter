@@ -36,8 +36,7 @@ public final class PodMovement {
         if (thrusting) {
             vy += stats.thrustAcceleration() * lift / stats.enginePower();
         }
-        // Entity.isNoGravity drops only the gravity term, as it does for a vanilla entity: thrust, drag and the climb
-        // cap still apply, so speed it already has coasts to rest.
+        // No gravity drops only the gravity term: thrust, drag and the climb cap still apply.
         vy = Math.min((vy - pod.gravityPull(tuning.gravity())) * tuning.verticalDrag(), stats.maxClimbSpeed());
 
         pod.setFlying(thrusting);

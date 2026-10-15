@@ -266,7 +266,7 @@ public class PodMovementTest {
         });
     }
 
-    /** Vertical drag alone slows a no-gravity pod: its speed decays by the drag each tick, and it ends well clear of the floor. */
+    /** A no-gravity pod's launch speed decays by the drag each tick, and the pod ends well clear of the floor. */
     @GameTest(maxTicks = 100)
     public void noGravityPodCoastsOnItsSpeedAndDragAlone(GameTestHelper helper) {
         PodEntity pod = Rig.buildEmpty(helper, 6);
