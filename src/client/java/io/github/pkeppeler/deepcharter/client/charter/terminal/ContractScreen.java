@@ -23,6 +23,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The contract terminal's screen: found a charter, apply to one, revive a dormant one it was once a member of, answer applications as Director, and leave. What it shows
@@ -50,7 +51,7 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
     private final TerminalView view;
     private final Typewriter typewriter;
     private Optional<ContractState> state = Optional.empty();
-    private CrtTextField nameField;
+    private @Nullable CrtTextField nameField;
     /** The last status line {@link #fitted} measured, with the text and width it was measured for. */
     private String fitKey = "";
 
@@ -121,22 +122,23 @@ public final class ContractScreen extends CrtScreen implements TerminalViewScree
         int actionX = left + CLOSE_WIDTH + 6;
         switch (shown.role()) {
             case NONE -> {
-                nameField = addRenderableWidget(new CrtTextField(
+                CrtTextField name = addRenderableWidget(new CrtTextField(
                         font,
                         left + CrtTextField.FRAME,
                         rowsTop() + CrtTextField.FRAME,
                         columnWidth - 2 * CrtTextField.FRAME,
                         FIELD_HEIGHT,
                         Component.translatable("screen.deepcharter.contract.name_hint")));
-                nameField.setMaxLength(CharterTuning.DEFAULT.maxNameLength());
-                nameField.setValue(typed);
+                name.setMaxLength(CharterTuning.DEFAULT.maxNameLength());
+                name.setValue(typed);
+                nameField = name;
                 addRenderableWidget(new CrtButton(
                         left,
                         rowsTop() + ROW_PITCH + 2,
                         columnWidth,
                         ROW_HEIGHT,
                         Component.translatable("screen.deepcharter.contract.found"),
-                        button -> send(ContractActions.FOUND, nameField.getValue())));
+                        button -> send(ContractActions.FOUND, name.getValue())));
                 rows(
                         shown.revivable(),
                         left,

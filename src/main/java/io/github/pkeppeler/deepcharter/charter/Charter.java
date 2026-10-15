@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.UUIDUtil;
+import org.jspecify.annotations.Nullable;
 
 /**
  * One charter: its name, who runs it, who is crew, who has applied, its account and its deepest point. Immutable: every change
@@ -183,7 +184,7 @@ public record Charter(
         return all;
     }
 
-    private static String problem(
+    private static @Nullable String problem(
             Optional<UUID> director,
             List<UUID> crew,
             List<UUID> applications,
