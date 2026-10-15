@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields.intField;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterTuning;
@@ -453,16 +454,6 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                 && box.y() >= region.y()
                 && box.right() <= region.right()
                 && box.bottom() <= region.bottom();
-    }
-
-    private static int intField(Object target, String name) {
-        try {
-            Field field = AbstractContainerScreen.class.getDeclaredField(name);
-            field.setAccessible(true);
-            return field.getInt(target);
-        } catch (ReflectiveOperationException e) {
-            throw new LinkageError("a container screen has no field " + name + "; the gate reads it by name", e);
-        }
     }
 
     private static List<Case> terminalCases() {
