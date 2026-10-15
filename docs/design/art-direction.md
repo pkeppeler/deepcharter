@@ -109,6 +109,7 @@ Rules for all areas:
 - **Tools:** numpy and scipy, ffmpeg filter graphs, Bfxr2 or jsfxr for blips. This Mac's ffmpeg cannot write mono Vorbis yet, so positional sounds fall back to stereo.
 - **Skin and data:** `assets/deepcharter/sounds.json` plus OGG files, `ambient_sounds` in biome data, recipes in `tools/`.
 - **Not chosen:** diegetic sound only (long silences, less range).
+- **Built in [#249](https://github.com/pkeppeler/deepcharter/issues/249)** ([ADR 0057](../adr/0057-every-shipped-sound-is-built-from-a-committed-recipe-and-a-layers-drone-lives-in-its-biome-data.md)): the surface, layer 1 and layer 2 each have a drone bed in their biomes' `ambient_sounds` (the surface: wind and dust hiss, a far metallic groan; layer 1: a sub-bass drone with one pair of tones beating every ten seconds, creaks, rare knocks; layer 2: lower, a beat every twenty-four seconds, a thin ringing, heavier knocks, more of them in the deeper zones), and no vanilla music plays on the surface or in a layer. The Lamp Hymn is a seven-note reed motif of our own, played to one player on founding or joining a charter, going down a breach and coming up into the colony: slower (0.8, 1.2 and 1.75 seconds a beat) and more worn (pitch drift, tape wobble, clipping, fewer bits) with each layer. The pod engines and rotor, the drill, the terminal's power-on and hum and the UI clicks and chirps are ours too. Every sound is stereo, because this Mac's encoder writes no mono Vorbis. Every OGG is made by a recipe in `tools/sounds/`, which a test checks.
 
 ## 10. The lampless figure
 

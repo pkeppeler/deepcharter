@@ -52,7 +52,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Client GameTest for #71: a listener on the sound manager confirms that each wired event plays. The pod loops, the
- * low-fuel beep, the terminal music, the typewriter, the sale, the purchase, the error and the music of every layer.
+ * low-fuel beep, the terminal music, the typewriter, the sale, the purchase, the error and the music of every layer, and (#249) the Lamp
+ * Hymn on founding a charter and the drone bed of every layer, which the client starts by itself from the biome's {@code ambient_sounds}.
  * Event ids are literals on purpose: they are what the private audio pack is keyed by.
  */
 public class SoundWiringClientTest implements FabricClientGameTest {
@@ -254,6 +255,9 @@ public class SoundWiringClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             Scene scene = singleplayer.getServer().computeOnServer(SoundWiringClientTest::setUp);
 
+            // Founding the charter (setUp) is the arrival at the colony: the hymn plays, once, to the founder.
+            await(context, heard, "hymn.colony on founding the charter", client -> heard.count("hymn.colony") == 1);
+
             // Riding a nearly empty pod beeps.
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -363,6 +367,12 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                         music.equals(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, expected)),
                         "layer " + layer + " plays " + expected + ", got " + music);
                 await(context, heard, "the music of layer " + layer, client -> heard.count(expected) > 0);
+                String drone = "ambient.layer_" + layer + "_loop";
+                await(
+                        context,
+                        heard,
+                        "the drone bed of layer " + layer + " from the biome's ambient_sounds",
+                        client -> heard.isPlaying(client.getSoundManager(), drone));
                 context.runOnClient(client -> client.getMusicManager().stopPlaying());
             }
         }

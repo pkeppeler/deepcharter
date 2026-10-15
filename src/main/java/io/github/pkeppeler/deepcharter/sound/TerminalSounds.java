@@ -7,13 +7,7 @@ import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
 import java.util.Map;
-import net.minecraft.core.Holder;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
 
 /**
  * The sound of a terminal button, played to the player who pressed it and to no one else: the sale and purchase sounds of the
@@ -38,18 +32,9 @@ public final class TerminalSounds {
         TerminalEvents.ACTED.register((server, type, player, action) -> {
             DeepSound sound = ACTIONS.get(action);
             if (sound != null) {
-                playTo(player, sound);
+                SoundPackets.playTo(player, sound);
             }
         });
-        TerminalEvents.REFUSED.register((player, refusal) -> playTo(player, DeepSound.UI_ERROR));
-    }
-
-    private static void playTo(ServerPlayer player, DeepSound sound) {
-        if (player.connection == null) {
-            return;
-        }
-        Holder<SoundEvent> event = BuiltInRegistries.SOUND_EVENT.wrapAsHolder(sound.event());
-        player.connection.send(new ClientboundSoundEntityPacket(
-                event, SoundSource.PLAYERS, player, 1f, 1f, player.getRandom().nextLong()));
+        TerminalEvents.REFUSED.register((player, refusal) -> SoundPackets.playTo(player, DeepSound.UI_ERROR));
     }
 }
