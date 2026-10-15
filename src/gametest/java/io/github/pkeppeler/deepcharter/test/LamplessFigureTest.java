@@ -508,7 +508,7 @@ public class LamplessFigureTest {
         FarChunks.awaitEntityTicking(helper, level, site.origin(), () -> {
             for (int chunkX = bounds.minX() >> 4; chunkX <= bounds.maxX() >> 4; chunkX++) {
                 for (int chunkZ = bounds.minZ() >> 4; chunkZ <= bounds.maxZ() >> 4; chunkZ++) {
-                    level.setChunkForced(chunkX, chunkZ, true);
+                    FarChunks.force(helper, level, chunkX, chunkZ);
                     level.getChunk(chunkX, chunkZ, ChunkStatus.FULL);
                 }
             }
