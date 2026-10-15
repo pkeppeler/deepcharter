@@ -119,7 +119,7 @@ public final class FarChunks {
 
     /**
      * As the single-position form, for several columns at once with one tick callback. A test that waits for many chunks calls
-     * this and not the single form in a loop, to poll them with one tick callback. {@code then} runs with the index in {@code positions} of a
+     * this and not the single form in a loop. {@code then} runs with the index in {@code positions} of a
      * column on the first tick when it is entity-ticking; the failure after {@link #WAIT_SECONDS} names the first column still waiting.
      */
     public static void awaitEntityTicking(

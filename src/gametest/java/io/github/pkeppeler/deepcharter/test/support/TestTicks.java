@@ -11,7 +11,7 @@ public final class TestTicks {
     /**
      * Runs {@code body} on every tick from the test method's own tick until the test finishes; an exception it throws fails the test.
      * It keeps one schedule entry where {@code GameTestHelper.onEachTick} queued one per remaining tick. A scheduled runnable
-     * cannot reschedule itself (the runner removes it while iterating), so a sequence event does the put for the next tick.
+     * cannot reschedule itself (the runner removes it while iterating), so a sequence event schedules the next tick.
      *
      * @throws IllegalStateException if called after the test's first tick: a put from a scheduled runnable corrupts the runner's
      *         iteration and one from a sequence event throws a ConcurrentModificationException
