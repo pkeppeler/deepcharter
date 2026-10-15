@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -316,7 +317,7 @@ public class LayerTerrainTest {
             throw failure(helper, "the pilot could not mount the pod");
         }
         pilot.setInput(SPRINT);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (two.getBlockState(new BlockPos(x - 1, floor - 1, z - 1)).isAir()) {
                 pilot.releaseInput();
                 pod.discard();

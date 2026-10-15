@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
@@ -103,7 +104,7 @@ public class PodSounderTest {
         int[] ticks = {0};
         FarChunks.awaitEntityTicking(
                 helper, level, new BlockPos(x, FLOOR, Z), () -> pod[0] = spawn(helper, level, x, tier));
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null || ++ticks[0] < SETTLE_TICKS) {
                 return;
             }
@@ -276,7 +277,7 @@ public class PodSounderTest {
             pod[0] = spawn(helper, level, x, 0);
             pod[0].setAttached(PodSounder.STATE, Versioned.of(new PodSounder.State(2, 0b0100)));
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null || ++ticks[0] != SETTLE_TICKS) {
                 return;
             }
@@ -310,7 +311,7 @@ public class PodSounderTest {
             pod[0] = spawn(helper, level, x, 1);
             UNPOWERED.add(pod[0].getUUID());
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null || ++ticks[0] != SETTLE_TICKS) {
                 return;
             }
@@ -332,7 +333,7 @@ public class PodSounderTest {
         int[] ticks = {0};
         FarChunks.awaitEntityTicking(
                 helper, level, new BlockPos(x, FLOOR, Z), () -> pod[0] = spawn(helper, level, x, 1));
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null) {
                 return;
             }
@@ -438,7 +439,7 @@ public class PodSounderTest {
             pilot.setInput(SPRINT);
         });
         float[] startHull = {-1f, -1f};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null) {
                 return;
             }
@@ -614,7 +615,7 @@ public class PodSounderTest {
             slabTicks[0] = slabTicks(level, PodStats.of(pod[0]), x);
             pilot.setInput(SPRINT);
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null) {
                 return;
             }

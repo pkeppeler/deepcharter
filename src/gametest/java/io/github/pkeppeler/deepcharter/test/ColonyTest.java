@@ -31,6 +31,7 @@ import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.io.IOException;
@@ -557,7 +558,7 @@ public class ColonyTest {
         for (BlockPos corner : corners(centre)) {
             FarChunks.awaitEntityTicking(helper, one, corner.atY(one.getMinY() + 8), () -> ticking[0]++);
         }
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             ServerPlayer player = mock.player();
             if (ticking[0] == 5 && player.level().dimension().equals(surface.dimension())) {
                 player.setPos(player.getX(), player.getY() - 1, player.getZ());
@@ -723,7 +724,7 @@ public class ColonyTest {
         for (BlockPos corner : corners(centre)) {
             FarChunks.awaitEntityTicking(helper, level, corner.atY(floor), () -> ticking[0]++);
         }
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null && ticking[0] == 5) {
                 PodEntity created = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
                 created.setPos(start);

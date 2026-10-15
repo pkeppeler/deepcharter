@@ -34,6 +34,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -754,7 +755,7 @@ public class HandbookChaptersSixToNineTest {
         int chunkZ = origin.getZ() >> 4;
         int[] phase = {0};
         FarChunks.Deadline[] unloadBy = {null};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             switch (phase[0]) {
                 case 1 -> {
                     level.setChunkForced(chunkX, chunkZ, false);

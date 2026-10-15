@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -85,7 +86,7 @@ public class LamplessFigureTest {
         BlockPos origin = slot(0);
         List<Vec3> track = new ArrayList<>();
         LamplessFigure[] figure = {null};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (figure[0] == null || track.size() >= WALK_TICKS) {
                 return;
             }
@@ -137,7 +138,7 @@ public class LamplessFigureTest {
         PodEntity[] pod = {null};
         float[] podHull = {0};
         int[] ticks = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (figure[0] == null) {
                 return;
             }
@@ -258,11 +259,13 @@ public class LamplessFigureTest {
         ServerLevel level = helper.getLevel();
         BlockPos origin = slot(2);
         StayRun run = new StayRun();
-        helper.onEachTick(() -> run.step(helper, () -> {
-            MockPlayer mock = MockPlayers.join(helper, "figure-approach");
-            mock.teleportTo(level, new Vec3(origin.getX() - 1.5, origin.getY(), origin.getZ() + 0.5), 0f, 0f);
-            run.player = mock.player();
-        }));
+        TestTicks.each(
+                helper,
+                () -> run.step(helper, () -> {
+                    MockPlayer mock = MockPlayers.join(helper, "figure-approach");
+                    mock.teleportTo(level, new Vec3(origin.getX() - 1.5, origin.getY(), origin.getZ() + 0.5), 0f, 0f);
+                    run.player = mock.player();
+                }));
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
             buildCorridor(level, origin);
             run.figure = spawnFigure(level, origin, -4, Direction.SOUTH);
@@ -283,7 +286,8 @@ public class LamplessFigureTest {
         ServerLevel level = helper.getLevel();
         BlockPos origin = slot(3);
         StayRun run = new StayRun();
-        helper.onEachTick(() -> run.step(helper, () -> level.setBlock(origin.offset(2, 1, 0), light(LIT_LEVEL), 3)));
+        TestTicks.each(
+                helper, () -> run.step(helper, () -> level.setBlock(origin.offset(2, 1, 0), light(LIT_LEVEL), 3)));
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
             buildCorridor(level, origin);
             run.figure = spawnFigure(level, origin, -4, Direction.SOUTH);
@@ -347,7 +351,7 @@ public class LamplessFigureTest {
         LamplessFigure[] figure = {null};
         int[] phase = {0};
         long[] killedAt = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (figure[0] == null) {
                 return;
             }
@@ -483,7 +487,7 @@ public class LamplessFigureTest {
                 conduit);
         BoundingBox bounds = site.bounds();
         long[] firstSeen = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (firstSeen[0] < 0 && figuresIn(level, site).isEmpty()) {
                 return;
             }
@@ -557,7 +561,7 @@ public class LamplessFigureTest {
      */
     private static void expectRemovedWithin(GameTestHelper helper, Supplier<List<? extends LivingEntity>> entities) {
         int[] since = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             List<? extends LivingEntity> all = entities.get();
             if (all == null) {
                 return;

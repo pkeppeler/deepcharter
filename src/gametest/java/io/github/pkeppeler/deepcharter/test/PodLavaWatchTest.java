@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import java.util.Map;
 import java.util.Optional;
@@ -99,7 +100,7 @@ public class PodLavaWatchTest {
             staged[0] = new Staged(pod, pilot);
             stage.accept(staged[0]);
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (staged[0] != null && watch.tick(staged[0], ++ticks[0])) {
                 staged[0].pod().discard();
                 helper.succeed();

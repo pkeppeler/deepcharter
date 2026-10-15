@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
@@ -364,7 +365,7 @@ public class OrePlacementTest {
         level.setBlock(gas, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
         Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), "gas-driller");
         float[] before = {Float.NaN};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -466,7 +467,7 @@ public class OrePlacementTest {
         room(level, controlX, floor);
         Rig control = Rig.await(helper, level, new Vec3(controlX, floor, Z), "undiggable-control");
         boolean[] controlDrilled = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!control.ready()) {
                 return;
             }
@@ -642,7 +643,7 @@ public class OrePlacementTest {
         MockPlayer mock = MockPlayers.join(helper, name);
         mock.teleportTo(from, start, 0, 0);
         long[] arrivedAt = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!mock.player().level().dimension().equals(to.dimension())) {
                 return;
             }
@@ -680,7 +681,7 @@ public class OrePlacementTest {
         room(level, x, floor);
         level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
         Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), "company-pilot");
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }

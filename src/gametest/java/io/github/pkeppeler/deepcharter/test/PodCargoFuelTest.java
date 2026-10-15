@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.List;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -555,7 +556,7 @@ public class PodCargoFuelTest {
         PodEntity pod = spawnPod(helper, DROP_BLOCKS);
         MockPlayer pilot = seatPilot(helper, pod);
         if (braked) {
-            helper.onEachTick(() -> pilot.setInput(pod.getDeltaMovement().y < BRAKED_SINK ? JUMP : Input.EMPTY));
+            TestTicks.each(helper, () -> pilot.setInput(pod.getDeltaMovement().y < BRAKED_SINK ? JUMP : Input.EMPTY));
         }
         helper.succeedWhen(() -> {
             if (!pod.onGround() || pod.tickCount < 5) {

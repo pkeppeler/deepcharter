@@ -37,6 +37,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.ArrayDeque;
@@ -711,7 +712,7 @@ public class LavaBoreTest {
         }
         long wallStart = System.nanoTime();
         boolean[] reported = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (reported[0]) {
                 return;
             }

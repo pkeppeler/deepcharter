@@ -28,6 +28,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -242,7 +243,7 @@ public class ProspectorChassisTest {
         int[] phase = {0};
         long[] startedAt = {0};
         navigator.setInput(FORWARD_AND_SPRINT);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (phase[0] == 0 && helper.getTick() >= DRIVE_TICKS) {
                 expect(
                         helper,
@@ -294,7 +295,7 @@ public class ProspectorChassisTest {
             pilot.setInput(SPRINT);
         });
         boolean[] released = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null) {
                 return;
             }

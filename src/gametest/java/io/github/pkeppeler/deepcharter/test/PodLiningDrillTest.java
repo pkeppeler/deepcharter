@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -105,7 +106,7 @@ public class PodLiningDrillTest {
                 OreBlocks.of(OreType.IRONIUM).defaultBlockState(),
                 3);
         Rig rig = Rig.await(helper, level, x, "spoil-ore", (pod, pilot) -> fitHopper(helper, pod, pilot));
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready() || !slabBored(level, x)) {
                 return;
             }
@@ -137,7 +138,7 @@ public class PodLiningDrillTest {
                 OreBlocks.of(OreType.IRONIUM).defaultBlockState(),
                 3);
         Rig rig = Rig.await(helper, level, x, "spoil-none", (pod, pilot) -> {});
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready() || !slabBored(level, x)) {
                 return;
             }
@@ -163,7 +164,7 @@ public class PodLiningDrillTest {
             fitHopper(helper, pod, pilot);
             PodLining.modify(pod, state -> state.withSpoil(62));
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready() || !slabBored(level, x)) {
                 return;
             }
@@ -192,7 +193,7 @@ public class PodLiningDrillTest {
                 throw failure(helper, "the press should have started the lining");
             }
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }

@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -117,7 +118,7 @@ public class CompanyRockBiteTest {
         Bite bite = rig(helper, x, PodRegistry.PROSPECTOR, TUNING.minTier(), 0);
         float[] start = new float[2];
         int[] startTick = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             PodEntity pod = bite.pod();
             if (pod == null) {
                 return;
@@ -175,7 +176,7 @@ public class CompanyRockBiteTest {
         Bite bite = rig(helper, x, PodRegistry.PROSPECTOR, TUNING.minTier(), 3);
         float[] start = {-1};
         int[] startTick = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             PodEntity pod = bite.pod();
             if (pod == null) {
                 return;
@@ -226,7 +227,7 @@ public class CompanyRockBiteTest {
         int x = 4656;
         Bite bite = rig(helper, x, PodRegistry.PROSPECTOR, TUNING.minTier(), 0);
         boolean[] hurt = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (bite.pod() != null && !hurt[0]) {
                 bite.pod().setHull(TUNING.hullFloor());
                 hurt[0] = true;
@@ -237,7 +238,7 @@ public class CompanyRockBiteTest {
 
     /** Waits 300 pod ticks with sprint held: the rock under the pod must stay, the pilot must hear {@code key}, and the hull and tank must not have moved for the bite. */
     private static void refused(GameTestHelper helper, Bite bite, int x, String key) {
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             PodEntity pod = bite.pod();
             if (pod == null || pod.tickCount < 300) {
                 return;

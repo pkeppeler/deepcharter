@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -168,7 +169,7 @@ public class BreachCrossingTest {
         mock.teleportTo(layer(helper, 1), new Vec3(x, 8, z), 0, 0);
         fallWhileInLayerOne(helper, mock);
         long[] arrivedAt = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             boolean inTwo = mock.player().level().dimension().equals(LayerChain.dimension(2));
             if (inTwo && arrivedAt[0] < 0) {
                 arrivedAt[0] = helper.getTick();
@@ -295,7 +296,7 @@ public class BreachCrossingTest {
     private static void fallWhileInLayerOne(GameTestHelper helper, MockPlayer mock) {
         boolean[] ticking = {false};
         FarChunks.awaitEntityTicking(helper, layer(helper, 1), mock.player().blockPosition(), () -> ticking[0] = true);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             ServerPlayer player = mock.player();
             if (ticking[0] && player.level().dimension().equals(LayerChain.dimension(1))) {
                 player.setPos(player.getX(), player.getY() - 1, player.getZ());

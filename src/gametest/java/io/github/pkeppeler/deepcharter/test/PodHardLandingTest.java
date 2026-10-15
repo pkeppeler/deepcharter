@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -106,7 +107,7 @@ public class PodHardLandingTest {
                 throw failure(helper, "the pilot could not board the pod");
             }
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] != null) {
                 pilot.setInput(
                         HardLanding.sinkSpeed(pod[0].getDeltaMovement().y) > BRAKE_ABOVE_SINK ? JUMP : Input.EMPTY);
