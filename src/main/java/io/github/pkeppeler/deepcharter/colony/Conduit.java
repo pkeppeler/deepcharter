@@ -49,7 +49,7 @@ public final class Conduit {
 
     /** Sets the missing casing blocks that lie in {@code chunk}. */
     static void place(ServerLevel level, LevelChunk chunk, ColonySite.Placed colony, int layer) {
-        BlockPos centre = colony.anchors().get(ColonyAnchor.CONDUIT);
+        BlockPos centre = ColonyAnchor.CONDUIT.in(colony.anchors());
         int radius = ColonyTuning.DEFAULT.conduitRadius();
         ChunkPos chunkPos = chunk.getPos();
         int fromX = Math.max(centre.getX() - radius, chunkPos.getMinBlockX());

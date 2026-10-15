@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.colony;
 
 import java.util.Map;
+import java.util.Objects;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
@@ -22,6 +23,6 @@ final class KitPillarBlock extends RotatedPillarBlock {
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return shapes.get(state.getValue(AXIS));
+        return Objects.requireNonNull(shapes.get(state.getValue(AXIS)), "the shapes cover every axis");
     }
 }
