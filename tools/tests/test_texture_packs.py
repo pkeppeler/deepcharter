@@ -165,7 +165,7 @@ class TexturePacksTest(unittest.TestCase):
         dims every colour alike, so the order holds in the dark. The flecks are the ore's ramp but its darkest shade, which is the rim. A fleck
         pixel is clear when its delta E is DISTINCT or more. Measured on the textures before #549's retune, the worst were ironium in packed shale
         (mean 27.9, 62% clear), cicatrium in packed shale (mean 30.8), silverium in green shale (mean 31.8, 41% clear), platinium in green shale (36.4) and einsteinium in green
-        shale (77% clear); after it every ore clears both floors, the lowest being cicatrium in packed shale at 40.5 and silverium in green shale at 41.5, and the floors sit under them."""
+        shale (77% clear); after it every ore clears both floors, the lowest being silverium in green shale at 41.5 and platinium in green shale at 43.8, and the floors sit under them."""
         shipped = texgen.shipped()
         body = json.loads(texgen.OVERLAYS.read_text())
 

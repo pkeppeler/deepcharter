@@ -12,8 +12,8 @@
             "seed": "$seed",
             "ramp": [
               "ironium_fleck.0",
-              "rust.3",
-              "rust.4",
+              "ironium_fleck.2",
+              "ironium_fleck.3",
               "ironium_fleck.3",
               "ironium_fleck.4"
             ],
