@@ -767,16 +767,6 @@ public class M2SliceScenario extends EvidenceScenario {
                             level, moleAt.x, moleAt.y, moleAt.z, Set.of(), yawToward(moleAt, figureStart), 0f, true);
             return null;
         });
-        // Workaround for #524 (RoomCarver holds the chunk send; delete this wait when it is fixed).
-        ClientWait.until(
-                ctx,
-                "the drift's chunks lit and ready to send to the player",
-                () -> onServer(server -> driftChunksReady(server.getLevel(LayerChain.dimension(2)), site)),
-                () -> "the chunks "
-                        + onServer(server -> driftChunks(site).stream()
-                                .filter(chunk -> !chunkReady(server.getLevel(LayerChain.dimension(2)), chunk))
-                                .toList())
-                        + " were not ready");
         standInLayer(2, at(site, MOLE_AT_U - 2.5, 0, 0), moleAt);
         ClientWait.until(
                 ctx,
@@ -853,23 +843,6 @@ public class M2SliceScenario extends EvidenceScenario {
         }
         snap(HOLD_FRAMES);
         still("35-the-figure-is-gone");
-    }
-
-    /** The chunks the drift and the Mole in it touch. */
-    private static List<ChunkPos> driftChunks(StructureSite site) {
-        BlockPos far = BlockPos.containing(at(site, -DRIFT_LENGTH - 1, 0, -2));
-        BlockPos near = BlockPos.containing(at(site, MOLE_AT_U + 3, 0, 2));
-        return ChunkPos.rangeClosed(ChunkPos.containing(far), ChunkPos.containing(near))
-                .toList();
-    }
-
-    private static boolean driftChunksReady(ServerLevel level, StructureSite site) {
-        return driftChunks(site).stream().allMatch(chunk -> chunkReady(level, chunk));
-    }
-
-    // #524: the chunk is sent only once its light is computed; a player brought in before that is never sent it.
-    private static boolean chunkReady(ServerLevel level, ChunkPos chunk) {
-        return level.getChunkSource().chunkMap.getChunkToSend(chunk.pack()) != null;
     }
 
     /** A 3 x 4 drift with a rail down it, from the bay's west wall out {@link #DRIFT_LENGTH} blocks. Its shell is sealed first. */
