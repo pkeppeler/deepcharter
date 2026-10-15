@@ -168,6 +168,8 @@ dependencies {
 	include(libs.geckolib)
 
 	errorprone(libs.errorprone.core)
+	// @FormatMethod on the gametest failure helpers, so Error Prone checks their format strings
+	"gametestCompileOnly"(libs.errorprone.annotations)
 }
 
 // Audit condition 2: the resolved GeckoLib jar must be the audited one. Regenerating the verification metadata accepts whatever
@@ -278,7 +280,8 @@ val mixinHandlers = listOf("Inject", "Redirect", "ModifyArg", "ModifyArgs", "Mod
 
 // Error Prone runs inside javac on every source set (main, client, gametest); -Werror turns every warning into a failure.
 // -processing: javac warns about annotations no processor claims, and -Werror would fail on it.
-// RELAXED -classfile: Minecraft's classpath carries Guava without its Error Prone annotations, so javac warns per class and -Werror fails; third-party class files only
+// RELAXED -classfile: third-party class files only. Gson's @InlineMe needs error_prone_annotations, which main and client do not have, and JOML's
+// classes carry type annotations that javac ignores in old class-file versions; each warns per class and -Werror fails. Checked again with the annotations on the gametest classpath: still needed
 tasks.withType<JavaCompile>().configureEach {
 	options.release = 25
 	options.compilerArgs.addAll(listOf("-Xlint:all,-processing,-classfile", "-Werror"))
@@ -286,14 +289,13 @@ tasks.withType<JavaCompile>().configureEach {
 		disableWarningsInGeneratedCode = true
 		// RELAXED: Readable and Unreadable are the domain's own pair (Versioned, CONTEXT.md); renaming them to dodge java.lang.Readable would split the vocabulary the M2 rules use
 		disable("AvoidCommonTypeNames")
-		// RELAXED: vanilla and this mod compare Entity, Level, Item, Block and other registry objects with == throughout; Entity.equals is its id
+		// RELAXED: vanilla and this mod compare Entity, Level, Item, Block and registry objects with == throughout (Entity.equals is its id), and so do
+		// our own records used as constants (Chassis, TerminalType, ScanSlice.Cell): production only ever holds the constants, so == and equals agree
 		disable("ReferenceEquality")
 		// RELAXED: enum order is the contract of stream codecs, theme data indices and seeded hashes, so ordinal() is the stable key there
 		disable("EnumOrdinal")
 		// RELAXED: enums here hold Minecraft types (SoundEvent, Identifier, MapCodec) that are immutable in practice but cannot carry @Immutable
 		disable("ImmutableEnumChecker")
-		// RELAXED: annotating @FormatMethod needs error_prone_annotations on every source set's compile classpath, which Minecraft's does not carry (see -classfile)
-		disable("AnnotateFormatMethod")
 		option("UnusedMethod:ExemptingMethodAnnotations", mixinHandlers)
 		option("Unused:methodAnnotationsExemptingParameters", mixinHandlers)
 	}

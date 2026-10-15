@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
@@ -86,11 +88,13 @@ final class ChassisChecks {
         this.middle = width % 2 == 0 ? 0 : 0.5;
     }
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
-    private static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {
+    @FormatMethod
+    private static void expect(GameTestHelper helper, boolean condition, @FormatString String format, Object... args) {
         if (!condition) {
             throw failure(helper, format, args);
         }

@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -54,7 +56,8 @@ public class ScannerTiersTest {
         }
     }
 
-    private static RuntimeException failure(GameTestHelper helper, String message, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String message, Object... args) {
         return helper.assertionException(message.formatted(args));
     }
 

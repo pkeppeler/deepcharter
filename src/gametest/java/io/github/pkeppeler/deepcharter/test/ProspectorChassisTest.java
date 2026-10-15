@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -1217,7 +1219,8 @@ public class ProspectorChassisTest {
         return found;
     }
 
-    private static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {
+    @FormatMethod
+    private static void expect(GameTestHelper helper, boolean condition, @FormatString String format, Object... args) {
         FoundingMoleHangarTest.expect(helper, condition, format, args);
     }
 
@@ -1230,7 +1233,8 @@ public class ProspectorChassisTest {
         throw failure(helper, "%s should throw", what);
     }
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return FoundingMoleHangarTest.failure(helper, format, args);
     }
 }

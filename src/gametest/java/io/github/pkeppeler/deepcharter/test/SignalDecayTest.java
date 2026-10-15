@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -35,7 +37,8 @@ public class SignalDecayTest {
     private static final long SEED = 0x5EEDL;
     private static final double EPSILON = 1e-9;
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

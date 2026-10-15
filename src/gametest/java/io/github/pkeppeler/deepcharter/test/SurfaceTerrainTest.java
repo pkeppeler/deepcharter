@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -487,7 +489,8 @@ public class SurfaceTerrainTest {
         return generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random);
     }
 
-    private static RuntimeException fail(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException fail(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

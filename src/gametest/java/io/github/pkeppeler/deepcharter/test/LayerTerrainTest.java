@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
@@ -145,7 +147,8 @@ public class LayerTerrainTest {
                             && mobs.unwrap().stream()
                                     .allMatch(entry -> entry.value().type() == CreatureRegistry.LAMPLESS_FIGURE);
                     if (!mobs.isEmpty() && !onlyRetained) {
-                        throw failure(helper, "layer_%d zone %d spawns %s mobs: %s", layer, zone, category, mobs);
+                        throw failure(
+                                helper, "layer_%d zone %d spawns %s mobs: %s", layer, zone, category, mobs.unwrap());
                     }
                 }
             }
@@ -540,7 +543,8 @@ public class LayerTerrainTest {
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

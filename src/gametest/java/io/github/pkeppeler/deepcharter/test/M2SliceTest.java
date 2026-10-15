@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
@@ -128,7 +130,8 @@ public class M2SliceTest {
         return span.low() + span.size() / 2.0;
     }
 
-    private static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {
+    @FormatMethod
+    private static void expect(GameTestHelper helper, boolean condition, @FormatString String format, Object... args) {
         if (!condition) {
             throw helper.assertionException(net.minecraft.network.chat.Component.literal(String.format(format, args)));
         }

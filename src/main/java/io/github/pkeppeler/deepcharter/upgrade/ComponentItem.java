@@ -21,7 +21,8 @@ public final class ComponentItem extends Item {
     }
 
     @Override
-    // Item.appendHoverText is the only tooltip hook an item has; overriding it is the use
+    // Deprecated in 26.3 in favour of tooltip-provider data components; kept so this tooling PR changes no visible
+    // tooltip. Migrating is a separate change.
     @SuppressWarnings("deprecation")
     public void appendHoverText(
             ItemStack stack,

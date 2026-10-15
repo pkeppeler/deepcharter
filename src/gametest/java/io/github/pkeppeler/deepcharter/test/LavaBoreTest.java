@@ -150,7 +150,9 @@ public class LavaBoreTest {
     /** Ticks after the fuse has run out that a hull loss is booked to the charge. */
     private static final int BLAST_WINDOW_TICKS = 3;
 
+    /** {@code avoid} makes the bot steer round a gas pocket that a scanner of the gas tier shows in its way; {@code ignore} (the default) bores straight through. */
     static final String GAS_ENV = "DEEPCHARTER_LAVA_BORES_GAS";
+
     private static final String REQUESTED_GAS = System.getenv(GAS_ENV);
     /** What the bot does about gas (the class comment says what each mode knows, #368). */
     private enum GasMode {
