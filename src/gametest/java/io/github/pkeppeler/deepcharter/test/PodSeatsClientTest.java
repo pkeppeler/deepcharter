@@ -127,8 +127,7 @@ public class PodSeatsClientTest implements FabricClientGameTest {
         level.addFreshEntity(pod);
         require(player.startRiding(pod), "the player could not board the " + chassis.id());
         if (chassis.seats() > 1) {
-            navigator[0] = MockPlayers.join(server, "Navigator");
-            navigator[0].teleportTo(level, pod.position(), 0f, 0f);
+            navigator[0] = MockPlayers.join(server, "Navigator", level, pod.position());
             require(navigator[0].player().startRiding(pod), "the navigator could not board the " + chassis.id());
         }
         return pod.getId();

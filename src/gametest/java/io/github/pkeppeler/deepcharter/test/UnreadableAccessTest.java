@@ -56,6 +56,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * The safe accessor {@link Versioned#readable}, and the attachment-backed features' tick, join and callback paths against
@@ -241,7 +242,11 @@ public class UnreadableAccessTest {
             });
             paths.put(
                     "join and leave",
-                    () -> MockPlayers.join(server, "unreadable-charters-" + joins.incrementAndGet())
+                    () -> MockPlayers.join(
+                                    server,
+                                    "unreadable-charters-" + joins.incrementAndGet(),
+                                    helper.getLevel(),
+                                    helper.absoluteVec(Vec3.ZERO))
                             .leave());
             UnreadableChecks.assertSavedDataNoThrow(helper, "charters", server, CharterData.TYPE, paths);
             helper.succeed();
