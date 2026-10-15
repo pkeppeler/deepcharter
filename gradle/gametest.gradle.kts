@@ -56,6 +56,9 @@ object GametestScan {
 	// that toggles directly. The scan matches the names, not the receiver.
 	private const val HUD_TOGGLE_MARKER = "// hud-toggle:"
 	private val hudToggle = Regex("""\b(?:keyToggleGui|hideGui|KEY_F1)\b|\bhud\s*\.\s*toggle\s*\(""")
+	// GameTestHelper.onEachTick queues one runnable per remaining tick of the test's maxTicks, and the runner keeps every finished test until
+	// the run ends, so the suite's live heap grew to 4.4 GB (#548). TestTicks.each keeps one. No suppression: there is no case for the queue.
+	private val onEachTickCall = Regex("""\.\s*onEachTick\s*\(""")
 
 	private val literalsAndComments = Regex("(?s)\"\"\"(?:\\\\.|.)*?\"\"\"|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*'|/\\*.*?\\*/|//[^\\n]*")
 	private val notNewline = Regex("[^\\n]")
@@ -134,6 +137,9 @@ object GametestScan {
 						problems.add("$className:${line + 1} toggles the HUD directly, which the next client test inherits; hide it with ClientChecks.withHudHidden (or show it with withHudShown), which restore it in a finally, or mark a deliberate toggle with '$HUD_TOGGLE_MARKER <reason>'")
 					}
 				}
+			}
+			for (call in onEachTickCall.findAll(text)) {
+				problems.add("$className:${lineOf(text, call.range.first) + 1} calls onEachTick, which queues one runnable per remaining tick of the test and keeps them all until the run ends; run the body every tick with TestTicks.each(helper, body)")
 			}
 			val isClientSide = clientSide.containsMatchIn(text)
 			if (!isClientSide && source.name != "TestClocks.java") {

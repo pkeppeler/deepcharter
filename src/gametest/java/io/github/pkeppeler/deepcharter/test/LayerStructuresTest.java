@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -215,7 +216,7 @@ public class LayerStructuresTest {
         FarChunks.Deadline deadline = FarChunks.deadline();
         long startNanos = System.nanoTime();
         Map<StructureKind, String> firstUnmet = new EnumMap<>(StructureKind.class);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             List<String> failing = new ArrayList<>();
             for (StructureSite site : sites) {
                 ServerLevel level = level(helper, site.kind().layer());

@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -76,7 +77,7 @@ public class BlastingChargeTest {
         });
         int[] setAt = {-1};
         float[] hull = new float[1];
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null || !pod[0].onGround()) {
                 return;
             }
@@ -286,7 +287,7 @@ public class BlastingChargeTest {
         int[] step = {0};
         // The mock records an action-bar message on its own tick, so a refusal is read on the next one.
         Component[] pending = new Component[1];
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null) {
                 return;
             }

@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnloadedChunk;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.ArrayList;
@@ -374,7 +375,7 @@ public class EntityQueryAuditTest {
                 pod[0].discard();
             }
         };
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             try {
                 if (!moved[0]) {
                     mock.teleportTo(level, at, 0, 0);

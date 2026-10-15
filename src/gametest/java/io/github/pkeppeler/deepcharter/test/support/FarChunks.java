@@ -136,7 +136,7 @@ public final class FarChunks {
         Deadline deadline = deadline();
         boolean[] done = new boolean[positions.size()];
         int[] waiting = {positions.size()};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (waiting[0] == 0) {
                 return;
             }

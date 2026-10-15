@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.ArrayList;
@@ -214,7 +215,7 @@ public class PodChunkLoadTest {
         PodEntity[] pod = {null};
         int[] ticked = {0};
         long deadline = System.nanoTime() + LOAD_BUDGET_SECONDS * 1_000_000_000L;
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             boolean finished = false;
             try {
                 if (pod[0] == null) {

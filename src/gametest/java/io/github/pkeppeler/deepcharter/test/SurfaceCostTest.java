@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
@@ -101,7 +102,7 @@ public class SurfaceCostTest {
         Map<String, List<Measurement>> results = new LinkedHashMap<>();
         Run[] current = {null};
         int[] cooldown = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (cooldown[0] > 0) {
                 cooldown[0]--;
                 return;

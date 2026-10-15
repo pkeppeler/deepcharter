@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.ArrayList;
@@ -153,7 +154,7 @@ final class ChassisChecks {
         int lowX = x - width / 2;
         int lowZ = Z + 1 - width / 2;
         boolean[] released = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null) {
                 return;
             }
@@ -215,7 +216,7 @@ final class ChassisChecks {
             expect(helper, pilot.player().startRiding(pod[0]), "the pilot could not mount the pod");
             pilot.setInput(FORWARD);
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null) {
                 return;
             }
@@ -275,7 +276,7 @@ final class ChassisChecks {
             pilot.player().getInventory().add(new ItemStack(SlagBrick.item(), ring));
         });
         boolean[] begun = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null || !pod[0].onGround()) {
                 return;
             }
@@ -343,7 +344,7 @@ final class ChassisChecks {
             due.run();
         });
         boolean[] lavaPlaced = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null
                     || Versioned.readable(pod[0], PodLiner.STATE)
                                     .orElseThrow()
@@ -397,7 +398,7 @@ final class ChassisChecks {
             pod[0] = spawn(level, new Vec3(x + middle, FLOOR, Z + middle));
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod[0], ComponentTrack.SOUNDER, tier);
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] != null && ++ticks[0] == 6) {
                 check.accept(pod[0]);
                 pod[0].discard();
@@ -525,7 +526,7 @@ final class ChassisChecks {
             }
         });
         int[] step = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pods[0] == null) {
                 return;
             }

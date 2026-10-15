@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.List;
 import java.util.Map;
@@ -579,7 +580,7 @@ public class PodStatsTest {
         }
         int[] start = {-1, -1};
         int[] end = {-1, -1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             for (int i = 0; i < 2; i++) {
                 if (!rigs[i].ready()) {
                     continue;
@@ -622,7 +623,7 @@ public class PodStatsTest {
             OVERRIDES.put(pod.getUUID(), stats -> stats.withCrustHullDamage(crustDamage));
             pod.setHull(hull);
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready() || !rig.pilot.player().level().dimension().equals(LayerChain.dimension(2))) {
                 return;
             }
@@ -664,7 +665,7 @@ public class PodStatsTest {
             pod.setHull(15f);
         });
         long[] zeroSince = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready() || rig.pod.hull() != 0f) {
                 return;
             }
