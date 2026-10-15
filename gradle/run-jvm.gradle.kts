@@ -15,9 +15,13 @@ addVmArgToRuns(exitOnOom)
 // out of it at about 80% (#541). Two leaks filled it. GameTestHelper.onEachTick queued one lambda per remaining tick (#548;
 // TestTicks.each replaced it). Chunks that FarChunks forced stayed forced to the end of the run, and each forced chunk pins the
 // proto chunks around it, so one layer level held 34,000 chunks (#569; FarChunks.force lets go when the test finishes).
-// Measured 2026-10-15 (-Xlog:gc, 1110 tests): 1 GB fails (Full GCs at 1022M), 1.5 GB passes with 6 Full GCs at 1.1 GB live, 2 GB
-// passes with none. The live set at the end is about 1.1 GB; the JFR reference chains that remain run through each level's
-// PoiManager.storage (up to 640,000 entries), which this change does not touch. Re-measure when the suite grows by a tenth.
+// Measured 2026-10-15 (-Xlog:gc, 1110 tests): 1 GB fails (Full GCs at 1022M), 1.5 GB passes with 6 Full GCs, 2 GB passes with none.
+// The live set (class histogram, which forces a full GC) is 300 to 550 MB for most of the run and peaks at 1.13 GB while a batch
+// of 50 tests is running (about 7,000 chunks of the layer levels, 370,000 chunk sections, and the lighting arrays), then falls
+// back to 550 MB when the batch ends. It is a working set, not a leak. PoiManager is not the holder (#636): at the peak it held
+// 920 PoiSections. Vanilla's SectionStorage never removes a section from its map (flush only writes it), so the key index grows
+// with every chunk ever loaded, but an unsaved section is a shared Optional.empty, so 640,000 entries cost about 20 MB.
+// Twice the peak is 2.3 GB, so 2G is already the floor. Re-measure when the suite grows by a tenth.
 val gameTestHeap = "-Xmx2G"
 addVmArgToRun("gameTest", gameTestHeap)
 
