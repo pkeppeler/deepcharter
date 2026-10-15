@@ -34,6 +34,7 @@ import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 
 /** Client GameTest: ore pixels in the scanner HUD. */
 public class ScannerHudTest implements FabricClientGameTest {
@@ -50,20 +51,29 @@ public class ScannerHudTest implements FabricClientGameTest {
 
     /** Places {@code block} {@code ahead} blocks along the ridden pod's facing and {@code up} above its feet. */
     public static void placeBesidePod(TestServerContext server, int ahead, int up, Block block) {
+        placeBesidePod(server, ahead, up, block.defaultBlockState());
+    }
+
+    /** Places {@code state} {@code ahead} blocks along the ridden pod's facing and {@code up} above its feet. */
+    public static void placeBesidePod(TestServerContext server, int ahead, int up, BlockState state) {
         server.runOnServer(minecraftServer -> {
             PodEntity pod = (PodEntity)
                     minecraftServer.getPlayerList().getPlayers().getFirst().getVehicle();
             place(
                     (ServerLevel) pod.level(),
                     pod.blockPosition().relative(pod.getDirection(), ahead).above(up),
-                    block);
+                    state);
         });
     }
 
     private static void place(ServerLevel level, BlockPos at, Block block) {
-        level.setBlock(at, block.defaultBlockState(), 3);
-        if (!level.getBlockState(at).is(block)) {
-            throw new AssertionError("could not place " + block + " at " + at + " in "
+        place(level, at, block.defaultBlockState());
+    }
+
+    private static void place(ServerLevel level, BlockPos at, BlockState state) {
+        level.setBlock(at, state, 3);
+        if (level.getBlockState(at) != state) {
+            throw new AssertionError("could not place " + state + " at " + at + " in "
                     + level.dimension().identifier());
         }
     }
