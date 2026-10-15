@@ -45,7 +45,7 @@ public class MockPlayersTest {
      */
     @GameTest(maxTicks = 20_000)
     public void serverJoinedMockSurvivesAtItsSpawn(GameTestHelper helper) {
-        Vec3 spawn = helper.absoluteVec(new Vec3(1.5, 1, 1.5));
+        Vec3 spawn = helper.absoluteVec(MockPlayers.STRUCTURE_SPAWN);
         MockPlayer mock = MockPlayers.join(helper.getLevel().getServer(), "server-joined", helper.getLevel(), spawn);
         mock.player().setGameMode(GameType.SURVIVAL);
         long deadline = System.nanoTime() + SURVIVAL_SECONDS * 1_000_000_000L;
@@ -61,6 +61,28 @@ public class MockPlayersTest {
                     throw helper.assertionException(
                             "the mock is at %s, not at its spawn %s",
                             mock.player().position(), spawn);
+                }
+                helper.succeed();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = 20_000)
+    public void helperJoinedMockSurvivesInsideTheStructure(GameTestHelper helper) {
+        MockPlayer mock = MockPlayers.join(helper, "helper-joined");
+        mock.player().setGameMode(GameType.SURVIVAL);
+        long deadline = System.nanoTime() + SURVIVAL_SECONDS * 1_000_000_000L;
+        TestTicks.each(helper, () -> {
+            if (!mock.player().isAlive()) {
+                throw helper.assertionException(
+                        "the helper-joined mock died at %s", mock.player().position());
+            }
+            if (System.nanoTime() - deadline <= 0 || helper.getTick() < MIN_TICKS) {
+                sleepOneTick();
+            } else {
+                Vec3 at = mock.player().position();
+                if (at.distanceTo(helper.absoluteVec(MockPlayers.STRUCTURE_SPAWN)) > 5) {
+                    throw helper.assertionException("the helper-joined mock is at %s, outside the structure", at);
                 }
                 helper.succeed();
             }
@@ -84,7 +106,7 @@ public class MockPlayersTest {
                 helper.getLevel().getServer(),
                 "owned",
                 helper.getLevel(),
-                helper.absoluteVec(new Vec3(1.5, 1, 1.5)),
+                helper.absoluteVec(MockPlayers.STRUCTURE_SPAWN),
                 ownerDone::get);
         helper.runAfterDelay(5, () -> {
             if (!mock.isOnline()) {
