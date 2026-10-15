@@ -4,7 +4,8 @@ Read-only audit of [Iris](https://github.com/IrisShaders/Iris) (the shaders mod)
 
 ## Verdict: try only as an opt-in, on OpenGL, with the update check off; never a dependency
 
-- The jar has **one network feature: an update checker** that is on by default (details below). It contacts `github.com` and then downloads a second URL that the first response names. It writes `irisUpdateInfo.json` in the game directory. It can be turned off in `config/iris.properties`. I found no other network code, no telemetry, no process spawn and no native code.
+- **Network:** one feature, an update checker, on by default (details below). It contacts `github.com`, then downloads a second URL that the first response names, and writes `irisUpdateInfo.json`. Turn it off in `config/iris.properties`.
+- No other network code, no telemetry, no process spawn and no native code.
 - Iris replaces the whole render pipeline (about 180 mixins, GL state, the chunk vertex format, Sodium internals). It is a large, invasive mod. It is the most likely mod in our set to break Deep Charter's rendering (HUD, beams, glow masks, terminals), and that is the point of the #629 try-out.
 - **Platform:** Iris works only on the OpenGL backend. Iris's own docs mark **Apple Silicon Macs "not supported"** (drivers crash on common shader packs) and say they will not investigate macOS issues. Our dev Mac is an M2. Expect problems that are not ours.
 - **Shader packs are separate third-party content** (GLSL code and `shaders.properties`). This audit does not cover any pack. Each pack needs its own read-only review before the dev client loads it.
@@ -54,7 +55,7 @@ The jar has no licence file. The repo file `LICENSE-DEPENDENCIES` says: "glsl-tr
 
 What this means for us:
 
-- **The `.mrpack` links CDN URLs; it contains no jar.** We do not redistribute Iris or its bundled libraries. Friends' launchers download from `cdn.modrinth.com`. Same rule as in the Sodium audit.
+- **The `.mrpack` links CDN URLs; it contains no jar.** We do not redistribute Iris or its bundled libraries, so the redistribution terms should not apply to us. This is our reading, not a lawyer's. Friends' launchers download from `cdn.modrinth.com`. Same rule as in the Sodium audit.
 - **If we did redistribute** the jar, the LGPL and the AGPL would both apply (licence text and a way to get the source; the AGPL adds network-use source duties for modified versions). Linking avoids both. Do not bundle.
 - **LGPL linking** is moot: our mod does not depend on, call or embed Iris.
 - Iris is client-only and stays out of the server zip.
@@ -90,7 +91,7 @@ Scan of every `.class`, `.json` and `.properties` in the jar and the five nested
 
 - **`net.irisshaders.iris.UpdateChecker`** (called once from `Iris.java` at startup; on by default):
   1. If `irisUpdateInfo.json` in the game directory was modified today, it is read and used.
-  2. Otherwise it opens `https://github.com/IrisShaders/Iris-Update-Index/releases/latest/download/updateIndex.json`, reads the entry for the current Minecraft version, and **downloads the URL that entry contains** with no allow-list. That second URL can be any host that the index owner chooses.
+  2. Otherwise it opens `https://github.com/IrisShaders/Iris-Update-Index/releases/latest/download/updateIndex.json`, reads the entry for the current Minecraft version, and **downloads the URL that entry contains** with no allow-list. That second URL can be any host that the index owner chooses, so the owner of the update index is a trust anchor.
   3. The second response is parsed as JSON, written to `irisUpdateInfo.json`, and its text and link may show in the Iris screen. It is never run as code. The link opens only on a user click.
   4. A beta build uses `https://raw.githubusercontent.com/IrisShaders/Iris-Installer-Files/master/betaTag.json` instead. Release builds do not take this path (`BuildConfig.IS_SHARED_BETA`).
   - The request sends no custom data, but any request leaks the player's IP to GitHub and to the second host.
@@ -103,7 +104,7 @@ Scan of every `.class`, `.json` and `.properties` in the jar and the five nested
 
 ## File-system writes
 
-- `config/iris.properties` and `config/iris-excluded.json` (`IrisConfig`). `iris.properties` is deleted when it has no changed settings.
+- `config/iris.properties` and `config/iris-excluded.json` (`IrisConfig`). `IrisConfig.save()` rewrites `iris.properties` in full, with every key, and keeps `disableUpdateMessage` at the loaded value. (Only the per-pack option file under the shader-pack config is deleted when empty.)
 - `shaderpacks/` in the game directory is created at launch (`Files.createDirectories`). The shader-pack manager copies packs the user adds through the UI into it.
 - `irisUpdateInfo.json` in the game directory (the update checker).
 - `patched_shaders/` in the game directory: `ShaderPrinter` writes the rewritten GLSL there and deletes old files. I read this from the source; it is a debug path and I did not check what enables it.
@@ -113,7 +114,7 @@ Scan of every `.class`, `.json` and `.properties` in the jar and the five nested
 
 1. **Pin exactly** `iris-fabric-1.11.7+mc26.3.jar` (sha512 above) with **Sodium 0.9.2+mc26.3**. No alpha. Update only after repeating the hash checks and scans.
 2. **Never a Gradle dependency, never in `depends` or `recommends`.** The mod must run without it and the build must not pull it in.
-3. **Set `disableUpdateMessage=true` before the first launch** (create `config/iris.properties` in the dev run directory with that line). Then check `latest.log` for `[Iris Update Check]` lines and look for `irisUpdateInfo.json`; neither should appear.
+3. **Set `disableUpdateMessage=true` before the first launch.** Create `config/iris.properties` in the dev run directory with exactly that one line. Iris rewrites the file in full when it saves settings. From the source it keeps the value, but **check the file again after the first launch** and restore the line if it is missing or reads `false`. Then check `latest.log` for `[Iris Update Check]` lines and look for `irisUpdateInfo.json`; neither should appear.
 4. **OpenGL only:** run with `DEEPCHARTER_GL=1`. Not on Vulkan.
 5. **Dev client only, opt-in.** Not in the server zip. Not in the friends `.mrpack`. A friend who wants shaders installs it themselves.
 6. **Link, don't bundle.** Don't commit or attach the jar.

@@ -62,7 +62,7 @@ What this means for us:
 ## Dependencies and compatibility
 
 - **Sodium** `fabric.mod.json`: `minecraft 26.3.x`, `fabricloader >=0.16.0`, `fabric-block-getter-api-v2`, `fabric-rendering-fluids-v1 >=2.0.0`, `fabric-resource-loader`. Environment `client`: it does nothing on a dedicated server, so it stays out of the server zip. It bundles nine Fabric API modules as nested jars (`META-INF/jars/`, e.g. `fabric-rendering-v1-27.0.14`) and carries an access widener and three mixin configs.
-- **Sodium `breaks`**: `fabric-api <0.145.1`, `iris <=1.11.2`, `sodium-extra <0.8.0`, `reeses-sodium-options <=2.2.0`, `embeddium`, `optifabric`, `canvas`, `vulkanmod` and others. None applies here. Fabric API 0.162.0 is well above the floor. The 0.9.2 release notes say Iris is not yet compatible, so don't add Iris.
+- **Sodium `breaks`**: `fabric-api <0.145.1`, `iris <=1.11.2`, `sodium-extra <0.8.0`, `reeses-sodium-options <=2.2.0`, `embeddium`, `optifabric`, `canvas`, `vulkanmod` and others. None applies here. Fabric API 0.162.0 is well above the floor. The 0.9.2 release notes say Iris is not yet compatible. Update 2026-10-15: Iris 1.11.7 now supports Sodium 0.9.2; see [iris-audit.md](iris-audit.md) (opt-in, OpenGL only, not for friends).
 - **Lithium** `fabric.mod.json`: `fabricloader >=0.19.5`, `minecraft ~26.3`, `mixinextras >=0.5.5`. Environment `*`. `breaks: optifabric`. MixinExtras ships inside Fabric Loader; the gate run below confirms 0.19.5 satisfies it.
 - **Fabric API 0.162.0+26.3**: neither mod pins a Fabric API version above the floors. The gate run below is the real compatibility test.
 - Lithium changes game logic (AI, pathfinding, chunk tracking, block-entity ticking) and its own changelog says to back up worlds. It is the one that could interact with our pods, layers and scanner on a server. Each optimisation can be disabled in `config/lithium.properties` (see Lithium's `lithium-mixin-config.md`) if a friend hits a mis-simulation.
@@ -84,7 +84,7 @@ Scan of every `.class`, `.json` and `.md` in both jars:
 3. **Never a Gradle dependency of the mod, never in `depends`.** The mod must run without either. They stay in the pack, the server `mods.lock` and the dev run only.
 4. **Link, don't bundle.** Don't commit or attach either jar. Re-read the licence section before ever bundling one.
 5. **Sodium stays client-only**; the server zip carries Lithium only.
-6. **Don't add Iris or Sodium Extra without checking** the `breaks` list above.
+6. **Don't add Iris or Sodium Extra without checking** the `breaks` list above. Iris has its own audit: [iris-audit.md](iris-audit.md) (opt-in, OpenGL only, not for friends).
 7. **Triage rule for friends' bug reports:** reproduce without Sodium and Lithium first (remove them from the profile); a bug that only shows with them is theirs, not ours.
 
 ## Gate: client GameTests with both loaded

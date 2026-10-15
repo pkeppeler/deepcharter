@@ -6,7 +6,8 @@ Read-only audit of LambdAurora's [LambDynamicLights](https://github.com/LambdAur
 
 - No network code, no update check, no telemetry, no process spawn, no native code, and no OpenGL or Vulkan calls in the jar.
 - It writes one config file. It hooks vanilla classes only, so it does not depend on Sodium or Iris internals.
-- **Main risks:** the licence (see below: sharing the jar needs the authors' approval, so we link and never bundle), and 25 mixins marked `required`, so a Minecraft change that moves a hook crashes the client at launch instead of degrading. It is built for 26.3 exactly, so this is a risk at the next Minecraft update, not now.
+- **Risk 1, licence:** sharing the jar needs the authors' approval, so we link and never bundle.
+- **Risk 2, mixins:** 25 are `required`. After a Minecraft update that moves a hook, the client crashes at launch. This is a risk for the next update, not now.
 - The try-out in #629 may load it after the user has read this page.
 
 ## Version and hashes
@@ -42,12 +43,12 @@ Nested jars (inside `META-INF/jars/`, loaded by Fabric Loader):
 **Lambda License** (custom, source-available; `LICENSE_lambdynamiclights` in the jar; Modrinth lists it as `LicenseRef-Lambda-License`). It is not an OSI licence.
 
 - Source code: you may copy, modify and share it, if the work stays under the same licence.
-- **Binaries** (section 3): you may share them only if (1) they stay under this licence, (2) their source is public, and (3) you have **written approval from all Project Owners**. If an owner does not reply to a good-faith request within 60 days, approval is implicit. Approval is revocable.
+- **Binaries** (section 3): you may share them only if (1) they stay under this licence, (2) their source is public, and (3) you have **written approval from all Project Owners**. If an owner does not reply to a good-faith request within 60 days, approval is implicit. An owner can revoke approval on written notice (3.3.1), but implicit approval after 60 days is irrevocable (3.3.3).
 - Section 4: if you offer a modified binary for remote use over a network, you must publish the modified source.
 
 What this means for us:
 
-- **The `.mrpack` links CDN URLs; it contains no jar.** We do not share the binary, so section 3 does not apply to us. Friends' launchers download from `cdn.modrinth.com`. Same rule as in [sodium-lithium-audit.md](sodium-lithium-audit.md).
+- **The `.mrpack` links CDN URLs; it contains no jar.** We do not share the binary, so section 3 should not apply to us. This is our reading, not a lawyer's: section 3 also covers licensing "the right to do so". Friends' launchers download from `cdn.modrinth.com`. Same rule as in [sodium-lithium-audit.md](sodium-lithium-audit.md).
 - **Do not bundle or attach the jar** in a zip, a release asset or the repo. That would be sharing a binary and needs the approval above.
 - **We do not modify it and do not link to it**, so section 4 is moot.
 - LDL is client-only. It stays out of the server zip.
