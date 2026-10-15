@@ -247,6 +247,7 @@ tasks.check { dependsOn(checkGeckoLib, checkNestedGeckoLib) }
 apply(from = "gradle/lang.gradle.kts")
 apply(from = "gradle/literals.gradle.kts")
 apply(from = "gradle/entity-query-gate.gradle.kts")
+apply(from = "gradle/record-holder-gate.gradle.kts")
 apply(from = "gradle/gametest.gradle.kts")
 apply(from = "gradle/colour-gate.gradle.kts")
 apply(from = "gradle/test-only-gate.gradle.kts")
