@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
@@ -20,7 +21,8 @@ import net.minecraft.world.phys.Vec3;
 public class MockPlayersTest {
     private static final int TICKS = 1200;
     private static final int SURVIVAL_SECONDS = 3;
-    private static final int POLL_MILLIS = 2;
+    /** The old bare join died at tick 242; a slow server covers fewer ticks in the wall-clock floor, so the test also needs this many. */
+    private static final int MIN_TICKS = 400;
 
     @GameTest(maxTicks = TICKS + 100)
     public void mockPlayerSurvivesOneMinuteOfTicks(GameTestHelper helper) {
@@ -52,10 +54,10 @@ public class MockPlayersTest {
                 throw helper.assertionException(
                         "the server-joined mock died at %s", mock.player().position());
             }
-            if (System.nanoTime() - deadline <= 0) {
+            if (System.nanoTime() - deadline <= 0 || helper.getTick() < MIN_TICKS) {
                 sleepOneTick();
             } else {
-                if (mock.player().position().distanceTo(spawn) > 1.0) {
+                if (mock.player().position().distanceTo(spawn) > 0.5) {
                     throw helper.assertionException(
                             "the mock is at %s, not at its spawn %s",
                             mock.player().position(), spawn);
@@ -68,7 +70,7 @@ public class MockPlayersTest {
     // The GameTest server ticks unthrottled, so a few seconds of ticks pass in milliseconds unless each tick sleeps.
     private static void sleepOneTick() {
         try {
-            Thread.sleep(POLL_MILLIS);
+            Thread.sleep(FarChunks.POLL_MILLIS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
