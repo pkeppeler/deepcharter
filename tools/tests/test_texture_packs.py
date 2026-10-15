@@ -7,6 +7,7 @@ overlay pack (docs/design/texture-density-2.md) holds no vanilla file, and its o
 ores (docs/design/ores.md) are overlays too: the tests below hold them to the same rules, and to the table of looks in that page.
 """
 import json
+import math
 import re
 import struct
 import sys
@@ -31,6 +32,11 @@ VANILLA_FILES = {"textures/environment/celestial/sun.png", *(f"textures/block/{n
                                                            for suffix in (".png", ".png.mcmeta"))}
 # The vanilla blocks a pack may redraw: the texture density packs redraw stone and deepslate. The layer concept packs (docs/design/layer-concepts-2.md)
 # stand in vanilla andesite and diorite for the rock and rubble of layer 3, which has no blocks of its own until M3 (#504).
+# Delta E of a fleck pixel from the host rock's mean at which the two are plainly different colours (a just noticeable difference is about 2.3).
+DISTINCT = 20.0
+# The floors of the flecks' contrast against a host rock (test_every_ore_stands_out_of_every_rock_it_sits_in).
+MIN_FLECK_MEAN_DELTA_E = 38.0
+MIN_FLECK_CLEAR_SHARE = 0.9
 VANILLA_BLOCKSTATES = {f"minecraft/blockstates/{name}.json" for name in ("stone", "deepslate", "andesite", "diorite")}
 
 
@@ -59,6 +65,23 @@ def ore_models(assets: Path) -> list[Path]:
     """The models of the ore blocks in a pack: those that inherit the overlay parent."""
     return [model for model in sorted((assets / "deepcharter/models/block").glob("*.json"))
             if json.loads(model.read_text()).get("parent") == "deepcharter:block/ore_overlay"]
+
+
+def lab(rgb) -> tuple[float, float, float]:
+    """CIE L*a*b* (D65) of an sRGB colour."""
+    def linear(channel: float) -> float:
+        channel /= 255
+        return channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (linear(c) for c in rgb[:3])
+    xyz = ((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047, 0.2126 * r + 0.7152 * g + 0.0722 * b,
+           (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883)
+    x, y, z = (v ** (1 / 3) if v > 0.008856 else 7.787 * v + 16 / 116 for v in xyz)
+    return 116 * y - 16, 500 * (x - y), 200 * (y - z)
+
+
+def delta_e(a, b) -> float:
+    return math.dist(lab(a), lab(b))
 
 
 def png_size(path: Path) -> tuple[int, int]:
@@ -134,6 +157,35 @@ class TexturePacksTest(unittest.TestCase):
                         found = seams.measure(bytes(pixels), rock_image.width)
                         with self.subTest(block=block, host=host_texture, overlay=index % body["textures"]):
                             self.assertTrue(found.seamless(), f"wrap {found.wrap_ratio:.2f}, rim {found.rim_ratio:.2f}")
+
+    def test_every_ore_stands_out_of_every_rock_it_sits_in(self):
+        """#549: a player reads a wall by lamplight, with no scanner, so the flecks of an ore must differ from the rock they sit in. The measure
+        is CIE76 delta E (a distance in a space built so that equal steps look equal, and that counts hue as well as lightness: teal on green rock
+        and red on brown rock are not told by lightness alone) between each fleck pixel and the mean colour of the host's side textures. A lamp
+        dims every colour alike, so the order holds in the dark. The flecks are the ore's ramp but its darkest shade, which is the rim. A fleck
+        pixel is clear when its delta E is DISTINCT or more. Measured on the textures before #549's retune, the worst were ironium in packed shale
+        (mean 27.9, 62% clear), cicatrium in packed shale (mean 30.8), silverium in green shale (mean 31.8, 41% clear), platinium in green shale (36.4) and einsteinium in green
+        shale (77% clear); after it every ore clears both floors, the lowest being cicatrium in packed shale at 40.5 and silverium in green shale at 41.5, and the floors sit under them."""
+        shipped = texgen.shipped()
+        body = json.loads(texgen.OVERLAYS.read_text())
+
+        def pixels(name: str) -> list[tuple[int, ...]]:
+            image = pngio.decode((shipped.out / f"block/{name}.png").read_bytes())
+            return [tuple(image.pixels[at:at + 4]) for at in range(0, len(image.pixels), 4)]
+
+        for host, rock in body["hosts"].items():
+            rock_pixels = [p for index in range(body["variants"]) for p in pixels(f"{rock}_{index}")]
+            mean = tuple(sum(p[channel] for p in rock_pixels) / len(rock_pixels) for channel in range(3))
+            for block in body["blocks"]:
+                flecks = [p for index in range(body["textures"]) for p in pixels(f"{block}_overlay_{index}")
+                          if p[3] == 255 and p in {colour for layer in shipped.book.recipes[f"block/{block}_overlay_{index}"].layers
+                                                   if layer["op"] in ("cluster", "seams")
+                                                   for colour in shipped.book.palette.ramp(layer["ramp"], block)[1:]}]
+                with self.subTest(block=block, host=host):
+                    self.assertTrue(flecks)
+                    steps = [delta_e(p, mean) for p in flecks]
+                    self.assertGreaterEqual(sum(steps) / len(steps), MIN_FLECK_MEAN_DELTA_E)
+                    self.assertGreaterEqual(sum(step >= DISTINCT for step in steps) / len(steps), MIN_FLECK_CLEAR_SHARE)
 
     def test_only_ore_reaches_the_edge_of_an_overlay(self):
         """Over the host's texture, any pixel on a block's outer ring that is not the ore itself (a shadow, a socket, a tint) draws
