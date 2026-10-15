@@ -31,12 +31,13 @@ import net.minecraft.server.packs.resources.ResourceManager;
  *   "model": "deepcharter:pod/mole",                       the GeckoLib model, geckolib/models/pod/mole.geo.json
  *   "texture": "deepcharter:textures/entity/pod/mole.png", its glowmask is the same name with _glowmask: mole_glowmask.png
  *   "glow": "lit",                                         "lit" while the pod has power, "always" or "never"
- *                                                          the hot mask (#634), drawn while lava burns the hull, is the same name with _hot
  *   "hide": [],                                            bones not drawn (optional)
  *   "cutters": {"0": "tricone", "1": "stacked"},           the drill tier from which each cutter shows (the tier map)
  *   "wreck": {"texture": "...", "glow": "never", "hide": ["rotor"]}
  * }
  * }</pre>
+ *
+ * <p>The hot mask (#634), drawn while lava burns the hull, is the texture's name with {@code _hot}. It is optional: a look without one has no hot look.
  *
  * <p>{@code source} names the file and the pack it came from, for errors. A pack's look that does not load, or does not fit its model and
  * textures, never stops the game: the renderer logs it and draws the mod's own look for that chassis ({@link #readBuiltIn}).
@@ -74,7 +75,7 @@ public record PodLook(
             return texture.withPath(path.substring(0, path.length() - ".png".length()) + "_glowmask.png");
         }
 
-        /** The hot mask the hot-hull layer reads while lava burns the hull: the texture's name and {@code _hot} (#634). */
+        /** The hot mask the hot-hull layer reads while lava burns the hull: the texture's name and {@code _hot} (#634). It may not exist. */
         public Identifier hotmask() {
             String path = texture.getPath();
             return texture.withPath(path.substring(0, path.length() - ".png".length()) + "_hot.png");

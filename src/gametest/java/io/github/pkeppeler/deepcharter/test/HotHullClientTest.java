@@ -6,11 +6,13 @@ import io.github.pkeppeler.deepcharter.client.pod.PodGeoAnimatable;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderState;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
 import io.github.pkeppeler.deepcharter.client.pod.PodHotLayer;
+import io.github.pkeppeler.deepcharter.client.pod.PodLook;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import java.io.StringReader;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -63,6 +65,14 @@ public class HotHullClientTest implements FabricClientGameTest {
                 PodGeoRenderState state = stateOf(client, pod);
                 require(state.hot, "a pod whose hull burns shows the hot hull in its render state");
                 require(PodHotLayer.draws(state), "the hot-hull layer draws over a burning hull");
+                PodHotLayer layer = hotLayer(client, pod);
+                require(
+                        layer.getRenderType(state) != null,
+                        "the hot-hull layer has a render type while the hull burns");
+                require(
+                        layer.getTextureResource(state)
+                                .equals(state.appearance.variant().hotmask()),
+                        "the hot-hull layer draws the look's hot mask");
                 var hotmask = state.appearance.variant().hotmask();
                 require(
                         client.getResourceManager().getResource(hotmask).isPresent(),
@@ -82,8 +92,45 @@ public class HotHullClientTest implements FabricClientGameTest {
                 PodGeoRenderState state = stateOf(client, pod);
                 require(!state.hot, "a pod whose hull has stopped burning shows no hot hull in its render state");
                 require(!PodHotLayer.draws(state), "the hot-hull layer is not drawn once the hull is cool");
+                require(
+                        hotLayer(client, pod).getRenderType(state) == null,
+                        "the hot-hull layer has no render type once the hull is cool");
+                requireHotMaskOptional(client, pod);
             });
         }
+    }
+
+    /** The hot-hull layer the pod's own renderer holds: a renderer that dropped the layer fails here. */
+    private static PodHotLayer hotLayer(Minecraft client, PodEntity pod) {
+        PodGeoRenderer renderer =
+                (PodGeoRenderer) client.getEntityRenderDispatcher().getRenderer(pod);
+        return renderer.getRenderLayers().stream()
+                .filter(PodHotLayer.class::isInstance)
+                .map(PodHotLayer.class::cast)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the pod's renderer has no hot-hull layer"));
+    }
+
+    /**
+     * The mod's look has a hot mask. A look whose intact texture has no {@code _hot} file (a pack that restyles the pod and ships none)
+     * still loads, and has no hot look.
+     */
+    private static void requireHotMaskOptional(Minecraft client, PodEntity pod) {
+        require(
+                PodGeoRenderer.load(client.getResourceManager(), pod.chassis()).hot(),
+                "the mod's own look has a hot mask");
+        PodLook bare = PodLook.parse("a look with no hot mask", new StringReader("""
+                        {"model": "deepcharter:pod/mole", "texture": "deepcharter:textures/entity/pod/mole_wreck.png",
+                         "glow": "never",
+                         "cutters": {"0": "tricone", "1": "stacked", "2": "fluted", "3": "cluster"},
+                         "wreck": {"texture": "deepcharter:textures/entity/pod/mole_wreck.png"}}
+                        """));
+        require(
+                client.getResourceManager().getResource(bare.intact().hotmask()).isEmpty(),
+                "the test's texture has no hot mask, " + bare.intact().hotmask());
+        require(
+                !PodGeoRenderer.validate(client.getResourceManager(), bare).hot(),
+                "a look with no hot mask loads and has no hot look");
     }
 
     private static PodGeoRenderState stateOf(Minecraft client, PodEntity pod) {
