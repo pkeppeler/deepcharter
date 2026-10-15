@@ -817,7 +817,7 @@ HOT_MATERIALS = {
     "paint", "trim", "iron", "frame", "steel", "brass", "tank", "hazard", "drill", "teeth", "cone_dark", "cone_steel", "cone_tooth", "tip",
 }
 # Ember colours from the dimmest texel to the brightest, evenly spaced; HOT_ALPHA lets the hull's own texture show through.
-HOT_RAMP = ((96, 18, 8), (190, 52, 14), (240, 112, 28), (255, 178, 70), (255, 226, 150))
+HOT_RAMP = ((96, 18, 8), (190, 52, 14), (240, 112, 28), (255, 178, 70), (255, 244, 214))
 HOT_ALPHA = 205
 
 
@@ -840,7 +840,7 @@ def hot_mask(model, base):
             for j in range(face.h):
                 for i in range(face.w):
                     brightness = luma(base.get(face.x + i, face.y + j)[:3]) / reference
-                    mask.set(face.x + i, face.y + j, hot_color(brightness * 0.8), HOT_ALPHA)
+                    mask.set(face.x + i, face.y + j, hot_color(brightness * 0.7), HOT_ALPHA)
     return mask
 
 
