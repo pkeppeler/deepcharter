@@ -34,7 +34,8 @@ CLEAN = {
     "a field with an initializer": "private static class Point {\n        private final int x;\n        private final List<String> names = new ArrayList<>();\n        Point(int x) {\n            this.x = x;\n        }\n    }",
     "a field not set from a parameter": "private static class Point {\n        private final int x;\n        private final int y;\n        Point(int x) {\n            this.x = x;\n            this.y = 0;\n        }\n    }",
     "a derived field": "private static class Point {\n        private final int x;\n        private final int doubled;\n        Point(int x) {\n            this.x = x;\n            this.doubled = x * 2;\n        }\n    }",
-    "a constructor that checks its argument": "private static class Point {\n        private final String name;\n        Point(String name) {\n            this.name = Objects.requireNonNull(name);\n        }\n    }",
+    "a constructor that copies its argument": "private static class Point {\n        private final List<String> names;\n        Point(List<String> names) {\n            this.names = List.copyOf(names);\n        }\n    }",
+    "a lock marked with the reason": "// class-ok: the monitor is a lock\n    private static class Lock {\n        private final String name;\n        Lock(String name) {\n            this.name = name;\n        }\n    }\n    void run(Lock lock) {\n        synchronized (lock) {\n        }\n    }",
     "a constructor that ignores a parameter": "private static class Point {\n        private final int x;\n        Point(int x, int unused) {\n            this.x = x;\n        }\n    }",
     "a second constructor": "private static class Point {\n        private final int x;\n        Point(int x) {\n            this.x = x;\n        }\n        Point() {\n            this(0);\n        }\n    }",
     "a super call": "private static class Point {\n        private final int x;\n        Point(int x) {\n            super();\n            this.x = x;\n        }\n    }",
@@ -47,20 +48,10 @@ CLEAN = {
 }
 # Files that use object identity are left alone: a record compares by value.
 IDENTITY = {
-    "IdentityMapFixture.java": """
-public class IdentityMapFixture {
-    private final Map<Point, Integer> seen = new IdentityHashMap<>();
-
-    private static class Point {
-        private final int x;
-
-        Point(int x) {
-            this.x = x;
-        }
-    }
+    "IdentityHashMap": "private final Map<Point, Integer> seen = new IdentityHashMap<>();",
+    "identityHashCode": "int id(Object o) {\n        return System.identityHashCode(o);\n    }",
 }
-""",
-}
+POINT = "private static class Point {\n        private final int x;\n        Point(int x) {\n            this.x = x;\n        }\n    }"
 # label: source, line the gate reports (class line is 3 in a holder() file when `above` is empty).
 BAD = {
     "private": ("private static class Point {\n        private final int x;\n        private final int y;\n        Point(int x, int y) {\n            this.x = x;\n            this.y = y;\n        }\n    }", 3),
@@ -71,6 +62,9 @@ BAD = {
     "generic parameter with commas and annotations": ("private static class Pair {\n        private final Map<String, Integer> byName;\n        private final @Nullable String label;\n        Pair(Map<String, Integer> byName, @Nullable String label) {\n            this.byName = byName;\n            this.label = label;\n        }\n    }", 3),
     "with methods and a static constant": ("private static class Point {\n        private static final int ORIGIN = 0;\n        private final int x;\n        Point(int x) {\n            this.x = x;\n        }\n        int twice() {\n            return x * 2;\n        }\n    }", 3),
     "implements an interface": ("private static class Point implements Comparable<Point> {\n        private final int x;\n        Point(int x) {\n            this.x = x;\n        }\n        public int compareTo(Point other) {\n            return Integer.compare(x, other.x);\n        }\n    }", 3),
+    "a null-checked constructor": ("private static class Point {\n        private final String name;\n        Point(String name) {\n            this.name = Objects.requireNonNull(name);\n        }\n    }", 3),
+    "a null-checked constructor with a message": ("private static class Point {\n        private final String name;\n        private final int x;\n        Point(String name, int x) {\n            this.name = Objects.requireNonNull(name, \"name\");\n            this.x = x;\n        }\n    }", 3),
+    "synchronized elsewhere in the file": (POINT + "\n    void run(Object lock) {\n        synchronized (lock) {\n        }\n    }", 3),
     "a bare marker": ("// class-ok:\n    private static class Point {\n        private final int x;\n        Point(int x) {\n            this.x = x;\n        }\n    }", 4),
     "a marker two lines above": ("// class-ok: too far above\n    int gap = 0;\n    private static class Point {\n        private final int x;\n        Point(int x) {\n            this.x = x;\n        }\n    }", 5),
 }
@@ -81,9 +75,9 @@ def fixture(extra: dict[str, str]) -> dict[str, str]:
 
 
 CASES = {
-    "clean": Case(fixture({**{f"Clean{i}.java": holder(body) for i, body in enumerate(CLEAN.values())}, **IDENTITY}), None, gate="record_holder"),
     **{label: Case(fixture({"HolderFixture.java": holder(body)}), None, gate="record_holder") for label, (body, _) in BAD.items()},
     **{f"clean/{label}": Case(fixture({"HolderFixture.java": holder(body)}), None, gate="record_holder") for label, body in CLEAN.items()},
+    **{f"identity/{label}": Case(fixture({"HolderFixture.java": holder(POINT + "\n    " + body)}), None, gate="record_holder") for label, body in IDENTITY.items()},
 }
 
 
@@ -92,9 +86,17 @@ def outcome(label: str) -> gate_batch.Result:
 
 
 class RecordHolderGateTest(unittest.TestCase):
-    def test_exempt_and_marked_forms_pass(self):
-        result = outcome("clean")
-        self.assertTrue(result.ok, result.message)
+    def test_a_file_using_object_identity_passes(self):
+        for label in IDENTITY:
+            with self.subTest(label):
+                result = outcome(f"identity/{label}")
+                self.assertTrue(result.ok, result.message)
+
+    def test_null_check_message_says_to_use_a_compact_constructor(self):
+        for label in ("a null-checked constructor", "a null-checked constructor with a message"):
+            with self.subTest(label):
+                self.assertIn("move the null check into a compact constructor", outcome(label).message)
+        self.assertNotIn("compact constructor", outcome("private").message.split("\n", 1)[1])
 
     def test_each_exempt_form_passes_alone(self):
         for label in CLEAN:
