@@ -186,6 +186,7 @@ public class SoundEventsTest {
         }
     }
 
+    /** The map is a repo file, not a resource. Game tests run in build/run/gameTest, so walk up to the repo. */
     private static Path repoRoot(GameTestHelper helper) {
         Path dir = Path.of("").toAbsolutePath();
         while (dir != null && !Files.isRegularFile(dir.resolve(MAP))) {
@@ -197,16 +198,8 @@ public class SoundEventsTest {
         return dir;
     }
 
-    /** The map is a repo file, not a resource. Game tests run in build/run/gameTest, so walk up to the repo. */
     private static Set<String> mappedIds(GameTestHelper helper) throws IOException {
-        Path dir = Path.of("").toAbsolutePath();
-        while (dir != null && !Files.isRegularFile(dir.resolve(MAP))) {
-            dir = dir.getParent();
-        }
-        if (dir == null) {
-            throw failure(helper, "cannot find %s above %s", MAP, Path.of("").toAbsolutePath());
-        }
-        List<String> lines = Files.readAllLines(dir.resolve(MAP));
+        List<String> lines = Files.readAllLines(repoRoot(helper).resolve(MAP));
         Set<String> ids = new LinkedHashSet<>();
         for (String line : lines) {
             String trimmed = line.strip();

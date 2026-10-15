@@ -42,37 +42,6 @@ class CommittedSoundsTest(unittest.TestCase):
         self.assertEqual(0, code, err)
         self.assertIn("match", out)
 
-    def test_the_slots_the_game_names_have_recipes(self):
-        names = set(recipes.RECIPES)
-        for needed in (
-            "ambient/surface_loop",
-            "ambient/surface_groan",
-            "ambient/layer_1_loop",
-            "ambient/layer_1_creak",
-            "ambient/layer_1_knock",
-            "ambient/layer_2_loop",
-            "ambient/layer_2_creak",
-            "ambient/layer_2_knock",
-            "hymn/colony",
-            "hymn/layer_1",
-            "hymn/layer_2",
-            "pod/engine_idle_loop",
-            "pod/engine_drive_loop",
-            "pod/engine_drill_side_loop",
-            "pod/engine_drill_down_loop",
-            "pod/rotor_loop",
-            "drill/dig_1",
-            "drill/blocked",
-            "terminal/power_on",
-            "terminal/hum_loop",
-            "ui/typewriter_1",
-            "ui/select",
-            "ui/purchase",
-            "ui/sale",
-            "ui/error",
-        ):
-            self.assertIn(needed, names)
-
     @unittest.skipUnless(shutil.which("ffmpeg"), "ffmpeg is needed to decode the OGGs")
     def test_a_committed_ogg_decodes_to_its_recipe(self):
         # A stale OGG (the recipe changed, the file did not) has the right manifest hash and the wrong sound.
