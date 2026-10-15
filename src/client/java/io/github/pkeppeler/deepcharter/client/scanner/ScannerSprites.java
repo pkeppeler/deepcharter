@@ -17,6 +17,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The block-atlas sprites that draw a scanner cell, bottom layer first: the layers the active resource pack's model of the block puts on its
@@ -33,7 +34,8 @@ final class ScannerSprites {
     /** Layers by block state for the model set they were read from; a resource reload bakes a new set, which drops them all. */
     private static final IdentityHashMap<BlockState, List<TextureAtlasSprite>> BY_STATE = new IdentityHashMap<>();
 
-    private static BlockStateModelSet readFrom;
+    /** The model set {@code BY_STATE} was read from; null before the first cell is drawn. */
+    private static @Nullable BlockStateModelSet readFrom;
 
     private ScannerSprites() {}
 
