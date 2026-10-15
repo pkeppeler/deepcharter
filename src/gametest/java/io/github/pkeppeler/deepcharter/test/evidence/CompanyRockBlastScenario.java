@@ -195,7 +195,10 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
                 new BlockPos(X + 3, FLOOR_Y - 1, Z + 8),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
-        level.setBlock(new BlockPos(X, FLOOR_Y, Z + 3), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
-        level.setBlock(new BlockPos(X, FLOOR_Y - 2, Z + 2), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
+        // Two pairs of lamps, one over each half of the slab's face, so that the face is lit evenly from end to end.
+        for (int lampX : new int[] {X - 2, X + 1}) {
+            level.setBlock(new BlockPos(lampX, FLOOR_Y, Z + 3), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
+            level.setBlock(new BlockPos(lampX, FLOOR_Y - 2, Z + 2), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
+        }
     }
 }

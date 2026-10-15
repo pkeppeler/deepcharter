@@ -19,7 +19,9 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.IntConsumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -299,6 +301,178 @@ public class CompanyRockLookTest {
                 helper.succeed();
             }
         });
+    }
+
+    /** A cell the watched charge must leave alone while it burns: still this block, and for Company rock still unwidened. */
+    private record Bystander(BlockPos pos, Block block, String why) {}
+
+    private static void checkBystanders(GameTestHelper helper, ServerLevel level, List<Bystander> bystanders) {
+        for (Bystander b : bystanders) {
+            BlockState now = level.getBlockState(b.pos());
+            if (!now.is(b.block()) || (now.is(companyRock()) && now.getValue(CompanyRockBlock.CRACK) != 0)) {
+                throw failure(helper, "%s: %s should be untouched, it is %s", b.why(), b.pos(), now);
+            }
+        }
+    }
+
+    /**
+     * Sets {@code charge} under a Mole resting at {@code (x, FLOOR, z)}, moves the pod clear, and calls {@code during} every tick of the fuse (with the
+     * ticks burned) and {@code after} once the blast is past, which ends the test.
+     */
+    private static void burn(
+            GameTestHelper helper,
+            ServerLevel level,
+            int x,
+            int z,
+            Consumable charge,
+            IntConsumer during,
+            Runnable after) {
+        MockPlayer pilot = MockPlayers.join(helper, "company-rock-burn-" + x + "-" + z);
+        pilot.player().setGameMode(GameType.SURVIVAL);
+        Vec3 at = new Vec3(x, FLOOR, z);
+        pilot.teleportTo(level, at, 0f, 0f);
+        PodEntity[] pod = new PodEntity[1];
+        FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+            pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            pod[0].setPos(at);
+            level.addFreshEntity(pod[0]);
+            if (!pilot.player().startRiding(pod[0])) {
+                throw failure(helper, "the pilot could not mount the pod");
+            }
+        });
+        int[] setAt = {-1};
+        TestTicks.each(helper, () -> {
+            if (pod[0] == null || !pod[0].onGround()) {
+                return;
+            }
+            if (setAt[0] < 0) {
+                InteractionResult result = ChargeUse.use(pilot.player(), charge);
+                if (!result.consumesAction()) {
+                    throw failure(helper, "the charge should be set, the use gave %s", result);
+                }
+                setAt[0] = pod[0].tickCount;
+                pod[0].setPos(pod[0].getX() + FAR, pod[0].getY(), pod[0].getZ());
+                return;
+            }
+            int burned = pod[0].tickCount - setAt[0];
+            if (burned < TUNING.chargeFuseTicks() - SLACK) {
+                during.accept(burned);
+                return;
+            }
+            if (burned < TUNING.chargeFuseTicks() + SLACK) {
+                return;
+            }
+            after.run();
+            pod[0].discard();
+            helper.succeed();
+        });
+    }
+
+    /** Only the Company rock the blast will clear gives: rock just outside the volume, and natural rock inside it, are never touched. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aBlastingChargeWidensOnlyTheCompanyRockItWillClear(GameTestHelper helper) {
+        int z = Z + 120;
+        int depth = TUNING.chargeDepth();
+        ServerLevel level = layer(helper, 2);
+        BlockState rock = company().in(LayerBlocks.GREEN_SHALE.defaultBlockState());
+        RoomCarver.carve(level, X - ROOM, X + ROOM, FLOOR - 8, FLOOR - 1, z - ROOM, z + ROOM, LayerBlocks.GREEN_SHALE);
+        RoomCarver.carve(level, X - ROOM, X + ROOM, FLOOR, FLOOR + 10, z - ROOM, z + ROOM, Blocks.AIR);
+        BlockPos target = new BlockPos(X, FLOOR - 1, z);
+        BlockPos beside = new BlockPos(X + 2, FLOOR - 1, z);
+        BlockPos below = new BlockPos(X, FLOOR - 1 - depth, z);
+        BlockPos natural = new BlockPos(X - 1, FLOOR - 1, z);
+        for (BlockPos cell : List.of(target, beside, below)) {
+            level.setBlock(cell, rock, 2);
+        }
+        List<Bystander> bystanders = List.of(
+                new Bystander(beside, companyRock(), "Company rock just beside the volume"),
+                new Bystander(below, companyRock(), "Company rock just under the volume"),
+                new Bystander(natural, LayerBlocks.GREEN_SHALE, "natural rock inside the volume"));
+        int[] widest = {0};
+        burn(
+                helper,
+                level,
+                X,
+                z,
+                Consumable.BLASTING_CHARGE,
+                burned -> {
+                    checkBystanders(helper, level, bystanders);
+                    BlockState now = level.getBlockState(target);
+                    if (now.is(companyRock())) {
+                        widest[0] = Math.max(widest[0], now.getValue(CompanyRockBlock.CRACK));
+                    }
+                },
+                () -> {
+                    if (widest[0] != CompanyRockBlock.MAX_CRACK) {
+                        throw failure(
+                                helper,
+                                "the rock to clear should widen to %d, it reached %d",
+                                CompanyRockBlock.MAX_CRACK,
+                                widest[0]);
+                    }
+                    checkBystanders(helper, level, bystanders.subList(0, 2));
+                    if (!level.getBlockState(target).isAir()
+                            || !level.getBlockState(natural).isAir()) {
+                        throw failure(
+                                helper, "the blast should have cleared the rock and the natural rock in its volume");
+                    }
+                });
+    }
+
+    /** In layer 1: a shaped charge widens the contiguous Company rock run of its column, not Company rock under a stone, nor rock beside its footprint. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aShapedChargeInLayerOneWidensOnlyTheRunItWillClear(GameTestHelper helper) {
+        int z = Z + 240;
+        ServerLevel level = layer(helper, 1);
+        BlockState rock = company().in(LayerBlocks.PACKED_SHALE.defaultBlockState());
+        RoomCarver.carve(
+                level, X - ROOM, X + ROOM, FLOOR - 12, FLOOR - 1, z - ROOM, z + ROOM, LayerBlocks.PACKED_SHALE);
+        RoomCarver.carve(level, X - ROOM, X + ROOM, FLOOR, FLOOR + 10, z - ROOM, z + ROOM, Blocks.AIR);
+        List<BlockPos> run =
+                List.of(new BlockPos(X, FLOOR - 1, z), new BlockPos(X, FLOOR - 2, z), new BlockPos(X, FLOOR - 3, z));
+        BlockPos underStone = new BlockPos(X, FLOOR - 5, z);
+        BlockPos beside = new BlockPos(X + 2, FLOOR - 1, z);
+        for (BlockPos cell : run) {
+            level.setBlock(cell, rock, 2);
+        }
+        level.setBlock(new BlockPos(X, FLOOR - 4, z), Blocks.STONE.defaultBlockState(), 2);
+        level.setBlock(underStone, rock, 2);
+        level.setBlock(beside, rock, 2);
+        List<Bystander> bystanders = List.of(
+                new Bystander(underStone, companyRock(), "Company rock under a stone, not contiguous"),
+                new Bystander(beside, companyRock(), "Company rock beside the footprint"));
+        int[] widest = {0};
+        burn(
+                helper,
+                level,
+                X,
+                z,
+                Consumable.SHAPED_CHARGE,
+                burned -> {
+                    checkBystanders(helper, level, bystanders);
+                    BlockState now = level.getBlockState(run.getFirst());
+                    if (now.is(companyRock())) {
+                        if (now.getValue(OreBlock.HOST) != Host.PACKED_SHALE) {
+                            throw failure(helper, "the rock in layer_1 should stay in packed shale: %s", now);
+                        }
+                        widest[0] = Math.max(widest[0], now.getValue(CompanyRockBlock.CRACK));
+                    }
+                },
+                () -> {
+                    if (widest[0] != CompanyRockBlock.MAX_CRACK) {
+                        throw failure(
+                                helper,
+                                "the run to clear should widen to %d, it reached %d",
+                                CompanyRockBlock.MAX_CRACK,
+                                widest[0]);
+                    }
+                    checkBystanders(helper, level, bystanders);
+                    for (BlockPos cell : run) {
+                        if (!level.getBlockState(cell).isAir()) {
+                            throw failure(helper, "the shaped charge should have cleared %s", cell);
+                        }
+                    }
+                });
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.

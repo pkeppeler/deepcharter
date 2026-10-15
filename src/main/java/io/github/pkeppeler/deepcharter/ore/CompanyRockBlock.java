@@ -61,6 +61,8 @@ public final class CompanyRockBlock extends Block {
             return;
         }
         level.setBlock(pos, state.setValue(CRACK, stage), Block.UPDATE_CLIENTS);
+        // scheduleTick ignores a pos that already has a tick, so an overlapping charge's crack may close early: a
+        // flicker only (ADR 0056).
         level.scheduleTick(pos, rock, closeAfterTicks);
     }
 
