@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.pod;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
+import java.util.Objects;
 import java.util.OptionalInt;
 import net.minecraft.world.level.Level;
 
@@ -81,7 +82,10 @@ public final class SignalDecay {
         if (intensity >= 1) {
             return Fault.DROP;
         }
-        double threshold = SignalDecayTuning.DEFAULT.thresholds().get(instrument);
+        Double thresholdOrNull = SignalDecayTuning.DEFAULT.thresholds().get(instrument);
+        double threshold = Objects.requireNonNull(
+                thresholdOrNull,
+                () -> "no signal-decay threshold for " + instrument + ": SignalDecayTuning checks every instrument");
         if (intensity <= threshold) {
             return Fault.NONE;
         }
