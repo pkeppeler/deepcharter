@@ -170,7 +170,7 @@ dependencies {
 
 	errorprone(libs.errorprone.core)
 	errorprone(libs.nullaway)
-	// @NullMarked and @Nullable are source-retention annotations: not needed at run time.
+	// @NullMarked and @Nullable: not needed at run time.
 	compileOnly(libs.jspecify)
 	"clientCompileOnly"(libs.jspecify)
 	"gametestCompileOnly"(libs.jspecify)
