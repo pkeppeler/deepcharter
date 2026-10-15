@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
+import io.github.pkeppeler.deepcharter.ore.CompanyRockBlock;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -94,7 +96,7 @@ public class CompanyRockScenario extends EvidenceScenario {
                     world.serverDo(server -> build(server.getLevel(LayerChain.dimension(layer)), layer));
                 }
                 for (int layer : List.of(1, 2)) {
-                    world.serverDo(server -> place(server.getLevel(LayerChain.dimension(layer))));
+                    world.serverDo(server -> place(server.getLevel(LayerChain.dimension(layer)), layer));
                     shoot(context, world, layer);
                 }
                 frame(context);
@@ -215,10 +217,12 @@ public class CompanyRockScenario extends EvidenceScenario {
         level.setBlock(BlockPos.containing(absolute(eye)), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
     }
 
-    /** Sets every patch of Company Rock of a layer. */
-    private static void place(ServerLevel level) {
+    /** Sets every patch of Company Rock of a layer, in the rock of that layer as the worldgen sets it (ADR 0056), so layer 2's joints glow. */
+    private static void place(ServerLevel level, int layer) {
+        BlockState rock = ((CompanyRockBlock) HazardBlocks.COMPANY_ROCK)
+                .in((layer == 1 ? LayerBlocks.PACKED_SHALE : LayerBlocks.GREEN_SHALE).defaultBlockState());
         for (BlockPos at : PATCHES) {
-            level.setBlock(absolute(at), HazardBlocks.COMPANY_ROCK.defaultBlockState(), Block.UPDATE_ALL);
+            level.setBlock(absolute(at), rock, Block.UPDATE_ALL);
         }
     }
 

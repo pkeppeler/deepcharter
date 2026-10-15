@@ -1,0 +1,130 @@
+{
+  "ambient/layer_1_creak": {
+    "ogg_sha256": "3d06681e1334e584cef117bd7b903046a45aed40c7077f298d30f30b2fceb936",
+    "pcm_sha256": "6fbbc3382c9b9f78a8c9df622925df57a78d97967252b10ba9a81fe9520268ea"
+  },
+  "ambient/layer_1_knock": {
+    "ogg_sha256": "b2b5d15573bc29d5d75b52a1798ee8ba6f359847feba19b640297bf584c2e552",
+    "pcm_sha256": "3d45b58aed1f156000f3d5bf053cb758035bd198b649d194c22a2d5dfa972312"
+  },
+  "ambient/layer_1_loop": {
+    "ogg_sha256": "9077da4f55e7f5e80ea163254875e7f6f145b9a2c579b4be3cf1ee5ab93fcce0",
+    "pcm_sha256": "eecce975b77dc37279224f2fd772653dcaf809c10a05d498458f2d1032a4acde"
+  },
+  "ambient/layer_2_creak": {
+    "ogg_sha256": "e15f4a15be0a9ed613794dceb930ff7ccd1104d23c66e336fe375abeb9077019",
+    "pcm_sha256": "17bb17cd3cd1b03af255b6387eef5a43d0dd3399a5a88ae3b01693466cbf9c88"
+  },
+  "ambient/layer_2_knock": {
+    "ogg_sha256": "b0e8a17c3573e5e210f4459f455b7226420830aed749b57c2befcd5dd640ef34",
+    "pcm_sha256": "fd1673f9ccf52fda7a1cd18c0e1a92f35a1af40d9a913218e520a610f1694b15"
+  },
+  "ambient/layer_2_loop": {
+    "ogg_sha256": "034d8021650262a41f1cdbbd77e9aae4bf90a830ad0d7428add1b83d8fd42ff8",
+    "pcm_sha256": "cd3c9e43f346820b48e6b37843f1e70b6da2e221f9b8b4cdd0e866d40ad8c53d"
+  },
+  "ambient/surface_groan": {
+    "ogg_sha256": "458b376f16a80098252bb985c0a49ad5fa2d160e5b5ad7c9cde43806dceb7bb7",
+    "pcm_sha256": "881d28f710b0faa18b9949c72fa7388d8076590802924ca0d85482aaace27b2b"
+  },
+  "ambient/surface_loop": {
+    "ogg_sha256": "d990d0a403c128fc6219aa3b71d4aa50b76c5a180d8be0c2c99d1417f449a4f0",
+    "pcm_sha256": "50828ccfcb42f8738b36da6e0b80d6904eb35b00294bbe588e6b4a7eba92b44e"
+  },
+  "drill/blocked": {
+    "ogg_sha256": "e5f7226dc08b5da5ed91695f7ecc0dbdf4914c97a4a34c3bf9d3b17aca764553",
+    "pcm_sha256": "61a2da2ee2cb107a2936482fa55176c8f3117cd272871abe26a843bc509b2f5a"
+  },
+  "drill/dig_1": {
+    "ogg_sha256": "06642e5b7730957488296f03412c10cd90bb9033a127371124f35edf40325c3c",
+    "pcm_sha256": "8ae766cd258bafa542ca97e63fa8836a168b2ad4e09790e37a4c956837da7879"
+  },
+  "drill/dig_2": {
+    "ogg_sha256": "3f278e4f03c177f9fce10b5b323ea2224353a049d7695627ce31fe6fdf75ebf9",
+    "pcm_sha256": "0ae01ce23f10690cf2c37433092d25d06bd107ab4200cc331323c8fc9d37c111"
+  },
+  "drill/dig_3": {
+    "ogg_sha256": "4769b8d799fd675940ebd73f02ab8b9ef5b0bccf8259f706939803b13f5f9fb0",
+    "pcm_sha256": "389f3b2cb78421e548beffb352f8b9f53157e4ef55bae647b88e3f79d433b39f"
+  },
+  "hymn/colony": {
+    "ogg_sha256": "8675848775f37414c46e1ec2413919dbb20b49ccef657177a5ec0ffff727cc02",
+    "pcm_sha256": "5b5ecf18aaaa5c6155225de9aeb204c9f75da8db4c01566c9b5cc18e5930b045"
+  },
+  "hymn/layer_1": {
+    "ogg_sha256": "82426c13b329f72884cdd88d4543030e0f2ce2e40f9c421954e0604d3a635fff",
+    "pcm_sha256": "5b4fffc673f361e31341fbc8792a8ca6692684758ef8ce9f3d215c568c9cc552"
+  },
+  "hymn/layer_2": {
+    "ogg_sha256": "316bd0416597071a4aa7f6b307207d4dea38a2f441ffb398537731bf68fcb35a",
+    "pcm_sha256": "16c0ca5fadcd1440abf14e7836323f5ea7ccf1a72ab9dc8b5844864d3dfca8da"
+  },
+  "music/rest": {
+    "ogg_sha256": "aeea2bea583744c49e952da6e6658417b7eb2bc903abd7cc622f1e6766b288cb",
+    "pcm_sha256": "a8df041925e5c1bb9388fc80d5664827c8ca7ee6a7feff2deb78210b103d95af"
+  },
+  "pod/engine_drill_down_loop": {
+    "ogg_sha256": "fb1d22bf180906c66f5a693674529e20a20c170823f1aaae62fd93e48455d79e",
+    "pcm_sha256": "8ae538df8f7cdac5d04343ffab972f9c8cbf9e9c431f07aa21507a950fec1d1a"
+  },
+  "pod/engine_drill_side_loop": {
+    "ogg_sha256": "207ee6cad6199dc2ff7c9b4df9e10df6ba9881d100bdc8ebe4ad457bd9d2d19c",
+    "pcm_sha256": "1fd1e4f29c892063a24c56dd0212a19c479e874a9e1ccc9eab91be35ab639d64"
+  },
+  "pod/engine_drive_loop": {
+    "ogg_sha256": "8101eefb4228bf5fa667b79f652a74f855d2cf0a37d6e36596f7fe100b11b7b4",
+    "pcm_sha256": "5757f22481b4808a5cc56ec41d6a4b6a68ac3873ded5f847bcde0752d9734780"
+  },
+  "pod/engine_idle_loop": {
+    "ogg_sha256": "74acff21486d29282ee08c5381bf4325668212f1d3b53ae2824a57babbf922d1",
+    "pcm_sha256": "9e4018e5b5c39cf233d81dd65a94c5cfe2de475469d816a34ce740dfccc7d2c3"
+  },
+  "pod/rotor_loop": {
+    "ogg_sha256": "7b39ce426f31e74e18cc4058bd7c93af971346182b358eb804c65c1f4a820dd5",
+    "pcm_sha256": "f129baaf138e7fc2c1b4ec0b229899c3fc5b37b8bbc87c05061b967c55d3389e"
+  },
+  "terminal/hum_loop": {
+    "ogg_sha256": "64c6c38d093760581afedf6b9fce716348da71cbff195020304bc09dfd89f465",
+    "pcm_sha256": "21b0470b9051f93f7fb0fc76d90e6946aa3127ab98dbb245fddf46b24f9c609f"
+  },
+  "terminal/power_on": {
+    "ogg_sha256": "229cfc972da246771e4ca98dfc230ce619e165ff51a7abc9dc76e9622bf00610",
+    "pcm_sha256": "f38f9b3993980a0b4d3b3c5355b21a8ca2285b68e36e43b11ca8ac0f635f37fa"
+  },
+  "ui/error": {
+    "ogg_sha256": "ada5085bbd02d1b673fbbe432645fc55b30d7dcce64391600ebaa80af1d39ec8",
+    "pcm_sha256": "632ad0ad6778fef59dedc7e957ac3f374c8f3b20346619db9869ad87a0d8e593"
+  },
+  "ui/hover": {
+    "ogg_sha256": "b685c2504c75a701f3fc260ae7312a03711ba398b5a10d4f596297d7f51800ee",
+    "pcm_sha256": "34ae7cb0e9efd330899980938f52e56e34d6874536840df243b872d75ac8a387"
+  },
+  "ui/purchase": {
+    "ogg_sha256": "3697d844902460dad791a8fbe3b2e86e7a3830fd27a19298ce4ae43b3a311131",
+    "pcm_sha256": "c9a443ee87eb579dc80bda4772eeb4c6146f0ae8d34615e796d71b990ed6c426"
+  },
+  "ui/refused": {
+    "ogg_sha256": "960f7c5af713c1eddb593c73915c346c8873f04127c6b7f31d55e15480300b59",
+    "pcm_sha256": "a7e550e909710f5c6d975ebd364003f807922f5b785df5d647dc6bcb60e280cb"
+  },
+  "ui/sale": {
+    "ogg_sha256": "fdf9fbc57ce41c71fc69238ffcef426afe99cbd344bf07fd0a2f5dc11a09d83c",
+    "pcm_sha256": "e29038f22124a564f7f884e7880e1fb64f8c0cfe5768b43bc51187eef8d6d807"
+  },
+  "ui/select": {
+    "ogg_sha256": "8115c50725f10a0f4ec6ce690c3fd6950eb346409a1047f3df1a9fd79ae11ebb",
+    "pcm_sha256": "4753dc0c777f6b6bcf6e8b8f25f934207a85cb814365501d3f139954de2b5003"
+  },
+  "ui/typewriter_1": {
+    "ogg_sha256": "c1d8c84ed26dbfc6851bbbfe47b642023bca2aba37e21b2f835a8b72567557c4",
+    "pcm_sha256": "3bd55ce8ac5616998bde2740bdd4f1d82314b9593c23e860697abc4bd9eac062"
+  },
+  "ui/typewriter_2": {
+    "ogg_sha256": "32f7260890df0ffced9545be3302fbe979ac687a923af060d136dc55c8e2a6fc",
+    "pcm_sha256": "f245fe1d78304f029448ced80a497ab5b5bd46b40e48768bf73d6988dafdeaee"
+  },
+  "ui/typewriter_3": {
+    "ogg_sha256": "a8e777638c755d6f07c8a176d996067659b927512a9ec76323dab1776a70ca12",
+    "pcm_sha256": "e88e0b0e38799faa11d7d7dd5f9d0dbbabe3f90076422b31ab3eda578de72502"
+  }
+}

@@ -10,8 +10,10 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
+import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,6 +32,7 @@ public final class MockPlayer {
     private final BooleanSupplier ownerDone;
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
+    private final List<Identifier> sounds = new ArrayList<>();
     private boolean loaded;
 
     MockPlayer(
@@ -53,6 +56,11 @@ public final class MockPlayer {
     /** Every chat message (not action bar) the server has sent this player so far, oldest first. Read on the mock's tick, so it lags by one. */
     public List<Component> chatMessages() {
         return List.copyOf(chat);
+    }
+
+    /** The id of every sound the server has played to this player alone (a sound entity packet) so far, oldest first. Read on the mock's tick, so it lags by one. */
+    public List<Identifier> soundsHeard() {
+        return List.copyOf(sounds);
     }
 
     public ServerPlayer player() {
@@ -137,6 +145,9 @@ public final class MockPlayer {
             try {
                 if (outbound instanceof ClientboundSystemChatPacket packet) {
                     (packet.overlay() ? actionBar : chat).add(packet.content());
+                }
+                if (outbound instanceof ClientboundSoundEntityPacket packet) {
+                    sounds.add(packet.getSound().value().location());
                 }
                 if (outbound instanceof ClientboundKeepAlivePacket keepAlive && player.connection != null) {
                     player.connection.handleKeepAlive(new ServerboundKeepAlivePacket(keepAlive.getId()));

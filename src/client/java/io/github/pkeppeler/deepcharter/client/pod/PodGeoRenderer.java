@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.OptionalInt;
 import java.util.WeakHashMap;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -32,6 +33,7 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Draws a pod of one chassis with GeckoLib (ADR 0030, #243): the model, textures and tier map of its {@link PodLook}, its bones
@@ -48,7 +50,7 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
      * What a pod shows: the cutter its drill tier picks (null for a model with one plain cutter), its variant, intact or wreck, and the paint
      * colour of its charter (ARGB) when its hull is painted: an intact pod of a registered owner, on a look that has a paint mask.
      */
-    public record Appearance(String cutter, PodLook.Variant variant, boolean wrecked, OptionalInt paint) {
+    public record Appearance(@Nullable String cutter, PodLook.Variant variant, boolean wrecked, OptionalInt paint) {
         /** Whether the glowmask is drawn, given whether the pod's lamps are on. */
         public boolean glows(boolean lit) {
             return switch (variant.glow()) {
@@ -189,10 +191,11 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
     }
 
     @Override
-    public void addRenderData(PodGeoAnimatable animatable, PodEntity pod, PodGeoRenderState state, float partialTick) {
+    public void addRenderData(
+            PodGeoAnimatable animatable, @Nullable PodEntity podOrNull, PodGeoRenderState state, float partialTick) {
+        PodEntity pod = Objects.requireNonNull(podOrNull, "GeckoLib gives addRenderData the pod it draws");
         Appearance appearance = appearanceOf(pod);
-        state.appearance = appearance;
-        state.texture = textureOf(appearance);
+        state.show(appearance, textureOf(appearance));
         state.cabHidden = FrontCameraFeed.hidesCab(pod);
         motions.computeIfAbsent(pod, ignored -> new PodMotion())
                 .advance(pod, state, pose.mountRestPitch(), spinScaleOf(appearance));
@@ -234,7 +237,7 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
             // view.
             geo.bones().forEach(bone -> snapshots.ifPresent(bone.name(), snapshot -> snapshot.skipRender(true)));
         }
-        for (String name : hiddenBones(state.appearance)) {
+        for (String name : hiddenBones(state.appearance())) {
             snapshots.ifPresent(name, snapshot -> snapshot.skipRender(true).skipChildrenRender(true));
         }
     }

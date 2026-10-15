@@ -8,10 +8,12 @@ import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay.Fault;
+import java.util.Objects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.RandomSource;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The signal decay (#502) as the cockpit draws it in one frame: the {@link SignalDecay} intensity of the pod the local player sits, its seed and the time cell, and what
@@ -26,9 +28,10 @@ public final class CockpitDecay {
     private final long seed;
     private final long cell;
     private final long tick;
-    private final DecayLook look;
+    /** Null only for {@link #CLEAR}, which has no decay to paint. */
+    private final @Nullable DecayLook look;
 
-    private CockpitDecay(double intensity, long seed, long cell, long tick, DecayLook look) {
+    private CockpitDecay(double intensity, long seed, long cell, long tick, @Nullable DecayLook look) {
         this.intensity = intensity;
         this.seed = seed;
         this.cell = cell;
@@ -49,6 +52,10 @@ public final class CockpitDecay {
                 Math.floorDiv(tick, (long) look.decay().cellTicks()),
                 tick,
                 look.decay());
+    }
+
+    private DecayLook look() {
+        return Objects.requireNonNull(look, "a clear decay has no look: dead() and noise() run only above intensity 0");
     }
 
     /** The pod's decay now, 0 (none) to 1 (the blackout). */
@@ -107,6 +114,7 @@ public final class CockpitDecay {
 
     /** Fills {@code area} with the dead colour: an instrument that is dark. */
     public void dead(GuiGraphicsExtractor graphics, Decal area) {
+        DecayLook look = look();
         int left = area.left(graphics.guiWidth());
         int top = area.top(graphics.guiHeight());
         graphics.fill(left, top, left + area.width(), top + area.height(), look.deadColor());
@@ -117,6 +125,7 @@ public final class CockpitDecay {
      * seed and the tick, so a still taken at one tick is the same on every run.
      */
     public void noise(GuiGraphicsExtractor graphics, Decal area) {
+        DecayLook look = look();
         double level = fault(Part.SCANNER) == Fault.JUMP ? 1.0 : intensity * look.baseNoise();
         int left = area.left(graphics.guiWidth());
         int top = area.top(graphics.guiHeight());

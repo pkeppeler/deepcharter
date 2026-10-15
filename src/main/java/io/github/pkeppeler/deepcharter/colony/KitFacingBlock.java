@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.colony;
 
 import java.util.Map;
+import java.util.Objects;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -39,6 +40,6 @@ class KitFacingBlock extends HorizontalDirectionalBlock {
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return shapes.get(state.getValue(FACING));
+        return Objects.requireNonNull(shapes.get(state.getValue(FACING)), "the shapes cover every facing");
     }
 }

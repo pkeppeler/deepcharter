@@ -1,0 +1,7 @@
+{
+  "parent": "deepcharter:block/company_rock_glow",
+  "textures": {
+    "base": "deepcharter:block/company_rock_joint_0",
+    "glow": "deepcharter:block/company_rock_joint_0_glow"
+  }
+}

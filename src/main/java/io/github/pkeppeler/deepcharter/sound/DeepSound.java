@@ -6,8 +6,9 @@ import net.minecraft.sounds.SoundEvent;
 
 /**
  * Every Deep Charter sound event. The path is also the key in {@code sounds.json} and the id
- * in {@code tools/audio-pack-map.txt}; add a constant, a map line and a placeholder together
- * ({@code SoundEventsTest} fails if they drift apart).
+ * in {@code tools/audio-pack-map.txt}; add a constant, a map line and a sound together
+ * ({@code SoundEventsTest} fails if they drift apart). A sound the original game has no counterpart of (the drone beds {@code ambient.*} and the Lamp
+ * Hymn {@code hymn.*}, #249) has no map line: the private audio pack leaves it alone ({@code SoundEventsTest} names those prefixes).
  */
 public enum DeepSound {
     POD_ENGINE_IDLE("pod.engine_idle"),
@@ -62,7 +63,18 @@ public enum DeepSound {
     ALARM_HULL_CRITICAL("alarm.hull_critical"),
     MUSIC_LAYER_1("music.layer_1"),
     MUSIC_LAYER_2("music.layer_2"),
-    MUSIC_TERMINAL("music.terminal");
+    MUSIC_TERMINAL("music.terminal"),
+    AMBIENT_SURFACE_LOOP("ambient.surface_loop"),
+    AMBIENT_SURFACE_GROAN("ambient.surface_groan"),
+    AMBIENT_LAYER_1_LOOP("ambient.layer_1_loop"),
+    AMBIENT_LAYER_1_CREAK("ambient.layer_1_creak"),
+    AMBIENT_LAYER_1_KNOCK("ambient.layer_1_knock"),
+    AMBIENT_LAYER_2_LOOP("ambient.layer_2_loop"),
+    AMBIENT_LAYER_2_CREAK("ambient.layer_2_creak"),
+    AMBIENT_LAYER_2_KNOCK("ambient.layer_2_knock"),
+    HYMN_COLONY("hymn.colony"),
+    HYMN_LAYER_1("hymn.layer_1"),
+    HYMN_LAYER_2("hymn.layer_2");
 
     private final SoundEvent event;
 

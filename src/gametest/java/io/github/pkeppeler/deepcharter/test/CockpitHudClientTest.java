@@ -44,7 +44,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -362,8 +361,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 client -> client.player.getVehicle() instanceof PodEntity shown
                         && shown.fuel() == 50f
                         && Math.abs(shown.hull() - shown.maxHull() / 2f) < 0.01f);
-        CockpitReading reading = context.computeOnClient(
-                client -> CockpitReading.of(client, (PodEntity) client.player.getVehicle(), 0.25));
+        CockpitReading reading =
+                context.computeOnClient(client -> CockpitReading.of((PodEntity) client.player.getVehicle(), 0.25));
         if (Math.abs(reading.fuel() - 0.5) > 1e-6 || Math.abs(reading.hull() - 0.5) > 1e-3 || reading.heat() != 0.25) {
             throw new AssertionError(
                     "A pod with half a tank and half its hull reads 0.5 and 0.5, and the heat it was given: "
@@ -379,7 +378,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 RISE + " blocks higher on the client",
                 client -> client.player.getVehicle() instanceof PodEntity shown && shown.getBlockY() >= FEET_Y + RISE);
         CockpitReading higher =
-                context.computeOnClient(client -> CockpitReading.of(client, (PodEntity) client.player.getVehicle(), 0));
+                context.computeOnClient(client -> CockpitReading.of((PodEntity) client.player.getVehicle(), 0));
         if (!(higher.depth() < reading.depth())) {
             throw new AssertionError(
                     "A pod " + RISE + " blocks higher reads shallower: " + reading.depth() + " then " + higher.depth());
@@ -408,11 +407,11 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         List<List<String>> rows = context.computeOnClient(client -> {
             PodEntity shown = (PodEntity) client.player.getVehicle();
             CockpitLook look = CockpitLook.current();
-            CockpitReading reading = CockpitReading.of(client, shown, 0);
+            CockpitReading reading = CockpitReading.of(shown, 0);
             if (Math.abs(reading.cargo() - 1.0) > 1e-9) {
                 throw new AssertionError("A full bay reads 1 on the cargo gauge, got " + reading);
             }
-            List<PodStatusHud.Line> readout = PodStatusHud.readout(client, shown);
+            List<PodStatusHud.Line> readout = PodStatusHud.readout(client.player, shown);
             if (!CockpitHud.lampsLit(false, false, false, readout)[3]) {
                 throw new AssertionError("A stranded pod's warning lights the fourth lamp, the readout is " + readout);
             }
@@ -832,7 +831,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     private void expectEveryReadoutLineIsOnThePlate(ClientGameTestContext context) {
         List<String> keys = context.computeOnClient(
-                client -> PodStatusHud.readout(Minecraft.getInstance(), (PodEntity) client.player.getVehicle()).stream()
+                client -> PodStatusHud.readout(client.player, (PodEntity) client.player.getVehicle()).stream()
                         .map(line -> ((TranslatableContents) line.text().getContents()).getKey())
                         .toList());
         for (String key : Stream.of("hull", "fuel", "cargo", "depth")

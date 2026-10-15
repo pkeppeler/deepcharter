@@ -16,6 +16,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.NameAndId;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Fires a transmission for a charter. Any feature calls this when the event a transmission waits
@@ -37,7 +38,7 @@ public final class Transmissions {
     private static final String UNKNOWN_DIRECTOR = "the Director";
 
     /** The running server, for {@link #fire(CharterId, Identifier)}, whose frozen signature has no server. Set while one is running. */
-    private static MinecraftServer running;
+    private static @Nullable MinecraftServer running;
 
     private static final Set<Identifier> REPORTED_MISSING = new HashSet<>();
 
@@ -64,10 +65,11 @@ public final class Transmissions {
     public static void fire(CharterId charter, Identifier transmission) {
         Objects.requireNonNull(charter, "charter");
         Objects.requireNonNull(transmission, "transmission");
-        if (running == null) {
+        MinecraftServer server = running;
+        if (server == null) {
             throw new IllegalStateException("Cannot fire " + transmission + ": no server is running");
         }
-        fire(running, charter, transmission);
+        fire(server, charter, transmission);
     }
 
     /** {@link #fire(CharterId, Identifier)} on a given server. */

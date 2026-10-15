@@ -1,5 +1,15 @@
 {
   "attributes": {
+    "minecraft:audio/ambient_sounds": {
+      "loop": "deepcharter:ambient.surface_loop",
+      "additions": [
+        {
+          "sound": "deepcharter:ambient.surface_groan",
+          "tick_chance": 0.0007
+        }
+      ]
+    },
+    "minecraft:audio/background_music": {},
     "minecraft:gameplay/creature_world_gen_spawn_probability": 0.0,
     "minecraft:gameplay/natural_mob_spawns": {
       "argument": {

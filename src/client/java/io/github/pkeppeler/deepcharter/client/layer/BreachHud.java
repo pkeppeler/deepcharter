@@ -42,7 +42,8 @@ public final class BreachHud {
         }
         // The depth instrument of the signal decay (#502) also fails the altimeter, which sits in the ribbon's recess:
         // a dark depth gauge must not leave the depth readable.
-        Optional<Component> shown = CockpitHud.altimeter(client, Altimeter.reading(client));
+        Optional<Component> shown =
+                CockpitHud.altimeter(client, Altimeter.reading(client.level, client.player.getBlockY()));
         if (shown.isEmpty()) {
             return;
         }

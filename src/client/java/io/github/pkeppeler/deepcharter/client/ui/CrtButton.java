@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -39,7 +40,8 @@ public final class CrtButton extends Button implements PanelButton {
         boolean lit = (isHoveredOrFocused() || marked) && active;
         Font font = Minecraft.getInstance().font;
         PanelLook panel = PanelLook.current();
-        if (PanelLook.drawn()) {
+        Screen drawn = PanelLook.drawnScreen();
+        if (drawn != null) {
             String text = getMessage().getString();
             int x = CrtDraw.panelButtonFace(
                     graphics,
@@ -51,7 +53,7 @@ public final class CrtButton extends Button implements PanelButton {
                     active,
                     lit,
                     CrtText.width(font, text),
-                    CrtDraw.pipsFit(panel, font, Minecraft.getInstance().gui.screen()));
+                    CrtDraw.pipsFit(panel, font, drawn));
             int y = getY() + (getHeight() - font.lineHeight) / 2 + tuning.buttonLabelOffset();
             int ink = panel.labelColor(active, lit);
             graphics.text(font, CrtText.of(text), x, y, ink, false);

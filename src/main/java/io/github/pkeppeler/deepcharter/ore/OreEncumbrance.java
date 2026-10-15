@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.ore;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import java.util.Objects;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.Identifier;
@@ -53,7 +54,8 @@ public final class OreEncumbrance {
     private static void apply(ServerPlayer player) {
         OreTuning tuning = OreTuning.DEFAULT;
         double slowdown = Math.min(tuning.maxSlowdown(), carriedMass(player) * tuning.slowdownPerMass());
-        AttributeInstance speed = player.getAttribute(Attributes.MOVEMENT_SPEED);
+        AttributeInstance speed = Objects.requireNonNull(
+                player.getAttribute(Attributes.MOVEMENT_SPEED), "a player has no movement speed attribute");
         // Setting a modifier marks the attribute dirty, which sends a packet, even when the value is the same.
         AttributeModifier current = speed.getModifier(LOAD);
         if (slowdown <= 0) {

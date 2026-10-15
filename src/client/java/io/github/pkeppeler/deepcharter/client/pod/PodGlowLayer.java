@@ -22,12 +22,12 @@ final class PodGlowLayer extends AutoGlowingGeoLayer<PodGeoAnimatable, PodEntity
     /** The glowmask of the variant on show: a painted texture has none of its own, and the mask does not change with the paint. */
     @Override
     protected Identifier getTextureResource(PodGeoRenderState renderState) {
-        return renderState.appearance.variant().glowmask();
+        return renderState.appearance().variant().glowmask();
     }
 
     @Override
     protected @Nullable RenderType getRenderType(PodGeoRenderState renderState) {
-        return !renderState.cabHidden && renderState.appearance.glows(renderState.lit)
+        return !renderState.cabHidden && renderState.appearance().glows(renderState.lit)
                 ? super.getRenderType(renderState)
                 : null;
     }

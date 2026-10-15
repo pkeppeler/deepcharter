@@ -88,6 +88,16 @@ check "--client succeeds" "$status"
 same "--client runs runClientGameTest with the list" "$(cat "$work/args")" "runClientGameTest -PclientTests=HangarClientTest,Pod*ClientTest"
 same "--client runs from the repo root" "$(cat "$work/cwd")" "$(cd "$repo" && pwd -P)"
 
+# Files named like the -PclientTests=Pod*ClientTest word: an unquoted $clients would expand into them.
+touch -- "$repo/-PclientTests=PodDrillClientTest" "$repo/-PclientTests=PodShellClientTest"
+run --client 'Pod*ClientTest'
+same "--client glob is not expanded by the shell" "$(cat "$work/args")" "runClientGameTest -PclientTests=Pod*ClientTest"
+rm -- "$repo/-PclientTests=PodDrillClientTest" "$repo/-PclientTests=PodShellClientTest"
+
+# A property in the repo's gradle.properties would reach every run, whatever the script passes.
+# (This cannot see ~/.gradle/gradle.properties or GRADLE_OPTS.)
+same "no gradle.properties pins clientTests" "$(grep -s clientTests "$tools/../gradle.properties" || true)" ""
+
 run --client
 check "--client without a list is a usage error" "$((status == 2 ? 0 : 1))"
 run --client 'a b'
