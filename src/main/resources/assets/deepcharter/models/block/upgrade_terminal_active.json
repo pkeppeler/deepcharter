@@ -5,6 +5,7 @@
     "bottom": "deepcharter:block/terminal_side",
     "side": "deepcharter:block/terminal_side",
     "front": "deepcharter:block/upgrade_terminal_front",
-    "front_glow": "deepcharter:block/upgrade_terminal_front_glow"
+    "front_glow": "deepcharter:block/upgrade_terminal_front_glow",
+    "halo": "deepcharter:block/glow/halo_cold"
   }
 }

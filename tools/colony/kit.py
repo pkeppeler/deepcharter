@@ -42,6 +42,11 @@ class KitBlock:
         return self.id, given
 
 
+def halo(colour: str) -> str:
+    """The soft glow texture of one of the three light colours (warm, sodium, cold): textures/block/glow/halo_<colour>."""
+    return f"{NS}:block/glow/halo_{colour}"
+
+
 def tex(name: str) -> str:
     return TEX + name
 
@@ -88,14 +93,18 @@ def pillar(name: str, english: str, build: Callable[[], Model]) -> KitBlock:
 
 # ---------------------------------------------------------------------------------------------------------------- shapes
 
-def framed_cube(front: str, glow: str | None = None) -> Model:
-    """A full block whose north face is front (with an optional glow layer over it) and whose other faces are side."""
+def framed_cube(front: str, glow: str | None = None, halo_colour: str | None = None) -> Model:
+    """A full block whose north face is front (with an optional glow layer over it, and an optional halo of a light colour in front
+    of that) and whose other faces are side."""
     side = "riveted_plate"
     textures = {"front": tex(front), "side": tex(side), "particle": tex(side)}
     boxes = [Box((0, 0, 0), (16, 16, 16), {"north": "#front", "*": "#side"}, cull=True)]
     if glow:
         textures["glow"] = tex(glow)
         boxes.append(Box((0, 0, -0.01), (16, 16, 0), {"north": "#glow"}, glow=True))
+    if halo_colour:
+        textures["halo"] = halo(halo_colour)
+        boxes.append(halo_z(-0.8, (-2, 18), (-2, 18), both=False))
     return Model(textures, boxes)
 
 
@@ -179,25 +188,40 @@ def railing() -> Model:
     ], ambient_occlusion=False)
 
 
+def halo_x(x: float, y: tuple[float, float], z: tuple[float, float]) -> Box:
+    """A flat glow plane across x at {x}, seen from both sides: a halo round a lens (texture variable #halo, a translucent soft glow)."""
+    return Box((x, y[0], z[0]), (x, y[1], z[1]), {"east": "#halo", "west": "#halo"}, glow=True, full_uv=True)
+
+
+def halo_z(z: float, x: tuple[float, float], y: tuple[float, float], both: bool = True) -> Box:
+    """A flat glow plane across z at {z}: seen from the north only, or from both sides."""
+    faces = {"north": "#halo", "south": "#halo"} if both else {"north": "#halo"}
+    return Box((x[0], y[0], z), (x[1], y[1], z), faces, glow=True, full_uv=True)
+
+
 def wall_lamp() -> Model:
     """A caged sodium lamp on an arm, fixed to the wall behind it (south) and facing north."""
-    t = {"iron": tex("lamp_iron"), "lit": tex("lamp_lit"), "particle": tex("lamp_iron")}
+    t = {"iron": tex("lamp_iron"), "lit": tex("lamp_lit"), "particle": tex("lamp_iron"), "halo": halo("sodium")}
     return Model(t, [
         Box((6, 4, 13), (10, 12, 16), {"*": "#iron"}),
         Box((7, 10, 6), (9, 11.5, 13), {"*": "#iron"}),
         Box((5, 6.5, 4), (11, 10, 9), {"*": "#iron"}),
         Box((5.5, 3, 4.5), (10.5, 6.5, 8.5), {"*": "#lit", "up": None}, glow=True),
         Box((6.5, 2.5, 5.5), (9.5, 3, 7.5), {"*": "#iron"}),
+        halo_x(8, (-3, 13), (-1, 15)),
+        halo_z(5, (0, 16), (-3, 13)),
     ], ambient_occlusion=False)
 
 
 def floodlight() -> Model:
     """A floodlight box on a yoke, its lens tilted down to the north."""
-    t = {"iron": tex("lamp_iron"), "lens": tex("flood_lens"), "particle": tex("lamp_iron")}
+    t = {"iron": tex("lamp_iron"), "lens": tex("flood_lens"), "particle": tex("lamp_iron"), "halo": halo("warm")}
     return Model(t, [
         Box((7, 0, 9), (9, 6, 11), {"*": "#iron"}),
         Box((3, 5, 4), (13, 13, 12), {"*": "#iron"}, rotation=(-25, 0, 0), pivot=(8, 9, 8)),
         Box((3.5, 5.5, 3.95), (12.5, 12.5, 4), {"north": "#lens"}, rotation=(-25, 0, 0), pivot=(8, 9, 8), glow=True),
+        halo_z(2.5, (-1, 17), (0, 18)),
+        halo_x(8, (0, 18), (-3, 12)),
     ], ambient_occlusion=False)
 
 
@@ -294,7 +318,7 @@ CATALOGUE: dict[str, KitBlock] = {block.name: block for block in [
     facing("window_ribbon_lit", "Lit Ribbon Window", lambda: window("window_ribbon", "riveted_plate", "window_ribbon_glow")),
     facing("window_ribbon_dark", "Dark Ribbon Window", lambda: window("window_ribbon_dark", "riveted_plate", None)),
     facing("furnace_hatch", "Crusher Hatch", lambda: framed_cube("furnace_hatch", "furnace_hatch_glow")),
-    facing("gauge_panel", "Gauge Panel", lambda: framed_cube("gauge_panel", "gauge_panel_glow")),
+    facing("gauge_panel", "Gauge Panel", lambda: framed_cube("gauge_panel", "gauge_panel_glow", "sodium")),
     facing("wall_lamp", "Company Wall Lamp", wall_lamp),
     facing("floodlight", "Company Floodlight", floodlight),
     facing("railing", "Catwalk Railing", railing),

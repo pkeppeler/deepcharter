@@ -18,7 +18,7 @@ from canvas import BAYER, CLEAR, Canvas, Colour, Rng, value_noise
 # A texture is SIZE x SIZE pixels unless its recipe names another of SIZES ("size": 32, a 32x texture in a 16-unit model).
 SIZE = 16
 SIZES = (16, 32)
-KINDS = ("opaque", "cutout")
+KINDS = ("opaque", "cutout", "translucent")
 # The directory beside each recipes directory that the source op reads hand-drawn PNGs from.
 SOURCES = "sources"
 _TOKEN = re.compile(r"\$([a-z_][a-z0-9_]*)")
@@ -848,6 +848,25 @@ def op_source(canvas: Canvas, layer: dict, ctx: Context) -> None:
     canvas.paste(frames[ctx.frame if len(frames) > 1 else 0], 0, 0)
 
 
+def op_halo(canvas: Canvas, layer: dict, ctx: Context) -> None:
+    """A soft round glow centred on the texture: the colour at "alpha" (0 to 255) in the middle, fading to clear at "radius" pixels
+    (default half the texture) along (1 - d / radius) ** power (default 2). For a translucent texture."""
+    ctx.need(layer, "colour", "alpha")
+    r, g, b, _ = ctx.colour(layer["colour"])
+    peak = layer["alpha"]
+    if not 0 < peak <= 255:
+        raise RecipeError(f"{ctx.where}: halo alpha {peak} is not in 1 to 255")
+    radius = layer.get("radius", ctx.size / 2)
+    power = layer.get("power", 2)
+    if radius <= 0 or power <= 0:
+        raise RecipeError(f"{ctx.where}: halo radius and power must be above 0")
+    mid = (ctx.size - 1) / 2
+    for x, y in _cells(layer, ctx):
+        d = sqrt((x - mid) ** 2 + (y - mid) ** 2)
+        if d < radius:
+            canvas.over(x, y, (r, g, b, round(peak * (1 - d / radius) ** power)))
+
+
 def op_frames(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """The sub-layers only on the listed frames (a blink, a flicker)."""
     ctx.need(layer, "on", "layers")
@@ -879,6 +898,7 @@ OPS: dict[str, Callable[[Canvas, dict, Context], None]] = {
     "masked": op_masked,
     "template": op_template,
     "scan": op_scan,
+    "halo": op_halo,
     "frames": op_frames,
     "source": op_source,
 }

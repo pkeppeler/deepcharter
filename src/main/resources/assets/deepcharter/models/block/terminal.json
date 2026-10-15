@@ -58,6 +58,34 @@
           "cullface": "north"
         }
       }
+    },
+    {
+      "from": [
+        -2,
+        -2,
+        -0.8
+      ],
+      "to": [
+        18,
+        18,
+        -0.8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#halo"
+        }
+      },
+      "light_emission": 15,
+      "shade": false
     }
-  ]
+  ],
+  "textures": {
+    "halo": "deepcharter:block/glow/halo_off"
+  }
 }

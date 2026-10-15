@@ -5,6 +5,7 @@
     "bottom": "deepcharter:block/terminal_side",
     "side": "deepcharter:block/terminal_side",
     "front": "deepcharter:block/repair_station_front",
-    "front_glow": "deepcharter:block/repair_station_front_glow"
+    "front_glow": "deepcharter:block/repair_station_front_glow",
+    "halo": "deepcharter:block/glow/halo_cold"
   }
 }

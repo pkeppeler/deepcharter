@@ -20,7 +20,8 @@ def _round(v: float) -> float:
 @dataclass(frozen=True)
 class Box:
     """An element. textures maps a face (or "*" for every face not named) to a texture variable ("#side"); a face mapped to None is
-    not drawn. glow makes the element full-bright (light_emission 15, unshaded): a glow layer over a face."""
+    not drawn. glow makes the element full-bright (light_emission 15, unshaded): a glow layer over a face. full_uv shows the
+    whole texture on each face, whatever the box's size (a halo plane)."""
 
     lo: tuple[float, float, float]
     hi: tuple[float, float, float]
@@ -30,6 +31,7 @@ class Box:
     glow: bool = False
     cull: bool = False
     uv_scale: float = 1.0
+    full_uv: bool = False
 
     def element(self, where: str) -> dict:
         for axis in range(3):
@@ -62,6 +64,8 @@ class Box:
     def uv(self, face: str) -> tuple[float, float, float, float]:
         """The face's UV: its own size in texels (times uv_scale, at most 16), placed where the face lies on a block face, so a
         box that is a full block shows the whole texture."""
+        if self.full_uv:
+            return 0.0, 0.0, 16.0, 16.0
         (x0, y0, z0), (x1, y1, z1) = self.lo, self.hi
         # u runs along the face's horizontal axis as seen from outside, v from the top down.
         spans = {

@@ -4,7 +4,8 @@
     "front": "deepcharter:block/colony/gauge_panel",
     "side": "deepcharter:block/colony/riveted_plate",
     "particle": "deepcharter:block/colony/riveted_plate",
-    "glow": "deepcharter:block/colony/gauge_panel_glow"
+    "glow": "deepcharter:block/colony/gauge_panel_glow",
+    "halo": "deepcharter:block/glow/halo_sodium"
   },
   "elements": [
     {
@@ -101,6 +102,31 @@
             16.0
           ],
           "texture": "#glow"
+        }
+      },
+      "light_emission": 15,
+      "shade": false
+    },
+    {
+      "from": [
+        -2,
+        -2,
+        -0.8
+      ],
+      "to": [
+        18,
+        18,
+        -0.8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#halo"
         }
       },
       "light_emission": 15,

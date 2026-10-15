@@ -5,6 +5,7 @@
     "bottom": "deepcharter:block/terminal_side",
     "side": "deepcharter:block/terminal_side",
     "front": "deepcharter:block/ore_processor_front",
-    "front_glow": "deepcharter:block/ore_processor_front_glow"
+    "front_glow": "deepcharter:block/ore_processor_front_glow",
+    "halo": "deepcharter:block/glow/halo_cold"
   }
 }
