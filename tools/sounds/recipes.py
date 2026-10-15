@@ -84,11 +84,12 @@ def layer_1_loop():
             dsp.filt(dsp.noise(rng, count), "lp", 90, 0.7), [0.6 + 0.4 * v for v in cycles(count, length, 1, side)]
         )
         return dsp.plus(
-            dsp.times(dsp.scale(cycles(count, length, 960, 0.9 * side), 0.5), breath),
-            dsp.scale(cycles(count, length, 1440, 2.1 * side), 0.3),
+            dsp.times(dsp.scale(cycles(count, length, 960, 0.9 * side), 0.35), breath),
+            dsp.scale(cycles(count, length, 1440, 2.1 * side), 0.35),
+            dsp.scale(cycles(count, length, 2880, 0.7 * side), 0.12),
             dsp.scale(cycles(count, length, 1920, 0.0), 0.25),
             dsp.scale(cycles(count, length, 1922, 1.3 * side), 0.25),
-            dsp.scale(rumble, 3.0),
+            dsp.scale(rumble, 1.8),
             dsp.scale(cycles(count, length, 9600, 0.4 * side), 0.02),
             dsp.scale(cycles(count, length, 9601, 1.1), 0.02),
         )
@@ -106,10 +107,11 @@ def layer_2_loop():
             dsp.filt(dsp.noise(rng, count), "bp", 150, 3), [0.5 + 0.5 * v * v for v in cycles(count, length, 2, 1.0 + side)]
         )
         return dsp.plus(
-            dsp.scale(cycles(count, length, 864, 0.6 * side), 0.55),
-            dsp.scale(cycles(count, length, 1296, 1.9 * side), 0.3),
-            dsp.scale(cycles(count, length, 1440, 0.0), 0.28),
-            dsp.scale(cycles(count, length, 1441, 2.2 * side), 0.28),
+            dsp.scale(cycles(count, length, 864, 0.6 * side), 0.4),
+            dsp.scale(cycles(count, length, 1296, 1.9 * side), 0.35),
+            dsp.scale(cycles(count, length, 1440, 0.0), 0.3),
+            dsp.scale(cycles(count, length, 1441, 2.2 * side), 0.3),
+            dsp.scale(cycles(count, length, 2160, 1.1 * side), 0.12),
             dsp.scale(moan, 4.0),
             dsp.scale(cycles(count, length, 28080, 0.3), 0.012),
             dsp.times(dsp.scale(cycles(count, length, 28083, 1.7 * side), 0.012), [0.5 + 0.5 * v for v in cycles(count, length, 3)]),

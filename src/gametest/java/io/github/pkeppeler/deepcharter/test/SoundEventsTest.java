@@ -79,14 +79,14 @@ public class SoundEventsTest {
         Set<String> mapped = mappedIds(helper);
         Set<String> declared = new TreeSet<>();
         Arrays.stream(DeepSound.values())
-                .filter(DeepSound::inAudioPackMap)
+                .filter(sound -> !hasNoOriginal(sound))
                 .forEach(sound -> declared.add(sound.event().location().getPath()));
         Set<String> onlyDeclared = new TreeSet<>(declared);
         onlyDeclared.removeAll(mapped);
         if (!onlyDeclared.isEmpty()) {
             throw failure(
                     helper,
-                    "DeepSound ids missing from %s (a sound with no original to map is made with inAudioPackMap false): %s",
+                    "DeepSound ids missing from %s (a sound with no original is a drone bed or the hymn): %s",
                     MAP,
                     onlyDeclared);
         }
@@ -115,13 +115,8 @@ public class SoundEventsTest {
         Set<String> mapped = mappedIds(helper);
         for (DeepSound sound : DeepSound.values()) {
             String path = sound.event().location().getPath();
-            if (sound.inAudioPackMap() != mapped.contains(path)) {
-                throw failure(
-                        helper,
-                        "%s: inAudioPackMap is %s, but the map %s it",
-                        path,
-                        sound.inAudioPackMap(),
-                        mapped.contains(path) ? "lists" : "does not list");
+            if (hasNoOriginal(sound) == mapped.contains(path)) {
+                throw failure(helper, "%s: the map %s it", path, mapped.contains(path) ? "lists" : "does not list");
             }
         }
         helper.succeed();
@@ -173,6 +168,12 @@ public class SoundEventsTest {
             }
         }
         helper.succeed();
+    }
+
+    /** The drone beds and the Lamp Hymn (#249) are ours alone: the original game has nothing to map them to. */
+    private static boolean hasNoOriginal(DeepSound sound) {
+        String path = sound.event().location().getPath();
+        return path.startsWith("ambient.") || path.startsWith("hymn.");
     }
 
     private static JsonObject soundsJson(GameTestHelper helper) throws IOException {

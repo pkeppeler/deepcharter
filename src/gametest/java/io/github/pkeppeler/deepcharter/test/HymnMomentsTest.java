@@ -51,6 +51,10 @@ public class HymnMomentsTest {
                     layer,
                     HymnMoments.hymnFor(layer));
         }
+        expect(
+                helper,
+                HymnMoments.hymnFor(layers + 5) == DeepSound.HYMN_LAYER_2,
+                "a layer with no version of its own plays the deepest");
         helper.succeed();
     }
 

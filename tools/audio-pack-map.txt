@@ -2,9 +2,9 @@
 # One line per event: the id, then one or more file names (several = variants, the game picks one).
 # Ids and file names only. No audio ever goes in this file or in git.
 # Every id here must be a DeepSound in src/main/java/.../sound/DeepSound.java (SoundEventsTest checks it).
-# Not here, on purpose (DeepSound inAudioPackMap false): the drone beds ambient.* and the Lamp Hymn hymn.* (#249) have no original, so the private pack
+# Not here, on purpose: the drone beds ambient.* and the Lamp Hymn hymn.* (#249) have no original, so the private pack
 # leaves them playing. The pod engine, drill, terminal and UI events below ship a sound of ours too (tools/sounds); the pack still replaces them by id.
-# To give a drone a private replacement, add its id here with a source file and make its DeepSound mapped.
+# To give a drone a private replacement, add its id here with a source file (and drop its prefix from SoundEventsTest.hasNoOriginal).
 
 # Pod engine and movement
 pod.engine_idle        1993_idle_100.wav.mp3

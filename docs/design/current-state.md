@@ -35,7 +35,7 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | Screens | 10 shot (handbook, offline terminal, fuel pump, ore processor, upgrade, repair station, hangar console, contract, pod cargo, vanilla inventory), 1 not reachable (CRT demo) |
 | HUDs | 6 (pod status, scanner, altimeter, account, transmission overlay, breach fade) |
 | Particles | 1 (`deepcharter:dust_mote`; the tow line is a rendered chain since #508) |
-| Sound events | 47, all vanilla placeholders; 3 music events |
+| Sound events | 61; the drones, the Lamp Hymn and the pod, drill, terminal and UI sounds are ours (#249), the rest are vanilla placeholders; 3 music events |
 | Fonts | 1 (`deepcharter:terminal`, Unscii, for the terminal screens since #246; everything else is the vanilla font) |
 | Tour stills | 144 |
 
@@ -605,15 +605,18 @@ Not shot: it needs two pods and a tow cable in motion (the `m2-towing` scenario 
 
 Only names and uses are given here. No audio is copied, played into a recording, or published.
 
-- 47 sound events in `main/sound/DeepSound.java`, registered in `main/sound/SoundRegistry.java`. Each is mapped in `assets/deepcharter/sounds.json` to a **vanilla Minecraft
-  sound** as a placeholder, with pitch or volume tweaks. A private audio pack (built by `tools/build-audio-pack.sh` from files that stay out of the repo) replaces them
-  at play time through `tools/audio-pack-map.txt`. Vanilla: **partly** (vanilla sounds as placeholders).
+- 61 sound events in `main/sound/DeepSound.java`, registered in `main/sound/SoundRegistry.java`. Each is mapped in `assets/deepcharter/sounds.json`. Since #249 the pod engines and rotor,
+  the drill's dig and blocked, the terminal's power-on and the UI sounds point at OGGs of ours (`assets/deepcharter/sounds/`, each made by a recipe in `tools/sounds/`), the layers' music
+  slots are silent, and the rest are still a **vanilla Minecraft sound** as a placeholder, with pitch or volume tweaks. A private audio pack (built by `tools/build-audio-pack.sh` from files that stay out of the repo) replaces
+  them at play time through `tools/audio-pack-map.txt`; the drone beds and the Lamp Hymn have no original and are not in it. Vanilla: **partly**.
+- The drone beds (#249) are `ambient_sounds` in each biome: `ambient.surface_loop` with `ambient.surface_groan`, `ambient.layer_1_loop` with its creak and knock, `ambient.layer_2_loop` with its creak and knock. The Lamp Hymn
+  (`hymn.colony`, `hymn.layer_1`, `hymn.layer_2`) plays from `main/sound/HymnMoments.java` on founding or joining a charter, going down a breach and coming up into the colony.
 - Groups and where they play: pod (engine idle, drive, drill side and down, rotor, transform land and launch, crash, explosion, the seep sounder's hiss `pod.seep_hiss`, repeating faster as a gas pocket nears, the heat shield's crackle `pod.glaze_burn` for each brick it burns, the signal decay's crackle `pod.signal_crackle` and heartbeat `pod.signal_lost`, #502), drill (dig, blocked, lava, dynamite,
   plastic), cargo (collect, jettison, full), fuel (low, refuel), repair (nanobots), breach (rumble, cross), scanner (ping, sweep), UI (typewriter, hover, select, confirm,
   purchase, sale, error, refused), terminal (power on, teleport), transmission (incoming, menace), mothership (arrive, idle, leave), alarms (fuel critical, hull critical).
-- Music: `deepcharter:music.layer_1` plays in layer 1 (mapped to vanilla `music.overworld.deep_dark`) and `music.layer_2` in layer 2 (vanilla `music.end`), each every
-  600 to 1800 ticks, set in the dimension types. `music.terminal` (vanilla `music.creative`) loops while a terminal screen is open
-  (`client/sound/TerminalMusic.java`). The surface plays vanilla overworld music. Engine loops are `client/sound/PodLoops.java`; the typewriter click is `client/sound/TypewriterSound.java`;
+- Music: `deepcharter:music.layer_1` plays in layer 1 and `music.layer_2` in layer 2, each every 600 to 1800 ticks, set in the dimension types; the shipped sound is three seconds of
+  silence, and the private pack (original `BGM_main` and `BGM_core`) fills them. `music.terminal` loops while a terminal screen is open (`client/sound/TerminalMusic.java`) and plays the terminal's hum (ours). No vanilla music plays on the
+  surface or in a layer: a surface biome sets an empty `background_music`. Engine loops are `client/sound/PodLoops.java`; the typewriter click is `client/sound/TypewriterSound.java`;
   the low-fuel beep is `client/pod/LowFuelBeep.java`.
 - Swap: **(a)** `assets/deepcharter/sounds.json` (point an event at other files), or a resource pack; **(b)** the music event per dimension in the dimension type JSON;
   **(c)** nothing visual.

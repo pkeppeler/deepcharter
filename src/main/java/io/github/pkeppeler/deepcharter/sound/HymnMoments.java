@@ -5,7 +5,6 @@ import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import java.util.List;
 import java.util.UUID;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,29 +30,22 @@ public final class HymnMoments {
 
     private HymnMoments() {}
 
-    /** The hymn for a depth: layer 0 is the surface and the colony. A layer with no version is a bug, found at start-up by {@link #init}. */
+    /**
+     * The hymn for a depth: layer 0 is the surface and the colony. A layer deeper than the last version plays the last, the most worn,
+     * so a new layer is never silent at a breach.
+     */
     public static DeepSound hymnFor(int layer) {
-        if (layer < LayerChain.SURFACE || layer >= HYMNS.size()) {
-            throw new IllegalArgumentException("The Lamp Hymn has no version for layer " + layer);
+        if (layer < LayerChain.SURFACE) {
+            throw new IllegalArgumentException("A layer is counted from the surface at 0, got " + layer);
         }
-        return HYMNS.get(layer);
+        return HYMNS.get(Math.min(layer, HYMNS.size() - 1));
     }
 
     static void init() {
-        ServerLifecycleEvents.SERVER_STARTED.register(
-                server -> requireVersionsFor(LayerChain.count(server.registryAccess())));
         CharterEvents.FOUNDED.register(
                 (server, charter) -> charter.director().ifPresent(director -> arrived(server, director)));
         CharterEvents.JOINED.register((server, charter, player) -> arrived(server, player));
         BreachEvents.CROSSED.register(HymnMoments::onCrossed);
-    }
-
-    /** A chain with a layer that has no hymn version is a bug, found at start-up and not in the middle of a breach. */
-    static void requireVersionsFor(int layers) {
-        if (layers >= HYMNS.size()) {
-            throw new IllegalStateException(
-                    "The chain has " + layers + " layers but the Lamp Hymn has versions for " + (HYMNS.size() - 1));
-        }
     }
 
     private static void arrived(MinecraftServer server, UUID player) {

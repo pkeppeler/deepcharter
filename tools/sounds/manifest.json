@@ -8,8 +8,8 @@
     "pcm_sha256": "3d45b58aed1f156000f3d5bf053cb758035bd198b649d194c22a2d5dfa972312"
   },
   "ambient/layer_1_loop": {
-    "ogg_sha256": "6304b4e63cc2e2e2e261a3b363ce35bb26f1641bc47cd069a816086564ab7831",
-    "pcm_sha256": "e9ea08f562820e613f3c291e89da9bfdd523a2780e131298d48af9798cf911fa"
+    "ogg_sha256": "9077da4f55e7f5e80ea163254875e7f6f145b9a2c579b4be3cf1ee5ab93fcce0",
+    "pcm_sha256": "eecce975b77dc37279224f2fd772653dcaf809c10a05d498458f2d1032a4acde"
   },
   "ambient/layer_2_creak": {
     "ogg_sha256": "e15f4a15be0a9ed613794dceb930ff7ccd1104d23c66e336fe375abeb9077019",
@@ -20,8 +20,8 @@
     "pcm_sha256": "fd1673f9ccf52fda7a1cd18c0e1a92f35a1af40d9a913218e520a610f1694b15"
   },
   "ambient/layer_2_loop": {
-    "ogg_sha256": "ceb019f423ad0d87f6fd1b16268235e468a88ae8dad50b1f96328889f2f4eb8f",
-    "pcm_sha256": "716bdfc62d2aa5dba98536fa17f573b8de67548f63ba4c15d496a7f898d909d0"
+    "ogg_sha256": "034d8021650262a41f1cdbbd77e9aae4bf90a830ad0d7428add1b83d8fd42ff8",
+    "pcm_sha256": "cd3c9e43f346820b48e6b37843f1e70b6da2e221f9b8b4cdd0e866d40ad8c53d"
   },
   "ambient/surface_groan": {
     "ogg_sha256": "458b376f16a80098252bb985c0a49ad5fa2d160e5b5ad7c9cde43806dceb7bb7",

@@ -7,8 +7,8 @@ import net.minecraft.sounds.SoundEvent;
 /**
  * Every Deep Charter sound event. The path is also the key in {@code sounds.json} and the id
  * in {@code tools/audio-pack-map.txt}; add a constant, a map line and a sound together
- * ({@code SoundEventsTest} fails if they drift apart). A sound the original game has no counterpart of (the drone beds and the Lamp
- * Hymn, #249) is declared with {@code inAudioPackMap} false and has no map line: the private audio pack leaves it alone.
+ * ({@code SoundEventsTest} fails if they drift apart). A sound the original game has no counterpart of (the drone beds {@code ambient.*} and the Lamp
+ * Hymn {@code hymn.*}, #249) has no map line: the private audio pack leaves it alone ({@code SoundEventsTest} names those prefixes).
  */
 public enum DeepSound {
     POD_ENGINE_IDLE("pod.engine_idle"),
@@ -64,33 +64,22 @@ public enum DeepSound {
     MUSIC_LAYER_1("music.layer_1"),
     MUSIC_LAYER_2("music.layer_2"),
     MUSIC_TERMINAL("music.terminal"),
-    AMBIENT_SURFACE_LOOP("ambient.surface_loop", false),
-    AMBIENT_SURFACE_GROAN("ambient.surface_groan", false),
-    AMBIENT_LAYER_1_LOOP("ambient.layer_1_loop", false),
-    AMBIENT_LAYER_1_CREAK("ambient.layer_1_creak", false),
-    AMBIENT_LAYER_1_KNOCK("ambient.layer_1_knock", false),
-    AMBIENT_LAYER_2_LOOP("ambient.layer_2_loop", false),
-    AMBIENT_LAYER_2_CREAK("ambient.layer_2_creak", false),
-    AMBIENT_LAYER_2_KNOCK("ambient.layer_2_knock", false),
-    HYMN_COLONY("hymn.colony", false),
-    HYMN_LAYER_1("hymn.layer_1", false),
-    HYMN_LAYER_2("hymn.layer_2", false);
+    AMBIENT_SURFACE_LOOP("ambient.surface_loop"),
+    AMBIENT_SURFACE_GROAN("ambient.surface_groan"),
+    AMBIENT_LAYER_1_LOOP("ambient.layer_1_loop"),
+    AMBIENT_LAYER_1_CREAK("ambient.layer_1_creak"),
+    AMBIENT_LAYER_1_KNOCK("ambient.layer_1_knock"),
+    AMBIENT_LAYER_2_LOOP("ambient.layer_2_loop"),
+    AMBIENT_LAYER_2_CREAK("ambient.layer_2_creak"),
+    AMBIENT_LAYER_2_KNOCK("ambient.layer_2_knock"),
+    HYMN_COLONY("hymn.colony"),
+    HYMN_LAYER_1("hymn.layer_1"),
+    HYMN_LAYER_2("hymn.layer_2");
 
     private final SoundEvent event;
-    private final boolean inAudioPackMap;
 
     DeepSound(String path) {
-        this(path, true);
-    }
-
-    DeepSound(String path, boolean inAudioPackMap) {
         this.event = SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
-        this.inAudioPackMap = inAudioPackMap;
-    }
-
-    /** True when the original game has a sound for this event, named in {@code tools/audio-pack-map.txt} for the private pack to use. */
-    public boolean inAudioPackMap() {
-        return inAudioPackMap;
     }
 
     public SoundEvent event() {
