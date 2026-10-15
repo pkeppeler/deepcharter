@@ -31,6 +31,7 @@ import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -121,7 +122,7 @@ public class FoundingMoleHangarTest {
             chunkTicks[0] = true;
             chunkReadyTick[0] = helper.getTick();
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!chunkTicks[0] || done[0]) {
                 return;
             }

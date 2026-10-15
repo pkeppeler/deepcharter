@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -505,7 +506,7 @@ public class TowingTest {
             }
         });
         int[] since = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pods[1] == null) {
                 return;
             }
@@ -887,7 +888,7 @@ public class TowingTest {
             throw failure(helper, "the rider could not mount the towed pod");
         }
         PodTowing.attach(tower, towed);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             tower.setPos(towerAt);
             tower.setDeltaMovement(Vec3.ZERO);
         });
@@ -1291,7 +1292,7 @@ public class TowingTest {
                 PodTowing.attach(pods[0], pods[1]);
             }
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pods[1] == null) {
                 return;
             }

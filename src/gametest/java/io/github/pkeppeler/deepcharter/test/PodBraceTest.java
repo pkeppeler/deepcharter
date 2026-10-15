@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.List;
@@ -395,7 +396,7 @@ public class PodBraceTest {
             pilot.setInput(SPRINT);
             pod[0] = spawned;
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null) {
                 return;
             }

@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.List;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -110,7 +111,7 @@ public class OreCargoTest {
         player.getInventory().add(OreRegistry.stack(OreType.EINSTEINIUM));
         double expected = bare * (1 - OreType.EINSTEINIUM.mass() * OreTuning.DEFAULT.slowdownPerMass());
         boolean[] loaded = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             double speed = player.getAttributeValue(Attributes.MOVEMENT_SPEED);
             if (!loaded[0]) {
                 if (speed >= bare) {
@@ -151,7 +152,7 @@ public class OreCargoTest {
         MockPlayer pilot = MockPlayers.join(helper, "ore-drill");
         PodEntity pod = pod(level, pilot, new Vec3(x, floor, Z));
         pilot.setInput(SPRINT);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (count(level, x - 1, x, floor - 1, floor - 1, Z - 1, Z, Blocks.AIR) != 4) {
                 return;
             }
@@ -195,7 +196,7 @@ public class OreCargoTest {
         boolean[] loaded = {false};
         double[] startY = {0};
         int[] jumpedAt = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!drilled[0]) {
                 if (count(level, x - 1, x, floor - 1, floor - 1, Z - 1, Z, Blocks.AIR) != 4) {
                     return;
@@ -247,7 +248,7 @@ public class OreCargoTest {
         pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
         pilot.setInput(JUMP);
         double startY = pod.getY();
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod.getY() - startY > 0.5) {
                 pod.discard();
                 pilot.leave();
@@ -449,7 +450,7 @@ public class OreCargoTest {
         pod.cargo().load(inputOf(level, tag), pod);
         LogCapture log = LogCapture.start(pod.getUUID().toString());
         pilot.setInput(SPRINT);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (count(level, x - 1, x, floor - 1, floor - 1, Z - 1, Z, Blocks.AIR) != 4) {
                 return;
             }
@@ -568,7 +569,7 @@ public class OreCargoTest {
         player.getInventory().add(OreRegistry.stack(OreType.EINSTEINIUM));
         AttributeModifier[] first = {null};
         int[] ticks = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             AttributeModifier now = player.getAttribute(Attributes.MOVEMENT_SPEED).getModifiers().stream()
                     .filter(modifier -> modifier.id().getPath().equals("ore_load"))
                     .findFirst()
@@ -648,7 +649,7 @@ public class OreCargoTest {
         ServerPlayer player = walker.player();
         double bare = player.getAttributeValue(Attributes.MOVEMENT_SPEED);
         carry.accept(player);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (Math.abs(player.getAttributeValue(Attributes.MOVEMENT_SPEED) - bare * fraction) < EPSILON) {
                 walker.leave();
                 helper.succeed();

@@ -39,7 +39,7 @@ public final class UnloadedChunk {
         int chunkZ = far.getZ() >> 4;
         int[] phase = {0};
         FarChunks.Deadline[] by = {null};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             switch (phase[0]) {
                 case 1 -> {
                     stages.whileLoaded().run();

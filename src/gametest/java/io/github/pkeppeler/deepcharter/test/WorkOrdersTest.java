@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.LinkedHashMap;
@@ -253,7 +254,7 @@ public class WorkOrdersTest {
                 marker,
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_CLIENTS); // room-carver: a block of the overworld, not layer rock
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             try {
                 switch (phase[0]) {
                     case 1 -> {
