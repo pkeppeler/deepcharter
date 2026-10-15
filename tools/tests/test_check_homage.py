@@ -146,6 +146,19 @@ class MarkupInTheMiddleOfACopy(unittest.TestCase):
         self.assertFound("quartz *walruses* _never_ `forget` the **umbrella**\n")
         self.assertFound("Quartz walruses never \u201cforget\u201d the umbrella\u2014always\n")
 
+    def test_inline_html_tags_and_footnote_markers(self):
+        self.assertFound("quartz <em>walruses</em> never forget the umbrella\n")
+        self.assertFound("quartz walruses<br/>never forget the umbrella\n")
+        self.assertFound("quartz walruses[^1] never forget the umbrella\n\n[^1]: A note.\n")
+        self.assertFound("quartz walruses [^note] never forget the umbrella\n")
+
+    def test_markup_alone_is_not_a_finding(self):
+        for text in ("a <em>b</em> c[^1] d <br> e\n", "<div>quartz</div> <span>walruses</span> never[^1] forget\n"):
+            self.assertEqual(Run(self, {"docs/a.md": text}).code, 0, text)
+
+    def test_prose_strips_html_tags_and_footnotes(self):
+        self.assertEqual(homage.words(homage.prose("the quick <em>brown</em> fox[^1] jumps over")), ["the", "quick", "brown", "fox", "jumps", "over"])
+
     def test_markup_in_the_reference_is_cleaned_too(self):
         reference = "## 6. Story\n\nSee [mango tigers](http://x.y/z) never *forget* the &amp; umbrella.\n"
         run = Run(self, {"docs/a.md": "mango tigers never forget the\n"}, reference=reference)

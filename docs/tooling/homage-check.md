@@ -16,7 +16,7 @@ python3 -I tools/check-homage.py
 ## Matching
 
 - Case, accents, punctuation and apostrophes are ignored, and hyphens and dashes split words.
-- In markdown, a link keeps its label and loses its URL, link definitions and bare URLs go, and HTML entities are decoded.
+- In markdown, a link keeps its label and loses its URL, link definitions and bare URLs, inline HTML tags and footnote markers (`[^1]`) go, and HTML entities are decoded.
 - A line break inside a paragraph does not break a sequence. A blank line, heading, list item, table cell or JSON value does.
 - Limit: a copy that spans two list items, table cells or JSON strings is not joined, so it can slip through when each part is under five words.
 - A sequence that is common English, not copying, goes in `tools/homage-allowlist.txt`: one phrase per line of exactly five words (anything else exits 2), `#` comments, each with a reason. The file does not exist until one is needed.
