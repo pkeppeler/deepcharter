@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -68,7 +69,9 @@ public final class TerminalPanelScene {
                 .setBlock(upgrade, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
         server.overworld().setBlock(repair, TerminalTypes.REPAIR_STATION.block().defaultBlockState(), 3);
         server.overworld().setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
-        PodEntity pod = PodRegistry.POD.create(server.overworld(), EntitySpawnReason.COMMAND);
+        PodEntity pod = Objects.requireNonNull(
+                PodRegistry.POD.create(server.overworld(), EntitySpawnReason.COMMAND),
+                "the pod entity type did not create a pod");
         pod.setPos(here.getX() + 0.5, here.getY(), here.getZ() + 5.5);
         server.overworld().addFreshEntity(pod);
         PodComponents.register(pod, charter.id());

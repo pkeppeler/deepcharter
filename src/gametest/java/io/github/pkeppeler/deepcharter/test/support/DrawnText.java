@@ -5,6 +5,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -16,6 +17,7 @@ import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import org.joml.Vector2f;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The text a screen draws itself, with the box each string covers (#411). {@link #of} renders a screen once through a
@@ -100,13 +102,15 @@ public final class DrawnText {
         }
 
         @Override
-        public void text(Font font, String text, int x, int y, int color) {
-            record(text, font.width(text), font, x, y);
+        public void text(Font font, @Nullable String text, int x, int y, int color) {
+            String drawn = Objects.requireNonNull(text, "text drawn without a string");
+            record(drawn, font.width(drawn), font, x, y);
         }
 
         @Override
-        public void text(Font font, String text, int x, int y, int color, boolean shadow) {
-            record(text, font.width(text), font, x, y);
+        public void text(Font font, @Nullable String text, int x, int y, int color, boolean shadow) {
+            String drawn = Objects.requireNonNull(text, "text drawn without a string");
+            record(drawn, font.width(drawn), font, x, y);
         }
 
         @Override

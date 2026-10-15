@@ -8,6 +8,7 @@ import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import org.jspecify.annotations.Nullable;
 
 /** Wall-clock world-load wait that the test mixin swaps in for Fabric's 1200-tick one (issue 277). */
 public final class WorldLoadWait {
@@ -68,7 +69,7 @@ public final class WorldLoadWait {
         return client.level != null && !(client.gui.screen() instanceof LevelLoadingScreen);
     }
 
-    private static boolean isExperimentalWarning(Screen screen) {
+    private static boolean isExperimentalWarning(@Nullable Screen screen) {
         return screen instanceof ConfirmScreen
                 && screen.getTitle().getContents() instanceof TranslatableContents translatable
                 && "selectWorld.warning.experimental.title".equals(translatable.getKey());

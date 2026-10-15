@@ -10,6 +10,7 @@ import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
@@ -76,7 +77,9 @@ public final class LayerConceptScenes {
         }
 
         public ServerLevel level(MinecraftServer server) {
-            return server.getLevel(LayerChain.dimension(dimension));
+            return Objects.requireNonNull(
+                    server.getLevel(LayerChain.dimension(dimension)),
+                    "the server has no level for layer dimension " + dimension);
         }
 
         public Vec3 absolute(Vec3 local) {
