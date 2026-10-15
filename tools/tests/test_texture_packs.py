@@ -30,13 +30,13 @@ ORES_DOC = texgen.ROOT / "docs/design/ores.md"
 # overrides vanilla art the mod promised not to touch, an ore's host stone first.
 VANILLA_FILES = {"textures/environment/celestial/sun.png", *(f"textures/block/{name}{suffix}" for name in ("lava_still", "lava_flow")
                                                            for suffix in (".png", ".png.mcmeta"))}
-# The vanilla blocks a pack may redraw: the texture density packs redraw stone and deepslate. The layer concept packs (docs/design/layer-concepts-2.md)
-# stand in vanilla andesite and diorite for the rock and rubble of layer 3, which has no blocks of its own until M3 (#504).
 # Delta E of a fleck pixel from the host rock's mean at which the two are plainly different colours (a just noticeable difference is about 2.3).
 DISTINCT = 20.0
 # The floors of the flecks' contrast against a host rock (test_every_ore_stands_out_of_every_rock_it_sits_in).
 MIN_FLECK_MEAN_DELTA_E = 38.0
 MIN_FLECK_CLEAR_SHARE = 0.9
+# The vanilla blocks a pack may redraw: the texture density packs redraw stone and deepslate. The layer concept packs (docs/design/layer-concepts-2.md)
+# stand in vanilla andesite and diorite for the rock and rubble of layer 3, which has no blocks of its own until M3 (#504).
 VANILLA_BLOCKSTATES = {f"minecraft/blockstates/{name}.json" for name in ("stone", "deepslate", "andesite", "diorite")}
 
 

@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.Function;
 import net.minecraft.core.Registry;
@@ -74,18 +75,24 @@ public final class LayerBlocks {
      * in it. Any other level (the surface, a test's) has vanilla stone.
      */
     public static Block groundOf(Level level) {
+        return layerGroundOf(level).orElse(Blocks.STONE);
+    }
+
+    /** The rock of the layer that a level is; empty for a level that is no layer (the surface, a test's). Fails for a layer with no rock block yet. */
+    public static Optional<Block> layerGroundOf(Level level) {
         OptionalInt layer = LayerChain.layerOf(
                 level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
         if (layer.isEmpty()) {
-            return Blocks.STONE;
+            return Optional.empty();
         }
-        return switch (layer.getAsInt()) {
-            case 1 -> PACKED_SHALE;
-            case 2 -> GREEN_SHALE;
-            default ->
-                throw new IllegalStateException(
-                        "Layer " + layer.getAsInt() + " has no rock block yet (layer 3 waits for M3, #504)");
-        };
+        return Optional.of(
+                switch (layer.getAsInt()) {
+                    case 1 -> PACKED_SHALE;
+                    case 2 -> GREEN_SHALE;
+                    default ->
+                        throw new IllegalStateException(
+                                "Layer " + layer.getAsInt() + " has no rock block yet (layer 3 waits for M3, #504)");
+                });
     }
 
     /** Loads the class, which registers the blocks. */
