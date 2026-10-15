@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.texture.CasingConnections.Tile;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.model.loading.v1.CustomUnbakedBlockStateModel;
 import net.fabricmc.fabric.api.client.renderer.v1.mesh.MutableQuadView;
@@ -92,8 +93,13 @@ public final class ConnectedBlockModel implements BlockStateModel {
         emitter.uv(1, left, 1 - bottom);
         emitter.uv(2, right, 1 - bottom);
         emitter.uv(3, right, 1 - top);
-        emitter.materialBake(tiles.get(tile), MutableQuadView.BAKE_NORMALIZED);
+        emitter.materialBake(baked(tile), MutableQuadView.BAKE_NORMALIZED);
         emitter.emit();
+    }
+
+    /** The map holds every {@link Tile}: {@code bake} fills it from {@code Tile.values()}. */
+    private Material.Baked baked(Tile tile) {
+        return Objects.requireNonNull(tiles.get(tile), () -> "no baked material for tile " + tile);
     }
 
     @Override
@@ -101,7 +107,7 @@ public final class ConnectedBlockModel implements BlockStateModel {
 
     @Override
     public Material.Baked particleMaterial() {
-        return tiles.get(Tile.ALONE);
+        return baked(Tile.ALONE);
     }
 
     @Override
