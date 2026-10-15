@@ -67,6 +67,32 @@ public class MockPlayersTest {
         });
     }
 
+    /**
+     * A mock joined through the helper path lands inside the test structure, not at the world origin, and is still
+     * alive in survival a few seconds later. Waits by wall clock, like {@link #serverJoinedMockSurvivesAtItsSpawn}.
+     */
+    @GameTest(maxTicks = 20_000)
+    public void helperJoinedMockSurvivesInsideTheStructure(GameTestHelper helper) {
+        MockPlayer mock = MockPlayers.join(helper, "helper-joined");
+        mock.player().setGameMode(GameType.SURVIVAL);
+        long deadline = System.nanoTime() + SURVIVAL_SECONDS * 1_000_000_000L;
+        TestTicks.each(helper, () -> {
+            if (!mock.player().isAlive()) {
+                throw helper.assertionException(
+                        "the helper-joined mock died at %s", mock.player().position());
+            }
+            if (System.nanoTime() - deadline <= 0 || helper.getTick() < MIN_TICKS) {
+                sleepOneTick();
+            } else {
+                Vec3 at = mock.player().position();
+                if (at.distanceTo(helper.absoluteVec(new Vec3(1.5, 1, 1.5))) > 5) {
+                    throw helper.assertionException("the helper-joined mock is at %s, outside the structure", at);
+                }
+                helper.succeed();
+            }
+        });
+    }
+
     // The GameTest server ticks unthrottled, so a few seconds of ticks pass in milliseconds unless each tick sleeps.
     private static void sleepOneTick() {
         try {
