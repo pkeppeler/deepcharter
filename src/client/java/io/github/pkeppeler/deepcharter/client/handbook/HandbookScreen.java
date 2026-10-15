@@ -78,9 +78,7 @@ public final class HandbookScreen extends Screen {
     private int previousPage;
     private int flipTicks;
     private boolean notesTab;
-    /** The Note being read on the Notes tab; absent while the list shows. */
     private @Nullable Identifier openNote;
-
     private final ScrollList noteScroll =
             new ScrollList(this::noteCount, () -> Math.max(1, noteRows().size()), () -> {});
     /** The sheet of the open Note being read, from 0: a Note longer than one sheet runs on to the next. */
