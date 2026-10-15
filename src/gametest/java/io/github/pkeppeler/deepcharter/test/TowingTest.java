@@ -282,6 +282,42 @@ public class TowingTest {
                 });
     }
 
+    /** A towed pod with no gravity stays where it hangs on a slack line; one with gravity sinks until the line is taut. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void aTowedPodWithNoGravityDoesNotSinkOnASlackLine(GameTestHelper helper) {
+        slackLine(helper, SKY_X + 50, true);
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void aTowedPodWithGravitySinksOnASlackLine(GameTestHelper helper) {
+        slackLine(helper, SKY_X + 100, false);
+    }
+
+    private static void slackLine(GameTestHelper helper, int x, boolean noGravity) {
+        ServerLevel level = layer(helper, 1);
+        Vec3 start = skyRoom(level, x);
+        Vec3 towedStart = start.add(0, -1, 0);
+        int settle = 60;
+        towScene(helper, level, columns(x, x + 40, TOW_Z), start, towedStart, step -> start, (tower, towed, age) -> {
+            if (age == 1) {
+                towed.setNoGravity(noGravity);
+            }
+            if (age < settle) {
+                return false;
+            }
+            double sank = towedStart.y - towed.getY();
+            if (noGravity ? Math.abs(sank) > 0.15 : sank < 1.5) {
+                throw failure(
+                        helper,
+                        "a towed pod with%s gravity on a slack line should %s, it sank %s",
+                        noGravity ? "out" : "",
+                        noGravity ? "hold its height" : "sink toward the taut line",
+                        sank);
+            }
+            return true;
+        });
+    }
+
     /** A jerk of the tower swings the pod, and the swing only dies away: no window of 30 ticks swings wider than the one before. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
     public void aSwingingTowedPodSettlesAndNeverSwingsWider(GameTestHelper helper) {

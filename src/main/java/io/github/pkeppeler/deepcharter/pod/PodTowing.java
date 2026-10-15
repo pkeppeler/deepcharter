@@ -373,7 +373,7 @@ public final class PodTowing {
         double slowing = line.resting ? tuning.groundFriction() : tuning.drag();
         Vec3 wanted = new Vec3(
                 line.velocity.x * slowing,
-                (line.velocity.y - tuning.gravity()) * tuning.drag(),
+                (line.velocity.y - towed.gravityPull(tuning.gravity())) * tuning.drag(),
                 line.velocity.z * slowing);
         AABB box = towed.getBoundingBox().move(held.subtract(towed.position()));
         List<VoxelShape> blocks = new ArrayList<>();
