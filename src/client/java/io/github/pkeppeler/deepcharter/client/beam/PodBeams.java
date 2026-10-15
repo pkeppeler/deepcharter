@@ -61,7 +61,11 @@ public final class PodBeams {
         if (length <= 0) {
             return null;
         }
-        BeamDraw beam = BEAMS.computeIfAbsent(pod, ignored -> new BeamDraw(style));
+        BeamDraw beam = BEAMS.get(pod);
+        if (beam == null) {
+            beam = new BeamDraw(style);
+            BEAMS.put(pod, beam);
+        }
         beam.aim(style, look.sides(), reach, length, ox, oy, oz, dx, dy, dz);
         return beam;
     }

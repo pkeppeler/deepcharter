@@ -210,7 +210,7 @@ public class ThemeLooksTest {
                         14,
                         96,
                         new BeamStyle(0xFFFFF0D2, 26, 0.12, 2.6, 0.03, 0.35, 0.1, 6, 0.9, 1.5),
-                        new BeamStyle(0xFFFFF4DC, 30, 0.25, 5.0, 0.015, 0.35, 0.05, 24, 0.4, 0.55)),
+                        new BeamStyle(0xFFFFCF6E, 30, 0.25, 5.0, 0.015, 0.35, 0.05, 24, 0.4, 0.55)),
                 BeamLook.of(area("beam", null)));
         helper.succeed();
     }

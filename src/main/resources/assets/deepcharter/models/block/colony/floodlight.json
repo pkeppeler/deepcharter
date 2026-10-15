@@ -5,7 +5,7 @@
     "iron": "deepcharter:block/colony/lamp_iron",
     "lens": "deepcharter:block/colony/flood_lens",
     "particle": "deepcharter:block/colony/lamp_iron",
-    "halo": "deepcharter:block/glow/halo_warm"
+    "halo": "deepcharter:block/glow/halo_sodium"
   },
   "elements": [
     {

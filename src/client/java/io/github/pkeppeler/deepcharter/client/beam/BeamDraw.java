@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.ARGB;
 import net.minecraft.util.LightCoordsUtil;
 import org.jspecify.annotations.Nullable;
 
@@ -66,7 +67,7 @@ public final class BeamDraw implements CustomGeometryRenderer, BeamMesh.Sink {
             double dz) {
         this.style = style;
         this.sides = sides;
-        this.rgb = style.color() & 0xFFFFFF; // colour-ok: the mask of an ARGB int's RGB bits, not a colour
+        this.rgb = style.color();
         this.fullLength = fullLength;
         this.length = length;
         this.ox = ox;
@@ -75,6 +76,12 @@ public final class BeamDraw implements CustomGeometryRenderer, BeamMesh.Sink {
         this.dx = dx;
         this.dy = dy;
         this.dz = dz;
+    }
+
+    /** The length in blocks the beam is drawn at: its reach in open air, or less where a block cuts it. */
+    // test-seam: the client tests pin the drawn length against the wall that cuts it; nothing in the game reads it back
+    public double length() {
+        return length;
     }
 
     /** Moves the start of the beam to (ox, oy, oz), keeping its aim: a floodlight's start is fixed in the world and drawn relative to the camera. */
@@ -96,10 +103,11 @@ public final class BeamDraw implements CustomGeometryRenderer, BeamMesh.Sink {
     @Override
     public void vertex(double x, double y, double z, double alpha, float u, float v) {
         int a = (int) Math.round(Math.min(1.0, Math.max(0.0, alpha)) * 255.0);
+        int argb = ARGB.color(a, rgb); // colour-ok: the theme colour with alpha
         PoseStack.Pose pose = Objects.requireNonNull(this.pose);
         Objects.requireNonNull(vertices)
                 .addVertex(pose, (float) x, (float) y, (float) z)
-                .setColor(a << 24 | rgb)
+                .setColor(argb)
                 .setUv(u, v)
                 .setOverlay(OverlayTexture.NO_OVERLAY)
                 .setLight(LightCoordsUtil.FULL_BRIGHT)

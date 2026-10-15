@@ -216,7 +216,7 @@ def wall_lamp() -> Model:
 
 def floodlight() -> Model:
     """A floodlight box on a yoke, its lens tilted down to the north."""
-    t = {"iron": tex("lamp_iron"), "lens": tex("flood_lens"), "particle": tex("lamp_iron"), "halo": halo("warm")}
+    t = {"iron": tex("lamp_iron"), "lens": tex("flood_lens"), "particle": tex("lamp_iron"), "halo": halo("sodium")}
     return Model(t, [
         Box((7, 0, 9), (9, 6, 11), {"*": "#iron"}),
         Box((3, 5, 4), (13, 13, 12), {"*": "#iron"}, rotation=(-25, 0, 0), pivot=(8, 9, 8)),

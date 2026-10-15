@@ -1,11 +1,10 @@
 {
-  "parent": "deepcharter:block/terminal",
+  "parent": "deepcharter:block/terminal_lit",
   "textures": {
     "top": "deepcharter:block/terminal_top",
     "bottom": "deepcharter:block/terminal_side",
     "side": "deepcharter:block/terminal_side",
     "front": "deepcharter:block/hangar_console_front",
-    "front_glow": "deepcharter:block/hangar_console_front_glow",
-    "halo": "deepcharter:block/glow/halo_cold"
+    "front_glow": "deepcharter:block/hangar_console_front_glow"
   }
 }

@@ -12,7 +12,23 @@ public final class BeamMesh {
     /** How many cones nest, from the wide faint one to the narrow bright core. */
     public static final int SHELLS = 6;
 
+    private static double[] cosines = new double[0];
+    private static double[] sines = new double[0];
+
     private BeamMesh() {}
+
+    /** Fills the cosines and sines of the corners of a round of {@code sides} faces, once for each count. Render thread only. */
+    private static void roundOf(int sides) {
+        if (cosines.length == sides + 1) {
+            return;
+        }
+        cosines = new double[sides + 1];
+        sines = new double[sides + 1];
+        for (int i = 0; i <= sides; i++) {
+            cosines[i] = Math.cos(2 * Math.PI * i / sides);
+            sines[i] = Math.sin(2 * Math.PI * i / sides);
+        }
+    }
 
     /** Takes the vertices of a beam, four to a quad, in the order they must be drawn. {@code u} runs round the cone, {@code v} along it. */
     public interface Sink {
@@ -59,9 +75,7 @@ public final class BeamMesh {
         double endFade = 1.0 - length / fullLength;
         int count = 0;
         for (int shell = 0; shell < SHELLS; shell++) {
-            // Shell 0 is the wide faint cone and the last is the narrow core: radius and alpha step evenly between
-            // them, so
-            // the flat cones stack into a soft edge.
+            // Shell 0 is the wide faint cone and the last the narrow core: radius and alpha step evenly between them.
             double t = (double) shell / (SHELLS - 1);
             double scale = 1.0 + (style.coreScale() - 1.0) * t;
             double alpha = style.alpha() + (style.coreAlpha() - style.alpha()) * t;
@@ -113,14 +127,12 @@ public final class BeamMesh {
         double ex = ox + dx * length;
         double ey = oy + dy * length;
         double ez = oz + dz * length;
-        double step = 2 * Math.PI / sides;
+        roundOf(sides);
         for (int i = 0; i < sides; i++) {
-            double a0 = i * step;
-            double a1 = (i + 1) * step;
-            double c0 = Math.cos(a0);
-            double s0 = Math.sin(a0);
-            double c1 = Math.cos(a1);
-            double s1 = Math.sin(a1);
+            double c0 = cosines[i];
+            double s0 = sines[i];
+            double c1 = cosines[i + 1];
+            double s1 = sines[i + 1];
             float u0 = (float) i / sides;
             float u1 = (float) (i + 1) / sides;
             sink.vertex(

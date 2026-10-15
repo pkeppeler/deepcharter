@@ -11,7 +11,7 @@
   "headlampPitch": 6,
   "headlampForward": 0.9,
   "headlampHeight": 1.5,
-  "floodlightColor": "#FFF4DC",
+  "floodlightColor": "#FFCF6E",
   "floodlightLength": 30,
   "floodlightStartRadius": 0.25,
   "floodlightEndRadius": 5.0,

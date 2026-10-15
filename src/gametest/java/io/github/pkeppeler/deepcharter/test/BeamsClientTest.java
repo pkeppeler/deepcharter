@@ -65,6 +65,15 @@ public class BeamsClientTest implements FabricClientGameTest {
 
                 BeamDraw open = PodBeams.beamFor(lit, stateOf(lit));
                 require(open != null, "a lit pod in open air should draw a beam");
+                // Its headlamp tilts down, so over a bare floor the beam ends where it meets the floor.
+                double height = BeamLook.current().headlamp().height();
+                double floorHit = height
+                        / Math.sin(Math.toRadians(BeamLook.current().headlamp().pitch()));
+                require(floorHit < reach, "the room is set so that the floor cuts the beam short of its reach");
+                require(
+                        Math.abs(open.length() - floorHit) < TOLERANCE,
+                        "the beam over a bare floor should be drawn " + floorHit + " blocks long, drawn "
+                                + open.length());
                 require(PodBeams.beamFor(dark, stateOf(dark)) == null, "a dark pod must draw no beam");
 
                 // The cast the renderer makes (BeamAim, one walk of the client's blocks), here level down the room from
@@ -121,10 +130,16 @@ public class BeamsClientTest implements FabricClientGameTest {
                         PodBeams.reach(lit));
                 require(
                         Math.abs(length - expected) < TOLERANCE,
-                        "a wall at z + 5 should cut the beam to " + expected + " blocks, cast " + length);
+                        "a wall at z + 5 should cut the level cast to " + expected + " blocks, cast " + length);
+                // The beam that is drawn tilts down by the style's pitch, so it meets the wall's face at the distance
+                // along its slant.
+                double pitch = BeamLook.current().headlamp().pitch();
+                double slant = (wallFace - (lit.getZ() + forward)) / Math.cos(Math.toRadians(pitch));
+                BeamDraw cut = PodBeams.beamFor(lit, stateOf(lit));
+                require(cut != null, "a beam cut short by a wall is still drawn, shorter");
                 require(
-                        PodBeams.beamFor(lit, stateOf(lit)) != null,
-                        "a beam cut short by a wall is still drawn, shorter");
+                        Math.abs(cut.length() - slant) < TOLERANCE,
+                        "the drawn beam should end at the wall, " + slant + " blocks, drawn " + cut.length());
             });
             // Stranded, the pod loses its light block (ADR 0024) and its beam.
             singleplayer

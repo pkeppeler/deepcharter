@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The beams of the colony's floodlights (#248). A floodlight is a plain block with no block entity, so the client finds them itself:
@@ -122,6 +123,30 @@ public final class FloodlightBeams {
         return new Lamp(at.immutable(), beam, x, y, z);
     }
 
+    /** Whether the block of {@code lamp} is still a floodlight: a beam of one that was broken goes at once, before the next look. */
+    private static boolean standing(ClientLevel level, Lamp lamp) {
+        return level.getBlockState(lamp.pos).is(ColonyKit.FLOODLIGHT);
+    }
+
+    /**
+     * The beam the floodlight at {@code pos} is drawn with, or null when the client has not found a floodlight there (a look comes every
+     * second) or the block is no longer one.
+     */
+    // test-seam: the client test reads the floodlight's beam (found, cut by a wall, gone when broken); the game reads
+    // the list only to draw it
+    public static @Nullable BeamDraw beamAt(BlockPos pos) {
+        ClientLevel level = Minecraft.getInstance().level;
+        if (level == null) {
+            return null;
+        }
+        for (Lamp lamp : lamps) {
+            if (lamp.pos.equals(pos) && standing(level, lamp)) {
+                return lamp.beam;
+            }
+        }
+        return null;
+    }
+
     private static void submit(LevelRenderContext context) {
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null || lamps.isEmpty()) {
@@ -134,8 +159,7 @@ public final class FloodlightBeams {
             double dx = lamp.x - camera.x;
             double dy = lamp.y - camera.y;
             double dz = lamp.z - camera.z;
-            if (dx * dx + dy * dy + dz * dz > drawDistance * drawDistance
-                    || !level.getBlockState(lamp.pos).is(ColonyKit.FLOODLIGHT)) {
+            if (dx * dx + dy * dy + dz * dz > drawDistance * drawDistance || !standing(level, lamp)) {
                 continue;
             }
             lamp.beam.moveTo(dx, dy, dz);
