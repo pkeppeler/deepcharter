@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.repair;
 
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Objects;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -32,6 +33,8 @@ public final class RepairRegistry {
     }
 
     public static Item item(Consumable consumable) {
-        return ITEMS.get(consumable);
+        return Objects.requireNonNull(
+                ITEMS.get(consumable),
+                "no item registered for " + consumable + "; the static block registers every Consumable");
     }
 }
