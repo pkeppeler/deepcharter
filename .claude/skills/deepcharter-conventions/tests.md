@@ -30,6 +30,10 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - A test that runs git in a temp repo clears every `GIT_*` variable and sets `cwd` and `GIT_CEILING_DIRECTORIES`; the pre-push hook also unsets them before running tests.
 - `ScannerFrameTimeClientTest` (#537) is a measurement, not a regression guard and not a pass line (it asserts only that the panel is drawn): it logs `[scanner-frame]` lines, the CPU milliseconds of one frame's render-state extraction (the HUD with its scanner panel) at the top scanner tier on a full-rock area, with no scanner, with one, and with the HUD hidden as a control. It unpaces the client (no vsync, no frame limit) and restores both. Do not time a client tick (it waits for the 20 ticks a second) or `renderFrame` (it returns at once in a test, drawing nothing).
 - A visual-legibility test measures at the on-screen cell size of the smallest shipped window, not at the unscaled tile.
+- A test that restates a registry (a hand-copied list of names) is not a test; read the registry.
+- A render-path feature with its own update loop (`FloodlightBeams`) needs a client GameTest driving it, not only an evidence scenario.
+- A change to shared client visuals runs every client test class that reads them, not only its own (#630 missed `TextureLayersClientTest`).
+- A regression test is proved by a mutation check: break a temporary copy of the code and see the test go red (#627's first case was vacuous).
 
 ## Client slots
 
