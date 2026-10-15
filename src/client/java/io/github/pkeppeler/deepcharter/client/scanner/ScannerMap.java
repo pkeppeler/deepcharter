@@ -212,7 +212,7 @@ final class ScannerMap {
             if (type.blockId().equals(id)) {
                 return Objects.requireNonNull(
                         look.oreMarkColors().get(type),
-                        "ScannerLook.of gives every OreType a mark colour, so " + type
+                        () -> "ScannerLook.of gives every OreType a mark colour, so " + type
                                 + " has none only in a hand-built look");
             }
         }
