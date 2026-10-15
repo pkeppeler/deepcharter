@@ -30,8 +30,10 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
 - **Branches:** `<issue>-<slug>`. Changes are squash-merged and branches are deleted automatically.
 - **CI runs on free standard runners** (the repo is public), so minutes are not rationed. Client tests still run only on `gameplay` PRs, for run time. Run recording jobs locally.
 - **Sessions:**
-  - Start a fresh session once context passes about 200k tokens.
   - For unattended runs, use `/loop` in dynamic mode.
+  - Once context passes about 200k tokens, hand over instead of stopping: let in-flight agents finish, rewrite the handoff, stop the loop, then start the successor from the main checkout and put its id in the handoff:
+    `claude --bg --permission-mode auto -n "deepcharter $(date -u +%m-%d-%H%M)" "/loop continue Deep Charter"`
+    Use the current session's permission mode, never a wider one. Run one orchestrator at a time.
 
 ## Handoff between sessions
 
