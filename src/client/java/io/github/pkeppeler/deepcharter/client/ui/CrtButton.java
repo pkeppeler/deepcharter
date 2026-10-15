@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.ui;
 
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
+import java.util.Objects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -51,7 +52,13 @@ public final class CrtButton extends Button implements PanelButton {
                     active,
                     lit,
                     CrtText.width(font, text),
-                    CrtDraw.pipsFit(panel, font, Minecraft.getInstance().gui.screen()));
+                    CrtDraw.pipsFit(
+                            panel,
+                            font,
+                            Objects.requireNonNull(
+                                    Minecraft.getInstance().gui.screen(),
+                                    () ->
+                                            "no screen open while a panel button is drawn: PanelLook.drawn() needs a PanelScreen")));
             int y = getY() + (getHeight() - font.lineHeight) / 2 + tuning.buttonLabelOffset();
             int ink = panel.labelColor(active, lit);
             graphics.text(font, CrtText.of(text), x, y, ink, false);
