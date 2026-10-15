@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -25,6 +26,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,21 +55,24 @@ final class ScannerMap {
 
     private static final int SUPERSAMPLE = 2;
 
-    private static DynamicTexture texture;
+    /** The picture; null before the first scan is drawn and after {@link #release}. */
+    private static @Nullable DynamicTexture texture;
+
     private static int textureWidth;
     private static int textureHeight;
     /** What the texture shows, so that a frame with the same slice at the same size and look draws without a rebuild. */
-    private static ScanSlice builtFrom;
+    private static @Nullable ScanSlice builtFrom;
 
     private static int builtPixels;
-    private static ScannerLook builtLook;
+    private static @Nullable ScannerLook builtLook;
     /** The model set the picture was read from: a resource reload bakes a new one, and a held slice must then be drawn again from the new pack. */
-    private static BlockStateModelSet builtModels;
+    private static @Nullable BlockStateModelSet builtModels;
 
     /** Scaled tiles by sprite and size, for the model set they were read from; a resource reload bakes a new set, which drops them. A sprite with no readable file is an empty entry. */
     private static final Map<TileKey, Optional<int[]>> TILES = new HashMap<>();
 
-    private static BlockStateModelSet tilesFrom;
+    /** The model set {@code TILES} was read from; null when no tile has been read. */
+    private static @Nullable BlockStateModelSet tilesFrom;
 
     private record TileKey(List<Identifier> sprites, int pixels, int backdrop) {}
 
@@ -205,7 +210,10 @@ final class ScannerMap {
         Identifier id = BuiltInRegistries.BLOCK.getKey(ore.block());
         for (OreType type : OreType.values()) {
             if (type.blockId().equals(id)) {
-                return look.oreMarkColors().get(type);
+                return Objects.requireNonNull(
+                        look.oreMarkColors().get(type),
+                        "ScannerLook.of gives every OreType a mark colour, so " + type
+                                + " has none only in a hand-built look");
             }
         }
         return flatColour(look, ore);

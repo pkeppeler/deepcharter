@@ -16,6 +16,7 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A vertical slice of blocks in a pod's facing plane: one block thick, running along {@code facing}
@@ -166,7 +167,7 @@ public final class ScanSlice {
      * blocks either side of the plane at that spot is, and null for neither. The pod's bore is wider than the one-block plane, and lava beside
      * the plane is lava the pod can touch.
      */
-    private static Cell lavaReading(BlockGetter level, BlockPos pos, Direction facing, int lavaSpread) {
+    private static @Nullable Cell lavaReading(BlockGetter level, BlockPos pos, Direction facing, int lavaSpread) {
         if (level.getFluidState(pos).is(FluidTags.LAVA)) {
             return Cell.LAVA;
         }

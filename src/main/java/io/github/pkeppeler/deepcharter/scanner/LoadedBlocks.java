@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The blocks of a level that are already loaded, and air everywhere else. A server reads a {@link ScanSlice} through this: a plain
@@ -17,7 +18,7 @@ import net.minecraft.world.level.material.Fluids;
  */
 public record LoadedBlocks(Level level) implements BlockGetter {
     @Override
-    public BlockEntity getBlockEntity(BlockPos pos) {
+    public @Nullable BlockEntity getBlockEntity(BlockPos pos) {
         return null;
     }
 
