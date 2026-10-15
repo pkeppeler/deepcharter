@@ -16,6 +16,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The handbook's chapters. They are a data-pack registry, one JSON file per chapter, and the server sends it to every client, so
@@ -30,9 +31,12 @@ public final class HandbookChapters {
             ResourceKey.createRegistryKey(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook_chapter"));
 
     /** The directives of one loaded registry, or what is wrong with it. */
-    private record Index(Object registry, Set<Identifier> directives, String problem) {}
+    private record Index(
+            Object registry,
+            Set<Identifier> directives,
+            @Nullable String problem) {}
 
-    private static Index cached;
+    private static @Nullable Index cached;
 
     private HandbookChapters() {}
 
