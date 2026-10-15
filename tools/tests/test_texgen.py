@@ -59,6 +59,26 @@ class RecipeRulesTest(unittest.TestCase):
         with self.assertRaisesRegex(RecipeError, "not fully opaque"):
             book.render("block/x")
 
+    def test_a_translucent_texture_may_hold_half_transparent_pixels(self):
+        canvas = self.book({"block/x": {"kind": "translucent", "layers": [{"op": "halo", "colour": "ink", "alpha": 200}]}}).render("block/x")[0]
+        self.assertTrue(any(0 < p[3] < 255 for p in canvas.data))
+
+    def test_a_halo_is_brightest_in_the_middle_and_clear_at_the_corners(self):
+        canvas = self.book({"block/x": {"kind": "translucent", "layers": [
+            {"op": "halo", "colour": "ink", "alpha": 200, "power": 2}]}}).render("block/x")[0]
+        centre, ring, corner = canvas.get(8, 8), canvas.get(8, 12), canvas.get(0, 0)
+        self.assertEqual((0x10, 0x20, 0x30), centre[:3])
+        self.assertGreater(centre[3], ring[3])
+        self.assertGreater(ring[3], 0)
+        self.assertEqual(0, corner[3])
+
+    def test_a_halo_is_symmetric_about_the_middle_of_the_texture(self):
+        canvas = self.book({"block/x": {"kind": "translucent", "layers": [{"op": "halo", "colour": "ink", "alpha": 200}]}}).render("block/x")[0]
+        for x in range(16):
+            for y in range(16):
+                self.assertEqual(canvas.get(x, y), canvas.get(15 - x, y))
+                self.assertEqual(canvas.get(x, y), canvas.get(x, 15 - y))
+
     def test_a_template_with_a_missing_argument_fails(self):
         write_json(self.root / "recipes" / "t.json", {"templates": {"t": {"params": ["c"], "recipe": {"kind": "opaque", "layers": [{"op": "fill", "colour": "$c"}]}}}})
         with self.assertRaisesRegex(RecipeError, "template t takes"):
