@@ -17,6 +17,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The transmission on screen, and those waiting behind it. The header (who sends it and how the signal is framed) types out first,
@@ -40,7 +41,7 @@ public final class TransmissionOverlay {
     /** The transmissions already reported as dropped, so that one broken id logs once. */
     private static final Set<Identifier> DROPPED = new HashSet<>();
 
-    private static Current current;
+    private static @Nullable Current current;
     private static int heldTicks;
     /** Set by the letter hook, which can fire several times in a tick, and played once at the end of the tick. */
     private static boolean letterTyped;
