@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.upgrade;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Tunables for the upgrade feature, read as {@code UpgradeTuning.DEFAULT.thing()}.
@@ -40,14 +41,19 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks) {
         }
     }
 
+    private Tiers tiers(ComponentTrack track) {
+        return Objects.requireNonNull(
+                tracks.get(track), () -> "track " + track.id() + " has no table; the constructor checks every track");
+    }
+
     /** The track's number at {@code tier}; tier 0 is the stock part. */
     public float value(ComponentTrack track, int tier) {
-        return tracks.get(track).values().get(requireTier(track, tier));
+        return tiers(track).values().get(requireTier(track, tier));
     }
 
     /** The dollars a part of this tier costs in the original; the stock part is free. */
     public long price(ComponentTrack track, int tier) {
-        return tracks.get(track).prices().get(requireTier(track, tier));
+        return tiers(track).prices().get(requireTier(track, tier));
     }
 
     /** How much the track's number at {@code tier} is worth against the stock part's: 1 for tier 0, 1.4 for a part 40% better. */

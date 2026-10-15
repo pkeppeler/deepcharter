@@ -8,6 +8,7 @@ import io.netty.buffer.ByteBuf;
 import java.util.Objects;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import org.jspecify.annotations.Nullable;
 
 /**
  * What a part is stamped with: its tier, the charter it belongs to and its serial number. Parts are company property
@@ -41,7 +42,7 @@ public record PartLabel(int tier, CharterId charter, String serial) {
         }
     }
 
-    private static String problem(int tier, String serial) {
+    private static @Nullable String problem(int tier, String serial) {
         if (tier < 1) {
             return "a part label has tier 1 or more, got " + tier;
         }
