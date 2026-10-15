@@ -32,6 +32,7 @@ import net.minecraft.world.phys.Vec3;
 final class CrewFate {
     static final int RETRY_TICKS = 200;
 
+    @SuppressWarnings("ArrayRecordComponent") // ticksLeft is the one counter that the record mutates in place
     private record Pending(Entity member, ServerLevel level, int[] ticksLeft) {}
 
     private static final List<Pending> PENDING = new ArrayList<>();

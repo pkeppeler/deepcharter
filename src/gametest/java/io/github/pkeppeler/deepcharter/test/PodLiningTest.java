@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -15,6 +17,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import java.util.ArrayList;
 import java.util.List;
@@ -136,7 +139,7 @@ public class PodLiningTest {
     /** Runs {@code done} on the first tick after the lining has ended, and fails if it does not end in time. */
     private static void whenLiningEnds(GameTestHelper helper, Rig rig, Runnable done) {
         boolean[] finished = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!finished[0] && !PodLining.working(rig.pod)) {
                 finished[0] = true;
                 done.run();
@@ -366,7 +369,7 @@ public class PodLiningTest {
         List<Long> placedAt = new ArrayList<>();
         long[] seen = {0};
         boolean[] ended = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             long bricks = bricksIn(helper, ringEast());
             if (bricks > seen[0]) {
                 seen[0] = bricks;
@@ -502,7 +505,7 @@ public class PodLiningTest {
         Rig rig = seat(helper, "Short pilot", 2);
         PodLining.toggle(rig.pilot.player());
         boolean[] ended = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!ended[0] && !PodLining.working(rig.pod)) {
                 ended[0] = true;
                 PodLining.State state = PodLining.of(rig.pod);
@@ -737,7 +740,8 @@ public class PodLiningTest {
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

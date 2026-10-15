@@ -13,11 +13,12 @@ addVmArgToRuns(exitOnOom)
 
 // Server GameTest heap. No -Xmx was set, so the JVM took a quarter of RAM: 4 GB on the 16 GB Mac, and the suite (1050 tests) ran
 // out of it at about 80% (#541). Measured 2026-10-12 (-Xlog:gc, one full run): the live set after GC reached 4.4 GB at the end of
-// the suite and was still rising, so 6 GB leaves about 1.6 GB (27%) of headroom. The live set grows with the test count: most of it
-// is GameTestHelper.onEachTick, which queues one lambda per remaining tick of the test's maxTicks and keeps every finished test's
-// queue until the run ends. Re-measure when the suite grows by a tenth.
+// the suite and was still rising, so 6 GB leaves about 1.6 GB (27%) of headroom. Most of that was GameTestHelper.onEachTick, which queued
+// one lambda per remaining tick of the test's maxTicks (#548; TestTicks.each replaced it, and the peak after GC fell from 5.7 GB to 2.6-3.0 GB).
+// What remains grows with the test count and is chunk data (LevelChunkSection and its PalettedContainer) kept by finished tests.
+// Re-measure when the suite grows by a tenth.
 val gameTestHeap = "-Xmx6G"
-addVmArgToRun("gameTest", gameTestHeap) // lower after #548
+addVmArgToRun("gameTest", gameTestHeap)
 
 // Proof the gate holds: every run carries the flag, and a JVM that catches its OutOfMemoryError exits non-zero with the flag and
 // 0 without it. The second half fails if the JVM ever stops honouring the flag; the first, if a run drops it.

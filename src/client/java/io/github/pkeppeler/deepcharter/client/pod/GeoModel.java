@@ -241,6 +241,7 @@ public record GeoModel(String source, int textureWidth, int textureHeight, List<
     }
 
     /** A cube at rest: its bone, the cube as the file has it, and its box in pixels as {minX, minY, minZ, maxX, maxY, maxZ}. */
+    @SuppressWarnings("ArrayRecordComponent") // a read-only six-number box, never compared or hashed
     public record RestCube(Bone bone, Cube cube, double[] box) {}
 
     List<RestCube> restCubes(Predicate<Bone> only, OptionalDouble pitch) {

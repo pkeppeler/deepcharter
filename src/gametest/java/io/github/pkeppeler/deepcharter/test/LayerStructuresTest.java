@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
@@ -14,6 +16,7 @@ import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -215,7 +218,7 @@ public class LayerStructuresTest {
         FarChunks.Deadline deadline = FarChunks.deadline();
         long startNanos = System.nanoTime();
         Map<StructureKind, String> firstUnmet = new EnumMap<>(StructureKind.class);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             List<String> failing = new ArrayList<>();
             for (StructureSite site : sites) {
                 ServerLevel level = level(helper, site.kind().layer());
@@ -688,12 +691,7 @@ public class LayerStructuresTest {
         }
     }
 
-    /** No fluid and no gas pocket in the site's bounds and the shell round them. */
-    private static void requireNoFluidOrGas(GameTestHelper helper, ServerLevel level, StructureSite site) {
-        requireNoFluidOrGas(helper, level, site, null);
-    }
-
-    /** As above, limited to the blocks of {@code only} when it is given. */
+    /** No fluid and no gas pocket in the site's bounds and the shell round them, limited to the blocks of {@code only}. */
     private static void requireNoFluidOrGas(
             GameTestHelper helper, ServerLevel level, StructureSite site, ChunkPos only) {
         String found = fluidOrGasAt(level, site, only);
@@ -731,7 +729,8 @@ public class LayerStructuresTest {
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

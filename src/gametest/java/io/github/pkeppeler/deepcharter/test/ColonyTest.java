@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
@@ -29,6 +31,7 @@ import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.io.IOException;
@@ -296,7 +299,10 @@ public class ColonyTest {
                     "the respawn radius should be 0 so a new player stands in the office, it is %s",
                     server.getGameRules().get(GameRules.RESPAWN_RADIUS));
         }
-        if (!overworld.getBlockState(office.below()).isSolid()
+        // Mojang deprecated BlockStateBase.isSolid but keeps it as the stand-on-it test
+        @SuppressWarnings("deprecation")
+        boolean floorSolid = overworld.getBlockState(office.below()).isSolid();
+        if (!floorSolid
                 || !overworld.getBlockState(office).isAir()
                 || !overworld.getBlockState(office.above()).isAir()) {
             throw failure(helper, "a player cannot stand at the world spawn %s", office.toShortString());
@@ -552,7 +558,7 @@ public class ColonyTest {
         for (BlockPos corner : corners(centre)) {
             FarChunks.awaitEntityTicking(helper, one, corner.atY(one.getMinY() + 8), () -> ticking[0]++);
         }
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             ServerPlayer player = mock.player();
             if (ticking[0] == 5 && player.level().dimension().equals(surface.dimension())) {
                 player.setPos(player.getX(), player.getY() - 1, player.getZ());
@@ -718,7 +724,7 @@ public class ColonyTest {
         for (BlockPos corner : corners(centre)) {
             FarChunks.awaitEntityTicking(helper, level, corner.atY(floor), () -> ticking[0]++);
         }
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null && ticking[0] == 5) {
                 PodEntity created = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
                 created.setPos(start);
@@ -989,7 +995,8 @@ public class ColonyTest {
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

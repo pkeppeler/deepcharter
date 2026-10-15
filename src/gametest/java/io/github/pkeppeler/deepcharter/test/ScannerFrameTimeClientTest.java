@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest.HudShot;
@@ -140,7 +141,7 @@ public class ScannerFrameTimeClientTest implements FabricClientGameTest {
                     for (int ahead = -area.halfWidth(); ahead <= area.halfWidth(); ahead++) {
                         BlockPos at =
                                 pod.blockPosition().relative(facing, ahead).above(up);
-                        if (level.hasChunkAt(at)
+                        if (LoadedBlocks.isLoaded(level, at)
                                 && level.isInsideBuildHeight(at.getY())
                                 && (up < 0 || Math.abs(ahead) > POD_CLEARANCE)) {
                             level.setBlock(

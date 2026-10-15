@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
@@ -14,6 +16,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -145,7 +148,8 @@ public class LayerTerrainTest {
                             && mobs.unwrap().stream()
                                     .allMatch(entry -> entry.value().type() == CreatureRegistry.LAMPLESS_FIGURE);
                     if (!mobs.isEmpty() && !onlyRetained) {
-                        throw failure(helper, "layer_%d zone %d spawns %s mobs: %s", layer, zone, category, mobs);
+                        throw failure(
+                                helper, "layer_%d zone %d spawns %s mobs: %s", layer, zone, category, mobs.unwrap());
                     }
                 }
             }
@@ -313,7 +317,7 @@ public class LayerTerrainTest {
             throw failure(helper, "the pilot could not mount the pod");
         }
         pilot.setInput(SPRINT);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (two.getBlockState(new BlockPos(x - 1, floor - 1, z - 1)).isAir()) {
                 pilot.releaseInput();
                 pod.discard();
@@ -539,18 +543,9 @@ public class LayerTerrainTest {
         }
     }
 
-    private static void box(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2, Block block) {
-        for (int x = x1; x <= x2; x++) {
-            for (int y = y1; y <= y2; y++) {
-                for (int z = z1; z <= z2; z++) {
-                    level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), 2);
-                }
-            }
-        }
-    }
-
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

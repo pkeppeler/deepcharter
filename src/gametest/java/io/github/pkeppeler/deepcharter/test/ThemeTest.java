@@ -134,7 +134,7 @@ public class ThemeTest {
     /** Runs {@code action}, which must throw, and returns the message of what it threw. */
     private static String failure(GameTestHelper helper, Supplier<?> action) {
         try {
-            action.get();
+            Object _ = action.get();
         } catch (IllegalArgumentException | IllegalStateException e) {
             return String.valueOf(e.getMessage());
         }

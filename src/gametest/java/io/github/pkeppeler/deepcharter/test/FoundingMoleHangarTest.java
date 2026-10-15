@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
@@ -31,6 +33,7 @@ import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -90,11 +93,13 @@ public class FoundingMoleHangarTest {
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
-    static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {
+    @FormatMethod
+    static void expect(GameTestHelper helper, boolean condition, @FormatString String format, Object... args) {
         if (!condition) {
             throw failure(helper, format, args);
         }
@@ -121,7 +126,7 @@ public class FoundingMoleHangarTest {
             chunkTicks[0] = true;
             chunkReadyTick[0] = helper.getTick();
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!chunkTicks[0] || done[0]) {
                 return;
             }

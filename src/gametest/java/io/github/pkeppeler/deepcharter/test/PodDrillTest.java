@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -22,6 +24,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -124,7 +127,7 @@ public class PodDrillTest {
         // Off the block grid on purpose: the pod must centre itself, and bore the nearest 2 x 2.
         Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.8), 0f, "drill-bore", SPRINT);
         boolean[] released = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -179,7 +182,7 @@ public class PodDrillTest {
         // A wall of stone two blocks east, and a pod that starts four blocks up: it meets the wall while falling.
         Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor + 4, Z + 0.3), EAST, "drill-ground", FORWARD);
         int[] airborneAgainstWall = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -218,7 +221,7 @@ public class PodDrillTest {
         room(level, x, floor, 4);
         wall(level, x + 2, x + 3, Z, floor, ceiling);
         Rig rig = Rig.await(helper, level, new Vec3(x + 0.3, floor, Z + 0.3), EAST, "drill-ceiling", FORWARD);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -278,7 +281,7 @@ public class PodDrillTest {
         Rig deep = Rig.await(helper, level, new Vec3(deepX, deepFloor, Z), 0f, "drill-deep", SPRINT);
         int[] shallowTicks = {-1};
         int[] deepTicks = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!shallow.ready() || !deep.ready()) {
                 return;
             }
@@ -342,7 +345,7 @@ public class PodDrillTest {
         level.setBlock(
                 new BlockPos(x, floor - 1, Z), OreBlocks.of(OreType.EINSTEINIUM).defaultBlockState(), 3);
         Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), 0f, "drill-ore", SPRINT);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -382,7 +385,7 @@ public class PodDrillTest {
                 }
             }
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -514,7 +517,7 @@ public class PodDrillTest {
             rig = Rig.await(helper, level, new Vec3(x + 0.3, FLOOR, Z + 0.3), 0f, "drill-gas-down", SPRINT);
         }
         float[] start = {Float.NaN};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -568,7 +571,7 @@ public class PodDrillTest {
         float[] hullBefore = {Float.NaN};
         Rig rig =
                 Rig.await(helper, one, new Vec3(x, 1, Z), 0f, "drill-crust", SPRINT, pod -> hullBefore[0] = pod.hull());
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -612,7 +615,7 @@ public class PodDrillTest {
         RoomCarver.carve(two, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
         RoomCarver.carve(two, x - 2, x + 2, 3, 10, Z - 2, Z + 2, Blocks.AIR);
         Rig rig = Rig.await(helper, two, new Vec3(x, 3, Z), 0f, "drill-last-crust", SPRINT);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -707,7 +710,7 @@ public class PodDrillTest {
         Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), 0f, "drill-nudged", SPRINT);
         int[] started = {-1};
         boolean[] nudged = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -768,7 +771,7 @@ public class PodDrillTest {
         int[] started = {-1};
         int[] movedAt = {-1};
         int[] backAt = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -863,7 +866,8 @@ public class PodDrillTest {
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

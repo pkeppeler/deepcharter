@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -9,6 +11,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -486,7 +489,8 @@ public class SurfaceTerrainTest {
         return generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random);
     }
 
-    private static RuntimeException fail(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException fail(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -495,7 +499,7 @@ public class SurfaceTerrainTest {
         if (stream == null) {
             throw fail(helper, "missing resource %s", resource);
         }
-        try (Reader reader = new InputStreamReader(stream)) {
+        try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader);
         }
     }

@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.JsonOps;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
@@ -8,6 +10,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -101,7 +104,7 @@ public class SurfaceBreachTest {
             }
             ticking[0] = true;
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             ServerPlayer player = mock.player();
             if (ticking[0] && player.level().dimension().equals(Level.OVERWORLD)) {
                 Entity root = player.getRootVehicle();
@@ -216,7 +219,7 @@ public class SurfaceBreachTest {
     private static void fallWhileIn(GameTestHelper helper, MockPlayer mock, ServerLevel level) {
         boolean[] ticking = {false};
         FarChunks.awaitEntityTicking(helper, level, mock.player().blockPosition(), () -> ticking[0] = true);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             ServerPlayer player = mock.player();
             if (ticking[0] && player.level().dimension().equals(level.dimension())) {
                 player.setPos(player.getX(), player.getY() - 1, player.getZ());
@@ -234,7 +237,8 @@ public class SurfaceBreachTest {
         }
     }
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -20,6 +22,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.io.IOException;
@@ -190,7 +193,7 @@ public class RetainedTest {
         int[] phase = {0};
         long[] since = {0};
         float[] hullAtGrab = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
                 return;
@@ -270,7 +273,7 @@ public class RetainedTest {
         ServerLevel level = helper.getLevel();
         Arena[] made = {null};
         long[] clungAt = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
                 return;
@@ -386,7 +389,7 @@ public class RetainedTest {
         BlockPos origin = slot(1);
         Arena[] made = {null};
         int[] ticks = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
                 return;
@@ -454,7 +457,7 @@ public class RetainedTest {
         ServerLevel level = helper.getLevel();
         Arena[] made = {null};
         long[] grabbedAt = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
                 return;
@@ -503,7 +506,7 @@ public class RetainedTest {
         long[] diedAt = {-1};
         float[] fuelAtGrab = {0};
         float[] hullAtGrab = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
                 return;
@@ -590,7 +593,7 @@ public class RetainedTest {
         BlockPos origin = slot(4);
         Arena[] made = {null};
         long[] litAt = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
                 return;
@@ -634,7 +637,7 @@ public class RetainedTest {
         long[] blowAt = {0};
         int[] blows = {0};
         float[] fuelAtDeath = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
                 return;
@@ -717,7 +720,7 @@ public class RetainedTest {
         LamplessFigure[] first = {null};
         LamplessFigure[] second = {null};
         long[] since = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
                 return;
@@ -769,7 +772,7 @@ public class RetainedTest {
         Arena[] made = {null};
         long[] leftAt = {-1};
         float[] fuelAtLeaving = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
                 return;
@@ -811,7 +814,7 @@ public class RetainedTest {
         BlockPos origin = slot(9);
         Arena[] made = {null};
         long[] goneAt = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
                 return;
@@ -939,7 +942,7 @@ public class RetainedTest {
         int[] ready = {0};
         int[] phase = {0};
         int[] since = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (ready[0] < 3) {
                 return;
             }
@@ -1063,7 +1066,7 @@ public class RetainedTest {
         int[] phase = {0};
         int[] since = {0};
         int tries = 4000;
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (figure[0] == null) {
                 return;
             }
@@ -1227,7 +1230,8 @@ public class RetainedTest {
         }
     }
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

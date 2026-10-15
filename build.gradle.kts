@@ -1,4 +1,5 @@
 import java.security.MessageDigest
+import net.ltgt.gradle.errorprone.errorprone
 import java.util.zip.ZipFile
 
 // Plugin versions are locked too. Regenerate: see the deepcharter-conventions skill.
@@ -13,6 +14,7 @@ plugins {
 	alias(libs.plugins.loom)
 	alias(libs.plugins.dependency.analysis)
 	alias(libs.plugins.spotless)
+	alias(libs.plugins.errorprone)
 	checkstyle
 }
 
@@ -164,6 +166,10 @@ dependencies {
 	"clientImplementation"(libs.geckolib)
 	"gametestImplementation"(libs.geckolib)
 	include(libs.geckolib)
+
+	errorprone(libs.errorprone.core)
+	// @FormatMethod on the gametest failure helpers, so Error Prone checks their format strings
+	"gametestCompileOnly"(libs.errorprone.annotations)
 }
 
 // Audit condition 2: the resolved GeckoLib jar must be the audited one. Regenerating the verification metadata accepts whatever
@@ -267,8 +273,29 @@ spotless {
 	}
 }
 
+// RELAXED: Error Prone's unused checks would flag every injector method and its Mixin-supplied parameters; any other unused code is still reported.
+val mixinHandlers = listOf("Inject", "Redirect", "ModifyArg", "ModifyArgs", "ModifyVariable", "ModifyConstant")
+	.joinToString(",") { "org.spongepowered.asm.mixin.injection.$it" }
+
+// Error Prone runs on every source set; -Werror fails on any warning.
+// RELAXED -processing: javac warns about annotations no processor claims.
+// RELAXED -classfile: third-party class files warn per class (Gson's @InlineMe needs error_prone_annotations; JOML's type annotations predate the class-file version javac reads them from).
 tasks.withType<JavaCompile>().configureEach {
 	options.release = 25
+	options.compilerArgs.addAll(listOf("-Xlint:all,-processing,-classfile", "-Werror"))
+	options.errorprone {
+		disableWarningsInGeneratedCode = true
+		// RELAXED: Readable and Unreadable are the domain's own pair (Versioned, CONTEXT.md)
+		disable("AvoidCommonTypeNames")
+		// RELAXED: vanilla compares Entity, Level, Item, Block and registry objects with ==, and our constant records (Chassis, TerminalType, ScanSlice.Cell) only ever exist as the constants
+		disable("ReferenceEquality")
+		// RELAXED: enum order is the contract of stream codecs, theme data indices and seeded hashes, so ordinal() is the stable key there
+		disable("EnumOrdinal")
+		// RELAXED: enums hold Minecraft types (SoundEvent, Identifier, MapCodec) that cannot carry @Immutable
+		disable("ImmutableEnumChecker")
+		option("UnusedMethod:ExemptingMethodAnnotations", mixinHandlers)
+		option("Unused:methodAnnotationsExemptingParameters", mixinHandlers)
+	}
 }
 
 java {

@@ -6,7 +6,6 @@ import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.BlockStateModelSet;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
@@ -32,7 +31,7 @@ import net.minecraft.world.level.block.state.BlockState;
 final class ScannerSprites {
     private static final Direction FACE = Direction.NORTH;
     /** Layers by block state for the model set they were read from; a resource reload bakes a new set, which drops them all. */
-    private static final Map<BlockState, List<TextureAtlasSprite>> BY_STATE = new IdentityHashMap<>();
+    private static final IdentityHashMap<BlockState, List<TextureAtlasSprite>> BY_STATE = new IdentityHashMap<>();
 
     private static BlockStateModelSet readFrom;
 

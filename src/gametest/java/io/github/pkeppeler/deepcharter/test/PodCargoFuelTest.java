@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.List;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -22,6 +23,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -339,7 +341,9 @@ public class PodCargoFuelTest {
                         .getServer()
                         .getCommands()
                         .getDispatcher()
-                        .execute("deepcharter pod dump", source(pilot, LevelBasedPermissionSet.ALL));
+                        .execute(
+                                "deepcharter pod dump",
+                                source(pilot, LevelBasedPermissionSet.forLevel(PermissionLevel.ALL)));
             } catch (CommandSyntaxException expected) {
                 refused = true;
             }
@@ -361,7 +365,8 @@ public class PodCargoFuelTest {
             var dispatcher = helper.getLevel().getServer().getCommands().getDispatcher();
             boolean refused = false;
             try {
-                dispatcher.execute("deepcharter pod spawn", source(player, LevelBasedPermissionSet.ALL));
+                dispatcher.execute(
+                        "deepcharter pod spawn", source(player, LevelBasedPermissionSet.forLevel(PermissionLevel.ALL)));
             } catch (CommandSyntaxException expected) {
                 refused = true;
             }
@@ -551,7 +556,7 @@ public class PodCargoFuelTest {
         PodEntity pod = spawnPod(helper, DROP_BLOCKS);
         MockPlayer pilot = seatPilot(helper, pod);
         if (braked) {
-            helper.onEachTick(() -> pilot.setInput(pod.getDeltaMovement().y < BRAKED_SINK ? JUMP : Input.EMPTY));
+            TestTicks.each(helper, () -> pilot.setInput(pod.getDeltaMovement().y < BRAKED_SINK ? JUMP : Input.EMPTY));
         }
         helper.succeedWhen(() -> {
             if (!pod.onGround() || pod.tickCount < 5) {

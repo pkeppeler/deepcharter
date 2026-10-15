@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import com.mojang.serialization.Dynamic;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -14,6 +16,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.ArrayList;
@@ -113,7 +116,7 @@ public class PodLightsTest {
         PodEntity[] made = {null};
         FarChunks.Deadline deadline = FarChunks.deadline();
         int[] step = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             PodEntity pod = made[0];
             if (pod == null) {
                 return;
@@ -354,7 +357,7 @@ public class PodLightsTest {
         int[] phase = {0};
         int[] since = {0};
         FarChunks.Deadline[] unloadBy = {null};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null) {
                 return;
             }
@@ -481,7 +484,7 @@ public class PodLightsTest {
         };
         int ticksPerStage = COST_WARMUP_TICKS + COST_TICKS;
         long[] total = new long[stages.length];
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             long tick = helper.getTick();
             int stage = (int) (tick / ticksPerStage);
             if (stage >= stages.length) {
@@ -679,7 +682,8 @@ public class PodLightsTest {
         return level;
     }
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

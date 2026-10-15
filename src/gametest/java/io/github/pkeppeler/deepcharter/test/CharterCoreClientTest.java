@@ -129,7 +129,7 @@ public class CharterCoreClientTest implements FabricClientGameTest {
                 require(tick <= CLIENT_TICK_FUSE, "the server never dropped the disconnected client");
                 context.waitTick();
             }
-            try (var connection = two.server().connect()) {
+            try (var _ = two.server().connect()) {
                 ClientWait.until(
                         context,
                         "the two-person charter led by the director",

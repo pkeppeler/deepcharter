@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -81,7 +83,8 @@ public class PodEventsTest {
         }
     }
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -291,7 +294,7 @@ public class PodEventsTest {
                 helper.succeed();
                 return;
             }
-            throw failure(helper, message);
+            throw failure(helper, "%s", message);
         } finally {
             badListener.remove(pod.getUUID());
             pod.discard();

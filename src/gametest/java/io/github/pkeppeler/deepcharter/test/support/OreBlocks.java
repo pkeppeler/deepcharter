@@ -8,7 +8,10 @@ import net.minecraft.world.level.block.Block;
 public final class OreBlocks {
     private OreBlocks() {}
 
-    /** @throws IllegalStateException if the registry has no block with the ore's id: the registry would answer air, and a test would pass vacuously */
+    /**
+     * Looks up the ore's block.
+     *
+     * @throws IllegalStateException if the registry has no block with the ore's id: the registry would answer air, and a test would pass vacuously */
     public static Block of(OreType type) {
         if (!BuiltInRegistries.BLOCK.containsKey(type.blockId())) {
             throw new IllegalStateException("no block " + type.blockId() + " is registered for " + type);

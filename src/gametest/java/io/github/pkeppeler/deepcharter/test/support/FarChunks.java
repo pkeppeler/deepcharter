@@ -111,8 +111,7 @@ public final class FarChunks {
      * test naming the chunk and dimension after {@link #WAIT_SECONDS} of wall-clock time. {@code then} must
      * not register tick callbacks: register them first and let them wait for what {@code then} sets.
      *
-     * @throws IllegalStateException if called after the test's first tick, because registering a tick callback
-     *         there crashes vanilla's GameTest loop with an unrelated NullPointerException
+     * @throws IllegalStateException if called after the test's first tick, as {@link TestTicks#each} does
      */
     public static void awaitEntityTicking(GameTestHelper helper, ServerLevel level, BlockPos pos, Runnable then) {
         awaitEntityTicking(helper, level, List.of(pos), index -> then.run());
@@ -120,8 +119,7 @@ public final class FarChunks {
 
     /**
      * As the single-position form, for several columns at once with one tick callback. A test that waits for many chunks calls
-     * this and not the single form in a loop: vanilla registers a callback for every tick of the test's {@code maxTicks}, and
-     * each registration makes every tick of a long test slower. {@code then} runs with the index in {@code positions} of a
+     * this and not the single form in a loop. {@code then} runs with the index in {@code positions} of a
      * column on the first tick when it is entity-ticking; the failure after {@link #WAIT_SECONDS} names the first column still waiting.
      */
     public static void awaitEntityTicking(
@@ -136,7 +134,7 @@ public final class FarChunks {
         Deadline deadline = deadline();
         boolean[] done = new boolean[positions.size()];
         int[] waiting = {positions.size()};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (waiting[0] == 0) {
                 return;
             }

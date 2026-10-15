@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -15,6 +17,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.List;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -110,7 +113,7 @@ public class OreCargoTest {
         player.getInventory().add(OreRegistry.stack(OreType.EINSTEINIUM));
         double expected = bare * (1 - OreType.EINSTEINIUM.mass() * OreTuning.DEFAULT.slowdownPerMass());
         boolean[] loaded = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             double speed = player.getAttributeValue(Attributes.MOVEMENT_SPEED);
             if (!loaded[0]) {
                 if (speed >= bare) {
@@ -151,7 +154,7 @@ public class OreCargoTest {
         MockPlayer pilot = MockPlayers.join(helper, "ore-drill");
         PodEntity pod = pod(level, pilot, new Vec3(x, floor, Z));
         pilot.setInput(SPRINT);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (count(level, x - 1, x, floor - 1, floor - 1, Z - 1, Z, Blocks.AIR) != 4) {
                 return;
             }
@@ -195,7 +198,7 @@ public class OreCargoTest {
         boolean[] loaded = {false};
         double[] startY = {0};
         int[] jumpedAt = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!drilled[0]) {
                 if (count(level, x - 1, x, floor - 1, floor - 1, Z - 1, Z, Blocks.AIR) != 4) {
                     return;
@@ -247,7 +250,7 @@ public class OreCargoTest {
         pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
         pilot.setInput(JUMP);
         double startY = pod.getY();
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod.getY() - startY > 0.5) {
                 pod.discard();
                 pilot.leave();
@@ -449,7 +452,7 @@ public class OreCargoTest {
         pod.cargo().load(inputOf(level, tag), pod);
         LogCapture log = LogCapture.start(pod.getUUID().toString());
         pilot.setInput(SPRINT);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (count(level, x - 1, x, floor - 1, floor - 1, Z - 1, Z, Blocks.AIR) != 4) {
                 return;
             }
@@ -568,7 +571,7 @@ public class OreCargoTest {
         player.getInventory().add(OreRegistry.stack(OreType.EINSTEINIUM));
         AttributeModifier[] first = {null};
         int[] ticks = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             AttributeModifier now = player.getAttribute(Attributes.MOVEMENT_SPEED).getModifiers().stream()
                     .filter(modifier -> modifier.id().getPath().equals("ore_load"))
                     .findFirst()
@@ -648,7 +651,7 @@ public class OreCargoTest {
         ServerPlayer player = walker.player();
         double bare = player.getAttributeValue(Attributes.MOVEMENT_SPEED);
         carry.accept(player);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (Math.abs(player.getAttributeValue(Attributes.MOVEMENT_SPEED) - bare * fraction) < EPSILON) {
                 walker.leave();
                 helper.succeed();
@@ -689,16 +692,6 @@ public class OreCargoTest {
         RoomCarver.carve(level, x - 4, x + 5, floor, floor + 10, Z - 4, Z + 4, Blocks.AIR);
     }
 
-    private static void box(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2, Block block) {
-        for (int x = x1; x <= x2; x++) {
-            for (int y = y1; y <= y2; y++) {
-                for (int z = z1; z <= z2; z++) {
-                    level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), 2);
-                }
-            }
-        }
-    }
-
     private static int count(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2, Block block) {
         int found = 0;
         for (int x = x1; x <= x2; x++) {
@@ -714,7 +707,8 @@ public class OreCargoTest {
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

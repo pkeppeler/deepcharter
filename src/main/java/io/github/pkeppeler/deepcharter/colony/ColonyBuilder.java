@@ -303,6 +303,7 @@ public final class ColonyBuilder {
     }
 
     /** The land around the pad as read before it is graded: the grade's heights, the first free block over each column, and whether it holds fluid. */
+    @SuppressWarnings("ArrayRecordComponent") // grids read in place, never compared or hashed
     private record Grade(int originX, int originZ, int[][] ground, int[][] surface, boolean[][] wet) {
         /** The blocks of a column that the grade turns to air, from its lowest to its highest, or null where it clears none. */
         int[] cleared(int x, int z) {

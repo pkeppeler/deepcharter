@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.test.BootstrapCost.Needs;
@@ -33,7 +35,8 @@ public class ScannerCostTest {
     /** A salvage patch holds up to 8 crates (placed_feature/salvage_litter.json): the scanner alone is about one patch, and 90 starts in 100 need no more than this. */
     private static final int PATCH_CRATES = 8;
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

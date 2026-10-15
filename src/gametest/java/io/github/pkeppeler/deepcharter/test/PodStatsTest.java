@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
@@ -553,13 +553,6 @@ public class PodStatsTest {
         return level;
     }
 
-    private static void box(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2, Block block) {
-        BlockState state = block.defaultBlockState();
-        for (BlockPos pos : BlockPos.betweenClosed(x1, y1, z1, x2, y2, z2)) {
-            level.setBlock(pos, state, Block.UPDATE_CLIENTS);
-        }
-    }
-
     @GameTest(maxTicks = FAR_TICKS)
     public void halvedTicksPerHardnessBoresInAboutHalfTheTicks(GameTestHelper helper) {
         int x = 4000;
@@ -579,7 +572,7 @@ public class PodStatsTest {
         }
         int[] start = {-1, -1};
         int[] end = {-1, -1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             for (int i = 0; i < 2; i++) {
                 if (!rigs[i].ready()) {
                     continue;
@@ -622,7 +615,7 @@ public class PodStatsTest {
             OVERRIDES.put(pod.getUUID(), stats -> stats.withCrustHullDamage(crustDamage));
             pod.setHull(hull);
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready() || !rig.pilot.player().level().dimension().equals(LayerChain.dimension(2))) {
                 return;
             }
@@ -664,7 +657,7 @@ public class PodStatsTest {
             pod.setHull(15f);
         });
         long[] zeroSince = {-1};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready() || rig.pod.hull() != 0f) {
                 return;
             }

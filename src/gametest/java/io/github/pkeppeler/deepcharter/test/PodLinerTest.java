@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -17,6 +19,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.ArrayList;
@@ -172,7 +175,7 @@ public class PodLinerTest {
                             Optional.of(new PodLiner.Anchor(FLOOR + dueAfter(tier), x - 1, Z - 1)))));
         });
         boolean[] done = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (armed.pod == null || done[0]) {
                 return;
             }
@@ -435,7 +438,7 @@ public class PodLinerTest {
                     Versioned.of(new PodLiner.State(Optional.of(new PodLiner.Anchor(FLOOR + 3, x - 1, Z - 1)))));
         });
         int[] ticks = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (armed.pod == null || ++ticks[0] < 60) {
                 return;
             }
@@ -463,7 +466,7 @@ public class PodLinerTest {
                     Versioned.of(new PodLiner.State(Optional.of(new PodLiner.Anchor(FLOOR, x - 3, Z - 1)))));
         });
         boolean[] done = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (armed.pod == null || done[0] || bricksIn(level, ringCells(x)) == 0) {
                 return;
             }
@@ -512,7 +515,7 @@ public class PodLinerTest {
             armed.pod = pod;
         });
         int[] ticks = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (armed.pod == null) {
                 return;
             }
@@ -581,7 +584,7 @@ public class PodLinerTest {
             armed.pod = pod;
         });
         boolean[] done = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (armed.pod == null
                     || done[0]
                     || Versioned.readable(armed.pod, PodLiner.STATE)
@@ -784,7 +787,7 @@ public class PodLinerTest {
         ServerLevel level = layer(helper);
         shaft(level, x, 14, true);
         Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), tier, true);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -835,7 +838,7 @@ public class PodLinerTest {
         Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR + 8, Z), tier, false);
         boolean[] airborne = {false};
         int[] settled = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (!rig.ready()) {
                 return;
             }
@@ -898,7 +901,8 @@ public class PodLinerTest {
         });
     }
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

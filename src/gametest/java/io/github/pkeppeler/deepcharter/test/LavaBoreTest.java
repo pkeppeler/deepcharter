@@ -37,6 +37,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.ArrayDeque;
@@ -58,6 +59,7 @@ import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -138,7 +140,6 @@ public class LavaBoreTest {
     static final String BRAKING_ENV = "DEEPCHARTER_LAVA_BORES_BRAKING";
     /** The bot brakes unless this is {@code off}: a real pilot feathers the rotor in a fall, so the hard landings of an unbraked bot are not what is measured. */
     private static final boolean BRAKING = !"off".equalsIgnoreCase(System.getenv(BRAKING_ENV));
-    /** {@code avoid} makes the bot steer round a gas pocket that a scanner of the gas tier shows in its way; {@code ignore} (the default) bores straight through. */
     /** {@code 1} makes the bot blast Company rock with a charge in place of sidestepping it (#509). */
     static final String CHARGES_ENV = "DEEPCHARTER_LAVA_BORES_CHARGES";
 
@@ -150,7 +151,9 @@ public class LavaBoreTest {
     /** Ticks after the fuse has run out that a hull loss is booked to the charge. */
     private static final int BLAST_WINDOW_TICKS = 3;
 
+    /** {@code avoid} makes the bot steer round a gas pocket that a scanner of the gas tier shows in its way; {@code ignore} (the default) bores straight through. */
     static final String GAS_ENV = "DEEPCHARTER_LAVA_BORES_GAS";
+
     private static final String REQUESTED_GAS = System.getenv(GAS_ENV);
     /** What the bot does about gas (the class comment says what each mode knows, #368). */
     private enum GasMode {
@@ -641,7 +644,7 @@ public class LavaBoreTest {
         boolean smoke = REQUESTED_BORES == null || REQUESTED_BORES.isBlank();
         int measuredLookahead = positiveEnv(helper, LINING_ENV, REQUESTED_LINING, 0);
         int measuredLiner = positiveEnv(helper, LINER_ENV, REQUESTED_LINER, 0);
-        if (measuredLiner > ComponentTrack.LINER.maxTier() || measuredLiner > 0 && measuredLookahead > 0) {
+        if (measuredLiner > ComponentTrack.LINER.maxTier() || (measuredLiner > 0 && measuredLookahead > 0)) {
             throw helper.assertionException(Component.literal(LINER_ENV + " is a liner tier from 1 to "
                     + ComponentTrack.LINER.maxTier() + ", measured on its own without " + LINING_ENV));
         }
@@ -650,7 +653,7 @@ public class LavaBoreTest {
                     GAS_ENV + " is 'ignore', 'avoid', 'sounder1' or 'sounder', not '" + REQUESTED_GAS + "'"));
         }
         int measuredSounder = positiveEnv(helper, SOUNDER_ENV, REQUESTED_SOUNDER, 0);
-        if (measuredSounder > ComponentTrack.SOUNDER.maxTier() || measuredSounder > 0 && GAS != GasMode.IGNORE) {
+        if (measuredSounder > ComponentTrack.SOUNDER.maxTier() || (measuredSounder > 0 && GAS != GasMode.IGNORE)) {
             throw helper.assertionException(
                     Component.literal(SOUNDER_ENV + " is a sounder tier from 1 to " + ComponentTrack.SOUNDER.maxTier()
                             + ", measured without " + GAS_ENV + " (the part is the bot's only gas sense)"));
@@ -709,7 +712,7 @@ public class LavaBoreTest {
         }
         long wallStart = System.nanoTime();
         boolean[] reported = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (reported[0]) {
                 return;
             }
@@ -845,7 +848,7 @@ public class LavaBoreTest {
         if (bore.lookahead > 0
                 || bore.linerTier > 0
                 || bore.shieldTier > 0
-                || bore.leaves && REQUESTED_BRICKS != null) {
+                || (bore.leaves && REQUESTED_BRICKS != null)) {
             int bricks = positiveEnv(helper, BRICKS_ENV, REQUESTED_BRICKS, PodLiningTuning.DEFAULT.brickCapacity());
             PodLining.modify(pod, state -> new PodLining.State(0, bricks, 0, false, false));
             bore.startBricks = bricks;
@@ -921,7 +924,7 @@ public class LavaBoreTest {
         boolean inCrust = pod.blockPosition().getY() <= level.getMinY() + CRUST_BAND;
         Cause cause = touching
                 ? Cause.LAVA
-                : gasPocketVanished(level, pod, bore)
+                : gasPocketVanished(level, bore)
                         ? Cause.GAS
                         : blastTick(bore, pod)
                                 ? Cause.CHARGE
@@ -1010,7 +1013,7 @@ public class LavaBoreTest {
                         case AVOID -> gasInNextSlab(level, pod);
                         case SOUNDER1, SOUNDER ->
                             podHasGas(level, footprintSlab(pod, 0, 0, -1))
-                                    || GAS == GasMode.SOUNDER1 && podHasGas(level, footprintSlab(pod, 0, 0, -2));
+                                    || (GAS == GasMode.SOUNDER1 && podHasGas(level, footprintSlab(pod, 0, 0, -2)));
                     };
         }
         if (pod.fuel() < REFUEL_BELOW_PERCENT) {
@@ -1538,16 +1541,13 @@ public class LavaBoreTest {
         for (int x = lowX; x < lowX + FOOTPRINT_WIDTH; x++) {
             for (int z = lowZ; z < lowZ + FOOTPRINT_WIDTH; z++) {
                 BlockPos pos = new BlockPos(x, y, z);
-                cells.add(level.getBlockState(pos)
-                                .getBlock()
-                                .builtInRegistryHolder()
-                                .key()
-                                .identifier()
+                cells.add(BuiltInRegistries.BLOCK
+                                .getKey(level.getBlockState(pos).getBlock())
                                 .getPath()
-                        + (level.hasChunkAt(pos.north())
-                                        && level.hasChunkAt(pos.south())
-                                        && level.hasChunkAt(pos.east())
-                                        && level.hasChunkAt(pos.west())
+                        + (LoadedBlocks.isLoaded(level, pos.north())
+                                        && LoadedBlocks.isLoaded(level, pos.south())
+                                        && LoadedBlocks.isLoaded(level, pos.east())
+                                        && LoadedBlocks.isLoaded(level, pos.west())
                                 ? ""
                                 : "(edge)"));
             }
@@ -1568,7 +1568,7 @@ public class LavaBoreTest {
     }
 
     /** True when a gas pocket that stood within a blast of the pod last tick is not there now: the drill mined it, and it vented. */
-    private static boolean gasPocketVanished(ServerLevel level, PodEntity pod, Bore bore) {
+    private static boolean gasPocketVanished(ServerLevel level, Bore bore) {
         return bore.gasPockets.stream()
                 .anyMatch(pos -> !level.getBlockState(pos).is(HazardBlocks.GAS_POCKET));
     }

@@ -124,14 +124,4 @@ public class PodDrillScenario extends EvidenceScenario {
             level.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), 3);
         }
     }
-
-    private static void box(ServerLevel level, int yFrom, int yTo, Block block) {
-        for (int x = X - 5; x <= X + 5; x++) {
-            for (int y = yFrom; y <= yTo; y++) {
-                for (int z = Z - 5; z <= Z + 5; z++) {
-                    level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), 3);
-                }
-            }
-        }
-    }
 }

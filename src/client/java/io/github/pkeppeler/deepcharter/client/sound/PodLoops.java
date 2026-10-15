@@ -112,7 +112,7 @@ public final class PodLoops {
                     Key key = new Key(pod.getId(), channel);
                     Optional<DeepSound> wanted = channel.soundOf(pod);
                     Loop playing = LOOPS.get(key);
-                    if (playing != null && wanted.equals(Optional.of(playing.sound))) {
+                    if (playing != null && wanted.equals(Optional.of(playing.deepSound))) {
                         continue;
                     }
                     if (playing != null) {
@@ -133,13 +133,13 @@ public final class PodLoops {
     private static final class Loop extends AbstractTickableSoundInstance {
         private final PodEntity pod;
         private final Channel channel;
-        private final DeepSound sound;
+        private final DeepSound deepSound;
 
         private Loop(PodEntity pod, Channel channel, DeepSound sound) {
             super(sound.event(), SoundSource.NEUTRAL, RandomSource.create());
             this.pod = pod;
             this.channel = channel;
-            this.sound = sound;
+            this.deepSound = sound;
             this.looping = true;
             follow();
         }
@@ -148,7 +148,7 @@ public final class PodLoops {
         public void tick() {
             if (pod.isRemoved()
                     || pod.level() != Minecraft.getInstance().level
-                    || !channel.soundOf(pod).equals(Optional.of(sound))) {
+                    || !channel.soundOf(pod).equals(Optional.of(deepSound))) {
                 end();
                 return;
             }

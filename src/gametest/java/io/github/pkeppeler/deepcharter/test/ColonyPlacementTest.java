@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -447,8 +449,8 @@ public class ColonyPlacementTest {
     }
 
     /**
-     * Moves a box of the given size through an opening: it starts {@link #SWEEP_OUT} blocks outside the cell and ends {@link #SWEEP_IN}
-     * inside it ({@code inside}), along {@code facing} in the opposite way, with its middle {@code lateral} blocks along the wall from the cell's low
+     * Moves a box of the given size through an opening: it starts {@link #SWEEP_OUT} blocks outside the cell and ends {@code inside}
+     * blocks inside it ({@link #SWEEP_IN_DOOR} or {@link #SWEEP_IN_BAY}), along {@code facing} in the opposite way, with its middle {@code lateral} blocks along the wall from the cell's low
      * edge. True when no block meets it on the way.
      */
     private static boolean sweep(
@@ -702,8 +704,8 @@ public class ColonyPlacementTest {
                 if (onPad && first[i][j] != ground) {
                     problems.add(what + "the pad's column " + i + " " + j + " is at " + first[i][j]);
                 }
-                if (i + 1 < first.length && Math.abs(first[i][j] - first[i + 1][j]) > STEP
-                        || j + 1 < first[0].length && Math.abs(first[i][j] - first[i][j + 1]) > STEP) {
+                if ((i + 1 < first.length && Math.abs(first[i][j] - first[i + 1][j]) > STEP)
+                        || (j + 1 < first[0].length && Math.abs(first[i][j] - first[i][j + 1]) > STEP)) {
                     problems.add(what + "a step over one block at " + i + " " + j);
                 }
                 boolean rim = i == 0 || j == 0 || i == first.length - 1 || j == first[0].length - 1;
@@ -844,7 +846,8 @@ public class ColonyPlacementTest {
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

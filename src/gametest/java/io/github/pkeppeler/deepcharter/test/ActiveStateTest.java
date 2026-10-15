@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.texture.TextureProperties;
@@ -204,7 +205,7 @@ public class ActiveStateTest {
         BlockState lit = ContractTerminal.TYPE.block().defaultBlockState();
         int[] phase = {0};
         FarChunks.Deadline[] deadline = {null};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             switch (phase[0]) {
                 case 0, 3 -> {}
                 case 1 -> {

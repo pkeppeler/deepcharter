@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
@@ -18,6 +20,7 @@ import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnloadedChunk;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.ArrayList;
@@ -64,7 +67,8 @@ public class EntityQueryAuditTest {
             + (int) STALE_UUID.getMostSignificantBits() + "," + (int) (STALE_UUID.getLeastSignificantBits() >> 32) + ","
             + (int) STALE_UUID.getLeastSignificantBits() + "]";
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -374,7 +378,7 @@ public class EntityQueryAuditTest {
                 pod[0].discard();
             }
         };
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             try {
                 if (!moved[0]) {
                     mock.teleportTo(level, at, 0, 0);

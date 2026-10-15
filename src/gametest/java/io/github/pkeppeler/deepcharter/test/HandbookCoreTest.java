@@ -737,7 +737,7 @@ public class HandbookCoreTest {
     }
 
     private static int handbookItemsOnGround(ServerLevel level) {
-        return (int) level.getEntities(
+        return level.getEntities(
                         EntityTypeTest.forClass(ItemEntity.class), entity -> HandbookItems.isHandbook(entity.getItem()))
                 .size();
     }

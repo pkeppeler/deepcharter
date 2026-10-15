@@ -1,14 +1,12 @@
 package io.github.pkeppeler.deepcharter.ore;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import java.util.Arrays;
 import java.util.Locale;
-import java.util.OptionalInt;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
@@ -38,13 +36,6 @@ public final class OreBlock extends Block {
                             rock + " is not a rock an ore can sit in; give its layer a Host (ADR 0055)"));
         }
 
-        /** The host of an ore placed in a level: its layer's rock, and packed shale in a level that is no layer (the surface, a test's) or one with no rock block yet. */
-        static Host in(Level level) {
-            OptionalInt layer = LayerChain.layerOf(
-                    level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
-            return layer.isPresent() && layer.getAsInt() == 2 ? GREEN_SHALE : PACKED_SHALE;
-        }
-
         @Override
         public String getSerializedName() {
             return name().toLowerCase(Locale.ROOT);
@@ -68,8 +59,14 @@ public final class OreBlock extends Block {
         return defaultBlockState().setValue(HOST, Host.of(rock));
     }
 
+    /**
+     * A placed ore sits in the rock of the layer it is placed in, which {@link LayerBlocks#groundOf} names and which fails for a layer with no rock
+     * block yet, so a new layer cannot place ore with a wrong host. A level that is no layer (the surface, a test's) has no layer rock, and a
+     * placed ore there keeps the default host.
+     */
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return defaultBlockState().setValue(HOST, Host.in(context.getLevel()));
+        Block ground = LayerBlocks.groundOf(context.getLevel());
+        return ground == Blocks.STONE ? defaultBlockState() : in(ground.defaultBlockState());
     }
 }

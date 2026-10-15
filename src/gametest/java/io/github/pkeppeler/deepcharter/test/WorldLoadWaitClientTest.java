@@ -17,7 +17,7 @@ public class WorldLoadWaitClientTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
         int before = WorldLoadWait.waits();
-        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+        try (TestSingleplayerContext _ = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the client in the world", client -> client.player != null && client.level != null);
             require(

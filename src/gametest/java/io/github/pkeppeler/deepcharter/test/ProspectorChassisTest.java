@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -26,6 +28,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
@@ -240,7 +243,7 @@ public class ProspectorChassisTest {
         int[] phase = {0};
         long[] startedAt = {0};
         navigator.setInput(FORWARD_AND_SPRINT);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (phase[0] == 0 && helper.getTick() >= DRIVE_TICKS) {
                 expect(
                         helper,
@@ -292,7 +295,7 @@ public class ProspectorChassisTest {
             pilot.setInput(SPRINT);
         });
         boolean[] released = {false};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pod[0] == null) {
                 return;
             }
@@ -706,8 +709,6 @@ public class ProspectorChassisTest {
                     FoundingMoleHangarTest.repairTheConsole(helper);
                     MockPlayer owner = FoundingMoleHangarTest.member(helper, "Second Claimant");
                     BlockPos console = FoundingMoleHangarTest.console(helper, owner);
-                    CharterId charter =
-                            FoundingMoleHangarTest.charterOf(helper, owner).id();
                     FoundingMoleHangarTest.deposit(helper, owner, 2 * PRICE);
                     FoundingMoleHangarTest.give(owner.player(), FoundingMoleHangarTest.CATALYST, 2 * CATALYSTS);
                     PodEntity holder = prospectorWreck(helper);
@@ -1205,16 +1206,6 @@ public class ProspectorChassisTest {
         return level;
     }
 
-    private static void fill(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2, Block block) {
-        for (int x = x1; x <= x2; x++) {
-            for (int y = y1; y <= y2; y++) {
-                for (int z = z1; z <= z2; z++) {
-                    level.setBlock(new BlockPos(x, y, z), block.defaultBlockState(), 2);
-                }
-            }
-        }
-    }
-
     private static int air(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2) {
         int found = 0;
         for (int x = x1; x <= x2; x++) {
@@ -1229,7 +1220,8 @@ public class ProspectorChassisTest {
         return found;
     }
 
-    private static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {
+    @FormatMethod
+    private static void expect(GameTestHelper helper, boolean condition, @FormatString String format, Object... args) {
         FoundingMoleHangarTest.expect(helper, condition, format, args);
     }
 
@@ -1242,7 +1234,8 @@ public class ProspectorChassisTest {
         throw failure(helper, "%s should throw", what);
     }
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return FoundingMoleHangarTest.failure(helper, format, args);
     }
 }

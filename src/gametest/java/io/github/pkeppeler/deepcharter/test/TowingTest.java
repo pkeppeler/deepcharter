@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import com.google.errorprone.annotations.FormatMethod;
+import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -18,6 +20,7 @@ import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -505,7 +508,7 @@ public class TowingTest {
             }
         });
         int[] since = {0};
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pods[1] == null) {
                 return;
             }
@@ -887,7 +890,7 @@ public class TowingTest {
             throw failure(helper, "the rider could not mount the towed pod");
         }
         PodTowing.attach(tower, towed);
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             tower.setPos(towerAt);
             tower.setDeltaMovement(Vec3.ZERO);
         });
@@ -1043,8 +1046,8 @@ public class TowingTest {
                 throw failure(
                         helper, "the rider should be on the same tower after crossing, is on %s", player.getVehicle());
             }
-            if (!(player.level() instanceof ServerLevel two)
-                    || !(two.getEntity(pods[1].getUUID()) instanceof PodEntity crossed)) {
+            ServerLevel two = player.level();
+            if (!(two.getEntity(pods[1].getUUID()) instanceof PodEntity crossed)) {
                 throw failure(helper, "the towed pod did not arrive in layer 2");
             }
             if (crossed == pods[1] || !pods[1].isRemoved()) {
@@ -1291,7 +1294,7 @@ public class TowingTest {
                 PodTowing.attach(pods[0], pods[1]);
             }
         });
-        helper.onEachTick(() -> {
+        TestTicks.each(helper, () -> {
             if (pods[1] == null) {
                 return;
             }
@@ -1403,7 +1406,8 @@ public class TowingTest {
         return level;
     }
 
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
+    @FormatMethod
+    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

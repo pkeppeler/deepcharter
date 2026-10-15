@@ -212,7 +212,7 @@ public final class OreProcessor {
             Optional<PodLining.State> state = PodLining.readable(pod);
             if (state.isPresent()) {
                 int makeable = state.get().spoil() / tuning.spoilPerBrick();
-                int toRack = (int) Math.min(
+                int toRack = Math.min(
                         makeable,
                         Math.max(0, tuning.brickCapacity() - state.get().bricks()));
                 racked.add(new Fusion(pod, makeable, toRack, 0));
@@ -221,7 +221,7 @@ public final class OreProcessor {
         int packRoom = packRoom(inventory, SlagBrick.item());
         List<Fusion> fusions = new ArrayList<>();
         for (Fusion fusion : racked) {
-            int toPack = (int) Math.min(fusion.makeable() - fusion.toRack(), packRoom);
+            int toPack = Math.min(fusion.makeable() - fusion.toRack(), packRoom);
             packRoom -= toPack;
             fusions.add(fusion.withPack(toPack));
         }

@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.scanner;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -22,12 +23,22 @@ public record LoadedBlocks(Level level) implements BlockGetter {
 
     @Override
     public BlockState getBlockState(BlockPos pos) {
-        return level.hasChunkAt(pos) ? level.getBlockState(pos) : Blocks.AIR.defaultBlockState();
+        return loaded(pos) ? level.getBlockState(pos) : Blocks.AIR.defaultBlockState();
     }
 
     @Override
     public FluidState getFluidState(BlockPos pos) {
-        return level.hasChunkAt(pos) ? level.getFluidState(pos) : Fluids.EMPTY.defaultFluidState();
+        return loaded(pos) ? level.getFluidState(pos) : Fluids.EMPTY.defaultFluidState();
+    }
+
+    private boolean loaded(BlockPos pos) {
+        return isLoaded(level, pos);
+    }
+
+    /** True when the chunk holding {@code pos} is loaded. */
+    public static boolean isLoaded(Level level, BlockPos pos) {
+        return level.getChunkSource()
+                .hasChunk(SectionPos.blockToSectionCoord(pos.getX()), SectionPos.blockToSectionCoord(pos.getZ()));
     }
 
     /**
@@ -36,11 +47,7 @@ public record LoadedBlocks(Level level) implements BlockGetter {
      * changes a block on a tick path asks this first and leaves the block alone when the answer is no.
      */
     public boolean canChange(BlockPos pos) {
-        return level.hasChunkAt(pos)
-                && level.hasChunkAt(pos.north())
-                && level.hasChunkAt(pos.south())
-                && level.hasChunkAt(pos.east())
-                && level.hasChunkAt(pos.west());
+        return loaded(pos) && loaded(pos.north()) && loaded(pos.south()) && loaded(pos.east()) && loaded(pos.west());
     }
 
     @Override

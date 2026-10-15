@@ -21,6 +21,8 @@ public final class ComponentItem extends Item {
     }
 
     @Override
+    // Deprecated in 26.3 for tooltip-provider data components; migration: #573
+    @SuppressWarnings("deprecation")
     public void appendHoverText(
             ItemStack stack,
             TooltipContext context,

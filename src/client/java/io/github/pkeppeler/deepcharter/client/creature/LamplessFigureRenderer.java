@@ -12,7 +12,7 @@ import net.minecraft.util.ARGB;
 import net.minecraft.world.phys.AABB;
 
 /** Draws the lampless figure, the Reacher of #250, from the model, texture and animations of {@link LamplessFigureAssets}; a dead one dissolves by going see-through. */
-public class LamplessFigureRenderer
+public final class LamplessFigureRenderer
         extends GeoReplacedEntityRenderer<LamplessFigureAnimatable, LamplessFigure, LamplessFigureRenderState> {
     public static final float SHADOW_RADIUS = 0.4f;
 
