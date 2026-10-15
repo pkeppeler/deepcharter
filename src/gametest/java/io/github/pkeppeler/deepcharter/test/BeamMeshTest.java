@@ -18,7 +18,9 @@ public class BeamMeshTest {
     private static final double TOLERANCE = 1e-9;
     private static final int SIDES = 8;
     private static final double FULL = 20.0;
-    private static final BeamStyle STYLE = new BeamStyle(0xFFFFFFFF, FULL, 0.1, 2.1, 0.4, 0.5, 0.3, 0.0, 0.0, 0.0);
+    private static final BeamStyle STYLE = new BeamStyle(0xFFFFFFFF, FULL, 0.1, 2.1, 0.2, 0.5, 0.4, 0.0, 0.0, 0.0);
+    /** The brightest of the nested cones: here the core. */
+    private static final double PEAK = Math.max(STYLE.alpha(), STYLE.coreAlpha());
 
     private record Vertex(double x, double y, double z, double alpha) {}
 
@@ -44,12 +46,17 @@ public class BeamMeshTest {
     }
 
     @GameTest
-    public void aBeamIsAnOuterAndACoreConeOfQuads(GameTestHelper helper) {
-        int expected = 2 * SIDES * 4;
+    public void aBeamIsNestedConesOfQuads(GameTestHelper helper) {
+        int expected = BeamMesh.SHELLS * SIDES * 4;
         int count = build(FULL, 1, 0, 0).size();
         if (count != expected) {
             throw failure(
-                    helper, "a beam of %s sides is %s vertices (two cones of quads), got %s", SIDES, expected, count);
+                    helper,
+                    "a beam of %s sides is %s vertices (%s nested cones of quads), got %s",
+                    SIDES,
+                    expected,
+                    BeamMesh.SHELLS,
+                    count);
         }
         helper.succeed();
     }
@@ -65,8 +72,8 @@ public class BeamMeshTest {
                 endAlpha = Math.max(endAlpha, v.alpha);
             }
         }
-        if (Math.abs(startAlpha - STYLE.alpha()) > TOLERANCE) {
-            throw failure(helper, "the beam starts at alpha %s, got %s", STYLE.alpha(), startAlpha);
+        if (Math.abs(startAlpha - PEAK) > TOLERANCE) {
+            throw failure(helper, "the beam starts at alpha %s, got %s", PEAK, startAlpha);
         }
         if (endAlpha > 1e-6) {
             throw failure(helper, "an unobstructed beam fades to nothing at its reach, got alpha %s", endAlpha);
@@ -111,7 +118,7 @@ public class BeamMeshTest {
             }
         }
         double radius = STYLE.startRadius() + (STYLE.endRadius() - STYLE.startRadius()) * length / FULL;
-        double alpha = STYLE.alpha() * (1 - length / FULL);
+        double alpha = PEAK * (1 - length / FULL);
         if (Math.abs(farthest - length) > TOLERANCE) {
             throw failure(helper, "a beam cut at %s blocks reaches %s", length, farthest);
         }

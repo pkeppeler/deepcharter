@@ -104,7 +104,7 @@ def framed_cube(front: str, glow: str | None = None, halo_colour: str | None = N
         boxes.append(Box((0, 0, -0.01), (16, 16, 0), {"north": "#glow"}, glow=True))
     if halo_colour:
         textures["halo"] = halo(halo_colour)
-        boxes.append(halo_z(-0.8, (-2, 18), (-2, 18), both=False))
+        boxes.append(halo_z(-0.8, (-4, 20), (-4, 20), both=False))
     return Model(textures, boxes)
 
 
@@ -209,8 +209,8 @@ def wall_lamp() -> Model:
         Box((5, 6.5, 4), (11, 10, 9), {"*": "#iron"}),
         Box((5.5, 3, 4.5), (10.5, 6.5, 8.5), {"*": "#lit", "up": None}, glow=True),
         Box((6.5, 2.5, 5.5), (9.5, 3, 7.5), {"*": "#iron"}),
-        halo_x((-3, 13), (-1, 15)),
-        halo_z(5, (0, 16), (-3, 13)),
+        halo_x((-7, 17), (-4, 20)),
+        halo_z(5, (-4, 20), (-7, 17)),
     ], ambient_occlusion=False)
 
 
@@ -221,8 +221,8 @@ def floodlight() -> Model:
         Box((7, 0, 9), (9, 6, 11), {"*": "#iron"}),
         Box((3, 5, 4), (13, 13, 12), {"*": "#iron"}, rotation=(-25, 0, 0), pivot=(8, 9, 8)),
         Box((3.5, 5.5, 3.95), (12.5, 12.5, 4), {"north": "#lens"}, rotation=(-25, 0, 0), pivot=(8, 9, 8), glow=True),
-        halo_z(2.5, (-1, 17), (0, 18)),
-        halo_x((0, 18), (-3, 12)),
+        halo_z(2.5, (-5, 21), (-3, 21)),
+        halo_x((-3, 21), (-8, 16)),
     ], ambient_occlusion=False)
 
 

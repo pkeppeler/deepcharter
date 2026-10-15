@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client;
 
+import io.github.pkeppeler.deepcharter.client.beam.BeamClientInit;
 import io.github.pkeppeler.deepcharter.client.charter.CharterClientInit;
 import io.github.pkeppeler.deepcharter.client.creature.CreatureClientInit;
 import io.github.pkeppeler.deepcharter.client.fuel.FuelClientInit;
@@ -26,6 +27,7 @@ public class DeepCharterClient implements ClientModInitializer {
     // new part never edits this class.
     @Override
     public void onInitializeClient() {
+        BeamClientInit.init();
         CharterClientInit.init();
         CreatureClientInit.init();
         FuelClientInit.init();

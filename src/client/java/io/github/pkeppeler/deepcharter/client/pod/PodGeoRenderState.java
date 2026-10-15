@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
+import io.github.pkeppeler.deepcharter.client.beam.BeamDraw;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.Nullable;
 
 /** Per-frame copy of what a pod model's bones need ({@link PodMotion} fills it). Angles are degrees, distances model pixels. */
 public class PodGeoRenderState extends EntityRenderState {
@@ -33,4 +35,6 @@ public class PodGeoRenderState extends EntityRenderState {
     public PodGeoRenderer.Appearance appearance;
     /** The texture the pod is drawn with this frame: its variant's, or that painted in its charter's colour. */
     public Identifier texture;
+    /** The fake headlamp beam to draw with the pod this frame, or null for none: the pod is dark, or its beam is cut to nothing (#248). */
+    public @Nullable BeamDraw beam;
 }

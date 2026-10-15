@@ -3,12 +3,15 @@ package io.github.pkeppeler.deepcharter.client.beam;
 import io.github.pkeppeler.deepcharter.client.theme.BeamStyle;
 
 /**
- * The shape of a fake light beam (#248): two cones of translucent quads from the lamp along its direction, a wide faint one and a
- * narrow brighter core inside it. A cone widens with distance and fades from {@code alpha} at the lamp to nothing at the lamp's full
+ * The shape of a fake light beam (#248): {@link #SHELLS} nested cones of translucent quads from the lamp along its direction, from a wide faint
+ * one to a narrow brighter core, so the flat cones add up to a soft edge. A cone widens with distance and fades from {@code alpha} at the lamp to nothing at the lamp's full
  * reach, so a beam cut short by a wall is narrower and still bright where it ends, as light is where it meets a wall. The shape is
  * written to a {@link Sink} and allocates nothing.
  */
 public final class BeamMesh {
+    /** How many cones nest, from the wide faint one to the narrow bright core. */
+    public static final int SHELLS = 4;
+
     private BeamMesh() {}
 
     /** Takes the vertices of a beam, four to a quad, in the order they must be drawn. {@code u} runs round the cone, {@code v} along it. */
@@ -54,46 +57,35 @@ public final class BeamMesh {
         double vz = dx * uy - dy * ux;
         double endRadius = style.startRadius() + (style.endRadius() - style.startRadius()) * length / fullLength;
         double endFade = 1.0 - length / fullLength;
-        int count = layer(
-                sink,
-                sides,
-                style.startRadius(),
-                endRadius,
-                style.alpha(),
-                endFade,
-                length,
-                ox,
-                oy,
-                oz,
-                dx,
-                dy,
-                dz,
-                ux,
-                uy,
-                uz,
-                vx,
-                vy,
-                vz);
-        count += layer(
-                sink,
-                sides,
-                style.startRadius() * style.coreScale(),
-                endRadius * style.coreScale(),
-                style.coreAlpha(),
-                endFade,
-                length,
-                ox,
-                oy,
-                oz,
-                dx,
-                dy,
-                dz,
-                ux,
-                uy,
-                uz,
-                vx,
-                vy,
-                vz);
+        int count = 0;
+        for (int shell = 0; shell < SHELLS; shell++) {
+            // Shell 0 is the wide faint cone and the last is the narrow core: radius and alpha step evenly between
+            // them, so
+            // the flat cones stack into a soft edge.
+            double t = (double) shell / (SHELLS - 1);
+            double scale = 1.0 + (style.coreScale() - 1.0) * t;
+            double alpha = style.alpha() + (style.coreAlpha() - style.alpha()) * t;
+            count += layer(
+                    sink,
+                    sides,
+                    style.startRadius() * scale,
+                    endRadius * scale,
+                    alpha,
+                    endFade,
+                    length,
+                    ox,
+                    oy,
+                    oz,
+                    dx,
+                    dy,
+                    dz,
+                    ux,
+                    uy,
+                    uz,
+                    vx,
+                    vy,
+                    vz);
+        }
         return count;
     }
 
