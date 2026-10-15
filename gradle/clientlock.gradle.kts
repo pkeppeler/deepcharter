@@ -235,7 +235,7 @@ abstract class ClientLock : BuildService<BuildServiceParameters.None>, AutoClose
 	}
 }
 
-// The server GameTest JVM has its own pool (#541): -Xmx6G each, so three at once do not fit in 16 GB.
+// The server GameTest JVM has its own pool (#541): -Xmx2G each (6G until #569), so the default of 2 at once is conservative. The default is unchanged: it was not measured with more at once.
 abstract class ServerTestLock : ClientLock() {
 	override fun slotsEnv(): String = "DEEPCHARTER_SERVER_TEST_SLOTS"
 	override fun lockName(): String = "server-test.lock"

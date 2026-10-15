@@ -49,8 +49,13 @@ public final class FarChunks {
      * the test's own structure) is left as it is, and so is its owner's release. Server thread only.
      */
     public static void force(GameTestHelper helper, ServerLevel level, int chunkX, int chunkZ) {
+        force(helper.getBounds(), level, chunkX, chunkZ);
+    }
+
+    /** As {@link #force(GameTestHelper, ServerLevel, int, int)}, for the test with these bounds; {@link FarChunksTest} drives two. */
+    public static void force(AABB testBounds, ServerLevel level, int chunkX, int chunkZ) {
         Chunk chunk = new Chunk(level, ChunkPos.pack(chunkX, chunkZ));
-        List<Chunk> mine = HELD_BY_TEST.computeIfAbsent(helper.getBounds(), bounds -> new ArrayList<>());
+        List<Chunk> mine = HELD_BY_TEST.computeIfAbsent(testBounds, bounds -> new ArrayList<>());
         if (mine.contains(chunk)) {
             return;
         }

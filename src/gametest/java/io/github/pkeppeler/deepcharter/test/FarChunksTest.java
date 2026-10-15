@@ -8,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.phys.AABB;
 
 /** Server GameTests for {@link FarChunks}. */
 public class FarChunksTest {
@@ -18,8 +19,6 @@ public class FarChunksTest {
     private record Forced(ServerLevel level, ChunkPos chunk) {}
 
     private static final AtomicReference<Forced> FORCED_BY_A_FINISHED_TEST = new AtomicReference<>();
-    /** Ticks to wait after the forcing test succeeded: the runner ends a test at the end of the tick that succeeds it. */
-    private static final int TICKS_AFTER_FINISH = 3;
 
     @GameTest
     public void aChunkIsForcedWhileTheTestRuns(GameTestHelper helper) {
@@ -37,11 +36,10 @@ public class FarChunksTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS)
     public void aChunkIsNotForcedAfterTheTestThatForcedItFinished(GameTestHelper helper) {
         FarChunks.Deadline deadline = FarChunks.deadline();
-        int[] sinceSeen = {0};
         TestTicks.each(helper, () -> {
             Forced forced = FORCED_BY_A_FINISHED_TEST.get();
             deadline.await(helper, helper.getLevel(), forced != null, () -> "no test forced a chunk");
-            if (forced == null || ++sinceSeen[0] < TICKS_AFTER_FINISH) {
+            if (forced == null) {
                 return;
             }
             if (forced.level().getForceLoadedChunks().contains(forced.chunk().pack())) {
@@ -49,6 +47,27 @@ public class FarChunksTest {
             }
             helper.succeed();
         });
+    }
+
+    /** Two tests that force one chunk: the first to finish does not release it, the second does. */
+    @GameTest
+    public void aChunkTwoTestsForceStaysForcedUntilTheLastOfThemFinishes(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ChunkPos chunk = new ChunkPos(4010, 4010);
+        AABB first = new AABB(0, 0, 0, 1, 1, 1);
+        AABB second = new AABB(5, 0, 0, 6, 1, 1);
+        FarChunks.force(first, level, chunk.x(), chunk.z());
+        FarChunks.force(second, level, chunk.x(), chunk.z());
+        FarChunks.release(first);
+        if (!level.getForceLoadedChunks().contains(chunk.pack())) {
+            FarChunks.release(second);
+            throw helper.assertionException("the chunk was released while the second test still held it");
+        }
+        FarChunks.release(second);
+        if (level.getForceLoadedChunks().contains(chunk.pack())) {
+            throw helper.assertionException("the chunk should be released when the last test finished");
+        }
+        helper.succeed();
     }
 
     @GameTest
