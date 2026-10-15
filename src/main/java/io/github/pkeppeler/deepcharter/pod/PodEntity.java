@@ -244,6 +244,11 @@ public class PodEntity extends Entity {
         PodEvents.AFTER_TICK.invoker().afterTick(this);
     }
 
+    /** The downward pull this pod feels from {@code gravity}: none when {@link #isNoGravity()}, so movement and towing agree. */
+    public double gravityPull(double gravity) {
+        return isNoGravity() ? 0 : gravity;
+    }
+
     @Override
     public LivingEntity getControllingPassenger() {
         return getFirstPassenger() instanceof Player player ? player : null;

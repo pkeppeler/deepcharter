@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -265,22 +266,42 @@ public class PodMovementTest {
         });
     }
 
+    /** Vertical drag alone slows a no-gravity pod: its speed decays by the drag each tick, and it ends well clear of the floor. */
     @GameTest(maxTicks = 100)
-    public void noGravityPodDropsNoSpeedItHeld(GameTestHelper helper) {
-        PodEntity pod = Rig.buildEmpty(helper, 3);
+    public void noGravityPodCoastsOnItsSpeedAndDragAlone(GameTestHelper helper) {
+        PodEntity pod = Rig.buildEmpty(helper, 6);
         pod.setNoGravity(true);
-        pod.setDeltaMovement(0, -0.5, 0);
-        helper.runAfterDelay(60, () -> {
+        double launch = -0.1;
+        pod.setDeltaMovement(0, launch, 0);
+        double startY = pod.getY();
+        double drag = PodTuning.Movement.DEFAULT.verticalDrag();
+        int coastTicks = 40;
+        int[] ticks = {0};
+        TestTicks.each(helper, () -> {
+            if (++ticks[0] != coastTicks) {
+                return;
+            }
             try {
-                if (pod.getDeltaMovement().y < -1e-3 || pod.getDeltaMovement().y > 0 || pod.onGround()) {
+                double expected = launch * Math.pow(drag, coastTicks);
+                double speed = pod.getDeltaMovement().y;
+                double dropped = startY - pod.getY();
+                if (Math.abs(speed - expected) > 0.002) {
                     throw helper.assertionException(
-                            "a no-gravity pod launched downwards should coast to rest in the air, velocity %s, onGround %s",
-                            pod.getDeltaMovement(), pod.onGround());
+                            "after %s ticks the speed should have decayed from %s to about %s, it is %s",
+                            coastTicks, launch, expected, speed);
+                }
+                // The distance a coast of this length covers is the launch speed summed with the drag, 2.8 blocks here.
+                if (dropped < 2.5 || dropped > 3.1 || pod.getY() - (FLOOR_Y + 1) < 2) {
+                    throw helper.assertionException(
+                            "a coast should drop the pod about 2.8 blocks and leave it in the air, it dropped %s to y %s",
+                            dropped, pod.getY());
                 }
                 helper.succeed();
             } finally {
-                pod.discard();
-                clearFloor(helper);
+                if (ticks[0] == coastTicks) {
+                    pod.discard();
+                    clearFloor(helper);
+                }
             }
         });
     }

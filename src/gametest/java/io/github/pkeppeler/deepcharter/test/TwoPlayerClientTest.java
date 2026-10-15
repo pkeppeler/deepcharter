@@ -243,7 +243,9 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Cuts a shaft above {@code pod} up to one slab past the layer 1 onset of the decay, with a stone shell like the room's, and holds the pod at the top of it with no gravity. Returns where it stood, for putting it back. The height is {@link SignalDecayTuning}'s, so a retuned curve moves the test with it.
+     * Cuts a shaft above {@code pod} up to one slab past the layer 1 onset of the decay, with a stone shell like the room's, and
+     * holds the pod at the top of it with no gravity. Returns where it stood, for putting it back. The height is
+     * {@link SignalDecayTuning}'s, so a retuned curve moves the test with it.
      */
     private static Vec3 liftOutOfDecay(MinecraftServer server, PodEntity pod) {
         ServerLevel one = server.getLevel(LayerChain.dimension(1));
