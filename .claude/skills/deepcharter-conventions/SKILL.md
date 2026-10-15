@@ -56,7 +56,7 @@ Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features
   import org.jspecify.annotations.NullMarked;
   ```
 
-  Fix the findings with `org.jspecify.annotations.Nullable`, the one the dependency and options are wired for. The first PR that marks a mixin package checks whether `@Unique` fields and `@Shadow` methods need NullAway exclusions (only `@Shadow` fields are excluded today).
+  Fix the findings with `org.jspecify.annotations.Nullable`, the one the dependency and options are wired for. `surface/mixin` is marked with no exclusions needed (its one mixin has no `@Unique` or `@Shadow` member); the first PR that marks a mixin with `@Unique` fields or `@Shadow` methods (`pod/mixin`, `test.mixin`) checks whether they need NullAway exclusions (only `@Shadow` fields are excluded today).
 
 Do not spell out counts of enum members or registry entries in prose ("the seven ores"): they drift. Name them, or point at the code.
 
