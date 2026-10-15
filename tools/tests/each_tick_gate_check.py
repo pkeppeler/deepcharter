@@ -1,4 +1,4 @@
-"""Tests the each-tick gate in gradle/gametest.gradle.kts: a call to GameTestHelper.onEachTick anywhere in src/gametest fails the build and names
+"""Tests the each-tick gate in gradle/gametest.gradle.kts: a call to or reference of GameTestHelper.onEachTick anywhere in src/gametest fails the build and names
 TestTicks.each. There is no suppression marker.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
@@ -47,6 +47,7 @@ CALLS = {
     "helper": ("helper.onEachTick(() -> { });", 5),
     "spaced": ("helper\n            .onEachTick (() -> { });", 6),
     "method reference": ("helper.onEachTick(this::step);", 5),
+    "bound method reference": ("Consumer<Runnable> each = helper::onEachTick;", 5),
 }
 
 
@@ -85,7 +86,7 @@ class EachTickGateTest(unittest.TestCase):
             with self.subTest(label):
                 result = outcome(label)
                 self.assertFalse(result.ok, f"the gate should fail the build for {label}")
-                self.assertIn(f"CallsOnEachTickTest:{line} calls onEachTick", result.message)
+                self.assertIn(f"CallsOnEachTickTest:{line} references onEachTick", result.message)
                 self.assertIn("TestTicks.each(helper, body)", result.message)
                 for exempt in ("UsesTheHelperTest", "MentionsTest", "FixtureScenario"):
                     self.assertNotIn(exempt, result.message)

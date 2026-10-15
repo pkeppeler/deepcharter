@@ -9,22 +9,25 @@ public final class TestTicks {
     private TestTicks() {}
 
     /**
-     * Runs {@code body} on every tick from this one until the test finishes, with {@code GameTestHelper.onEachTick}'s timing and
-     * failure behaviour: the first run is this tick, after the test method returns, and an exception thrown by the body fails the
-     * test. Call it from the test method, not from a scheduled runnable.
+     * Runs {@code body} on every tick from the test method's own tick until the test finishes; an exception it throws fails the test.
+     * It keeps one schedule entry where {@code GameTestHelper.onEachTick} queued one per remaining tick. A scheduled runnable
+     * cannot reschedule itself (the runner removes it while iterating), so a sequence event does the put for the next tick.
      *
-     * <p>{@code onEachTick} puts one runnable per remaining tick of {@code maxTicks} into {@code GameTestInfo.runAtTickTimeMap}, and
-     * the runner keeps every finished test until the run ends. This keeps one entry. A runnable cannot reschedule itself:
-     * {@code GameTestInfo.tickInternal} iterates that map and removes each entry after it runs, so a put during the iteration
-     * corrupts it. A sequence event runs after the iteration in the same tick, so it does the put for the next tick.
+     * @throws IllegalStateException if called after the test's first tick: a put from a scheduled runnable corrupts the runner's
+     *         iteration and one from a sequence event throws a ConcurrentModificationException
      */
     public static void each(GameTestHelper helper, Runnable body) {
-        helper.runAtTickTime(helper.getTick(), body);
+        if (helper.getTick() != 0) {
+            throw new IllegalStateException(
+                    "TestTicks.each must be called from the test method, not from a tick callback");
+        }
+        helper.runAtTickTime(0, body);
         helper.startSequence().thenWaitUntil(() -> {
             helper.runAtTickTime(helper.getTick() + 1, body);
-            // Never completes: a sequence that completes is dropped, and the next tick has no event to reschedule it.
+            // Never completes, so the next tick has this event again. Past the timeout the runner fails the test with
+            // this message.
             throw new GameTestAssertException(
-                    Component.literal("each-tick body still running"), (int) helper.getTick());
+                    Component.literal("timed out: the test did not succeed"), (int) helper.getTick());
         });
     }
 }
