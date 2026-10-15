@@ -66,7 +66,7 @@ public final class TwoPlayerServer implements AutoCloseable {
         try {
             connection = server.connect();
             stage = "the mock player joining the server";
-            MockPlayer mock = server.computeOnServer(TwoPlayerServer::joinAtSpawn);
+            MockPlayer mock = server.computeOnServer(TwoPlayerServer::joinBesideReal);
             stage = "the real client seeing both players";
             ClientWait.until(
                     context,
@@ -86,15 +86,10 @@ public final class TwoPlayerServer implements AutoCloseable {
         }
     }
 
-    /**
-     * Joins the mock where the real player stands. A mock joins at the origin, which is inside the rock of the surface (the ground is at
-     * y 63), where it suffocates within seconds, and a dead mock cannot be teleported.
-     */
-    private static MockPlayer joinAtSpawn(MinecraftServer server) {
+    /** Joins the mock where the real player stands. */
+    private static MockPlayer joinBesideReal(MinecraftServer server) {
         ServerPlayer real = server.getPlayerList().getPlayers().getFirst();
-        MockPlayer mock = MockPlayers.join(server, MOCK_NAME);
-        mock.teleportTo(real.level(), real.position(), real.getYRot(), real.getXRot());
-        return mock;
+        return MockPlayers.join(server, MOCK_NAME, real.level(), real.position());
     }
 
     private static int freePort() {

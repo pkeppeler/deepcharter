@@ -1,8 +1,10 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -18,6 +20,9 @@ import net.minecraft.world.phys.Vec3;
 /** Proves the {@link MockPlayers} harness: a mock player is a real player that stays connected. */
 public class MockPlayersTest {
     private static final int TICKS = 1200;
+    private static final int SURVIVAL_SECONDS = 3;
+    /** The old bare join died at tick 242; a slow server covers fewer ticks in the wall-clock floor, so the test also needs this many. */
+    private static final int MIN_TICKS = 400;
 
     @GameTest(maxTicks = TICKS + 100)
     public void mockPlayerSurvivesOneMinuteOfTicks(GameTestHelper helper) {
@@ -33,11 +38,54 @@ public class MockPlayersTest {
         });
     }
 
+    /**
+     * A mock joined through the server path stands where it was told to and is still alive a few
+     * seconds later. Joined inside the surface rock it suffocates, and a dead mock cannot be teleported.
+     * Waits by wall clock, because the GameTest server ticks unthrottled.
+     */
+    @GameTest(maxTicks = 20_000)
+    public void serverJoinedMockSurvivesAtItsSpawn(GameTestHelper helper) {
+        Vec3 spawn = helper.absoluteVec(new Vec3(1.5, 1, 1.5));
+        MockPlayer mock = MockPlayers.join(helper.getLevel().getServer(), "server-joined", helper.getLevel(), spawn);
+        mock.player().setGameMode(GameType.SURVIVAL);
+        long deadline = System.nanoTime() + SURVIVAL_SECONDS * 1_000_000_000L;
+        TestTicks.each(helper, () -> {
+            if (!mock.player().isAlive()) {
+                throw helper.assertionException(
+                        "the server-joined mock died at %s", mock.player().position());
+            }
+            if (System.nanoTime() - deadline <= 0 || helper.getTick() < MIN_TICKS) {
+                sleepOneTick();
+            } else {
+                if (mock.player().position().distanceTo(spawn) > 0.5) {
+                    throw helper.assertionException(
+                            "the mock is at %s, not at its spawn %s",
+                            mock.player().position(), spawn);
+                }
+                helper.succeed();
+            }
+        });
+    }
+
+    // The GameTest server ticks unthrottled, so a few seconds of ticks pass in milliseconds unless each tick sleeps.
+    private static void sleepOneTick() {
+        try {
+            Thread.sleep(FarChunks.POLL_MILLIS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     /** A mock owned by a test is removed once that test is done: the sweep, not the test, cleans up. */
     @GameTest
     public void mockPlayerIsRemovedWhenItsOwnerIsDone(GameTestHelper helper) {
         AtomicBoolean ownerDone = new AtomicBoolean();
-        MockPlayer mock = MockPlayers.join(helper.getLevel().getServer(), "owned", ownerDone::get);
+        MockPlayer mock = MockPlayers.join(
+                helper.getLevel().getServer(),
+                "owned",
+                helper.getLevel(),
+                helper.absoluteVec(new Vec3(1.5, 1, 1.5)),
+                ownerDone::get);
         helper.runAfterDelay(5, () -> {
             if (!mock.isOnline()) {
                 throw helper.assertionException("mock player left before its owner was done");
