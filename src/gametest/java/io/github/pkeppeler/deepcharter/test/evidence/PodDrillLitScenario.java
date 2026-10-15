@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -102,9 +104,10 @@ public class PodDrillLitScenario extends EvidenceScenario {
         return context.computeOnClient(client -> client.player.getVehicle().getY());
     }
 
-    /** Slabs of stone under the pod with ore in the column it drills, an open room above, and glowstone on the walls. */
+    /** Slabs of the layer's rock under the pod with ore in the column it drills, an open room above, and glowstone on the walls. */
     private static void buildBoreRoom(ServerLevel level) {
-        RoomCarver.carve(level, X - 5, X + 5, 0, FLOOR_Y - 1, Z - 5, Z + 5, Blocks.STONE);
+        Block rock = LayerBlocks.groundOf(level);
+        RoomCarver.carve(level, X - 5, X + 5, 0, FLOOR_Y - 1, Z - 5, Z + 5, rock);
         // Worldgen scatters lava through layer 1's rock, and lava beside the room would flow in and into the bore, so
         // carve it sealed.
         RoomCarver.carve(
@@ -115,9 +118,9 @@ public class PodDrillLitScenario extends EvidenceScenario {
                 Block.UPDATE_ALL);
         OreType[] ores = {OreType.IRONIUM, OreType.BRONZIUM, OreType.GOLDIUM};
         for (int i = 0; i < ores.length; i++) {
-            Block ore = BuiltInRegistries.BLOCK.getValue(ores[i].blockId());
-            level.setBlock(new BlockPos(X, FLOOR_Y - 1 - i, Z), ore.defaultBlockState(), 3);
-            level.setBlock(new BlockPos(X + 1 + i % 2, FLOOR_Y - 1 - i, Z - 1), ore.defaultBlockState(), 3);
+            OreBlock ore = (OreBlock) BuiltInRegistries.BLOCK.getValue(ores[i].blockId());
+            level.setBlock(new BlockPos(X, FLOOR_Y - 1 - i, Z), ore.in(rock.defaultBlockState()), 3);
+            level.setBlock(new BlockPos(X + 1 + i % 2, FLOOR_Y - 1 - i, Z - 1), ore.in(rock.defaultBlockState()), 3);
         }
         for (BlockPos lamp : new BlockPos[] {
             new BlockPos(X + 5, FLOOR_Y + 2, Z), new BlockPos(X - 5, FLOOR_Y + 2, Z),
