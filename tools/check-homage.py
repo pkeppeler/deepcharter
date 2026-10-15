@@ -30,7 +30,8 @@ APOSTROPHE = re.compile(r"['`\u2019\u02bc]")
 LINK = re.compile(r"!?\[([^\]]*)\](?:\([^)]*\)|\[[^\]]*\])")
 LINK_DEFINITION = re.compile(r"^\s{0,3}\[[^\]]+\]:\s")
 URL = re.compile(r"<https?://[^>]*>|https?://[^\s)>]+")
-HTML_TAG = re.compile(r"<[a-z/][^>]*>", re.IGNORECASE)
+HTML_ATTRIBUTE = r"""\s+[\w:-]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+)"""
+HTML_TAG = re.compile(rf"<[a-z][a-z0-9]*(?:{HTML_ATTRIBUTE})*\s*/?>|</[a-z][a-z0-9]*\s*>", re.IGNORECASE)  # a tag shape, so "x<y and p>q" stays text
 FOOTNOTE_MARKER = re.compile(r"\[\^[^\]]*\]")
 HEADING = re.compile(r"^\s{0,3}#{1,6}(\s|$)")
 FENCE = re.compile(r"^\s{0,3}(```|~~~)")

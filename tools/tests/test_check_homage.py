@@ -156,6 +156,12 @@ class MarkupInTheMiddleOfACopy(unittest.TestCase):
         for text in ("a <em>b</em> c[^1] d <br> e\n", "<div>quartz</div> <span>walruses</span> never[^1] forget\n"):
             self.assertEqual(Run(self, {"docs/a.md": text}).code, 0, text)
 
+    def test_angle_brackets_that_are_not_tags_keep_their_words(self):
+        self.assertEqual(homage.words(homage.prose("x<y and p>q")), ["x", "y", "and", "p", "q"])
+
+    def test_autolink_beside_tags_is_still_dropped(self):
+        self.assertFound("quartz <https://x.y> walruses never forget the umbrella\n")
+
     def test_prose_strips_html_tags_and_footnotes(self):
         self.assertEqual(homage.words(homage.prose("the quick <em>brown</em> fox[^1] jumps over")), ["the", "quick", "brown", "fox", "jumps", "over"])
 
