@@ -31,6 +31,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
  *   "model": "deepcharter:pod/mole",                       the GeckoLib model, geckolib/models/pod/mole.geo.json
  *   "texture": "deepcharter:textures/entity/pod/mole.png", its glowmask is the same name with _glowmask: mole_glowmask.png
  *   "glow": "lit",                                         "lit" while the pod has power, "always" or "never"
+ *                                                          the hot mask (#634), drawn while lava burns the hull, is the same name with _hot
  *   "hide": [],                                            bones not drawn (optional)
  *   "cutters": {"0": "tricone", "1": "stacked"},           the drill tier from which each cutter shows (the tier map)
  *   "wreck": {"texture": "...", "glow": "never", "hide": ["rotor"]}
@@ -71,6 +72,12 @@ public record PodLook(
         public Identifier glowmask() {
             String path = texture.getPath();
             return texture.withPath(path.substring(0, path.length() - ".png".length()) + "_glowmask.png");
+        }
+
+        /** The hot mask the hot-hull layer reads while lava burns the hull: the texture's name and {@code _hot} (#634). */
+        public Identifier hotmask() {
+            String path = texture.getPath();
+            return texture.withPath(path.substring(0, path.length() - ".png".length()) + "_hot.png");
         }
     }
 

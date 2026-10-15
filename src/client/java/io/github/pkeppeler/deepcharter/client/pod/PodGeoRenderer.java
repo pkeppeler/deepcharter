@@ -35,7 +35,8 @@ import net.minecraft.world.phys.AABB;
 
 /**
  * Draws a pod of one chassis with GeckoLib (ADR 0030, #243): the model, textures and tier map of its {@link PodLook}, its bones
- * posed by role ({@link PodPose}) from what the pod does ({@link PodMotion}), and its glowmask at full bright while the lamps are on.
+ * posed by role ({@link PodPose}) from what the pod does ({@link PodMotion}), its glowmask at full bright while the lamps are on, and its hot mask
+ * at full bright while lava burns the hull ({@link PodHotLayer}).
  * The cutter on show is the one the pod's drill tier picks, and it changes the moment the drill does.
  *
  * <p>It is a replaced-entity renderer: {@link PodEntity} knows nothing of GeckoLib, so a server never loads it.
@@ -99,6 +100,7 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
                             .toList());
         }
         withRenderLayer(new PodGlowLayer(this));
+        withRenderLayer(new PodHotLayer(this));
     }
 
     /**
@@ -123,6 +125,7 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
         try {
             GeoModel geo = readGeometry(resources, look.modelFile());
             look.check(geo);
+            checkTexture(resources, geo, look.intact().hotmask());
             for (PodLook.Variant variant : List.of(look.intact(), look.wreck())) {
                 checkTexture(resources, geo, variant.texture());
                 if (variant.glow() != PodLook.Glow.NEVER) {
@@ -194,6 +197,7 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
         state.appearance = appearance;
         state.texture = textureOf(appearance);
         state.cabHidden = FrontCameraFeed.hidesCab(pod);
+        state.hot = pod.hullBurning();
         motions.computeIfAbsent(pod, ignored -> new PodMotion())
                 .advance(pod, state, pose.mountRestPitch(), spinScaleOf(appearance));
         // The pod turns as its motion says (towards where it drives or drills), not as its entity yaw does.
