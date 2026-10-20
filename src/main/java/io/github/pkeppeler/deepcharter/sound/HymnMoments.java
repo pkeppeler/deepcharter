@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -58,6 +59,12 @@ public final class HymnMoments {
         BreachEvents.CROSSED.register(HymnMoments::onCrossed);
         ServerPlayConnectionEvents.DISCONNECT.register(
                 (handler, server) -> PLAYING.remove(handler.getPlayer().getUUID()));
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> stopped());
+    }
+
+    /** Forgets every hymn: the map is static, so an integrated server restarted in one client session would inherit the last one's. */
+    static void stopped() {
+        PLAYING.clear();
     }
 
     private static void arrived(MinecraftServer server, UUID player) {

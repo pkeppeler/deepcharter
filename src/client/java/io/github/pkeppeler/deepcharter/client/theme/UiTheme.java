@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
  * @param panel the machine panel round the terminals, on in the mod; a pack restyles it or switches it off
  * @param cockpit the cockpit HUD of a seated pilot: the Ribbon, until a pack turns it off
  * @param tow the chain links of the tow line between two pods
+ * @param beam the fake light beams of a lit pod's headlamp and the colony floodlights
  */
 public record UiTheme(
         CrtTuning crt,
@@ -36,10 +37,22 @@ public record UiTheme(
         PodPaintLook pod,
         PanelLook panel,
         CockpitLook cockpit,
-        TowChainLook tow) {
+        TowChainLook tow,
+        BeamLook beam) {
     /** The areas, each one a file {@code theme/<name>.json}. */
     static final Set<String> AREAS = Set.of(
-            "crt", "handbook", "scanner", "hud", "transmission", "breach", "cargo", "pod", "panel", "cockpit", "tow");
+            "crt",
+            "handbook",
+            "scanner",
+            "hud",
+            "transmission",
+            "breach",
+            "cargo",
+            "pod",
+            "panel",
+            "cockpit",
+            "tow",
+            "beam");
 
     private static volatile @Nullable UiTheme current;
 
@@ -81,7 +94,8 @@ public record UiTheme(
                 PodPaintLook.of(area(areas, "pod")),
                 PanelLook.of(area(areas, "panel")),
                 CockpitLook.of(area(areas, "cockpit")),
-                TowChainLook.of(area(areas, "tow")));
+                TowChainLook.of(area(areas, "tow")),
+                BeamLook.of(area(areas, "beam")));
         if (theme.transmission().maxWidth() <= 2 * theme.crt().padding()) {
             throw new IllegalArgumentException(area(areas, "transmission")
                             .conflict(

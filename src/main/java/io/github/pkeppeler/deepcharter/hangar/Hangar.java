@@ -19,7 +19,6 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
@@ -62,8 +61,7 @@ public final class Hangar {
      */
     public static void onBuilt(MinecraftServer server, ColonySite.Placed colony) {
         ServerLevel level = server.overworld();
-        BlockPos anchor = Objects.requireNonNull(
-                colony.anchors().get(ColonyAnchor.HANGAR), "a built colony records a HANGAR anchor for every site");
+        BlockPos anchor = ColonyAnchor.HANGAR.in(colony.anchors());
         placeConsole(level, anchor);
         Optional<HangarData> data = HangarData.readable(server);
         if (data.isEmpty() || data.get().state().derelict().isPresent()) {

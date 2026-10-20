@@ -35,7 +35,8 @@ public class CharterCoreScenario extends EvidenceScenario {
 
             command(context, server, "deepcharter charter found \"" + CHARTER + "\"");
             server.runOnServer(minecraftServer -> {
-                MockPlayers.join(minecraftServer, CREW);
+                ServerPlayer real = minecraftServer.getPlayerList().getPlayers().getFirst();
+                MockPlayers.join(minecraftServer, CREW, real.level(), real.position());
                 ServerPlayer crew = minecraftServer.getPlayerList().getPlayerByName(CREW);
                 Charters.apply(
                         minecraftServer,

@@ -4,6 +4,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
+import io.github.pkeppeler.deepcharter.client.theme.BeamLook;
+import io.github.pkeppeler.deepcharter.client.theme.BeamStyle;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
@@ -201,6 +203,15 @@ public class ThemeLooksTest {
         expect(helper, "breach", new BreachLook(20, 8, 4, 10, 3, 0xFF000000), BreachLook.of(area("breach", null)));
         expect(helper, "cargo", new CargoLook(0xFF404040), CargoLook.of(area("cargo", null)));
         expect(helper, "tow", new TowChainLook(0.28, 0.2, 1.35, 0xFFFFFFFF, 7), TowChainLook.of(area("tow", null)));
+        expect(
+                helper,
+                "beam",
+                new BeamLook(
+                        14,
+                        96,
+                        new BeamStyle(0xFFFFF0D2, 26, 0.12, 2.6, 0.03, 0.35, 0.1, 6, 0.9, 1.5),
+                        new BeamStyle(0xFFFFCF6E, 30, 0.25, 5.0, 0.015, 0.35, 0.05, 24, 0.4, 0.55)),
+                BeamLook.of(area("beam", null)));
         helper.succeed();
     }
 
@@ -489,7 +500,8 @@ public class ThemeLooksTest {
                 "pod",
                 "panel",
                 "cockpit",
-                "tow")) {
+                "tow",
+                "beam")) {
             areas.put(name, area(name, null));
         }
         return areas;
@@ -511,6 +523,31 @@ public class ThemeLooksTest {
         rejected(helper, () -> TowChainLook.of(area("tow", "{ \"linkWidth\": 0.6 }")), "linkWidth");
         rejected(helper, () -> TowChainLook.of(area("tow", "{ \"linkOverlap\": 0.9 }")), "linkOverlap");
         rejected(helper, () -> TowChainLook.of(area("tow", "{ \"minBlockLight\": 16 }")), "minBlockLight");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aBeamStaysWithinItsBounds(GameTestHelper helper) {
+        rejected(helper, () -> BeamLook.of(area("beam", "{ \"sides\": 2 }")), "sides");
+        rejected(helper, () -> BeamLook.of(area("beam", "{ \"drawDistance\": 0 }")), "drawDistance");
+        rejected(helper, () -> BeamLook.of(area("beam", "{ \"headlampLength\": 0 }")), "headlampLength");
+        rejected(helper, () -> BeamLook.of(area("beam", "{ \"floodlightLength\": 500 }")), "floodlightLength");
+        rejected(helper, () -> BeamLook.of(area("beam", "{ \"headlampAlpha\": 1.5 }")), "headlampAlpha");
+        rejected(helper, () -> BeamLook.of(area("beam", "{ \"headlampCoreScale\": 0 }")), "headlampCoreScale");
+        rejected(helper, () -> BeamLook.of(area("beam", "{ \"floodlightPitch\": 95 }")), "floodlightPitch");
+        rejected(helper, () -> BeamLook.of(area("beam", "{ \"headlampColor\": 5 }")), "headlampColor");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aPackRestylesOneBeamKeyAndKeepsTheRest(GameTestHelper helper) {
+        BeamLook look = BeamLook.of(area("beam", "{ \"floodlightColor\": \"#FFB347\", \"floodlightLength\": 12 }"));
+        if (look.floodlight().color() != 0xFFFFB347 || look.floodlight().length() != 12) {
+            throw fail(helper, "the pack's floodlight colour and length should apply, got " + look.floodlight());
+        }
+        if (look.headlamp().color() != 0xFFFFF0D2 || look.sides() != 14) {
+            throw fail(helper, "the keys the pack did not name should keep the mod's values, got " + look);
+        }
         helper.succeed();
     }
 

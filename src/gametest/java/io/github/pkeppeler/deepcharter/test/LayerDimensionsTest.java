@@ -140,7 +140,8 @@ public class LayerDimensionsTest {
     @GameTest
     public void gotoIsOpOnly(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        MockPlayer mock = MockPlayers.join(server, "layer-goto-denied");
+        MockPlayer mock =
+                MockPlayers.join(server, "layer-goto-denied", helper.getLevel(), helper.absoluteVec(Vec3.ZERO));
         try {
             var source = mock.player()
                     .createCommandSourceStack()
@@ -168,7 +169,7 @@ public class LayerDimensionsTest {
     @GameTest
     public void gotoMovesAnOpToTheLayer(GameTestHelper helper) throws CommandSyntaxException {
         MinecraftServer server = helper.getLevel().getServer();
-        MockPlayer mock = MockPlayers.join(server, "layer-goto-op");
+        MockPlayer mock = MockPlayers.join(server, "layer-goto-op", helper.getLevel(), helper.absoluteVec(Vec3.ZERO));
         try {
             var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
             server.getCommands().getDispatcher().execute("deepcharter layer goto 2", source);
@@ -199,7 +200,8 @@ public class LayerDimensionsTest {
     @GameTest
     public void gotoStandsOnAModBlock(GameTestHelper helper) throws CommandSyntaxException {
         MinecraftServer server = helper.getLevel().getServer();
-        MockPlayer mock = MockPlayers.join(server, "layer-goto-block");
+        MockPlayer mock =
+                MockPlayers.join(server, "layer-goto-block", helper.getLevel(), helper.absoluteVec(Vec3.ZERO));
         try {
             ServerLevel layer = level(helper, 2);
             mock.player().setPos(300_000.5, 80, 300_000.5);
@@ -223,7 +225,7 @@ public class LayerDimensionsTest {
     @GameTest
     public void gotoGeneratesAnUnloadedTargetChunk(GameTestHelper helper) throws CommandSyntaxException {
         MinecraftServer server = helper.getLevel().getServer();
-        MockPlayer mock = MockPlayers.join(server, "layer-goto-far");
+        MockPlayer mock = MockPlayers.join(server, "layer-goto-far", helper.getLevel(), helper.absoluteVec(Vec3.ZERO));
         try {
             mock.player().setPos(200_000.5, 80, 200_000.5);
             ServerLevel layer = level(helper, 1);

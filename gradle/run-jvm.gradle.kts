@@ -12,12 +12,13 @@ val runVmArgs = project.extra["runVmArgs"] as () -> Map<String, List<String>>
 addVmArgToRuns(exitOnOom)
 
 // Server GameTest heap. No -Xmx was set, so the JVM took a quarter of RAM: 4 GB on the 16 GB Mac, and the suite (1050 tests) ran
-// out of it at about 80% (#541). Measured 2026-10-12 (-Xlog:gc, one full run): the live set after GC reached 4.4 GB at the end of
-// the suite and was still rising, so 6 GB leaves about 1.6 GB (27%) of headroom. Most of that was GameTestHelper.onEachTick, which queued
-// one lambda per remaining tick of the test's maxTicks (#548; TestTicks.each replaced it, and the peak after GC fell from 5.7 GB to 2.6-3.0 GB).
-// What remains grows with the test count and is chunk data (LevelChunkSection and its PalettedContainer) kept by finished tests.
-// Re-measure when the suite grows by a tenth.
-val gameTestHeap = "-Xmx6G"
+// out of it at about 80% (#541). Two leaks filled it. GameTestHelper.onEachTick queued one lambda per remaining tick (#548;
+// TestTicks.each replaced it). Chunks that FarChunks forced stayed forced to the end of the run, and each forced chunk pins the
+// proto chunks around it, so one layer level held 34,000 chunks (#569; FarChunks.force lets go when the test finishes).
+// Measured 2026-10-15 (-Xlog:gc; 1110 tests for the 1 GB and 1.5 GB sweep, 1132 for the peak): 1 GB fails (Full GCs at 1022M), 1.5 GB passes with 6 Full GCs, 2 GB passes with none.
+// The live set is 300 to 550 MB, peaking at 1.13 GB while one batch of about 50 tests runs. 2G is below 2x the peak (2.3 GB), so
+// it cannot be lowered. POI is not the holder (#636). Re-measure when the suite grows by a tenth.
+val gameTestHeap = "-Xmx2G"
 addVmArgToRun("gameTest", gameTestHeap)
 
 // Proof the gate holds: every run carries the flag, and a JVM that catches its OutOfMemoryError exits non-zero with the flag and

@@ -66,9 +66,14 @@ public final class PodLights {
 
     /** 0 when the pod is dark: unpowered, or no lights part that counts. */
     private static int lightLevel(PodEntity pod) {
-        if (!PodEvents.isPowered(pod)) {
-            return 0;
-        }
+        return PodEvents.isPowered(pod) ? partLevel(pod) : 0;
+    }
+
+    /**
+     * The block light the pod's lights part gives while the pod has power, 0 with no part that counts. It reads only the fitted parts,
+     * which the client has too, so the client draws the fake beam of #248 from it.
+     */
+    public static int partLevel(PodEntity pod) {
         int tier = PodComponents.effectiveTier(pod, ComponentTrack.LIGHTS);
         return Math.round(UpgradeTuning.DEFAULT.value(ComponentTrack.LIGHTS, tier));
     }

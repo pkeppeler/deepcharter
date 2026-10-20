@@ -1,7 +1,10 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.layer.LightSync;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
@@ -9,17 +12,20 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.phys.AABB;
 
 /**
  * Awaits entity ticking in a far chunk of a fresh world. The test method must call this, never a tick
  * callback. It forces the chunk, because a mock player teleported within its own dimension never loads
- * chunks around itself. A forced chunk stays forced as long as the test world does.
+ * chunks around itself. A chunk it forces is released when the test finishes ({@link #release}): a forced chunk pins the
+ * generation neighbourhood around it (up to 17 x 17 chunks of proto chunks and their sections), so one left forced for the rest
+ * of the run grows the heap with the suite (#569).
  */
 public final class FarChunks {
     /** Wall-clock seconds that a wait for a chunk may take. The GameTest server ticks unthrottled, so a tick budget alone is only seconds of real time. */
     public static final int WAIT_SECONDS = 120;
     /** Milliseconds slept per waiting tick, so the chunk generation threads get CPU. */
-    static final int POLL_MILLIS = 2;
+    public static final int POLL_MILLIS = 2;
     /**
      * A test's {@code maxTicks} for one wait. Each waiting tick takes at least {@link #POLL_MILLIS}, so no more than
      * this many ticks pass in {@link #WAIT_SECONDS}, and the wall-clock failure always fires before the GameTest limit.
@@ -30,7 +36,50 @@ public final class FarChunks {
     /** The server tick on which a waiter last slept. Server thread only. */
     private static int lastSleptTick = -1;
 
+    /** A chunk of a level that tests hold forced, and how many of them hold it. */
+    private record Chunk(ServerLevel level, long pos) {}
+
+    private static final Map<Chunk, Integer> HOLDS = new HashMap<>();
+    /** The chunks each running test holds, by the test's bounds (what {@code GameTestHelper.getBounds} and the runner share). */
+    private static final Map<AABB, List<Chunk>> HELD_BY_TEST = new HashMap<>();
+
     private FarChunks() {}
+
+    /**
+     * Forces a chunk until {@code helper}'s test finishes. A chunk that is forced already and that no test holds (a colony's pad,
+     * the test's own structure) is left as it is, and so is its owner's release. Server thread only.
+     */
+    public static void force(GameTestHelper helper, ServerLevel level, int chunkX, int chunkZ) {
+        force(helper.getBounds(), level, chunkX, chunkZ);
+    }
+
+    /** As {@link #force(GameTestHelper, ServerLevel, int, int)}, for the test with these bounds; {@link FarChunksTest} drives two. */
+    public static void force(AABB testBounds, ServerLevel level, int chunkX, int chunkZ) {
+        Chunk chunk = new Chunk(level, ChunkPos.pack(chunkX, chunkZ));
+        List<Chunk> mine = HELD_BY_TEST.computeIfAbsent(testBounds, bounds -> new ArrayList<>());
+        if (mine.contains(chunk)) {
+            return;
+        }
+        boolean forcedNow = level.setChunkForced(chunkX, chunkZ, true);
+        if (forcedNow || HOLDS.containsKey(chunk)) {
+            HOLDS.merge(chunk, 1, Integer::sum);
+            mine.add(chunk);
+        }
+    }
+
+    /** Lets go of the chunks that the test with these bounds forced, those no other test holds. Called when a test finishes. */
+    public static void release(AABB testBounds) {
+        List<Chunk> mine = HELD_BY_TEST.remove(testBounds);
+        if (mine == null) {
+            return;
+        }
+        for (Chunk chunk : mine) {
+            if (HOLDS.merge(chunk, -1, Integer::sum) == 0) {
+                HOLDS.remove(chunk);
+                chunk.level().setChunkForced(ChunkPos.getX(chunk.pos()), ChunkPos.getZ(chunk.pos()), false);
+            }
+        }
+    }
 
     /** What a wait is for, named in the failure message. */
     private enum Awaited {
@@ -131,7 +180,7 @@ public final class FarChunks {
                     "FarChunks.awaitEntityTicking must be called from the test method, not from a tick callback");
         }
         for (BlockPos pos : positions) {
-            level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, true);
+            force(helper, level, pos.getX() >> 4, pos.getZ() >> 4);
         }
         Deadline deadline = deadline();
         boolean[] done = new boolean[positions.size()];

@@ -4,7 +4,8 @@
   "textures": {
     "iron": "deepcharter:block/colony/lamp_iron",
     "lens": "deepcharter:block/colony/flood_lens",
-    "particle": "deepcharter:block/colony/lamp_iron"
+    "particle": "deepcharter:block/colony/lamp_iron",
+    "halo": "deepcharter:block/glow/halo_sodium"
   },
   "elements": [
     {
@@ -184,6 +185,74 @@
         "x": -25,
         "y": 0.0,
         "z": 0.0
+      },
+      "light_emission": 15,
+      "shade": false
+    },
+    {
+      "from": [
+        -5,
+        -3,
+        2.5
+      ],
+      "to": [
+        21,
+        21,
+        2.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#halo"
+        },
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#halo"
+        }
+      },
+      "light_emission": 15,
+      "shade": false
+    },
+    {
+      "from": [
+        8,
+        -3,
+        -8
+      ],
+      "to": [
+        8,
+        21,
+        16
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#halo"
+        },
+        "west": {
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "texture": "#halo"
+        }
       },
       "light_emission": 15,
       "shade": false

@@ -8,6 +8,7 @@ import java.util.Optional;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The one way a test swaps a world-global saved record ({@code getDataStorage().set(TYPE, fresh)}). It captures the world's
@@ -101,7 +102,7 @@ public final class WorldData {
         }
 
         /** Puts every record back, in reverse order, even if one restore throws. A restore failure is suppressed on {@code primary}, or thrown when there is none. */
-        private static void restoreAll(List<Runnable> restores, Throwable primary) {
+        private static void restoreAll(List<Runnable> restores, @Nullable Throwable primary) {
             RuntimeException failed = null;
             for (int i = restores.size() - 1; i >= 0; i--) {
                 try {

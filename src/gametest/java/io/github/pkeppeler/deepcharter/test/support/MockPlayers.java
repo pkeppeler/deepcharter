@@ -14,8 +14,10 @@ import net.minecraft.gametest.framework.GameTestInfo;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Joins real {@link ServerPlayer}s to a server with no network client behind them. This mirrors
@@ -44,6 +46,9 @@ import net.minecraft.server.network.CommonListenerCookie;
  * Drive a mock with {@link MockPlayer#setInput}. Call everything on the server thread.
  */
 public final class MockPlayers {
+    /** Where a helper-joined mock stands, relative to the test structure. */
+    public static final Vec3 STRUCTURE_SPAWN = new Vec3(1.5, 1, 1.5);
+
     private static final List<MockPlayer> ACTIVE = new ArrayList<>();
 
     static {
@@ -59,29 +64,41 @@ public final class MockPlayers {
 
     private MockPlayers() {}
 
-    /** Join a mock player owned by a GameTest: it is removed when that test ends, however it ends. */
+    /** Join a mock player owned by a GameTest, inside its structure (a bare join suffocates at the origin); removed when that test ends. */
     public static MockPlayer join(GameTestHelper helper, String name) {
-        GameTestInfo info = testInfo(helper);
-        return join(helper.getLevel().getServer(), name, info::isDone);
-    }
-
-    /** Join a mock player that stays until the server stops or {@link MockPlayer#leave} is called. */
-    public static MockPlayer join(MinecraftServer server, String name) {
-        return join(server, name, () -> false);
+        return joinInStructure(helper, name, UUID.randomUUID(), true);
     }
 
     /**
-     * Join a mock player that is removed once {@code ownerDone} turns true. It is checked every
-     * server tick.
+     * Join a mock player at {@code spawn} in {@code level}; it stays until the server stops or {@link MockPlayer#leave}
+     * is called. The spawn is required because a bare join lands at the origin, inside the rock of the surface (the
+     * ground is at y 63), where the mock suffocates within seconds and a dead mock cannot be teleported.
      */
-    public static MockPlayer join(MinecraftServer server, String name, BooleanSupplier ownerDone) {
-        return join(server, name, ownerDone, true);
+    public static MockPlayer join(MinecraftServer server, String name, ServerLevel level, Vec3 spawn) {
+        return join(server, name, level, spawn, () -> false);
+    }
+
+    /**
+     * Join a mock player at {@code spawn} in {@code level}, removed once {@code ownerDone} turns true. It is checked
+     * every server tick.
+     */
+    public static MockPlayer join(
+            MinecraftServer server, String name, ServerLevel level, Vec3 spawn, BooleanSupplier ownerDone) {
+        MockPlayer mock = join(server, name, ownerDone, true);
+        mock.teleportTo(level, spawn, 0f, 0f);
+        return mock;
     }
 
     /** Join a mock player owned by a GameTest with the given id, as a player who comes back to the server. */
     public static MockPlayer join(GameTestHelper helper, String name, UUID id) {
+        return joinInStructure(helper, name, id, true);
+    }
+
+    private static MockPlayer joinInStructure(GameTestHelper helper, String name, UUID id, boolean loaded) {
         GameTestInfo info = testInfo(helper);
-        return join(helper.getLevel().getServer(), name, id, info::isDone, true);
+        MockPlayer mock = join(helper.getLevel().getServer(), name, id, info::isDone, loaded);
+        mock.teleportTo(helper.getLevel(), helper.absoluteVec(STRUCTURE_SPAWN), 0f, 0f);
+        return mock;
     }
 
     private static MockPlayer join(MinecraftServer server, String name, BooleanSupplier ownerDone, boolean loaded) {
@@ -113,8 +130,7 @@ public final class MockPlayers {
      * Vanilla treats any player as loaded after 60 ticks, so this only covers a short setup.
      */
     public static MockPlayer joinUnloaded(GameTestHelper helper, String name) {
-        GameTestInfo info = testInfo(helper);
-        return join(helper.getLevel().getServer(), name, info::isDone, false);
+        return joinInStructure(helper, name, UUID.randomUUID(), false);
     }
 
     // GameTestHelper has no public accessor for its test, and this is the only way to know when it ends.
