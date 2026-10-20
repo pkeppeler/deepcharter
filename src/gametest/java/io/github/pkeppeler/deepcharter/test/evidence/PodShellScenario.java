@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.PodShellClientTest;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -20,7 +21,9 @@ public class PodShellScenario extends EvidenceScenario {
             context.waitTicks(40);
             PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
             ClientWait.until(
-                    context, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
+                    context,
+                    "the player riding a pod",
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
             context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
             context.waitTicks(20);
             screenshot(context, "pod-rider-third-person");

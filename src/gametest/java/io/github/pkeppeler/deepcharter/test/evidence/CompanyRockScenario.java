@@ -7,8 +7,10 @@ import io.github.pkeppeler.deepcharter.ore.CompanyRockBlock;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import java.util.List;
 import java.util.Set;
@@ -18,7 +20,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -93,10 +94,12 @@ public class CompanyRockScenario extends EvidenceScenario {
             ClientPacks.enable(context, TestPacks.LAYER_CONCEPT_GRAIN);
             try {
                 for (int layer : List.of(1, 2)) {
-                    world.serverDo(server -> build(server.getLevel(LayerChain.dimension(layer)), layer));
+                    world.serverDo(
+                            server -> build(ClientLight.serverLevel(server, LayerChain.dimension(layer)), layer));
                 }
                 for (int layer : List.of(1, 2)) {
-                    world.serverDo(server -> place(server.getLevel(LayerChain.dimension(layer)), layer));
+                    world.serverDo(
+                            server -> place(ClientLight.serverLevel(server, LayerChain.dimension(layer)), layer));
                     shoot(context, world, layer);
                 }
                 frame(context);
@@ -112,14 +115,14 @@ public class CompanyRockScenario extends EvidenceScenario {
             world.view(layer, absolute(view.eye()), absolute(view.target()), SETTLE_TICKS);
             world.still(still(layer, view.place()));
         }
-        world.serverDo(server -> mount(server.getLevel(LayerChain.dimension(layer))));
+        world.serverDo(server -> mount(ClientLight.serverLevel(server, LayerChain.dimension(layer))));
         context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
         ClientWait.until(
                 context,
                 "the player in the pod in layer " + layer,
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
-                        && client.level.dimension().equals(LayerChain.dimension(layer)));
+                        && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer)));
         context.waitTicks(MOUNT_TICKS);
         world.still(still(layer, "pod"));
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
@@ -233,7 +236,7 @@ public class CompanyRockScenario extends EvidenceScenario {
         Vec3 target = absolute(SEAT_TARGET);
         player.teleportTo(level, at.x, at.y, at.z, Set.of(), 180.0f, 0.0f, true);
         player.setNoGravity(false);
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(at.x, at.y, at.z);
         pod.setYRot(180.0f);
         pod.setFuel(100f);

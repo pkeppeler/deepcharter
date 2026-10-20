@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
@@ -14,7 +15,6 @@ import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
@@ -57,7 +57,7 @@ public class PodLightsScenario extends EvidenceScenario {
                     }
                 }
                 player.teleportTo(level, spot.x, spot.y, spot.z - 1, Set.of(), 0f, 0f, true);
-                pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                pod[0] = TestEntities.create(PodRegistry.POD, level);
                 pod[0].setPos(spot.x - 2.6, spot.y, spot.z + 3);
                 level.addFreshEntity(pod[0]);
                 Charters.found(server, player.getUUID(), "Demo Charter");

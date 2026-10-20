@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.List;
@@ -22,7 +23,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -147,7 +147,7 @@ public class GlowBeamsScenario extends EvidenceScenario {
                     .orElseThrow()
                     .id();
             for (int i = 0; i < 2; i++) {
-                pods[i] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                pods[i] = TestEntities.create(PodRegistry.POD, level);
                 pods[i].setPos(spot.x + (i == 0 ? -3.5 : 3.5), spot.y, spot.z + 2);
                 level.addFreshEntity(pods[i]);
                 PodComponents.register(pods[i], charter);

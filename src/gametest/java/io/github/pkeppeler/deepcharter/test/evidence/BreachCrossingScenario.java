@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import java.util.Set;
@@ -56,7 +57,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
 
             // Down a shaft that is open through the crust, looking at it.
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 BlockPos column = BlockPos.containing(X, 0, Z);
                 RoomCarver.carve(
                         one,
@@ -65,7 +66,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
                         Blocks.AIR.defaultBlockState(),
                         Block.UPDATE_ALL);
                 // Generate the arrival area in layer 2 now so the client has less to wait for after the crossing.
-                ServerLevel two = server.getLevel(LayerChain.dimension(2));
+                ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
                 for (int dx = -2; dx <= 2; dx++) {
                     for (int dz = -2; dz <= 2; dz++) {
                         two.getChunk(column.getX() / 16 + dx, column.getZ() / 16 + dz);
@@ -77,7 +78,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the client in layer 1",
-                    client -> client.level.dimension().equals(LayerChain.dimension(1)));
+                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
 
             int typedAt = -1;
             for (int tick = 0; tick < PATIENCE; tick++) {
@@ -107,7 +108,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
     /** Stands the player on layer {@code layer}'s floor of stone, facing a row of pillars, and waits for the view to load. */
     private void lookDownTheRow(ClientGameTestContext context, TestSingleplayerContext singleplayer, int layer) {
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
             int standing = STANDING_Y;
             int column = (int) X;
             int row = (int) Z;
@@ -134,7 +135,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
         ClientWait.until(
                 context,
                 "the client in layer " + layer,
-                client -> client.level.dimension().equals(LayerChain.dimension(layer)));
+                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer)));
         context.waitTicks(60);
     }
 }

@@ -17,7 +17,10 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -27,7 +30,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -73,7 +75,7 @@ public class WorkOrdersRepeatScenario extends EvidenceScenario {
                 return Colony.placed(server)
                         .orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
             });
-            BlockPos processor = colony.anchors().get(ColonyAnchor.ORE_PROCESSOR);
+            BlockPos processor = TestColony.anchor(colony, ColonyAnchor.ORE_PROCESSOR);
             Vec3 terminalViewpoint = Vec3.atBottomCenterOf(colony.center()).add(-4, 1, -4);
             stand(singleplayer, terminalViewpoint, Vec3.atCenterOf(processor));
             context.waitTicks(SETTLE_TICKS);
@@ -141,7 +143,8 @@ public class WorkOrdersRepeatScenario extends EvidenceScenario {
     private OreProcessorScreen open(ClientGameTestContext context, BlockPos processor) {
         context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
         ClientWait.screen(context, OreProcessorScreen.class);
-        OreProcessorScreen screen = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
+        OreProcessorScreen screen =
+                context.computeOnClient(client -> ClientSession.screen(client, OreProcessorScreen.class));
         for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);
@@ -151,7 +154,7 @@ public class WorkOrdersRepeatScenario extends EvidenceScenario {
 
     /** Spawns a pod of the charter beside the colony's ore processor holding {@code silverium} Silverium. */
     private static void park(MinecraftServer server, ColonySite.Placed colony, CharterId charter, int silverium) {
-        PodEntity pod = PodRegistry.POD.create(server.overworld(), EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, server.overworld());
         pod.setPos(Vec3.atBottomCenterOf(colony.center())
                 .add(PARK_OFFSET)
                 .add(silverium == HOLD_SILVERIUM ? 0 : 1.5, 0, 0));

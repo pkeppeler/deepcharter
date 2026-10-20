@@ -6,12 +6,12 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntitySpawnReason;
 
 /**
  * Evidence scenario "m2-ore-cargo": a pod loaded with six kinds of ore, and the player sneak-using it. The
@@ -34,16 +34,14 @@ public class OreCargoScenario extends EvidenceScenario {
             frame(context);
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
                 pod.setPos(player.position().add(2, 0, 0));
                 player.level().addFreshEntity(pod);
                 for (OreType type : LOAD) {
                     pod.cargo().tryAdd(pod, OreRegistry.stack(type));
                 }
                 player.setShiftKeyDown(true);
-                UseEntityCallback.EVENT
-                        .invoker()
-                        .interact(player, player.level(), InteractionHand.MAIN_HAND, pod, null);
+                UseEntity.on(player, player.level(), InteractionHand.MAIN_HAND, pod);
                 player.setShiftKeyDown(false);
             });
             ClientWait.screen(context, OreCargoScreen.class);

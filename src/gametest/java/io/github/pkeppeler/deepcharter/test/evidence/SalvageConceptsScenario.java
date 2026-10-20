@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
@@ -19,6 +20,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "salvage-concepts" (#245, docs/design/salvage-concepts.md): the two looks of the salvage crate (the default and the sled pack)
@@ -32,7 +34,8 @@ import net.minecraft.world.phys.Vec3;
  */
 public class SalvageConceptsScenario extends EvidenceScenario {
     /** One shape of a block: its still prefix and the test pack that turns it on (none for the mod's own look). */
-    private record Option(String block, String letter, String pack) {}
+    private record Option(
+            String block, String letter, @Nullable String pack) {}
 
     private static final List<Option> OPTIONS = List.of(
             new Option("crate", "a", null),
@@ -77,7 +80,8 @@ public class SalvageConceptsScenario extends EvidenceScenario {
             Scene crater = new Scene(0, pit);
             Scene cave = new Scene(1, Vec3.atBottomCenterOf(CAVE.offset(CAVE_SCENE)));
             for (Scene scene : List.of(surface, crater, cave)) {
-                world.serverDo(server -> build(server.getLevel(LayerChain.dimension(scene.layer)), scene.centre));
+                world.serverDo(server ->
+                        build(ClientLight.serverLevel(server, LayerChain.dimension(scene.layer)), scene.centre));
             }
             for (Option option : OPTIONS) {
                 if (option.pack() != null) {
@@ -130,7 +134,7 @@ public class SalvageConceptsScenario extends EvidenceScenario {
 
     private static void carveCave(TextureTestWorld world) {
         world.serverDo(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(1));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
             TextureTestWorld.loadChunks(level, CAVE, 2);
             RoomCarver.carve(
                     level,

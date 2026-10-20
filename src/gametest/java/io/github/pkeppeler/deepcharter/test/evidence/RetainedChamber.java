@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import java.util.Set;
@@ -111,7 +112,7 @@ final class RetainedChamber {
     }
 
     static ServerLevel layer(MinecraftServer server) {
-        return server.getLevel(LayerChain.dimension(LAYER));
+        return ClientLight.serverLevel(server, LayerChain.dimension(LAYER));
     }
 
     void serverDo(Consumer<MinecraftServer> action) {

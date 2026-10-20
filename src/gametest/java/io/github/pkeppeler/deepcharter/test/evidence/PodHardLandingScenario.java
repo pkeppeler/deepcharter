@@ -5,8 +5,11 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -15,7 +18,6 @@ import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
@@ -46,7 +48,7 @@ public class PodHardLandingScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 RoomCarver.carve(
                         one,
                         new BlockPos(X - 2, FLOOR_Y - 2, Z - 2),
@@ -68,13 +70,16 @@ public class PodHardLandingScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the player in layer 1",
-                    client -> client.player != null && client.level.dimension().equals(LayerChain.dimension(1)));
+                    client -> client.player != null
+                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
             context.waitTicks(30);
 
             // Braked: the pilot taps the rotor whenever the sink passes BRAKE_ABOVE_SINK.
             boardNewPod(singleplayer);
             ClientWait.until(
-                    context, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
+                    context,
+                    "the player riding a pod",
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
             context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
             context.waitTicks(10);
             screenshot(context, "hard-landing-braked-start");
@@ -98,7 +103,7 @@ public class PodHardLandingScenario extends EvidenceScenario {
             context.waitTicks(10);
             String braked = singleplayer.getServer().computeOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                PodEntity pod = (PodEntity) player.getVehicle();
+                PodEntity pod = TestEntities.vehicle(player, PodEntity.class);
                 return pod.hull() == pod.maxHull() && player.getHealth() == player.getMaxHealth()
                         ? ""
                         : "hull " + pod.hull() + ", health " + player.getHealth();
@@ -115,10 +120,10 @@ public class PodHardLandingScenario extends EvidenceScenario {
             // Free fall: the same shaft, no rotor.
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.getVehicle().discard();
+                TestEntities.vehicle(player).discard();
                 player.setLastClientInput(Input.EMPTY);
                 player.teleportTo(
-                        server.getLevel(LayerChain.dimension(1)),
+                        ClientLight.serverLevel(server, LayerChain.dimension(1)),
                         X + 0.5,
                         FLOOR_Y + SHAFT_BLOCKS - 2,
                         Z + 0.5,
@@ -130,7 +135,9 @@ public class PodHardLandingScenario extends EvidenceScenario {
             context.waitTicks(20);
             boardNewPod(singleplayer);
             ClientWait.until(
-                    context, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
+                    context,
+                    "the player riding a pod",
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
             screenshot(context, "hard-landing-free-start");
             boolean warned = false;
             ticks = 0;
@@ -139,8 +146,9 @@ public class PodHardLandingScenario extends EvidenceScenario {
                 ticks += FALL_TICKS_PER_FRAME;
                 frame(context);
                 if (!warned
-                        && context.computeOnClient(client -> client.player.getVehicle() instanceof PodEntity pod
-                                && PodStatusHud.hardLandingLine(pod).isPresent())) {
+                        && context.computeOnClient(
+                                client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
+                                        && PodStatusHud.hardLandingLine(pod).isPresent())) {
                     warned = true;
                     screenshot(context, "hard-landing-warning");
                 }
@@ -161,9 +169,9 @@ public class PodHardLandingScenario extends EvidenceScenario {
 
     private static void boardNewPod(TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(X + 0.5, FLOOR_Y + SHAFT_BLOCKS - 2, Z + 0.5);
             one.addFreshEntity(pod);
             if (!player.startRiding(pod)) {
@@ -184,8 +192,7 @@ public class PodHardLandingScenario extends EvidenceScenario {
     private static boolean podWrecked(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
-                .computeOnServer(server -> server
-                        .getLevel(LayerChain.dimension(1))
+                .computeOnServer(server -> ClientLight.serverLevel(server, LayerChain.dimension(1))
                         .getEntitiesOfClass(
                                 PodEntity.class,
                                 new AABB(X - 3, FLOOR_Y - 2, Z - 3, X + 3, FLOOR_Y + SHAFT_BLOCKS + 3, Z + 3))

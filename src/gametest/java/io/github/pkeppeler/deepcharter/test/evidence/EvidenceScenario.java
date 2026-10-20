@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -38,14 +39,29 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     private static final int MINE_LIMIT_TICKS = 160;
 
     private int frame;
-    private Path framesDir;
-    private Path screenshotsDir;
 
     /** The scenario name: also the output directory name and the argument to record-evidence.sh. */
     protected abstract String name();
 
     /** Drive the game, calling {@link #frame} and {@link #screenshot} as things happen. */
     protected abstract void run(ClientGameTestContext context);
+
+    /** The scenario's output directory, derived from the environment each time it is read. */
+    private Path outputDir() {
+        String root = System.getenv("DEEPCHARTER_EVIDENCE_DIR");
+        if (root == null) {
+            throw new IllegalStateException("DEEPCHARTER_EVIDENCE_DIR is not set; run via tools/record-evidence.sh");
+        }
+        return Path.of(root).toAbsolutePath().resolve(name());
+    }
+
+    private Path framesDir() {
+        return outputDir().resolve("frames");
+    }
+
+    private Path screenshotsDir() {
+        return outputDir().resolve("screenshots");
+    }
 
     @Override
     public final void runTest(ClientGameTestContext context) {
@@ -54,17 +70,10 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
         }
         // A recording is long by design and the CI job limit bounds it.
         ClientTestLog.startUntimed(this);
-        String root = System.getenv("DEEPCHARTER_EVIDENCE_DIR");
-        if (root == null) {
-            throw new IllegalStateException("DEEPCHARTER_EVIDENCE_DIR is not set; run via tools/record-evidence.sh");
-        }
-        Path out = Path.of(root).toAbsolutePath().resolve(name());
-        framesDir = out.resolve("frames");
-        screenshotsDir = out.resolve("screenshots");
         try {
-            deleteTree(out);
-            Files.createDirectories(framesDir);
-            Files.createDirectories(screenshotsDir);
+            deleteTree(outputDir());
+            Files.createDirectories(framesDir());
+            Files.createDirectories(screenshotsDir());
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -77,7 +86,7 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     /** Add one frame to the recording. */
     protected final void frame(ClientGameTestContext context) {
         frame++;
-        shoot(context, String.format("frame-%04d", frame), framesDir);
+        shoot(context, String.format("frame-%04d", frame), framesDir());
     }
 
     /**
@@ -110,11 +119,11 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
             boolean first = tick == 0;
             context.runOnClient(client -> {
                 if (first) {
-                    client.gameMode.startDestroyBlock(target, Direction.SOUTH);
+                    ClientSession.gameMode(client).startDestroyBlock(target, Direction.SOUTH);
                 } else {
-                    client.gameMode.continueDestroyBlock(target, Direction.SOUTH);
+                    ClientSession.gameMode(client).continueDestroyBlock(target, Direction.SOUTH);
                 }
-                client.player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
+                ClientSession.player(client).swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
             });
             context.waitTicks(1); // tick-wait: the mining is one call a tick
             if (tick % ticksPerFrame == 1) {
@@ -133,7 +142,7 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 
     /** Take a named still screenshot. */
     protected final void screenshot(ClientGameTestContext context, String screenshotName) {
-        shoot(context, screenshotName, screenshotsDir);
+        shoot(context, screenshotName, screenshotsDir());
     }
 
     private static void shoot(ClientGameTestContext context, String fileName, Path dir) {
