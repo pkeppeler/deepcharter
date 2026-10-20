@@ -85,8 +85,7 @@ public final class PodEvents {
     /**
      * The {@link #AFTER_TICK} phase of listeners that read the pod where its own tick left it. It runs before the default phase,
      * where towing ({@code PodTowing.follow}) and other listeners move the pod, so a deed such as towing a Prospector onto the pad
-     * is judged from the position the pod ticked to. Listeners here must not move or change the pod; anything that does belongs in
-     * the default phase. Register a reader with {@code AFTER_TICK.register(OBSERVE, listener)}.
+     * is judged from the position the pod ticked to. Listeners here must not move or change the pod; anything that does belongs in the default phase.
      */
     public static final Identifier OBSERVE = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "observe");
 
