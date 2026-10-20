@@ -20,8 +20,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Evidence scenario "pod-hot-hull" (#634): a pod sits in a sealed stone room lit by two lamps high up, its hull cool and the HUD hidden. Lava floods a 3 x 3 pool under it and the hull
- * glows red-hot, ember orange along its lit plates, until the pilot pulls the rotor and climbs out. The glow fades once the hull stops burning.
+ * Evidence scenario "pod-hot-hull" (#634): a pod sits in a sealed stone room lit by two lamps high up, its hull cool and the HUD hidden. Lava floods a 5 x 5 pool under it and the
+ * hull glows red-hot, ember orange along its lit plates, until the pilot pulls the rotor and climbs out. The glow fades once the hull stops burning.
  */
 public class PodHotHullScenario extends EvidenceScenario {
     private static final int X = 5300;
