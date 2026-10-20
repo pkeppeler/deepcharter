@@ -3,7 +3,7 @@
 # MP4 built from its frames, to pr-media/<pr>/ with a PR comment holding the markdown.
 # For when the Mac's display sleeps and tools/record-evidence.sh cannot run.
 #
-# Two ways to ask; this never runs unasked:
+# Two ways to ask, because CI minutes are rationed (about 2,000 a month) and this never runs unasked:
 #   - Add the `record` label to a PR whose body has a line `Record: <scenario>`. The label is
 #     removed when the run starts, so adding it again re-runs. This works from the PR itself,
 #     before the workflow is on main.

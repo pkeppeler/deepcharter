@@ -19,10 +19,10 @@ EXCHANGE = REPO / "build/gate-checks"
 @dataclass(frozen=True)
 class Case:
     """One tree for the scan: `files` (relative to the test package) are written into a fresh tree, or a Path is scanned where it is.
-    `gate` names a gate to run over the tree instead of the gametest entrypoint scan (`entity_query`, `record_holder`)."""
+    `gate` names a gate to run over the tree instead of the gametest entrypoint scan (`entity_query`, `record_holder`, `null_marked`)."""
     files: Mapping[str, str] | Path
     client_tests: str | None
-    gate: Literal["entity_query", "record_holder"] | None = None
+    gate: Literal["entity_query", "record_holder", "null_marked"] | None = None
 
 
 @dataclass(frozen=True)
