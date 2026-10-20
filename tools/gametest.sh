@@ -40,7 +40,6 @@ if [[ ! $filter =~ ^[A-Za-z0-9_:*.-]+$ ]]; then
   exit 2
 fi
 
-# GameTest ids are lowercase resource paths, so a filter with an uppercase letter can never match.
 # Fabric reports "found no tests" only after about 45 s of server start, so refuse such a filter up front.
 if [[ $filter =~ [A-Z] ]]; then
   snake=$(printf %s "$filter" | sed -E 's/([a-z0-9])([A-Z])/\1_\2/g' | tr '[:upper:]' '[:lower:]')

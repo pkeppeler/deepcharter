@@ -73,7 +73,6 @@ run 'a b'
 check "filter with a space is rejected" "$((status == 2 ? 0 : 1))"
 check "space rejection names the allowed characters" "$(grep -qF 'filter may contain only letters, digits, _ . - : *' "$work/err"; echo $?)"
 
-# GameTest ids are lowercase resource paths, so an uppercase filter can never match: refuse before gradle starts.
 rm -f "$work/args"
 run 'HandbookChaptersSixToNineTest*'
 check "CamelCase filter is refused with status 2" "$((status == 2 ? 0 : 1))"
