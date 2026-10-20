@@ -275,8 +275,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
             // Beside a miner, for scale, side-on across the chamber.
             stand(LIT, TOWARD_POD);
             serverDo(server -> {
-                miner = MockPlayers.join(server, "Miner", layer(server), at(MINER));
-                miner().teleportTo(layer(server), at(MINER), 90f, 0f);
+                miner = MockPlayers.join(server, "Miner", layer(server), at(MINER), 90f);
                 miner().player().setPermanentlyInvulnerable(true);
             });
             ClientWait.until(

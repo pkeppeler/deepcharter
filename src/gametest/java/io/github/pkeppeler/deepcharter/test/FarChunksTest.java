@@ -32,7 +32,7 @@ public class FarChunksTest {
         helper.succeed();
     }
 
-    /** #569 */
+    /** A chunk a test forced is released when that test finishes, or the suite's heap grows with it (#569). */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS)
     public void aChunkIsNotForcedAfterTheTestThatForcedItFinished(GameTestHelper helper) {
         FarChunks.Deadline deadline = FarChunks.deadline();

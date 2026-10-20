@@ -47,6 +47,11 @@ public final class PodMotion {
     private float travel;
     private float walk;
 
+    /** The heading the pod was last drawn at, a vanilla yaw. */
+    public float heading() {
+        return heading;
+    }
+
     /**
      * Advances to the state's frame and writes the pose into it. {@code mountRestPitch} is the drill mount's idle angle in the model,
      * and {@code drillSpinScale} its share of the full drill spin ({@link GeoModel#drillSpinScale(String)}).
