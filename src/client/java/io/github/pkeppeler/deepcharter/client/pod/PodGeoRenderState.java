@@ -30,6 +30,8 @@ public class PodGeoRenderState extends EntityRenderState {
     public boolean drilling;
     /** The lamps are on: the pod has a pilot and power. */
     public boolean lit;
+    /** Lava is burning the pod's hull ({@code PodEntity.hullBurning()}), so the hot-hull glow is drawn (#634). */
+    public boolean hot;
     /** The local pilot looks out through a live front camera in first person, so none of the pod is drawn (#448). */
     public boolean cabHidden;
     /** What the pod shows this frame, from its drill tier and whether it is a wreck ({@link PodGeoRenderer#appearanceOf}). */

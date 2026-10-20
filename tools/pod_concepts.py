@@ -7,8 +7,8 @@ Usage:
   python3 -I tools/pod_concepts.py --concepts DIR      also write every concept's files into DIR (they are not in the mod)
 
 This script is the source of the pods. Its output is plain Blockbench-compatible data: per pod a Bedrock
-geometry with named bones and box UV, a 1-texel-per-pixel texture and a glowmask for the lamps, and a wreck
-texture and glowmask. GeckoLib draws it, and code animates only the bones it names (client/pod/BoneRole).
+geometry with named bones and box UV, a 1-texel-per-pixel texture and a glowmask for the lamps, a hot mask for a hull
+burning in lava (#634), and a wreck texture and glowmask. GeckoLib draws it, and code animates only the bones it names (client/pod/BoneRole).
 A pod holds the cutter of every drill tier as bone sets (drill_head_<cutter>, drill_ring_<cutter>); the game
 shows the one that the pod's drill tier picks from assets/deepcharter/pod/<chassis>.json.
 
@@ -806,6 +806,43 @@ def paint_mask(model, base):
                 for i in range(face.w):
                     grey = min(255, round(MASK_UNIT * luma(base.get(face.x + i, face.y + j)[:3]) / reference))
                     mask.set(face.x + i, face.y + j, (grey, grey, grey))
+    return mask
+
+
+# Hot mask: the hull of a pod burning in lava glows (#634). The game draws this texture at full bright over the pod while the hull burns, and
+# a pack changes how hot metal looks by replacing it. Each texel of a metal or paint cube takes the ember colour for its brightness in the base
+# texture: seams, rivets and shadowed plates stay deep red and the lit plates and edges run to orange and yellow, so the detail of the hull
+# shows through the glow. Glass, lenses, grilles and rubber are clear: the lamps keep their own glowmask and the cab stays readable.
+HOT_MATERIALS = {
+    "paint", "trim", "iron", "frame", "steel", "brass", "tank", "hazard", "drill", "teeth", "cone_dark", "cone_steel", "cone_tooth", "tip",
+}
+# Ember colours from the dimmest texel to the brightest, evenly spaced; HOT_ALPHA lets the hull's own texture show through.
+HOT_RAMP = ((70, 8, 6), (150, 24, 10), (215, 60, 18), (255, 150, 60), (255, 244, 214))
+HOT_ALPHA = 205
+# How much of the base texture's brightness reaches the ramp: the brightest plates stop short of the top, so only edges run to pale yellow.
+HOT_GAIN = 0.7
+
+
+def hot_color(t):
+    """The ember colour for brightness t, 0 to 1."""
+    spread = min(max(t, 0.0), 1.0) * (len(HOT_RAMP) - 1)
+    low = min(int(spread), len(HOT_RAMP) - 2)
+    share = spread - low
+    return tuple(round(a + (b - a) * share) for a, b in zip(HOT_RAMP[low], HOT_RAMP[low + 1]))
+
+
+def hot_mask(model, base):
+    """The hot mask of the model's new-paint texture."""
+    mask = Canvas(model.texture)
+    reference = luma(RAMPS["paint"][2])
+    for _, cube in model.cubes():
+        if cube.material not in HOT_MATERIALS:
+            continue
+        for face in faces_of(cube):
+            for j in range(face.h):
+                for i in range(face.w):
+                    brightness = luma(base.get(face.x + i, face.y + j)[:3]) / reference
+                    mask.set(face.x + i, face.y + j, hot_color(brightness * HOT_GAIN), HOT_ALPHA)
     return mask
 
 
@@ -1751,6 +1788,7 @@ def build(name, model_dir, texture_dir):
         kind = "derelict" if name == "mole" else "scorched"
         worn, _ = paint_model(model, kind)
         files[texture_dir / f"{name}_paint.png"] = paint_mask(model, base).png()
+        files[texture_dir / f"{name}_hot.png"] = hot_mask(model, base).png()
         files[texture_dir / f"{name}_wreck.png"] = worn.png()
         files[texture_dir / f"{name}_wreck_glowmask.png"] = wreck_glow(model, glow, kind).png()
     return model, files
