@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
+import io.github.pkeppeler.deepcharter.client.beam.BeamDraw;
 import java.util.Objects;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.resources.Identifier;
@@ -48,4 +49,7 @@ public class PodGeoRenderState extends EntityRenderState {
     public Identifier texture() {
         return Objects.requireNonNull(texture, "PodGeoRenderer.addRenderData sets the texture each frame");
     }
+
+    /** The fake headlamp beam to draw with the pod this frame, or null for none: the pod is dark, or its beam is cut to nothing (#248). */
+    public @Nullable BeamDraw beam;
 }

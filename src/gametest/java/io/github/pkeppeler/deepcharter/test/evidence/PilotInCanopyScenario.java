@@ -203,7 +203,7 @@ public class PilotInCanopyScenario extends EvidenceScenario {
     }
 
     private static MockPlayer board(MinecraftServer server, PodEntity pod, String name) {
-        MockPlayer rider = MockPlayers.join(server, name);
+        MockPlayer rider = MockPlayers.join(server, name, server.overworld(), pod.position());
         rider.teleportTo(server.overworld(), pod.position(), POD_YAW, 0f);
         if (!rider.player().startRiding(pod)) {
             throw new AssertionError(name + " could not board " + pod);

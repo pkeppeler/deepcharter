@@ -6,7 +6,6 @@ import java.util.Locale;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
@@ -60,13 +59,14 @@ public final class OreBlock extends Block {
     }
 
     /**
-     * A placed ore sits in the rock of the layer it is placed in, which {@link LayerBlocks#groundOf} names and which fails for a layer with no rock
+     * A placed ore sits in the rock of the layer it is placed in, which {@link LayerBlocks#layerGroundOf} names and which fails for a layer with no rock
      * block yet, so a new layer cannot place ore with a wrong host. A level that is no layer (the surface, a test's) has no layer rock, and a
      * placed ore there keeps the default host.
      */
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        Block ground = LayerBlocks.groundOf(context.getLevel());
-        return ground == Blocks.STONE ? defaultBlockState() : in(ground.defaultBlockState());
+        return LayerBlocks.layerGroundOf(context.getLevel())
+                .map(ground -> in(ground.defaultBlockState()))
+                .orElseGet(this::defaultBlockState);
     }
 }

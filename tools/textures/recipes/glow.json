@@ -1,0 +1,7 @@
+{
+  "recipes": {
+    "block/glow/halo_warm": {"kind": "translucent", "layers": [{"op": "halo", "colour": "warm.2", "alpha": 200, "power": 1.8}]},
+    "block/glow/halo_sodium": {"kind": "translucent", "layers": [{"op": "halo", "colour": "sodium.4", "alpha": 200, "power": 1.8}]},
+    "block/glow/halo_cold": {"kind": "translucent", "layers": [{"op": "halo", "colour": "cold.4", "alpha": 170, "power": 1.8}]}
+  }
+}

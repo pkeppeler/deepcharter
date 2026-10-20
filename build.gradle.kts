@@ -166,6 +166,13 @@ dependencies {
 	// Only the client and gametest code touch GeckoLib's types; main needs it at run time.
 	runtimeOnly(libs.geckolib)
 	"clientImplementation"(libs.geckolib)
+	// GeckoLib 5.5.7's published POM requires fabric-api 0.160.5. clientCompileDependencyResolve and
+	// clientRuntimeDependencyResolve resolve only the client set's own declarations, not main's umbrella dependency
+	// above, so without this constraint GeckoLib's 0.160.5 (and its older module hashes) wins there while every real
+	// classpath resolves libs.versions.fabricApi (#561).
+	constraints {
+		"clientImplementation"(libs.fabric.api)
+	}
 	"gametestImplementation"(libs.geckolib)
 	include(libs.geckolib)
 
@@ -248,6 +255,7 @@ tasks.check { dependsOn(checkGeckoLib, checkNestedGeckoLib) }
 apply(from = "gradle/lang.gradle.kts")
 apply(from = "gradle/literals.gradle.kts")
 apply(from = "gradle/entity-query-gate.gradle.kts")
+apply(from = "gradle/record-holder-gate.gradle.kts")
 apply(from = "gradle/gametest.gradle.kts")
 apply(from = "gradle/colour-gate.gradle.kts")
 apply(from = "gradle/test-only-gate.gradle.kts")

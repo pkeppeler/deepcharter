@@ -6,7 +6,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
@@ -47,8 +46,9 @@ public final class CompanyRockBlock extends Block {
     /** As for an ore (ADR 0055): a placed block takes the rock of its layer, and a level that is no layer keeps the default host. */
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        Block ground = LayerBlocks.groundOf(context.getLevel());
-        return ground == Blocks.STONE ? defaultBlockState() : in(ground.defaultBlockState());
+        return LayerBlocks.layerGroundOf(context.getLevel())
+                .map(ground -> in(ground.defaultBlockState()))
+                .orElseGet(this::defaultBlockState);
     }
 
     /**

@@ -4,7 +4,10 @@ import com.geckolib.constant.DataTickets;
 import com.geckolib.renderer.GeoReplacedEntityRenderer;
 import com.geckolib.renderer.base.BoneSnapshots;
 import com.geckolib.renderer.base.RenderPassInfo;
+import com.mojang.blaze3d.vertex.PoseStack;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.beam.BeamDraw;
+import io.github.pkeppeler.deepcharter.client.beam.PodBeams;
 import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -22,7 +25,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalInt;
 import java.util.WeakHashMap;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -170,7 +175,9 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
      */
     @Override
     public AABB getBoundingBoxForCulling(PodEntity pod, float partialTick) {
-        return super.getBoundingBoxForCulling(pod, partialTick).minmax(modelExtent.move(pod.position()));
+        AABB box = super.getBoundingBoxForCulling(pod, partialTick).minmax(modelExtent.move(pod.position()));
+        double beamReach = PodBeams.reach(pod);
+        return beamReach > 0 ? box.inflate(beamReach) : box;
     }
 
     /** The share of the full drill spin that the cutter {@code appearance} shows turns at. */
@@ -194,6 +201,20 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
                 .advance(pod, state, pose.mountRestPitch(), spinScaleOf(appearance));
         // The pod turns as its motion says (towards where it drives or drills), not as its entity yaw does.
         state.addGeckolibData(DataTickets.ENTITY_BODY_YAW, state.heading);
+        state.beam = PodBeams.beamFor(pod, state);
+    }
+
+    /** The pod, then its headlamp beam, which stands in the pod's own space and is no part of the model (#248). */
+    @Override
+    public void submit(
+            PodGeoRenderState state,
+            PoseStack poseStack,
+            SubmitNodeCollector collector,
+            CameraRenderState cameraState) {
+        super.submit(state, poseStack, collector, cameraState);
+        if (state.beam != null) {
+            collector.submitCustomGeometry(poseStack, BeamDraw.renderType(), state.beam);
+        }
     }
 
     @Override
