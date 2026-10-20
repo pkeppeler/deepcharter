@@ -27,7 +27,7 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
 ## Backlog and state
 
 - **Durable state:** GitHub Issues and Milestones on `pkeppeler/deepcharter`. Use one issue per PR-sized change. The PR closes its issue.
-- **Branches:** `<issue>-<slug>`. Create the issue first, then name the branch from its number (numbers race). Changes are squash-merged and branches are deleted automatically.
+- **Branches:** `<issue>-<slug>`. Create the issue first, then name the branch from its number (numbers race); the merge gate checks that the PR closes the issue its branch names, so keep `Closes #N` through body rewrites. Changes are squash-merged and branches are deleted automatically.
 - **CI runs on free standard runners** (the repo is public), so minutes are not rationed. Client tests still run only on `gameplay` PRs, for run time. Run recording jobs locally.
 - **Sessions:**
   - For unattended runs, use `/loop` in dynamic mode.

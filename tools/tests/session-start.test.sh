@@ -29,11 +29,18 @@ cp "$root/tools/lib/adr.sh" "$work/repo/tools/lib/"
 cp "$root/tools/handoff_check.py" "$work/repo/tools/"
 for i in 1 2 3; do git -C "$work/repo" branch "worktree-agent-$i"; done
 git -C "$work/repo" branch 514-real-work
+git -C "$work/repo" worktree add -q "$work/wt4" -b worktree-agent-4
 root=$work/repo
 
 mkdir -p "$work/bin"
 cat >"$work/bin/gh" <<'S'
 #!/usr/bin/env bash
+if [[ $1 == api && $2 == *contents* ]]; then
+  [[ ${ADR_MODE:-} != fail ]] || exit 1
+  [[ ${ADR_MODE:-} != slow ]] || exec sleep 30
+  printf '%s\n' "${ADR_PATHS:-}"
+  exit 0
+fi
 if [[ $1 == api ]]; then
   [[ ${GH_MODE:-} != fail ]] || exit 1
   printf '%s\n' "${LIMITS_JSON:-}"
@@ -106,13 +113,24 @@ check "gh failure notes it" yes "$(has '(could not check the interaction limit: 
 check "gh failure does not warn" no "$(has 'WARNING')"
 
 # Derived sections.
-out=$(LIMITS_JSON='{}' MERGED=$'#660 Newest change\n#659 Older change' run_hook)
-check "next free ADR is the highest on origin/main plus one" yes "$(has 'Next free ADR number: 0048')"
+out=$(LIMITS_JSON='{}' ADR_PATHS=$'docs/adr/0001-first.md\ndocs/adr/0058-newest.md' MERGED=$'#660 Newest change\n#659 Older change' run_hook)
+check "next free ADR comes from GitHub's main" yes "$(has 'Next free ADR number: 0059 (origin/main)')"
+out=$(LIMITS_JSON='{}' ADR_MODE=fail MERGED=$'#660 Newest change\n#659 Older change' run_hook)
+check "ADR fallback reads the local ref and says so" yes "$(has 'Next free ADR number: 0048 (local origin/main, may be stale)')"
+out=$(LIMITS_JSON='{}' ADR_MODE=slow run_hook)
+check "a hung ADR call times out to the local fallback" yes "$(has 'may be stale')"
+check "a hung ADR call leaves valid JSON" yes "$(has 'Local-only state')"
+out=$(LIMITS_JSON='{}' ADR_PATHS=$'docs/adr/0047-latest.md' MERGED=$'#660 Newest change\n#659 Older change' run_hook)
 check "merged PRs section lists the stub's PRs" yes "$(has '#660 Newest change')"
 check "merged PRs section has its heading" yes "$(has '## Last 15 merged PRs')"
-check "worktree-agent branches collapse to one count line" yes "$(has '3 worktree-agent-* branches with no upstream')"
+check "worktree-agent branches collapse to one count line, excluding a checked-out one" yes "$(has '3 worktree-agent-* branches with no upstream')"
+check "a checked-out worktree-agent branch is not counted" no "$(has '4 worktree-agent-*')"
 check "no worktree-agent branch is listed by name" no "$(has 'unpushed branch (no upstream): worktree-agent')"
 check "another branch with no upstream still lists" yes "$(has 'unpushed branch (no upstream): 514-real-work')"
+
+out=$(LIMITS_JSON='{}' HANDOFF='' run_hook)
+check "no open handoff issue is said plainly" yes "$(has '(no open issue labelled handoff)')"
+check "no open handoff issue prints no #null" no "$(has '#null')"
 
 # The handoff rule warning.
 out=$(LIMITS_JSON='{}' HANDOFF=$'#14\n**Updated:** now' run_hook)

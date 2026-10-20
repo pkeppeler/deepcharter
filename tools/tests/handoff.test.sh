@@ -66,7 +66,7 @@ python3 -I -c 'print("word " * 1000)' >"$exact"
 run_tool "$exact"
 check "exactly 1,000 words passes" 0 "$status"
 
-for heading in '## Open PRs' '**Merged by run 3:** #1' '### ADR numbers' '**Local-only state:**' '- **Local-only state**'; do
+for heading in '## Open PRs' '**Merged by run 3:** #1' '### ADR numbers' '**Local-only state:**' '- **Local-only state**' 'Local-only state:' 'Worktrees:' 'Notes. **Local-only state:** x' '**Open PRs:** #1 a'; do
   printf '**Updated:** now\n\n%s\nstuff\n' "$heading" >"$work/derived.md"
   run_tool "$work/derived.md"
   check "derived section [$heading] refuses" 1 "$status"
@@ -74,9 +74,11 @@ for heading in '## Open PRs' '**Merged by run 3:** #1' '### ADR numbers' '**Loca
   check "derived refusal does not edit [$heading]" no "$(edited)"
 done
 
-printf '**Updated:** now\n\nThe hook lists merged PRs and open PRs itself.\n' >"$work/prose.md"
-run_tool "$work/prose.md"
-check "a sentence that mentions merged PRs is not a section" 0 "$status"
+for prose in 'The hook lists merged PRs and open PRs itself.' '- Merged into the branch, needs rebase' '  - merged #660 base' 'Open PRs are listed by the hook' 'Worktrees are cleaned by the queue.'; do
+  printf '**Updated:** now\n\n%s\n' "$prose" >"$work/prose.md"
+  run_tool "$work/prose.md"
+  check "prose [$prose] is not a section" 0 "$status"
+done
 
 run_tool "$good" STUB_ISSUE=
 check "no open handoff issue refuses" 1 "$status"
