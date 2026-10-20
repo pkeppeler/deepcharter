@@ -56,11 +56,14 @@ public class ArrivalTest {
     @GameTest
     public void replaceOverwritesAnArrivedValueAndThrowsBeforeArrival(GameTestHelper helper) {
         Arrival<String> arrival = pod();
+        boolean threw = false;
         try {
             arrival.replace("early");
-            throw helper.assertionException("replace() before set() should throw IllegalStateException");
         } catch (IllegalStateException expected) {
-            // expected
+            threw = true;
+        }
+        if (!threw) {
+            throw helper.assertionException("replace() before set() should throw IllegalStateException");
         }
         arrival.set("mole");
         arrival.replace("other");

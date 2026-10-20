@@ -45,6 +45,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
@@ -69,7 +70,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -182,15 +182,11 @@ public class DesignTourScenario extends EvidenceScenario {
     /** A room carved by the tour, in its dimension. */
     private record LitRoom(ResourceKey<Level> dimension, Box box) {}
 
-    private @Nullable CharterId charter;
+    private final Arrival<CharterId> charter = new Arrival<>("charter", "setUpCamera() founds it");
     /** The rooms the tour carved whose light settle waits on: it waits until the client reads the light the server holds in each room it is in. */
     private final List<LitRoom> litRooms = new CopyOnWriteArrayList<>();
     /** The mobs the tour made itself (the lampless figures it poses): settle leaves them, and clears every other mob. */
     private final Set<UUID> tourMobs = ConcurrentHashMap.newKeySet();
-
-    private CharterId charter() {
-        return Objects.requireNonNull(charter, "charter: founded by setUpCamera(), read before it ran");
-    }
 
     @Override
     protected String name() {
@@ -500,10 +496,10 @@ public class DesignTourScenario extends EvidenceScenario {
                         .isPresent()) {
                     throw new AssertionError("founding the charter should succeed");
                 }
-                charter = Charters.charterOfOrThrow(server, player.getUUID())
+                charter.set(Charters.charterOfOrThrow(server, player.getUUID())
                         .orElseThrow()
-                        .id();
-                Charters.deposit(server, charter(), FUNDS);
+                        .id());
+                Charters.deposit(server, charter.get(), FUNDS);
             });
             ctx.runOnClient(client -> {
                 client.options.setCameraType(CameraType.FIRST_PERSON);
@@ -881,9 +877,9 @@ public class DesignTourScenario extends EvidenceScenario {
                 pod.setPos(at);
                 pod.setYRot(yaw);
                 level.addFreshEntity(pod);
-                PodComponents.register(pod, charter());
+                PodComponents.register(pod, charter.get());
                 if (lights) {
-                    PodComponents.install(pod, ComponentItems.mint(server, ComponentTrack.LIGHTS, 2, charter()));
+                    PodComponents.install(pod, ComponentItems.mint(server, ComponentTrack.LIGHTS, 2, charter.get()));
                 }
                 return pod;
             });
@@ -1545,7 +1541,7 @@ public class DesignTourScenario extends EvidenceScenario {
             for (String id : List.of("t02", "surface_arrival")) {
                 Identifier transmission = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, id);
                 settle("hud-transmission-" + id);
-                serverDo(server -> Transmissions.fire(server, charter(), transmission));
+                serverDo(server -> Transmissions.fire(server, charter.get(), transmission));
                 boolean typed = false;
                 for (int tick = 0; tick < 1200 && !typed; tick++) {
                     typed = ctx.computeOnClient(client -> TransmissionOverlay.typed());

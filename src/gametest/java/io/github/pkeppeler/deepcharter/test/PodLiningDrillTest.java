@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -19,7 +20,6 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.BiConsumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -44,21 +44,13 @@ public class PodLiningDrillTest {
     private static final int RADIUS = 4;
     private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
-    /** A mock pilot, and the pod it sits in once the far chunk ticks entities; {@link #pod} is null until then. */
+    /** A mock pilot, and the pod it sits in once the far chunk ticks entities. */
     private static final class Rig {
         private final MockPlayer pilot;
-        private @Nullable PodEntity pod;
+        private final Arrival<PodEntity> pod = new Arrival<>("pod", "the far chunk ticks");
 
         private Rig(MockPlayer pilot) {
             this.pilot = pilot;
-        }
-
-        PodEntity pod() {
-            return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
-        }
-
-        boolean ready() {
-            return pod != null;
         }
 
         static Rig await(
@@ -80,7 +72,7 @@ public class PodLiningDrillTest {
                 }
                 prepare.accept(pod, pilot);
                 pilot.setInput(SPRINT);
-                rig.pod = pod;
+                rig.pod.set(pod);
             });
             return rig;
         }
@@ -114,23 +106,23 @@ public class PodLiningDrillTest {
                 3);
         Rig rig = Rig.await(helper, level, x, "spoil-ore", (pod, pilot) -> fitHopper(helper, pod, pilot));
         TestTicks.each(helper, () -> {
-            if (!rig.ready() || !slabBored(level, x)) {
+            if (!rig.pod.isPresent() || !slabBored(level, x)) {
                 return;
             }
             rig.pilot.releaseInput();
-            List<Item> kept = rig.pod().cargo().entries().stream()
+            List<Item> kept = rig.pod.get().cargo().entries().stream()
                     .map(entry -> entry.stack().getItem())
                     .toList();
-            if (PodLining.of(rig.pod()).spoil() != 3
+            if (PodLining.of(rig.pod.get()).spoil() != 3
                     || kept.size() != 1
                     || !kept.contains(OreRegistry.item(OreType.IRONIUM))) {
                 throw failure(
                         helper,
                         "one ore and three stone make one cargo and 3 spoil, not %s cargo and %s spoil",
                         kept,
-                        PodLining.of(rig.pod()).spoil());
+                        PodLining.of(rig.pod.get()).spoil());
             }
-            rig.pod().discard();
+            rig.pod.get().discard();
             helper.succeed();
         });
     }
@@ -146,19 +138,19 @@ public class PodLiningDrillTest {
                 3);
         Rig rig = Rig.await(helper, level, x, "spoil-none", (pod, pilot) -> {});
         TestTicks.each(helper, () -> {
-            if (!rig.ready() || !slabBored(level, x)) {
+            if (!rig.pod.isPresent() || !slabBored(level, x)) {
                 return;
             }
             rig.pilot.releaseInput();
-            if (PodLining.of(rig.pod()).spoil() != 0
-                    || rig.pod().cargo().entries().size() != 1) {
+            if (PodLining.of(rig.pod.get()).spoil() != 0
+                    || rig.pod.get().cargo().entries().size() != 1) {
                 throw failure(
                         helper,
                         "a pod with no hopper destroys the stone as before and keeps the ore, it holds %s spoil and %s cargo",
-                        PodLining.of(rig.pod()).spoil(),
-                        rig.pod().cargo().entries().size());
+                        PodLining.of(rig.pod.get()).spoil(),
+                        rig.pod.get().cargo().entries().size());
             }
-            rig.pod().discard();
+            rig.pod.get().discard();
             helper.succeed();
         });
     }
@@ -173,17 +165,17 @@ public class PodLiningDrillTest {
             PodLining.modify(pod, state -> state.withSpoil(62));
         });
         TestTicks.each(helper, () -> {
-            if (!rig.ready() || !slabBored(level, x)) {
+            if (!rig.pod.isPresent() || !slabBored(level, x)) {
                 return;
             }
             rig.pilot.releaseInput();
-            if (PodLining.of(rig.pod()).spoil() != 64) {
+            if (PodLining.of(rig.pod.get()).spoil() != 64) {
                 throw failure(
                         helper,
                         "a bay with room for two keeps two of the four stone and loses the rest, it holds %s",
-                        PodLining.of(rig.pod()).spoil());
+                        PodLining.of(rig.pod.get()).spoil());
             }
-            rig.pod().discard();
+            rig.pod.get().discard();
             helper.succeed();
         });
     }
@@ -202,11 +194,11 @@ public class PodLiningDrillTest {
             }
         });
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
-            if (PodLining.working(rig.pod())) {
-                if (rig.pod().drilling()
+            if (PodLining.working(rig.pod.get())) {
+                if (rig.pod.get().drilling()
                         || slabBored(level, x)
                         || level.getBlockState(new BlockPos(x - 1, FLOOR - 1, Z))
                                 .isAir()) {
@@ -214,15 +206,15 @@ public class PodLiningDrillTest {
                 }
                 return;
             }
-            if (PodLining.of(rig.pod()).used() != 16) {
+            if (PodLining.of(rig.pod.get()).used() != 16) {
                 throw failure(
                         helper,
                         "the lining should have placed all 16 bricks, it placed %s",
-                        PodLining.of(rig.pod()).used());
+                        PodLining.of(rig.pod.get()).used());
             }
             if (slabBored(level, x)) {
                 rig.pilot.releaseInput();
-                rig.pod().discard();
+                rig.pod.get().discard();
                 helper.succeed();
             }
         });
