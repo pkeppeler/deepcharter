@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Tests the interaction-limit check in .claude/hooks/session-start.sh with a stub `gh` on PATH:
 # a warning (with the renew command) for a missing limit, a wrong limit and one expiring in
-# 3 days; none for a limit expiring in 150 days; a one-line note when gh fails.
+# 3 days; none for a limit expiring in 150 days; a one-line note when gh fails. Also the derived
+# sections (next free ADR from a fetched origin/main, last merged PRs), the collapsed
+# worktree-agent-* branch line and the one-line warning for a handoff that breaks the rules.
 # Usage: tools/tests/session-start.test.sh
 set -euo pipefail
 # shellcheck source=/dev/null
@@ -11,6 +13,24 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
+# A fake checkout: the hook and its shared files, cloned from a local origin holding two ADRs.
+git init -q --bare -b main "$work/origin.git"
+git clone -q "$work/origin.git" "$work/repo" 2>/dev/null
+git -C "$work/repo" config user.email t@example.com
+git -C "$work/repo" config user.name t
+mkdir -p "$work/repo/docs/adr" "$work/repo/.claude/hooks" "$work/repo/tools/lib"
+touch "$work/repo/docs/adr/0001-first.md" "$work/repo/docs/adr/0047-latest.md" "$work/repo/docs/adr/README.md"
+git -C "$work/repo" add -A
+git -C "$work/repo" commit -q -m seed
+git -C "$work/repo" push -q origin HEAD:main
+git -C "$work/repo" fetch -q origin
+cp "$root/.claude/hooks/session-start.sh" "$work/repo/.claude/hooks/"
+cp "$root/tools/lib/adr.sh" "$work/repo/tools/lib/"
+cp "$root/tools/handoff_check.py" "$work/repo/tools/"
+for i in 1 2 3; do git -C "$work/repo" branch "worktree-agent-$i"; done
+git -C "$work/repo" branch 514-real-work
+root=$work/repo
+
 mkdir -p "$work/bin"
 cat >"$work/bin/gh" <<'S'
 #!/usr/bin/env bash
@@ -19,6 +39,8 @@ if [[ $1 == api ]]; then
   printf '%s\n' "${LIMITS_JSON:-}"
   exit 0
 fi
+if [[ $1 == issue ]]; then printf '%s\n' "${HANDOFF:-}"; exit 0; fi
+if [[ $1 == pr && $* == *merged* ]]; then printf '%s\n' "${MERGED:-}"; exit 0; fi
 exit 0
 S
 chmod +x "$work/bin/gh"
@@ -82,6 +104,26 @@ check "bad JSON has no traceback" no "$(has 'Traceback')"
 out=$(GH_MODE=fail run_hook)
 check "gh failure notes it" yes "$(has '(could not check the interaction limit: gh failed)')"
 check "gh failure does not warn" no "$(has 'WARNING')"
+
+# Derived sections.
+out=$(LIMITS_JSON='{}' MERGED=$'#660 Newest change\n#659 Older change' run_hook)
+check "next free ADR is the highest on origin/main plus one" yes "$(has 'Next free ADR number: 0048')"
+check "merged PRs section lists the stub's PRs" yes "$(has '#660 Newest change')"
+check "merged PRs section has its heading" yes "$(has '## Last 15 merged PRs')"
+check "worktree-agent branches collapse to one count line" yes "$(has '3 worktree-agent-* branches with no upstream')"
+check "no worktree-agent branch is listed by name" no "$(has 'unpushed branch (no upstream): worktree-agent')"
+check "another branch with no upstream still lists" yes "$(has 'unpushed branch (no upstream): 514-real-work')"
+
+# The handoff rule warning.
+out=$(LIMITS_JSON='{}' HANDOFF=$'#14\n**Updated:** now' run_hook)
+check "a compliant handoff gets no rule warning" no "$(has 'breaks the handoff rules')"
+out=$(LIMITS_JSON='{}' HANDOFF=$'#14\n## Open PRs\n#1 x' run_hook)
+check "a derived section warns" yes "$(has 'WARNING: the handoff breaks the handoff rules')"
+check "the warning names the tool" yes "$(has 'tools/handoff.sh')"
+long=$(python3 -I -c 'print("word " * 1001)')
+out=$(LIMITS_JSON='{}' HANDOFF="#14 $long" run_hook)
+check "an over-long handoff warns" yes "$(has 'breaks the handoff rules')"
+check "the warning is one line" 1 "$(grep -c 'breaks the handoff rules' <<<"$out")"
 
 [[ $failures -eq 0 ]] || { echo "$failures failure(s)"; exit 1; }
 echo "all passed"

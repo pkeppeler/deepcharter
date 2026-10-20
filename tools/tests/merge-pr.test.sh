@@ -407,6 +407,7 @@ refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/e
 # Required checks: a copy of the script with the array filled in (the production
 # script has no override seam).
 mkdir "$work/tools"
+cp -R "$tools/lib" "$work/tools/lib"
 sed 's/^REQUIRED_CHECKS=(.*)$/REQUIRED_CHECKS=(build lint)/' "$script" >"$work/tools/merge-pr.sh"
 grep -q 'REQUIRED_CHECKS=(build lint)' "$work/tools/merge-pr.sh" || fail "required-checks copy was not patched"
 SCRIPT=$work/tools/merge-pr.sh refusal "required check absent" "lacks required check: lint" \
