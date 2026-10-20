@@ -168,7 +168,8 @@ final class LayerConceptsWorld {
     private void shootScene(String style, Scene scene) {
         serverDo(server -> LayerConceptScenes.startLava(server, scene));
         for (View view : scene.views()) {
-            serverDo(server -> LayerConceptScenes.setAtmosphere(server, scene, size, view.light()));
+            serverDo(server ->
+                    LayerConceptScenes.setAtmosphere(LayerConceptScenes.EVIDENCE, server, scene, size, view.light()));
             serverDo(server -> LayerConceptScenes.setCameraLamp(server, scene, view, true));
             look(scene, view);
             still("%s-layer%d-%s".formatted(style, scene.layer(), view.name()));
@@ -177,12 +178,12 @@ final class LayerConceptsWorld {
         // Build the scene again, which wipes its lava: a flow that nobody watches any more would go on costing ticks
         // while the later scenes
         // are shot, and a loaded machine ran out of time on them.
-        serverDo(server -> LayerConceptScenes.place(server, scene, size));
+        serverDo(server -> LayerConceptScenes.place(LayerConceptScenes.EVIDENCE, server, scene, size));
     }
 
     private void buildScenes() {
         for (Scene scene : scenes) {
-            serverDo(server -> LayerConceptScenes.place(server, scene, size));
+            serverDo(server -> LayerConceptScenes.place(LayerConceptScenes.EVIDENCE, server, scene, size));
         }
     }
 

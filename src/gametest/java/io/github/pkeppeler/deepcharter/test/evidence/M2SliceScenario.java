@@ -151,7 +151,7 @@ public class M2SliceScenario extends EvidenceScenario {
     private static final int X = 4000;
 
     private static final int Z = 4000;
-    private static final int FLOOR_Y = 4;
+    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
     private static final int ROOM_WEST = 6;
     private static final int ROOM_EAST = 16;
     private static final int ROOM_RADIUS_Z = 6;
@@ -821,6 +821,8 @@ public class M2SliceScenario extends EvidenceScenario {
                     for (int chunkZ = Math.min((int) far.z, (int) near.z) >> 4;
                             chunkZ <= Math.max((int) far.z, (int) near.z) >> 4;
                             chunkZ++) {
+                        // force-ok: an evidence scenario has no GameTestHelper to release through; its world is
+                        // discarded when the run ends
                         level.setChunkForced(chunkX, chunkZ, true);
                     }
                 }

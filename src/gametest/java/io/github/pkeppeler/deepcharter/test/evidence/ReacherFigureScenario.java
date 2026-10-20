@@ -61,7 +61,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
     /** The layer the chamber is cut into, and where: the terrain there is noise, so the chamber is carved and sealed in the rock. */
     private static final int LAYER = 1;
 
-    private static final BlockPos FLOOR = new BlockPos(2000, 100, 2000);
+    private static final BlockPos FLOOR = new BlockPos(2000, LAYER_ROOM_Y, 2000);
     /** The tier of lights fitted to the pod: 4 is the brightest. */
     private static final int LIGHTS_TIER = 3;
 

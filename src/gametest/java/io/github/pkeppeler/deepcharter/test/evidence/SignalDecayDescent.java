@@ -2,10 +2,12 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay;
+import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -36,9 +38,9 @@ final class SignalDecayDescent {
     private static final int ROOM_RADIUS = 5;
     private static final int ROOM_TOP = 46;
     /** The pod's feet start this high over the floor of layer 1 and are lowered to the bottom, above the breach crust. */
-    private static final int START_Y = 40;
+    private static final int START_Y = SignalDecayTuning.DEFAULT.band(1).onset() + 4;
 
-    private static final int BOTTOM_Y = 4;
+    private static final int BOTTOM_Y = LayerTuning.DEFAULT.crustThickness() + 1;
     private static final double DOWN_PER_FRAME = 0.4;
     private static final double UP_PER_FRAME = 0.5;
     private static final int HOLD_FRAMES = 30;

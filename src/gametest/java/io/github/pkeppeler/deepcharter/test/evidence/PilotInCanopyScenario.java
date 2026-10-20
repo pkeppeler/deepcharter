@@ -37,7 +37,7 @@ import net.minecraft.world.phys.Vec3;
 public class PilotInCanopyScenario extends EvidenceScenario {
     private static final int X = 1500;
     private static final int Z = 1500;
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = SKY_SLAB_Y;
     private static final int HALL_RADIUS = 8;
     private static final int HALL_HEIGHT = 7;
     private static final int LIGHT_STEP = 3;

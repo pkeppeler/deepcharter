@@ -33,7 +33,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodChargeScenario extends EvidenceScenario {
     private static final int X = 5500;
     private static final int Z = 5000;
-    private static final int FLOOR_Y = 40;
+    private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;
     private static final int TICKS_PER_FRAME = 3;
     private static final int MAX_TICKS = 900;
     /** The front camera mirrors the pitch: a negative pitch puts it above the pod, looking down at it and at the slab behind it. */

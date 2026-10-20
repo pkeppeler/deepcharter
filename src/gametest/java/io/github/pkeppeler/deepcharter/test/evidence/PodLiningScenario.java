@@ -37,7 +37,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodLiningScenario extends EvidenceScenario {
     private static final int X = 4500;
     private static final int Z = 4500;
-    private static final int FLOOR_Y = 100;
+    private static final int FLOOR_Y = LAYER_ROOM_Y;
     private static final int RADIUS = 6;
     private static final int DEPTH = 14;
     /** The lava pockets: two slabs tall, one block either side of the shaft's column. */

@@ -24,7 +24,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
     private static final double X = 2000.5;
     private static final double Z = 2000.5;
     /** Where the player stands. The terrain is noise, so a stone floor and an open room are built here first. */
-    private static final int STANDING_Y = 100;
+    private static final int STANDING_Y = LAYER_ROOM_Y;
 
     private static final int ROOM_LENGTH = 56;
     private static final int ROOM_HEIGHT = 10;
