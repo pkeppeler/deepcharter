@@ -547,7 +547,7 @@ public class PodsScenario extends EvidenceScenario {
                 for (int i = 0; i < TURN_FRAMES; i++) {
                     turnParked(FACING_CAMERA + i * 360f / TURN_FRAMES);
                     ctx.waitTick();
-                    frame();
+                    takeFrame();
                     if (i == 0) {
                         shot(subject, "front");
                     } else if (i == THREEQUARTER_FRAME) {
@@ -565,7 +565,7 @@ public class PodsScenario extends EvidenceScenario {
                             pod,
                             chassis);
                     ctx.waitTick();
-                    frame();
+                    takeFrame();
                 }
                 settle();
                 shot(subject, "above");
@@ -619,13 +619,13 @@ public class PodsScenario extends EvidenceScenario {
                 serverDo(server -> stage.pilot().setInput(DRIVE));
                 for (int i = 0; i < APPROACH_FRAMES; i++) {
                     ctx.waitTicks(TICKS_PER_APPROACH_FRAME); // tick-wait: the clip is cut at fixed frames
-                    frame();
+                    takeFrame();
                 }
                 for (int i = 0; i < CHEW_FRAMES; i++) {
                     Vec3 pod = serverGet(server -> driven().position());
                     look(start.add(chewOffset).add(pod.x - start.x, 0, 0), pod.add(cutter), middle);
                     ctx.waitTick();
-                    frame();
+                    takeFrame();
                     if (i == CHEW_FRAMES / 3) {
                         shot(subject, "chewing-the-ledge");
                     }
@@ -641,7 +641,7 @@ public class PodsScenario extends EvidenceScenario {
                 serverDo(server -> stage.pilot().setInput(BORE_DOWN));
                 for (int i = 0; i < FLOOR_FRAMES; i++) {
                     ctx.waitTick();
-                    frame();
+                    takeFrame();
                     if (i == BORE_STILL_FRAME) {
                         shot(subject, "boring-the-floor");
                     }
@@ -653,7 +653,7 @@ public class PodsScenario extends EvidenceScenario {
                     Vec3 at = pod.add(3.6 * scale, 1.0, -3.4 * scale);
                     look(new Vec3(at.x, Math.max(at.y, floor.y + 1.2), at.z), pod, middle);
                     ctx.waitTicks(TICKS_PER_FLY_FRAME); // tick-wait: the clip is cut at fixed frames
-                    frame();
+                    takeFrame();
                     if (i == FLY_FRAMES / 2) {
                         shot(subject, "flying");
                     }
@@ -770,8 +770,8 @@ public class PodsScenario extends EvidenceScenario {
                         () -> ctx.computeOnClient(ClientWait::describe));
             }
 
-            private void frame() {
-                PodsScenario.this.frame(ctx);
+            private void takeFrame() {
+                frame(ctx);
                 framesTaken++;
             }
 

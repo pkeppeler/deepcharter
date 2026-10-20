@@ -98,7 +98,7 @@ public class PodRotorPaintScenario extends EvidenceScenario {
             int first = framesTaken + 1;
             for (int i = 0; i < PARKED_FRAMES; i++) {
                 context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-                run.frame();
+                run.takeFrame();
             }
             run.fly(lifted);
             System.out.println("[pod-rotor-paint-segment] fold " + first + "-" + framesTaken);
@@ -191,7 +191,7 @@ public class PodRotorPaintScenario extends EvidenceScenario {
                     }
                 });
                 ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-                frame();
+                takeFrame();
                 if (!shot && hovered > HOVER_FRAMES / 2) {
                     screenshot(ctx, "rotor-out");
                     shot = true;
@@ -200,7 +200,7 @@ public class PodRotorPaintScenario extends EvidenceScenario {
             serverDo(server -> stage.pilot().releaseInput());
             for (int i = 0; i < SETTLED_FRAMES; i++) {
                 ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip is cut at fixed frames
-                frame();
+                takeFrame();
             }
             screenshot(ctx, "rotor-folded-after-landing");
         }
@@ -300,8 +300,8 @@ public class PodRotorPaintScenario extends EvidenceScenario {
                     () -> ctx.computeOnClient(ClientWait::describe));
         }
 
-        private void frame() {
-            PodRotorPaintScenario.this.frame(ctx);
+        private void takeFrame() {
+            frame(ctx);
             framesTaken++;
         }
 
