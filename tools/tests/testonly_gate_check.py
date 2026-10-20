@@ -70,6 +70,23 @@ public class Seams {
     }
 }
 """,
+    "fx/QuoteSeams.java": """package fx;
+
+public class QuoteSeams {
+    // test-seam: the test's view of the pod's state
+    public int apostropheInMarker() {
+        return 1;
+    }
+
+    public char charThenMarker() { return '\\''; } // test-seam: the test's quote check
+
+    /** The chunk's javadoc above a marked member. */
+    // test-seam: marked below a one-line javadoc with an apostrophe
+    public int markedBelowJavadoc() {
+        return 2;
+    }
+}
+""",
     "fx/Mod.java": """package fx;
 
 public class Mod {
@@ -195,6 +212,8 @@ public class Polite implements Greeter {
 }
 GREEN_USES = """
         total += seams.calledByMod() + seams.markedAbove() + seams.markedSameLine() + seams.markedAboveWrapped() + seams.viaReference() + seams.calledField;
+        fx.QuoteSeams quoteSeams = new fx.QuoteSeams();
+        total += quoteSeams.apostropheInMarker() + quoteSeams.charThenMarker() + quoteSeams.markedBelowJavadoc();
         total += seams.sharedField + fx.Seams.CONSTANT;
         total += new fx.Square().area() + new fx.Point(1, 2).x() + new fx.Point(1, 2).y();
         total += fx.Direction.valueOf("NORTH").ordinal() + fx.Direction.values().length;
@@ -266,6 +285,75 @@ public class Marks {
     }
 }
 """,
+    "fx/Quotes.java": """package fx;
+
+public class Quotes {
+    /** The chunk's one-line javadoc. */
+    public int oneLineJavadoc() {
+        return 1;
+    }
+
+    /**
+     * The chunk's multi-line javadoc,
+     * and the test's second line.
+     */
+    public int multiLineJavadoc() {
+        return 2;
+    }
+
+    /* A block comment, it's here. */
+    public int blockComment() {
+        return 3;
+    }
+
+    /* A block comment that opens here, it's
+       still open here, with a { brace and a '
+       closed here. */
+    public int multiLineBlockComment() {
+        return 4;
+    }
+
+    // A line comment, it's here.
+    public int lineComment() {
+        return 5;
+    }
+
+    public int trailingComment() { // it's a trailing comment
+        return 6;
+    }
+
+    /** It's a javadoc before code on the same line. */ public int inlineJavadoc() {
+        return 7;
+    }
+
+    public int afterInlineBlock() { /* it's { */
+        return 8;
+    }
+
+    public String stringField = "it's a string";
+
+    public int afterString() {
+        return "it's".length();
+    }
+
+    public char quoteChar() {
+        return '\\'';
+    }
+
+    public int afterEscapedChar() {
+        return '\\\\';
+    }
+
+    public String textBlock = \"\"\"
+        it's a text block with a } brace
+        // and slashes, and a /* that never closes
+        \"\"\";
+
+    public int afterTextBlock() {
+        return 9;
+    }
+}
+""",
     "fx/Outer.java": """package fx;
 
 public class Outer {
@@ -295,6 +383,10 @@ RED_USES = """
         fx.Outer outer = new fx.Outer();
         total += outer.deep() + new fx.Outer.Inner().deep();
         new fx.Hooks().nullable();
+        fx.Quotes quotes = new fx.Quotes();
+        total += quotes.oneLineJavadoc() + quotes.multiLineJavadoc() + quotes.blockComment() + quotes.multiLineBlockComment() + quotes.lineComment();
+        total += quotes.trailingComment() + quotes.inlineJavadoc() + quotes.afterInlineBlock() + quotes.stringField.length() + quotes.afterString();
+        total += quotes.quoteChar() + quotes.afterEscapedChar() + quotes.textBlock.length() + quotes.afterTextBlock();
 """
 BARE = "; its '// test-seam:' marker has no reason"
 # (file, declaration text, how the gate names it, its --list key)
@@ -314,6 +406,20 @@ RED = [
     ("fx/Marks.java", "public int codeSeparated()", "Marks.codeSeparated()", "fx.Marks#codeSeparated()", ""),
     ("fx/Outer.java", "        public int deep()", "Outer.Inner.deep()", "fx.Outer$Inner#deep()", ""),
     ("fx/Hooks.java", "public String nullable()", "Hooks.nullable()", "fx.Hooks#nullable()", ""),
+    ("fx/Quotes.java", "public int oneLineJavadoc()", "Quotes.oneLineJavadoc()", "fx.Quotes#oneLineJavadoc()", ""),
+    ("fx/Quotes.java", "public int multiLineJavadoc()", "Quotes.multiLineJavadoc()", "fx.Quotes#multiLineJavadoc()", ""),
+    ("fx/Quotes.java", "public int blockComment()", "Quotes.blockComment()", "fx.Quotes#blockComment()", ""),
+    ("fx/Quotes.java", "public int multiLineBlockComment()", "Quotes.multiLineBlockComment()", "fx.Quotes#multiLineBlockComment()", ""),
+    ("fx/Quotes.java", "public int lineComment()", "Quotes.lineComment()", "fx.Quotes#lineComment()", ""),
+    ("fx/Quotes.java", "public int trailingComment()", "Quotes.trailingComment()", "fx.Quotes#trailingComment()", ""),
+    ("fx/Quotes.java", "public int inlineJavadoc()", "Quotes.inlineJavadoc()", "fx.Quotes#inlineJavadoc()", ""),
+    ("fx/Quotes.java", "public int afterInlineBlock()", "Quotes.afterInlineBlock()", "fx.Quotes#afterInlineBlock()", ""),
+    ("fx/Quotes.java", "public String stringField", "Quotes.stringField", "fx.Quotes#stringField", ""),
+    ("fx/Quotes.java", "public int afterString()", "Quotes.afterString()", "fx.Quotes#afterString()", ""),
+    ("fx/Quotes.java", "public char quoteChar()", "Quotes.quoteChar()", "fx.Quotes#quoteChar()", ""),
+    ("fx/Quotes.java", "public int afterEscapedChar()", "Quotes.afterEscapedChar()", "fx.Quotes#afterEscapedChar()", ""),
+    ("fx/Quotes.java", "public String textBlock", "Quotes.textBlock", "fx.Quotes#textBlock", ""),
+    ("fx/Quotes.java", "public int afterTextBlock()", "Quotes.afterTextBlock()", "fx.Quotes#afterTextBlock()", ""),
 ]
 
 
@@ -414,3 +520,19 @@ class TestOnlyGateTest(unittest.TestCase):
         done = self.missing.scan()
         self.assertEqual(1, done.returncode)
         self.assertIn("cannot load fx/Missing, a supertype of fx/Child", done.stderr)
+
+    def test_a_finding_never_reports_line_zero(self):
+        self.assertNotIn(":0 ", self.red.scan().stderr)
+
+    def test_a_source_the_parser_cannot_close_fails_loud_naming_the_file(self):
+        # Compiled whole, then the closing quotes are removed so the source ends inside a text block.
+        tree = Tree(
+            {"fx/Open.java": "package fx;\n\npublic class Open {\n    public String text = \"\"\"\n        x\n        \"\"\";\n\n    public int run() {\n        return 1;\n    }\n}\n"},
+            {"fxtest/ModTest.java": "package fxtest;\n\npublic class ModTest {\n    int run() {\n        return new fx.Open().run() + new fx.Open().text.length();\n    }\n}\n"})
+        self.addCleanup(tree.directory.cleanup)
+        source = tree.work / "mod/fx/Open.java"
+        source.write_text(source.read_text().replace('        """;', "        "))
+        done = tree.scan()
+        self.assertEqual(1, done.returncode, done.stderr)
+        self.assertIn("mod/fx/Open.java", done.stderr)
+        self.assertIn("lost its place", done.stderr)
