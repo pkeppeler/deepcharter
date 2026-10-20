@@ -404,9 +404,16 @@ refusal "gh pr view fails silently" "REFUSED: PR #7 could not be read" STUB_VIEW
 refusal "zero checks includes gh output" "gh: Not Found" "STUB_RUNS=gh: Not Found" STUB_RUNS_RC=1
 refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/else.git
 
+# A relative $0 (./merge-pr.sh from tools/) must still find tools/lib/adr.sh after the script's cd.
+reset
+rc=0
+out=$(cd "$tools" && env PATH="$work/bin:$PATH" ./merge-pr.sh 7 2>&1) || rc=$?
+exited "runs as ./merge-pr.sh from tools/" 0
+
 # Required checks: a copy of the script with the array filled in (the production
 # script has no override seam).
 mkdir "$work/tools"
+cp -R "$tools/lib" "$work/tools/lib"
 sed 's/^REQUIRED_CHECKS=(.*)$/REQUIRED_CHECKS=(build lint)/' "$script" >"$work/tools/merge-pr.sh"
 grep -q 'REQUIRED_CHECKS=(build lint)' "$work/tools/merge-pr.sh" || fail "required-checks copy was not patched"
 SCRIPT=$work/tools/merge-pr.sh refusal "required check absent" "lacks required check: lint" \
