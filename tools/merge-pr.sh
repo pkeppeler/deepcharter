@@ -63,20 +63,16 @@ pr_field comments '.comments[].body|@json' | grep -qxF "\"review-passed $sha\"" 
 # A PR is doc-only when it changes files and every one, and a rename's previous path, matches
 # DOC_ONLY_GLOBS and is not behaviour or the user's contract (.claude/**, prompts/**, docs/SPEC.md:
 # markdown that steers agents or settles the design). Fail closed: an unreadable or empty file list is not doc-only.
-matches_any() {
-  local path=$1 glob
-  shift
-  for glob in "$@"; do
-    # shellcheck disable=SC2053 # an unquoted right side is a glob here
-    [[ $path == $glob ]] && return 0
-  done
-  return 1
-}
 is_doc() {
   case $1 in
     .claude/* | prompts/* | docs/SPEC.md) return 1 ;;
   esac
-  matches_any "$1" "${DOC_ONLY_GLOBS[@]}"
+  local glob
+  for glob in "${DOC_ONLY_GLOBS[@]}"; do
+    # shellcheck disable=SC2053 # an unquoted right side is a glob here
+    [[ $1 == $glob ]] && return 0
+  done
+  return 1
 }
 load_pr_files
 doc_only=1
