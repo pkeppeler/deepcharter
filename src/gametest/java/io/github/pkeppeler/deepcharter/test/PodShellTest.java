@@ -71,7 +71,8 @@ public class PodShellTest {
     @GameTest
     public void useMountsTheRider(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
-        MockPlayer mock = MockPlayers.join(helper.getLevel().getServer(), "pod-rider");
+        MockPlayer mock =
+                MockPlayers.join(helper.getLevel().getServer(), "pod-rider", helper.getLevel(), pod.position());
         try {
             InteractionResult result = pod.interact(mock.player(), InteractionHand.MAIN_HAND, Vec3.ZERO);
             if (!result.consumesAction()) {
@@ -95,7 +96,8 @@ public class PodShellTest {
     @GameTest
     public void sneakDismounts(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
-        MockPlayer mock = MockPlayers.join(helper.getLevel().getServer(), "pod-dismounter");
+        MockPlayer mock =
+                MockPlayers.join(helper.getLevel().getServer(), "pod-dismounter", helper.getLevel(), pod.position());
         pod.interact(mock.player(), InteractionHand.MAIN_HAND, Vec3.ZERO);
         if (mock.player().getVehicle() != pod) {
             mock.leave();
@@ -120,8 +122,8 @@ public class PodShellTest {
     public void moleHasOneSeat(GameTestHelper helper) {
         PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
         MinecraftServer server = helper.getLevel().getServer();
-        MockPlayer first = MockPlayers.join(server, "pod-first");
-        MockPlayer second = MockPlayers.join(server, "pod-second");
+        MockPlayer first = MockPlayers.join(server, "pod-first", helper.getLevel(), pod.position());
+        MockPlayer second = MockPlayers.join(server, "pod-second", helper.getLevel(), pod.position());
         try {
             pod.interact(first.player(), InteractionHand.MAIN_HAND, Vec3.ZERO);
             InteractionResult result = pod.interact(second.player(), InteractionHand.MAIN_HAND, Vec3.ZERO);

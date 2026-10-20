@@ -49,7 +49,7 @@ Host only: with the extracted originals in `original_flash_game/extracted/sounds
 - Content is partial: only the surface and layers 1 and 2 exist, with placeholder text, sounds and models. The lore and the creatures are unfinished.
 - Pods can run out of fuel and strand you. Bring coal.
 - Sodium and Lithium are speed mods and are not ours. If something looks wrong, remove them from the instance (**Edit, Mods**) and check whether the problem goes away. Say so in your report.
-- Do not add other mods. Iris does not support this Sodium version yet, and old Sodium add-ons are blocked by it.
+- Do not add other mods. Old Sodium add-ons are blocked by it. Iris 1.11.7 now supports Sodium 0.9.2, but only as a dev opt-in, not for friends: see [iris-audit.md](tooling/iris-audit.md).
 - Back up your world before updating the build.
 
 ## Report a bug

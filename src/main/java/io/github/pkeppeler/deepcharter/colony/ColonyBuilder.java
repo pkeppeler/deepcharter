@@ -26,6 +26,7 @@ import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.AABB;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Builds the colony once, at world spawn, the first time a server starts with this mod: a flattened pad of
@@ -83,7 +84,7 @@ public final class ColonyBuilder {
         builder.build(site.get(), started);
         site.get().finish();
         ColonySite.Placed placed = site.get().placed().orElseThrow();
-        BlockPos office = placed.anchors().get(ColonyAnchor.CONTINUITY_OFFICE);
+        BlockPos office = ColonyAnchor.CONTINUITY_OFFICE.in(placed.anchors());
         server.setRespawnData(LevelData.RespawnData.of(Level.OVERWORLD, office, 0.0F, 0.0F));
         // Players spawn within this many blocks of the world spawn: 0 keeps them in the Continuity Office.
         server.getGameRules().set(GameRules.RESPAWN_RADIUS, 0, server);
@@ -211,7 +212,7 @@ public final class ColonyBuilder {
         for (TerminalType type : TerminalTypes.all()) {
             ColonyAnchor.forTerminal(type)
                     .ifPresent(anchor -> set(
-                            anchors.get(anchor),
+                            anchor.in(anchors),
                             type.block()
                                     .defaultBlockState()
                                     .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.SOUTH)));
@@ -306,7 +307,7 @@ public final class ColonyBuilder {
     @SuppressWarnings("ArrayRecordComponent") // grids read in place, never compared or hashed
     private record Grade(int originX, int originZ, int[][] ground, int[][] surface, boolean[][] wet) {
         /** The blocks of a column that the grade turns to air, from its lowest to its highest, or null where it clears none. */
-        int[] cleared(int x, int z) {
+        int @Nullable [] cleared(int x, int z) {
             int i = x - originX;
             int j = z - originZ;
             if (i < 0
@@ -351,10 +352,10 @@ public final class ColonyBuilder {
             for (int j = 0; j < grade.ground()[0].length; j++) {
                 int x = grade.originX() + i;
                 int z = grade.originZ() + j;
-                int[] cleared = onPad(x, z) ? padClearedAtEdge(x, z, half, padTop) : grade.cleared(x, z);
+                int @Nullable [] cleared = onPad(x, z) ? padClearedAtEdge(x, z, half, padTop) : grade.cleared(x, z);
                 if (cleared != null) {
                     for (Direction side : Direction.Plane.HORIZONTAL) {
-                        int[] next = onPad(x + side.getStepX(), z + side.getStepZ())
+                        int @Nullable [] next = onPad(x + side.getStepX(), z + side.getStepZ())
                                 ? new int[] {centre.getY() + 1, padTop}
                                 : grade.cleared(x + side.getStepX(), z + side.getStepZ());
                         for (int y = cleared[0]; y <= cleared[1]; y++) {
@@ -371,7 +372,7 @@ public final class ColonyBuilder {
     }
 
     /** The cleared blocks of a pad column on the pad's edge, null inside it: only its outward neighbours can hold fluid that the clearing exposes. */
-    private int[] padClearedAtEdge(int x, int z, int half, int padTop) {
+    private int @Nullable [] padClearedAtEdge(int x, int z, int half, int padTop) {
         boolean edge = x == centre.getX() - half
                 || x == centre.getX() + half - 1
                 || z == centre.getZ() - half

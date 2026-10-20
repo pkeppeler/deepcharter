@@ -4,10 +4,10 @@ import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.dimension.DimensionType;
 
 /**
@@ -25,12 +25,13 @@ public record CockpitReading(double fuel, double hull, double depth, double heat
     /** The most fuel the tank holds, in the percent the pod counts it in. */
     private static final double FULL_TANK_PERCENT = 100.0;
 
-    public static CockpitReading of(Minecraft client, PodEntity pod, double heat) {
-        double deepest = deepestBlocks(client.level.registryAccess());
+    public static CockpitReading of(PodEntity pod, double heat) {
+        Level level = pod.level();
+        double deepest = deepestBlocks(level.registryAccess());
         return new CockpitReading(
                 clamp(pod.fuel() / FULL_TANK_PERCENT),
                 pod.maxHull() > 0f ? clamp(pod.hull() / pod.maxHull()) : 0.0,
-                clamp(Depth.of(client.level, pod.getBlockY()) / deepest),
+                clamp(Depth.of(level, pod.getBlockY()) / deepest),
                 clamp(heat),
                 cargoShare(pod));
     }

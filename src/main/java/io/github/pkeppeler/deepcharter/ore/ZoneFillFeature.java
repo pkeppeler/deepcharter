@@ -17,6 +17,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.feature.Feature;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Fills one zone of a layer, one stone block at a time: each block becomes an ore with the chance of its entry
@@ -27,7 +28,7 @@ import net.minecraft.world.level.levelgen.feature.Feature;
  * <p>It is a placed feature of the zone's own biome with no placement modifiers, so it runs once for each chunk, at
  * the chunk's corner, and it only touches that chunk's blocks of {@code zone} (a third of the layer, by
  * {@link Zones#index}). Only the layer's own rock ({@link LayerBlocks#GROUND}) is replaced: caves, the crust and anything an earlier step
- * placed stay as they are. An ore is placed in the rock it replaces ({@link OreBlock#in}).
+ * placed stay as they are. An ore, and Company rock, is placed in the rock it replaces ({@link OreBlock#in}, {@link CompanyRockBlock#in}).
  *
  * @param zone    0 for the top third of the layer, 2 for the bottom
  * @param ores    ore blocks and the chance of each for a block of stone
@@ -117,7 +118,9 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
                         } else {
                             Block hazard = roll(hazards, random);
                             if (hazard != null) {
-                                state = hazard.defaultBlockState();
+                                state = hazard instanceof CompanyRockBlock company
+                                        ? company.in(rock)
+                                        : hazard.defaultBlockState();
                             }
                         }
                         if (state != null) {
@@ -132,7 +135,7 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
     }
 
     /** One roll over the entries: the first whose chance the roll falls in, or null for none. */
-    private static <B extends Block> B roll(List<Entry<B>> entries, RandomSource random) {
+    private static <B extends Block> @Nullable B roll(List<Entry<B>> entries, RandomSource random) {
         if (entries.isEmpty()) {
             return null;
         }

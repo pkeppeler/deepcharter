@@ -269,8 +269,9 @@ public class PodsScenario extends EvidenceScenario {
             ServerLevel overworld = server.overworld();
             levelPad(overworld, stage);
             levelPad(overworld, clipGround);
-            pilot = MockPlayers.join(server, "Pilot");
-            pilot.teleportTo(overworld, Vec3.atBottomCenterOf(clipGround).add(0, 0, 2), CLIP_YAW, 0f);
+            Vec3 pilotSpot = Vec3.atBottomCenterOf(clipGround).add(0, 0, 2);
+            pilot = MockPlayers.join(server, "Pilot", overworld, pilotSpot);
+            pilot.teleportTo(overworld, pilotSpot, CLIP_YAW, 0f);
             pilot.player().setInvisible(true);
             pilot.player().setPermanentlyInvulnerable(true);
             if (Charters.found(server, pilot.player().getUUID(), "Pod Works").isPresent()) {

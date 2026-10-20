@@ -23,10 +23,10 @@ public final class HazardBlocks {
     /** What a pod drill refuses to bore, whatever its hardness. */
     public static final TagKey<Block> UNDIGGABLE = tag("undiggable");
 
-    /** Unbreakable by hand (hardness -1) and, through {@link #UNDIGGABLE}, by a drill. */
+    /** Unbreakable by hand (hardness -1) and, through {@link #UNDIGGABLE}, by a drill. Its look follows its layer and a blast ({@link CompanyRockBlock}). */
     public static final Block COMPANY_ROCK = registerBlock(
             id("company_rock"),
-            key -> new Block(BlockBehaviour.Properties.of()
+            key -> new CompanyRockBlock(BlockBehaviour.Properties.of()
                     .setId(key)
                     .strength(-1.0F, 3600000.0F)
                     .sound(SoundType.STONE)

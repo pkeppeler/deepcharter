@@ -4,6 +4,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Input;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server-authoritative pod movement: treads on the ground, a rotor to climb. The server reads the
@@ -56,7 +57,7 @@ public final class PodMovement {
      * Snap WASD to one horizontal axis, relative to where the pilot looks. Forward and back win over
      * strafing, so a diagonal press never moves diagonally. Null when no direction key is held.
      */
-    static Direction driveDirection(Input input, float pilotYaw) {
+    static @Nullable Direction driveDirection(Input input, float pilotYaw) {
         Direction facing = Direction.fromYRot(pilotYaw);
         if (input.forward() != input.backward()) {
             return input.forward() ? facing : facing.getOpposite();

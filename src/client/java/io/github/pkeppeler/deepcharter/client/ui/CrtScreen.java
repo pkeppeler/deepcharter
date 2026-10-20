@@ -10,6 +10,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Base of every retro CRT-terminal screen: a phosphor backdrop, scanlines over everything, and typewriter text.
@@ -37,13 +38,13 @@ public abstract class CrtScreen extends Screen implements PanelScreen {
     /** A typewriter, its colour, and its wrapped lines, kept until the revealed text or the width changes. */
     private static final class Entry {
         /** The caller's colour, or null for the theme's phosphor, read at each draw. */
-        private final Integer color;
+        private final @Nullable Integer color;
 
         private int cachedRevealed = -1;
         private int cachedWidth = -1;
         private List<String> lines = List.of();
 
-        private Entry(Integer color) {
+        private Entry(@Nullable Integer color) {
             this.color = color;
         }
     }
@@ -75,7 +76,7 @@ public abstract class CrtScreen extends Screen implements PanelScreen {
     }
 
     /** Starts typing {@code text} in {@code color} (ARGB), or in the phosphor colour when it is null. Call from the constructor, never from {@link #layout()}. */
-    protected Typewriter typewriter(Component text, Integer color, Typewriter.LetterHook hook) {
+    protected Typewriter typewriter(Component text, @Nullable Integer color, Typewriter.LetterHook hook) {
         if (inLayout) {
             throw new IllegalStateException(
                     "Typewriters made in layout() restart on every resize: make them in the constructor");

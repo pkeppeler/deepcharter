@@ -6,7 +6,9 @@ import io.github.pkeppeler.deepcharter.pod.Serials;
 import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import net.fabricmc.fabric.api.item.v1.ItemComponentTooltipProviderRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -46,10 +48,14 @@ public final class ComponentItems {
     private ComponentItems() {}
 
     /** Loads the class, which registers everything. */
-    public static void register() {}
+    public static void register() {
+        ItemComponentTooltipProviderRegistry.addFirst(LABEL);
+    }
 
     public static ComponentItem item(ComponentTrack track) {
-        return ITEMS.get(track);
+        return Objects.requireNonNull(
+                ITEMS.get(track),
+                () -> "no part item for track " + track.id() + "; the static block registers every track");
     }
 
     /** A new part: the next serial of its track, stamped for {@code charter}. Server thread. */

@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.pod;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeSet;
 
 /**
@@ -80,6 +81,6 @@ public enum BoneRole {
             throw new IllegalArgumentException("'" + name + "' is not a pod bone: a bone is named one of "
                     + new TreeSet<>(WORDS.keySet()) + ", alone or followed by _ and a suffix");
         }
-        return WORDS.get(best);
+        return Objects.requireNonNull(WORDS.get(best), "WORDS holds every word best was picked from");
     }
 }

@@ -2,6 +2,9 @@
   "required": true,
   "package": "io.github.pkeppeler.deepcharter.test.mixin",
   "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "GameTestInfoMixin"
+  ],
   "client": [
     "BreachEffectsMixin",
     "ClientGameTestImplMixin",

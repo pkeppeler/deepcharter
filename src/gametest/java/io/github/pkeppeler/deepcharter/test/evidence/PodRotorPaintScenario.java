@@ -177,8 +177,9 @@ public class PodRotorPaintScenario extends EvidenceScenario {
             camera.onUpdateAbilities();
             camera.setNoGravity(true);
             camera.setPermanentlyInvulnerable(true);
-            pilot = MockPlayers.join(server, "Pilot");
-            pilot.teleportTo(level, Vec3.atBottomCenterOf(stage).add(0, 0, 2), FACING_CAMERA, 0f);
+            Vec3 pilotSpot = Vec3.atBottomCenterOf(stage).add(0, 0, 2);
+            pilot = MockPlayers.join(server, "Pilot", level, pilotSpot);
+            pilot.teleportTo(level, pilotSpot, FACING_CAMERA, 0f);
             pilot.player().setInvisible(true);
             pilot.player().setPermanentlyInvulnerable(true);
             if (Charters.found(server, pilot.player().getUUID(), "Pod Works").isPresent()) {

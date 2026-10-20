@@ -4,7 +4,10 @@ import com.mojang.serialization.Codec;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import net.minecraft.core.BlockPos;
 import net.minecraft.util.StringRepresentable;
 
 /**
@@ -37,6 +40,11 @@ public enum ColonyAnchor implements StringRepresentable {
     @Override
     public String getSerializedName() {
         return name().toLowerCase(Locale.ROOT);
+    }
+
+    /** This anchor's position in {@code anchors}; both codecs reject a map that lacks one, so a miss is a bug. */
+    public BlockPos in(Map<ColonyAnchor, BlockPos> anchors) {
+        return Objects.requireNonNull(anchors.get(this), () -> "the anchors have no position for " + this);
     }
 
     /** The plinth anchor of a terminal type, matched by the path of the type's id; empty for a type with no plinth. */

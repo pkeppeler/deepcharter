@@ -69,8 +69,9 @@ public final class FounderStatue {
         return Colony.placed(server)
                 .filter(colony -> {
                     BlockPos wanted = colony.center()
-                            .offset(ColonyLayout.read(server).anchors().get(ColonyAnchor.STATUE));
-                    return wanted.equals(colony.anchors().get(ColonyAnchor.STATUE));
+                            .offset(ColonyAnchor.STATUE.in(
+                                    ColonyLayout.read(server).anchors()));
+                    return wanted.equals(ColonyAnchor.STATUE.in(colony.anchors()));
                 })
                 .isPresent();
     }

@@ -10,6 +10,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -54,7 +55,8 @@ public final class OrderRowButton extends Button implements PanelButton {
         CrtTuning tuning = CrtTuning.current();
         boolean lit = isHoveredOrFocused() && active;
         PanelLook panel = PanelLook.current();
-        if (PanelLook.drawn()) {
+        Screen drawn = PanelLook.drawnScreen();
+        if (drawn != null) {
             Font panelFont = Minecraft.getInstance().font;
             int labelX = CrtDraw.panelButtonFace(
                     graphics,
@@ -66,8 +68,7 @@ public final class OrderRowButton extends Button implements PanelButton {
                     active,
                     lit,
                     panelLabelWidth(panelFont),
-                    CrtDraw.pipsFit(
-                            panel, panelFont, Minecraft.getInstance().gui.screen()));
+                    CrtDraw.pipsFit(panel, panelFont, drawn));
             int ink = panel.labelColor(active, lit);
             // A button's face is 4 pixels shorter than the button (an edge and a rim on each side) and a line of
             // capitals is 6 high, so the two lines sit

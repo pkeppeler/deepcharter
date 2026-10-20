@@ -61,7 +61,7 @@ public final class Hangar {
      */
     public static void onBuilt(MinecraftServer server, ColonySite.Placed colony) {
         ServerLevel level = server.overworld();
-        BlockPos anchor = colony.anchors().get(ColonyAnchor.HANGAR);
+        BlockPos anchor = ColonyAnchor.HANGAR.in(colony.anchors());
         placeConsole(level, anchor);
         Optional<HangarData> data = HangarData.readable(server);
         if (data.isEmpty() || data.get().state().derelict().isPresent()) {
@@ -162,7 +162,7 @@ public final class Hangar {
         // entity-query: asks only whether the pod in hand is in its level yet: a miss means "not added", and onLoad
         // records it when it is
         if (pod.level() instanceof ServerLevel level && level.getEntity(pod.getUUID()) == pod) {
-            HangarData.readable(pod.level().getServer()).ifPresent(data -> data.hold(owner, pod.getUUID()));
+            HangarData.readable(level.getServer()).ifPresent(data -> data.hold(owner, pod.getUUID()));
         }
     }
 

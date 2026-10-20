@@ -26,6 +26,7 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeEvents;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -258,7 +259,8 @@ public final class HandbookTriggers {
 
     /** A Prospector on a cable inside the colony: the players riding the pod that tows it have towed it home. */
     private static void towedProspector(PodEntity towed) {
-        MinecraftServer server = towed.level().getServer();
+        MinecraftServer server = Objects.requireNonNull(
+                towed.level().getServer(), () -> "a pod ticking on the server has no server on its level");
         Optional<ColonySite.Placed> colony = Colony.placed(server);
         Optional<PodEntity> tower = PodTowing.tower(towed);
         if (colony.isEmpty() || tower.isEmpty() || !inColony(towed, colony.get())) {

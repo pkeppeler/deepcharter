@@ -1,9 +1,9 @@
 {
-	"pod.engine_idle": { "sounds": [{ "name": "minecraft:block.beacon.ambient", "type": "event" }] },
-	"pod.engine_drive": { "sounds": [{ "name": "minecraft:entity.minecart.riding", "type": "event" }] },
-	"pod.engine_drill_side": { "sounds": [{ "name": "minecraft:block.grindstone.use", "type": "event" }] },
-	"pod.engine_drill_down": { "sounds": [{ "name": "minecraft:block.grindstone.use", "type": "event", "pitch": 0.8 }] },
-	"pod.rotor": { "sounds": [{ "name": "minecraft:entity.bat.takeoff", "type": "event" }] },
+	"pod.engine_idle": { "sounds": [{ "name": "deepcharter:pod/engine_idle_loop", "volume": 0.5 }] },
+	"pod.engine_drive": { "sounds": [{ "name": "deepcharter:pod/engine_drive_loop", "volume": 0.6 }] },
+	"pod.engine_drill_side": { "sounds": [{ "name": "deepcharter:pod/engine_drill_side_loop", "volume": 0.7 }] },
+	"pod.engine_drill_down": { "sounds": [{ "name": "deepcharter:pod/engine_drill_down_loop", "volume": 0.7 }] },
+	"pod.rotor": { "sounds": [{ "name": "deepcharter:pod/rotor_loop", "volume": 0.6 }] },
 	"pod.transform_land": { "sounds": [{ "name": "minecraft:block.piston.extend", "type": "event" }] },
 	"pod.transform_launch": { "sounds": [{ "name": "minecraft:block.piston.contract", "type": "event" }] },
 	"pod.crash": { "sounds": [{ "name": "minecraft:block.anvil.land", "type": "event" }] },
@@ -18,8 +18,8 @@
 	"creature.hurt": { "sounds": [{ "name": "minecraft:block.sculk_sensor.clicking", "type": "event", "pitch": 0.6 }] },
 	"creature.death": { "sounds": [{ "name": "minecraft:particle.soul_escape", "type": "event", "pitch": 0.6 }] },
 
-	"drill.dig": { "sounds": [{ "name": "minecraft:block.stone.break", "type": "event" }] },
-	"drill.blocked": { "sounds": [{ "name": "minecraft:block.chain.hit", "type": "event" }] },
+	"drill.dig": { "sounds": [{ "name": "deepcharter:drill/dig_1" }, { "name": "deepcharter:drill/dig_2" }, { "name": "deepcharter:drill/dig_3" }] },
+	"drill.blocked": { "sounds": [{ "name": "deepcharter:drill/blocked" }] },
 	"drill.lava": { "sounds": [{ "name": "minecraft:block.lava.extinguish", "type": "event" }] },
 	"drill.dynamite": { "sounds": [{ "name": "minecraft:entity.tnt.primed", "type": "event" }] },
 	"drill.plastic": { "sounds": [{ "name": "minecraft:entity.generic.explode", "type": "event", "pitch": 0.7 }] },
@@ -38,16 +38,16 @@
 	"scanner.ping": { "sounds": [{ "name": "minecraft:block.note_block.chime", "type": "event" }] },
 	"scanner.sweep": { "sounds": [{ "name": "minecraft:block.sculk_sensor.clicking", "type": "event" }] },
 
-	"ui.typewriter": { "sounds": [{ "name": "minecraft:block.note_block.hat", "type": "event" }] },
-	"ui.hover": { "sounds": [{ "name": "minecraft:block.note_block.hat", "type": "event", "pitch": 1.5 }] },
-	"ui.select": { "sounds": [{ "name": "minecraft:ui.button.click", "type": "event" }] },
+	"ui.typewriter": { "sounds": [{ "name": "deepcharter:ui/typewriter_1", "volume": 0.6 }, { "name": "deepcharter:ui/typewriter_2", "volume": 0.6 }, { "name": "deepcharter:ui/typewriter_3", "volume": 0.6 }] },
+	"ui.hover": { "sounds": [{ "name": "deepcharter:ui/hover", "volume": 0.5 }] },
+	"ui.select": { "sounds": [{ "name": "deepcharter:ui/select" }] },
 	"ui.confirm": { "sounds": [{ "name": "minecraft:block.note_block.bell", "type": "event" }] },
-	"ui.purchase": { "sounds": [{ "name": "minecraft:entity.experience_orb.pickup", "type": "event" }] },
-	"ui.sale": { "sounds": [{ "name": "minecraft:entity.villager.trade", "type": "event" }] },
-	"ui.error": { "sounds": [{ "name": "minecraft:block.note_block.didgeridoo", "type": "event" }] },
-	"ui.refused": { "sounds": [{ "name": "minecraft:entity.villager.no", "type": "event" }] },
+	"ui.purchase": { "sounds": [{ "name": "deepcharter:ui/purchase" }] },
+	"ui.sale": { "sounds": [{ "name": "deepcharter:ui/sale" }] },
+	"ui.error": { "sounds": [{ "name": "deepcharter:ui/error" }] },
+	"ui.refused": { "sounds": [{ "name": "deepcharter:ui/refused" }] },
 
-	"terminal.power_on": { "sounds": [{ "name": "minecraft:block.beacon.activate", "type": "event" }] },
+	"terminal.power_on": { "sounds": [{ "name": "deepcharter:terminal/power_on" }] },
 	"terminal.teleport": { "sounds": [{ "name": "minecraft:entity.enderman.teleport", "type": "event" }] },
 
 	"transmission.incoming": { "sounds": [{ "name": "minecraft:block.note_block.bit", "type": "event" }] },
@@ -60,7 +60,19 @@
 	"alarm.fuel_critical": { "sounds": [{ "name": "minecraft:block.note_block.pling", "type": "event", "pitch": 1.5 }] },
 	"alarm.hull_critical": { "sounds": [{ "name": "minecraft:block.note_block.bass", "type": "event", "pitch": 0.6 }] },
 
-	"music.layer_1": { "sounds": [{ "name": "minecraft:music.overworld.deep_dark", "type": "event" }] },
-	"music.layer_2": { "sounds": [{ "name": "minecraft:music.end", "type": "event" }] },
-	"music.terminal": { "sounds": [{ "name": "minecraft:music.creative", "type": "event" }] }
+	"music.layer_1": { "sounds": [{ "name": "deepcharter:music/rest" }] },
+	"music.layer_2": { "sounds": [{ "name": "deepcharter:music/rest" }] },
+	"music.terminal": { "sounds": [{ "name": "deepcharter:terminal/hum_loop", "volume": 0.6, "stream": true }] },
+
+	"ambient.surface_loop": { "sounds": [{ "name": "deepcharter:ambient/surface_loop", "volume": 0.6, "stream": true }] },
+	"ambient.surface_groan": { "sounds": [{ "name": "deepcharter:ambient/surface_groan", "volume": 0.7 }], "subtitle": "subtitles.deepcharter.ambient.surface_groan" },
+	"ambient.layer_1_loop": { "sounds": [{ "name": "deepcharter:ambient/layer_1_loop", "volume": 0.6, "stream": true }] },
+	"ambient.layer_1_creak": { "sounds": [{ "name": "deepcharter:ambient/layer_1_creak", "volume": 0.7 }], "subtitle": "subtitles.deepcharter.ambient.creak" },
+	"ambient.layer_1_knock": { "sounds": [{ "name": "deepcharter:ambient/layer_1_knock", "volume": 0.8 }], "subtitle": "subtitles.deepcharter.ambient.knock" },
+	"ambient.layer_2_loop": { "sounds": [{ "name": "deepcharter:ambient/layer_2_loop", "volume": 0.6, "stream": true }] },
+	"ambient.layer_2_creak": { "sounds": [{ "name": "deepcharter:ambient/layer_2_creak", "volume": 0.7 }], "subtitle": "subtitles.deepcharter.ambient.creak" },
+	"ambient.layer_2_knock": { "sounds": [{ "name": "deepcharter:ambient/layer_2_knock", "volume": 0.8 }], "subtitle": "subtitles.deepcharter.ambient.knock" },
+	"hymn.colony": { "sounds": [{ "name": "deepcharter:hymn/colony", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
+	"hymn.layer_1": { "sounds": [{ "name": "deepcharter:hymn/layer_1", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" },
+	"hymn.layer_2": { "sounds": [{ "name": "deepcharter:hymn/layer_2", "volume": 0.7, "stream": true }], "subtitle": "subtitles.deepcharter.hymn" }
 }
