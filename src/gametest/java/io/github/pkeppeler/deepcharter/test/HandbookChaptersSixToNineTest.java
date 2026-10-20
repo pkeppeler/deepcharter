@@ -695,7 +695,7 @@ public class HandbookChaptersSixToNineTest {
 
     /**
      * The handbook credits a tow from the towed pod's position before {@code PodTowing.follow} moves it (#679). Here the pod sits
-     * on the pad's edge with its tower far outside, so one {@code follow} drags it off the pad: the credit exists only if the
+     * on the pad's edge with its tower away at the test site, so one {@code follow} drags it off the pad: the credit exists only if the
      * handbook's listener ran first.
      */
     @GameTest
@@ -710,11 +710,11 @@ public class HandbookChaptersSixToNineTest {
             int half = ColonyTuning.DEFAULT.padSize() / 2;
             tower = helper.spawn(PodRegistry.POD, 2, 1, 2);
             towed = helper.spawn(PodRegistry.PROSPECTOR, 4, 1, 4);
-            tower.setPos(pad.add(half + 1.5, 0, 0));
-            // The pad test compares with the centre block's coordinates, not the middle of that block.
-            towed.setPos(pad.add(half - 0.5, 0, -0.5));
+            // Hitch them at the test site, where both are loaded: the pad's chunks may not be loaded in a full run.
             PodTowing.attach(tower, towed);
-            tower.setPos(pad.add(half + 30, 0, 0));
+            // The pad test uses the centre block's coordinates, not its middle. Follow puts the pod back where it
+            // started the tick (the test site, off the pad).
+            towed.setPos(pad.add(half - 0.5, 0, -0.5));
             expect(helper, pilot.player().startRiding(tower, true, false), "the player should board the tower");
             poll(towed);
             expectTowCredited(helper, server, pilot.player(), towed, tower, colony);
