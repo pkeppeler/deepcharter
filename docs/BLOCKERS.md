@@ -2,6 +2,15 @@
 
 The orchestrator writes this log during unattended runs. It never stops for a blocker: it records the blocker here and moves on to the next ready work. Newest entries come first. When an entry is resolved, its status changes to **resolved**, with the date and the reason.
 
+## 2026-10-20: Ruleset requiring the `build` and `tool-tests` checks (#516)
+
+**Status:** open, needs the user or the orchestrator; apply only after the #516 PR has merged.
+
+Nothing goes straight to `main` any more (#516), so the default branch can require its checks. Add this to the `protect-main` ruleset, or as a second ruleset on the default branch (`/bootstrap-github-repo` applies the same one):
+- rule `required_status_checks`, checks `build` and `tool-tests` (the `REQUIRED_CHECKS` of `tools/merge-pr.sh`).
+
+Order matters: before the #516 PR merges, the roadmap regeneration and papercut commits still go to `main` directly, and required checks would block them.
+
 ## 2026-10-14: Renovate opens no PRs: the wrong Renovate app reaches this repo
 
 **Status:** open, needs the user.
@@ -129,7 +138,7 @@ SPEC §7 says "later tiers reveal hazards". It does not say how the scanner show
    - the PR has no merge conflict
    The gate found and closed a gap: a later skipped check run could hide a failed one. See [PR #17](https://github.com/pkeppeler/deepcharter/pull/17) and [PR #22](https://github.com/pkeppeler/deepcharter/pull/22).
 4. **PR evidence.** A scripted scene records inside the game and makes a GIF and an MP4 that show in the PR. Nothing outside the game is ever captured. See the GIF in [PR #23](https://github.com/pkeppeler/deepcharter/pull/23).
-5. **The live roadmap.** [docs/ROADMAP.md](ROADMAP.md) is regenerated after each merge.
+5. **The live roadmap.** The pinned `roadmap` issue is updated after each merge.
 6. **Read-only Fabric source copies** for agents to read. AI instruction files are stripped from them. See [PR #18](https://github.com/pkeppeler/deepcharter/pull/18) and [PR #21](https://github.com/pkeppeler/deepcharter/pull/21).
 
 **What is not done:** the play-test bridge (#4, PR #24). See the entry below.

@@ -1,9 +1,9 @@
 import contextlib
 import io
 import json
+import os
 import subprocess
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import roadmap as r  # noqa: E402
 
 PR20 = r.Link(20, "https://x/pull/20")
+SLUG = "acme/widgets"
 
 
 def fixture(handoff=r.Handoff("Handoff", "https://x/issues/14"), prs=()):
@@ -36,8 +37,7 @@ def fixture(handoff=r.Handoff("Handoff", "https://x/issues/14"), prs=()):
         ),
         r.Milestone(3, "M2 Nothing", "", ()),
     )
-    adrs = (r.Doc("adr/0001-a.md", "Reject things"),)
-    return r.Roadmap(milestones, tuple(prs), handoff, adrs)
+    return r.Roadmap(milestones, tuple(prs), handoff)
 
 
 def render(**kw):
@@ -112,8 +112,6 @@ class RenderTest(unittest.TestCase):
     def test_links(self):
         out = render()
         self.assertIn("[Handoff](https://x/issues/14)", out)
-        self.assertIn("[SPEC.md](SPEC.md)", out)
-        self.assertIn("[Reject things](adr/0001-a.md)", out)
 
     def test_missing_handoff(self):
         self.assertIn("Session handoff: none found", render(handoff=None))
@@ -165,7 +163,7 @@ def _repo(**kw):
 
 class ParseTest(unittest.TestCase):
     def test_parses_records(self):
-        roadmap = r.parse_github(_repo(), ())
+        roadmap = r.parse_github(_repo())
         self.assertEqual([m.number for m in roadmap.milestones], [1, 2])
         issue = roadmap.milestones[0].issues[0]
         self.assertEqual(issue.closed_by, (r.Link(8, "p8"),))
@@ -176,12 +174,12 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(roadmap.handoff, r.Handoff("H", "hu"))
 
     def test_no_handoff(self):
-        self.assertIsNone(r.parse_github(_repo(handoff=_page([])), ()).handoff)
+        self.assertIsNone(r.parse_github(_repo(handoff=_page([]))).handoff)
 
     def test_two_handoffs_fail(self):
         two = _page([{"number": 1, "title": "a", "url": "x"}, {"number": 2, "title": "b", "url": "y"}])
         with self.assertRaisesRegex(r.RoadmapError, "found 2"):
-            r.parse_github(_repo(handoff=two), ())
+            r.parse_github(_repo(handoff=two))
 
     def test_every_truncated_connection_fails_loud(self):
         cases = {
@@ -211,7 +209,7 @@ class ParseTest(unittest.TestCase):
         for what, repo in cases.items():
             with self.subTest(what):
                 with self.assertRaisesRegex(r.RoadmapError, f"too many .*{what.split()[0]}"):
-                    r.parse_github(repo, ())
+                    r.parse_github(repo)
 
 
 def _completed(returncode=0, stdout="", stderr=""):
@@ -221,7 +219,7 @@ def _completed(returncode=0, stdout="", stderr=""):
 class GhGraphqlTest(unittest.TestCase):
     def call(self, **run_kw):
         with mock.patch.object(r.subprocess, "run", **run_kw):
-            return r.gh_graphql()
+            return r.gh_graphql(SLUG)
 
     def test_success(self):
         out = self.call(return_value=_completed(stdout=json.dumps({"data": {"a": 1}})))
@@ -245,54 +243,141 @@ class GhGraphqlTest(unittest.TestCase):
             self.call(return_value=_completed(stdout=payload))
 
 
+class FakeGh:
+    """Stands in for subprocess.run: answers each gh subcommand and records every call."""
+
+    def __init__(self, slug=SLUG + "\n", roadmap_issues=({"number": 3},), fail=()):
+        self.slug = slug
+        self.roadmap_issues = list(roadmap_issues)
+        self.graphql = json.dumps({"data": {"repository": _repo()}})
+        self.fail = fail
+        self.issue_list_raw = None
+        self.calls = []
+
+    def __call__(self, cmd, **kw):
+        self.calls.append((cmd, kw))
+        kind = " ".join(cmd[1:3])
+        if kind in self.fail:
+            return _completed(1, stderr=f"{kind} broke")
+        if kind == "repo view":
+            return _completed(stdout=self.slug)
+        if kind == "api graphql":
+            return _completed(stdout=self.graphql)
+        if kind == "issue list":
+            return _completed(stdout=self.issue_list_raw or json.dumps(self.roadmap_issues))
+        if kind == "issue edit":
+            return _completed()
+        raise AssertionError(f"unexpected gh call: {cmd}")
+
+    def calls_of(self, kind):
+        return [c for c, _ in self.calls if " ".join(c[1:3]) == kind]
+
+
+class ResolveRepoTest(unittest.TestCase):
+    def test_slug_from_gh(self):
+        gh = FakeGh()
+        with mock.patch.dict(os.environ, clear=True), mock.patch.object(r.subprocess, "run", gh):
+            self.assertEqual(r.resolve_repo(), SLUG)
+        self.assertEqual(gh.calls_of("repo view"), [["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]])
+
+    def test_repo_env_wins_without_calling_gh(self):
+        gh = FakeGh()
+        with mock.patch.dict(os.environ, {"REPO": "o/n"}, clear=True), mock.patch.object(r.subprocess, "run", gh):
+            self.assertEqual(r.resolve_repo(), "o/n")
+        self.assertEqual(gh.calls, [])
+
+    def test_gh_failure_fails_loud(self):
+        with mock.patch.dict(os.environ, clear=True), mock.patch.object(r.subprocess, "run", FakeGh(fail=("repo view",))):
+            with self.assertRaisesRegex(r.RoadmapError, "gh failed \\(exit 1\\): repo view broke"):
+                r.resolve_repo()
+
+    def test_malformed_slug_fails_loud(self):
+        for bad in ("", "just-a-name\n", "a/b/c\n", "a b/c\n"):
+            with self.subTest(bad), mock.patch.dict(os.environ, clear=True):
+                with mock.patch.object(r.subprocess, "run", FakeGh(slug=bad)):
+                    with self.assertRaisesRegex(r.RoadmapError, "not an owner/name slug"):
+                        r.resolve_repo()
+
+
 class MainTest(unittest.TestCase):
-    def run_main(self, argv):
-        err = io.StringIO()
-        with mock.patch.object(sys, "argv", argv), contextlib.redirect_stderr(err):
+    def run_main(self, argv, gh, env=None):
+        out, err = io.StringIO(), io.StringIO()
+        with (
+            mock.patch.object(sys, "argv", argv),
+            mock.patch.dict(os.environ, env or {}, clear=True),
+            mock.patch.object(r.subprocess, "run", gh),
+            contextlib.redirect_stdout(out),
+            contextlib.redirect_stderr(err),
+        ):
             code = r.main()
-        return code, err.getvalue()
+        return code, out.getvalue(), err.getvalue()
+
+    def test_prints_roadmap_and_publishes_nothing(self):
+        gh = FakeGh()
+        code, out, _ = self.run_main(["roadmap.py"], gh)
+        self.assertEqual(code, 0)
+        self.assertIn("# Roadmap\n", out)
+        self.assertIn("Generated by tools/roadmap.py: do not edit", out)
+        self.assertEqual(gh.calls_of("issue edit"), [])
+
+    def test_graphql_targets_the_resolved_slug(self):
+        gh = FakeGh()
+        self.run_main(["roadmap.py"], gh, env={"REPO": "o/n"})
+        cmd = gh.calls_of("api graphql")[0]
+        self.assertIn("owner=o", cmd)
+        self.assertIn("name=n", cmd)
+
+    def test_publish_replaces_the_roadmap_issue_body(self):
+        gh = FakeGh(roadmap_issues=({"number": 3},))
+        code, out, _ = self.run_main(["roadmap.py", "--publish"], gh)
+        self.assertEqual((code, out), (0, ""))
+        self.assertEqual(
+            gh.calls_of("issue list"),
+            [["gh", "issue", "list", "--repo", SLUG, "--label", "roadmap", "--state", "open", "--json", "number", "--limit", "100"]],
+        )
+        self.assertEqual(gh.calls_of("issue edit"), [["gh", "issue", "edit", "3", "--repo", SLUG, "--body-file", "-"]])
+        (_, kw), = [c for c in gh.calls if c[0][1:3] == ["issue", "edit"]]
+        self.assertIn("Generated by tools/roadmap.py: do not edit", kw["input"])
+
+    def test_publish_without_a_roadmap_issue_fails_loud(self):
+        gh = FakeGh(roadmap_issues=())
+        code, _, err = self.run_main(["roadmap.py", "--publish"], gh)
+        self.assertEqual(code, 1)
+        self.assertEqual(err, "roadmap.py: expected one open 'roadmap' issue, found 0\n")
+        self.assertEqual(gh.calls_of("issue edit"), [])
+
+    def test_publish_with_two_roadmap_issues_fails_loud(self):
+        gh = FakeGh(roadmap_issues=({"number": 3}, {"number": 4}))
+        code, _, err = self.run_main(["roadmap.py", "--publish"], gh)
+        self.assertEqual(code, 1)
+        self.assertEqual(err, "roadmap.py: expected one open 'roadmap' issue, found 2\n")
+        self.assertEqual(gh.calls_of("issue edit"), [])
+
+    def test_publish_edit_failure_fails_loud(self):
+        code, _, err = self.run_main(["roadmap.py", "--publish"], FakeGh(fail=("issue edit",)))
+        self.assertEqual(code, 1)
+        self.assertEqual(err, "roadmap.py: gh failed (exit 1): issue edit broke\n")
+
+    def test_unparseable_issue_list_fails_loud(self):
+        gh = FakeGh()
+        gh.issue_list_raw = "not json"
+        code, _, err = self.run_main(["roadmap.py", "--publish"], gh)
+        self.assertEqual(code, 1)
+        self.assertIn("roadmap.py: gh returned invalid JSON", err)
 
     def test_gh_failure_exits_1_with_message(self):
-        with mock.patch.object(r.subprocess, "run", return_value=_completed(1, stderr="no auth")):
-            code, err = self.run_main(["roadmap.py"])
+        code, _, err = self.run_main(["roadmap.py"], FakeGh(fail=("api graphql",)))
         self.assertEqual(code, 1)
-        self.assertEqual(err, "roadmap.py: gh failed (exit 1): no auth\n")
+        self.assertEqual(err, "roadmap.py: gh failed (exit 1): api graphql broke\n")
 
-    def test_arguments_rejected(self):
-        code, err = self.run_main(["roadmap.py", "x"])
-        self.assertEqual(code, 2)
-        self.assertIn("takes no arguments", err)
-
-    def test_writes_output(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "ROADMAP.md"
-            stdout = json.dumps({"data": {"repository": _repo()}})
-            with (
-                mock.patch.object(r.subprocess, "run", return_value=_completed(stdout=stdout)),
-                mock.patch.object(r, "OUTPUT", out),
-                contextlib.redirect_stdout(io.StringIO()),
-            ):
-                code, _ = self.run_main(["roadmap.py"])
-            self.assertEqual(code, 0)
-            self.assertIn("Generated by tools/roadmap.py: do not edit", out.read_text(encoding="utf-8"))
-
-
-class ReadAdrsTest(unittest.TestCase):
-    def test_title_from_first_heading_skipping_front_matter(self):
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(r, "ADR_DIR", Path(tmp)):
-            (Path(tmp) / "0002-b.md").write_text("---\nstatus: accepted\n---\n\n# Second\n\n# Other\n")
-            (Path(tmp) / "0001-a.md").write_text("# First\n")
-            (Path(tmp) / "notes.txt").write_text("# ignored\n")
-            self.assertEqual(
-                r.read_adrs(),
-                (r.Doc("adr/0001-a.md", "First"), r.Doc("adr/0002-b.md", "Second")),
-            )
-
-    def test_missing_heading_fails(self):
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(r, "ADR_DIR", Path(tmp)):
-            (Path(tmp) / "0001-a.md").write_text("no heading\n")
-            with self.assertRaisesRegex(r.RoadmapError, "no '# ' heading"):
-                r.read_adrs()
+    def test_unknown_arguments_rejected(self):
+        for argv in (["roadmap.py", "x"], ["roadmap.py", "--publish", "x"]):
+            with self.subTest(argv):
+                gh = FakeGh()
+                code, _, err = self.run_main(argv, gh)
+                self.assertEqual(code, 2)
+                self.assertIn("usage:", err)
+                self.assertEqual(gh.calls, [])
 
 
 if __name__ == "__main__":

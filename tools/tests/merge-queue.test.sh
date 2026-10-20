@@ -356,12 +356,12 @@ exited "raced merge: exit 0" 0
 not_logged "raced merge: never closes the merged PR" "gh pr close"
 printed "raced merge: listed as skipped" "#7 (merged by someone else)"
 
-# --- the gate merged but its roadmap step failed: still counted as merged ---
+# --- the gate merged but a step after it failed: still counted as merged ---
 reset
-gate 7 1 "1 merged" "ERROR: PR #7 is MERGED, but the roadmap regeneration FAILED"
+gate 7 1 "1 merged" "ERROR: PR #7 is MERGED, but a post-merge step FAILED"
 run_q 7
-exited "roadmap failure: exit 0" 0
-printed "roadmap failure: counted as merged" "merged:  #7"
+exited "post-merge failure: exit 0" 0
+printed "post-merge failure: counted as merged" "merged:  #7"
 
 # --- non-retryable refusal stops the queue ---
 reset
