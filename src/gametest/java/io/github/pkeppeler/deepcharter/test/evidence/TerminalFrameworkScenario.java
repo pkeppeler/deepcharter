@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.util.Locale;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -48,7 +49,8 @@ public class TerminalFrameworkScenario extends EvidenceScenario {
 
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(pump)));
             ClientWait.screen(context, TerminalScreen.class);
-            TerminalScreen screen = context.computeOnClient(client -> (TerminalScreen) client.gui.screen());
+            TerminalScreen screen =
+                    context.computeOnClient(client -> ClientSession.screen(client, TerminalScreen.class));
             for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
                 context.waitTicks(TICKS_PER_FRAME);
                 frame(context);
@@ -80,7 +82,8 @@ public class TerminalFrameworkScenario extends EvidenceScenario {
             }
 
             ClientWait.screen(context, FuelPumpScreen.class);
-            FuelPumpScreen online = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
+            FuelPumpScreen online =
+                    context.computeOnClient(client -> ClientSession.screen(client, FuelPumpScreen.class));
             for (int i = 0; i < TYPING_FRAMES && !online.typewriter().done(); i++) {
                 context.waitTicks(TICKS_PER_FRAME);
                 frame(context);

@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -8,6 +9,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -73,7 +75,7 @@ public class LayerTerrainScenario extends EvidenceScenario {
     private void flyThrough(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, int layer, int frames) {
         List<Vec3> route = singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
             return smooth(findRoute(level));
         });
         int stride = Math.max(1, (int) Math.ceil(route.size() / (double) frames));
@@ -91,7 +93,7 @@ public class LayerTerrainScenario extends EvidenceScenario {
             float shownYaw = yaw;
             float shownPitch = Mth.clamp(pitch, -60f, 60f);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(level, at.x, at.y - EYE_HEIGHT, at.z, Set.of(), shownYaw, shownPitch, true);
             });
@@ -99,7 +101,7 @@ public class LayerTerrainScenario extends EvidenceScenario {
                 ClientWait.until(
                         context,
                         "the client in layer " + layer,
-                        client -> client.level.dimension().equals(LayerChain.dimension(layer)));
+                        client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer)));
                 context.waitTicks(40);
                 first = false;
             }
@@ -167,7 +169,8 @@ public class LayerTerrainScenario extends EvidenceScenario {
         long at = last.asLong();
         while (at != start.asLong()) {
             route.add(BlockPos.of(at));
-            at = parent.get(at);
+            long cell = at;
+            at = Objects.requireNonNull(parent.get(cell), () -> "no parent cell for " + BlockPos.of(cell));
         }
         route.add(start);
         return route.reversed();

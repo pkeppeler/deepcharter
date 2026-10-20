@@ -3,10 +3,13 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -16,7 +19,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
@@ -88,10 +90,10 @@ public class PilotInCanopyScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the hall on the client",
-                    client -> client.level
+                    client -> ClientLight.clientLevel(client)
                                     .getBlockState(new BlockPos(X + HALL_RADIUS, FLOOR_Y + 1, Z))
                                     .is(Blocks.STONE_BRICKS)
-                            && client.level
+                            && ClientLight.clientLevel(client)
                                     .getBlockState(new BlockPos(X, FLOOR_Y + HALL_HEIGHT, Z))
                                     .is(Blocks.STONE_BRICKS));
             for (Subject subject : SUBJECTS) {
@@ -123,7 +125,7 @@ public class PilotInCanopyScenario extends EvidenceScenario {
         ClientWait.until(
                 context,
                 "the " + subject.id() + " with its riders on the client",
-                client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) instanceof PodEntity shown
                         && shown.getPassengers().size()
                                 == PodRegistry.chassisOf(subject.type()).seats());
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
@@ -144,7 +146,9 @@ public class PilotInCanopyScenario extends EvidenceScenario {
             pod.discard();
         });
         ClientWait.until(
-                context, "the pod gone from the client", client -> client.level.getEntity(pod.getId()) == null);
+                context,
+                "the pod gone from the client",
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) == null);
     }
 
     /** The real player pilots the pod, and the camera is the pilot's eye: level, down and up. */
@@ -163,15 +167,15 @@ public class PilotInCanopyScenario extends EvidenceScenario {
         ClientWait.until(
                 context,
                 "the pilot aboard the " + subject.id() + " on the client",
-                client -> client.level.getEntity(pod.getId()) instanceof PodEntity shown
-                        && client.player.getVehicle() == shown);
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) instanceof PodEntity shown
+                        && ClientSession.player(client).getVehicle() == shown);
         for (float pitch : new float[] {LEVEL, LOOK_DOWN, LOOK_UP}) {
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.FIRST_PERSON);
-                client.player.setYRot(POD_YAW);
-                client.player.yRotO = POD_YAW;
-                client.player.setXRot(pitch);
-                client.player.xRotO = pitch;
+                ClientSession.player(client).setYRot(POD_YAW);
+                ClientSession.player(client).yRotO = POD_YAW;
+                ClientSession.player(client).setXRot(pitch);
+                ClientSession.player(client).xRotO = pitch;
                 client.gui.toastManager().clear();
             });
             settle(context);
@@ -185,11 +189,12 @@ public class PilotInCanopyScenario extends EvidenceScenario {
         ClientWait.until(
                 context,
                 "the pilot off the pod",
-                client -> client.level.getEntity(pod.getId()) == null && client.player.getVehicle() == null);
+                client -> ClientLight.clientLevel(client).getEntity(pod.getId()) == null
+                        && ClientSession.player(client).getVehicle() == null);
     }
 
     private static PodEntity pod(ServerLevel level, Subject subject) {
-        PodEntity pod = subject.type().create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(subject.type(), level);
         pod.setPos(X + 0.5, FLOOR_Y, Z + 0.5);
         pod.setYRot(POD_YAW);
         pod.setFuel(100f);

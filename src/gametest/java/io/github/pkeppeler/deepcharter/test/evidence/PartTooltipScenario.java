@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import static io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields.intField;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -53,7 +54,7 @@ public class PartTooltipScenario extends EvidenceScenario {
                     "both parts in the client's hotbar",
                     client -> !hotbarStack(client, LABELLED_HOTBAR).isEmpty()
                             && !hotbarStack(client, UNLABELLED_HOTBAR).isEmpty());
-            context.setScreen(() -> new InventoryScreen(Minecraft.getInstance().player));
+            context.setScreen(() -> new InventoryScreen(ClientSession.player(Minecraft.getInstance())));
             ClientWait.screen(context, InventoryScreen.class);
             hover(context, LABELLED_HOTBAR);
             screenshot(context, "part-tooltip-labelled");
@@ -65,12 +66,12 @@ public class PartTooltipScenario extends EvidenceScenario {
     }
 
     private static ItemStack hotbarStack(Minecraft client, int hotbar) {
-        return client.player.getInventory().getItem(hotbar);
+        return ClientSession.player(client).getInventory().getItem(hotbar);
     }
 
     private static void hover(ClientGameTestContext context, int hotbar) {
         double[] cursor = context.computeOnClient(client -> {
-            AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) client.gui.screen();
+            AbstractContainerScreen<?> screen = ClientSession.screen(client, AbstractContainerScreen.class);
             Slot slot = screen.getMenu().getSlot(HOTBAR_START + hotbar);
             double scale = client.getWindow().getGuiScale();
             return new double[] {

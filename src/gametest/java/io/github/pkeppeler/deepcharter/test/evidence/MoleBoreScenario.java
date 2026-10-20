@@ -4,8 +4,11 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -13,7 +16,6 @@ import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
@@ -51,11 +53,11 @@ public class MoleBoreScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 buildRoom(one);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(one, X - 6, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
-                PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X - 6, FLOOR_Y, Z);
                 pod.setFuel(100f);
                 one.addFreshEntity(pod);
@@ -68,10 +70,10 @@ public class MoleBoreScenario extends EvidenceScenario {
                     "the player riding a pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && client.level.dimension().equals(LayerChain.dimension(1)));
+                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-                client.player.setXRot(LOOK_DOWN);
+                ClientSession.player(client).setXRot(LOOK_DOWN);
             });
             context.waitTicks(20);
             frame(context);
@@ -103,17 +105,24 @@ public class MoleBoreScenario extends EvidenceScenario {
             // Sideways: the pod stands at the west end of the room facing the wall, and drills into it.
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                PodEntity pod = (PodEntity) player.getVehicle();
+                PodEntity pod = TestEntities.vehicle(player, PodEntity.class);
                 pod.setFuel(100f);
                 pod.teleportTo(
-                        server.getLevel(LayerChain.dimension(1)), X - 2.5, FLOOR_Y, Z + 0.5, Set.of(), EAST, 0f, true);
+                        ClientLight.serverLevel(server, LayerChain.dimension(1)),
+                        X - 2.5,
+                        FLOOR_Y,
+                        Z + 0.5,
+                        Set.of(),
+                        EAST,
+                        0f,
+                        true);
                 player.setYRot(EAST);
             });
             context.runOnClient(client -> {
-                client.player.setYRot(EAST);
-                client.player.yRotO = EAST;
-                client.player.setXRot(LOOK_LEVEL);
-                client.player.xRotO = LOOK_LEVEL;
+                ClientSession.player(client).setYRot(EAST);
+                ClientSession.player(client).yRotO = EAST;
+                ClientSession.player(client).setXRot(LOOK_LEVEL);
+                ClientSession.player(client).xRotO = LOOK_LEVEL;
             });
             context.waitTicks(30);
             frame(context);
@@ -138,11 +147,13 @@ public class MoleBoreScenario extends EvidenceScenario {
     }
 
     private static double podY(ClientGameTestContext context) {
-        return context.computeOnClient(client -> client.player.getVehicle().getY());
+        return context.computeOnClient(
+                client -> TestEntities.vehicle(ClientSession.player(client)).getY());
     }
 
     private static double podX(ClientGameTestContext context) {
-        return context.computeOnClient(client -> client.player.getVehicle().getX());
+        return context.computeOnClient(
+                client -> TestEntities.vehicle(ClientSession.player(client)).getX());
     }
 
     /** A stone block with a room cut in it, a wall of stone at the east end, and glowstone in the rock round the room to light it. */

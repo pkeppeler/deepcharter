@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ContractShown;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
@@ -51,7 +52,8 @@ public class ContractTerminalScenario extends EvidenceScenario {
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
             ClientWait.screen(context, ContractScreen.class);
             awaitState(context, ContractShown::hasNoCharter);
-            ContractScreen screen = context.computeOnClient(client -> (ContractScreen) client.gui.screen());
+            ContractScreen screen =
+                    context.computeOnClient(client -> ClientSession.screen(client, ContractScreen.class));
             for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
                 context.waitTicks(TICKS_PER_FRAME);
                 clearToastsAndFrame(context);
@@ -62,8 +64,9 @@ public class ContractTerminalScenario extends EvidenceScenario {
 
             for (int length = 1; length <= CHARTER.length(); length++) {
                 String typed = CHARTER.substring(0, length);
-                context.runOnClient(client -> ContractShown.nameField((ContractScreen) client.gui.screen())
-                        .setValue(typed));
+                context.runOnClient(
+                        client -> ContractShown.nameField(ClientSession.screen(client, ContractScreen.class))
+                                .setValue(typed));
                 context.waitTicks(TICKS_PER_FRAME);
                 clearToastsAndFrame(context);
             }

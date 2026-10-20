@@ -10,8 +10,11 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -22,7 +25,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
@@ -46,8 +48,6 @@ public class SalvageRenewalScenario extends EvidenceScenario {
     /** The crate is set down this far north of the player. */
     private static final int PLACE_DISTANCE = 2;
 
-    private ClientGameTestContext ctx;
-
     @Override
     protected String name() {
         return "salvage-renewal";
@@ -55,7 +55,6 @@ public class SalvageRenewalScenario extends EvidenceScenario {
 
     @Override
     protected void run(ClientGameTestContext context) {
-        ctx = context;
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the player in the world", client -> client.player != null && client.level != null);
@@ -65,12 +64,13 @@ public class SalvageRenewalScenario extends EvidenceScenario {
 
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
             ClientWait.screen(context, OreProcessorScreen.class);
-            OreProcessorScreen screen = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
+            OreProcessorScreen screen =
+                    context.computeOnClient(client -> ClientSession.screen(client, OreProcessorScreen.class));
             for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
                 context.waitTicks(TICKS_PER_FRAME); // tick-wait: the intro types out for a fixed number of frames
                 frame(context);
             }
-            hold();
+            hold(context);
             screenshot(context, "processor-before-press");
 
             context.clickScreenButton("PRESS CRATE");
@@ -79,48 +79,52 @@ public class SalvageRenewalScenario extends EvidenceScenario {
                     "the pressed crates in the pack",
                     () -> crates(singleplayer) == CRATES,
                     () -> crates(singleplayer) + " crates in the pack");
-            hold();
+            hold(context);
             screenshot(context, "processor-after-press");
             context.setScreen(() -> null);
-            hold();
+            hold(context);
             screenshot(context, "crates-in-the-pack");
 
             BlockPos ground = singleplayer.getServer().computeOnServer(SalvageRenewalScenario::clearPlace);
             BlockPos crate = ground.above();
-            ctx.getInput().lookAt(crate);
+            context.getInput().lookAt(crate);
             ClientWait.until(
                     context,
                     "the pad in the client's world",
-                    client -> client.level.getBlockState(ground).is(Blocks.STONE));
+                    client -> ClientLight.clientLevel(client)
+                            .getBlockState(ground)
+                            .is(Blocks.STONE));
             String placed = context.computeOnClient(client -> {
-                Inventory inventory = client.player.getInventory();
+                Inventory inventory = ClientSession.player(client).getInventory();
                 for (int slot = 0; slot < Inventory.getSelectionSize(); slot++) {
                     if (inventory.getItem(slot).is(SurfaceBlocks.SALVAGE_CRATE.asItem())) {
                         inventory.setSelectedSlot(slot);
                     }
                 }
-                return client.player.getMainHandItem() + " -> "
-                        + client.gameMode.useItemOn(
-                                client.player,
-                                InteractionHand.MAIN_HAND,
-                                new BlockHitResult(
-                                        Vec3.atCenterOf(ground).add(0, 0.5, 0), Direction.UP, ground, false));
+                return ClientSession.player(client).getMainHandItem() + " -> "
+                        + ClientSession.gameMode(client)
+                                .useItemOn(
+                                        ClientSession.player(client),
+                                        InteractionHand.MAIN_HAND,
+                                        new BlockHitResult(
+                                                Vec3.atCenterOf(ground).add(0, 0.5, 0), Direction.UP, ground, false));
             });
             ClientWait.until(
                     context,
                     "the crate placed (" + placed + ")",
-                    client -> client.level.getBlockState(crate).is(SurfaceBlocks.SALVAGE_CRATE));
-            hold();
+                    client ->
+                            ClientLight.clientLevel(client).getBlockState(crate).is(SurfaceBlocks.SALVAGE_CRATE));
+            hold(context);
             screenshot(context, "crate-placed");
 
             mineBlock(context, singleplayer, crate, TICKS_PER_FRAME);
-            ctx.getInput().holdKey(options -> options.keyUp);
+            context.getInput().holdKey(options -> options.keyUp);
             for (int tick = 0; tick < PICK_UP_TICKS; tick += TICKS_PER_FRAME) {
                 context.waitTicks(TICKS_PER_FRAME); // tick-wait: a short walk onto what fell out
                 frame(context);
             }
-            ctx.getInput().releaseKey(options -> options.keyUp);
-            hold();
+            context.getInput().releaseKey(options -> options.keyUp);
+            hold(context);
             screenshot(context, "crate-broken");
         }
     }
@@ -139,7 +143,7 @@ public class SalvageRenewalScenario extends EvidenceScenario {
         for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
             type.parts().forEach(part -> state.insert(type, part));
         }
-        PodEntity pod = PodRegistry.POD.create(server.overworld(), EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, server.overworld());
         pod.setPos(player.position().add(0, 0, 4));
         server.overworld().addFreshEntity(pod);
         PodLining.modify(pod, lining -> lining.withSpoil(SPOIL));
@@ -167,10 +171,10 @@ public class SalvageRenewalScenario extends EvidenceScenario {
                         .countItem(SurfaceBlocks.SALVAGE_CRATE.asItem()));
     }
 
-    private void hold() {
+    private void hold(ClientGameTestContext context) {
         for (int i = 0; i < HOLD_FRAMES; i++) {
-            ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip holds a fixed number of frames
-            frame(ctx);
+            context.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip holds a fixed number of frames
+            frame(context);
         }
     }
 }

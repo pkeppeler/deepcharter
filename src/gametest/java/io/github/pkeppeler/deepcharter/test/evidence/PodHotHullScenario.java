@@ -4,8 +4,11 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -14,7 +17,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -42,7 +44,7 @@ public class PodHotHullScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 RoomCarver.carve(one, X - 6, X + 6, FLOOR_Y - 1, FLOOR_Y + 13, Z - 6, Z + 6, Blocks.STONE);
                 RoomCarver.carve(
                         one,
@@ -57,7 +59,7 @@ public class PodHotHullScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
-                PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 one.addFreshEntity(pod);
                 if (!player.startRiding(pod)) {
@@ -69,7 +71,7 @@ public class PodHotHullScenario extends EvidenceScenario {
                     "the pilot seated in the pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && client.level.dimension().equals(LayerChain.dimension(1)));
+                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
             ClientChecks.withHudHidden(context, ParticleStatus.MINIMAL, () -> show(context, singleplayer));
         }
     }
@@ -78,7 +80,7 @@ public class PodHotHullScenario extends EvidenceScenario {
     private void show(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         context.runOnClient(client -> {
             client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-            client.player.setXRot(LOOK_DOWN);
+            Objects.requireNonNull(client.player, "the client has no player").setXRot(LOOK_DOWN);
         });
         context.waitTicks(30);
         for (int i = 0; i < 6; i++) {
@@ -88,7 +90,7 @@ public class PodHotHullScenario extends EvidenceScenario {
         screenshot(context, "pod-hot-hull-cool");
 
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             for (int x = X - 2; x <= X + 2; x++) {
                 for (int z = Z - 2; z <= Z + 2; z++) {
                     one.setBlock(new BlockPos(x, FLOOR_Y, z), Blocks.LAVA.defaultBlockState(), 3);
@@ -98,7 +100,9 @@ public class PodHotHullScenario extends EvidenceScenario {
         ClientWait.until(
                 context,
                 "the hull burning",
-                client -> client.player.getVehicle() instanceof PodEntity pod && pod.hullBurning());
+                client -> client.player != null
+                        && client.player.getVehicle() instanceof PodEntity pod
+                        && pod.hullBurning());
         for (int i = 0; i < 8; i++) {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);
@@ -117,7 +121,9 @@ public class PodHotHullScenario extends EvidenceScenario {
         ClientWait.until(
                 context,
                 "the hull cool again",
-                client -> client.player.getVehicle() instanceof PodEntity pod && !pod.hullBurning());
+                client -> client.player != null
+                        && client.player.getVehicle() instanceof PodEntity pod
+                        && !pod.hullBurning());
         for (int i = 0; i < 14; i++) {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);
@@ -129,10 +135,8 @@ public class PodHotHullScenario extends EvidenceScenario {
     private static double podY(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
-                .computeOnServer(server -> server.getPlayerList()
-                        .getPlayers()
-                        .getFirst()
-                        .getVehicle()
+                .computeOnServer(server -> TestEntities.vehicle(
+                                server.getPlayerList().getPlayers().getFirst())
                         .getY());
     }
 }

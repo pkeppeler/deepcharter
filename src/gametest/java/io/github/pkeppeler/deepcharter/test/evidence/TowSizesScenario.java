@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -14,11 +15,11 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "tow-sizes" (#399): a tow cable between pods of different sizes, seen from above. A towed pod trails its tower by
@@ -76,7 +77,7 @@ public class TowSizesScenario extends EvidenceScenario {
             singleplayer
                     .getServer()
                     .runOnServer(server -> TOWED.forEach(id -> {
-                        PodEntity towed = (PodEntity) server.overworld().getEntity(id);
+                        PodEntity towed = TestEntities.require(server.overworld(), id, PodEntity.class);
                         PodEntity tower = PodTowing.tower(towed).orElseThrow();
                         double centres = tower.position().distanceTo(towed.position());
                         DeepCharter.LOGGER.info(
@@ -108,8 +109,8 @@ public class TowSizesScenario extends EvidenceScenario {
         TOWED.add(towed.getUUID());
     }
 
-    private static PodEntity spawn(ServerLevel level, EntityType<PodEntity> type, Vec3 at, String name) {
-        PodEntity pod = type.create(level, EntitySpawnReason.COMMAND);
+    private static PodEntity spawn(ServerLevel level, EntityType<PodEntity> type, Vec3 at, @Nullable String name) {
+        PodEntity pod = TestEntities.create(type, level);
         pod.setPos(at);
         if (name != null) {
             pod.setCustomName(Component.literal(name));

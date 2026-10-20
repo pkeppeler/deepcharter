@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.UUID;
@@ -116,10 +117,9 @@ public class TowChainScenario extends EvidenceScenario {
     /** Films the middle between the two pods from the west, {@code distance} blocks off and a little above it. */
     private void look(ClientGameTestContext context, TwoPlayerServer two, UUID tower, UUID towed, double distance) {
         two.server().runOnServer(server -> {
-            Vec3 at = server.overworld()
-                    .getEntity(tower)
+            Vec3 at = TestEntities.require(server.overworld(), tower)
                     .position()
-                    .add(server.overworld().getEntity(towed).position())
+                    .add(TestEntities.require(server.overworld(), towed).position())
                     .scale(0.5)
                     .add(0, 1.0, 0);
             TowStage.film(server.overworld(), two, at.add(-distance, distance * 0.2, 0), at);

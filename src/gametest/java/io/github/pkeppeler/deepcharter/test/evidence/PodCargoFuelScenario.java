@@ -4,15 +4,16 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.client.CameraType;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -46,7 +47,7 @@ public class PodCargoFuelScenario extends EvidenceScenario {
             server.runOnServer(minecraftServer -> {
                 ServerPlayer player =
                         minecraftServer.getPlayerList().getPlayers().getFirst();
-                PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
                 pod.setPos(player.position());
                 player.level().addFreshEntity(pod);
                 for (OreType type : OVERLOAD) {
@@ -59,7 +60,9 @@ public class PodCargoFuelScenario extends EvidenceScenario {
                 }
             });
             ClientWait.until(
-                    context, "the player riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
+                    context,
+                    "the player riding a pod",
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
             context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
             context.waitTicks(20);
             frame(context);
@@ -71,8 +74,8 @@ public class PodCargoFuelScenario extends EvidenceScenario {
 
             // Empty the bay: the same key now lifts.
             server.runOnServer(minecraftServer -> {
-                PodEntity pod = (PodEntity)
-                        minecraftServer.getPlayerList().getPlayers().getFirst().getVehicle();
+                PodEntity pod = TestEntities.vehicle(
+                        minecraftServer.getPlayerList().getPlayers().getFirst(), PodEntity.class);
                 pod.cargo().dump(pod);
             });
             record(context, HOLD_FRAMES);
@@ -80,8 +83,8 @@ public class PodCargoFuelScenario extends EvidenceScenario {
 
             // Out of fuel: the pod ignores the key and falls.
             server.runOnServer(minecraftServer -> {
-                PodEntity pod = (PodEntity)
-                        minecraftServer.getPlayerList().getPlayers().getFirst().getVehicle();
+                PodEntity pod = TestEntities.vehicle(
+                        minecraftServer.getPlayerList().getPlayers().getFirst(), PodEntity.class);
                 pod.setFuel(0f);
             });
             record(context, HOLD_FRAMES);
@@ -91,12 +94,10 @@ public class PodCargoFuelScenario extends EvidenceScenario {
             server.runOnServer(minecraftServer -> {
                 ServerPlayer player =
                         minecraftServer.getPlayerList().getPlayers().getFirst();
-                PodEntity pod = (PodEntity) player.getVehicle();
+                PodEntity pod = TestEntities.vehicle(player, PodEntity.class);
                 for (int i = 0; i < COAL; i++) {
                     player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.COAL));
-                    UseEntityCallback.EVENT
-                            .invoker()
-                            .interact(player, player.level(), InteractionHand.MAIN_HAND, pod, null);
+                    UseEntity.on(player, player.level(), InteractionHand.MAIN_HAND, pod);
                 }
             });
             record(context, HOLD_FRAMES);

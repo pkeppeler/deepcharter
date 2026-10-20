@@ -2,7 +2,9 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes;
@@ -11,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.Size;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.View;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -30,6 +33,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The world and the views of the {@code layer-concepts} scenario (#447): one real world, the three scenes of {@link LayerConceptScenes}
@@ -59,8 +63,10 @@ final class LayerConceptsWorld {
     private final List<Scene> scenes;
     private final Size size;
     private int stills;
-    private ResourceKey<Level> parkDimension;
-    private Vec3 parkPosition;
+    private @Nullable Park parkedAt;
+
+    /** Where the world put the player, before the scenes. */
+    private record Park(ResourceKey<Level> dimension, Vec3 position) {}
 
     private LayerConceptsWorld(
             ClientGameTestContext ctx,
@@ -117,7 +123,8 @@ final class LayerConceptsWorld {
         ClientPacks.enable(ctx, pack);
         try {
             for (Scene scene : scenes) {
-                String form = formPacks.get(scene.layer());
+                String form = Objects.requireNonNull(
+                        formPacks.get(scene.layer()), () -> "no form pack for layer " + scene.layer());
                 park();
                 ClientPacks.enable(ctx, form);
                 try {
@@ -140,21 +147,22 @@ final class LayerConceptsWorld {
      * loaded machine, and the run hung. At the spawn there is almost nothing to re-mesh.
      */
     private void park() {
+        Park at = Objects.requireNonNull(parkedAt, "the player is parked after preparePlayer");
         serverDo(server -> player(server)
                 .teleportTo(
-                        server.getLevel(parkDimension),
-                        parkPosition.x,
-                        parkPosition.y,
-                        parkPosition.z,
+                        ClientLight.serverLevel(server, at.dimension()),
+                        at.position().x,
+                        at.position().y,
+                        at.position().z,
                         Set.of(),
                         0.0f,
                         0.0f,
                         true));
         ClientWait.until(
                 ctx,
-                "the player parked at " + parkPosition + " in " + parkDimension,
-                client -> client.level.dimension().equals(parkDimension)
-                        && client.player.distanceToSqr(parkPosition) < 1.0);
+                "the player parked at " + at.position() + " in " + at.dimension(),
+                client -> ClientLight.clientLevel(client).dimension().equals(at.dimension())
+                        && ClientSession.player(client).distanceToSqr(at.position()) < 1.0);
     }
 
     private void shootScene(String style, Scene scene) {
@@ -181,8 +189,7 @@ final class LayerConceptsWorld {
     private void preparePlayer() {
         serverDo(server -> {
             ServerPlayer player = player(server);
-            parkDimension = player.level().dimension();
-            parkPosition = player.position();
+            parkedAt = new Park(player.level().dimension(), player.position());
             player.setGameMode(GameType.CREATIVE);
             player.getInventory().clearContent();
             player.getAbilities().mayfly = true;
@@ -207,10 +214,10 @@ final class LayerConceptsWorld {
         ClientWait.until(
                 ctx,
                 "the camera at " + eye + " in the scene of layer " + scene.layer(),
-                client -> client.level.dimension().equals(LayerChain.dimension(scene.dimension()))
-                        && client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
-                        && Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.01f
-                        && Math.abs(client.player.getXRot() - pitch) < 0.01f);
+                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(scene.dimension()))
+                        && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
+                        && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - yaw)) < 0.01f
+                        && Math.abs(ClientSession.player(client).getXRot() - pitch) < 0.01f);
         ctx.waitTicks(view.settle());
     }
 
@@ -254,17 +261,17 @@ final class LayerConceptsWorld {
     }
 
     private static boolean rendered(Minecraft client) {
-        for (Entity entity : client.level.entitiesForRendering()) {
+        for (Entity entity : ClientLight.clientLevel(client).entitiesForRendering()) {
             if (stray(entity)) {
                 return false;
             }
         }
         int radius = client.options.getEffectiveRenderDistance();
-        int centreX = client.player.chunkPosition().x();
-        int centreZ = client.player.chunkPosition().z();
+        int centreX = ClientSession.player(client).chunkPosition().x();
+        int centreZ = ClientSession.player(client).chunkPosition().z();
         for (int x = centreX - radius; x <= centreX + radius; x++) {
             for (int z = centreZ - radius; z <= centreZ + radius; z++) {
-                if (client.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) {
+                if (ClientLight.clientLevel(client).getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) {
                     return false;
                 }
             }

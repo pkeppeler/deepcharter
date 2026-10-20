@@ -3,7 +3,9 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -15,7 +17,6 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerPlayer.RespawnConfig;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BedBlock;
@@ -83,7 +84,7 @@ public class WreckRespawnScenario extends EvidenceScenario {
                 level.setBlockAndUpdate(bed[0].east(), state.setValue(BedBlock.PART, BedPart.HEAD));
                 player.setRespawnPosition(
                         new RespawnConfig(LevelData.RespawnData.of(Level.OVERWORLD, bed[0], 0f, 0f), false), false);
-                pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                pod[0] = TestEntities.create(PodRegistry.POD, level);
                 pod[0].setPos(x - 3, ground, z + 5);
                 level.addFreshEntity(pod[0]);
             });
@@ -115,7 +116,7 @@ public class WreckRespawnScenario extends EvidenceScenario {
             screenshot(context, "death-screen");
 
             // The player clicks Respawn.
-            context.runOnClient(client -> client.player.respawn());
+            context.runOnClient(client -> ClientSession.player(client).respawn());
             ClientWait.until(
                     context,
                     "the death screen closed and the player alive",

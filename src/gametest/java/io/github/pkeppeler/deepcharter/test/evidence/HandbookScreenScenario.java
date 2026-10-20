@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,9 +37,12 @@ public class HandbookScreenScenario extends EvidenceScenario {
     protected void run(ClientGameTestContext context) {
         try (TestSingleplayerContext _ = context.worldBuilder().create()) {
             ClientWait.until(
-                    context, "the handbook in the hotbar", client -> handbookSlot(client.player.getInventory()) >= 0);
-            context.runOnClient(
-                    client -> client.player.getInventory().setSelectedSlot(handbookSlot(client.player.getInventory())));
+                    context,
+                    "the handbook in the hotbar",
+                    client -> handbookSlot(ClientSession.player(client).getInventory()) >= 0);
+            context.runOnClient(client -> ClientSession.player(client)
+                    .getInventory()
+                    .setSelectedSlot(handbookSlot(ClientSession.player(client).getInventory())));
             context.getInput().pressKey(options -> options.keyUse);
             ClientWait.screen(context, HandbookScreen.class);
             context.waitTicks(HandbookScreenTuning.current().flipTicks());
@@ -48,7 +52,8 @@ public class HandbookScreenScenario extends EvidenceScenario {
             context.setScreen(() -> new HandbookScreen(pages, id -> id.getPath().equals("test2"), id -> {}, List.of()));
             ClientWait.screen(context, HandbookScreen.class);
             context.waitTicks(2);
-            HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
+            HandbookScreen screen =
+                    context.computeOnClient(client -> ClientSession.screen(client, HandbookScreen.class));
             int last = pages.size() - 1;
             for (int page = 1; page <= last; page++) {
                 int target = page;

@@ -5,9 +5,12 @@ import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -16,7 +19,6 @@ import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
@@ -44,12 +46,12 @@ public class PodLavaWatchScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 build(one);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_EAST, 0f, true);
-                PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 pod.setYRot(FACING_EAST);
                 one.addFreshEntity(pod);
@@ -62,10 +64,10 @@ public class PodLavaWatchScenario extends EvidenceScenario {
                     "the pilot seated in the pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && client.level.dimension().equals(LayerChain.dimension(1)));
+                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.FIRST_PERSON);
-                client.player.setXRot(0f);
+                ClientSession.player(client).setXRot(0f);
             });
             ClientPacks.enable(context, TestPacks.COCKPIT_OFF);
             context.waitTicks(60);
@@ -78,7 +80,7 @@ public class PodLavaWatchScenario extends EvidenceScenario {
             // Two lava sources in the end wall at head height: they fall to the floor and run west along the tunnel.
             singleplayer.getServer().runOnServer(server -> {
                 for (int z = Z - 1; z <= Z; z++) {
-                    server.getLevel(LayerChain.dimension(1))
+                    ClientLight.serverLevel(server, LayerChain.dimension(1))
                             .setBlock(new BlockPos(X + TUNNEL, FLOOR_Y + 2, z), Blocks.LAVA.defaultBlockState(), 3);
                 }
             });
@@ -94,9 +96,13 @@ public class PodLavaWatchScenario extends EvidenceScenario {
                     context,
                     "the ribbon cockpit",
                     client -> CockpitHud.seated(client).isPresent());
-            boolean lamp = context.computeOnClient(
-                    client -> CockpitHud.lampsLit(false, false, false, PodStatusHud.readout(client.player, (PodEntity)
-                            client.player.getVehicle()))[3]);
+            boolean lamp = context.computeOnClient(client -> CockpitHud.lampsLit(
+                    false,
+                    false,
+                    false,
+                    PodStatusHud.readout(
+                            ClientSession.player(client),
+                            TestEntities.vehicle(ClientSession.player(client), PodEntity.class)))[3]);
             if (!lamp) {
                 throw new AssertionError("The cockpit's warning lamp should be lit by the lava line");
             }
@@ -108,17 +114,13 @@ public class PodLavaWatchScenario extends EvidenceScenario {
 
             float hull = singleplayer
                     .getServer()
-                    .computeOnServer(server -> ((PodEntity) server.getPlayerList()
-                                    .getPlayers()
-                                    .getFirst()
-                                    .getVehicle())
+                    .computeOnServer(server -> TestEntities.vehicle(
+                                    server.getPlayerList().getPlayers().getFirst(), PodEntity.class)
                             .hull());
             float maxHull = singleplayer
                     .getServer()
-                    .computeOnServer(server -> ((PodEntity) server.getPlayerList()
-                                    .getPlayers()
-                                    .getFirst()
-                                    .getVehicle())
+                    .computeOnServer(server -> TestEntities.vehicle(
+                                    server.getPlayerList().getPlayers().getFirst(), PodEntity.class)
                             .maxHull());
             if (hull < maxHull) {
                 throw new AssertionError(
@@ -129,7 +131,7 @@ public class PodLavaWatchScenario extends EvidenceScenario {
 
     private void waitForWarning(ClientGameTestContext context, String what) {
         int ticks = 0;
-        while (!context.computeOnClient(client -> client.player.getVehicle() instanceof PodEntity pod
+        while (!context.computeOnClient(client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                 && PodStatusHud.lavaNearLine(pod).isPresent())) {
             if (ticks >= MAX_TICKS) {
                 throw new AssertionError("Waited " + MAX_TICKS + " ticks for " + what);

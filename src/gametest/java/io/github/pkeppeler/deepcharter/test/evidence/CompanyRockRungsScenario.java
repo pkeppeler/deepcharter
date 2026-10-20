@@ -7,9 +7,12 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -19,7 +22,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
@@ -65,7 +67,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
 
     private void shapedCharge(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             room(one, X);
             for (int dx = -1; dx <= 0; dx++) {
                 for (int dz = -1; dz <= 0; dz++) {
@@ -84,7 +86,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
-            PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(X, FLOOR_Y, Z);
             one.addFreshEntity(pod);
             if (!player.startRiding(pod)) {
@@ -97,10 +99,10 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity pod
                         && pod.onGround()
-                        && client.level.dimension().equals(LayerChain.dimension(1)));
+                        && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
         context.runOnClient(client -> {
             client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
-            client.player.setXRot(LOOK_DOWN);
+            ClientSession.player(client).setXRot(LOOK_DOWN);
         });
         context.waitTicks(30);
         for (int i = 0; i < 6; i++) {
@@ -197,7 +199,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
 
     private void biteWithTheDrill(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             room(one, BITE_X);
             for (int dx = -2; dx <= 2; dx++) {
                 for (int dz = -2; dz <= 2; dz++) {
@@ -210,7 +212,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
             player.teleportTo(one, BITE_X + 0.5, FLOOR_Y, Z + 0.5, Set.of(), 0, LOOK_DOWN, true);
-            PodEntity pod = PodRegistry.PROSPECTOR.create(one, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, one);
             pod.setPos(BITE_X + 0.5, FLOOR_Y, Z + 0.5);
             one.addFreshEntity(pod);
             if (!player.startRiding(pod)) {
@@ -226,7 +228,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
                         && pod.getX() > BITE_X - 2);
         context.runOnClient(client -> {
             client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
-            client.player.setXRot(LOOK_DOWN);
+            ClientSession.player(client).setXRot(LOOK_DOWN);
         });
         context.waitTicks(30);
         context.runOnClient(client -> TransmissionOverlay.reset());
@@ -243,7 +245,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
         context.getInput().releaseKey(options -> options.keySprint);
         float[] before = singleplayer.getServer().computeOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            PodEntity pod = (PodEntity) player.getVehicle();
+            PodEntity pod = TestEntities.vehicle(player, PodEntity.class);
             ScannerPods.fit(server, player, pod, ComponentTrack.FUEL_TANK, 3);
             pod.setFuel(100f);
             ScannerPods.fit(server, player, pod, ComponentTrack.DRILL, 3);
@@ -273,7 +275,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
         screenshot(context, "rungs-bite-bored");
         float[] after = singleplayer.getServer().computeOnServer(server -> {
             PodEntity pod =
-                    (PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle();
+                    TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
             return new float[] {pod.fuel(), pod.hull()};
         });
         if (after[1] >= before[1]) {
@@ -316,7 +318,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
 
     private static boolean blasted(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             for (int dx = -1; dx <= 0; dx++) {
                 for (int dz = -1; dz <= 0; dz++) {
                     for (int dy = -ROWS; dy <= -1; dy++) {
@@ -333,7 +335,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
 
     private static boolean stopped(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             for (BlockPos stays : stays()) {
                 if (!one.getBlockState(stays).is(HazardBlocks.COMPANY_ROCK)) {
                     return false;
@@ -346,7 +348,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
     private static boolean slabBored(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
-                .computeOnServer(server -> server.getLevel(LayerChain.dimension(1))
+                .computeOnServer(server -> ClientLight.serverLevel(server, LayerChain.dimension(1))
                         .getBlockState(new BlockPos(BITE_X, FLOOR_Y - 1, Z))
                         .isAir());
     }
@@ -354,28 +356,24 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
     private static float podHull(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
-                .computeOnServer(server -> ((PodEntity)
-                                server.getPlayerList().getPlayers().getFirst().getVehicle())
+                .computeOnServer(server -> TestEntities.vehicle(
+                                server.getPlayerList().getPlayers().getFirst(), PodEntity.class)
                         .hull());
     }
 
     private static double podY(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
-                .computeOnServer(server -> server.getPlayerList()
-                        .getPlayers()
-                        .getFirst()
-                        .getVehicle()
+                .computeOnServer(server -> TestEntities.vehicle(
+                                server.getPlayerList().getPlayers().getFirst())
                         .getY());
     }
 
     private static double podZ(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
-                .computeOnServer(server -> server.getPlayerList()
-                        .getPlayers()
-                        .getFirst()
-                        .getVehicle()
+                .computeOnServer(server -> TestEntities.vehicle(
+                                server.getPlayerList().getPlayers().getFirst())
                         .getZ());
     }
 }

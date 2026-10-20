@@ -14,10 +14,13 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActivity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -55,6 +58,7 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The world and the views that the texture test scenarios shoot (#336 in {@link TextureDensityScenario}, #367 in
@@ -69,7 +73,7 @@ import net.minecraft.world.phys.Vec3;
  */
 final class TextureTestWorld {
     /** A variant's still prefix, and the test pack it turns on (none for A, the mod as it ships). */
-    record Variant(String name, String pack) {}
+    record Variant(String name, @Nullable String pack) {}
 
     private static final double EYE = 1.62;
     /** The cavern room in layer 1: its floor is at {@link #ROOM}, and its south wall, where the ores are, at {@code z + WALL}. */
@@ -181,7 +185,7 @@ final class TextureTestWorld {
      */
     void buildCavern() {
         serverDo(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(1));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
             buildWall(level, ROOM, HALF_WIDTH, WALL_BLOCKS);
             level.setBlock(ROOM.offset(0, 2, 0), lamp(LAMP), Block.UPDATE_ALL);
         });
@@ -190,7 +194,7 @@ final class TextureTestWorld {
     /** A sealed room like the cavern, whose south wall holds the ores in a checkerboard of plain rock, lit two blocks out. */
     void buildSeamWall() {
         serverDo(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(1));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
             buildWall(level, SEAM_ROOM, 4, SEAM_BLOCKS);
             level.setBlock(SEAM_ROOM.offset(0, 1, WALL - 2), lamp(LAMP), Block.UPDATE_ALL);
         });
@@ -202,7 +206,7 @@ final class TextureTestWorld {
      */
     void buildReferenceWall() {
         serverDo(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(1));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
             Map<BlockPos, Block> blocks = new HashMap<>();
             OreType[] ores = OreType.values();
             for (int column = 0; column < ores.length; column++) {
@@ -244,7 +248,7 @@ final class TextureTestWorld {
      */
     void buildTerminalRoom() {
         serverDo(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(1));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
             loadChunks(level, TERMINAL_ROOM, 1);
             RoomCarver.carve(
                     level,
@@ -285,7 +289,7 @@ final class TextureTestWorld {
     /** A 3 x 3 shaft bored straight down through the layer's own rock, with a lamp at its middle every four blocks. */
     void buildShaft() {
         serverDo(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(1));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
             loadChunks(level, SHAFT, 2);
             RoomCarver.carve(
                     level, SHAFT.offset(-1, -SHAFT_DEPTH, -1), SHAFT.offset(1, 0, 1), Blocks.AIR.defaultBlockState());
@@ -303,12 +307,12 @@ final class TextureTestWorld {
         view(1, wall.add(0.5, 0, -2), wall.add(0.5, 0, 0), 20);
         still(variant + "-cavern-wall-close");
         // The lamp out: only what glows of itself shows (D's glints).
-        serverDo(server ->
-                server.getLevel(LayerChain.dimension(1)).setBlock(ROOM.offset(0, 2, 0), lamp(0), Block.UPDATE_ALL));
+        serverDo(server -> ClientLight.serverLevel(server, LayerChain.dimension(1))
+                .setBlock(ROOM.offset(0, 2, 0), lamp(0), Block.UPDATE_ALL));
         view(1, wall.add(0, 0.1, -6), wall, 20);
         still(variant + "-cavern-wall-no-lamp");
-        serverDo(server ->
-                server.getLevel(LayerChain.dimension(1)).setBlock(ROOM.offset(0, 2, 0), lamp(LAMP), Block.UPDATE_ALL));
+        serverDo(server -> ClientLight.serverLevel(server, LayerChain.dimension(1))
+                .setBlock(ROOM.offset(0, 2, 0), lamp(LAMP), Block.UPDATE_ALL));
     }
 
     /** The wall of the bored shaft at mid distance: from just under its mouth, by its north wall, down at its south wall. */
@@ -392,10 +396,8 @@ final class TextureTestWorld {
      * saw, if none is in reach.
      */
     Vec3 regolithPlain() {
-        BlockPos square = serverGet(server -> Colony.placed(server)
-                .orElseThrow(() -> new AssertionError("no colony"))
-                .anchors()
-                .get(ColonyAnchor.STATUE));
+        BlockPos square = serverGet(server -> TestColony.anchor(
+                Colony.placed(server).orElseThrow(() -> new AssertionError("no colony")), ColonyAnchor.STATUE));
         return serverGet(server -> {
             ServerLevel surface = server.overworld();
             List<String> seen = new ArrayList<>();
@@ -450,7 +452,7 @@ final class TextureTestWorld {
             ServerPlayer player = player(server);
             player.setNoGravity(true);
             player.teleportTo(
-                    server.getLevel(LayerChain.dimension(layer)),
+                    ClientLight.serverLevel(server, LayerChain.dimension(layer)),
                     eye.x,
                     eye.y - EYE,
                     eye.z,
@@ -462,10 +464,10 @@ final class TextureTestWorld {
         ClientWait.until(
                 ctx,
                 "the camera at " + eye + " in layer " + layer,
-                client -> client.level.dimension().equals(LayerChain.dimension(layer))
-                        && client.player.distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
-                        && Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.01f
-                        && Math.abs(client.player.getXRot() - pitch) < 0.01f);
+                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer))
+                        && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
+                        && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - yaw)) < 0.01f
+                        && Math.abs(ClientSession.player(client).getXRot() - pitch) < 0.01f);
         ctx.waitTicks(wait);
     }
 
@@ -505,19 +507,19 @@ final class TextureTestWorld {
     }
 
     /** What the client still waits for before a still, or null when it waits for nothing: a stray entity, a chunk, or a section to render. */
-    private static String pending(Minecraft client) {
-        for (Entity entity : client.level.entitiesForRendering()) {
+    private static @Nullable String pending(Minecraft client) {
+        for (Entity entity : ClientLight.clientLevel(client).entitiesForRendering()) {
             if (stray(entity)) {
                 return "the stray entity " + entity.getType() + " at "
                         + entity.blockPosition().toShortString();
             }
         }
         int radius = client.options.getEffectiveRenderDistance();
-        int centreX = client.player.chunkPosition().x();
-        int centreZ = client.player.chunkPosition().z();
+        int centreX = ClientSession.player(client).chunkPosition().x();
+        int centreZ = ClientSession.player(client).chunkPosition().z();
         for (int x = centreX - radius; x <= centreX + radius; x++) {
             for (int z = centreZ - radius; z <= centreZ + radius; z++) {
-                if (client.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) {
+                if (ClientLight.clientLevel(client).getChunkSource().getChunk(x, z, ChunkStatus.FULL, false) == null) {
                     return "the chunk " + x + ", " + z;
                 }
             }
