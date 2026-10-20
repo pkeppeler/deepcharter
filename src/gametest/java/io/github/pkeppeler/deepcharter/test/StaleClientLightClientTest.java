@@ -161,6 +161,8 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
         server.runOnServer(s -> {
             for (int cx = (floor.getX() - 12) >> 4; cx <= (floor.getX() + 12) >> 4; cx++) {
                 for (int cz = (floor.getZ() - 12) >> 4; cz <= (floor.getZ() + 12) >> 4; cz++) {
+                    // force-ok: a client test has no GameTestHelper to release through; the world is discarded when the
+                    // test ends
                     s.overworld().setChunkForced(cx, cz, true);
                     s.overworld().getChunk(cx, cz);
                 }

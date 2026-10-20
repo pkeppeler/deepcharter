@@ -47,7 +47,7 @@ public class LayoutGateScenario extends EvidenceScenario {
         try (TestSingleplayerContext _ = context.worldBuilder().create()) {
             String name = "W".repeat(CharterTuning.DEFAULT.maxNameLength());
             TerminalView view = new TerminalView(
-                    new BlockPos(0, 64, 0), ContractTerminal.TYPE.id(), true, true, List.of(), Optional.empty());
+                    BlockPos.ZERO, ContractTerminal.TYPE.id(), true, true, List.of(), Optional.empty());
             context.setScreen(() -> TerminalScreens.create(view));
             ClientWait.screen(context, ContractScreen.class);
             context.runOnClient(client -> ClientSession.screen(client, ContractScreen.class)

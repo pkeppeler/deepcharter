@@ -32,7 +32,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public class CompanyRockScenario extends EvidenceScenario {
     /** Where the rooms stand in each layer's dimension, on a chunk boundary, and the box of whole chunks of rock round all of them (a chunk the box covers in part never reached the client in two runs of three). */
-    private static final BlockPos ORIGIN = new BlockPos(3616, 40, 3616);
+    private static final BlockPos ORIGIN = new BlockPos(3616, LIVE_GAUGES_FLOOR_Y, 3616);
 
     private static final BlockPos ROCK_LOW = new BlockPos(-16, -3, -16);
     private static final BlockPos ROCK_HIGH = new BlockPos(63, 12, 15);
@@ -155,6 +155,8 @@ public class CompanyRockScenario extends EvidenceScenario {
         BlockPos high = absolute(ROCK_HIGH);
         for (int cx = low.getX() >> 4; cx <= high.getX() >> 4; cx++) {
             for (int cz = low.getZ() >> 4; cz <= high.getZ() >> 4; cz++) {
+                // force-ok: an evidence scenario has no GameTestHelper to release through; its world is discarded when
+                // the run ends
                 level.setChunkForced(cx, cz, true);
                 level.getChunk(cx, cz);
             }

@@ -39,7 +39,7 @@ import net.minecraft.world.level.block.Blocks;
 public class CompanyRockRungsScenario extends EvidenceScenario {
     private static final int X = 5800;
     private static final int Z = 5000;
-    private static final int FLOOR_Y = 40;
+    private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;
     private static final int ROWS = 6;
     private static final int TICKS_PER_FRAME = 3;
     private static final int MAX_TICKS = 900;

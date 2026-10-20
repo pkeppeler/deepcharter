@@ -156,7 +156,7 @@ public class DesignTourScenario extends EvidenceScenario {
     /** The sealed dark room is built this far from the colony, at this height: no sky reaches it. */
     private static final int ROOM_OFFSET = 300;
 
-    private static final int ROOM_Y = 200;
+    private static final int ROOM_Y = SKY_SLAB_Y;
     private static final int ROOM_RADIUS = 9;
     private static final int ROOM_HEIGHT = 7;
     private static final int LAYER_X = 2000;

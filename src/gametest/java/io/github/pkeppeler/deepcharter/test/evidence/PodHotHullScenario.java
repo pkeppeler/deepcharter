@@ -28,7 +28,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodHotHullScenario extends EvidenceScenario {
     private static final int X = 5300;
     private static final int Z = 5000;
-    private static final int FLOOR_Y = 60;
+    private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y + 20;
     private static final int TICKS_PER_FRAME = 4;
     private static final int MAX_TICKS = 900;
     private static final float LOOK_DOWN = 8f;

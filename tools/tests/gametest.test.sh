@@ -73,6 +73,17 @@ run 'a b'
 check "filter with a space is rejected" "$((status == 2 ? 0 : 1))"
 check "space rejection names the allowed characters" "$(grep -qF 'filter may contain only letters, digits, _ . - : *' "$work/err"; echo $?)"
 
+rm -f "$work/args"
+run 'HandbookChaptersSixToNineTest*'
+check "CamelCase filter is refused with status 2" "$((status == 2 ? 0 : 1))"
+started=0; [[ -e $work/args ]] && started=1
+check "CamelCase refusal never starts gradle" "$started"
+check "CamelCase refusal suggests the snake_case filter" "$(grep -qF "handbook_chapters_six_to_nine_test*" "$work/err"; echo $?)"
+check "CamelCase refusal says ids are lowercase" "$(grep -qF 'lowercase' "$work/err"; echo $?)"
+run 'deepcharter-test:PodDrillTest'
+check "CamelCase after the deepcharter-test: prefix is refused" "$((status == 2 ? 0 : 1))"
+check "snake_case suggestion keeps a full id without *" "$(grep -qF "pod_drill_test'" "$work/err"; echo $?)"
+
 STUB_OUT='Test selection matcher (deepcharter-test:nope*) found no tests' STUB_STATUS=255 run 'nope*'
 check "no-match fails with status 1" "$((status == 1 ? 0 : 1))"
 check "no-match message names the filter" "$(grep -qF 'matched no GameTests' "$work/err" && grep -qF 'deepcharter-test:nope*' "$work/err"; echo $?)"

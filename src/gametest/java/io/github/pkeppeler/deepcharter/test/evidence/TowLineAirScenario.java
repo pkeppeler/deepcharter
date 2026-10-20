@@ -17,7 +17,7 @@ import net.minecraft.world.phys.Vec3;
 public class TowLineAirScenario extends EvidenceScenario {
     private static final int X = 1500;
     private static final int Z = 1500;
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = SKY_SLAB_Y;
     private static final double CRUISE_HEIGHT = 9;
     /** Ticks of each leg of the flight, and of the hover after it. */
     private static final int LEG_TICKS = 50;

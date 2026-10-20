@@ -56,6 +56,13 @@ object GametestScan {
 	// that toggles directly. The scan matches the names, not the receiver.
 	private const val HUD_TOGGLE_MARKER = "// hud-toggle:"
 	private val hudToggle = Regex("""\b(?:keyToggleGui|hideGui|KEY_F1)\b|\bhud\s*\.\s*toggle\s*\(""")
+	// FarChunks counts which test holds each forced chunk and lets it go when the test finishes (#569), so a chunk a test forces and never
+	// releases cannot pin its generation neighbourhood (up to 17 x 17 chunks) for the rest of the run. A raw setChunkForced, true or false, skips
+	// that count (a stale hold un-forces a chunk another test re-forced). Any setChunkForced or updateChunkForced call or method reference, and
+	// any addTicket* of TicketType.FORCED, outside FarChunks.java is flagged, or marked with the comment below, with a reason, on its statement
+	// or the comment line above it.
+	private const val FORCE_MARKER = "// force-ok:"
+	private val chunkForce = Regex("""\b(?:set|update)ChunkForced\s*\(|::\s*(?:set|update)ChunkForced\b|\baddTicket\w*\s*\(\s*TicketType\s*\.\s*FORCED\b""")
 	// GameTestHelper.onEachTick queues one runnable per remaining tick of the test's maxTicks, and the runner keeps every finished test until
 	// the run ends, so the suite's live heap grew to 4.4 GB (#548). TestTicks.each keeps one. No suppression: there is no case for the queue.
 	private val onEachTickCall = Regex("""\bonEachTick\b""")
@@ -147,6 +154,14 @@ object GametestScan {
 					val line = lineOf(text, clockWrite.range.first)
 					if (!marked(markedNear, rawLines, line, WORLD_CLOCK_MARKER)) {
 						problems.add("$className:${line + 1} writes a world clock in a server test, which every test in the world sees; write it through TestClocks.paused, which restores it in a finally on the same tick, or mark a deliberate write with '$WORLD_CLOCK_MARKER <reason>' (the scan matches the method name, not the receiver; if this is not a world clock, mark it '$WORLD_CLOCK_MARKER not a clock')")
+					}
+				}
+			}
+			if (source.name != "FarChunks.java") {
+				for (force in chunkForce.findAll(text)) {
+					val line = lineOf(text, force.range.first)
+					if (!marked(markedNear, rawLines, line, FORCE_MARKER)) {
+						problems.add("$className:${line + 1} sets a chunk's force directly, which FarChunks cannot count or release when the test ends; use FarChunks.force(helper, level, x, z) and FarChunks.release(helper, level, x, z), or mark a deliberate use with '$FORCE_MARKER <reason>'")
 					}
 				}
 			}
@@ -249,7 +264,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 }
 
-// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query", "record_holder", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
+// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
 tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
@@ -260,6 +275,10 @@ tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
 	val entityQueryProblems = project.extra["entityQueryProblems"] as (File, File, (String) -> String, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
 	val entityQueryAdvice = project.extra["entityQueryAdvice"] as String
+	// The fixed-position gate's scan (fixed-pos-gate.gradle.kts), run the same way.
+	@Suppress("UNCHECKED_CAST")
+	val fixedPosProblems = project.extra["fixedPosProblems"] as (File, File, (String) -> String, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
+	val fixedPosAdvice = project.extra["fixedPosAdvice"] as String
 	// The record-holder gate's scan (record-holder-gate.gradle.kts), run the same way.
 	@Suppress("UNCHECKED_CAST")
 	val recordHolderProblems = project.extra["recordHolderProblems"] as (File, File, (String) -> String, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
@@ -289,6 +308,15 @@ tasks.register("checkGametestFixtures") {
 					val problems = entityQueryProblems(root, root, blankLiterals, markedNear)
 					if (problems.isNotEmpty()) {
 						throw GradleException("Entity queries in production code. $entityQueryAdvice\n  " + problems.joinToString("\n  "))
+					}
+					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
+					continue
+				}
+				if (c["gate"] == "fixed_pos") {
+					val root = File(c["root"] as String)
+					val problems = fixedPosProblems(root, root, blankLiterals, markedNear)
+					if (problems.isNotEmpty()) {
+						throw GradleException("Literal world Y in evidence scenarios. $fixedPosAdvice\n  " + problems.joinToString("\n  "))
 					}
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue

@@ -278,13 +278,13 @@ public class WorkOrdersTest {
                         if (hands != 1) {
                             throw helper.assertionException("the hands the world owes should stand, found %s", hands);
                         }
-                        level.setChunkForced(chunkX, chunkZ, false);
+                        FarChunks.release(helper, level, chunkX, chunkZ);
                         by[0] = FarChunks.deadline();
                         phase[0] = 3;
                     }
                     case 3 -> {
                         if (by[0].awaitUnloaded(helper, level, chunkX, chunkZ)) {
-                            level.setChunkForced(chunkX, chunkZ, true);
+                            FarChunks.force(helper, level, chunkX, chunkZ);
                             by[0] = FarChunks.deadline();
                             phase[0] = 4;
                         }

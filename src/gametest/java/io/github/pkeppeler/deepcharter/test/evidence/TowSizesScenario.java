@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
 public class TowSizesScenario extends EvidenceScenario {
     private static final int X = 1200;
     private static final int Z = 1200;
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = SKY_SLAB_Y;
     /** Blocks between the rows of pods. */
     private static final int ROW_SPACING = 7;
     /** Centre to centre, inside the cable's reach and past every trail (7.9 for two Prospectors, 6.9 for two Moles). */
