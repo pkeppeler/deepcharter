@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
+import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -49,6 +50,9 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.resources.metadata.gui.GuiMetadataSection;
+import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
+import net.minecraft.data.AtlasIds;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
@@ -150,6 +154,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 expectTheCockpitHidesExactlyTheVanillaBottomCluster();
                 expectEveryReadoutLineHasAKindAndTheWarningsAreTheAlerts();
                 expectTheRibbonFitsEveryGuiScaleOfEveryWindow(context);
+                expectEveryPlateMessageIsAPlateCase();
+                expectThePlateHoldsEveryLineClearOfItsBorder(context);
                 expectTheRibbonIsTheDefaultSeatedHud(context);
                 expectCockpitHidesTheVanillaHud(context, singleplayer, pod);
                 expectTheActionBarStaysForTheMessagesOfTheGame(context);
@@ -699,6 +705,88 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
     }
 
+    /**
+     * The plate cases cover every message the plate can show: the lang keys of their lines are the readout's lines ({@link PodStatusHud#KINDS}, less the four the plain HUD
+     * shows and the plate shows as its tally instead) and the two tags, so a new readout line is not silently left out of the fit checks.
+     */
+    private static void expectEveryPlateMessageIsAPlateCase() {
+        Set<String> covered = drawnPlates().stream()
+                .flatMap(List::stream)
+                .flatMap(row -> row.parts().stream())
+                .map(part -> part.text().getContents())
+                .filter(TranslatableContents.class::isInstance)
+                .map(contents -> ((TranslatableContents) contents).getKey())
+                .collect(Collectors.toSet());
+        Set<String> expected = new TreeSet<>(PodStatusHud.KINDS.keySet());
+        // The plain HUD's four lines; the plate shows the same four values as its tally (tally_*).
+        expected.removeAll(Set.of(
+                "hud.deepcharter.pod.hull",
+                "hud.deepcharter.pod.fuel",
+                "hud.deepcharter.pod.cargo",
+                "hud.deepcharter.pod.depth"));
+        expected.add("hud.deepcharter.pod.signal_failing");
+        expected.add("hud.deepcharter.pod.signal_lost");
+        if (!covered.equals(expected)) {
+            throw new AssertionError("The plate cases cover every message of the plate: missing "
+                    + difference(expected, covered) + ", not a plate message " + difference(covered, expected));
+        }
+    }
+
+    /**
+     * The drawn text of every plate case clears the live plate sprite's nine-slice border by {@link CockpitLook#plateGap} on all four sides (#673: the text touched the
+     * border). The border is read from the sprite's own metadata in the GUI atlas, and the text's box is the plate's box less the inset the plate draws it at, so a
+     * plate sprite with a thicker border, or a drift between the box and the text's origin, fails here.
+     */
+    private void expectThePlateHoldsEveryLineClearOfItsBorder(ClientGameTestContext context) {
+        List<String> problems = context.computeOnClient(client -> {
+            CockpitLook look = CockpitLook.current();
+            CockpitLook.Layout layout = look.ribbon();
+            GuiSpriteScaling.NineSlice nine = (GuiSpriteScaling.NineSlice) client.getAtlasManager()
+                    .getAtlasOrThrow(AtlasIds.GUI)
+                    .getSprite(layout.sprite("plate"))
+                    .contents()
+                    .getAdditionalMetadata(GuiMetadataSection.TYPE)
+                    .orElseThrow(() -> new AssertionError("the plate sprite has no GUI metadata"))
+                    .scaling();
+            GuiSpriteScaling.NineSlice.Border border = nine.border();
+            List<String> found = new ArrayList<>();
+            for (List<CockpitHud.Row> rows : drawnPlates()) {
+                CockpitHud.Box box = CockpitHud.plateBox(client.font, layout, look, rows, 427, 240);
+                GuiSpriteScaling.NineSlice.Border inset = CockpitHud.plateInset(layout, look);
+                int widest = 0;
+                for (CockpitHud.Row row : rows) {
+                    int width = look.tallyGap() * (row.parts().size() - 1);
+                    for (PodStatusHud.Line part : row.parts()) {
+                        width += client.font.width(part.text());
+                    }
+                    widest = Math.max(widest, width);
+                }
+                int textLeft = box.left() + inset.left();
+                int textTop = box.top() + inset.top();
+                int textRight = textLeft + widest;
+                int textBottom = textTop
+                        + rows.size()
+                                * (client.font.lineHeight + HudLook.current().podStatusLineGap())
+                        - HudLook.current().podStatusLineGap();
+                int[] clear = {
+                    textLeft - (box.left() + border.left()),
+                    textTop - (box.top() + border.top()),
+                    box.left() + box.width() - border.right() - textRight,
+                    box.top() + box.height() - border.bottom() - textBottom
+                };
+                if (Arrays.stream(clear).anyMatch(side -> side < look.plateGap())) {
+                    found.add(rows.getLast().parts().getFirst().text().getString() + ": clear by (left, top, right,"
+                            + " bottom) " + Arrays.toString(clear) + " in a plate " + box.width() + " x "
+                            + box.height() + ", the gap is " + look.plateGap());
+                }
+            }
+            return found;
+        });
+        if (!problems.isEmpty()) {
+            throw new AssertionError("The plate's text must clear its border: " + problems);
+        }
+    }
+
     private static List<String> ribbonProblems(Font font, int guiWidth, int guiHeight, String where) {
         List<String> problems = new ArrayList<>();
         CockpitLook look = CockpitLook.current();
@@ -796,7 +884,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("lava_above", 6),
                 line("glaze_holding", 12),
                 line("glaze_spent"));
-        List<PodStatusHud.Line> notes = List.of(line("slag", 12, 8), line("liner", 3), line("lining", 5));
+        List<PodStatusHud.Line> notes = List.of(
+                line("slag", 12, 8), line("slag_only", 12), line("liner", 3), line("lining", 5), line("brace_working"));
         PodStatusHud.Line tally = line("tally_hull", 100, 100);
         List<CockpitHud.Row> head = List.of(
                 new CockpitHud.Row(
@@ -806,6 +895,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         for (PodStatusHud.Line alert : alerts) {
             cases.add(rowsOf(head, List.of(alert)));
         }
+        for (PodStatusHud.Line note : notes) {
+            cases.add(rowsOf(head, List.of(note)));
+        }
+
         cases.add(rowsOf(
                 head,
                 Stream.concat(
@@ -819,6 +912,16 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                                 notes.stream())
                         .toList()));
         return cases;
+    }
+
+    /** The plates that can be drawn: the readout's {@link #plateCases} and the one-row tags that stand in for a dark plate (they are not readout lines and have no kind). */
+    private static List<List<CockpitHud.Row>> drawnPlates() {
+        return Stream.concat(
+                        plateCases().stream(),
+                        Stream.of(
+                                List.of(CockpitHud.Row.of(line("signal_failing"))),
+                                List.of(CockpitHud.Row.of(line("signal_lost")))))
+                .toList();
     }
 
     private static List<CockpitHud.Row> rowsOf(List<CockpitHud.Row> head, List<PodStatusHud.Line> lines) {

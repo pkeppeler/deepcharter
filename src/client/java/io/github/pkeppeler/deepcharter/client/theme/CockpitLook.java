@@ -26,7 +26,7 @@ import net.minecraft.resources.Identifier;
  * @param hullLowFraction the share of the hull from which and below the hull gauge warns
  * @param heatRisePerTick how fast the heat gauge climbs toward 1 while lava burns the hull, per client tick
  * @param heatFallPerTick how fast it falls back to 0 when the hull stops burning, per client tick
- * @param platePad the space between the readout plate's edge and its text
+ * @param plateGap the space between the inside of the readout plate sprite's border and its text, on each side
  * @param heatWarning the heat from which the heat gauge is in warning
  * @param scannerTitleGap the space between the scanner window and its title under it
  * @param lampGap the space between two warning lamps
@@ -49,7 +49,7 @@ public record CockpitLook(
         double hullLowFraction,
         double heatRisePerTick,
         double heatFallPerTick,
-        int platePad,
+        int plateGap,
         double heatWarning,
         int scannerTitleGap,
         int lampGap,
@@ -357,7 +357,7 @@ public record CockpitLook(
                 d.decimal("hullLowFraction", 0, 1),
                 d.decimal("heatRisePerTick", 0.001, 1),
                 d.decimal("heatFallPerTick", 0.001, 1),
-                d.integer("platePad", 0, 16),
+                d.integer("plateGap", 0, 16),
                 d.decimal("heatWarning", 0, 1),
                 d.integer("scannerTitleGap", 0, 16),
                 d.integer("lampGap", 0, 8),
