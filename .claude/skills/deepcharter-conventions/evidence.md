@@ -36,4 +36,6 @@
 
 A concept round shows each option at least once in its real in-game place and lighting (fog, grade, lamp light), not only in a comparison set: a staged backdrop can flatter an option in a way the game never shows it.
 
+A concept round gets its own issue, and its branch is named after that issue: the merge gate wants the branch's issue to be exactly the closing set, which `Part of #N` cannot meet.
+
 A rock texture round (`layer-concepts`) is judged on `tools/layer_concepts/grid.py` over the `wide-wall` and `vanilla-reference` stills, which `tools/record-evidence.sh` runs, and on the eye, not on the seam check alone: the seam check reads textures and cannot see a grid that a model or a motif makes, and grid.py does not see a point motif.
