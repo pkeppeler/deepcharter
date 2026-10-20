@@ -399,14 +399,11 @@ public final class CockpitHud {
     /** Where the plate is on the screen. */
     public record Box(int left, int top, int width, int height) {}
 
-    /** The space from the plate's edge to its text on each side. */
-    public record Inset(int left, int top, int right, int bottom) {}
-
     /**
      * The space from the plate's edge to its text: the plate sprite's nine-slice border on each side, which the sprite's own metadata gives (so a pack that draws a
      * thicker border keeps its text clear of it), and {@link CockpitLook#plateGap} past it. A sprite that is not cut in nine has no border.
      */
-    public static Inset plateInset(Layout layout, CockpitLook look) {
+    public static GuiSpriteScaling.NineSlice.Border plateInset(Layout layout, CockpitLook look) {
         GuiSpriteScaling scaling = Minecraft.getInstance()
                 .getAtlasManager()
                 .getAtlasOrThrow(AtlasIds.GUI)
@@ -418,9 +415,10 @@ public final class CockpitHud {
         int gap = look.plateGap();
         if (scaling instanceof GuiSpriteScaling.NineSlice nine) {
             GuiSpriteScaling.NineSlice.Border border = nine.border();
-            return new Inset(border.left() + gap, border.top() + gap, border.right() + gap, border.bottom() + gap);
+            return new GuiSpriteScaling.NineSlice.Border(
+                    border.left() + gap, border.top() + gap, border.right() + gap, border.bottom() + gap);
         }
-        return new Inset(gap, gap, gap, gap);
+        return new GuiSpriteScaling.NineSlice.Border(gap, gap, gap, gap);
     }
 
     /** The plate that holds {@code rows}, as big as its longest row and the number of rows, hung from the layout's readout anchor. */
@@ -430,7 +428,7 @@ public final class CockpitHud {
         for (Row row : rows) {
             widest = Math.max(widest, row.width(font, look.tallyGap()));
         }
-        Inset inset = plateInset(layout, look);
+        GuiSpriteScaling.NineSlice.Border inset = plateInset(layout, look);
         int width = widest + inset.left() + inset.right();
         int height = rows.size() * rowPitch(font) - HudLook.current().podStatusLineGap() + inset.top() + inset.bottom();
         return new Box(layout.readout().left(guiWidth, width), layout.readout().top(guiHeight, height), width, height);
@@ -438,7 +436,7 @@ public final class CockpitHud {
 
     /** How many rows the plate has room for under its anchor on a GUI {@code guiHeight} high. */
     public static int roomForRows(Font font, Layout layout, CockpitLook look, int guiHeight) {
-        Inset inset = plateInset(layout, look);
+        GuiSpriteScaling.NineSlice.Border inset = plateInset(layout, look);
         int room = guiHeight
                 - layout.readout().top(guiHeight, 0)
                 - inset.top()
@@ -468,7 +466,7 @@ public final class CockpitHud {
                 : jumped(decay, fitting(all, roomForRows(font, layout, look, graphics.guiHeight())));
         Box box = plateBox(font, layout, look, rows, graphics.guiWidth(), graphics.guiHeight());
         CrtDraw.sprite(graphics, layout.sprite("plate"), box.left(), box.top(), box.width(), box.height());
-        Inset inset = plateInset(layout, look);
+        GuiSpriteScaling.NineSlice.Border inset = plateInset(layout, look);
         int y = box.top() + inset.top();
         for (Row row : rows) {
             int x = box.left() + inset.left();

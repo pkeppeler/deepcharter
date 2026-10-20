@@ -736,7 +736,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             List<String> found = new ArrayList<>();
             for (List<CockpitHud.Row> rows : drawnPlates()) {
                 CockpitHud.Box box = CockpitHud.plateBox(client.font, layout, look, rows, 427, 240);
-                CockpitHud.Inset inset = CockpitHud.plateInset(layout, look);
+                GuiSpriteScaling.NineSlice.Border inset = CockpitHud.plateInset(layout, look);
                 int widest = 0;
                 for (CockpitHud.Row row : rows) {
                     int width = look.tallyGap() * (row.parts().size() - 1);
