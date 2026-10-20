@@ -80,6 +80,7 @@ public class PodMovementClientTest implements FabricClientGameTest {
                 chunks.add(new ChunkPos(chunkX, chunkZ));
             }
         }
+        // force-ok: a client test has no GameTestHelper to release through; the world is discarded when the test ends
         two.server()
                 .runOnServer(server ->
                         chunks.forEach(chunk -> server.overworld().setChunkForced(chunk.x(), chunk.z(), true)));

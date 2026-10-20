@@ -58,6 +58,7 @@ public class MentionsTest {
     public void passes(GameTestHelper helper) {
         String text = "level.setChunkForced(3, 4, true)";
         level.getChunkSource().addTicketWithRadius(TicketType.PORTAL, pos, 0);
+        level.getChunkSource().removeTicketWithRadius(TicketType.FORCED, pos, 0);
     }
 }
 """,

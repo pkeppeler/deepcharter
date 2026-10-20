@@ -43,14 +43,14 @@ public final class UnloadedChunk {
             switch (phase[0]) {
                 case 1 -> {
                     stages.whileLoaded().run();
-                    level.setChunkForced(chunkX, chunkZ, false);
+                    FarChunks.release(helper, level, chunkX, chunkZ);
                     by[0] = FarChunks.deadline();
                     phase[0] = 2;
                 }
                 case 2 -> {
                     if (by[0].awaitUnloaded(helper, level, chunkX, chunkZ)) {
                         stages.whileUnloaded().run();
-                        level.setChunkForced(chunkX, chunkZ, true);
+                        FarChunks.force(helper, level, chunkX, chunkZ);
                         by[0] = FarChunks.deadline();
                         phase[0] = 3;
                     }

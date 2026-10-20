@@ -187,6 +187,8 @@ public final class LayerConceptScenes {
     private static void forceChunks(ServerLevel level, BlockPos low, BlockPos high, boolean forced) {
         for (int cx = low.getX() >> 4; cx <= high.getX() >> 4; cx++) {
             for (int cz = low.getZ() >> 4; cz <= high.getZ() >> 4; cz++) {
+                // force-ok: scenario scenes have no GameTestHelper; place() forces and release() lets go when the test
+                // is done with the scene
                 level.setChunkForced(cx, cz, forced);
                 level.getChunk(cx, cz);
             }

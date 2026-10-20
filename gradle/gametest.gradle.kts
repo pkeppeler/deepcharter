@@ -57,10 +57,10 @@ object GametestScan {
 	private const val HUD_TOGGLE_MARKER = "// hud-toggle:"
 	private val hudToggle = Regex("""\b(?:keyToggleGui|hideGui|KEY_F1)\b|\bhud\s*\.\s*toggle\s*\(""")
 	// A chunk a test forces and never releases pins its whole generation neighbourhood (up to 17 x 17 chunks) for the rest of the run (#569).
-	// FarChunks.force releases it when the test finishes. Any setChunkForced whose last argument is not the literal false, or a TicketType.FORCED
-	// ticket, outside FarChunks.java is flagged, or marked with the comment below, with a reason, on its statement or the comment line above it.
+	// FarChunks.force releases it when the test finishes. Any setChunkForced whose last argument is not the literal false, or an addTicket* of TicketType.FORCED,
+	// outside FarChunks.java is flagged, or marked with the comment below, with a reason, on its statement or the comment line above it.
 	private const val FORCE_MARKER = "// force-ok:"
-	private val chunkForce = Regex("""\bsetChunkForced\s*\((?![^;]*?,\s*false\s*\))|\bTicketType\s*\.\s*FORCED\b""")
+	private val chunkForce = Regex("""\bsetChunkForced\s*\((?![^;]*?,\s*false\s*\))|\baddTicket\w*\s*\(\s*TicketType\s*\.\s*FORCED\b""")
 	// GameTestHelper.onEachTick queues one runnable per remaining tick of the test's maxTicks, and the runner keeps every finished test until
 	// the run ends, so the suite's live heap grew to 4.4 GB (#548). TestTicks.each keeps one. No suppression: there is no case for the queue.
 	private val onEachTickCall = Regex("""\bonEachTick\b""")

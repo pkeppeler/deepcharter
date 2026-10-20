@@ -211,6 +211,9 @@ public class PodChunkLoadTest {
     private static void tickAtTheEdge(
             GameTestHelper helper, ServerLevel level, Site site, int ticks, Supplier<PodEntity> spawn, Runnable check) {
         ChunkPos home = site.chunk();
+        // force-ok: a radius-0 ticket keeps neighbours unloaded, which FarChunks.force's full forced neighbourhood
+        // would defeat; removed
+        // in the finally below
         level.getChunkSource().addTicketWithRadius(TicketType.FORCED, home, 0);
         PodEntity[] pod = {null};
         int[] ticked = {0};

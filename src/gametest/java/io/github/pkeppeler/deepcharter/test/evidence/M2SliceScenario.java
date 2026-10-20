@@ -821,6 +821,8 @@ public class M2SliceScenario extends EvidenceScenario {
                     for (int chunkZ = Math.min((int) far.z, (int) near.z) >> 4;
                             chunkZ <= Math.max((int) far.z, (int) near.z) >> 4;
                             chunkZ++) {
+                        // force-ok: an evidence scenario has no GameTestHelper to release through; its world is
+                        // discarded when the run ends
                         level.setChunkForced(chunkX, chunkZ, true);
                     }
                 }
