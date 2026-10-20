@@ -56,8 +56,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
     private static final double ORBIT_RADIUS = 5;
     private static final int X = 1500;
     private static final int Z = 1500;
-    // fixed-pos: a stone slab the scenario builds in the overworld sky, clear of the terrain
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = SKY_SLAB_Y;
     private static final int SLAB_RADIUS = 10;
     private static final int SLAB_DEPTH = 40;
     /** Chat lines (the join messages) stay on screen for 10 seconds. */

@@ -1,7 +1,8 @@
 """Tests the fixed-position gate in gradle/fixed-pos-gate.gradle.kts: in an evidence scenario (a file under test/evidence), a numeric literal for a
 world Y fails the build unless a `// fixed-pos: <reason>` marker with a reason sits on its statement or the comment lines above it. A literal Y is a
-`*_Y` constant set to a number, a literal Y of 50 or more in a BlockPos or Vec3, and a literal Y in teleportTo, setPos, moveTo, snapTo or atY.
-A relative offset (an all-literal vector of small numbers, pos.offset(1, 0, 2), above(3)) is not a position and is left alone.
+`*_Y` constant set to a number, a literal Y in a BlockPos or Vec3 beside literal X and Z of 100 or more, and a literal Y in teleportTo, setPos, moveTo, snapTo or atY.
+An absolute place is a literal Y with literal X and Z of 100 or more (new BlockPos(3616, 40, 3616)). A relative offset (a vector with a small or variable X or Z,
+pos.offset(1, 0, 2), above(3)) is not a position and is left alone.
 
 Its fixture trees go through checkGametestFixtures in one Gradle run (gate_checks.py, gate_batch.py), so it needs the repo's Gradle wrapper
 on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
@@ -21,6 +22,11 @@ public class RelativeScenario extends EvidenceScenario {
     private static final Vec3 LOOK = new Vec3(0, 1.62, -4);
     private static final BlockPos STEP = new BlockPos(-1, 0, 2);
     private static final BlockPos HIGH_STEP = new BlockPos(3, 12, 5);
+    private static final BlockPos TOP = new BlockPos(0, 64, 0);
+    private static final BlockPos CAVE = new BlockPos(-6, 0, -7);
+    private static final BlockPos NEAR_Z = new BlockPos(2000, 100, 5);
+    private static final Vec3 CAMERA = new Vec3(0.5, -60, 0.5);
+    private static final BlockPos VARIABLE_XZ = new BlockPos(X, 100, Z); // a known blind spot, listed in the gate header
     void stage(ServerLevel level, ServerPlayer player, BlockPos pad) {
         BlockPos a = pad.offset(1, 0, 2);
         BlockPos b = pad.above(3).relative(Direction.NORTH, 4);
@@ -75,11 +81,12 @@ STATEMENTS = {
     "constant of a name that is only Y": ("static final int Y = 64;", 3),
     "double constant": ("private static final double START_Y = 40.5;", 3),
     "negative constant": ("private static final int FEET_Y = -60;", 3),
-    "BlockPos": ("BlockPos at = new BlockPos(0, 64, 0);", 3),
-    "BlockPos with a variable x and z": ("BlockPos at = new BlockPos(X, 100, Z);", 3),
-    "BlockPos.containing": ("BlockPos at = BlockPos.containing(X, 64.5, Z);", 3),
-    "Vec3": ("Vec3 at = new Vec3(0.5, -60, 0.5);", 3),
-    "Vec3 inside atCenterOf": ("Vec3 at = Vec3.atCenterOf(new BlockPos(10, 200, 10));", 3),
+    "BlockPos": ("BlockPos at = new BlockPos(3616, 40, 3616);", 3),
+    "BlockPos with a small Y": ("BlockPos at = new BlockPos(2000, 4, 2000);", 3),
+    "negative BlockPos": ("BlockPos at = new BlockPos(-2000, 100, -100);", 3),
+    "BlockPos.containing": ("BlockPos at = BlockPos.containing(2000, 64.5, 3000);", 3),
+    "Vec3": ("Vec3 at = new Vec3(2000.5, -60, 2000.5);", 3),
+    "Vec3 inside atCenterOf": ("Vec3 at = Vec3.atCenterOf(new BlockPos(1000, 200, 1000));", 3),
     "teleportTo with a level": ("void go(ServerPlayer p, ServerLevel level) { p.teleportTo(level, X, 200, Z, Set.of(), 0f, 0f, true); }", 3),
     "teleportTo": ("void go(ServerPlayer p) { p.teleportTo(X, 64, Z); }", 3),
     "setPos": ("void go(PodEntity pod) { pod.setPos(X, 4, Z); }", 3),

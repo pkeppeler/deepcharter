@@ -36,9 +36,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodLinerDryScenario extends EvidenceScenario {
     private static final int X = 4700;
     private static final int Z = 4600;
-    // fixed-pos: a layer 1 room the scenario carves at this height, above the signal-decay onset of layer 1
-    // (SignalDecayTuning band 1), so the gauges stay live
-    private static final int FLOOR_Y = 100;
+    private static final int FLOOR_Y = LAYER_ROOM_Y;
     private static final int RADIUS = 6;
     private static final int DEPTH = 16;
     /** The gallery south of the bore: air from the room down to {@link #LENS_Y} + 1, 7 wide, 5 deep. The lava lens is its floor. */

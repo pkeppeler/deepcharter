@@ -46,9 +46,8 @@ public class LayoutGateScenario extends EvidenceScenario {
     protected void run(ClientGameTestContext context) {
         try (TestSingleplayerContext _ = context.worldBuilder().create()) {
             String name = "W".repeat(CharterTuning.DEFAULT.maxNameLength());
-            // fixed-pos: a screen fixture: the terminal's position is never sent or looked up, no block stands there
             TerminalView view = new TerminalView(
-                    new BlockPos(0, 64, 0), ContractTerminal.TYPE.id(), true, true, List.of(), Optional.empty());
+                    BlockPos.ZERO, ContractTerminal.TYPE.id(), true, true, List.of(), Optional.empty());
             context.setScreen(() -> TerminalScreens.create(view));
             ClientWait.screen(context, ContractScreen.class);
             context.runOnClient(client -> ClientSession.screen(client, ContractScreen.class)

@@ -28,8 +28,7 @@ import net.minecraft.world.scores.Team;
 public class TowingScenario extends EvidenceScenario {
     private static final int X = 900;
     private static final int Z = 900;
-    // fixed-pos: a stone slab the scenario builds in the overworld sky, clear of the terrain
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = SKY_SLAB_Y;
     /** The slab the pods drive and drill in, west of the platform the watcher stands on, with a gap between. */
     private static final int SLAB_WEST = 6;
 

@@ -32,7 +32,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public class CompanyRockScenario extends EvidenceScenario {
     /** Where the rooms stand in each layer's dimension, on a chunk boundary, and the box of whole chunks of rock round all of them (a chunk the box covers in part never reached the client in two runs of three). */
-    private static final BlockPos ORIGIN = new BlockPos(3616, 40, 3616);
+    private static final BlockPos ORIGIN = new BlockPos(3616, LIVE_GAUGES_FLOOR_Y, 3616);
 
     private static final BlockPos ROCK_LOW = new BlockPos(-16, -3, -16);
     private static final BlockPos ROCK_HIGH = new BlockPos(63, 12, 15);

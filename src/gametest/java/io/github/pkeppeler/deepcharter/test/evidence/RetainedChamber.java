@@ -28,8 +28,7 @@ final class RetainedChamber {
     /** The layer the chamber is cut into: the terrain there is noise, so the chamber is carved and sealed in the rock. */
     static final int LAYER = 2;
 
-    // fixed-pos: a chamber the scenario carves and seals in the rock of layer 2
-    static final BlockPos FLOOR = new BlockPos(2000, 100, 2000);
+    static final BlockPos FLOOR = new BlockPos(2000, EvidenceScenario.LAYER_ROOM_Y, 2000);
     static final double EYE = 1.62;
     private static final int SETTLE_POLLS = 5;
 

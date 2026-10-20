@@ -5,12 +5,15 @@
 //
 // What it flags, on code with comments and string literals blanked:
 //   - a constant named Y or *_Y set to a numeric literal (FLOOR_Y = 4); one derived from it (FLOOR_Y - 4) is not;
-//   - a literal Y of 50 or more in magnitude in new BlockPos(x, y, z), BlockPos.containing, new Vec3 or new Vec3i;
+//   - a literal Y, of any size, in new BlockPos(x, y, z), BlockPos.containing, new Vec3 or new Vec3i when X and Z are literals of 100 or more in
+//     magnitude too: an absolute place (new BlockPos(3616, 40, 3616));
 //   - a literal Y in teleportTo, setPos, setPosRaw, moveTo, snapTo, absMoveTo or atY.
-// What it leaves alone, on purpose: an all-literal vector of small numbers (new Vec3(0, 1.62, -4), new BlockPos(-1, 0, 2)). The scenarios hold about
-// a hundred of them and every one is an offset from a place the scenario derived, which no scan of the text can tell from a position. The same
-// goes for a literal X or Z: a scenario stages in its own carved room, far out in a layer's dimension, where no world change reaches it. Known blind
-// spots: a Y held in a name the scan does not know (a local `int floor = 4`), and a call split from its own parenthesis by a line break.
+// What it leaves alone, on purpose: a vector with a small or non-literal X or Z (new Vec3(0, 1.62, -4), new BlockPos(-6, 0, -7), new BlockPos(X, 100, Z)).
+// The scenarios hold about a hundred of the small ones and every one is an offset from a place the scenario derived, which no scan of the text can
+// tell from a position. A literal X or Z alone is not flagged either: a scenario stages in its own carved room, far out in a layer's dimension,
+// where no world change reaches it. Known blind spots, so a reviewer must still look: a Y held in a lowercase name or a local (`int floor = 4`), a Y
+// assigned after its declaration, a Y reached by `.above(n)` or `.offset(...)` from a position that is only known at run time, a Y with a variable X
+// or Z (`new BlockPos(X, 100, Z)`), and a call split from its own parenthesis by a line break.
 //
 // tools/tests/fixed_pos_gate_check.py runs the scan over fixture trees (checkGametestFixtures in gametest.gradle.kts), so a change that makes
 // the pattern miss fails there, not silently.
@@ -22,7 +25,7 @@ object FixedPosGate {
 	private val MOVE = Regex("""\.\s*(teleportTo|setPosRaw|setPos|moveTo|snapTo|absMoveTo|atY)\s*\(""")
 	private val COMMENT = Regex("(?s)/\\*.*?\\*/|//[^\\n]*")
 	private val notNewline = Regex("[^\\n]")
-	private const val MIN_LITERAL_Y = 50.0
+	private const val MIN_LITERAL_XZ = 100.0
 
 	private fun isNumber(argument: String?): Boolean = argument != null && NUMBER.matches(argument.trim())
 
@@ -59,7 +62,7 @@ object FixedPosGate {
 		CONSTANT.findAll(code).forEach { starts.add(it.range.first) }
 		POSITION.findAll(code).forEach { match ->
 			val args = arguments(code, match.range.last + 1)
-			if (args.size == 3 && isNumber(args[1]) && magnitude(args[1]) >= MIN_LITERAL_Y) starts.add(match.range.first)
+			if (args.size == 3 && args.all { isNumber(it) } && magnitude(args[0]) >= MIN_LITERAL_XZ && magnitude(args[2]) >= MIN_LITERAL_XZ) starts.add(match.range.first)
 		}
 		MOVE.findAll(code).forEach { match ->
 			val args = arguments(code, match.range.last + 1)
@@ -78,7 +81,8 @@ object FixedPosGate {
 }
 
 val fixedPosAdvice = "Derive the place: the colony's anchors (Colony.anchor, ColonySite), a RoomCarver room, the layer's own geometry, or " +
-	"EvidenceScenario.LIVE_GAUGES_FLOOR_Y and the decay tuning. A place that cannot be derived ends with '// fixed-pos: <reason>'. See evidence.md."
+	"EvidenceScenario.LIVE_GAUGES_FLOOR_Y and the decay tuning. A place that cannot be derived ends with '// fixed-pos: <reason>'. Not flagged, so check by eye: " +
+	"a lowercase or local Y, a Y set after its declaration, .above(n) from a run-time position, a Y beside a variable X or Z, and small all-literal offsets. See evidence.md."
 
 /** The problems (file:line message) in the evidence scenarios under {@code root}, relative to {@code base}. */
 val fixedPosProblems: (File, File, (String) -> String, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String> = { root, base, blankLiterals, markedNear ->

@@ -16,8 +16,7 @@ import net.minecraft.world.phys.Vec3;
 public class TowLineShaftScenario extends EvidenceScenario {
     private static final int X = 1900;
     private static final int Z = 1900;
-    // fixed-pos: a stone slab the scenario builds in the overworld sky, clear of the terrain
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = SKY_SLAB_Y;
     /** The rock's top. The shaft is open to the sky above it. */
     private static final int ROCK_HEIGHT = 16;
 
