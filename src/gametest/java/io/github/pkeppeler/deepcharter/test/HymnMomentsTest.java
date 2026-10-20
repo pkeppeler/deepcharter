@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.sound.HymnMoments;
+import io.github.pkeppeler.deepcharter.sound.HymnMomentsProbe;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import java.util.List;
@@ -118,7 +119,7 @@ public class HymnMomentsTest {
     }
 
     @GameTest
-    public void joiningACharterPlaysTheColonyHymnToTheNewCrewAndTheFounderHearsNothingMore(GameTestHelper helper) {
+    public void aPlayerJoiningACharterHearsTheColonyHymnAndTheFounderIsNotPlayedItAgain(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer founder = MockPlayers.join(helper, "Director");
         MockPlayer crew = MockPlayers.join(helper, "Crew");
@@ -186,6 +187,25 @@ public class HymnMomentsTest {
             expect(
                     helper,
                     pilot.soundsHeard().equals(List.of(id("hymn.layer_1"), id("hymn.colony"), id("hymn.layer_1"))),
+                    "the pilot heard %s",
+                    pilot.soundsHeard());
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void aStoppedServerForgetsWhichHymnsWerePlayingSoTheNextCrossingPlaysAgain(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        MockPlayer pilot = MockPlayers.join(helper, "Restarter");
+        ServerLevel surface = server.overworld();
+        ServerLevel layer1 = server.getLevel(LayerChain.dimension(1));
+        BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
+        HymnMomentsProbe.stopped();
+        BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), surface, layer1, LayerChain.SURFACE, 1);
+        helper.runAfterDelay(DRAIN_TICKS, () -> {
+            expect(
+                    helper,
+                    pilot.soundsHeard().equals(List.of(id("hymn.layer_1"), id("hymn.layer_1"))),
                     "the pilot heard %s",
                     pilot.soundsHeard());
             helper.succeed();

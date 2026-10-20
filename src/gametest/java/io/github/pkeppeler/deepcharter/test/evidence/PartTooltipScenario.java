@@ -1,11 +1,12 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import static io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields.intField;
+
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
-import java.lang.reflect.Field;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
@@ -73,21 +74,11 @@ public class PartTooltipScenario extends EvidenceScenario {
             Slot slot = screen.getMenu().getSlot(HOTBAR_START + hotbar);
             double scale = client.getWindow().getGuiScale();
             return new double[] {
-                (field(screen, "leftPos") + slot.x + HALF_SLOT) * scale,
-                (field(screen, "topPos") + slot.y + HALF_SLOT) * scale
+                (intField(screen, "leftPos") + slot.x + HALF_SLOT) * scale,
+                (intField(screen, "topPos") + slot.y + HALF_SLOT) * scale
             };
         });
         context.getInput().setCursorPos(cursor[0], cursor[1]);
         context.waitTicks(4); // tick-wait: the hovered slot and its tooltip show on the next frames
-    }
-
-    private static int field(AbstractContainerScreen<?> screen, String name) {
-        try {
-            Field field = AbstractContainerScreen.class.getDeclaredField(name);
-            field.setAccessible(true);
-            return field.getInt(screen);
-        } catch (ReflectiveOperationException e) {
-            throw new LinkageError("a container screen has no field " + name + "; the scenario reads it by name", e);
-        }
     }
 }

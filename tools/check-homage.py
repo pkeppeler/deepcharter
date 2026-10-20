@@ -30,6 +30,9 @@ APOSTROPHE = re.compile(r"['`\u2019\u02bc]")
 LINK = re.compile(r"!?\[([^\]]*)\](?:\([^)]*\)|\[[^\]]*\])")
 LINK_DEFINITION = re.compile(r"^\s{0,3}\[[^\]]+\]:\s")
 URL = re.compile(r"<https?://[^>]*>|https?://[^\s)>]+")
+HTML_ATTRIBUTE = r"""\s+[\w:-]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+)"""
+HTML_TAG = re.compile(rf"<[a-z][a-z0-9]*(?:{HTML_ATTRIBUTE})*\s*/?>|</[a-z][a-z0-9]*\s*>", re.IGNORECASE)  # a tag shape, so "x<y and p>q" stays text
+FOOTNOTE_MARKER = re.compile(r"\[\^[^\]]*\]")
 HEADING = re.compile(r"^\s{0,3}#{1,6}(\s|$)")
 FENCE = re.compile(r"^\s{0,3}(```|~~~)")
 LIST_ITEM = re.compile(r"^\s*([-*+]|\d+[.)])\s")
@@ -45,10 +48,12 @@ def words(text: str) -> list[str]:
 
 
 def prose(line: str) -> str:
-    """A markdown line as readable text: links keep their label, URLs and link definitions go, entities are decoded."""
+    """A markdown line as readable text: links keep their label, URLs, link definitions, inline HTML tags and footnote markers go,
+    entities are decoded."""
     if LINK_DEFINITION.match(line):
         return ""
-    return html.unescape(URL.sub(" ", LINK.sub(r"\1", line)))
+    unlinked = URL.sub(" ", LINK.sub(r"\1", FOOTNOTE_MARKER.sub("", line)))
+    return html.unescape(HTML_TAG.sub(" ", unlinked))
 
 
 def markdown_segments(text: str) -> list[Segment]:
@@ -165,19 +170,19 @@ def main(argv: list[str]) -> int:
     if story is None:
         print(f"check-homage: {args.reference} has no '## 6.' section.", file=sys.stderr)
         return 2
-    ours = {seq for segment in markdown_segments(story) for seq in sequences(segment)}
-    if not ours:
+    reference_seqs = {seq for segment in markdown_segments(story) for seq in sequences(segment)}
+    if not reference_seqs:
         print(f"check-homage: section 6 of {args.reference} has no {WINDOW}-word sequences.", file=sys.stderr)
         return 2
     try:
-        theirs = ours - allowed(args.allow)
+        forbidden = reference_seqs - allowed(args.allow)
     except ValueError as error:
         print(f"check-homage: {error}", file=sys.stderr)
         return 2
 
     total = 0
     for path in scanned_files(args.root):
-        for line, run in shared_runs(path, theirs):
+        for line, run in shared_runs(path, forbidden):
             print(f"{path.relative_to(args.root).as_posix()}:{line}: {' '.join(run)}")
             total += 1
     if total:
