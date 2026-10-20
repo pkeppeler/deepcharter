@@ -1,7 +1,7 @@
 # Runs the client GameTests headless on a Linux runner. Shared by client-tests.yml (all
 # tests) and record-evidence.yml (one evidence scenario). The caller checks out the repo
 # first; this action does the rest. Composite steps take no timeout, so the run step
-# enforces its own 15 minute deadline.
+# enforces its own 22 minute deadline.
 name: Client GameTests
 description: Headless client GameTests on a Linux runner, optionally selecting one evidence scenario.
 
@@ -76,12 +76,17 @@ runs:
           exit 1
         }
         deadline=$((SECONDS + 180))
+        # A passing run takes about 14 minutes (60 classes). Both callers set timeout-minutes: 30,
+        # which also covers checkout, setup and the post steps (a few minutes), so stopping at
+        # 22 minutes keeps at least 5 minutes under the job limit and leaves 8 minutes of
+        # slack over a normal run. Raise this only together with those two job limits.
+        max_seconds=1320
         while kill -0 "$gradle_pid" 2>/dev/null; do
           if grep -q 'Failed to create backend' "$log"; then
             stop_gradle "Minecraft could not create a graphics backend"
           fi
-          if [ "$SECONDS" -ge 900 ]; then
-            stop_gradle "Client GameTests exceeded 15 minutes"
+          if [ "$SECONDS" -ge "$max_seconds" ]; then
+            stop_gradle "Client GameTests exceeded $((max_seconds / 60)) minutes"
           fi
           if [ "$SECONDS" -ge "$deadline" ] \
             && ! grep -q 'Created window using SDL video driver' "$log"; then
