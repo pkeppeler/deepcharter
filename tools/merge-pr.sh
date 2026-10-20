@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 # Usage: tools/merge-pr.sh <pr-number>
+#        tools/merge-pr.sh --check <pr-number>
+#
+# --check is read-only: it runs the whole gate below (the same functions, no second copy), prints each check's
+# state as the gate reads it and "GATE OK", and stops before retargeting or merging. It exits 1 with the same
+# "REFUSED:" line when the merge would refuse. Two things only the merge needs are printed as notes instead of
+# refusals, so a reviewer can run it earlier: the PR is a draft, and it has no `review-passed` label and comment.
 #
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
 # labelled `review-passed` with a `review-passed <head sha>` comment for the
@@ -22,8 +28,13 @@ repo=pkeppeler/deepcharter
 # Job names (ci.yml) that run on every PR; the label-gated client job is not listed.
 REQUIRED_CHECKS=(build tool-tests)
 
+gate_only=0
+if [[ ${1-} == --check ]]; then
+  gate_only=1
+  shift
+fi
 if [[ $# -ne 1 || ! $1 =~ ^[0-9]+$ ]]; then
-  echo "usage: tools/merge-pr.sh <pr-number>" >&2
+  echo "usage: tools/merge-pr.sh [--check] <pr-number>" >&2
   exit 2
 fi
 pr=$1
@@ -45,16 +56,28 @@ sha=$(pr_field headRefOid .headRefOid) || refuse "could not be read from GitHub"
 state=$(pr_field state .state)
 [[ $state == OPEN ]] || refuse "is not open (state: $state)"
 
-[[ $(pr_field isDraft .isDraft) == false ]] || refuse "is a draft"
+is_draft=$(pr_field isDraft .isDraft)
+if [[ $gate_only -eq 1 ]]; then
+  [[ $is_draft == false ]] && echo "draft: no" || echo "draft: yes (the merge refuses a draft)"
+else
+  [[ $is_draft == false ]] || refuse "is a draft"
+fi
 
 check_closing_reference # sets $branch, $issue, $body, $closes
 
 load_labels
-has_label review-passed || refuse "lacks the review-passed label"
-
 # Bodies are compared whole (as JSON strings), so a longer comment cannot match.
-pr_field comments '.comments[].body|@json' | grep -qxF "\"review-passed $sha\"" \
-  || refuse "has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
+review_pass_refusal=
+has_label review-passed || review_pass_refusal="lacks the review-passed label"
+if [[ -z $review_pass_refusal ]]; then
+  pr_field comments '.comments[].body|@json' | grep -qxF "\"review-passed $sha\"" \
+    || review_pass_refusal="has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
+fi
+if [[ $gate_only -eq 1 ]]; then
+  echo "review-passed: ${review_pass_refusal:+no ($review_pass_refusal)}${review_pass_refusal:-yes}"
+else
+  [[ -z $review_pass_refusal ]] || refuse "$review_pass_refusal"
+fi
 
 mergeable=$(pr_field mergeable .mergeable)
 [[ $mergeable == MERGEABLE ]] || refuse "is not mergeable (mergeable: $mergeable)"
@@ -81,6 +104,7 @@ checks=$(grep $'\t' <<<"$run_lines" | LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n 
   { s = ($4 == "completed") ? $5 : $4; if (s != "skipped") state = s }
   END { flush() }')
 while IFS=$'\t' read -r bucket name; do
+  [[ $gate_only -eq 0 ]] || echo "check $name: $bucket"
   case $bucket in
     pass | skipping) ;;
     *) refuse "has a check that is not passing: $name (newest non-skipped run: $bucket)" ;;
@@ -182,6 +206,11 @@ checked_closes=$closes
 closing_set
 [[ $closes == "$checked_closes" ]] \
   || refuse "closing set changed during the gate (was ${checked_closes:-empty}, now ${closes:-empty}); re-run"
+
+if [[ $gate_only -eq 1 ]]; then
+  echo "GATE OK: PR #$pr at $sha passes the merge gate (check only, nothing changed)"
+  exit 0
+fi
 
 # --delete-branch closes (it does not retarget) every open PR based on this head branch, and a
 # closed PR whose base is gone cannot be reopened (#663). Retarget each to this PR's base first.
