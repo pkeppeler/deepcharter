@@ -295,10 +295,7 @@ public class MockPlayersTest {
         AFTER_TICK.set(helper::succeed);
     }
 
-    /**
-     * Kills its mock and respawns it as the Respawn button does (#698), then ends. The listener moves to the new
-     * ServerPlayer, so the sweep must still disconnect it for Fabric to end the connection's networking addon.
-     */
+    /** Respawns its mock as the Respawn button does, so the sweep must disconnect the listener (#698). */
     @GameTest
     public void retentionProbeRespawnsItsMock(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "retention-respawn");
@@ -323,20 +320,17 @@ public class MockPlayersTest {
     @GameTest(maxTicks = 200)
     public void finishedTestDoesNotRetainItsMock(GameTestHelper helper) {
         helper.succeedWhen(() -> {
-            List<@Nullable WeakReference<ServerPlayer>> probes = new ArrayList<>();
-            probes.add(PROBE.get());
-            probes.add(OUTSIDE_PROBE.get());
             List<WeakReference<ServerPlayer>> respawned = RESPAWN_PROBE.get();
-            if (respawned != null) {
-                probes.addAll(respawned);
-            } else {
-                probes.add(null);
+            WeakReference<ServerPlayer> first = PROBE.get();
+            WeakReference<ServerPlayer> outside = OUTSIDE_PROBE.get();
+            if (respawned == null || first == null || outside == null) {
+                throw helper.assertionException(
+                        "a probe test has not joined its mock yet; run the whole MockPlayersTest class, not this test alone");
             }
+            List<WeakReference<ServerPlayer>> probes = new ArrayList<>(respawned);
+            probes.add(first);
+            probes.add(outside);
             for (WeakReference<ServerPlayer> probe : probes) {
-                if (probe == null) {
-                    throw helper.assertionException(
-                            "a probe test has not joined its mock yet; run the whole MockPlayersTest class, not this test alone");
-                }
                 System.gc();
                 if (probe.get() != null) {
                     throw helper.assertionException("a finished test still holds its mock ServerPlayer");
