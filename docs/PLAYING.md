@@ -38,6 +38,15 @@ You need a Minecraft Java Edition account.
 
 There are no trees and no ore on the surface. The Company's salvage crates lie in a ring round the colony, 100 to 160 blocks out: break one by hand for planks, sticks, cloth, scrap iron, scrap copper and a little redstone. Pale stalks grow on the floors of the deeper craters, such as the great pit south of the square: fell them for wood, craft the stalk into planks, and burn planks to melt scrap in a furnace. Regolith rock is your stone. That is enough for tools, a torch and every part the colony's terminals need. The crates do not come back, but your pod's rock does: with a spoil hopper fitted, park at the ore processor and press the spoil it kept into new salvage crates.
 
+## Optional mod: dynamic lights
+
+[LambDynamicLights](https://modrinth.com/mod/lambdynamiclights) makes light sources shine while they move. A lit pod's glow slides smoothly with the pod instead of stepping from block to block, and a Retained's helmet lamp throws a faint amber pool on the floor under it. A torch or lava bucket in your hand lights up too. Nothing else changes: the dark stays dark, and a pod with no lights part throws no light. It is for the client only, so the host does not need it.
+
+- **Version:** use exactly **4.13.0+26.3**, the one we tried. [Download it from Modrinth](https://modrinth.com/mod/lambdynamiclights/version/4.13.0+26.3) and drop the jar in the instance's mods folder (Prism: right-click the instance, **Folder**, **.minecraft/mods**). The build does not include it, because its licence does not let us hand the jar out.
+- **What breaks:** nothing we saw with Sodium 0.9.2 and Lithium 0.26.2 in the dark layers: the cockpit gauges, the headlamp beam, the glowing lamp on a Retained's helmet and the tow cable all drew as before. We did not try the colony's terminals or the scanner map with it. A Minecraft update can stop it loading, so keep the version above.
+- **Cost:** it rebuilds the chunks near a light each time the light moves. If the game stutters, open **Options, Video Settings**, find its **Dynamic Lights** setting and turn it down or off, or remove the jar.
+- **Reporting a bug:** reproduce it without the jar first. A flicker or stutter that only shows with it is LambDynamicLights' and not ours.
+
 ## Private audio pack
 
 The original game's sounds are not in the build. If the host gives you the audio pack (a `.zip` they build privately, see issue #57), drop it in your instance's `resourcepacks` folder (Prism: right-click the instance, **Folder**, **.minecraft/resourcepacks**), then enable it under **Options, Resource Packs**. Without it the game uses placeholder sounds. Never share the pack outside the group.
@@ -49,7 +58,7 @@ Host only: with the extracted originals in `original_flash_game/extracted/sounds
 - Content is partial: only the surface and layers 1 and 2 exist, with placeholder text, sounds and models. The lore and the creatures are unfinished.
 - Pods can run out of fuel and strand you. Bring coal.
 - Sodium and Lithium are speed mods and are not ours. If something looks wrong, remove them from the instance (**Edit, Mods**) and check whether the problem goes away. Say so in your report.
-- Do not add other mods. Old Sodium add-ons are blocked by it. Iris 1.11.7 now supports Sodium 0.9.2, but only as a dev opt-in, not for friends: see [iris-audit.md](tooling/iris-audit.md).
+- Do not add other mods, except the optional one above. Old Sodium add-ons are blocked by it. Iris 1.11.7 now supports Sodium 0.9.2, but only as a dev opt-in, not for friends: see [iris-audit.md](tooling/iris-audit.md).
 - Back up your world before updating the build.
 
 ## Report a bug

@@ -43,3 +43,12 @@ Permissions in `.claude/settings.json`:
 - Everything else (`break_block`, `place_block`, `use_item`, `attack_entity` and similar) prompts by default.
 
 Screenshots are the full framebuffer, so keep the window small.
+## Trying LambDynamicLights (opt-in, [#629](https://github.com/pkeppeler/deepcharter/issues/629))
+
+Set `DEEPCHARTER_LDL=1` on `tools/play.sh`, `./gradlew runClient`, `tools/record-evidence.sh` or `./gradlew runClientGameTest` to load [LambDynamicLights](lambdynamiclights-audit.md) in that client. Off by default.
+
+- The `fetchLambDynamicLights` task (`gradle/lambdynamiclights.gradle.kts`) downloads the audited jar into `run/ldl/` (git-ignored), checks its sha512 against the audit and refuses on a mismatch. The client runs get `-Dfabric.addMods=<that jar>`.
+- Only the client runs load it. The shipped jar, the server runs, CI and the build ignore the variable, and it is never a Gradle dependency (audit condition 2).
+- `assets/deepcharter/dynamiclights/entity/*.json` are plain LambDynamicLights data and do nothing without it. A pod's file matches on the block light at the pod's position (`location.light.block`): a lights part puts a light block of its level in the pod's column (ADR 0024), and data cannot read the part itself, so that is how a dark pod stays dark. The four levels (6, 9, 12, 15) copy the lights track in `UpgradeTuning`; if they drift, the dynamic light is only a little off, never wrong in kind.
+- A Retained's file gives every figure a level-6 light, including the rail line's figure whose lamp is not lit: data cannot see the lamp's state.
+- `ldl-dark-layers` records a lit pod and a dark pod in sealed layer 1 and layer 2 chambers. Record it with and without the variable and compare the stills with `tools/diff-stills`.
