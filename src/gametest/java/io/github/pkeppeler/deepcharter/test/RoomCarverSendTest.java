@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -30,7 +31,7 @@ public class RoomCarverSendTest {
 
     /** Carves the box once its chunks tick, brings the player in the same tick, and fails naming the chunks that are never sent. */
     private static void carveThenArrive(GameTestHelper helper, int layer, BlockPos min, BlockPos max) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         MockPlayer player = MockPlayers.join(helper, "send-" + min.getX());
         List<ChunkPos> chunks = ChunkPos.rangeClosed(
                         ChunkPos.containing(min.offset(-1, -1, -1)), ChunkPos.containing(max.offset(1, 1, 1)))
@@ -91,7 +92,7 @@ public class RoomCarverSendTest {
         int layer = 1;
         BlockPos min = new BlockPos(6800 + 4, FLOOR, 6800 + 4);
         BlockPos max = new BlockPos(6800 + 10, FLOOR + 4, 6800 + 10);
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         MockPlayer player = MockPlayers.join(helper, "had-" + min.getX());
         ChunkPos room = ChunkPos.containing(min);
         int[] stage = {0};

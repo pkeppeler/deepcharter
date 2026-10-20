@@ -750,25 +750,31 @@ public class PodLinerTest {
         }
     }
 
+    /** The pod once the far chunk ticks, and the watch made with it. */
+    private record Seated(PodEntity pod, Watch watch) {}
+
     private static final class Rig {
         private final MockPlayer pilot;
-        private @Nullable PodEntity pod;
-        private @Nullable Watch watch;
+        private @Nullable Seated seated;
 
         private Rig(MockPlayer pilot) {
             this.pilot = pilot;
         }
 
+        Seated seated() {
+            return Objects.requireNonNull(seated, "seated: set once the far chunk ticks, read before ready()");
+        }
+
         PodEntity pod() {
-            return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
+            return seated().pod();
         }
 
         Watch watch() {
-            return Objects.requireNonNull(watch, "watch: made with the pod, read before ready()");
+            return seated().watch();
         }
 
         boolean ready() {
-            return pod != null;
+            return seated != null;
         }
 
         static Rig await(GameTestHelper helper, ServerLevel level, Vec3 at, int tier, boolean sprint) {
@@ -787,8 +793,7 @@ public class PodLinerTest {
                 if (sprint) {
                     pilot.setInput(SPRINT);
                 }
-                rig.watch = new Watch(pod);
-                rig.pod = pod;
+                rig.seated = new Seated(pod, new Watch(pod));
             });
             return rig;
         }

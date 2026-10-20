@@ -1,11 +1,9 @@
-"""Tests the null-marked gate in gradle/null-marked-gate.gradle.kts: a package under src/main, src/client or src/gametest that has Java sources but
-no package-info.java carrying @NullMarked fails the build, naming the package and the fix (step 7c of #550).
-
-Its fixture trees go through checkGametestFixtures in one Gradle run (gate_checks.py, gate_batch.py), so it needs the repo's Gradle wrapper
-on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
+"""Tests the null-marked gate in gradle/null-marked-gate.gradle.kts: a package with Java sources and no @NullMarked package-info fails,
+naming the package and the fix (step 7c of #550), and the gate scans every src/*/java tree.
 Usage: python3 -I tools/tests/gate_checks.py null_marked
 """
 import unittest
+from pathlib import Path
 
 import gate_batch
 from gate_batch import Case
@@ -54,7 +52,10 @@ BAD = {
         PACKAGE + ".sub"),
 }
 
+REPO = Path(__file__).resolve().parents[2]
+
 CASES = {
+    "roots": Case({}, None, gate="null_marked_roots"),
     **{f"clean/{label}": Case(files, None, gate="null_marked") for label, files in CLEAN.items()},
     **{f"bad/{label}": Case(files, None, gate="null_marked") for label, (files, _) in BAD.items()},
 }
@@ -83,3 +84,8 @@ class NullMarkedGateTest(unittest.TestCase):
     def test_only_the_unmarked_package_is_named(self):
         result = outcome("bad/an unmarked sub-package under a marked package")
         self.assertEqual(1, result.message.count(" has Java sources but no package-info.java"), result.message)
+
+    def test_scans_every_source_tree(self):
+        on_disk = sorted(path.relative_to(REPO).as_posix() for path in REPO.glob("src/*/java") if path.is_dir())
+        scanned = outcome("roots").message.splitlines()
+        self.assertEqual(on_disk, sorted(scanned), "the gate must scan every src/*/java tree")

@@ -566,12 +566,12 @@ public class LavaBoreTest {
         final int[] bigHitsBy = new int[Cause.values().length];
         Cause lastCause = Cause.OTHER;
         /**
-         * The hull the pod had when the crust first took hull (#378), and what each earlier cause had cost it by then ({@link #hullBy} at that moment);
+         * The hull the pod had when the crust first took hull (#378), and what each earlier cause had cost it by then ({@link #hullBy} at that moment, in {@link #broughtBy});
          * {@link #NO_CRUST} for a bore that never lost hull to the crust.
          */
         float hullAtCrust = NO_CRUST;
 
-        float @Nullable [] broughtBy;
+        final float[] broughtBy = new float[Cause.values().length];
         /** The gas pockets within a blast of the pod at the end of the last tick: one that is gone now blew up this tick. */
         final Set<BlockPos> gasPockets = new HashSet<>();
 
@@ -640,10 +640,6 @@ public class LavaBoreTest {
 
         PodEntity pod() {
             return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
-        }
-
-        float broughtBy(Cause cause) {
-            return Objects.requireNonNull(broughtBy, "broughtBy: set when the crust first took hull")[cause.ordinal()];
         }
 
         boolean ready() {
@@ -955,7 +951,7 @@ public class LavaBoreTest {
         if (hullLost > 0) {
             if (cause == Cause.CRUST && bore.hullAtCrust == NO_CRUST) {
                 bore.hullAtCrust = pod.hull() + hullLost;
-                bore.broughtBy = bore.hullBy.clone();
+                System.arraycopy(bore.hullBy, 0, bore.broughtBy, 0, bore.hullBy.length);
             }
             bore.hullBy[cause.ordinal()] += hullLost;
             bore.lastCause = cause;
@@ -2044,10 +2040,10 @@ public class LavaBoreTest {
                 distribution(killed, b -> Math.max(0f, full - b.hullAtCrust)));
         LOGGER.info(
                 "[lava-bore] crust deaths, hull the brought pod had lost before the crust, per death: lava {} gas {} landing {} other {}; start hull {}",
-                mean(killed, "%.1f", b -> b.broughtBy(Cause.LAVA)),
-                mean(killed, "%.1f", b -> b.broughtBy(Cause.GAS)),
-                mean(killed, "%.1f", b -> b.broughtBy(Cause.LANDING)),
-                mean(killed, "%.1f", b -> b.broughtBy(Cause.OTHER)),
+                mean(killed, "%.1f", b -> b.broughtBy[Cause.LAVA.ordinal()]),
+                mean(killed, "%.1f", b -> b.broughtBy[Cause.GAS.ordinal()]),
+                mean(killed, "%.1f", b -> b.broughtBy[Cause.LANDING.ordinal()]),
+                mean(killed, "%.1f", b -> b.broughtBy[Cause.OTHER.ordinal()]),
                 mean(killed, "%.0f", b -> b.startHull));
         LOGGER.info(
                 "[lava-bore] crust deaths summary: {} deaths, mean brought {}, mean crust took {}, {} short of the full crust cost",

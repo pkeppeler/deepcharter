@@ -231,8 +231,9 @@ public class CompanyRockBiteTest {
         Bite bite = rig(helper, x, PodRegistry.PROSPECTOR, TUNING.minTier(), 0);
         boolean[] hurt = {false};
         TestTicks.each(helper, () -> {
-            if (bite.pod() != null && !hurt[0]) {
-                bite.pod().setHull(TUNING.hullFloor());
+            PodEntity pod = bite.pod();
+            if (pod != null && !hurt[0]) {
+                pod.setHull(TUNING.hullFloor());
                 hurt[0] = true;
             }
         });

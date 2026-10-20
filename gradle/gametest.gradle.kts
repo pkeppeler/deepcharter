@@ -249,7 +249,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 }
 
-// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query", "record_holder" or "null_marked" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
+// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query", "record_holder", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
 tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
@@ -268,6 +268,8 @@ tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
 	val nullMarkedProblems = project.extra["nullMarkedProblems"] as (File, File) -> List<String>
 	val nullMarkedAdvice = project.extra["nullMarkedAdvice"] as String
+	val projectRoot = projectDir
+	val nullMarkedRoots = project.extra["nullMarkedRoots"] as FileCollection
 	val mainSources = fileTree("src/main/java") { include("**/*.java") }
 	val guardSource = file("src/gametest/java/io/github/pkeppeler/deepcharter/test/support/WorldDataGuard.java")
 	val cases = file(providers.gradleProperty("fixtureCases").getOrElse("missing -PfixtureCases"))
@@ -298,6 +300,11 @@ tasks.register("checkGametestFixtures") {
 						throw GradleException("Value-holder classes that are not records. $recordHolderAdvice\n  " + problems.joinToString("\n  "))
 					}
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
+					continue
+				}
+				if (c["gate"] == "null_marked_roots") {
+					// The roots the real gate scans, as project-relative paths in the message.
+					report[name] = linkedMapOf("ok" to true, "message" to nullMarkedRoots.files.filter { it.isDirectory }.sorted().joinToString("\n") { it.relativeTo(projectRoot).path }, "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue
 				}
 				if (c["gate"] == "null_marked") {
