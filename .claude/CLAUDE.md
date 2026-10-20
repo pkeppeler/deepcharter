@@ -10,7 +10,7 @@ The user is hands-off on this project except for top-level calls. They don't rea
   - `simplifier`
   - `reviewer` cycle 2 passed
 - **No cap on review cycles.** If a Critical survives cycle 2, fix it and run the gate again until it passes. Never park a PR for the user because of a failed review cycle.
-- **Merge only when all checks are green.** GitHub Free gives a private repo no branch protection, so this rule is enforced by us, not by GitHub. Merge only through `tools/merge-pr.sh <n>`, or `tools/merge-queue.sh <n>...` for one or more PRs (it waits for CI, re-runs a stale base, and cleans up worktrees). Both refuse and give the reason.
+- **Merge only when all checks are green.** GitHub does not enforce this: every session acts as the repo admin, and roadmap and papercut commits go straight to `main`, so required checks would block those or be bypassed. A ruleset (`protect-main`) blocks force-push and deletion of `main`. Merge only through `tools/merge-pr.sh <n>`, or `tools/merge-queue.sh <n>...` for one or more PRs (it waits for CI, re-runs a stale base, and cleans up worktrees). Both refuse and give the reason.
 - **Code, test, evidence-scenario or tool work loads the `deepcharter-conventions` skill first.** It holds the code layout, the M2 rules, the test and evidence rules and the toolchain commands.
 
 ## Ask the user only for
@@ -27,7 +27,7 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
 ## Backlog and state
 
 - **Durable state:** GitHub Issues and Milestones on `pkeppeler/deepcharter`. Use one issue per PR-sized change. The PR closes its issue.
-- **Branches:** `<issue>-<slug>`. Changes are squash-merged and branches are deleted automatically.
+- **Branches:** `<issue>-<slug>`. Create the issue first, then name the branch from its number (numbers race); the merge gate checks that the PR closes the issue its branch names, so keep `Closes #N` through body rewrites. Changes are squash-merged and branches are deleted automatically.
 - **CI runs on free standard runners** (the repo is public), so minutes are not rationed. Client tests still run only on `gameplay` PRs, for run time. Run recording jobs locally.
 - **Sessions:**
   - For unattended runs, use `/loop` in dynamic mode.
@@ -40,22 +40,22 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
 
 ## Handoff between sessions
 
-- **At session start**, the SessionStart hook (`.claude/hooks/session-start.sh`) injects three things:
-  - the pinned **Orchestrator handoff** issue (label `handoff`)
+- **At session start**, the SessionStart hook (`.claude/hooks/session-start.sh`) injects:
+  - the pinned **Orchestrator handoff** issue (label `handoff`), with a one-line warning when it breaks the rules below
+  - derived facts: the next free ADR number on `origin/main` and the last 15 merged PRs
   - open PRs with their pipeline stage
-  - local-only git state
+  - local-only git state (`worktree-agent-*` branches with no upstream collapse to one count)
 
   Resume in-flight work first, then the open milestone's issues in priority order.
 - **Nothing in flight lives only on this Mac.** Push branches early and open draft PRs.
 - **Advance a PR's stage label as it moves:** `stage:implemented`, then `stage:reviewed`, then `stage:simplified`. When cycle 2 passes, run `tools/mark-review-passed.sh <n>`. It adds `review-passed` and pins the pass to the head sha. A push after that voids the pass, and the PR needs a new cycle-2 review.
 - **Background agents die with the session.** Before ending or clearing a session, let them finish, or record each one in the handoff as abandoned, with its issue and the stage reached.
-- **Before ending or clearing a session**, rewrite the handoff issue body:
+- **Before ending or clearing a session**, rewrite the handoff issue body, written only through `tools/handoff.sh <file>`. It refuses a body over 1,000 words or one with a section the hook derives (merged PRs, open PRs, ADR numbers, local-only state). The hand-written sections:
   - Updated: the date and time, and the successor's id when handing over
   - In flight: each issue or PR, its stage, and the exact next action
   - Next: what to pick up after that
-  - Local-only state
   - Decisions pending
-  - Notes, including gotchas the next session needs
+  - Notes: only what the next session cannot learn from the repo. A durable rule goes in the conventions skill or this file, not here.
 
 ## Feedback loop
 
