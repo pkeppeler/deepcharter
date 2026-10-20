@@ -7,8 +7,8 @@ Read-only audit of [Stable Audio 3](https://github.com/Stability-AI/stable-audio
 - **Weights cannot run code.** The MLX path loads only `.npz`. All 1,249 arrays in our five files are numeric, so there is no pickle (V: header scan). No `trust_remote_code` anywhere (V: grep).
 - **No telemetry and no network** except a weight download when a file is missing (V: source).
 - **Risk 1, nothing is pinned:** no repo tags, `>=` dependencies, weights from `main`. Conditions 1–3 pin all three.
-- **Risk 2, the web UI:** it shares publicly by default. Use the CLI only (condition 4; detail in Footprint and reproducibility).
-- **Ungated MLX repo, and AI credit:** see Licence and condition 7.
+- **Risk 2, the web UI:** use the CLI only (condition 4).
+- **AI credit:** see Licence and condition 7.
 - **No public CoreML path.** The README times one, but no CoreML model or runtime exists in the repo or on HF (V: file lists). MLX (Metal) is the Mac path.
 
 ## Versions
@@ -16,7 +16,7 @@ Read-only audit of [Stable Audio 3](https://github.com/Stability-AI/stable-audio
 | | Pin |
 |---|---|
 | Code | `main` @ `77e0398c26f7d22d801ec1bb036307e8b231f741` (2026-10-11). No tags or releases (V: `gh api`) |
-| MLX weights | `stabilityai/stable-audio-3-optimized` @ `08b17423649b5714b22eab20f96bf00751f2358a`, **not gated** |
+| MLX weights | `stabilityai/stable-audio-3-optimized` @ `08b17423649b5714b22eab20f96bf00751f2358a`, **not gated** (see Licence, Gating) |
 | Originals (not needed) | `small-sfx` @ `05ca3857…`, `small-music` @ `8bdfb53c…`: gated, `model.safetensors` 2.27 GB plus T5Gemma safetensors; safetensors only |
 
 Files under `MLX/` for our path (sizes and LFS sha256 from the HF API):
@@ -74,7 +74,6 @@ Nothing malicious and no sudo, but unpinned at every layer.
 
 - **Disk:** 2.62 GB of weights for both small models; 2.84 GB with the encoder. The venv adds a few hundred MB (I).
 - **RAM:** README peaks 1.6 GB (10 s clip) to 2.4 GB (120 s); about 1 s per 10 s clip on an M1 (not measured).
-- **Web UI:** `sa3-gradio` opens a **public share link by default** and binds `0.0.0.0` even with `--no-share` (V: `sa3_gradio.py:1331,1347`).
 - **Seed:** `--seed` feeds `mx.random.key(seed)`, and the sampler uses `seed+1`; there is no other randomness (V). Without it, a random seed is printed.
 - **Not tested:** bit-identical reruns on one machine. MLX does not promise it, and results may change across MLX versions or chips (I).
 
@@ -83,7 +82,7 @@ Nothing malicious and no sudo, but unpinned at every layer.
 1. Clone at `77e0398c`, outside deepcharter. Read the diff before any update.
 2. Install exact pins (`uv pip install mlx==0.32.4 …`), not `requirements.txt`.
 3. Fetch the files above with `curl` from `resolve/08b17423…/MLX/`, check the sha256 values, and place them in `models/mlx/`. Run with `HF_HUB_OFFLINE=1`.
-4. Use the CLI only. Never use `sa3-gradio` or `run_gradio.py`.
+4. Use the CLI only. Never use `sa3-gradio` or `run_gradio.py`: it opens a **public share link by default** and binds `0.0.0.0` even with `--no-share` (V: `sa3_gradio.py:1331,1347`).
 5. Never commit or redistribute the weights or the tool.
 6. Record per take: prompt, seed, steps, cfg, seconds, model, dtype, weight sha256, repo commit and mlx version. Run one seed twice and compare hashes.
 7. Credit the sounds as AI-generated (Stable Audio 3), processed by Deep Charter.

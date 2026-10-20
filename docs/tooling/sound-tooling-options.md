@@ -43,9 +43,9 @@ Stable Audio 3 (20 May 2026) replaces Stable Audio Open. It runs on a Mac throug
 
 | Option | Fit | Licence and provenance | Mac, cost | Seed |
 |---|---|---|---|---|
-| **Stable Audio 3 small-sfx and small-music** (0.6B each) | Best open SFX score (FAD 0.395 against 0.500 for Open; vendor paper); suits drones and the hymn; choir and organ unknown (I) | Community licence, free under $1M revenue; you own outputs. 806k AudioSparx recordings plus 473k Freesound CC | MLX (Metal); README: about 1 s per 10 s clip on an M1, 1.7 s per 30 s on a Mac CPU via an unaudited route; not measured on our M2. Free. 2.62 GB for both models | `--seed`; same MLX build and chip only (audit) |
-| ElevenLabs SFX v2 | Strong SFX and seamless loops | Paid plan: royalty-free; free plan: credit required. Fine-tuned on licensed data | Hosted, $6 per month | None |
-| Stable Audio 3 medium and large, Stability API | Best for music | Same licensed data; do not remove watermarks | Hosted, $0.08 per generation; open medium needs CUDA | Commit the take |
+| **Stable Audio 3 small-sfx and small-music** (0.6B each) | Best open SFX score (FAD 0.395 against 0.500 for Open; vendor paper); suits drones and the hymn; choir and organ unknown (I) | Community licence, free under $1M revenue; you own outputs. 806k AudioSparx recordings plus 473k Freesound CC | MLX (Metal); README: about 1 s per 10 s clip on an M1, 1.7 s per 30 s on a Mac CPU via an unaudited route; not measured on our M2. Free. 2.62 GB for both models | `--seed`; reproducible only on the same MLX build and chip, untested (I) |
+| ElevenLabs SFX v2 | Strong SFX and seamless loops | Paid plan: royalty-free; free plan: credit required. Fine-tuned on licensed data | Hosted, $6 per month ([pricing](https://elevenlabs.io/pricing)) | None |
+| Stable Audio 3 medium and large, Stability API | Best for music | Same licensed data; do not remove watermarks | Hosted, $0.08 per generation ([pricing](https://docs.stability.ai/pricing)); open medium needs CUDA | Commit the take |
 | Stable Audio Open Small and 1.0 | Superseded | CC Freesound and FMA | Open 1.0 is slow (minutes on an M2, I) | Open 1.0 has one |
 | Adobe Firefly SFX, Eleven Music | Unknown; Eleven Music bans building a music library, which conflicts with a public repo of OGGs (I) | Vendor claims | Hosted, subscription | Commit the take |
 

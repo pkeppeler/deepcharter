@@ -525,7 +525,7 @@ Nothing below has been run. Each needs a read-only audit like [mcpfabric-audit.m
 - A Vorbis encoder for mono positional sounds: `vorbis-tools`, an ffmpeg with libvorbis, or Python `soundfile`.
 - A `uv`-locked Python environment with Pillow and numpy (Pillow is not in the system Python).
 - Optional: a GIMP 3.2 upgrade (2.10.38 is installed), ImageMagick, sox_ng, Node packages for jsfxr or Bfxr2.
-- Optional: a local image model (mflux, Draw Things or ComfyUI, plus several GB of weights). Optional: Stable Audio 3, which needs a Hugging Face account and licence acceptance ([sound-tooling-options.md](../tooling/sound-tooling-options.md)).
+- Optional: a local image model (mflux, Draw Things or ComfyUI, plus several GB of weights). Optional: Stable Audio 3 (MLX weights are ungated; accept the licence on use), see [sound-tooling-options.md](../tooling/sound-tooling-options.md).
 - WorldEdit or Litematica jars in the dev run directory (dev only).
 
 **Public-facing**
