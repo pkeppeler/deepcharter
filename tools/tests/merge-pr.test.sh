@@ -227,6 +227,9 @@ run_check() {
   out=$(env "$@" PATH="$work/bin:$PATH" bash "$script" --check 7 2>&1) || rc=$?
 }
 
+# last_line_is NAME TEXT: the output's last line is exactly TEXT.
+last_line_is() { local last=${out##*$'\n'}; if [[ $last == "$2" ]]; then pass "$1"; else fail "$1 (got: $last)"; fi; }
+
 wt() { grep -o '[^ ]*/wt' "$LOG" | head -1; }
 
 merge_line="gh pr merge 7 -R pkeppeler/deepcharter --squash --delete-branch --match-head-commit abc123"
@@ -614,16 +617,13 @@ not_logged "check never pushes" "push"
 run_check "STUB_LABELS=infra" "STUB_COMMENT=nope"
 exited "check passes before the review pass is marked" 0
 printed "check notes the missing review pass" "review-passed: no"
-last=${out##*$'\n'}
-if [[ $last == "GATE OK except: no review pass (the merge would refuse until then)" ]]; then pass "check's last line names the missing review pass"; else fail "check's last line names the missing review pass (got: $last)"; fi
+last_line_is "check's last line names the missing review pass" "GATE OK except: no review pass (the merge would refuse until then)"
 run_check STUB_DRAFT=true
 exited "check passes a draft" 0
 printed "check notes the draft" "draft: yes"
-last=${out##*$'\n'}
-if [[ $last == "GATE OK except: draft (the merge would refuse until then)" ]]; then pass "check's last line names the draft"; else fail "check's last line names the draft (got: $last)"; fi
+last_line_is "check's last line names the draft" "GATE OK except: draft (the merge would refuse until then)"
 run_check STUB_DRAFT=true "STUB_LABELS=infra"
-last=${out##*$'\n'}
-if [[ $last == "GATE OK except: draft, no review pass (the merge would refuse until then)" ]]; then pass "check's last line names both"; else fail "check's last line names both (got: $last)"; fi
+last_line_is "check's last line names both" "GATE OK except: draft, no review pass (the merge would refuse until then)"
 run_check STUB_DRAFT_FAIL=1
 exited "check refuses an unreadable draft flag" 1
 printed "check keeps the one-line contract on an unreadable draft flag" "REFUSED: PR #7 could not read isDraft"

@@ -2,13 +2,11 @@
 # Usage: tools/merge-pr.sh <pr-number>
 #        tools/merge-pr.sh --check <pr-number>
 #
-# --check is read-only: it runs the whole gate below (the same functions, no second copy), prints each check's
-# state as the gate reads it, and stops before retargeting or merging. Exit 1 with the same "REFUSED:" line: the
-# merge would refuse. Exit 0: nothing blocks the merge except what the last line lists. Two things only the merge
-# needs are notes, not refusals, so a reviewer can run it earlier: the PR is a draft, and it has no `review-passed`
-# label and comment. The last line is "GATE OK: ..." when neither applies, else "GATE OK except: draft, no review
-# pass (the merge would refuse until then)", naming only what applies. It runs `git fetch origin main` (the
-# stale-base rule needs it), so it updates only the local origin/main ref.
+# --check is read-only: it runs the whole gate below (the same functions), prints each check's state as the gate
+# reads it, and stops before retargeting or merging. Exit 1 with the same "REFUSED:" line: the merge would refuse.
+# A draft and a missing `review-passed` label or comment are notes, not refusals, so a reviewer can run it earlier:
+# the last line is "GATE OK: ..." or "GATE OK except: draft, no review pass (...)", naming only what applies. It
+# runs `git fetch origin main` (the stale-base rule needs it), so it updates only the local origin/main ref.
 #
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
 # labelled `review-passed` with a `review-passed <head sha>` comment for the
