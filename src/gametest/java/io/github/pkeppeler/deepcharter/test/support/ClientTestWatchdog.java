@@ -8,6 +8,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +46,7 @@ public final class ClientTestWatchdog {
         thread.setDaemon(true);
         return thread;
     });
-    private ScheduledFuture<?> pending;
+    private @Nullable ScheduledFuture<?> pending;
 
     /** Calls {@code onTimeout} on the watchdog's thread when a limit passes; the shared one halts the JVM. */
     public ClientTestWatchdog(Consumer<Timeout> onTimeout) {

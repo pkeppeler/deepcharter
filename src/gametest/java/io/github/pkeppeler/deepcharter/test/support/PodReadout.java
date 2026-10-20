@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.support;
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import java.util.List;
+import java.util.Objects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -11,7 +12,7 @@ public final class PodReadout {
     private PodReadout() {}
 
     public static List<Component> texts(Minecraft client, PodEntity pod) {
-        return PodStatusHud.readout(client.player, pod).stream()
+        return PodStatusHud.readout(Objects.requireNonNull(client.player, "the client has no player"), pod).stream()
                 .map(PodStatusHud.Line::text)
                 .toList();
     }

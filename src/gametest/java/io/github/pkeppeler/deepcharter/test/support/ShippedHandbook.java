@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 
@@ -20,7 +21,9 @@ public final class ShippedHandbook {
 
     public static List<HandbookPage> pages(Minecraft client) {
         Map<Identifier, HandbookChapter> shipped = new LinkedHashMap<>();
-        HandbookChapters.all(client.getConnection().registryAccess()).stream()
+        HandbookChapters.all(Objects.requireNonNull(client.getConnection(), "the client is not connected")
+                        .registryAccess())
+                .stream()
                 .filter(entry -> !entry.key().identifier().getPath().equals("sample"))
                 .forEach(entry -> shipped.put(entry.key().identifier(), entry.value()));
         return HandbookPages.of(shipped, ClientHandbook.completed());

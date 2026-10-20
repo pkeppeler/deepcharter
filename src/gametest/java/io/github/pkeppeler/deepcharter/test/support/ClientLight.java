@@ -1,11 +1,15 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -72,11 +76,12 @@ public final class ClientLight {
     public static Optional<String> describeMismatch(
             ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, Box box) {
         Optional<String> absent = context.computeOnClient(client -> {
-            if (!client.level.dimension().equals(dimension)) {
-                return Optional.of("the client is in "
-                        + client.level.dimension().identifier() + ", not " + dimension.identifier());
+            ClientLevel level = clientLevel(client);
+            if (!level.dimension().equals(dimension)) {
+                return Optional.of(
+                        "the client is in " + level.dimension().identifier() + ", not " + dimension.identifier());
             }
-            if (!chunksPresent(client.level, box)) {
+            if (!chunksPresent(level, box)) {
                 return Optional.of("the client lacks a chunk of " + box);
             }
             return Optional.<String>empty();
@@ -85,22 +90,35 @@ public final class ClientLight {
             return absent;
         }
         int serverPrint =
-                server.computeOnServer(minecraftServer -> fingerprint(minecraftServer.getLevel(dimension), box));
-        int clientPrint = context.computeOnClient(client -> fingerprint(client.level, box));
+                server.computeOnServer(minecraftServer -> fingerprint(serverLevel(minecraftServer, dimension), box));
+        int clientPrint = context.computeOnClient(client -> fingerprint(clientLevel(client), box));
         if (serverPrint == clientPrint) {
             return Optional.empty();
         }
-        int serverSky = server.computeOnServer(minecraftServer -> maxSky(minecraftServer.getLevel(dimension), box));
-        int serverBlock = server.computeOnServer(minecraftServer -> maxBlock(minecraftServer.getLevel(dimension), box));
-        return Optional.of(context.computeOnClient(client -> "client maxSky=" + maxSky(client.level, box) + " maxBlock="
-                + maxBlock(client.level, box) + " in "
-                + client.level.dimension().identifier() + ", server maxSky=" + serverSky + " maxBlock=" + serverBlock));
+        int serverSky = server.computeOnServer(minecraftServer -> maxSky(serverLevel(minecraftServer, dimension), box));
+        int serverBlock =
+                server.computeOnServer(minecraftServer -> maxBlock(serverLevel(minecraftServer, dimension), box));
+        return Optional.of(context.computeOnClient(client -> {
+            ClientLevel level = clientLevel(client);
+            return "client maxSky=" + maxSky(level, box) + " maxBlock=" + maxBlock(level, box) + " in "
+                    + level.dimension().identifier() + ", server maxSky=" + serverSky + " maxBlock=" + serverBlock;
+        }));
     }
 
     /** True when the client is in {@code dimension} and holds every chunk the box touches. */
     public static boolean clientHolds(ClientGameTestContext context, ResourceKey<Level> dimension, Box box) {
-        return context.computeOnClient(
-                client -> client.level.dimension().equals(dimension) && chunksPresent(client.level, box));
+        return context.computeOnClient(client -> {
+            ClientLevel level = clientLevel(client);
+            return level.dimension().equals(dimension) && chunksPresent(level, box);
+        });
+    }
+
+    static ClientLevel clientLevel(Minecraft client) {
+        return Objects.requireNonNull(client.level, "the client is not in a level");
+    }
+
+    private static ServerLevel serverLevel(MinecraftServer server, ResourceKey<Level> dimension) {
+        return Objects.requireNonNull(server.getLevel(dimension), () -> "the server has no level " + dimension);
     }
 
     /** True when the level holds every chunk the box touches. */

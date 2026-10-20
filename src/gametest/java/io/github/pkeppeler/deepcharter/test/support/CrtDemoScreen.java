@@ -7,8 +7,10 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTextField;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A small screen that uses every part of the kit, and the example for the screens that build on it. It is test
@@ -26,8 +28,8 @@ public final class CrtDemoScreen extends CrtScreen {
 
     private final Typewriter typewriter;
     private final List<Integer> hookCalls = new ArrayList<>();
-    private CrtButton acknowledge;
-    private CrtTextField field;
+    private @Nullable CrtButton acknowledge;
+    private @Nullable CrtTextField field;
     private int presses;
     private String lastTyped = "";
 
@@ -55,16 +57,17 @@ public final class CrtDemoScreen extends CrtScreen {
                 Component.translatable("ui.deepcharter.demo.close"),
                 button -> onClose()));
         String typed = field == null ? "" : field.getValue();
-        field = addRenderableWidget(new CrtTextField(
+        CrtTextField built = addRenderableWidget(new CrtTextField(
                 font,
                 MARGIN + CrtTextField.FRAME,
                 bottom - BUTTON_HEIGHT - GAP - FIELD_HEIGHT - CrtTextField.FRAME,
                 width - 2 * (MARGIN + CrtTextField.FRAME),
                 FIELD_HEIGHT,
                 Component.translatable("ui.deepcharter.demo.hint")));
-        field.setResponder(value -> lastTyped = value);
-        field.setValue(typed);
-        setInitialFocus(field);
+        field = built;
+        built.setResponder(value -> lastTyped = value);
+        built.setValue(typed);
+        setInitialFocus(built);
     }
 
     @Override
@@ -80,11 +83,11 @@ public final class CrtDemoScreen extends CrtScreen {
     }
 
     public CrtButton acknowledge() {
-        return acknowledge;
+        return Objects.requireNonNull(acknowledge, "<built by layout() in init()>");
     }
 
     public CrtTextField field() {
-        return field;
+        return Objects.requireNonNull(field, "<built by layout() in init()>");
     }
 
     /** The field's text as of its last change. */
