@@ -77,7 +77,8 @@ check "space rejection names the allowed characters" "$(grep -qF 'filter may con
 rm -f "$work/args"
 run 'HandbookChaptersSixToNineTest*'
 check "CamelCase filter is refused with status 2" "$((status == 2 ? 0 : 1))"
-check "CamelCase refusal never starts gradle" "$(test ! -e "$work/args"; echo $?)"
+started=0; [[ -e $work/args ]] && started=1
+check "CamelCase refusal never starts gradle" "$started"
 check "CamelCase refusal suggests the snake_case filter" "$(grep -qF "handbook_chapters_six_to_nine_test*" "$work/err"; echo $?)"
 check "CamelCase refusal says ids are lowercase" "$(grep -qF 'lowercase' "$work/err"; echo $?)"
 run 'deepcharter-test:PodDrillTest'
