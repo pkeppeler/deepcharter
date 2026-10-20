@@ -76,10 +76,9 @@ runs:
           exit 1
         }
         deadline=$((SECONDS + 180))
-        # A passing run takes about 14 minutes (60 classes). Both callers set timeout-minutes: 30,
-        # which also covers checkout, setup and the post steps (a few minutes), so stopping at
-        # 22 minutes keeps at least 5 minutes under the job limit and leaves 8 minutes of
-        # slack over a normal run. Raise this only together with those two job limits.
+        # A passing run takes about 14 minutes. $SECONDS starts after setup, and both callers set
+        # timeout-minutes: 30, so 22 minutes keeps at least 5 minutes of job-limit margin for
+        # setup, the post steps and the stop. Raise only together with both job limits.
         max_seconds=1320
         while kill -0 "$gradle_pid" 2>/dev/null; do
           if grep -q 'Failed to create backend' "$log"; then
