@@ -48,7 +48,7 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
 
   Resume in-flight work first, then the open milestone's issues in priority order.
 - **Nothing in flight lives only on this Mac.** Push branches early and open draft PRs.
-- **Advance a PR's stage label as it moves:** `stage:implemented`, then `stage:reviewed`, then `stage:simplified`. When cycle 2 passes, run `tools/mark-review-passed.sh <n>`. It adds `review-passed` and pins the pass to the head sha. A push after that voids the pass, and the PR needs a new cycle-2 review.
+- **Advance a PR's stage label as it moves:** `stage:implemented`, then `stage:reviewed`, then `stage:simplified`. When cycle 2 passes, run `tools/mark-review-passed.sh <n>`. It first runs the merge gate's body and label checks and refuses on a failure, then adds `review-passed` and pins the pass to the head sha. A push after that voids the pass, and the PR needs a new cycle-2 review.
 - **Background agents die with the session.** Before ending or clearing a session, let them finish, or record each one in the handoff as abandoned, with its issue and the stage reached.
 - **Before ending or clearing a session**, rewrite the handoff issue body, written only through `tools/handoff.sh <file>`. It refuses a body over 1,000 words or one with a section the hook derives (merged PRs, open PRs, ADR numbers, local-only state). The hand-written sections:
   - Updated: the date and time, and the successor's id when handing over

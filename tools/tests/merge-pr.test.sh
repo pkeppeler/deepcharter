@@ -569,6 +569,26 @@ exited "mark-review-passed exits 0" 0
 logged "mark reads head sha" "gh pr view 7 -R pkeppeler/deepcharter --json headRefOid --jq .headRefOid"
 logged "mark comments exact body" "gh pr comment 7 -R pkeppeler/deepcharter --body review-passed def456"
 logged "mark adds label" "gh pr edit 7 -R pkeppeler/deepcharter --add-label review-passed"
+# mark runs the merge gate's closing-reference, demo and map checks (tools/lib/pr-body-checks.sh), and never waits for CI.
+SCRIPT=$mark run_script STUB_CLOSING=
+exited "mark refuses a body with no closing reference" 1
+printed "mark names the closing fix" "has no closing reference (put 'Closes #12' in the body)"
+not_logged "mark refused before commenting" "^gh pr comment"
+not_logged "mark refused before labelling" "^gh pr edit"
+SCRIPT=$mark run_script STUB_FILES="$(files modified:src/main/A.java)" STUB_LABELS=infra
+exited "mark refuses an in-game PR with no demo" 1
+printed "mark names the demo fix" "changes in-game code (src/main/A.java) with no demo"
+SCRIPT=$mark run_script STUB_LABELS=gameplay STUB_BODY="Closes #12"
+exited "mark refuses a gameplay PR with no map change line" 1
+printed "mark names the map fix" "No map change: <reason>"
+SCRIPT=$mark run_script STUB_LABELS=gameplay STUB_BODY="Closes #12
+No map change: tooling only"
+exited "mark passes a gameplay PR with a map change line" 0
+SCRIPT=$mark run_script STUB_MAP_STALE="$(printf 'n1\tplanned\t#12')"
+exited "mark refuses a stale map node" 1
+printed "mark names the stale node" "the node is still planned"
+SCRIPT=$mark run_script
+not_logged "mark does not wait for CI" "check-runs"
 SCRIPT=$mark run_script STUB_ORIGIN=git@github.com:someone/else.git
 exited "mark refuses wrong origin" 1
 not_logged "mark wrong origin calls no gh" "^gh"
