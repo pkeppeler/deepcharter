@@ -115,11 +115,10 @@ public class OrePlacementTest {
             }
             double bare = 1 - oreTotal;
             String name = ZONE_NAMES[zone];
-            double rock =
-                    EarlyRunModel.hazardChance(name, "deepcharter:company_rock").orElse(0);
             double gas =
                     EarlyRunModel.hazardChance(name, "deepcharter:gas_pocket").orElse(0);
-            expectFrequency(helper, zone, counted, HazardBlocks.COMPANY_ROCK, bare * rock);
+            expectFrequency(
+                    helper, zone, counted, HazardBlocks.COMPANY_ROCK, bare * EarlyRunModel.companyRockChance(name));
             expectFrequency(helper, zone, counted, Blocks.LAVA, bare * lavaChance(helper, name, zone));
             expectFrequency(helper, zone, counted, HazardBlocks.GAS_POCKET, bare * gas);
         }
