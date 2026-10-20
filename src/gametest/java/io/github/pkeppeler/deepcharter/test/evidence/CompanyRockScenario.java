@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.ore.CompanyRockBlock;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -10,6 +9,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import java.util.List;
@@ -159,16 +159,7 @@ public class CompanyRockScenario extends EvidenceScenario {
                 level.getChunk(cx, cz);
             }
         }
-        // Suspected (#524, not shown): RoomCarver holds the sending of every chunk it touches until the light tasks
-        // queued so far are done, and in six runs
-        // of seven a chunk of the box never reached the client. Nobody is in the dimension while the box is built and
-        // the light is done long before the
-        // camera comes, so the box is sealed here and written directly.
-        RoomSeal.seal(level, low, high);
-        BlockState stone = rock.defaultBlockState();
-        for (BlockPos at : BlockPos.betweenClosed(low, high)) {
-            level.setBlock(at, stone, Block.UPDATE_CLIENTS);
-        }
+        RoomCarver.carve(level, low, high, rock.defaultBlockState());
         air(level, 2, 6, 1, 11, 0, 2);
         air(level, 12, 28, 1, 6, 0, 13);
         air(level, 34, 45, 1, 5, 0, 9);
@@ -205,15 +196,11 @@ public class CompanyRockScenario extends EvidenceScenario {
     }
 
     private static void air(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2) {
-        for (BlockPos at :
-                BlockPos.betweenClosed(absolute(new BlockPos(x1, y1, z1)), absolute(new BlockPos(x2, y2, z2)))) {
-            level.setBlock(
-                    at,
-                    Blocks.AIR.defaultBlockState(),
-                    Block.UPDATE_CLIENTS); // room-carver: inside the box that build() sealed with RoomSeal, no
-            // player in the dimension; temporary, #524 switches this back to
-            // RoomCarver
-        }
+        RoomCarver.carve(
+                level,
+                absolute(new BlockPos(x1, y1, z1)),
+                absolute(new BlockPos(x2, y2, z2)),
+                Blocks.AIR.defaultBlockState());
     }
 
     private static void lamp(ServerLevel level, Vec3 eye) {

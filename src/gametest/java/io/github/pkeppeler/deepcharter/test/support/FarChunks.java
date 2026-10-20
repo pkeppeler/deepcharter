@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import io.github.pkeppeler.deepcharter.layer.LightSync;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -129,7 +130,8 @@ public final class FarChunks {
                 return;
             }
             if (expired()) {
-                throw helper.assertionException(Component.literal(failure.get()));
+                throw helper.assertionException(
+                        Component.literal(failure.get() + "; held chunks: " + LightSync.heldChunks()));
             }
             // One sleep per server tick across all waiters, so N waiters do not stretch a tick N times.
             int tick = level.getServer().getTickCount();
