@@ -249,7 +249,7 @@ val generateGametestModJson = tasks.register("generateGametestModJson") {
 	}
 }
 
-// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query", "record_holder", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
+// -PfixtureCases=<json file>: [{"name", "root", "clientTests" (string or null), "gate" (absent, or "entity_query", "fixed_pos", "record_holder", "null_marked" or "null_marked_roots" to run that gate over the tree instead)}, ...]. Runs the scan over each tree and writes
 // -PfixtureResults=<json file>: {name: {"ok", "message", "server", "client"}}. A tree the scan rejects is a result, not a build failure.
 tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
@@ -260,6 +260,10 @@ tasks.register("checkGametestFixtures") {
 	@Suppress("UNCHECKED_CAST")
 	val entityQueryProblems = project.extra["entityQueryProblems"] as (File, File, (String) -> String, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
 	val entityQueryAdvice = project.extra["entityQueryAdvice"] as String
+	// The fixed-position gate's scan (fixed-pos-gate.gradle.kts), run the same way.
+	@Suppress("UNCHECKED_CAST")
+	val fixedPosProblems = project.extra["fixedPosProblems"] as (File, File, (String) -> String, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
+	val fixedPosAdvice = project.extra["fixedPosAdvice"] as String
 	// The record-holder gate's scan (record-holder-gate.gradle.kts), run the same way.
 	@Suppress("UNCHECKED_CAST")
 	val recordHolderProblems = project.extra["recordHolderProblems"] as (File, File, (String) -> String, (List<String>, Int, (String) -> Boolean) -> Boolean) -> List<String>
@@ -289,6 +293,15 @@ tasks.register("checkGametestFixtures") {
 					val problems = entityQueryProblems(root, root, blankLiterals, markedNear)
 					if (problems.isNotEmpty()) {
 						throw GradleException("Entity queries in production code. $entityQueryAdvice\n  " + problems.joinToString("\n  "))
+					}
+					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
+					continue
+				}
+				if (c["gate"] == "fixed_pos") {
+					val root = File(c["root"] as String)
+					val problems = fixedPosProblems(root, root, blankLiterals, markedNear)
+					if (problems.isNotEmpty()) {
+						throw GradleException("Literal world Y in evidence scenarios. $fixedPosAdvice\n  " + problems.joinToString("\n  "))
 					}
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue
