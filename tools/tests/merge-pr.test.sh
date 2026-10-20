@@ -120,6 +120,7 @@ STUB
 cat >"$work/bin/python3" <<'STUB'
 #!/usr/bin/env bash
 echo "python3 $*" >>"$LOG"
+echo "ROADMAP_REPO=${ROADMAP_REPO-}" >>"$LOG"
 exit "${STUB_ROADMAP_RC:-0}"
 STUB
 chmod +x "$work/bin/"*
@@ -488,6 +489,7 @@ exited "happy path exits 0" 0
 logged "happy path merge invocation" "$merge_line"
 logged "labels read from pinned repo" "gh pr view 7 -R pkeppeler/deepcharter --json labels --jq .labels[].name"
 logged "roadmap published" "python3 -I tools/roadmap.py --publish"
+logged "publish pinned to the gate's repo" "ROADMAP_REPO=pkeppeler/deepcharter"
 not_logged "nothing is pushed" "^git .*push"
 not_logged "nothing is committed" "^git .*commit"
 not_logged "no scratch worktree" "^git worktree"
@@ -522,6 +524,18 @@ refusal "doc-only PR still needs review-passed" "lacks the review-passed label" 
 refusal "doc-only PR still needs the sha comment" "has no 'review-passed abc123' comment" "STUB_FILES=$(files modified:README.md)" "STUB_LABELS=$no_stage" STUB_COMMENT=
 run_script "STUB_FILES=$(files modified:tools/merge-pr.sh)"
 exited "code PR with stage:simplified merges" 0
+# Markdown that is behaviour or the user's contract is not a doc: .claude/**, prompts/**, docs/SPEC.md.
+refusal "skill markdown without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:.claude/skills/x/SKILL.md)" "STUB_LABELS=$no_stage"
+refusal "CLAUDE.md without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:.claude/CLAUDE.md)" "STUB_LABELS=$no_stage"
+refusal "agent markdown without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:.claude/agents/a.md)" "STUB_LABELS=$no_stage"
+refusal "prompt markdown without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:prompts/lore.md)" "STUB_LABELS=$no_stage"
+refusal "SPEC without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:docs/SPEC.md)" "STUB_LABELS=$no_stage"
+refusal "rename out of .claude without stage:simplified" "$stage_msg" "STUB_FILES=$(files renamed:docs/x.md:.claude/skills/x/SKILL.md)" "STUB_LABELS=$no_stage"
+refusal "rename out of SPEC without stage:simplified" "$stage_msg" "STUB_FILES=$(files renamed:docs/spec-old.md:docs/SPEC.md)" "STUB_LABELS=$no_stage"
+run_script "STUB_FILES=$(files modified:.claude/skills/x/SKILL.md)"
+exited "skill markdown with stage:simplified merges" 0
+run_script "STUB_FILES=$(files modified:docs/SPEC-notes.md modified:docs/design/SPEC.md)" "STUB_LABELS=$no_stage"
+exited "SPEC lookalikes stay doc-only" 0
 
 # A skipped non-required check is fine (the default runs include one); the
 # Runs are read from the pinned sha, all pages.

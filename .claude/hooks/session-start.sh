@@ -12,6 +12,9 @@ R=pkeppeler/deepcharter
 t() { perl -e 'alarm shift; exec @ARGV' "${T:-10}" "$@" 2>/dev/null; }
 
 {
+  # CLAUDE.md imports this profile from outside the repo: without it the autonomous rules silently vanish.
+  [ -f "$HOME/.claude/profiles/autonomous.md" ] \
+    || { echo "WARNING: ~/.claude/profiles/autonomous.md is missing, so .claude/CLAUDE.md's autonomous rules are not loaded"; echo; }
   # Public-repo guard: the interaction limit must stay collaborators_only with more than 14 days left.
   limits=$(T=8 t gh api "repos/$R/interaction-limits") || limits=""
   if [ -z "$limits" ]; then

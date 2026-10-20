@@ -358,7 +358,7 @@ printed "raced merge: listed as skipped" "#7 (merged by someone else)"
 
 # --- the gate merged but a step after it failed: still counted as merged ---
 reset
-gate 7 1 "1 merged" "ERROR: PR #7 is MERGED, but a post-merge step FAILED"
+gate 7 1 "1 merged" "Merged PR #7 at abc123"
 run_q 7
 exited "post-merge failure: exit 0" 0
 printed "post-merge failure: counted as merged" "merged:  #7"

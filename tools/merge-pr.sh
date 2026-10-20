@@ -4,7 +4,7 @@
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
 # labelled `review-passed` with a `review-passed <head sha>` comment for the
 # current head (see tools/mark-review-passed.sh), and, unless every changed file matches
-# DOC_ONLY_GLOBS, labelled `stage:simplified` (the simplifier ran), closes exactly its branch's
+# DOC_ONLY_GLOBS (and none under .claude/ or prompts/, nor docs/SPEC.md), labelled `stage:simplified` (the simplifier ran), closes exactly its branch's
 # issue (GitHub's closingIssuesReferences set is {N} for branch `<N>-<slug>`),
 # adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug) or twice in the PR,
 # mergeable, shows a demo if it changes in-game code (see the demo check below), changes docs/feature-map/map.json
@@ -61,7 +61,8 @@ pr_field comments '.comments[].body|@json' | grep -qxF "\"review-passed $sha\"" 
   || refuse "has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
 
 # A PR is doc-only when it changes files and every one, and a rename's previous path, matches
-# DOC_ONLY_GLOBS. Fail closed: an unreadable or empty file list is not doc-only.
+# DOC_ONLY_GLOBS and is not behaviour or the user's contract (.claude/**, prompts/**, docs/SPEC.md:
+# markdown that steers agents or settles the design). Fail closed: an unreadable or empty file list is not doc-only.
 matches_any() {
   local path=$1 glob
   shift
@@ -71,13 +72,19 @@ matches_any() {
   done
   return 1
 }
+is_doc() {
+  case $1 in
+    .claude/* | prompts/* | docs/SPEC.md) return 1 ;;
+  esac
+  matches_any "$1" "${DOC_ONLY_GLOBS[@]}"
+}
 load_pr_files
 doc_only=1
 [[ -n $pr_files ]] || doc_only=0
 while IFS=$'\t' read -r _ path previous; do
   [[ -n $path ]] || continue
-  matches_any "$path" "${DOC_ONLY_GLOBS[@]}" || doc_only=0
-  [[ -z $previous ]] || matches_any "$previous" "${DOC_ONLY_GLOBS[@]}" || doc_only=0
+  is_doc "$path" || doc_only=0
+  [[ -z $previous ]] || is_doc "$previous" || doc_only=0
 done <<<"$pr_files"
 if [[ $doc_only -eq 0 ]]; then
   has_label stage:simplified \
@@ -234,6 +241,6 @@ fi
 echo "Merged PR #$pr at $sha"
 
 # Publishing is derived state: the PR is already merged, so a failure warns.
-if ! python3 -I tools/roadmap.py --publish; then
+if ! ROADMAP_REPO=$repo python3 -I tools/roadmap.py --publish; then
   echo "WARNING: PR #$pr is MERGED, but the roadmap publish failed; run 'python3 -I tools/roadmap.py --publish'" >&2
 fi

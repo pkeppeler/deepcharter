@@ -113,6 +113,11 @@ class RenderTest(unittest.TestCase):
         out = render()
         self.assertIn("[Handoff](https://x/issues/14)", out)
 
+    def test_spec_and_adr_links_are_absolute(self):
+        out = render()
+        self.assertIn("[SPEC.md](https://github.com/pkeppeler/deepcharter/blob/main/docs/SPEC.md)", out)
+        self.assertIn("[ADRs](https://github.com/pkeppeler/deepcharter/tree/main/docs/adr)", out)
+
     def test_missing_handoff(self):
         self.assertIn("Session handoff: none found", render(handoff=None))
 
@@ -282,7 +287,7 @@ class ResolveRepoTest(unittest.TestCase):
 
     def test_repo_env_wins_without_calling_gh(self):
         gh = FakeGh()
-        with mock.patch.dict(os.environ, {"REPO": "o/n"}, clear=True), mock.patch.object(r.subprocess, "run", gh):
+        with mock.patch.dict(os.environ, {"ROADMAP_REPO": "o/n"}, clear=True), mock.patch.object(r.subprocess, "run", gh):
             self.assertEqual(r.resolve_repo(), "o/n")
         self.assertEqual(gh.calls, [])
 
@@ -322,7 +327,7 @@ class MainTest(unittest.TestCase):
 
     def test_graphql_targets_the_resolved_slug(self):
         gh = FakeGh()
-        self.run_main(["roadmap.py"], gh, env={"REPO": "o/n"})
+        self.run_main(["roadmap.py"], gh, env={"ROADMAP_REPO": "o/n"})
         cmd = gh.calls_of("api graphql")[0]
         self.assertIn("owner=o", cmd)
         self.assertIn("name=n", cmd)

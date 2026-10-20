@@ -161,6 +161,8 @@ def render(roadmap: Roadmap, updated: str) -> str:
         out.append(f"- Session handoff: [{_text(roadmap.handoff.title)}]({roadmap.handoff.url})")
     else:
         out.append("- Session handoff: none found")
+    out.append("- Spec: [SPEC.md](https://github.com/pkeppeler/deepcharter/blob/main/docs/SPEC.md)")
+    out.append("- Decisions: [ADRs](https://github.com/pkeppeler/deepcharter/tree/main/docs/adr)")
     out += ["", "## In flight", ""]
     if roadmap.pull_requests:
         for pr in roadmap.pull_requests:
@@ -207,7 +209,7 @@ def gh(args: list[str], stdin: str | None = None) -> str:
 
 
 def resolve_repo() -> str:
-    slug = os.environ.get("REPO") or gh(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]).strip()
+    slug = os.environ.get("ROADMAP_REPO") or gh(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]).strip()
     if not SLUG_PATTERN.fullmatch(slug):
         raise RoadmapError(f"{slug!r} is not an owner/name slug")
     return slug

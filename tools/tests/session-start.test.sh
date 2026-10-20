@@ -59,8 +59,10 @@ check() { # check <description> <expected> <actual>
 }
 
 # run_hook: print the injected context for the current env.
+mkdir -p "$work/home/.claude/profiles" "$work/nohome"
+touch "$work/home/.claude/profiles/autonomous.md"
 run_hook() {
-  PATH="$work/bin:$PATH" bash "$root/.claude/hooks/session-start.sh" |
+  HOME="${PROFILE_HOME:-$work/home}" PATH="$work/bin:$PATH" bash "$root/.claude/hooks/session-start.sh" |
     python3 -I -c 'import json, sys; print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])'
 }
 in_days() { python3 -I -c '
@@ -111,6 +113,13 @@ check "bad JSON has no traceback" no "$(has 'Traceback')"
 out=$(GH_MODE=fail run_hook)
 check "gh failure notes it" yes "$(has '(could not check the interaction limit: gh failed)')"
 check "gh failure does not warn" no "$(has 'WARNING')"
+
+# The shared profile imported by .claude/CLAUDE.md lives outside the repo: its absence must not pass silently.
+out=$(LIMITS_JSON='{"limit":"collaborators_only","expires_at":"'"$(in_days 150)"'"}' PROFILE_HOME="$work/nohome" run_hook)
+check "missing profile warns" yes "$(has 'WARNING: ~/.claude/profiles/autonomous.md is missing')"
+check "missing profile warning is one line" 1 "$(grep -c 'autonomous.md' <<<"$out")"
+out=$(LIMITS_JSON='{"limit":"collaborators_only","expires_at":"'"$(in_days 150)"'"}' run_hook)
+check "present profile is silent" no "$(has 'autonomous.md')"
 
 # Derived sections.
 out=$(LIMITS_JSON='{}' ADR_PATHS=$'docs/adr/0001-first.md\ndocs/adr/0058-newest.md' MERGED=$'#660 Newest change\n#659 Older change' run_hook)

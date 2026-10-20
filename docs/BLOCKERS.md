@@ -11,6 +11,8 @@ Nothing goes straight to `main` any more (#516), so the default branch can requi
 
 Order matters: before the #516 PR merges, the roadmap regeneration and papercut commits still go to `main` directly, and required checks would block them.
 
+Tracked in #694.
+
 ## 2026-10-14: Renovate opens no PRs: the wrong Renovate app reaches this repo
 
 **Status:** open, needs the user.
