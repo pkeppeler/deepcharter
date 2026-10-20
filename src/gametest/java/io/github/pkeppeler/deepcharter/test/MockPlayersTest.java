@@ -6,8 +6,10 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
@@ -20,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Proves the {@link MockPlayers} harness: a mock player is a real player that stays connected. */
 public class MockPlayersTest {
+    private static final AtomicReference<WeakReference<ServerPlayer>> PROBE = new AtomicReference<>();
     private static final int TICKS = 1200;
     private static final int SURVIVAL_SECONDS = 3;
     /** The old bare join died at tick 242; a slow server covers fewer ticks in the wall-clock floor, so the test also needs this many. */
@@ -234,5 +237,42 @@ public class MockPlayersTest {
 
     private static Object getField(Object target, String name) throws ReflectiveOperationException {
         return field(name).get(target);
+    }
+
+    /**
+     * The probe half of the retention check (#656): joins a mock, which the test's own callbacks capture, and ends with one
+     * callback still scheduled. The runner keeps every finished test, so what its pending callbacks capture lives to the end of the run
+     * unless the test's end drops them.
+     */
+    @GameTest
+    public void retentionProbeJoinsAMockAndEnds(GameTestHelper helper) {
+        MockPlayer mock = MockPlayers.join(helper, "retention-probe");
+        PROBE.set(new WeakReference<>(mock.player()));
+        // TestTicks.each leaves one callback scheduled for the tick after the test ends, and it captures the mock.
+        TestTicks.each(helper, () -> {
+            if (!mock.isOnline()) {
+                throw helper.assertionException("the probe mock left before its test ended");
+            }
+        });
+        helper.succeedWhen(() -> {
+            if (helper.getTick() < 2) {
+                throw helper.assertionException("waiting two ticks");
+            }
+        });
+    }
+
+    /** A finished test lets go of its mock player (#656). Runs with {@link #retentionProbeJoinsAMockAndEnds}: filter the class, not one test. */
+    @GameTest(maxTicks = 200)
+    public void finishedTestDoesNotRetainItsMock(GameTestHelper helper) {
+        helper.succeedWhen(() -> {
+            WeakReference<ServerPlayer> probe = PROBE.get();
+            if (probe == null) {
+                throw helper.assertionException("the probe test has not joined its mock yet");
+            }
+            System.gc();
+            if (probe.get() != null) {
+                throw helper.assertionException("a finished test still holds its mock ServerPlayer");
+            }
+        });
     }
 }
