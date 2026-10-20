@@ -5,10 +5,10 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
-import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -80,7 +80,7 @@ public class PodHotHullScenario extends EvidenceScenario {
     private void show(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         context.runOnClient(client -> {
             client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-            Objects.requireNonNull(client.player, "the client has no player").setXRot(LOOK_DOWN);
+            ClientSession.player(client).setXRot(LOOK_DOWN);
         });
         context.waitTicks(30);
         for (int i = 0; i < 6; i++) {
