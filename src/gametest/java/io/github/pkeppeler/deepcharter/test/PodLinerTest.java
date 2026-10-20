@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -27,7 +28,6 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -755,26 +755,18 @@ public class PodLinerTest {
 
     private static final class Rig {
         private final MockPlayer pilot;
-        private @Nullable Seated seated;
+        private final Arrival<Seated> seated = new Arrival<>("seated", "the far chunk ticks");
 
         private Rig(MockPlayer pilot) {
             this.pilot = pilot;
         }
 
-        Seated seated() {
-            return Objects.requireNonNull(seated, "seated: set once the far chunk ticks, read before ready()");
-        }
-
         PodEntity pod() {
-            return seated().pod();
+            return seated.get().pod();
         }
 
         Watch watch() {
-            return seated().watch();
-        }
-
-        boolean ready() {
-            return seated != null;
+            return seated.get().watch();
         }
 
         static Rig await(GameTestHelper helper, ServerLevel level, Vec3 at, int tier, boolean sprint) {
@@ -793,7 +785,7 @@ public class PodLinerTest {
                 if (sprint) {
                     pilot.setInput(SPRINT);
                 }
-                rig.seated = new Seated(pod, new Watch(pod));
+                rig.seated.set(new Seated(pod, new Watch(pod)));
             });
             return rig;
         }
@@ -804,7 +796,7 @@ public class PodLinerTest {
         shaft(level, x, 14, true);
         Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), tier, true);
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.seated.isPresent()) {
                 return;
             }
             rig.watch().tick();
@@ -855,7 +847,7 @@ public class PodLinerTest {
         boolean[] airborne = {false};
         int[] settled = {0};
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.seated.isPresent()) {
                 return;
             }
             rig.watch().tick();

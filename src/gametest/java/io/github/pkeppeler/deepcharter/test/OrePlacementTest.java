@@ -18,6 +18,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -31,7 +32,6 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -369,11 +369,11 @@ public class OrePlacementTest {
         Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), "gas-driller");
         float[] before = {Float.NaN};
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
             if (Float.isNaN(before[0])) {
-                before[0] = rig.pod().hull();
+                before[0] = rig.pod.get().hull();
             }
             if (level.getBlockState(gas).isAir()) {
                 rig.pilot.releaseInput();
@@ -381,15 +381,15 @@ public class OrePlacementTest {
                 if (damage <= 0f) {
                     throw failure(helper, "the test depth gives no gas damage");
                 }
-                if (Math.abs(rig.pod().hull() - (before[0] - damage)) > 1e-3f) {
+                if (Math.abs(rig.pod.get().hull() - (before[0] - damage)) > 1e-3f) {
                     throw failure(
                             helper,
                             "the drilled pod has hull %s, expected %s - %s",
-                            rig.pod().hull(),
+                            rig.pod.get().hull(),
                             before[0],
                             damage);
                 }
-                rig.pod().discard();
+                rig.pod.get().discard();
                 helper.succeed();
             }
         });
@@ -475,34 +475,34 @@ public class OrePlacementTest {
         Rig control = Rig.await(helper, level, new Vec3(controlX, floor, Z), "undiggable-control");
         boolean[] controlDrilled = {false};
         TestTicks.each(helper, () -> {
-            if (!control.ready()) {
+            if (!control.pod.isPresent()) {
                 return;
             }
             for (Rig rig : refused) {
-                if (!rig.ready()) {
+                if (!rig.pod.isPresent()) {
                     return;
                 }
             }
-            controlDrilled[0] |= control.pod().drilling();
+            controlDrilled[0] |= control.pod.get().drilling();
             for (int i = 0; i < blockers.length; i++) {
-                if (refused[i].pod().drilling()
+                if (refused[i].pod.get().drilling()
                         || !level.getBlockState(blocked[i]).is(blockers[i])) {
                     throw failure(helper, "the drill started on, or removed, %s", blockers[i]);
                 }
             }
-            if (control.pod().tickCount < 120) {
+            if (control.pod.get().tickCount < 120) {
                 return;
             }
             if (!controlDrilled[0]) {
                 throw failure(helper, "the control pod never drilled the plain stone, so the test proved nothing");
             }
             for (int i = 0; i < blockers.length; i++) {
-                if (!refused[i].pod().onGround()) {
+                if (!refused[i].pod.get().onGround()) {
                     throw failure(
                             helper,
                             "pod %d is not standing on the floor of its room: %s",
                             i,
-                            refused[i].pod().position());
+                            refused[i].pod.get().position());
                 }
                 // The pod's whole 2 x 2 slab is refused, so the plain stone beside the blocker stays too.
                 for (int dx = 0; dx <= 1; dx++) {
@@ -515,9 +515,9 @@ public class OrePlacementTest {
                 }
             }
             for (Rig rig : refused) {
-                rig.pod().discard();
+                rig.pod.get().discard();
             }
-            control.pod().discard();
+            control.pod.get().discard();
             helper.succeed();
         });
     }
@@ -689,18 +689,18 @@ public class OrePlacementTest {
         level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
         Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), "company-pilot");
         TestTicks.each(helper, () -> {
-            if (!rig.ready()) {
+            if (!rig.pod.isPresent()) {
                 return;
             }
             for (Component message : rig.pilot.actionBarMessages()) {
                 if (message.getContents() instanceof TranslatableContents translatable
                         && translatable.getKey().equals("deepcharter.ore.company_rock_refused")) {
-                    rig.pod().discard();
+                    rig.pod.get().discard();
                     helper.succeed();
                     return;
                 }
             }
-            if (rig.pod().tickCount > 200) {
+            if (rig.pod.get().tickCount > 200) {
                 throw failure(
                         helper,
                         "the pilot got no company-rock message in 200 pod ticks: %s",
@@ -893,18 +893,10 @@ public class OrePlacementTest {
     /** A mock pilot, and the pod it sits in once the far chunk ticks entities. */
     private static final class Rig {
         private final MockPlayer pilot;
-        private @Nullable PodEntity pod;
+        private final Arrival<PodEntity> pod = new Arrival<>("pod", "the far chunk ticks");
 
         private Rig(MockPlayer pilot) {
             this.pilot = pilot;
-        }
-
-        PodEntity pod() {
-            return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
-        }
-
-        boolean ready() {
-            return pod != null;
         }
 
         /** Must be called from the test method; the pod sprints (bores down) from the moment it exists. */
@@ -918,7 +910,7 @@ public class OrePlacementTest {
                     throw failure(helper, "the pilot could not mount the pod");
                 }
                 pilot.setInput(SPRINT);
-                rig.pod = pod;
+                rig.pod.set(pod);
             });
             return rig;
         }

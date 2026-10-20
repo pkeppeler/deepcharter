@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -18,7 +19,6 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -38,7 +38,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "reacher-figure" (#250): the lampless figure, the Reacher, in the place and light where it is met.
@@ -95,12 +94,8 @@ public class ReacherFigureScenario extends EvidenceScenario {
 
     private int figureId;
     private int podId;
-    private @Nullable MockPlayer miner;
+    private final Arrival<MockPlayer> miner = new Arrival<>("miner", "the walk beat joins it");
     private int framesTaken;
-
-    private MockPlayer miner() {
-        return Objects.requireNonNull(miner, "miner: joined by the walk beat, read before it ran");
-    }
 
     @Override
     protected String name() {
@@ -275,21 +270,21 @@ public class ReacherFigureScenario extends EvidenceScenario {
             // Beside a miner, for scale, side-on across the chamber.
             stand(LIT, TOWARD_POD);
             serverDo(server -> {
-                miner = MockPlayers.join(server, "Miner", layer(server), at(MINER), 90f);
-                miner().player().setPermanentlyInvulnerable(true);
+                miner.set(MockPlayers.join(server, "Miner", layer(server), at(MINER), 90f));
+                miner.get().player().setPermanentlyInvulnerable(true);
             });
             ClientWait.until(
                     ctx,
                     "the miner on the client",
                     client -> ClientLight.clientLevel(client)
-                                    .getEntity(miner().player().getId())
+                                    .getEntity(miner.get().player().getId())
                             != null);
             ctx.waitTicks(2); // tick-wait: the miner's skin and place reach the client
             look(at(new Vec3((LIT.x + MINER.x) / 2, 2.3, 3.6)), at(new Vec3((LIT.x + MINER.x) / 2, 2.2, 0.5)));
             settle();
             screenshot(ctx, "reacher-scale");
-            int minerId = miner().player().getId();
-            serverDo(server -> miner().leave());
+            int minerId = miner.get().player().getId();
+            serverDo(server -> miner.get().leave());
             ClientWait.until(
                     ctx,
                     "the miner gone from the client",
