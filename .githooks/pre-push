@@ -26,8 +26,12 @@ done
 
 # The tools use Python 3.10+ syntax. Under an older python3 the first test fails with import errors that look like a broken change.
 # tools/tests/gate_checks.py repeats this check, because CI and agents run it without the hook.
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "pre-push: python3 not found on PATH; the tools need 3.10 or newer. Put one on PATH, or skip the hook once with: git push --no-verify" >&2
+  exit 1
+fi
 if ! python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))' >/dev/null 2>&1; then
-  echo "pre-push: python3 at $(command -v python3 || echo '<not on PATH>') is $(python3 -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' 2>/dev/null || echo unknown); the tools need 3.10 or newer. Put a newer python3 first on PATH, or skip the hook once with: git push --no-verify" >&2
+  echo "pre-push: python3 at $(command -v python3) is $(python3 -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' 2>/dev/null || echo 'of unknown version'); the tools need 3.10 or newer. Put a newer python3 first on PATH, or skip the hook once with: git push --no-verify" >&2
   exit 1
 fi
 

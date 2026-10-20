@@ -100,6 +100,15 @@ status=0
   >/dev/null 2>&1 || status=$?
 check "old python3 does not block a skipped push" "0" "$status"
 
+# No python3 on PATH has its own message. PATH holds only a bin dir with the tools the hook needs before the check.
+mkdir -p "$work/nopybin"
+for tool in bash git dirname cat; do ln -sf "$(command -v "$tool")" "$work/nopybin/$tool"; done
+status=0
+(cd "$work" && printf '%s' "refs/heads/b $sha refs/heads/b $zero$nl" | PATH="$work/nopybin" "$(command -v bash)" "$work/.githooks/pre-push" origin url) \
+  >"$work/out" 2>&1 || status=$?
+check "missing python3 blocks the push" "1" "$status"
+check "missing python3 has its own message" "yes" "$(grep -qF 'pre-push: python3 not found on PATH; the tools need 3.10 or newer' "$work/out" && echo yes || echo no)"
+
 # Git hands a hook GIT_DIR. A test that runs `git init` must hit its own temp dir, never the repo GIT_DIR names: here a sacrificial
 # bare repo stands in for the real one, and the stub python3 plays the test.
 git init -q --bare "$work/sacrificial.git"
