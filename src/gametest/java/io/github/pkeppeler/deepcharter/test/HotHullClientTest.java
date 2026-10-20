@@ -71,9 +71,9 @@ public class HotHullClientTest implements FabricClientGameTest {
                         "the hot-hull layer has a render type while the hull burns");
                 require(
                         layer.getTextureResource(state)
-                                .equals(state.appearance.variant().hotmask()),
+                                .equals(state.appearance().variant().hotmask()),
                         "the hot-hull layer draws the look's hot mask");
-                var hotmask = state.appearance.variant().hotmask();
+                var hotmask = state.appearance().variant().hotmask();
                 require(
                         client.getResourceManager().getResource(hotmask).isPresent(),
                         "the hot mask " + hotmask + " is a texture in the pack");

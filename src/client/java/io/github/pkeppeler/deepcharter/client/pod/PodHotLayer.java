@@ -18,12 +18,12 @@ public final class PodHotLayer extends AutoGlowingGeoLayer<PodGeoAnimatable, Pod
 
     /** Whether the mask is drawn: the hull burns, the pod is whole and its cab is drawn. */
     public static boolean draws(PodGeoRenderState state) {
-        return state.hot && !state.cabHidden && !state.appearance.wrecked();
+        return state.hot && !state.cabHidden && !state.appearance().wrecked();
     }
 
     @Override
     public Identifier getTextureResource(PodGeoRenderState renderState) {
-        return renderState.appearance.variant().hotmask();
+        return renderState.appearance().variant().hotmask();
     }
 
     @Override
