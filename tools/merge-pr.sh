@@ -14,7 +14,7 @@
 # a failure.
 # Refuses if origin/main commits made since the PR's latest successful CI run was created (minus a
 # 2-minute margin) changed anything outside docs (`docs/**`, `*.md`, `.papercuts.jsonl`).
-# Then squash-merges pinned to that head sha and regenerates docs/ROADMAP.md.
+# Retargets open PRs stacked on its branch to its base, then squash-merges pinned to that head sha and regenerates docs/ROADMAP.md.
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
@@ -268,6 +268,17 @@ checked_closes=$closes
 closing_set
 [[ $closes == "$checked_closes" ]] \
   || refuse "closing set changed during the gate (was ${checked_closes:-empty}, now ${closes:-empty}); re-run"
+
+# --delete-branch closes (it does not retarget) every open PR based on this head branch, and a
+# closed PR whose base is gone cannot be reopened (#663). Retarget each to this PR's base first.
+base=$(pr_field baseRefName .baseRefName) || refuse "has no readable base branch"
+stacked=$(gh pr list -R "$repo" --base "$branch" --state open --json number --jq '.[].number') \
+  || refuse "could not list the PRs stacked on $branch"
+for stacked_pr in $stacked; do
+  gh pr edit "$stacked_pr" -R "$repo" --base "$base" \
+    || refuse "cannot retarget stacked PR #$stacked_pr to $base (merging would close it)"
+  echo "Retargeted PR #$stacked_pr to $base"
+done
 
 # gh can merge on GitHub and then fail on local cleanup (branch checked out in a
 # worktree), so a nonzero exit is judged by the PR's real state.
