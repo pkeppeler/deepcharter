@@ -7,8 +7,10 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.handbook.Directives;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
+import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTriggers;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
@@ -210,6 +212,41 @@ public class HandbookChaptersSixToNineTest {
                 mock.player().getGameProfile().name(),
                 completed(server, mock),
                 before);
+    }
+
+    /**
+     * The credit for towing the Prospector home, with the reason when it is missing (#669: it was missing twice on CI and never
+     * locally): the tower found by its id, the Prospector's place against the pad, who sits on the tower and whether the pad ticks.
+     */
+    private static void expectTowCredited(
+            GameTestHelper helper,
+            MinecraftServer server,
+            ServerPlayer pilot,
+            PodEntity towed,
+            PodEntity tower,
+            ColonySite.Placed colony) {
+        Identifier tow = id(directive("company_property", "tow_prospector"));
+        if (HandbookProgress.completedFor(server, pilot.getUUID()).contains(tow)) {
+            return;
+        }
+        int half = ColonyTuning.DEFAULT.padSize() / 2;
+        throw helper.assertionException(
+                "polling the towed Prospector credited nobody: towed %s (towed=%s, tower found by id=%s, tower seen by the world=%s), "
+                        + "pad centre %s (half %s, ground %s, clear %s), tower at %s on a ticking chunk=%s, riders %s, "
+                        + "pilot alive=%s in %s",
+                towed.position(),
+                PodTowing.isTowed(towed),
+                PodTowing.tower(towed).isPresent(),
+                server.overworld().getEntity(tower.getUUID()) != null,
+                colony.center(),
+                half,
+                colony.groundY(),
+                ColonyTuning.DEFAULT.clearHeight(),
+                tower.position(),
+                server.overworld().isPositionEntityTicking(tower.blockPosition()),
+                tower.getPassengers(),
+                pilot.isAlive(),
+                pilot.level().dimension().identifier());
     }
 
     private static Set<String> with(Set<String> base, String... more) {
@@ -565,6 +602,7 @@ public class HandbookChaptersSixToNineTest {
                                 rival.player().startRiding(wreckHome, true, false),
                                 "the rival should board the towed Prospector");
                         poll(wreckHome);
+                        expectTowCredited(helper, server, first, wreckHome, tower, colony);
                         Set<String> towed = with(found, directive("company_property", "tow_prospector"));
                         HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "towing home", both, towed);
                         expect(
