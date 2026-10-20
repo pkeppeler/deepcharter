@@ -1,11 +1,6 @@
-"""Every hook and tool script keeps its exec bit (#701).
-
-Edit and Write rewrite a file and drop its mode, and git silently ignores a hook that is not executable, so a
-guard such as .claude/hooks/no-pattern-kill.sh could go dark with no error. A tracked file under the script
-directories that starts with a shebang must be mode 100755, and so must every tools/tests/*.test.sh. A file
-with no shebang is sourced, not run, and is exempt.
-"""
+"""Edit/Write tools drop the exec bit, and git ignores a non-executable hook (#701)."""
 import subprocess
+import tempfile
 import unittest
 from collections.abc import Callable, Iterable
 from pathlib import Path
@@ -16,17 +11,15 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_DIRS = (".githooks/", ".claude/hooks/", "tools/")
 TEST_SCRIPT_DIR = "tools/tests/"
 TEST_SCRIPT_SUFFIX = ".test.sh"
-EXECUTABLE = "100755"
 REGULAR_FILE = "100644"
 
 
 def non_executable(ls_files_stage: Iterable[str], has_shebang: Callable[[str], bool]) -> list[str]:
-    """The paths that must be executable but are not, from `git ls-files -s` lines."""
     found = []
     for line in ls_files_stage:
         meta, path = line.split("\t", 1)
         mode = meta.split()[0]
-        if mode == EXECUTABLE or mode != REGULAR_FILE:
+        if mode != REGULAR_FILE:
             continue
         is_test_script = path.startswith(TEST_SCRIPT_DIR) and path.endswith(TEST_SCRIPT_SUFFIX)
         if is_test_script or (path.startswith(SCRIPT_DIRS) and has_shebang(path)):
@@ -34,9 +27,12 @@ def non_executable(ls_files_stage: Iterable[str], has_shebang: Callable[[str], b
     return found
 
 
-def file_has_shebang(path: str) -> bool:
-    with (ROOT / path).open("rb") as handle:
-        return handle.read(2) == b"#!"
+def index_has_shebang(root: Path, path: str) -> bool:
+    """Whether the staged blob starts with a shebang; the working tree is never read."""
+    blob = subprocess.run(
+        ["git", "cat-file", "-p", f":{path}"], cwd=root, env=git_env.clean_env(root), check=True, capture_output=True
+    ).stdout
+    return blob.startswith(b"#!")
 
 
 def stage_lines() -> list[str]:
@@ -88,9 +84,26 @@ class NonExecutableTest(unittest.TestCase):
         self.assertEqual(["tools/my script.sh"], non_executable([entry("100644", "tools/my script.sh")], lambda _path: True))
 
 
+class IndexShebangTest(unittest.TestCase):
+    def test_a_tracked_file_missing_from_disk_is_still_read_from_the_index(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            env = git_env.clean_env(root)
+            subprocess.run(["git", "init", "-q"], cwd=root, env=env, check=True)
+            (root / "tools").mkdir()
+            (root / "tools" / "run.sh").write_text("#!/usr/bin/env bash\n")
+            subprocess.run(["git", "add", "tools/run.sh"], cwd=root, env=env, check=True)
+            (root / "tools" / "run.sh").unlink()
+            self.assertTrue(index_has_shebang(root, "tools/run.sh"))
+
+
 class RepoTest(unittest.TestCase):
     def test_every_hook_and_tool_script_is_executable(self):
-        self.assertEqual([], non_executable(stage_lines(), file_has_shebang))
+        self.assertEqual(
+            [],
+            non_executable(stage_lines(), lambda path: index_has_shebang(ROOT, path)),
+            "not executable; run: git update-index --chmod=+x <file>",
+        )
 
 
 if __name__ == "__main__":
