@@ -3,7 +3,8 @@
 #
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
 # labelled `review-passed` with a `review-passed <head sha>` comment for the
-# current head (see tools/mark-review-passed.sh), closes exactly its branch's
+# current head (see tools/mark-review-passed.sh), and, unless every changed file matches
+# DOC_ONLY_GLOBS (and none under .claude/ or prompts/, nor docs/SPEC.md), labelled `stage:simplified` (the simplifier ran), closes exactly its branch's
 # issue (GitHub's closingIssuesReferences set is {N} for branch `<N>-<slug>`),
 # adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug) or twice in the PR,
 # mergeable, shows a demo if it changes in-game code (see the demo check below), changes docs/feature-map/map.json
@@ -15,12 +16,15 @@
 # Refuses if origin/main commits made since the PR's latest successful CI run was created (minus a
 # 2-minute margin) changed anything outside docs (`docs/**`, `*.md`, `.papercuts.jsonl`).
 # Retargets open PRs stacked on its branch to its base, then squash-merges pinned to that head sha
-# and regenerates docs/ROADMAP.md.
+# and publishes the roadmap issue (`python3 -I tools/roadmap.py --publish`; a failure there warns,
+# the merge stands). Never pushes to main.
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
 # Job names (ci.yml) that run on every PR; the label-gated client job is not listed.
 REQUIRED_CHECKS=(build tool-tests)
+# A PR whose files all match these needs one review pass; any other PR also needs stage:simplified.
+DOC_ONLY_GLOBS=('*.md' '.papercuts.jsonl')
 
 if [[ $# -ne 1 || ! $1 =~ ^[0-9]+$ ]]; then
   echo "usage: tools/merge-pr.sh <pr-number>" >&2
@@ -55,6 +59,33 @@ has_label review-passed || refuse "lacks the review-passed label"
 # Bodies are compared whole (as JSON strings), so a longer comment cannot match.
 pr_field comments '.comments[].body|@json' | grep -qxF "\"review-passed $sha\"" \
   || refuse "has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
+
+# A PR is doc-only when it changes files and every one, and a rename's previous path, matches
+# DOC_ONLY_GLOBS and is not behaviour or the user's contract (.claude/**, prompts/**, docs/SPEC.md:
+# markdown that steers agents or settles the design). Fail closed: an unreadable or empty file list is not doc-only.
+is_doc() {
+  case $1 in
+    .claude/* | prompts/* | docs/SPEC.md) return 1 ;;
+  esac
+  local glob
+  for glob in "${DOC_ONLY_GLOBS[@]}"; do
+    # shellcheck disable=SC2053 # an unquoted right side is a glob here
+    [[ $1 == $glob ]] && return 0
+  done
+  return 1
+}
+load_pr_files
+doc_only=1
+[[ -n $pr_files ]] || doc_only=0
+while IFS=$'\t' read -r _ path previous; do
+  [[ -n $path ]] || continue
+  is_doc "$path" || doc_only=0
+  [[ -z $previous ]] || is_doc "$previous" || doc_only=0
+done <<<"$pr_files"
+if [[ $doc_only -eq 0 ]]; then
+  has_label stage:simplified \
+    || refuse "lacks the stage:simplified label (only doc-only PRs skip the simplifier pass)"
+fi
 
 mergeable=$(pr_field mergeable .mergeable)
 [[ $mergeable == MERGEABLE ]] || refuse "is not mergeable (mergeable: $mergeable)"
@@ -102,7 +133,7 @@ done
 # A "Re-run jobs" keeps `created_at`, so it can only cause a conservative refusal, which
 # a close and reopen fixes. The run's pull_requests[].base.sha reports the PR's current
 # base, not the tested one, so it is no use. Fail closed on any unreadable step.
-# Docs-only commits are allowed (the roadmap regen commits after every merge).
+# Docs-only commits are allowed.
 git fetch origin main >/dev/null 2>&1 || refuse "could not read origin/main (fetch failed)"
 ci_run=$(gh api "repos/$repo/actions/runs?head_sha=$sha&event=pull_request&per_page=100" --paginate \
   --jq '.workflow_runs[] | select(.name == "CI" and .status == "completed" and .conclusion == "success") | .id' 2>/dev/null \
@@ -140,7 +171,6 @@ fi
 # PRs pick numbers on their own), or twice among its own added ADRs. A path the PR
 # vacates (renamed away or removed) no longer holds its number. Fail closed: an
 # unreadable list refuses.
-load_pr_files
 main_adrs=$(git ls-tree --name-only origin/main docs/adr/) || main_adrs=
 [[ -n $main_adrs ]] || refuse "could not read the ADR list on origin/main"
 vacated=$'\n'
@@ -206,40 +236,7 @@ if ! gh pr merge "$pr" -R "$repo" --squash --delete-branch --match-head-commit "
 fi
 echo "Merged PR #$pr at $sha"
 
-tmp=
-cleanup() {
-  if [[ -n $tmp ]]; then
-    git worktree remove --force "$tmp/wt" >/dev/null 2>&1 || true
-    rm -rf "$tmp"
-    git worktree prune >/dev/null 2>&1 || true
-  fi
-}
-trap cleanup EXIT
-
-# Called in an `if`, so set -e is off inside: every step must `|| return 1`.
-regenerate_roadmap() {
-  git fetch origin main || return 1
-  if ! git cat-file -e origin/main:tools/roadmap.py 2>/dev/null; then
-    echo "WARNING: tools/roadmap.py not on origin/main; skipping roadmap regeneration" >&2
-    return 0
-  fi
-  tmp=$(mktemp -d) || return 1
-  git worktree add --detach "$tmp/wt" origin/main || return 1
-  local attempt
-  for attempt in 1 2; do
-    (cd "$tmp/wt" && python3 -I tools/roadmap.py) || return 1
-    [[ -n $(git -C "$tmp/wt" status --porcelain -- docs/ROADMAP.md) ]] || return 0
-    git -C "$tmp/wt" add docs/ROADMAP.md || return 1
-    git -C "$tmp/wt" commit -m "Regenerate roadmap after #$pr" || return 1
-    git -C "$tmp/wt" push origin HEAD:main && return 0
-    # Push rejected (main moved): one retry from the new origin/main.
-    [[ $attempt -eq 1 ]] || return 1
-    git fetch origin main || return 1
-    git -C "$tmp/wt" reset --hard origin/main || return 1
-  done
-}
-
-if ! regenerate_roadmap; then
-  echo "ERROR: PR #$pr is MERGED, but the roadmap regeneration FAILED" >&2
-  exit 1
+# Publishing is derived state: the PR is already merged, so a failure warns.
+if ! ROADMAP_REPO=$repo python3 -I tools/roadmap.py --publish; then
+  echo "WARNING: PR #$pr is MERGED, but the roadmap publish failed; run 'python3 -I tools/roadmap.py --publish'" >&2
 fi

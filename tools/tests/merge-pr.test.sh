@@ -47,7 +47,8 @@ case "$1 $2" in
       labels)
         [[ ${STUB_LABELS_FAIL-0} == 1 ]] && exit 1
         echo "${STUB_LABELS-infra
-review-passed}" ;;
+review-passed
+stage:simplified}" ;;
       comments) echo "\"${STUB_COMMENT-review-passed ${STUB_SHA-abc123}}\"" ;;
       mergeable) echo "${STUB_MERGEABLE-MERGEABLE}" ;;
     esac ;;
@@ -112,16 +113,6 @@ case "$1" in
 docs/adr/0018-eighteen.md
 }" ;;
   remote) echo "${STUB_ORIGIN-git@github.com:pkeppeler/deepcharter.git}" ;;
-  cat-file) [[ ${STUB_ROADMAP_PRESENT-1} == 1 ]] || exit 1 ;;
-  worktree) if [[ $2 == add ]]; then mkdir -p "$4"; fi ;;
-  -C)
-    case "$3" in
-      status) if [[ ${STUB_ROADMAP_CHANGED-0} == 1 ]]; then echo " M docs/ROADMAP.md"; fi ;;
-      push)
-        n=$(cat "$LOG.push" 2>/dev/null || echo 0)
-        echo $((n + 1)) >"$LOG.push"
-        [[ $n -ge ${STUB_PUSH_FAILS-0} ]] || exit 1 ;;
-    esac ;;
 esac
 exit 0
 STUB
@@ -129,6 +120,7 @@ STUB
 cat >"$work/bin/python3" <<'STUB'
 #!/usr/bin/env bash
 echo "python3 $*" >>"$LOG"
+echo "ROADMAP_REPO=${ROADMAP_REPO-}" >>"$LOG"
 exit "${STUB_ROADMAP_RC:-0}"
 STUB
 chmod +x "$work/bin/"*
@@ -182,7 +174,7 @@ rc=0
 pass() { cases=$((cases + 1)); echo "ok   $1"; }
 fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
-reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push" "$LOG.closing"; : >"$LOG"; }
+reset() { rm -f "$LOG" "$LOG.merged" "$LOG.closing"; : >"$LOG"; }
 
 # run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
 run_script() {
@@ -292,8 +284,8 @@ game=$(files modified:src/main/java/Foo.java)
 nl=$'\n'
 gif="Closes #12${nl}![demo](https://github.com/pkeppeler/deepcharter/blob/pr-media/7/run.gif?raw=true)"
 png="Closes #12${nl}![shot](https://github.com/pkeppeler/deepcharter/blob/pr-media/7/shot.png?raw=true)"
-demo_labels="infra${nl}review-passed${nl}demo"
-nodemo_labels="infra${nl}review-passed${nl}no-demo"
+demo_labels="infra${nl}review-passed${nl}stage:simplified${nl}demo"
+nodemo_labels="infra${nl}review-passed${nl}stage:simplified${nl}no-demo"
 refusal "in-game change with no demo" "changes in-game code (src/main/java/Foo.java) with no demo" "STUB_FILES=$game"
 refusal "refusal names the recorder" "tools/record-evidence.sh" "STUB_FILES=$game"
 refusal "refusal names the no-demo fix" "label it 'no-demo' and add a body line 'No demo: <reason>'" "STUB_FILES=$game"
@@ -322,7 +314,7 @@ refusal "both demo and no-demo labels" "both the 'demo' and 'no-demo' labels" "S
 refusal "media without the demo label" "links or embeds pr-media media but lacks the 'demo' label" "STUB_BODY=$gif"
 refusal "media without the demo label on in-game change" "links or embeds pr-media media but lacks the 'demo' label" \
   "STUB_BODY=$png" "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels"
-refusal "demo label lookalike does not count" "with no demo" "STUB_FILES=$game" "STUB_LABELS=infra${nl}review-passed${nl}demos"
+refusal "demo label lookalike does not count" "with no demo" "STUB_FILES=$game" "STUB_LABELS=infra${nl}review-passed${nl}stage:simplified${nl}demos"
 refusal "labels unreadable" "has no readable labels" "STUB_FILES=$game" STUB_LABELS_FAIL=1
 run_script "STUB_FILES=$game" "STUB_LABELS=$demo_labels" "STUB_BODY=$gif"
 exited "in-game change with demo label and gif merges" 0
@@ -341,7 +333,7 @@ run_script "STUB_FILES=$(files modified:tools/merge-pr.sh added:src/test/java/T.
 exited "non-game files need no demo" 0
 
 # Map gate (#510): a `gameplay` PR must change docs/feature-map/map.json or carry a `No map change: <reason>` body line.
-gameplay_labels="infra${nl}review-passed${nl}gameplay"
+gameplay_labels="infra${nl}review-passed${nl}stage:simplified${nl}gameplay"
 refusal "gameplay PR with no map change" "does not change docs/feature-map/map.json" "STUB_LABELS=$gameplay_labels"
 refusal "refusal names the skill and the escape" "or add a body line 'No map change: <reason>'" "STUB_LABELS=$gameplay_labels"
 refusal "generated map files alone are not a map change" "does not change docs/feature-map/map.json" "STUB_LABELS=$gameplay_labels" \
@@ -355,7 +347,7 @@ run_script "STUB_LABELS=$gameplay_labels" "STUB_BODY=Closes #12${nl}No map chang
 exited "gameplay PR with a no-map-change reason merges" 0
 run_script "STUB_LABELS=$gameplay_labels" "STUB_BODY=Closes #12"$'\r'"${nl}No map change: tuning"$'\r'
 exited "no-map-change reason line with CRLF merges" 0
-run_script "STUB_LABELS=infra${nl}review-passed${nl}gameplays"
+run_script "STUB_LABELS=infra${nl}review-passed${nl}stage:simplified${nl}gameplays"
 exited "gameplay label lookalike needs no map change" 0
 run_script "STUB_FILES=$(files modified:README.md)"
 exited "PR without the gameplay label needs no map change" 0
@@ -454,7 +446,7 @@ logged "main read from two minutes before the run" "git log --format=%H --since=
 run_script "STUB_CI_RUNS=9001${nl}9005${nl}9003"
 exited "newest CI run is the one read" 0
 logged "newest CI run id used" "gh api repos/pkeppeler/deepcharter/actions/runs/9005 --jq .created_at"
-run_script "STUB_MAIN_LOG=c1 $after${nl}c2 $after${nl}c3 $after" "STUB_SHOW_c1=docs/ROADMAP.md${nl}docs/adr/0020-x.md" \
+run_script "STUB_MAIN_LOG=c1 $after${nl}c2 $after${nl}c3 $after" "STUB_SHOW_c1=docs/BLOCKERS.md${nl}docs/adr/0020-x.md" \
   "STUB_SHOW_c2=README.md${nl}src/main/java/NOTES.md" STUB_SHOW_c3=.papercuts.jsonl
 exited "main commits only in docs, markdown and papercuts merge" 0
 logged "docs-only commits still merge" "$merge_line"
@@ -466,7 +458,7 @@ refusal "refusal names the CI run creation time" "CI run 9001 created 2026-10-08
 refusal "refusal gives the close/reopen fix" "$stale_hint" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
 refusal "main commit in a build file" "$stale_hint" "$code_log" STUB_SHOW_c1=build.gradle.kts
 refusal "build file beside another path" "build.gradle.kts" "$code_log" "STUB_SHOW_c1=gradle.properties${nl}build.gradle.kts"
-refusal "code beside docs still refuses" "tools/merge-pr.sh" "$code_log" "STUB_SHOW_c1=docs/ROADMAP.md${nl}tools/merge-pr.sh"
+refusal "code beside docs still refuses" "tools/merge-pr.sh" "$code_log" "STUB_SHOW_c1=docs/BLOCKERS.md${nl}tools/merge-pr.sh"
 refusal "code in a later commit refuses" "src/B.java" "STUB_MAIN_LOG=c1 $after${nl}c2 $after" STUB_SHOW_c1=docs/x.md STUB_SHOW_c2=src/B.java
 refusal "docs-looking directory outside docs/ refuses" "$stale_hint" "$code_log" STUB_SHOW_c1=docsx/a.txt
 refusal "markdown lookalike refuses" "$stale_hint" "$code_log" STUB_SHOW_c1=src/main/md
@@ -491,26 +483,67 @@ refusal "commit files unreadable" "could not read the files changed by origin/ma
 run_script
 logged "origin/main fetched before comparing" "git fetch origin main"
 
-# Happy path: roadmap changed, so it is committed and pushed.
-run_script STUB_ROADMAP_CHANGED=1
+# Happy path: the merge is followed by a roadmap publish, never by a push.
+run_script
 exited "happy path exits 0" 0
 logged "happy path merge invocation" "$merge_line"
 logged "labels read from pinned repo" "gh pr view 7 -R pkeppeler/deepcharter --json labels --jq .labels[].name"
-logged "roadmap regenerated" "python3 -I tools/roadmap.py"
-logged "worktree of origin/main" "git worktree add --detach $(wt) origin/main"
-logged "roadmap commit message" "git -C $(wt) commit -m Regenerate roadmap after #7"
-logged "roadmap pushed to main" "git -C $(wt) push origin HEAD:main"
-logged "worktree removed" "git worktree remove --force $(wt)"
-logged "worktree pruned" "git worktree prune"
+logged "roadmap published" "python3 -I tools/roadmap.py --publish"
+logged "publish pinned to the gate's repo" "ROADMAP_REPO=pkeppeler/deepcharter"
+not_logged "nothing is pushed" "^git .*push"
+not_logged "nothing is committed" "^git .*commit"
+not_logged "no scratch worktree" "^git worktree"
+publish_at=$(grep -n '^python3' "$LOG" | cut -d: -f1)
+merge_at=$(grep -n '^gh pr merge' "$LOG" | cut -d: -f1)
+if [[ -n $publish_at && -n $merge_at && $merge_at -lt $publish_at ]]; then
+  pass "publish happens after the merge call"
+else
+  fail "publish happens after the merge call (publish line '$publish_at', merge line '$merge_at')"
+fi
+
+# Merge rule: a doc-only PR (every file, and a rename's previous path, matches *.md or
+# .papercuts.jsonl) needs review-passed only; any other PR also needs stage:simplified.
+no_stage="infra${nl}review-passed"
+stage_msg="lacks the stage:simplified label (only doc-only PRs skip the simplifier pass)"
+run_script "STUB_FILES=$(files modified:README.md added:docs/design/new.md modified:.papercuts.jsonl)" "STUB_LABELS=$no_stage"
+exited "doc-only PR without stage:simplified merges" 0
+logged "doc-only merge invocation" "$merge_line"
+run_script "STUB_FILES=$(files renamed:docs/b.md:docs/a.md)" "STUB_LABELS=$no_stage"
+exited "doc-only rename without stage:simplified merges" 0
+refusal "code PR without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:tools/merge-pr.sh)" "STUB_LABELS=$no_stage"
+refusal "doc beside code without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:README.md modified:tools/merge-pr.sh)" "STUB_LABELS=$no_stage"
+refusal "json beside docs without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:docs/feature-map/map.json)" "STUB_LABELS=$no_stage"
+refusal "markdown lookalike without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:src/main/md)" "STUB_LABELS=$no_stage"
+refusal "nested papercuts lookalike without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:sub/.papercuts.jsonl)" "STUB_LABELS=$no_stage"
+refusal "rename out of markdown without stage:simplified" "$stage_msg" "STUB_FILES=$(files renamed:docs/a.txt:docs/a.md)" "STUB_LABELS=$no_stage"
+refusal "rename into markdown from code without stage:simplified" "$stage_msg" "STUB_FILES=$(files renamed:docs/a.md:src/A.java)" "STUB_LABELS=$no_stage"
+refusal "no files is not doc-only" "$stage_msg" STUB_FILES= "STUB_LABELS=$no_stage"
+refusal "stage label lookalike" "$stage_msg" "STUB_FILES=$(files modified:tools/merge-pr.sh)" "STUB_LABELS=${no_stage}${nl}stage:simplified-ish"
+refusal "stage:reviewed is not stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:tools/merge-pr.sh)" "STUB_LABELS=${no_stage}${nl}stage:reviewed"
+refusal "doc-only PR still needs review-passed" "lacks the review-passed label" "STUB_FILES=$(files modified:README.md)" STUB_LABELS=infra
+refusal "doc-only PR still needs the sha comment" "has no 'review-passed abc123' comment" "STUB_FILES=$(files modified:README.md)" "STUB_LABELS=$no_stage" STUB_COMMENT=
+run_script "STUB_FILES=$(files modified:tools/merge-pr.sh)"
+exited "code PR with stage:simplified merges" 0
+# Markdown that is behaviour or the user's contract is not a doc: .claude/**, prompts/**, docs/SPEC.md.
+refusal "skill markdown without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:.claude/skills/x/SKILL.md)" "STUB_LABELS=$no_stage"
+refusal "CLAUDE.md without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:.claude/CLAUDE.md)" "STUB_LABELS=$no_stage"
+refusal "agent markdown without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:.claude/agents/a.md)" "STUB_LABELS=$no_stage"
+refusal "prompt markdown without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:prompts/lore.md)" "STUB_LABELS=$no_stage"
+refusal "SPEC without stage:simplified" "$stage_msg" "STUB_FILES=$(files modified:docs/SPEC.md)" "STUB_LABELS=$no_stage"
+refusal "rename out of .claude without stage:simplified" "$stage_msg" "STUB_FILES=$(files renamed:docs/x.md:.claude/skills/x/SKILL.md)" "STUB_LABELS=$no_stage"
+refusal "rename out of SPEC without stage:simplified" "$stage_msg" "STUB_FILES=$(files renamed:docs/spec-old.md:docs/SPEC.md)" "STUB_LABELS=$no_stage"
+run_script "STUB_FILES=$(files modified:.claude/skills/x/SKILL.md)"
+exited "skill markdown with stage:simplified merges" 0
+run_script "STUB_FILES=$(files modified:docs/SPEC-notes.md modified:docs/design/SPEC.md)" "STUB_LABELS=$no_stage"
+exited "SPEC lookalikes stay doc-only" 0
 
 # A skipped non-required check is fine (the default runs include one); the
-# unchanged roadmap is not committed. Runs are read from the pinned sha, all pages.
+# Runs are read from the pinned sha, all pages.
 run_script
 exited "skipped non-required check merges" 0
 logged "skipped non-required merge invocation" "$merge_line"
 logged "check-runs read for pinned sha" "gh api repos/pkeppeler/deepcharter/commits/abc123/check-runs?filter=all&per_page=100 --paginate --jq .check_runs[] | [.name, (.started_at // \"9999-12-31T23:59:59Z\"), (.id | tostring), .status, (.conclusion // \"\")] | @tsv"
 refusal "every check skipped" "required check that was only skipped" "STUB_RUNS=$(runs "${skipped_required_specs[@]}")"
-not_logged "unchanged roadmap not committed" "git -C .* commit"
 
 # Stacked PRs: an open PR based on this PR's head branch is retargeted to this PR's
 # base before the merge call, because --delete-branch would close it (#663).
@@ -536,38 +569,20 @@ not_logged "no stacked PR means no retarget" "^gh pr edit"
 
 # gh pr merge exits nonzero after merging on GitHub (local cleanup failure).
 run_script STUB_MERGE_RC=1
-exited "merged-despite-error continues to roadmap" 0
+exited "merged-despite-error continues to the publish" 0
 printed "merged-despite-error warns" "exited nonzero but PR #7 is MERGED"
-logged "merged-despite-error ran roadmap" "python3 -I tools/roadmap.py"
+logged "merged-despite-error published the roadmap" "python3 -I tools/roadmap.py --publish"
 run_script STUB_MERGE_RC=1 STUB_STATE_AFTER=OPEN
 exited "failed merge exits nonzero" 1
 printed "failed merge says not merged" "PR #7 is not merged"
-not_logged "failed merge skips roadmap" "python3"
+not_logged "failed merge skips the publish" "python3"
 
-# Roadmap script missing on main: warn, still succeed.
-run_script STUB_ROADMAP_PRESENT=0
-exited "missing roadmap.py exits 0" 0
-printed "missing roadmap.py warns" "WARNING: tools/roadmap.py not on origin/main"
-not_logged "missing roadmap.py runs nothing" "python3"
-
-# Roadmap failure after merge: loud, nonzero, and no push.
-run_script STUB_ROADMAP_RC=1 STUB_ROADMAP_CHANGED=1
-exited "roadmap failure exits nonzero" 1
-printed "roadmap failure says merged" "is MERGED, but the roadmap regeneration FAILED"
-logged "roadmap failure still merged" "$merge_line"
-not_logged "roadmap failure not pushed" "git -C .* push"
-logged "roadmap failure removes worktree" "git worktree remove --force $(wt)"
-
-# Push race: one retry from the new origin/main, then loud failure.
-run_script STUB_ROADMAP_CHANGED=1 STUB_PUSH_FAILS=1
-exited "push rejected once recovers" 0
-count "retry pushed twice" "push origin HEAD:main" 2
-count "retry reran roadmap.py" "^python3" 2
-logged "retry reset worktree to origin/main" "git -C $(wt) reset --hard origin/main"
-run_script STUB_ROADMAP_CHANGED=1 STUB_PUSH_FAILS=2
-exited "push rejected twice fails" 1
-printed "push rejected twice says merged" "is MERGED, but the roadmap regeneration FAILED"
-count "no third push" "push origin HEAD:main" 2
+# A failed publish only warns: the PR is merged and the roadmap is derived state.
+run_script STUB_ROADMAP_RC=1
+exited "publish failure still exits 0" 0
+printed "publish failure warns" "WARNING: PR #7 is MERGED, but the roadmap publish failed"
+printed "publish failure names the retry" "python3 -I tools/roadmap.py --publish"
+logged "publish failure still merged" "$merge_line"
 
 # Argument validation: exit 2, and gh is never called.
 check_args() { # <name> <args...>

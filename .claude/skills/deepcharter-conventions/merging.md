@@ -2,6 +2,9 @@
 
 Merge only through `tools/merge-pr.sh <n>`, which refuses and gives the reason. It retargets open PRs stacked on the PR's branch to its base first, because `--delete-branch` would close them. To merge several review-passed PRs, use the queue instead of a hand-rolled waiter: `tools/merge-queue.sh <n>...`.
 
+- Nothing is pushed to `main`; roadmap, papercut and doc changes go through PRs. A doc-only PR (every file matches `*.md` or `.papercuts.jsonl`, a rename's previous path included, and none is under `.claude/` or `prompts/` or is `docs/SPEC.md`, because that markdown steers agents or is the user's contract) needs `review-passed` and its sha comment. Any other PR also needs the `stage:simplified` label. The globs are `DOC_ONLY_GLOBS` in `tools/merge-pr.sh`.
+- After the merge it runs `python3 -I tools/roadmap.py --publish`, which rewrites the body of the open issue labelled `roadmap` (the repo is passed as `ROADMAP_REPO`). A failure only warns (the merge stands); rerun the command.
+
 - It merges the PRs one at a time, in the order given. For each it waits until no workflow run for the head is unfinished, then runs the gate.
 - On a stale-base refusal it runs `gh pr close <n> && gh pr reopen <n>`, waits for CI again and retries (3 times). On `mergeable: UNKNOWN` it waits 30 s and retries (4 times).
 - A PR that is already merged is skipped. Any other refusal stops the queue and prints the reason.
