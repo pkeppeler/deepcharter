@@ -57,7 +57,7 @@ pr_field comments '.comments[].body|@json' | grep -qxF "\"review-passed $sha\"" 
   || refuse "has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
 
 mergeable=$(pr_field mergeable .mergeable)
-[[ $mergeable == MERGEABLE ]] || refuse "is not mergeable (mergeable: $mergeable)"
+[[ $mergeable == MERGEABLE ]] || refuse "is not mergeable (mergeable: $mergeable)$([[ $mergeable == CONFLICTING ]] && echo '; merge origin/main into the branch and push')"
 
 # Checks come from the check-runs API, not `gh pr checks`: workflows that run on
 # label events add a skipped run under the same name as an earlier real one, and
