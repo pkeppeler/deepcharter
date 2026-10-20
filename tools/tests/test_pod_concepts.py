@@ -24,6 +24,38 @@ class CommittedFiles(unittest.TestCase):
         self.assertFalse((pack / "textures/entity/pod/mole").exists(), "the concept textures are in the mod")
 
 
+class HotMask(unittest.TestCase):
+    def test_the_hot_mask_lights_the_hull_and_leaves_glass_lamps_and_rubber_clear(self):
+        for name, make in pc.PODS.items():
+            model = make()
+            pc.pack(model)
+            base, _ = pc.paint_model(model)
+            mask = pc.hot_mask(model, base)
+            lit = clear = 0
+            for _, cube in model.cubes():
+                for face in pc.faces_of(cube):
+                    for j in range(face.h):
+                        for i in range(face.w):
+                            alpha = mask.get(face.x + i, face.y + j)[3]
+                            if cube.material in pc.HOT_MATERIALS:
+                                self.assertEqual(pc.HOT_ALPHA, alpha, f"{name} {cube.material} texel is not hot")
+                                lit += 1
+                            elif cube.material in ("glass", "pane", "porthole", "lens", "grille", "rubber"):
+                                self.assertEqual(0, alpha, f"{name} {cube.material} texel glows")
+                                clear += 1
+            with self.subTest(pod=name):
+                self.assertGreater(lit, 0)
+                self.assertGreater(clear, 0)
+
+    def test_the_ember_colour_runs_from_dull_red_to_pale_yellow(self):
+        dim, bright = pc.hot_color(0.0), pc.hot_color(1.0)
+        self.assertEqual(pc.HOT_RAMP[0], dim)
+        self.assertEqual(pc.HOT_RAMP[-1], bright)
+        self.assertGreater(dim[0], dim[1] + 50, "the dimmest ember is red")
+        self.assertGreater(bright[2], dim[2], "the brightest is paler")
+        self.assertEqual(pc.hot_color(5.0), bright, "a texel brighter than the reference clamps to the top of the ramp")
+
+
 class Pods(unittest.TestCase):
     def test_a_pod_holds_the_cutter_of_every_drill_tier(self):
         for name, make in pc.PODS.items():

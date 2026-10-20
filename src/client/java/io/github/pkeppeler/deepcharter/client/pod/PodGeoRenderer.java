@@ -37,7 +37,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Draws a pod of one chassis with GeckoLib (ADR 0030, #243): the model, textures and tier map of its {@link PodLook}, its bones
- * posed by role ({@link PodPose}) from what the pod does ({@link PodMotion}), and its glowmask at full bright while the lamps are on.
+ * posed by role ({@link PodPose}) from what the pod does ({@link PodMotion}), its glowmask at full bright while the lamps are on, and its hot mask
+ * at full bright while lava burns the hull ({@link PodHotLayer}).
  * The cutter on show is the one the pod's drill tier picks, and it changes the moment the drill does.
  *
  * <p>It is a replaced-entity renderer: {@link PodEntity} knows nothing of GeckoLib, so a server never loads it.
@@ -63,6 +64,9 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
 
     private final PodLook look;
     private final GeoModel geo;
+    /** Whether the look has a hot mask to draw while the hull burns. */
+    private final boolean hasHotMask;
+
     private final PodPose pose;
     /** The model's own extent round the pod's feet, every cutter and the swing included: a cone leads the hitbox by a block, which the default culling box misses. */
     private final AABB modelExtent;
@@ -75,8 +79,8 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
     // Weak, so a pod that leaves the level takes its animation with it.
     private final Map<PodEntity, PodMotion> motions = new WeakHashMap<>();
 
-    /** A pod look and the geometry it names, which fit each other and their textures. */
-    public record Loaded(PodLook look, GeoModel geo) {}
+    /** A pod look and the geometry it names, which fit each other and their textures, and whether the look has a hot mask (#634). */
+    public record Loaded(PodLook look, GeoModel geo, boolean hot) {}
 
     public PodGeoRenderer(EntityRendererProvider.Context context, Chassis chassis) {
         this(context, chassis, load(context.getResourceManager(), chassis));
@@ -86,6 +90,7 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
         super(context, new PodGeckoModel(loaded.look()), new PodGeoAnimatable());
         look = loaded.look();
         geo = loaded.geo();
+        hasHotMask = loaded.hot();
         shadowRadius = chassis.width() / 2;
         pose = new PodPose(geo);
         // The shake moves the whole model by up to SHAKE on each horizontal axis and on y while the pod drills.
@@ -101,6 +106,7 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
                             .toList());
         }
         withRenderLayer(new PodGlowLayer(this));
+        withRenderLayer(new PodHotLayer(this));
     }
 
     /**
@@ -121,10 +127,15 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
     }
 
     /** Reads the geometry that {@code look} names and checks the look and its textures against it. */
-    private static Loaded validate(ResourceManager resources, PodLook look) {
+    public static Loaded validate(ResourceManager resources, PodLook look) {
         try {
             GeoModel geo = readGeometry(resources, look.modelFile());
             look.check(geo);
+            // The hot mask is optional: a look without one has no hot look. One that is there must fit the model.
+            boolean hot = resources.getResource(look.intact().hotmask()).isPresent();
+            if (hot) {
+                checkTexture(resources, geo, look.intact().hotmask());
+            }
             for (PodLook.Variant variant : List.of(look.intact(), look.wreck())) {
                 checkTexture(resources, geo, variant.texture());
                 if (variant.glow() != PodLook.Glow.NEVER) {
@@ -136,7 +147,7 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
                 PodPaint.check(
                         resources, look.intact().texture(), look.paintMask().get());
             }
-            return new Loaded(look, geo);
+            return new Loaded(look, geo, hot);
         } catch (RuntimeException e) {
             throw e.getMessage() != null && e.getMessage().contains(look.source())
                     ? e
@@ -197,6 +208,7 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
         Appearance appearance = appearanceOf(pod);
         state.show(appearance, textureOf(appearance));
         state.cabHidden = FrontCameraFeed.hidesCab(pod);
+        state.hot = hasHotMask && pod.hullBurning();
         motions.computeIfAbsent(pod, ignored -> new PodMotion())
                 .advance(pod, state, pose.mountRestPitch(), spinScaleOf(appearance));
         // The pod turns as its motion says (towards where it drives or drills), not as its entity yaw does.
