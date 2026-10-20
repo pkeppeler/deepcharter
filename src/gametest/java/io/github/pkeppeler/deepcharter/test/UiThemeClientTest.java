@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
@@ -117,7 +118,7 @@ public class UiThemeClientTest implements FabricClientGameTest {
     private static void aScreenThatIsOpenFollowsAReload(ClientGameTestContext context) {
         context.setScreen(CrtDemoScreen::new);
         ClientWait.screen(context, CrtDemoScreen.class);
-        CrtDemoScreen screen = context.computeOnClient(client -> (CrtDemoScreen) client.gui.screen());
+        CrtDemoScreen screen = context.computeOnClient(client -> ClientSession.screen(client, CrtDemoScreen.class));
         ClientWait.until(
                 context,
                 "the demo screen finished typing",

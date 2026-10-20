@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Zone;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -26,6 +27,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -39,7 +41,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
@@ -47,6 +48,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The checks of #399, written once for any chassis: nothing about a pod's size may be assumed, so {@link OddChassisTest} (3.9 wide, 2.9
@@ -90,19 +92,21 @@ final class ChassisChecks {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     @FormatMethod
-    private static void expect(GameTestHelper helper, boolean condition, @FormatString String format, Object... args) {
+    private static void expect(
+            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
         if (!condition) {
             throw failure(helper, format, args);
         }
     }
 
     private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(1));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
         }
@@ -116,7 +120,7 @@ final class ChassisChecks {
     }
 
     private PodEntity spawn(ServerLevel level, Vec3 at) {
-        PodEntity pod = type.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(type, level);
         pod.setPos(at);
         level.addFreshEntity(pod);
         return pod;

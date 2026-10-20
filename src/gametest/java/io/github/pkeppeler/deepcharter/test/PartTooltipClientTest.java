@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -69,7 +70,7 @@ public class PartTooltipClientTest implements FabricClientGameTest {
     }
 
     private static ItemStack stackAt(Minecraft client, int slot) {
-        return client.player.getInventory().getItem(slot);
+        return ClientSession.player(client).getInventory().getItem(slot);
     }
 
     private static List<String> lines(ClientGameTestContext context, ItemStack stack) {

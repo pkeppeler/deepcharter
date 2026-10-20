@@ -13,14 +13,17 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
@@ -34,7 +37,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
@@ -44,6 +46,7 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -310,7 +313,7 @@ public class LayerTerrainTest {
         MockPlayer pilot = MockPlayers.join(helper, "terrain-drill");
         Vec3 at = new Vec3(x, floor, z);
         pilot.teleportTo(two, at, 0f, 0f);
-        PodEntity pod = PodRegistry.POD.create(two, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, two);
         pod.setPos(at);
         two.addFreshEntity(pod);
         if (!pilot.player().startRiding(pod)) {
@@ -448,7 +451,7 @@ public class LayerTerrainTest {
     }
 
     private static void expectLavaHull(GameTestHelper helper, PodEntity pod, float perTick) {
-        int ticks = LAVA_TICKS.get(pod.getUUID());
+        int ticks = Objects.requireNonNull(LAVA_TICKS.get(pod.getUUID()), "LAVA_TICKS.get(pod.getUUID()) is absent");
         float expected = pod.maxHull() - ticks * perTick;
         if (ticks < LAVA_TEST_TICKS || Math.abs(pod.hull() - expected) > EPSILON) {
             throw failure(helper, "after %d ticks the hull should be %s, found %s", ticks, expected, pod.hull());
@@ -545,12 +548,13 @@ public class LayerTerrainTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }

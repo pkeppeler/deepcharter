@@ -1,6 +1,6 @@
 # Merging
 
-Merge only through `tools/merge-pr.sh <n>`, which refuses and gives the reason. To merge several review-passed PRs, use the queue instead of a hand-rolled waiter: `tools/merge-queue.sh <n>...`.
+Merge only through `tools/merge-pr.sh <n>`, which refuses and gives the reason. It retargets open PRs stacked on the PR's branch to its base first, because `--delete-branch` would close them. To merge several review-passed PRs, use the queue instead of a hand-rolled waiter: `tools/merge-queue.sh <n>...`.
 
 - It merges the PRs one at a time, in the order given. For each it waits until no workflow run for the head is unfinished, then runs the gate.
 - On a stale-base refusal it runs `gh pr close <n> && gh pr reopen <n>`, waits for CI again and retries (3 times). On `mergeable: UNKNOWN` it waits 30 s and retries (4 times).

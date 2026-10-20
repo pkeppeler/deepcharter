@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestRegions;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,6 +34,7 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -65,6 +67,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #244, the colony rebuild: the town the world builds at spawn (tools/colony/town.py, the layout file
@@ -175,7 +178,7 @@ public class ColonyPlacementTest {
         MinecraftServer server = server(helper);
         ServerLevel level = server.overworld();
         ColonySite.Placed colony = placed(helper);
-        BlockPos feet = colony.anchors().get(ColonyAnchor.STATUE);
+        BlockPos feet = TestColony.anchor(colony, ColonyAnchor.STATUE);
         boolean[] ticking = {false};
         FarChunks.awaitEntityTicking(helper, level, feet, () -> ticking[0] = true);
         helper.succeedWhen(() -> {
@@ -245,7 +248,7 @@ public class ColonyPlacementTest {
         ServerLevel level = server.overworld();
         ColonySite.Placed colony = placed(helper);
         loadPad(level, colony);
-        BlockPos spawn = colony.anchors().get(ColonyAnchor.CONTINUITY_OFFICE);
+        BlockPos spawn = TestColony.anchor(colony, ColonyAnchor.CONTINUITY_OFFICE);
         Set<BlockPos> reach = reach(level, colony, spawn);
         if (!reach.contains(spawn)) {
             throw failure(helper, "a player cannot stand at the world spawn %s", spawn.toShortString());
@@ -261,7 +264,7 @@ public class ColonyPlacementTest {
                 ColonyAnchor.CONTRACT_TERMINAL,
                 ColonyAnchor.CHAPEL_CANDLE,
                 ColonyAnchor.CONDUIT)) {
-            places.put(anchor.getSerializedName(), colony.anchors().get(anchor));
+            places.put(anchor.getSerializedName(), TestColony.anchor(colony, anchor));
         }
         places.put("hangar console", HangarConsole.find(server).orElseThrow());
         places.put("the Host's plinth", colony.center().offset(0, 1, 4));
@@ -271,7 +274,7 @@ public class ColonyPlacementTest {
                 ColonyAnchor.PAY_OFFICE,
                 ColonyAnchor.PERSONNEL_OFFICE,
                 ColonyAnchor.LAMP_AND_PICK)) {
-            BlockPos inside = colony.anchors().get(anchor);
+            BlockPos inside = TestColony.anchor(colony, anchor);
             if (!reach.contains(inside)) {
                 problems.add(
                         "a player cannot walk to the " + anchor.getSerializedName() + " at " + inside.toShortString());
@@ -403,7 +406,9 @@ public class ColonyPlacementTest {
                             outside.get(0).getAsInt(),
                             outside.get(1).getAsInt(),
                             outside.get(2).getAsInt());
-            Direction facing = Direction.byName(door.get("facing").getAsString());
+            Direction facing = Objects.requireNonNull(
+                    Direction.byName(door.get("facing").getAsString()),
+                    "the layout names a facing that is no direction");
             int width = door.get("width").getAsInt();
             int height = door.get("height").getAsInt();
             String name = door.get("building").getAsString();
@@ -437,7 +442,7 @@ public class ColonyPlacementTest {
                     + " bays, expected a door to each of eight buildings and two bays");
         }
         // The hangar holds a pod at its anchor, whichever chassis.
-        BlockPos hangar = colony.anchors().get(ColonyAnchor.HANGAR);
+        BlockPos hangar = TestColony.anchor(colony, ColonyAnchor.HANGAR);
         for (EntityType<?> pod : List.of(PodRegistry.POD, PodRegistry.PROSPECTOR)) {
             var size = pod.getDimensions();
             if (!clear(level, box(Vec3.atBottomCenterOf(hangar), size.width(), size.height()))) {
@@ -847,7 +852,8 @@ public class ColonyPlacementTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

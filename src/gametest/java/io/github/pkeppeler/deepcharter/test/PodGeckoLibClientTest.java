@@ -15,8 +15,10 @@ import io.github.pkeppeler.deepcharter.client.pod.PodMotion;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PodLoads;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.List;
@@ -37,6 +39,7 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Client GameTest for #243 (ADR 0030, 0039): both pods draw with GeckoLib from their look files, and GeckoLib baked the models the
@@ -60,8 +63,8 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
                     context,
                     "both pods on the client",
                     client -> client.level != null
-                            && pod(client, scene.mole()) != null
-                            && pod(client, scene.prospector()) != null);
+                            && podIfPresent(client, scene.mole()) != null
+                            && podIfPresent(client, scene.prospector()) != null);
 
             // Both chassis draw with the GeckoLib renderer, and GeckoLib baked the model the game measures, bone for
             // bone.
@@ -152,7 +155,8 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
             // pod state is new.
             int[] reloaded = {0};
             singleplayer.getServer().runOnServer(server -> reloaded[0] = reload(server, scene));
-            ClientWait.until(context, "the reloaded Mole on the client", client -> pod(client, reloaded[0]) != null);
+            ClientWait.until(
+                    context, "the reloaded Mole on the client", client -> podIfPresent(client, reloaded[0]) != null);
             cutterIs(context, reloaded[0], "fluted");
             context.waitTick(); // tick-wait: a frame draws the reloaded pod
 
@@ -160,7 +164,8 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
             // A wreck draws its own variant and keeps its drill.
             singleplayer
                     .getServer()
-                    .runOnServer(server -> ((PodEntity) server.overworld().getEntity(mole)).setHull(0f));
+                    .runOnServer(server -> TestEntities.require(server.overworld(), mole, PodEntity.class)
+                            .setHull(0f));
             ClientWait.until(
                     context,
                     "the Mole drawn as a wreck",
@@ -185,7 +190,8 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
             });
             singleplayer
                     .getServer()
-                    .runOnServer(server -> ((PodEntity) server.overworld().getEntity(scene.prospector())).setHull(0f));
+                    .runOnServer(server -> TestEntities.require(server.overworld(), scene.prospector(), PodEntity.class)
+                            .setHull(0f));
             ClientWait.until(
                     context,
                     "the Prospector drawn as a wreck",
@@ -336,21 +342,21 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
     }
 
     private static PodEntity spawn(ServerLevel level, EntityType<PodEntity> type, Vec3 at) {
-        PodEntity pod = type.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(type, level);
         pod.setPos(at);
         level.addFreshEntity(pod);
         return pod;
     }
 
     private static void install(MinecraftServer server, Scene scene, int id, int tier) {
-        PodEntity pod = (PodEntity) server.overworld().getEntity(id);
+        PodEntity pod = TestEntities.require(server.overworld(), id, PodEntity.class);
         PodComponents.install(pod, ComponentItems.mint(server, ComponentTrack.DRILL, tier, scene.charter()));
     }
 
     /** Saves the pod, removes it and loads a new one from the save, as a world does when it loads: the id of the new pod. */
     private static int reload(MinecraftServer server, Scene scene) {
         ServerLevel level = server.overworld();
-        PodEntity pod = (PodEntity) level.getEntity(scene.mole());
+        PodEntity pod = TestEntities.require(level, scene.mole(), PodEntity.class);
         HolderLookup.Provider registries = level.registryAccess();
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, registries);
         pod.saveWithoutId(output);
@@ -368,11 +374,16 @@ public class PodGeckoLibClientTest implements FabricClientGameTest {
     }
 
     private static PodEntity pod(Minecraft client, int id) {
-        return client.level.getEntity(id) instanceof PodEntity pod ? pod : null;
+        return TestEntities.require(ClientLight.clientLevel(client), id, PodEntity.class);
+    }
+
+    private static @Nullable PodEntity podIfPresent(Minecraft client, int id) {
+        return ClientLight.clientLevel(client).getEntity(id) instanceof PodEntity pod ? pod : null;
     }
 
     private static PodGeoRenderer renderer(Minecraft client, int id) {
-        Object drawn = client.getEntityRenderDispatcher().getRenderer(client.level.getEntity(id));
+        Object drawn = client.getEntityRenderDispatcher()
+                .getRenderer(TestEntities.require(ClientLight.clientLevel(client), id));
         require(
                 drawn instanceof PodGeoRenderer,
                 "pod " + id + " is not drawn with the GeckoLib renderer, but with " + drawn);

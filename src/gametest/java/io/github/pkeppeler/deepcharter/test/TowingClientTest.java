@@ -7,9 +7,13 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -19,11 +23,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Client GameTest: a remote client sees a tow. The mock pilot drives a tower, and the real client, which rides nothing, sees the
@@ -53,8 +57,8 @@ public class TowingClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the client sees both pods with the cable between them",
-                    client -> pod(client, rig.tower()) != null
-                            && pod(client, rig.towed()) != null
+                    client -> podIfPresent(client, rig.tower()) != null
+                            && podIfPresent(client, rig.towed()) != null
                             && Optional.of(rig.tower()).equals(PodTowing.towerId(pod(client, rig.towed()))));
             Vec3 towedStart =
                     context.computeOnClient(client -> pod(client, rig.towed()).position());
@@ -84,10 +88,12 @@ public class TowingClientTest implements FabricClientGameTest {
                 PodEntity tower = pod(client, rig.tower());
                 PodEntity towed = pod(client, rig.towed());
                 List<PodEntity> pods = List.of(tower, towed);
-                Vec3 camera = client.player.position();
-                TowChainRenderer.Chain chain =
-                        TowChainRenderer.chainFor(client.level, towed, pods, 1f, camera.x, camera.y, camera.z);
-                require(chain != null && chain.curve.links > 0, "The renderer should draw a line for the towed pod");
+                Vec3 camera = ClientSession.player(client).position();
+                TowChainRenderer.Chain chain = Objects.requireNonNull(
+                        TowChainRenderer.chainFor(
+                                ClientLight.clientLevel(client), towed, pods, 1f, camera.x, camera.y, camera.z),
+                        "The renderer should draw a line for the towed pod");
+                require(chain.curve.links > 0, "The renderer should draw a line for the towed pod");
                 double hitchGap = Math.sqrt(Math.pow(chain.curve.x[0] - chain.curve.x[chain.curve.links], 2)
                         + Math.pow(chain.curve.y[0] - chain.curve.y[chain.curve.links], 2)
                         + Math.pow(chain.curve.z[0] - chain.curve.z[chain.curve.links], 2));
@@ -96,29 +102,39 @@ public class TowingClientTest implements FabricClientGameTest {
                         hitchGap < trailLine + CLIENT_LAG_BLOCKS,
                         "The line between the hitches is at most the rope and a little lag, it is " + hitchGap);
                 require(
-                        TowChainRenderer.chainFor(client.level, tower, pods, 1f, camera.x, camera.y, camera.z) == null,
+                        TowChainRenderer.chainFor(
+                                        ClientLight.clientLevel(client), tower, pods, 1f, camera.x, camera.y, camera.z)
+                                == null,
                         "The renderer should draw no line for the tower");
                 require(
-                        TowChainRenderer.chainFor(client.level, towed, List.of(towed), 1f, camera.x, camera.y, camera.z)
+                        TowChainRenderer.chainFor(
+                                        ClientLight.clientLevel(client),
+                                        towed,
+                                        List.of(towed),
+                                        1f,
+                                        camera.x,
+                                        camera.y,
+                                        camera.z)
                                 == null,
                         "The renderer should draw no line while the tower is not loaded on the client");
             });
 
             two.server().runOnServer(server -> {
                 require(
-                        PodTowing.detach((PodEntity) server.overworld().getEntity(rig.towed())),
+                        PodTowing.detach(TestEntities.require(server.overworld(), rig.towed(), PodEntity.class)),
                         "the towed pod should have a cable to take off");
             });
             ClientWait.until(
                     context,
                     "the client sees the cable come off the towed pod",
-                    client -> pod(client, rig.towed()) != null && !PodTowing.isTowed(pod(client, rig.towed())));
+                    client ->
+                            podIfPresent(client, rig.towed()) != null && !PodTowing.isTowed(pod(client, rig.towed())));
             context.runOnClient(client -> {
                 PodEntity towed = pod(client, rig.towed());
-                Vec3 camera = client.player.position();
+                Vec3 camera = ClientSession.player(client).position();
                 require(
                         TowChainRenderer.chainFor(
-                                        client.level,
+                                        ClientLight.clientLevel(client),
                                         towed,
                                         List.of(pod(client, rig.tower()), towed),
                                         1f,
@@ -133,7 +149,11 @@ public class TowingClientTest implements FabricClientGameTest {
 
     /** The client's copy of the pod, or null while it does not see it. */
     private static PodEntity pod(Minecraft client, UUID id) {
-        return client.level.getEntity(id) instanceof PodEntity pod ? pod : null;
+        return Objects.requireNonNull(podIfPresent(client, id), () -> "the client sees no pod " + id);
+    }
+
+    private static @Nullable PodEntity podIfPresent(Minecraft client, UUID id) {
+        return ClientLight.clientLevel(client).getEntity(id) instanceof PodEntity pod ? pod : null;
     }
 
     /** A stone slab high above the terrain, the real player on it, the mock in a tower with a pod on a cable behind it. */
@@ -155,7 +175,7 @@ public class TowingClientTest implements FabricClientGameTest {
     }
 
     private static PodEntity spawn(ServerLevel level, Vec3 at) {
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(at);
         level.addFreshEntity(pod);
         return pod;

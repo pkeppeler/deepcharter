@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import java.io.IOException;
@@ -154,7 +155,8 @@ public class LayerDimensionsTest {
                 if (!denied.getType().equals(CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownCommand())
                         && !denied.getType()
                                 .equals(CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownArgument())) {
-                    throw helper.assertionException("expected an unknown-command failure, got %s", denied.getMessage());
+                    throw helper.assertionException(
+                            "expected an unknown-command failure, got %s", String.valueOf(denied.getMessage()));
                 }
             }
             if (!mock.player().level().dimension().equals(before)) {
@@ -185,9 +187,9 @@ public class LayerDimensionsTest {
                 server.getCommands().getDispatcher().execute("deepcharter layer goto 3", source);
                 throw helper.assertionException("goto 3 should fail: only 2 layers exist");
             } catch (CommandSyntaxException outOfRange) {
-                if (!outOfRange.getMessage().contains("No layer 3")) {
+                if (!String.valueOf(outOfRange.getMessage()).contains("No layer 3")) {
                     throw helper.assertionException(
-                            "expected the no-such-layer failure, got %s", outOfRange.getMessage());
+                            "expected the no-such-layer failure, got %s", String.valueOf(outOfRange.getMessage()));
                 }
             }
         } finally {
@@ -255,7 +257,7 @@ public class LayerDimensionsTest {
     }
 
     private static ServerLevel level(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw helper.assertionException("dimension %s did not load", LayerChain.dimension(layer));
         }

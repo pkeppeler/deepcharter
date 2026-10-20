@@ -18,10 +18,12 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -56,6 +58,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -143,7 +146,7 @@ public class RetainedTest {
                     }
                 }
             }
-            PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(Vec3.atBottomCenterOf(origin.east(HALF - 1)));
             level.addFreshEntity(pod);
             MockPlayer pilot = MockPlayers.join(helper, "retained-pilot");
@@ -157,7 +160,7 @@ public class RetainedTest {
             if (!pilot.player().startRiding(pod)) {
                 throw failure(helper, "the pilot could not mount the pod");
             }
-            LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+            LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
             figure.setPos(Vec3.atBottomCenterOf(figureAt));
             figure.setHeading(Direction.NORTH);
             level.addFreshEntity(figure);
@@ -416,7 +419,7 @@ public class RetainedTest {
     @GameTest
     public void onlyAPoweredPodWithAPilotAndFuelAboveTheFloorAndNoLightsDrawsAFigure(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(Vec3.atBottomCenterOf(slot(2).above(40)));
         level.addFreshEntity(pod);
         MockPlayer pilot = MockPlayers.join(helper, "retained-draw");
@@ -756,7 +759,7 @@ public class RetainedTest {
 
     /** A figure on the west side of the pod, {@code gap} blocks outside the reach at which it grips, {@code dz} blocks to the side. */
     private static LamplessFigure placeNextToPod(ServerLevel level, Arena arena, double dz, double gap) {
-        LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+        LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
         double x = arena.pod.getX() - arena.pod.getBbWidth() / 2 - CLING.reachBlocks() - gap;
         figure.setPos(x, arena.pod.getY(), arena.pod.getZ() + dz);
         figure.setHeading(Direction.NORTH);
@@ -849,12 +852,12 @@ public class RetainedTest {
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
     public void theRailsFigureIsNotHeldBackByTheFiguresOfTheCaverns(GameTestHelper helper) {
-        ServerLevel nether = helper.getLevel().getServer().getLevel(Level.NETHER);
+        ServerLevel nether = ClientLight.serverLevel(helper.getLevel().getServer(), Level.NETHER);
         BlockPos spot = slot(12);
         FarChunks.awaitEntityTicking(helper, nether, spot, () -> {
             List<LamplessFigure> naturals = new ArrayList<>();
             for (int i = 0; i < TUNING.maxPerLevel(); i++) {
-                LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(nether, EntitySpawnReason.COMMAND);
+                LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, nether);
                 figure.markNatural();
                 figure.setNoAi(true);
                 figure.setPos(Vec3.atBottomCenterOf(spot.east(i * 2)));
@@ -881,8 +884,8 @@ public class RetainedTest {
     @GameTest
     public void rollsRiseWithDepthAndTheDeepIsNotRare(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel one = server.getLevel(LayerChain.dimension(1));
-        ServerLevel two = server.getLevel(LayerChain.dimension(2));
+        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
         int tries = 40000;
         int inOne = 0;
         int inTwo = 0;
@@ -918,7 +921,7 @@ public class RetainedTest {
     /** The grip test above holds that a clinging figure hurts neither the pilot nor the hull; a figure that cannot attack is why. */
     @GameTest
     public void aFigureHasNoAttackDamage(GameTestHelper helper) {
-        LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+        LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, helper.getLevel());
         expect(
                 helper,
                 figure.getAttribute(Attributes.ATTACK_DAMAGE) == null,
@@ -936,7 +939,7 @@ public class RetainedTest {
         MinecraftServer server = helper.getLevel().getServer();
         List<ServerLevel> layers =
                 List.of(server.getLevel(LayerChain.dimension(1)), server.getLevel(LayerChain.dimension(2)));
-        ServerLevel overworld = server.getLevel(Level.OVERWORLD);
+        ServerLevel overworld = ClientLight.serverLevel(server, Level.OVERWORLD);
         BlockPos column = new BlockPos(7208, 128, 7208);
         BlockPos overworldPos = slot(5).above(2);
         int[] ready = {0};
@@ -1035,10 +1038,11 @@ public class RetainedTest {
                     !LamplessFigures.canAppearAt(overworld, at.above()),
                     "a figure may appear at the colony's " + anchor);
         }
-        for (Level other : List.of(server.getLevel(Level.NETHER), server.getLevel(Level.END))) {
+        for (ServerLevel other :
+                List.of(ClientLight.serverLevel(server, Level.NETHER), ClientLight.serverLevel(server, Level.END))) {
             expect(
                     helper,
-                    !LamplessFigures.canAppearAt((ServerLevel) other, column),
+                    !LamplessFigures.canAppearAt(other, column),
                     "a figure may appear in " + other.dimension().identifier());
         }
     }
@@ -1060,7 +1064,7 @@ public class RetainedTest {
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theGamesOwnSpawnerRollsRareAndOnlyWhereTheRulesAllow(GameTestHelper helper) {
-        ServerLevel two = helper.getLevel().getServer().getLevel(LayerChain.dimension(2));
+        ServerLevel two = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(2));
         BlockPos column = new BlockPos(7272, 128, 7208);
         LamplessFigure[] figure = {null};
         int[] phase = {0};
@@ -1113,7 +1117,7 @@ public class RetainedTest {
         });
         FarChunks.awaitEntityTicking(helper, two, column, () -> {
             buildDarkRoom(two, column);
-            figure[0] = CreatureRegistry.LAMPLESS_FIGURE.create(two, EntitySpawnReason.NATURAL);
+            figure[0] = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, two, EntitySpawnReason.NATURAL);
             figure[0].setPos(Vec3.atBottomCenterOf(column));
         });
     }
@@ -1231,7 +1235,8 @@ public class RetainedTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

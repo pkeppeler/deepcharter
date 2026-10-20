@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ContractShown;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
@@ -93,7 +94,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
     private static ContractScreen open(ClientGameTestContext context, BlockPos terminal) {
         context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
         ClientWait.screen(context, ContractScreen.class);
-        return context.computeOnClient(client -> (ContractScreen) client.gui.screen());
+        return context.computeOnClient(client -> ClientSession.screen(client, ContractScreen.class));
     }
 
     private static void awaitState(ClientGameTestContext context, Predicate<ContractScreen> wanted) {
@@ -104,7 +105,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
     }
 
     private static ContractScreen screen(ClientGameTestContext context) {
-        return context.computeOnClient(client -> (ContractScreen) client.gui.screen());
+        return context.computeOnClient(client -> ClientSession.screen(client, ContractScreen.class));
     }
 
     /**
@@ -140,12 +141,12 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
     }
 
     private static void type(ClientGameTestContext context, String name) {
-        context.runOnClient(client ->
-                ContractShown.nameField((ContractScreen) client.gui.screen()).setValue(name));
+        context.runOnClient(client -> ContractShown.nameField(ClientSession.screen(client, ContractScreen.class))
+                .setValue(name));
     }
 
     private static String refusalShown(ClientGameTestContext context) {
-        return context.computeOnClient(client -> ((ContractScreen) client.gui.screen())
+        return context.computeOnClient(client -> ClientSession.screen(client, ContractScreen.class)
                 .refusal()
                 .map(message -> message.getString())
                 .orElse(""));
@@ -234,7 +235,7 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
         awaitState(context, open -> ContractShown.hasNoCharter(open) && ContractShown.offersRevive(open, CHARTER));
         require(
                 context.computeOnClient(client -> {
-                    ContractScreen open = (ContractScreen) client.gui.screen();
+                    ContractScreen open = ClientSession.screen(client, ContractScreen.class);
                     return !ContractShown.offersRevive(open, strangers)
                             && !ContractShown.offers(open, strangers)
                             && !ContractShown.offers(open, CHARTER);

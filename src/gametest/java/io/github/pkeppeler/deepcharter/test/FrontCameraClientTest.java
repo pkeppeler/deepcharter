@@ -8,11 +8,14 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook.CameraLook;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -28,7 +31,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
@@ -200,7 +202,7 @@ public class FrontCameraClientTest implements FabricClientGameTest {
     private PodEntity seatedPod(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         PodEntity[] made = {null};
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
             RoomCarver.carve(
@@ -213,7 +215,7 @@ public class FrontCameraClientTest implements FabricClientGameTest {
                     ROOM_RADIUS,
                     Blocks.AIR);
             player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
-            PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(0.5, FEET_Y, 0.5);
             pod.setNoGravity(true);
             one.addFreshEntity(pod);
@@ -228,13 +230,13 @@ public class FrontCameraClientTest implements FabricClientGameTest {
                 "the pilot seated in the pod in layer 1",
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
-                        && client.level.dimension().equals(LayerChain.dimension(1)));
+                        && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
         return made[0];
     }
 
     private void expectNoCameraWithoutThePart(ClientGameTestContext context) {
-        boolean hidden =
-                context.computeOnClient(client -> FrontCameraFeed.hidesCab((PodEntity) client.player.getVehicle()));
+        boolean hidden = context.computeOnClient(client ->
+                FrontCameraFeed.hidesCab(TestEntities.vehicle(ClientSession.player(client), PodEntity.class)));
         if (hidden || !context.computeOnClient(client -> FrontCameraFeed.state().equals(State.START))) {
             throw new AssertionError(
                     "The mod ships with no pod carrying the camera: the cab is in the view and the feed has no state");
@@ -246,7 +248,8 @@ public class FrontCameraClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "a live front camera feed",
-                client -> client.player.getVehicle() instanceof PodEntity shown && FrontCameraFeed.hidesCab(shown));
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && FrontCameraFeed.hidesCab(shown));
         BufferedImage clear = shot(context, "front-camera-clear");
         double changed = differing(withoutCamera, clear, VIEW_BOX);
         if (changed < CHANGED) {
@@ -263,8 +266,8 @@ public class FrontCameraClientTest implements FabricClientGameTest {
     private void expectTheFeedAnswersOnlyToItsPilotInFirstPerson(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
         context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
-        boolean hiddenInThirdPerson =
-                context.computeOnClient(client -> FrontCameraFeed.hidesCab((PodEntity) client.player.getVehicle()));
+        boolean hiddenInThirdPerson = context.computeOnClient(client ->
+                FrontCameraFeed.hidesCab(TestEntities.vehicle(ClientSession.player(client), PodEntity.class)));
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         if (hiddenInThirdPerson) {
             throw new AssertionError(
@@ -272,8 +275,8 @@ public class FrontCameraClientTest implements FabricClientGameTest {
         }
         int[] otherId = {0};
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
-            PodEntity other = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            PodEntity other = TestEntities.create(PodRegistry.POD, one);
             other.setPos(0.5 + OTHER_POD_EAST, FEET_Y, 0.5);
             other.setNoGravity(true);
             one.addFreshEntity(other);
@@ -282,23 +285,24 @@ public class FrontCameraClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the other pod on the client",
-                client -> client.level.getEntity(otherId[0]) instanceof PodEntity);
-        boolean hidesOther = context.computeOnClient(
-                client -> FrontCameraFeed.hidesCab((PodEntity) client.level.getEntity(otherId[0])));
-        boolean hidesOwn =
-                context.computeOnClient(client -> FrontCameraFeed.hidesCab((PodEntity) client.player.getVehicle()));
+                client -> ClientLight.clientLevel(client).getEntity(otherId[0]) instanceof PodEntity);
+        boolean hidesOther = context.computeOnClient(client -> FrontCameraFeed.hidesCab(
+                TestEntities.require(ClientLight.clientLevel(client), otherId[0], PodEntity.class)));
+        boolean hidesOwn = context.computeOnClient(client ->
+                FrontCameraFeed.hidesCab(TestEntities.vehicle(ClientSession.player(client), PodEntity.class)));
         if (hidesOther || !hidesOwn) {
             throw new AssertionError("The camera hides the pilot's own pod and not a pod beside it: own " + hidesOwn
                     + ", other " + hidesOther);
         }
         singleplayer.getServer().runOnServer(server -> {
             server.getPlayerList().getPlayers().getFirst().stopRiding();
-            server.getLevel(LayerChain.dimension(1)).getEntity(otherId[0]).discard();
+            TestEntities.require(ClientLight.serverLevel(server, LayerChain.dimension(1)), otherId[0])
+                    .discard();
         });
         ClientWait.until(
                 context,
                 "the feed reset after the pilot got out",
-                client -> client.player.getVehicle() == null
+                client -> ClientSession.player(client).getVehicle() == null
                         && FrontCameraFeed.state().equals(State.START),
                 client -> FrontCameraFeed.state().toString());
         singleplayer.getServer().runOnServer(server -> {
@@ -309,7 +313,8 @@ public class FrontCameraClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "a live feed once the pilot is back",
-                client -> client.player.getVehicle() instanceof PodEntity shown && FrontCameraFeed.hidesCab(shown));
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && FrontCameraFeed.hidesCab(shown));
     }
 
     private void expectLavaCooksTheLensAndTheCabComesBack(
@@ -323,8 +328,8 @@ public class FrontCameraClientTest implements FabricClientGameTest {
                 "the lens failed in the lava",
                 client -> FrontCameraFeed.state().lensFailed(),
                 client -> FrontCameraFeed.state().toString());
-        boolean hidden =
-                context.computeOnClient(client -> FrontCameraFeed.hidesCab((PodEntity) client.player.getVehicle()));
+        boolean hidden = context.computeOnClient(client ->
+                FrontCameraFeed.hidesCab(TestEntities.vehicle(ClientSession.player(client), PodEntity.class)));
         if (hidden) {
             throw new AssertionError("A failed feed shows the cab again: the pod must not be hidden from its pilot");
         }
@@ -338,7 +343,8 @@ public class FrontCameraClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the lens cooled and the feed back",
-                client -> client.player.getVehicle() instanceof PodEntity shown && FrontCameraFeed.hidesCab(shown),
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && FrontCameraFeed.hidesCab(shown),
                 client -> FrontCameraFeed.state().toString());
     }
 
@@ -348,7 +354,7 @@ public class FrontCameraClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "a live feed with no static",
-                client -> client.player.getVehicle() instanceof PodEntity shown
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
                         && FrontCameraFeed.hidesCab(shown)
                         && FrontCameraFeed.state().staticLevel() == 0.0,
                 client -> FrontCameraFeed.state().toString());
@@ -365,7 +371,8 @@ public class FrontCameraClientTest implements FabricClientGameTest {
             throw new AssertionError("Static after a hit covers the picture: only " + covered
                     + " of the middle of the view differs from the clear feed");
         }
-        if (!context.computeOnClient(client -> FrontCameraFeed.hidesCab((PodEntity) client.player.getVehicle()))) {
+        if (!context.computeOnClient(client ->
+                FrontCameraFeed.hidesCab(TestEntities.vehicle(ClientSession.player(client), PodEntity.class)))) {
             throw new AssertionError("Static does not bring the cab back: the feed is live under it");
         }
     }
@@ -383,8 +390,8 @@ public class FrontCameraClientTest implements FabricClientGameTest {
 
     private BufferedImage shot(ClientGameTestContext context, String name) {
         context.runOnClient(client -> {
-            client.player.setYRot(0f);
-            client.player.setXRot(4f);
+            ClientSession.player(client).setYRot(0f);
+            ClientSession.player(client).setXRot(4f);
             client.gui.toastManager().clear();
         });
         ClientWait.until(

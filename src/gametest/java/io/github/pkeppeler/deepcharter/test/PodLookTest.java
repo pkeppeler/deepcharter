@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -173,7 +174,7 @@ public class PodLookTest {
         try {
             action.run();
         } catch (IllegalArgumentException e) {
-            return e.getMessage();
+            return Objects.requireNonNull(e.getMessage(), "the failure has no message");
         }
         throw helper.assertionException(Component.literal("expected the look to fail"));
     }

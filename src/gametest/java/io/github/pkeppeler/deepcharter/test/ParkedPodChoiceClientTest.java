@@ -15,8 +15,10 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.List;
 import java.util.Locale;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -24,12 +26,12 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -84,7 +86,7 @@ public class ParkedPodChoiceClientTest implements FabricClientGameTest {
     }
 
     private static List<String> drawn(Minecraft client) {
-        return DrawnText.of(client.gui.screen()).stream()
+        return DrawnText.of(ClientSession.screen(client, Screen.class)).stream()
                 .map(DrawnText.Drawn::text)
                 .toList();
     }
@@ -137,7 +139,7 @@ public class ParkedPodChoiceClientTest implements FabricClientGameTest {
     }
 
     private static PodEntity spawn(ServerPlayer player, Vec3 at) {
-        PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
         pod.setPos(at);
         player.level().addFreshEntity(pod);
         return pod;

@@ -24,10 +24,12 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.Blocks;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,7 +102,8 @@ public class EconomyAffordabilityTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -599,7 +602,7 @@ public class EconomyAffordabilityTest {
         Run layerOne = stockRunInLayerOne();
         Run layerTwo = upgradedRunInLayerTwo();
         for (Consumable item : Consumable.values()) {
-            Target target = ITEM_TARGETS.get(item);
+            Target target = Objects.requireNonNull(ITEM_TARGETS.get(item), () -> "no target for " + item);
             Run run = target.layerTwo() ? layerTwo : layerOne;
             double runs = item.price() / run.net();
             LOGGER.info("[economy] {} ${}: {} runs of ${}", item, item.price(), runs, Math.round(run.net()));

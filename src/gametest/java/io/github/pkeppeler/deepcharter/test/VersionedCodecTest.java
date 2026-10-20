@@ -12,6 +12,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
+import org.jspecify.annotations.Nullable;
 
 /** {@link Versioned#codec(int, MapCodec, Map)} on its own, with test-only record types. */
 public class VersionedCodecTest {
@@ -40,7 +41,7 @@ public class VersionedCodecTest {
         return codec.encodeStart(NbtOps.INSTANCE, value).getOrThrow();
     }
 
-    private static CompoundTag compound(Integer version, String key, String value) {
+    private static CompoundTag compound(@Nullable Integer version, String key, String value) {
         CompoundTag tag = new CompoundTag();
         if (version != null) {
             tag.putInt(Versioned.VERSION_KEY, version);
@@ -50,7 +51,7 @@ public class VersionedCodecTest {
     }
 
     /** A body the current codec parses, so only its version can make it unreadable. */
-    private static CompoundTag currentShaped(Integer version) {
+    private static CompoundTag currentShaped(@Nullable Integer version) {
         CompoundTag tag = compound(version, "name", "shaped");
         tag.putInt("size", 4);
         return tag;

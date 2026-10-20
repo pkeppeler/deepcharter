@@ -15,8 +15,10 @@ import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PodLoads;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -32,9 +34,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Client GameTest for #383: the rotor folds out for lift-off and in on landing and stays in while the drill bites, and each charter's
@@ -61,10 +63,10 @@ public class PodRotorPaintClientTest implements FabricClientGameTest {
                     context,
                     "all four pods on the client",
                     client -> client.level != null
-                            && pod(client, scene.ember()) != null
-                            && pod(client, scene.cobalt()) != null
-                            && pod(client, scene.unowned()) != null
-                            && pod(client, scene.prospector()) != null);
+                            && podIfPresent(client, scene.ember()) != null
+                            && podIfPresent(client, scene.cobalt()) != null
+                            && podIfPresent(client, scene.unowned()) != null
+                            && podIfPresent(client, scene.prospector()) != null);
             // The owner arrives in a packet of its own, after the pod.
             ClientWait.until(
                     context,
@@ -91,7 +93,8 @@ public class PodRotorPaintClientTest implements FabricClientGameTest {
             // A wreck is not painted: it keeps its derelict texture.
             singleplayer
                     .getServer()
-                    .runOnServer(server -> ((PodEntity) server.overworld().getEntity(scene.ember())).setHull(0f));
+                    .runOnServer(server -> TestEntities.require(server.overworld(), scene.ember(), PodEntity.class)
+                            .setHull(0f));
             ClientWait.until(
                     context,
                     "the first Mole drawn as a wreck",
@@ -410,18 +413,23 @@ public class PodRotorPaintClientTest implements FabricClientGameTest {
     }
 
     private static PodEntity spawn(ServerLevel level, EntityType<PodEntity> type, Vec3 at) {
-        PodEntity pod = type.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(type, level);
         pod.setPos(at);
         level.addFreshEntity(pod);
         return pod;
     }
 
     private static PodEntity pod(Minecraft client, int id) {
-        return client.level.getEntity(id) instanceof PodEntity pod ? pod : null;
+        return TestEntities.require(ClientLight.clientLevel(client), id, PodEntity.class);
+    }
+
+    private static @Nullable PodEntity podIfPresent(Minecraft client, int id) {
+        return ClientLight.clientLevel(client).getEntity(id) instanceof PodEntity pod ? pod : null;
     }
 
     private static PodGeoRenderer renderer(Minecraft client, int id) {
-        Object drawn = client.getEntityRenderDispatcher().getRenderer(client.level.getEntity(id));
+        Object drawn = client.getEntityRenderDispatcher()
+                .getRenderer(TestEntities.require(ClientLight.clientLevel(client), id));
         require(
                 drawn instanceof PodGeoRenderer,
                 "pod " + id + " is not drawn with the GeckoLib renderer, but with " + drawn);

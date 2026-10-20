@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,6 +23,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #288: a seated pilot is shielded from lava, so the hull is what lava takes; a player outside a pod burns
@@ -69,7 +71,8 @@ public class LavaShieldTest {
     public void lavaDrainsTheHullOfAPodWithAPilotAtTheTunedRate(GameTestHelper helper) {
         Seated seated = seatedInLava(helper);
         helper.runAfterDelay(LAVA_TICKS, () -> {
-            int ticks = POD_TICKS.get(seated.pod.getUUID());
+            int ticks = Objects.requireNonNull(
+                    POD_TICKS.get(seated.pod.getUUID()), "POD_TICKS.get(seated.pod.getUUID()) is absent");
             float expected = seated.pod.maxHull() - ticks * LayerTuning.DEFAULT.lavaHullPerSecond() / 20f;
             if (ticks < LAVA_TICKS || Math.abs(seated.pod.hull() - expected) > EPSILON) {
                 throw failure(
@@ -187,7 +190,8 @@ public class LavaShieldTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

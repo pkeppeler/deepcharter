@@ -14,9 +14,11 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RepairRows;
 import io.github.pkeppeler.deepcharter.test.support.ScreenScroll;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,7 +30,6 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 
 /**
  * Client GameTest for #70: the repair station screen opens, and its repair and buy buttons send the actions the server
@@ -90,7 +91,8 @@ public class RepairStationClientTest implements FabricClientGameTest {
      * some rows. Fails when no row has the label, or when two do (the click would take the first).
      */
     public static void clickRow(ClientGameTestContext context, String label) {
-        RepairStationScreen screen = context.computeOnClient(client -> (RepairStationScreen) client.gui.screen());
+        RepairStationScreen screen =
+                context.computeOnClient(client -> ClientSession.screen(client, RepairStationScreen.class));
         int matches = context.computeOnClient(client -> {
             Set<Integer> rows = new HashSet<>();
             int shownAt = 0;
@@ -138,7 +140,7 @@ public class RepairStationClientTest implements FabricClientGameTest {
         BlockPos station = here.east(2);
         server.overworld()
                 .setBlock(station, TerminalTypes.REPAIR_STATION.block().defaultBlockState(), 3);
-        PodEntity pod = PodRegistry.POD.create(server.overworld(), EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, server.overworld());
         pod.setPos(here.getX() + 0.5, here.getY(), here.getZ() + 4.5);
         server.overworld().addFreshEntity(pod);
         PodComponents.register(pod, charter.id());

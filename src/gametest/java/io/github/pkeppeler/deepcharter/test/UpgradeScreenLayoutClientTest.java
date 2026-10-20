@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.upgrade.UpgradeScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScreenScroll;
 import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
@@ -43,7 +44,7 @@ public class UpgradeScreenLayoutClientTest implements FabricClientGameTest {
                     client -> "charter " + ClientCharter.view());
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
             ClientWait.screen(context, UpgradeScreen.class);
-            UpgradeScreen screen = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
+            UpgradeScreen screen = context.computeOnClient(client -> ClientSession.screen(client, UpgradeScreen.class));
             require(
                     screen.width == WIDTH && screen.height == HEIGHT,
                     "the test window is 854 x 480 at GUI scale 2, a screen of " + WIDTH + " x " + HEIGHT + ", got "

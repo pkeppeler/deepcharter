@@ -35,6 +35,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
@@ -52,6 +53,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.IntFunction;
@@ -577,19 +579,22 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         Map<?, ?> constructors = menuConstructors();
         List<Case> cases = new ArrayList<>();
         for (MenuType<?> type : BuiltInRegistries.MENU) {
-            Identifier id = BuiltInRegistries.MENU.getKey(type);
+            Identifier id =
+                    Objects.requireNonNull(BuiltInRegistries.MENU.getKey(type), "a registered menu type has a key");
             if (!id.getNamespace().equals(DeepCharter.MOD_ID)) {
                 continue;
             }
-            MenuFixture fixture = fixtures.get(type);
-            require(
-                    fixture != null,
-                    "menu " + id
+            MenuFixture fixture = Objects.requireNonNull(
+                    fixtures.get(type),
+                    () -> "menu " + id
                             + " has no fixture in ScreenLayoutClientTest.menuCases(): add the menu at its largest");
             require(constructors.containsKey(type), "menu " + id + " registered no screen with MenuScreens");
             cases.add(new Case(
                     "menu " + id.getPath() + ", " + fixture.what(),
-                    () -> menuScreen(constructors.get(type), fixture.menu().apply(1), fixture.title())));
+                    () -> menuScreen(
+                            Objects.requireNonNull(constructors.get(type), "constructors.get(type) is absent"),
+                            fixture.menu().apply(1),
+                            fixture.title())));
         }
         require(
                 fixtures.size() == cases.size(),
@@ -618,7 +623,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
             Method create = type.getMethod("create", AbstractContainerMenu.class, Inventory.class, Component.class);
             create.setAccessible(true);
             Minecraft client = Minecraft.getInstance();
-            return (Screen) create.invoke(constructor, menu, client.player.getInventory(), title);
+            return (Screen) create.invoke(
+                    constructor, menu, ClientSession.player(client).getInventory(), title);
         } catch (ReflectiveOperationException e) {
             throw new LinkageError("could not build a menu screen", e);
         }

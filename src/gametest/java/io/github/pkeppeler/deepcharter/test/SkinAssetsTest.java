@@ -16,12 +16,14 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #258 and #243 (ADR 0040): every pod look has the model and textures it names, and every mod particle has the
@@ -62,7 +64,8 @@ public class SkinAssetsTest {
     public void everyModParticleHasItsFiles(GameTestHelper helper) throws IOException {
         List<Identifier> ours = new ArrayList<>();
         for (ParticleType<?> type : BuiltInRegistries.PARTICLE_TYPE) {
-            Identifier id = BuiltInRegistries.PARTICLE_TYPE.getKey(type);
+            Identifier id = Objects.requireNonNull(
+                    BuiltInRegistries.PARTICLE_TYPE.getKey(type), "a registered particle type has a key");
             if (id.getNamespace().equals(DeepCharter.MOD_ID)) {
                 ours.add(id);
             }
@@ -130,7 +133,8 @@ public class SkinAssetsTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

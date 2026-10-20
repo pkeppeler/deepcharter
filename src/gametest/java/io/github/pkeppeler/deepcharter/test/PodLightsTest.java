@@ -12,10 +12,12 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodLightLedger;
 import io.github.pkeppeler.deepcharter.pod.PodLightsTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -37,12 +39,12 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,7 +161,7 @@ public class PodLightsTest {
                     level.setBlock(origin.offset(dx, -1, dz), Blocks.STONE.defaultBlockState(), 3);
                 }
             }
-            PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(Vec3.atBottomCenterOf(origin));
             level.addFreshEntity(pod);
             PodComponents.register(pod, charter);
@@ -381,7 +383,7 @@ public class PodLightsTest {
                         since[0]++;
                     }
                     if (since[0] >= TWO_SWEEPS) {
-                        PodEntity back = (PodEntity) level.getEntity(pod[0].getUUID());
+                        PodEntity back = TestEntities.require(level, pod[0].getUUID(), PodEntity.class);
                         List<BlockPos> left = lightsNear(level, origin, LOOK);
                         if (!left.isEmpty()
                                 || !ledgerEntriesIn(level, origin, LOOK).isEmpty()) {
@@ -404,7 +406,7 @@ public class PodLightsTest {
                     level.setBlock(origin.offset(dx, -1, dz), Blocks.STONE.defaultBlockState(), 3);
                 }
             }
-            PodEntity made = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            PodEntity made = TestEntities.create(PodRegistry.POD, level);
             made.setPos(Vec3.atBottomCenterOf(origin));
             level.addFreshEntity(made);
             PodComponents.register(made, charter);
@@ -426,7 +428,7 @@ public class PodLightsTest {
         PodEntity[] pod = {null};
         boolean[] checked = {false};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
-            pod[0] = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+            pod[0] = TestEntities.create(PodRegistry.POD, one);
             pod[0].setPos(x, 8, z);
             one.addFreshEntity(pod[0]);
             MinecraftServer server = one.getServer();
@@ -675,7 +677,7 @@ public class PodLightsTest {
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }
@@ -683,7 +685,8 @@ public class PodLightsTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

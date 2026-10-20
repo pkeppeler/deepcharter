@@ -29,6 +29,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments.Example;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
@@ -55,7 +56,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -337,9 +337,9 @@ public class UnreadableAccessTest {
     public void unreadableColonyDisplaysNeverThrowFromALoadOrAWorkOrder(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         // Made and never added to the level: the load listener only reads it.
-        Entity display = BuiltInRegistries.ENTITY_TYPE
-                .getValue(Identifier.withDefaultNamespace("block_display"))
-                .create(helper.getLevel(), EntitySpawnReason.COMMAND);
+        Entity display = TestEntities.create(
+                BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.withDefaultNamespace("block_display")),
+                helper.getLevel());
         display.addTag("deepcharter_colony_build_0");
         Map<String, Runnable> paths = new LinkedHashMap<>();
         paths.put("display load", () -> ServerEntityEvents.ENTITY_LOAD.invoker().onLoad(display, helper.getLevel()));

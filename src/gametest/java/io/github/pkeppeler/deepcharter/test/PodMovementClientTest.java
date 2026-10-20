@@ -4,7 +4,10 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +20,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
@@ -111,9 +113,13 @@ public class PodMovementClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the client holding the flat pad",
-                client -> client.level.getBlockState(floor).is(Blocks.STONE)
-                        && client.level.getBlockState(floor.above()).isAir()
-                        && client.player.distanceToSqr(floor.getX() + 0.5, floor.getY() + 1, floor.getZ() + 0.5) < 4);
+                client -> ClientLight.clientLevel(client).getBlockState(floor).is(Blocks.STONE)
+                        && ClientLight.clientLevel(client)
+                                .getBlockState(floor.above())
+                                .isAir()
+                        && ClientSession.player(client)
+                                        .distanceToSqr(floor.getX() + 0.5, floor.getY() + 1, floor.getZ() + 0.5)
+                                < 4);
     }
 
     public static void driveMock(TwoPlayerServer two) {
@@ -128,7 +134,7 @@ public class PodMovementClientTest implements FabricClientGameTest {
     }
 
     private static PodEntity spawnPod(ServerPlayer rider) {
-        PodEntity pod = PodRegistry.POD.create(rider.level(), EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, rider.level());
         pod.setPos(rider.position());
         rider.level().addFreshEntity(pod);
         return pod;
@@ -147,16 +153,17 @@ public class PodMovementClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the client riding the mock pod",
-                    client -> client.player.getVehicle() instanceof PodEntity
-                            && client.level.getEntity(mockPodId) != null);
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity
+                            && ClientLight.clientLevel(client).getEntity(mockPodId) != null);
             context.waitTicks(10);
 
-            int ownPodId =
-                    context.computeOnClient(client -> client.player.getVehicle().getId());
-            Vec3 mockStart = context.computeOnClient(
-                    client -> client.level.getEntity(mockPodId).position());
-            Vec3 ownStart =
-                    context.computeOnClient(client -> client.player.getVehicle().position());
+            int ownPodId = context.computeOnClient(
+                    client -> TestEntities.vehicle(ClientSession.player(client)).getId());
+            Vec3 mockStart =
+                    context.computeOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), mockPodId)
+                            .position());
+            Vec3 ownStart = context.computeOnClient(
+                    client -> TestEntities.vehicle(ClientSession.player(client)).position());
             context.getInput().holdKey(options -> options.keyUp);
             driveMock(two);
 
@@ -174,10 +181,11 @@ public class PodMovementClientTest implements FabricClientGameTest {
                     worstLag);
             context.getInput().releaseKey(options -> options.keyUp);
 
-            Vec3 ownEnd =
-                    context.computeOnClient(client -> client.player.getVehicle().position());
-            Vec3 mockEnd = context.computeOnClient(
-                    client -> client.level.getEntity(mockPodId).position());
+            Vec3 ownEnd = context.computeOnClient(
+                    client -> TestEntities.vehicle(ClientSession.player(client)).position());
+            Vec3 mockEnd =
+                    context.computeOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), mockPodId)
+                            .position());
             require(
                     !(ownEnd.subtract(ownStart).horizontalDistance() < 2),
                     "Holding W should drive the client's own pod, it moved " + ownStart.distanceTo(ownEnd));
@@ -194,10 +202,10 @@ public class PodMovementClientTest implements FabricClientGameTest {
 
     /** Distance between the client's pod and the server's pod now. The server side runs between two client ticks. */
     private static double lagBlocks(ClientGameTestContext context, TwoPlayerServer two, int podId) {
-        Vec3 onClient =
-                context.computeOnClient(client -> client.level.getEntity(podId).position());
+        Vec3 onClient = context.computeOnClient(client ->
+                TestEntities.require(ClientLight.clientLevel(client), podId).position());
         Vec3 onServer = two.server().computeOnServer(server -> {
-            Entity pod = server.overworld().getEntity(podId);
+            Entity pod = TestEntities.require(server.overworld(), podId);
             require(pod != null, "the server has no pod with id " + podId);
             return pod.position();
         });

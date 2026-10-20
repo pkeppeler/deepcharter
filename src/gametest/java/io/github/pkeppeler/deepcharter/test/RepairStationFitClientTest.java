@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RepairRows;
 import io.github.pkeppeler.deepcharter.test.support.ScreenScroll;
@@ -63,7 +64,7 @@ public class RepairStationFitClientTest implements FabricClientGameTest {
                 for (int[] size : new int[][] {{427, 240, 4}, {320, 240, 3}}) {
                     context.setScreen(() -> new RepairStationScreen(view));
                     RepairStationScreen screen =
-                            context.computeOnClient(client -> (RepairStationScreen) client.gui.screen());
+                            context.computeOnClient(client -> ClientSession.screen(client, RepairStationScreen.class));
                     context.runOnClient(client -> screen.resize(size[0], size[1]));
                     ClientChecks.requireNone(
                             "at " + size[0] + " by " + size[1] + (at == farAway ? " without a pod" : " with a pod"),

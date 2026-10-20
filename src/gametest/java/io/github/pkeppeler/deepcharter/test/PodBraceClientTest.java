@@ -6,9 +6,12 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Arrays;
 import java.util.List;
@@ -20,7 +23,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
@@ -39,13 +41,13 @@ public class PodBraceClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 // An open room: the pod settles on its floor, where the brace can work (it waits for a pod at rest).
                 RoomCarver.carve(one, -3, 3, FEET_Y - 1, FEET_Y + 6, -3, 3, Blocks.AIR);
                 player.teleportTo(one, 0, FEET_Y, 0, Set.of(), 0f, 0f, true);
-                PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(0, FEET_Y, 0);
                 pod.setHull(HULL);
                 one.addFreshEntity(pod);
@@ -58,7 +60,7 @@ public class PodBraceClientTest implements FabricClientGameTest {
                     "the pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity pod
-                            && client.level.dimension().equals(LayerChain.dimension(1))
+                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
                             && Math.round(pod.hull()) == Math.round(HULL));
             List<Component> lines = crustLines(context);
             if (lines.size() != 1) {
@@ -75,12 +77,12 @@ public class PodBraceClientTest implements FabricClientGameTest {
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                ScannerPods.fit(server, player, (PodEntity) player.getVehicle(), ComponentTrack.BRACE, 1);
+                ScannerPods.fit(server, player, TestEntities.vehicle(player, PodEntity.class), ComponentTrack.BRACE, 1);
             });
             ClientWait.until(
                     context,
                     "the brace with no ore to burn",
-                    client -> client.player.getVehicle() instanceof PodEntity pod
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && PodStatusHud.crustLines(pod, true).stream()
                                     .map(PodBraceClientTest::key)
                                     .toList()
@@ -88,8 +90,8 @@ public class PodBraceClientTest implements FabricClientGameTest {
                                             "hud.deepcharter.pod.crust_ahead", "hud.deepcharter.pod.brace_dry")));
 
             singleplayer.getServer().runOnServer(server -> {
-                PodEntity pod = (PodEntity)
-                        server.getPlayerList().getPlayers().getFirst().getVehicle();
+                PodEntity pod =
+                        TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
                 for (int i = 0; i < ORE; i++) {
                     pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
                 }
@@ -99,26 +101,24 @@ public class PodBraceClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the brace burning one ore",
-                    client -> client.player.getVehicle() instanceof PodEntity pod
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && Math.round(pod.hull()) == 32
                             && pod.cargoUsed() == ORE - 1);
             ClientWait.until(
                     context,
                     "no warning and no brace line once the hull outlasts the crust",
-                    client -> client.player.getVehicle() instanceof PodEntity pod
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && PodStatusHud.crustLines(pod, true).isEmpty());
 
             singleplayer
                     .getServer()
-                    .runOnServer(server -> ((PodEntity) server.getPlayerList()
-                                    .getPlayers()
-                                    .getFirst()
-                                    .getVehicle())
+                    .runOnServer(server -> TestEntities.vehicle(
+                                    server.getPlayerList().getPlayers().getFirst(), PodEntity.class)
                             .setHull(100f));
             ClientWait.until(
                     context,
                     "no warning for a full hull",
-                    client -> client.player.getVehicle() instanceof PodEntity pod
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && PodStatusHud.crustLines(pod, true).isEmpty());
         }
     }
@@ -128,6 +128,7 @@ public class PodBraceClientTest implements FabricClientGameTest {
     }
 
     private static List<Component> crustLines(ClientGameTestContext context) {
-        return context.computeOnClient(client -> PodStatusHud.crustLines((PodEntity) client.player.getVehicle(), true));
+        return context.computeOnClient(client ->
+                PodStatusHud.crustLines(TestEntities.vehicle(ClientSession.player(client), PodEntity.class), true));
     }
 }

@@ -6,9 +6,11 @@ import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PodReadout;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -17,7 +19,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 
 /**
  * Client GameTest for hand lining (#313): the pilot presses the lining key from the seat and the HUD shows the stock, then the
@@ -32,7 +33,7 @@ public class PodLiningClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
                 pod.setPos(player.position());
                 player.level().addFreshEntity(pod);
                 if (!player.startRiding(pod)) {
@@ -46,8 +47,8 @@ public class PodLiningClientTest implements FabricClientGameTest {
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity pod
                             && keys(PodReadout.texts(client, pod)).contains("hud.deepcharter.pod.slag_only"));
-            List<String> before = context.computeOnClient(
-                    client -> keys(PodReadout.texts(client, (PodEntity) client.player.getVehicle())));
+            List<String> before = context.computeOnClient(client -> keys(
+                    PodReadout.texts(client, TestEntities.vehicle(ClientSession.player(client), PodEntity.class))));
             if (before.contains("hud.deepcharter.pod.slag")) {
                 throw new AssertionError("A pod with no spoil hopper shows no spoil, but its lines are " + before);
             }
@@ -56,19 +57,19 @@ public class PodLiningClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the lining line on the pod HUD",
-                    client -> client.player.getVehicle() instanceof PodEntity pod
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && PodStatusHud.liningLine(pod).isPresent());
             ClientWait.until(
                     context,
                     "the out-of-brick line on the pod HUD",
-                    client -> client.player.getVehicle() instanceof PodEntity pod
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && PodStatusHud.outOfBrickLine(pod).isPresent());
 
-            boolean lineGone =
-                    context.computeOnClient(client -> PodStatusHud.liningLine((PodEntity) client.player.getVehicle())
-                            .isEmpty());
-            List<String> lines = context.computeOnClient(
-                    client -> keys(PodReadout.texts(client, (PodEntity) client.player.getVehicle())));
+            boolean lineGone = context.computeOnClient(client -> PodStatusHud.liningLine(
+                            TestEntities.vehicle(ClientSession.player(client), PodEntity.class))
+                    .isEmpty());
+            List<String> lines = context.computeOnClient(client -> keys(
+                    PodReadout.texts(client, TestEntities.vehicle(ClientSession.player(client), PodEntity.class))));
             if (!lineGone || lines.contains("hud.deepcharter.pod.slag_only")) {
                 throw new AssertionError(
                         "Once the rack is empty the lining line ends and the stock line goes, but lining gone "
@@ -76,7 +77,7 @@ public class PodLiningClientTest implements FabricClientGameTest {
             }
             long placed = singleplayer.getServer().computeOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                PodEntity pod = (PodEntity) player.getVehicle();
+                PodEntity pod = TestEntities.vehicle(player, PodEntity.class);
                 return pod.level()
                         .getBlockStates(pod.getBoundingBox().inflate(1.5))
                         .filter(state -> state.is(SlagBrick.BLOCK))
@@ -92,16 +93,14 @@ public class PodLiningClientTest implements FabricClientGameTest {
                     .runOnServer(server -> ScannerPods.fit(
                             server,
                             server.getPlayerList().getPlayers().getFirst(),
-                            (PodEntity) server.getPlayerList()
-                                    .getPlayers()
-                                    .getFirst()
-                                    .getVehicle(),
+                            TestEntities.vehicle(
+                                    server.getPlayerList().getPlayers().getFirst(), PodEntity.class),
                             ComponentTrack.SPOIL_HOPPER,
                             1));
             ClientWait.until(
                     context,
                     "the spoil on the pod HUD",
-                    client -> client.player.getVehicle() instanceof PodEntity pod
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && keys(PodReadout.texts(client, pod)).contains("hud.deepcharter.pod.slag"));
         }
     }

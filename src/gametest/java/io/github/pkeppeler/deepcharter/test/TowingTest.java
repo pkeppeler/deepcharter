@@ -15,23 +15,26 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.PodTowing.Refusal;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntFunction;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -54,6 +57,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #76, the tow cable: a cable reaches the longest line, the towed pod trails its tower and passes through blocks,
@@ -771,7 +775,7 @@ public class TowingTest {
                     PodTowing.detach(towed);
                     throw failure(helper, "detaching an unreadable link must throw rather than overwrite it");
                 } catch (IllegalStateException expected) {
-                    if (!expected.getMessage().contains(key)) {
+                    if (!String.valueOf(expected.getMessage()).contains(key)) {
                         throw failure(helper, "the failure should name the attachment, got: %s", expected.getMessage());
                     }
                 }
@@ -784,10 +788,12 @@ public class TowingTest {
                 TagValueOutput output = TagValueOutput.createWithContext(
                         ProblemReporter.DISCARDING, helper.getLevel().registryAccess());
                 towed.saveWithoutId(output);
-                if (!future.equals(output.buildResult()
-                        .getCompound(ATTACHMENTS_KEY)
-                        .orElseThrow()
-                        .get(key))) {
+                if (!Objects.equals(
+                        future,
+                        output.buildResult()
+                                .getCompound(ATTACHMENTS_KEY)
+                                .orElseThrow()
+                                .get(key))) {
                     throw failure(helper, "the unreadable data should be written back unchanged");
                 }
                 helper.succeed();
@@ -1164,7 +1170,7 @@ public class TowingTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aTowedPodThatCannotCrossStaysBehindAsAnOrdinaryPod(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel end = server.getLevel(Level.END);
+        ServerLevel end = ClientLight.serverLevel(server, Level.END);
         ServerLevel overworld = server.overworld();
         double x = 2300.5;
         double z = 2300.5;
@@ -1231,7 +1237,7 @@ public class TowingTest {
     }
 
     private static InteractionResult use(ServerPlayer player, PodEntity pod) {
-        return UseEntityCallback.EVENT.invoker().interact(player, pod.level(), InteractionHand.MAIN_HAND, pod, null);
+        return UseEntity.on(player, pod.level(), InteractionHand.MAIN_HAND, pod);
     }
 
     private static CharterId someCharter(GameTestHelper helper) {
@@ -1275,7 +1281,7 @@ public class TowingTest {
     }
 
     private static PodEntity spawn(ServerLevel level, EntityType<PodEntity> type, double x, double y, double z) {
-        PodEntity pod = type.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(type, level);
         pod.setPos(x, y, z);
         level.addFreshEntity(pod);
         return pod;
@@ -1406,7 +1412,7 @@ public class TowingTest {
     }
 
     /** Saves {@code pod} (replacing its attachments with {@code attachments} if given), discards it and loads a new pod from the data. */
-    private static Entity reload(GameTestHelper helper, PodEntity pod, CompoundTag attachments) {
+    private static Entity reload(GameTestHelper helper, PodEntity pod, @Nullable CompoundTag attachments) {
         ServerLevel level = helper.getLevel();
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
         pod.saveWithoutId(output);
@@ -1435,7 +1441,7 @@ public class TowingTest {
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }
@@ -1443,7 +1449,8 @@ public class TowingTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

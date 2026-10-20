@@ -11,15 +11,18 @@ import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import java.util.List;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import java.util.Objects;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
@@ -48,6 +51,7 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for ore items and the pod's item cargo. Timing follows PodDrillTest: wait on conditions with a
@@ -331,9 +335,7 @@ public class OreCargoTest {
             pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.PLATINIUM));
             player.teleportTo(helper.getLevel(), pod.position().add(2, 0, 0), 0f, 0f);
             player.setInput(SNEAK);
-            InteractionResult result = UseEntityCallback.EVENT
-                    .invoker()
-                    .interact(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null);
+            InteractionResult result = UseEntity.on(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
             if (!result.consumesAction() || !(player.player().containerMenu instanceof OreCargoMenu menu)) {
                 throw failure(
                         helper,
@@ -416,7 +418,9 @@ public class OreCargoTest {
             future.add(extra);
             copy.cargo().load(inputOf(level, tag), copy);
             CompoundTag resaved = savedPod(level, copy);
-            if (!resaved.get("cargo").equals(tag.get("cargo")) || resaved.getIntOr("cargo_version", -1) != 99) {
+            if (!Objects.requireNonNull(resaved.get("cargo"), "resaved.get('cargo') is absent")
+                            .equals(tag.get("cargo"))
+                    || resaved.getIntOr("cargo_version", -1) != 99) {
                 throw failure(
                         helper,
                         "a cargo of version 99 must be saved back unchanged, got %s and version %s",
@@ -468,7 +472,11 @@ public class OreCargoTest {
                             logged,
                             log.errors());
                 }
-                if (!savedPod(level, pod).get("cargo").equals(tag.get("cargo")) || pod.cargoUsed() != 0) {
+                if (!Objects.requireNonNull(
+                                        savedPod(level, pod).get("cargo"),
+                                        "savedPod(level, pod).get('cargo') is absent")
+                                .equals(tag.get("cargo"))
+                        || pod.cargoUsed() != 0) {
                     throw failure(
                             helper,
                             "the unreadable cargo must be saved back unchanged and nothing added, got %s",
@@ -501,7 +509,8 @@ public class OreCargoTest {
                         .orElseThrow(() -> failure(helper, "the pod with a vanilla stack in its cargo did not load"));
         try {
             CompoundTag resaved = savedPod(level, loaded);
-            if (!resaved.get("cargo").equals(tag.get("cargo"))) {
+            if (!Objects.requireNonNull(resaved.get("cargo"), "resaved.get('cargo') is absent")
+                    .equals(tag.get("cargo"))) {
                 throw failure(
                         helper,
                         "the cargo with an unreadable entry must be saved back unchanged, got %s",
@@ -572,7 +581,11 @@ public class OreCargoTest {
         AttributeModifier[] first = {null};
         int[] ticks = {0};
         TestTicks.each(helper, () -> {
-            AttributeModifier now = player.getAttribute(Attributes.MOVEMENT_SPEED).getModifiers().stream()
+            AttributeModifier now = Objects.requireNonNull(
+                            player.getAttribute(Attributes.MOVEMENT_SPEED),
+                            "player.getAttribute(Attributes.MOVEMENT_SPEED) is absent")
+                    .getModifiers()
+                    .stream()
                     .filter(modifier -> modifier.id().getPath().equals("ore_load"))
                     .findFirst()
                     .orElse(null);
@@ -604,9 +617,7 @@ public class OreCargoTest {
             pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.SILVERIUM));
             player.teleportTo(helper.getLevel(), pod.position().add(2, 0, 0), 0f, 0f);
             player.setInput(SNEAK);
-            UseEntityCallback.EVENT
-                    .invoker()
-                    .interact(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null);
+            UseEntity.on(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
             OreCargoMenu menu = (OreCargoMenu) player.player().containerMenu;
             menu.clicked(0, 0, ContainerInput.PICKUP, player.player());
             if (!menu.getCarried().isEmpty()) {
@@ -635,7 +646,7 @@ public class OreCargoTest {
         try {
             action.run();
         } catch (IllegalStateException expected) {
-            if (!expected.getMessage().contains(pod.getUUID().toString())) {
+            if (!String.valueOf(expected.getMessage()).contains(pod.getUUID().toString())) {
                 throw failure(
                         helper, "the error must name the pod %s, it says: %s", pod.getUUID(), expected.getMessage());
             }
@@ -677,7 +688,7 @@ public class OreCargoTest {
 
     private static PodEntity pod(ServerLevel level, MockPlayer pilot, Vec3 at) {
         pilot.teleportTo(level, at, 0f, 0f);
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(at);
         level.addFreshEntity(pod);
         if (!pilot.player().startRiding(pod)) {
@@ -708,12 +719,13 @@ public class OreCargoTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }

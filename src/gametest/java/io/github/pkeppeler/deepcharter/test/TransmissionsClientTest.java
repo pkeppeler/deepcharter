@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
@@ -76,13 +77,13 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                 first.setPermanentlyInvulnerable(true);
                 require(Charters.found(server, first.getUUID(), CREW_NAME).isEmpty(), "founding should succeed");
                 // Generate the arrival area in layer 2 now so the crossing does not wait on it.
-                ServerLevel two = server.getLevel(LayerChain.dimension(2));
+                ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
                 for (int dx = -2; dx <= 2; dx++) {
                     for (int dz = -2; dz <= 2; dz++) {
                         two.getChunk((int) X / 16 + dx, (int) Z / 16 + dz);
                     }
                 }
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 first.teleportTo(one, X, one.getMinY() - 1, Z, Set.of(), 0, 0, true);
                 return first.getGameProfile().name();
             });

@@ -29,6 +29,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -631,7 +632,7 @@ public class HandbookCoreTest {
                         "the test needs a saved DataVersion above %s, got %s",
                         olderDataVersion, NbtUtils.getDataVersion(stamped));
             }
-            Tag savedBody = stamped.get("data");
+            Tag savedBody = Objects.requireNonNull(stamped.get("data"), "the stamped save has no data tag");
             NbtIo.writeCompressed(NbtUtils.addDataVersion(stamped, olderDataVersion), file);
 
             try (SavedDataStorage second = storage(server, dir)) {

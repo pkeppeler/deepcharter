@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -33,10 +34,10 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #188: repeatable work orders (the Morale Initiative), delivery from the cargo hold of a parked pod as well as the
@@ -57,7 +58,7 @@ public class WorkOrdersRepeatTest {
     }
 
     private static PodEntity podAt(GameTestHelper helper, Vec3 at, OreType... ores) {
-        PodEntity pod = PodRegistry.POD.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, helper.getLevel());
         pod.setPos(at);
         helper.getLevel().addFreshEntity(pod);
         for (OreType ore : ores) {
@@ -585,7 +586,7 @@ public class WorkOrdersRepeatTest {
         helper.succeed();
     }
 
-    private static CompoundTag progressEntry(CharterId charter, String order, int delivered, Integer rounds) {
+    private static CompoundTag progressEntry(CharterId charter, String order, int delivered, @Nullable Integer rounds) {
         CompoundTag entry = new CompoundTag();
         entry.put(
                 "charter", CharterId.CODEC.encodeStart(NbtOps.INSTANCE, charter).getOrThrow());

@@ -4,7 +4,9 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -12,7 +14,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -41,7 +42,7 @@ public class PodDrillClientTest implements FabricClientGameTest {
                 real.teleportTo(level, X + 3.5, FLOOR_Y, Z + 0.5, Set.of(), 0, 0, true);
                 Vec3 at = new Vec3(X, FLOOR_Y, Z);
                 two.mock().teleportTo(level, at, 0, 0);
-                PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
                 level.addFreshEntity(pod);
                 require(two.mock().player().startRiding(pod), "the mock pilot could not mount the pod");
@@ -51,8 +52,8 @@ public class PodDrillClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the pod and the floor block under it",
-                    client -> client.level.getEntity(podId) != null
-                            && !client.level
+                    client -> ClientLight.clientLevel(client).getEntity(podId) != null
+                            && !ClientLight.clientLevel(client)
                                     .getBlockState(cell(X, FLOOR_Y - 1, Z))
                                     .isAir());
 
@@ -60,8 +61,9 @@ public class PodDrillClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the floor block bored out",
-                    client ->
-                            client.level.getBlockState(cell(X, FLOOR_Y - 1, Z)).isAir());
+                    client -> ClientLight.clientLevel(client)
+                            .getBlockState(cell(X, FLOOR_Y - 1, Z))
+                            .isAir());
             two.server().runOnServer(server -> two.mock().releaseInput());
 
             for (BlockPos bored : new BlockPos[] {
@@ -71,19 +73,22 @@ public class PodDrillClientTest implements FabricClientGameTest {
                 cell(X, FLOOR_Y - 1, Z)
             }) {
                 require(
-                        context.computeOnClient(
-                                client -> client.level.getBlockState(bored).isAir()),
+                        context.computeOnClient(client -> ClientLight.clientLevel(client)
+                                .getBlockState(bored)
+                                .isAir()),
                         "The client still sees stone at the bore's cell " + bored);
             }
             require(
-                    !context.computeOnClient(client -> client.level
+                    !context.computeOnClient(client -> ClientLight.clientLevel(client)
                             .getBlockState(cell(X + 1, FLOOR_Y - 1, Z))
                             .isAir()),
                     "The client sees the bore wider than the pod's 2 x 2");
             ClientWait.until(
                     context,
                     "the pod below the floor",
-                    client -> client.level.getEntity(podId).getY() < FLOOR_Y - 0.5);
+                    client -> TestEntities.require(ClientLight.clientLevel(client), podId)
+                                    .getY()
+                            < FLOOR_Y - 0.5);
         }
     }
 

@@ -5,8 +5,10 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PodLoads;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -19,7 +21,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.repository.PackRepository;
-import net.minecraft.world.entity.EntitySpawnReason;
 
 /**
  * Client GameTest for #243: a resource pack whose pod look file is broken must not crash the client on its reload. The renderer logs
@@ -40,7 +41,7 @@ public class PodLookFallbackClientTest implements FabricClientGameTest {
             int[] id = {0};
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                PodEntity mole = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+                PodEntity mole = TestEntities.create(PodRegistry.POD, player.level());
                 mole.setPos(player.position().add(0, 0, 4));
                 player.level().addFreshEntity(mole);
                 id[0] = mole.getId();
@@ -118,20 +119,21 @@ public class PodLookFallbackClientTest implements FabricClientGameTest {
 
     /** The source of the look the game loads for the Mole now, held to the look the Mole's renderer draws. */
     private static String loadedLook(Minecraft client, int id) {
-        PodEntity mole = (PodEntity) client.level.getEntity(id);
+        PodEntity mole = TestEntities.require(ClientLight.clientLevel(client), id, PodEntity.class);
         return PodLoads.of(client, renderer(client, id), mole).look().source();
     }
 
     /** The texture the Mole's renderer draws it with now, which only the look the renderer holds decides. */
     private static Identifier drawnTexture(Minecraft client, int id) {
         return renderer(client, id)
-                .appearanceOf((PodEntity) client.level.getEntity(id))
+                .appearanceOf(TestEntities.require(ClientLight.clientLevel(client), id, PodEntity.class))
                 .variant()
                 .texture();
     }
 
     private static PodGeoRenderer renderer(Minecraft client, int id) {
-        Object drawn = client.getEntityRenderDispatcher().getRenderer(client.level.getEntity(id));
+        Object drawn = client.getEntityRenderDispatcher()
+                .getRenderer(TestEntities.require(ClientLight.clientLevel(client), id));
         require(drawn instanceof PodGeoRenderer, "the Mole is not drawn with the GeckoLib renderer, but with " + drawn);
         return (PodGeoRenderer) drawn;
     }

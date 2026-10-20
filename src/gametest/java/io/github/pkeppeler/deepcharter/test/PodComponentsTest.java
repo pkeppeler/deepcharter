@@ -21,17 +21,18 @@ import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -49,6 +50,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #65: parts change a pod's stats, a chassis caps their tier, another charter's parts are void,
@@ -438,7 +440,7 @@ public class PodComponentsTest {
                         ComponentItems.mint(helper.getLevel().getServer(), ComponentTrack.HULL, 1, charter(helper)));
                 throw failure(helper, "installing into an unreadable state must fail");
             } catch (IllegalStateException expected) {
-                if (!expected.getMessage().contains(key)) {
+                if (!String.valueOf(expected.getMessage()).contains(key)) {
                     throw failure(helper, "the failure should name the attachment, got: %s", expected.getMessage());
                 }
             }
@@ -448,7 +450,7 @@ public class PodComponentsTest {
             CompoundTag saved = output.buildResult()
                     .getCompound(ATTACHMENTS_KEY)
                     .orElseThrow(() -> failure(helper, "the pod saved no attachments"));
-            if (!future.equals(saved.get(key))) {
+            if (!future.equals(Objects.requireNonNull(saved.get(key), "saved.get(key) is absent"))) {
                 throw failure(helper, "the unreadable data was not written back unchanged: %s", saved.get(key));
             }
             helper.succeed();
@@ -462,7 +464,7 @@ public class PodComponentsTest {
     public void theStateCodecNeverFails(GameTestHelper helper) {
         CompoundTag noVersion = new CompoundTag();
         noVersion.putString("parts", "not a map");
-        var codec = PodComponents.STATE.persistenceCodec();
+        var codec = Objects.requireNonNull(PodComponents.STATE.persistenceCodec(), "the pod state is persistent");
         Versioned<PodComponents.State> read =
                 codec.parse(NbtOps.INSTANCE, noVersion).getOrThrow();
         if (!(read instanceof Versioned.Unreadable<PodComponents.State> unreadable)
@@ -492,7 +494,7 @@ public class PodComponentsTest {
             serials.next("MOLE");
             throw failure(helper, "an unreadable serial table must not issue a serial");
         } catch (IllegalStateException expected) {
-            if (!expected.getMessage().contains("99")) {
+            if (!String.valueOf(expected.getMessage()).contains("99")) {
                 throw failure(helper, "the failure should name the version, got: %s", expected.getMessage());
             }
         }
@@ -779,9 +781,7 @@ public class PodComponentsTest {
                             .id());
             pod.setFuel(50f);
             outsider.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.COAL));
-            InteractionResult result = UseEntityCallback.EVENT
-                    .invoker()
-                    .interact(outsider.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null);
+            InteractionResult result = UseEntity.on(outsider.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
             if (!result.consumesAction() || pod.fuel() <= 50f) {
                 throw failure(
                         helper, "an outsider's coal should refuel the pod: result %s, fuel %s", result, pod.fuel());
@@ -857,7 +857,7 @@ public class PodComponentsTest {
     }
 
     /** Saves {@code pod} (replacing its attachments with {@code attachments} if given), discards it and loads a new pod from the data. */
-    private static Entity reload(GameTestHelper helper, PodEntity pod, CompoundTag attachments) {
+    private static Entity reload(GameTestHelper helper, PodEntity pod, @Nullable CompoundTag attachments) {
         ServerLevel level = helper.getLevel();
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
         pod.saveWithoutId(output);
@@ -887,7 +887,8 @@ public class PodComponentsTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

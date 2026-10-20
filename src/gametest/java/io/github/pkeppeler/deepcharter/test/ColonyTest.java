@@ -25,12 +25,15 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -43,6 +46,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -66,7 +70,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.Display;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.GameType;
@@ -79,6 +82,7 @@ import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.storage.SavedDataStorage;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #64: the colony is built once at world spawn, its anchors persist, its terminals start offline, the world
@@ -92,7 +96,7 @@ public class ColonyTest {
     private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
     private static final float EAST = -90f;
     /** The world spawn right after the colony was built. */
-    private static final AtomicReference<GlobalPos> SPAWN_AT_START = new AtomicReference<>();
+    private static final AtomicReference<@Nullable GlobalPos> SPAWN_AT_START = new AtomicReference<>();
 
     static {
         // Only the first build: tests that fire BUILT again later see the spawn the game test server moved.
@@ -114,7 +118,7 @@ public class ColonyTest {
             throw failure(helper, "the colony is missing anchors: %s", before.anchors());
         }
         // A colony that was changed after the build must stay as it is: a rebuild would put the Host's plinth back.
-        BlockPos plinth = before.anchors().get(ColonyAnchor.STATUE).below();
+        BlockPos plinth = TestColony.anchor(before, ColonyAnchor.STATUE).below();
         BlockState original = overworld.getBlockState(plinth);
         // room-carver: removes the top of the overworld statue's plinth to test a rebuild
         overworld.setBlock(plinth, Blocks.AIR.defaultBlockState(), 2);
@@ -180,7 +184,7 @@ public class ColonyTest {
                         olderDataVersion,
                         NbtUtils.getDataVersion(stamped));
             }
-            Tag savedBody = stamped.get("data");
+            Tag savedBody = Objects.requireNonNull(stamped.get("data"), "the stamped save has no data tag");
             NbtIo.writeCompressed(NbtUtils.addDataVersion(stamped, olderDataVersion), file);
             try (SavedDataStorage second = storage(server, dir)) {
                 ColonySite loaded = second.computeIfAbsent(ColonySite.TYPE);
@@ -225,7 +229,9 @@ public class ColonyTest {
                 throw new IllegalStateException("unreadable data answered a lookup");
             }
         });
-        paths.put("chunk load", () -> server.getLevel(LayerChain.dimension(1)).getChunk(7000 >> 4, 7000 >> 4));
+        paths.put(
+                "chunk load",
+                () -> ClientLight.serverLevel(server, LayerChain.dimension(1)).getChunk(7000 >> 4, 7000 >> 4));
         UnreadableChecks.assertSavedDataNoThrow(helper, "colony", server, ColonySite.TYPE, paths);
         helper.succeed();
     }
@@ -241,7 +247,7 @@ public class ColonyTest {
                 TerminalTypes.UPGRADE_TERMINAL,
                 TerminalTypes.REPAIR_STATION)) {
             ColonyAnchor anchor = ColonyAnchor.forTerminal(type).orElseThrow();
-            BlockPos pos = placed.anchors().get(anchor);
+            BlockPos pos = TestColony.anchor(placed, anchor);
             if (!overworld.getBlockState(pos).is(type.block())
                     || !(overworld.getBlockEntity(pos) instanceof TerminalBlockEntity terminal)
                     || terminal.type() != type) {
@@ -258,7 +264,7 @@ public class ColonyTest {
         }
         // The contract terminal is #72's. Until it registers one, its plinth is bare; after, the colony stands one on
         // it.
-        BlockPos contract = placed.anchors().get(ColonyAnchor.CONTRACT_TERMINAL);
+        BlockPos contract = TestColony.anchor(placed, ColonyAnchor.CONTRACT_TERMINAL);
         BlockState onPlinth = overworld.getBlockState(contract);
         if (!onPlinth.isAir() && TerminalTypes.of(onPlinth.getBlock()).isEmpty()) {
             throw failure(helper, "the contract plinth at %s holds %s", contract.toShortString(), onPlinth);
@@ -273,7 +279,7 @@ public class ColonyTest {
     public void theWorldSpawnIsTheContinuityOffice(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         ServerLevel overworld = server.overworld();
-        BlockPos office = placed(helper).anchors().get(ColonyAnchor.CONTINUITY_OFFICE);
+        BlockPos office = TestColony.anchor(placed(helper), ColonyAnchor.CONTINUITY_OFFICE);
         // The game test server moves the world spawn to a random far place before its first test, so the spawn the
         // colony set
         // is the one seen when it was built.
@@ -426,7 +432,8 @@ public class ColonyTest {
                     // Built over itself at the recorded ground: the statue's plinth is where it was, no display is
                     // doubled, and no
                     // second pad sits above the first.
-                    BlockPos plinth = before.anchors().get(ColonyAnchor.STATUE).below();
+                    BlockPos plinth =
+                            TestColony.anchor(before, ColonyAnchor.STATUE).below();
                     if (!overworld.getBlockState(plinth).is(ColonyKit.BRASS_TRIM)) {
                         throw failure(
                                 helper, "the statue's plinth is not at %s after the rebuild", plinth.toShortString());
@@ -540,7 +547,7 @@ public class ColonyTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
     public void aBreachCrossingAtTheConduitLeavesItWholeAndArrivesBesideIt(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        BlockPos centre = placed(helper).anchors().get(ColonyAnchor.CONDUIT);
+        BlockPos centre = TestColony.anchor(placed(helper), ColonyAnchor.CONDUIT);
         int radius = ColonyTuning.DEFAULT.conduitRadius();
         // The arrival pocket reaches pocketRadius blocks out, so from here it touches the casing.
         double x = centre.getX() + radius + LayerTuning.DEFAULT.pocketRadius() + 0.5;
@@ -590,7 +597,7 @@ public class ColonyTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void theConduitFillsEveryLayerWhenItsChunkLoads(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        BlockPos centre = placed(helper).anchors().get(ColonyAnchor.CONDUIT);
+        BlockPos centre = TestColony.anchor(placed(helper), ColonyAnchor.CONDUIT);
         int layers = LayerChain.count(server.registryAccess());
         int[] loaded = {0};
         for (int layer = 0; layer <= layers; layer++) {
@@ -633,7 +640,7 @@ public class ColonyTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void theConduitCannotBeBrokenByHandInAnyLayer(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        BlockPos centre = placed(helper).anchors().get(ColonyAnchor.CONDUIT);
+        BlockPos centre = TestColony.anchor(placed(helper), ColonyAnchor.CONDUIT);
         int layers = LayerChain.count(server.registryAccess());
         MockPlayer mock = MockPlayers.join(helper, "conduit-hands");
         int[] loaded = {0};
@@ -702,7 +709,7 @@ public class ColonyTest {
      */
     private static void podMeetsTheConduit(GameTestHelper helper, int layer) {
         ServerLevel level = level(helper, layer);
-        BlockPos centre = placed(helper).anchors().get(ColonyAnchor.CONDUIT);
+        BlockPos centre = TestColony.anchor(placed(helper), ColonyAnchor.CONDUIT);
         int radius = ColonyTuning.DEFAULT.conduitRadius();
         int floor = 60;
         int roomFrom = centre.getX() - radius - 8;
@@ -726,7 +733,7 @@ public class ColonyTest {
         }
         TestTicks.each(helper, () -> {
             if (pod[0] == null && ticking[0] == 5) {
-                PodEntity created = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                PodEntity created = TestEntities.create(PodRegistry.POD, level);
                 created.setPos(start);
                 level.addFreshEntity(created);
                 if (!pilot.player().startRiding(created)) {
@@ -958,7 +965,9 @@ public class ColonyTest {
                     problems.add("the pond and the lava pool should stay: " + water + " water, " + lava + " lava");
                 }
                 if (!planted.keySet().stream()
-                        .anyMatch(at -> planted.get(at).isAir() == false
+                        .anyMatch(at -> Objects.requireNonNull(planted.get(at), "planted.get(at) is absent")
+                                                .isAir()
+                                        == false
                                 && level.getBlockState(at).isAir())) {
                     problems.add("the grade should cut some of the rise, so the test has air to border");
                 }
@@ -982,7 +991,7 @@ public class ColonyTest {
     }
 
     private static ServerLevel level(GameTestHelper helper, int layer) {
-        ServerLevel level = server(helper).getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(server(helper), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }
@@ -996,7 +1005,8 @@ public class ColonyTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

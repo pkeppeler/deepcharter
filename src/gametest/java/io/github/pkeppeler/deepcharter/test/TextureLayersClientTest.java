@@ -5,6 +5,8 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.texture.TextureProperties;
 import java.awt.image.BufferedImage;
@@ -140,11 +142,13 @@ public class TextureLayersClientTest implements FabricClientGameTest {
                 context,
                 "the client to have " + facing.getBlock() + " (active=" + active + ") at " + pos.toShortString(),
                 client -> {
-                    BlockState shown = client.level.getBlockState(pos);
+                    BlockState shown = ClientLight.clientLevel(client).getBlockState(pos);
                     return shown.is(facing.getBlock())
                             && shown.getValue(TextureProperties.ACTIVE) == active
-                            && Math.abs(Mth.wrapDegrees(client.player.getYRot())) < 0.01f
-                            && Math.abs(client.player.getXRot()) < 0.01f;
+                            && Math.abs(Mth.wrapDegrees(
+                                            ClientSession.player(client).getYRot()))
+                                    < 0.01f
+                            && Math.abs(ClientSession.player(client).getXRot()) < 0.01f;
                 });
         ClientWait.until(
                 context,

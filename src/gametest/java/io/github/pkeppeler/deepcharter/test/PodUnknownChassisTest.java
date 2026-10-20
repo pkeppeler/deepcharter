@@ -8,7 +8,8 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -16,13 +17,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #405: the entity type decides a pod's chassis, so a saved chassis id that is unknown or missing is logged and the
@@ -33,7 +34,7 @@ public class PodUnknownChassisTest {
 
     /** The saved data of a pod with a distinctive hull, fuel, stranded flag and one ore in the bay. */
     private static CompoundTag savedPod(ServerLevel level) {
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setHull(11.5f);
         pod.setFuel(3.25f);
         pod.setStranded(true);
@@ -50,13 +51,14 @@ public class PodUnknownChassisTest {
     }
 
     private static PodEntity load(ServerLevel level, CompoundTag saved) {
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), saved));
         return pod;
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -121,7 +123,7 @@ public class PodUnknownChassisTest {
             player.player().setGameMode(GameType.SURVIVAL);
             player.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.COAL, 2));
             float before = pod.fuel();
-            UseEntityCallback.EVENT.invoker().interact(player.player(), level, InteractionHand.MAIN_HAND, pod, null);
+            UseEntity.on(player.player(), level, InteractionHand.MAIN_HAND, pod);
             if (pod.fuel() <= before
                     || pod.stranded()
                     || player.player().getItemInHand(InteractionHand.MAIN_HAND).getCount() != 1) {
