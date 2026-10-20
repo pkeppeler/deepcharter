@@ -577,14 +577,15 @@ public class PodStatsTest {
                 if (!rigs[i].pod.isPresent()) {
                     continue;
                 }
-                if (start[i] < 0 && rigs[i].pod.get().drilling()) {
-                    start[i] = rigs[i].pod.get().tickCount;
+                PodEntity pod = rigs[i].pod.get();
+                if (start[i] < 0 && pod.drilling()) {
+                    start[i] = pod.tickCount;
                 }
                 if (start[i] >= 0
                         && end[i] < 0
                         && level.getBlockState(new BlockPos(columns[i], floor - 1, Z))
                                 .isAir()) {
-                    end[i] = rigs[i].pod.get().tickCount;
+                    end[i] = pod.tickCount;
                 }
             }
             if (end[0] >= 0 && end[1] >= 0) {
@@ -668,11 +669,12 @@ public class PodStatsTest {
             if (helper.getTick() - zeroSince[0] < 5) {
                 return;
             }
-            int events = DEPLETED.getOrDefault(rig.pod.get().getUUID(), 0);
-            boolean wreck = Wrecks.isWreck(rig.pod.get());
-            OVERRIDES.remove(rig.pod.get().getUUID());
-            DEPLETED.remove(rig.pod.get().getUUID());
-            rig.pod.get().discard();
+            PodEntity pod = rig.pod.get();
+            int events = DEPLETED.getOrDefault(pod.getUUID(), 0);
+            boolean wreck = Wrecks.isWreck(pod);
+            OVERRIDES.remove(pod.getUUID());
+            DEPLETED.remove(pod.getUUID());
+            pod.discard();
             if (events != 1 || !wreck) {
                 throw helper.assertionException(Component.literal(
                         "a crust bore costing 20 should take a hull of 15 to 0, fire HULL_DEPLETED once and leave a wreck, got "
