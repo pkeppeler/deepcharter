@@ -29,36 +29,31 @@ public final class PodBeams {
     private PodBeams() {}
 
     /** How far the pod's beam reaches in open air, 0 when it shows none. */
-    // test-seam: the client tests pin the reach by lights tier; the game reads it through cullingBox and beamFor
     public static double reach(PodEntity pod) {
         return reach(pod, BeamLook.current().headlamp());
     }
 
     /**
-     * The box the pod's beam can fill when the pod faces {@code heading} (a vanilla yaw), or null when it shows none: from the lamp to the
-     * far end of the beam, both at the style's pitch and straight down (a drilling pod's beam follows its mount towards down, and each
-     * coordinate moves one way between the two), grown by the beam's widest radius. Nothing behind the pod.
+     * The box the pod's beam can fill at any heading, or null when it shows none: the lamp's reach (the beam's length plus the lamp's
+     * offset from the pod) and the beam's widest radius to each side, down to the full reach below the lamp, and up only by the radius.
+     * It does not depend on the heading, which a pod that is culled stops updating.
      */
-    public static @Nullable AABB cullingBox(PodEntity pod, float heading) {
+    public static @Nullable AABB cullingBox(PodEntity pod) {
         BeamStyle style = BeamLook.current().headlamp();
-        double reach = reach(pod, style);
+        double reach = reach(pod);
         if (reach <= 0) {
             return null;
         }
-        double ox = pod.getX() - Mth.sin(heading * Mth.DEG_TO_RAD) * style.forward();
-        double oy = pod.getY() + style.height();
-        double oz = pod.getZ() + Mth.cos(heading * Mth.DEG_TO_RAD) * style.forward();
-        AABB box = new AABB(ox, oy, oz, ox, oy, oz);
-        for (double pitch : new double[] {style.pitch(), 90}) {
-            box = box.minmax(new AABB(
-                    ox + BeamAim.dirX(heading, pitch) * reach,
-                    oy + BeamAim.dirY(pitch) * reach,
-                    oz + BeamAim.dirZ(heading, pitch) * reach,
-                    ox,
-                    oy,
-                    oz));
-        }
-        return box.inflate(Math.max(style.startRadius(), style.endRadius()));
+        double radius = Math.max(style.startRadius(), style.endRadius());
+        double side = Math.abs(style.forward()) + reach + radius;
+        double lampY = pod.getY() + style.height();
+        return new AABB(
+                pod.getX() - side,
+                lampY - reach - radius,
+                pod.getZ() - side,
+                pod.getX() + side,
+                lampY + radius,
+                pod.getZ() + side);
     }
 
     private static double reach(PodEntity pod, BeamStyle style) {

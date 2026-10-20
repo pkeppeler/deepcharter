@@ -80,29 +80,32 @@ public class BeamsClientTest implements FabricClientGameTest {
                         "the beam over a bare floor should be drawn " + floorHit + " blocks long, drawn "
                                 + open.length());
                 require(PodBeams.beamFor(dark, stateOf(dark)) == null, "a dark pod must draw no beam");
-                require(PodBeams.cullingBox(dark, 0f) == null, "a dark pod needs no beam in its culling box");
+                require(PodBeams.cullingBox(dark) == null, "a dark pod needs no beam in its culling box");
 
-                // The beam's culling box holds the far end of the beam at every heading, and nothing lies behind the
-                // pod.
+                // The beam's culling box holds the lamp and the beam's end at every heading and pitch, and rises above
+                // the lamp by no more than the radius.
+                AABB box = Objects.requireNonNull(PodBeams.cullingBox(lit), "a lit pod has a beam box")
+                        .inflate(TOLERANCE);
+                var style = BeamLook.current().headlamp();
+                double radius = Math.max(style.startRadius(), style.endRadius());
                 for (int heading = 0; heading < 360; heading += 15) {
-                    AABB box = Objects.requireNonNull(PodBeams.cullingBox(lit, heading), "a lit pod has a beam box")
-                            .inflate(TOLERANCE);
-                    double pitch = BeamLook.current().headlamp().pitch();
-                    Vec3 end = lamp(lit, heading)
-                            .add(
-                                    BeamAim.dirX(heading, pitch) * reach,
-                                    BeamAim.dirY(pitch) * reach,
-                                    BeamAim.dirZ(heading, pitch) * reach);
+                    Vec3 lamp = lamp(lit, heading);
                     require(
-                            box.contains(end),
-                            "the beam box at heading " + heading + " should hold the beam's end " + end + ", got "
-                                    + box);
-                    Vec3 behind =
-                            lit.position().add(-BeamAim.dirX(heading, 0) * reach, 0, -BeamAim.dirZ(heading, 0) * reach);
+                            box.contains(lamp),
+                            "the beam box should hold the lamp at heading " + heading + ", got " + box);
+                    for (double pitch : new double[] {0, 45, 90, style.pitch()}) {
+                        Vec3 end = lamp.add(
+                                BeamAim.dirX(heading, pitch) * reach,
+                                BeamAim.dirY(pitch) * reach,
+                                BeamAim.dirZ(heading, pitch) * reach);
+                        require(
+                                box.contains(end),
+                                "the beam box should hold the beam's end " + end + " at heading " + heading
+                                        + " and pitch " + pitch + ", got " + box);
+                    }
                     require(
-                            !box.contains(behind),
-                            "the beam box at heading " + heading + " should not reach " + behind
-                                    + " behind the pod, got " + box);
+                            box.maxY <= lamp.y + radius + 2 * TOLERANCE,
+                            "the beam box should rise no more than the radius above the lamp, got " + box);
                 }
 
                 // The cast the renderer makes (BeamAim, one walk of the client's blocks), here level down the room from
