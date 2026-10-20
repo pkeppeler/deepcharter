@@ -29,7 +29,7 @@ pr=$1
 
 cd "$(dirname "$0")/.."
 # shellcheck source=lib/adr.sh
-source "$(dirname "$0")/lib/adr.sh"
+source tools/lib/adr.sh
 origin=$(git remote get-url origin)
 [[ $origin =~ github\.com[:/]$repo(\.git)?$ ]] \
   || { echo "REFUSED: origin is '$origin', not $repo" >&2; exit 1; }
