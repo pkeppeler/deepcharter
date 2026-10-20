@@ -74,6 +74,18 @@ public class UrlCommentClientTest implements FabricClientGameTest {
     }
 }
 """,
+    "ProseCommentClientTest.java": """
+public class ProseCommentClientTest implements FabricClientGameTest {
+    void wait(ClientGameTestContext context) {
+        // tick-wait: the fuse needs 5 ticks, nothing to poll for
+        /**
+         * The wait stops here;
+         * the map is {@code {}}
+         */
+        context.waitFor(client -> true, 5);
+    }
+}
+""",
     "MentionsClientTest.java": """
 public class MentionsClientTest implements FabricClientGameTest {
     // context.waitFor(client -> true, 40) in a comment is not a wait
