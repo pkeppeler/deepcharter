@@ -9,6 +9,8 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
+command -v jq >/dev/null || { echo "FAIL: session-start.test.sh needs jq (the gh stub applies the hook's --jq filter)"; exit 1; }
+
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
