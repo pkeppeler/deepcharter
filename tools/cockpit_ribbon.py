@@ -52,7 +52,7 @@ KIND = {"across": 0, "up": 1}
 SHARED = {
     "enabled": 1, "minGuiWidth": MIN_GUI_W, "minGuiHeight": MIN_GUI_H,
     "fuelColor": "#F0A010", "hullColor": "#58B05A", "depthColor": "#F2D21E", "heatColor": "#FF6A1E", "cargoColor": "#6FB7C9", "lowColor": "#FF3A2A",
-    "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "platePad": 5,
+    "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "plateGap": 2,
     "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 5,
     "cameraInstalled": 0, "cameraStaticPerHull": 4.0, "cameraStaticFallPerTick": 0.03, "cameraStaticDots": 2400, "cameraDotSize": 2,
     "cameraLensHeatPerTick": 0.01, "cameraLensCoolPerTick": 0.02, "cameraLensDead": 1.0, "cameraLensRecover": 0.6,
@@ -323,11 +323,16 @@ def row_width(row):
     return sum(len(text) * FONT_W - 1 for text, _ in row) + SHARED["tallyGap"] * (len(row) - 1)
 
 
-def plate_size(state):
+def plate_inset(look):
+    """The space from the plate's edge to its text, (left, top, right, bottom): the plate sprite's border on each side plus `plateGap`, as the client works it out."""
+    return tuple(side + SHARED["plateGap"] for side in look.sprites["plate"].border)
+
+
+def plate_size(look, state):
     """The size of the readout plate the Ribbon draws in `state`."""
     rows = plate_rows(state)
-    pad = SHARED["platePad"]
-    return max(row_width(row) for row in rows) + 2 * pad, len(rows) * 11 - 2 + 2 * pad
+    left, top, right, bottom = plate_inset(look)
+    return max(row_width(row) for row in rows) + left + right, len(rows) * 11 - 2 + top + bottom
 
 
 def coverage(look):
@@ -343,7 +348,7 @@ def coverage(look):
                     into.add((left + i, top + j))
 
     mark(status, look.sprites["part_a"].img, look.parts["part_a"])
-    width, height = plate_size(STATES["calm"])
+    width, height = plate_size(look, STATES["calm"])
     t = look.keys
     plate = Placed(width, height, t[STYLE + "ReadoutAnchorX"], t[STYLE + "ReadoutAnchorY"], t[STYLE + "ReadoutX"], t[STYLE + "ReadoutY"])
     left, top = plate.left(SCREEN_W), plate.top(SCREEN_H)
@@ -418,14 +423,14 @@ def preview_look(look, state):
         preview_gauge(img, STYLE + name.capitalize(), look, value, rgb(SHARED["lowColor"] if low else SHARED[name + "Color"]))
     preview_lamps(img, look, state["lamps"])
     img.text(SCREEN_W // 2 - text_width("-1,234 ft.") // 2, t[STYLE + "AltimeterY"] + 1, "-1,234 ft.", rgb("#FFFFFF"))
-    width, height = plate_size(state)
-    pad = SHARED["platePad"]
+    width, height = plate_size(look, state)
+    inset_left, inset_top, _, _ = plate_inset(look)
     plate = Placed(width, height, t[STYLE + "ReadoutAnchorX"], t[STYLE + "ReadoutAnchorY"], t[STYLE + "ReadoutX"], t[STYLE + "ReadoutY"])
     px, py = plate.left(SCREEN_W), plate.top(SCREEN_H)
     img.blit(nine_slice(sprites["plate"].img, sprites["plate"].border, width, height), px, py)
-    y = py + pad
+    y = py + inset_top
     for row in plate_rows(state):
-        x = px + pad
+        x = px + inset_left
         for text, color in row:
             img.text(x, y, text.replace("%", ""), rgb(color))
             x += len(text) * FONT_W - 1 + SHARED["tallyGap"]
