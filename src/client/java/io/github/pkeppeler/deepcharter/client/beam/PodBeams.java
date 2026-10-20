@@ -11,6 +11,7 @@ import java.util.WeakHashMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -27,9 +28,32 @@ public final class PodBeams {
 
     private PodBeams() {}
 
-    /** How far the pod's beam reaches in open air, 0 when it shows none. Used to widen the box the game culls the pod by, so a beam in view keeps its pod drawn. */
+    /** How far the pod's beam reaches in open air, 0 when it shows none. */
     public static double reach(PodEntity pod) {
         return reach(pod, BeamLook.current().headlamp());
+    }
+
+    /**
+     * The box the pod's beam can fill at any heading, or null when it shows none: the lamp's reach (the beam's length plus the lamp's
+     * offset from the pod) and the beam's widest radius to each side, down to the full reach below the lamp, and up only by the radius.
+     * It does not depend on the heading, which a pod that is culled stops updating.
+     */
+    public static @Nullable AABB cullingBox(PodEntity pod) {
+        BeamStyle style = BeamLook.current().headlamp();
+        double reach = reach(pod);
+        if (reach <= 0) {
+            return null;
+        }
+        double radius = Math.max(style.startRadius(), style.endRadius());
+        double side = Math.abs(style.forward()) + reach + radius;
+        double lampY = pod.getY() + style.height();
+        return new AABB(
+                pod.getX() - side,
+                lampY - reach - radius,
+                pod.getZ() - side,
+                pod.getX() + side,
+                lampY + radius,
+                pod.getZ() + side);
     }
 
     private static double reach(PodEntity pod, BeamStyle style) {

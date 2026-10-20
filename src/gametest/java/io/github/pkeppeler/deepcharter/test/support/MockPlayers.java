@@ -75,7 +75,14 @@ public final class MockPlayers {
      * ground is at y 63), where the mock suffocates within seconds and a dead mock cannot be teleported.
      */
     public static MockPlayer join(MinecraftServer server, String name, ServerLevel level, Vec3 spawn) {
-        return join(server, name, level, spawn, () -> false);
+        return join(server, name, level, spawn, 0f);
+    }
+
+    /** Join a mock player at {@code spawn} in {@code level}, facing {@code yaw} (a vanilla yaw), as the 4-argument join does otherwise. */
+    public static MockPlayer join(MinecraftServer server, String name, ServerLevel level, Vec3 spawn, float yaw) {
+        MockPlayer mock = join(server, name, () -> false, true);
+        mock.teleportTo(level, spawn, yaw, 0f);
+        return mock;
     }
 
     /**
