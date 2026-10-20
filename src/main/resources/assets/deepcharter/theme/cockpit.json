@@ -12,7 +12,7 @@
   "hullLowFraction": 0.3,
   "heatRisePerTick": 0.08,
   "heatFallPerTick": 0.02,
-  "platePad": 3,
+  "platePad": 5,
   "heatWarning": 0.5,
   "scannerTitleGap": 2,
   "lampGap": 2,
