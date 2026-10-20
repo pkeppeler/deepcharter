@@ -74,8 +74,8 @@ else:
     || echo "(could not fetch merged PRs)"
   echo
   echo "## Open PRs and their pipeline stage"
-  t gh pr list --repo "$R" --state open --json number,title,headRefName,isDraft,labels \
-    --jq '.[] | "#\(.number) \(.title) [\(.headRefName)]\(if .isDraft then " draft" else "" end) stages: \([.labels[].name | select(startswith("stage:") or . == "review-passed")] | join(","))"' \
+  t gh pr list --repo "$R" --state open --json number,title,headRefName,isDraft,labels,mergeable \
+    --jq '.[] | "#\(.number) \(.title) [\(.headRefName)]\(if .isDraft then " draft" else "" end) stages: \([.labels[].name | select(startswith("stage:") or . == "review-passed")] | join(","))\(if .mergeable == "CONFLICTING" then "  CONFLICTING: merge origin/main into the branch (GitHub runs no CI on a conflicting PR)" elif .mergeable == "UNKNOWN" then "  (mergeability not known yet)" else "" end)"' \
     || echo "(could not fetch PRs)"
   echo
   echo "## Local-only state (not on GitHub)"

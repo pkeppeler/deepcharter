@@ -403,6 +403,7 @@ exited "failed run then newer success merges" 0
 logged "merge after re-run" "$merge_line"
 refusal "conflicting PR" "REFUSED: PR #7 is not mergeable" STUB_MERGEABLE=CONFLICTING
 refusal "unknown mergeability" "REFUSED: PR #7 is not mergeable" STUB_MERGEABLE=UNKNOWN
+refusal "conflicting PR says to merge origin/main" "merge origin/main into the branch" STUB_MERGEABLE=CONFLICTING
 refusal "gh pr view fails silently" "REFUSED: PR #7 could not be read" STUB_VIEW_FAIL=1
 refusal "zero checks includes gh output" "gh: Not Found" "STUB_RUNS=gh: Not Found" STUB_RUNS_RC=1
 refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/else.git
