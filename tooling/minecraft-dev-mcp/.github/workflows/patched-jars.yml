@@ -64,7 +64,7 @@ jobs:
         run: npm run build
 
       - name: Cache NeoFormRuntime working dir + produced JAR
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ~/.neoformruntime
@@ -136,7 +136,7 @@ jobs:
           gradle-version: '8.5'
 
       - name: Cache ForgeGradle artifact cache
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: |
             ~/.gradle/caches/forge_gradle

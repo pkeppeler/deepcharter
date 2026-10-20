@@ -68,7 +68,7 @@ jobs:
     # __tests__/test-constants.ts, or when the decompile pipeline changes.
     - name: Restore decompiled Minecraft cache
       id: mc-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: |
           ~/.config/minecraft-dev-mcp/jars
@@ -107,7 +107,7 @@ jobs:
     # hit since the content is unchanged.
     - name: Save decompiled Minecraft cache
       if: always() && steps.mc-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: |
           ~/.config/minecraft-dev-mcp/jars
