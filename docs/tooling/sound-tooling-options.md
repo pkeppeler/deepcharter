@@ -2,7 +2,7 @@
 
 Research from 2026-10-20 into a broader sound palette ([#718](https://github.com/pkeppeler/deepcharter/issues/718)). Nothing here is installed. Read the audits first: [DawDreamer and pedalboard](dawdreamer-pedalboard-audit.md), [Surge XT, Dexed and vorbis-tools](surge-dexed-vorbis-audit.md), [Stable Audio 3](stable-audio-3-audit.md). **V** = verified against a source, **I** = inferred, not tested.
 
-CI re-renders every recipe with the standard library and compares PCM hashes ([ADR 0057](../adr/0057-every-shipped-sound-is-built-from-a-committed-recipe-and-a-layers-drone-lives-in-its-biome-data.md)). None of the tools below run in CI, and compiled DSP is very likely not bit-exact between arm64 and x86 (I). Their output is therefore committed, not re-rendered in CI.
+CI re-renders every recipe with the standard library and compares PCM hashes ([ADR 0057](../adr/0057-every-shipped-sound-is-built-from-a-committed-recipe-and-a-layers-drone-lives-in-its-biome-data.md)). None of the tools below run in CI, and compiled DSP is very likely not bit-exact between arm64 and x86 (I). Their output is therefore committed.
 
 ## Recommended setup
 
@@ -12,9 +12,9 @@ CI re-renders every recipe with the standard library and compares PCM hashes ([A
 - **A uv-pinned environment with pedalboard:** effects, Rubber Band time-stretch, and a VST3 host.
 - **Dexed:** FM bells, glass, metal, organ and UI blips. Use Key Sync on and no S&H wave.
 - **Surge XT:** machinery, drills, creatures and pads. Use our own patches only, with no randomness. Its cask needs a root installer (about 780 MB, no way to deselect components), as Dexed's does. The user runs both.
-- **DawDreamer, optional:** Faust physical models (reed, bells, choir) for the Lamp Hymn. Weigh them against its 123 MB binary and weaker supply chain: its PyPI wheel was uploaded outside CI (audit). Skip it unless you want Faust.
+- **DawDreamer, optional:** Faust physical models (reed, bells, choir) for the Lamp Hymn. It has a 123 MB binary and a weaker supply chain (audit).
 
-**Tier 2: AI raw material.** Stable Audio 3 `small-sfx` and `small-music` through the pinned MLX command line (setup: audit conditions 1-3). Never use the one-liner or the web UI. A take is raw material layered under our DSP. The Modrinth AI disclosure applies.
+**Tier 2: AI raw material.** Stable Audio 3 `small-sfx` and `small-music` through the pinned MLX command line (setup: audit conditions 1-3). Never use the one-liner or the web UI. A take is raw material layered under our DSP.
 
 **Tier 3: recordings (the user decides).** NASA Mars audio, Freesound CC0, VCSL CC0 instruments, and the user's own field recordings.
 
@@ -28,7 +28,7 @@ Ranked by fit. Installs are for an arm64 Mac.
 |---|---|---|---|---|
 | vorbis-tools 1.4.3 | Mono Ogg Vorbis ([man page](https://github.com/xiph/vorbis-tools/blob/master/oggenc/man/oggenc.1)) | GPL/LGPL; libvorbis BSD | Homebrew formula | Yes, same libvorbis (I) |
 | [pedalboard](https://github.com/spotify/pedalboard) 0.9.26 | VST3 and AU host, convolution reverb, Rubber Band | GPL-3 | pip wheel | Built-in effects yes (I); plugins vary |
-| [Dexed](https://github.com/asb2m10/dexed) 1.0.1 | DX7-style FM | GPL-3 | cask `dexed` | Yes, if LFO Key Sync is on and the S&H wave is avoided (uninitialised state otherwise) |
+| [Dexed](https://github.com/asb2m10/dexed) 1.0.1 | DX7-style FM | GPL-3 | cask `dexed` | Yes, with LFO Key Sync on and no S&H wave |
 | [Surge XT](https://surge-synthesizer.github.io/manual-xt/) 1.3.4 | Strings, wavetables, resonator, granular, vocoder | GPL-3 | cask `surge-xt`, root installer | No: clock-seeded, no exposed seed |
 | [DawDreamer](https://github.com/DBraun/DawDreamer) 0.9.0 | Built-in Faust, [physical models](https://github.com/grame-cncm/faustlibraries/blob/master/physmodels.lib) | GPL-3 | pip wheel | Same Mac yes (I); across chips no (I) |
 | [Paulstretch](https://github.com/paulnasca/paulstretch_python) | Extreme time-stretch for drones and groans | Public domain | numpy script | Yes, with a seed |
@@ -39,11 +39,11 @@ Left out: Vital, ZynAddSubFX and sfizz. Add SuperCollider only if alien textures
 
 ## AI generation
 
-Stable Audio 3 (20 May 2026) replaces Stable Audio Open. It runs on a Mac through MLX (Metal). The README times a CoreML path, but none is public (audit). Its data is licensed or CC. The MLX weights we use are not gated; the original `small-sfx` and `small-music` repos are. Re-generation is not reproducible across PyTorch releases and devices, so the seed is a provenance record, not a build step.
+Stable Audio 3 (20 May 2026) replaces Stable Audio Open. It runs on a Mac through MLX (Metal). The README times a CoreML path, but none is public (audit). The MLX weights we use are not gated; the original `small-sfx` and `small-music` repos are. Re-generation is not reproducible across PyTorch releases and devices, so the seed is a provenance record, not a build step.
 
 | Option | Fit | Licence and provenance | Mac, cost | Seed |
 |---|---|---|---|---|
-| **Stable Audio 3 small-sfx and small-music** (0.6B each) | Best open SFX score (FAD 0.395 against 0.500 for Open; vendor paper); suits drones and the hymn; choir and organ unknown (I) | Community licence, free under $1M revenue; you own outputs. 806k AudioSparx recordings plus 473k Freesound CC | MLX (Metal); README: about 1 s per 10 s clip on an M1, 1.7 s per 30 s on a Mac CPU via an unaudited route; not measured on our M2. Free. 2.62 GB for both models | `--seed`, reproducible only on the same MLX build and chip (audit) |
+| **Stable Audio 3 small-sfx and small-music** (0.6B each) | Best open SFX score (FAD 0.395 against 0.500 for Open; vendor paper); suits drones and the hymn; choir and organ unknown (I) | Community licence, free under $1M revenue; you own outputs. 806k AudioSparx recordings plus 473k Freesound CC | MLX (Metal); README: about 1 s per 10 s clip on an M1, 1.7 s per 30 s on a Mac CPU via an unaudited route; not measured on our M2. Free. 2.62 GB for both models | `--seed`; same MLX build and chip only (audit) |
 | ElevenLabs SFX v2 | Strong SFX and seamless loops | Paid plan: royalty-free; free plan: credit required. Fine-tuned on licensed data | Hosted, $6 per month | None |
 | Stable Audio 3 medium and large, Stability API | Best for music | Same licensed data; do not remove watermarks | Hosted, $0.08 per generation; open medium needs CUDA | Commit the take |
 | Stable Audio Open Small and 1.0 | Superseded | CC Freesound and FMA | Open 1.0 is slow (minutes on an M2, I) | Open 1.0 has one |
@@ -72,9 +72,9 @@ Each kind needs one ADR that amends ADR 0057. For recordings, the user decides.
 
 - **Stems from Mac-only tools.** `tools/sounds/stems/<name>.py` pins its tools in a header and writes `stems/<name>.flac`. The manifest records the stem hash and how it was made. `recipes.stem(name)` decodes the stem with ffmpeg, and the stdlib chain does the rest, so CI checks the final PCM hash with no new tool. `soundgen.py --stems [NAME] [--check]` re-renders on the Mac only. A Surge stem that uses randomness is `reproducible: false`.
 - **AI takes with a provenance sidecar.** The take is a short `tools/sounds/takes/<name>.wav`. Its JSON sidecar holds the model, weights hash, prompt, seed, settings, device, date and licence. The recipe applies deterministic DSP. The manifest gains `source_sha256`, and `test_soundgen.py` fails on a take with no sidecar or a wrong hash.
-- **CC0 and public-domain source excerpts.** Each excerpt is a trimmed mono 16-bit WAV under about 1 MB in `tools/sounds/sources/<id>.wav`, with no Git LFS. `tools/sounds/sources.json` holds the origin, author, SPDX licence, credit line, upstream hash and trim range. `soundgen.py` writes `CREDITS.txt` in the jar and a repo `CREDITS.md`. The test fails on an off-list licence, a missing credit, an orphan source or a hash mismatch. A dev-only `fetch_source.py` fetches sources, and CI never uses the network.
+- **CC0 and public-domain source excerpts.** Each excerpt is a trimmed mono 16-bit WAV under about 1 MB in `tools/sounds/sources/<id>.wav`, with no Git LFS. `tools/sounds/sources.json` holds the origin, author, SPDX licence, credit line, upstream hash and trim range. `soundgen.py` writes `CREDITS.txt` in the jar and a repo `CREDITS.md`. The test fails on an off-list licence, a missing credit, an orphan source or a hash mismatch. A dev-only `fetch_source.py` fetches sources, and CI uses no network.
 
-Encode with `oggenc -q 4 -s <crc32(name)>`, mono for positional sounds. Commit our own Surge patch states, not its factory patches.
+Encode with `oggenc -q 4 -s <crc32(name)>`, mono for positional sounds.
 
 ## Needs the user
 
