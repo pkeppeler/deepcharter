@@ -8,8 +8,10 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
@@ -19,10 +21,24 @@ import net.minecraft.util.Util;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /** Proves the {@link MockPlayers} harness: a mock player is a real player that stays connected. */
 public class MockPlayersTest {
     private static final AtomicReference<WeakReference<ServerPlayer>> PROBE = new AtomicReference<>();
+    private static final AtomicReference<WeakReference<ServerPlayer>> OUTSIDE_PROBE = new AtomicReference<>();
+    private static final AtomicReference<@Nullable Runnable> AFTER_TICK = new AtomicReference<>();
+
+    static {
+        // Fabric events cannot be unregistered, so one listener runs whatever is pending and holds nothing after.
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            Runnable pending = AFTER_TICK.getAndSet(null);
+            if (pending != null) {
+                pending.run();
+            }
+        });
+    }
+
     private static final int TICKS = 1200;
     private static final int SURVIVAL_SECONDS = 3;
     /** The old bare join died at tick 242; a slow server covers fewer ticks in the wall-clock floor, so the test also needs this many. */
@@ -261,17 +277,35 @@ public class MockPlayersTest {
         });
     }
 
-    /** A finished test lets go of its mock player (#656). Runs with {@link #retentionProbeJoinsAMockAndEnds}: filter the class, not one test. */
+    /**
+     * Ends the test from the server's task queue, outside {@code GameTestInfo.tick}, with a callback still scheduled that
+     * captures the mock (#656): the runner's tick returns early for a done test, so only a release that does not depend on
+     * the finishing tick drops it.
+     */
+    @GameTest
+    public void retentionProbeEndsOutsideItsTick(GameTestHelper helper) {
+        MockPlayer mock = MockPlayers.join(helper, "retention-outside");
+        OUTSIDE_PROBE.set(new WeakReference<>(mock.player()));
+        helper.runAfterDelay(100_000, () -> mock.player().getName());
+        // MinecraftServer.execute runs a task at once on the server thread, inside the tick; an end-of-tick event does
+        // not.
+        AFTER_TICK.set(helper::succeed);
+    }
+
+    /** A finished test lets go of its mock player (#656). Runs with the two probes above: filter the class, not one test. */
     @GameTest(maxTicks = 200)
     public void finishedTestDoesNotRetainItsMock(GameTestHelper helper) {
         helper.succeedWhen(() -> {
-            WeakReference<ServerPlayer> probe = PROBE.get();
-            if (probe == null) {
-                throw helper.assertionException("the probe test has not joined its mock yet");
-            }
-            System.gc();
-            if (probe.get() != null) {
-                throw helper.assertionException("a finished test still holds its mock ServerPlayer");
+            for (AtomicReference<WeakReference<ServerPlayer>> probeRef : List.of(PROBE, OUTSIDE_PROBE)) {
+                WeakReference<ServerPlayer> probe = probeRef.get();
+                if (probe == null) {
+                    throw helper.assertionException(
+                            "a probe test has not joined its mock yet; run the whole MockPlayersTest class, not this test alone");
+                }
+                System.gc();
+                if (probe.get() != null) {
+                    throw helper.assertionException("a finished test still holds its mock ServerPlayer");
+                }
             }
         });
     }
