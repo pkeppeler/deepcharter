@@ -25,8 +25,6 @@ origin=$(git remote get-url origin)
 sha=$(gh pr view "$pr" -R "$repo" --json headRefOid --jq .headRefOid)
 [[ $sha =~ ^[0-9a-f]+$ ]] || { echo "REFUSED: PR #$pr has no readable head commit" >&2; exit 1; }
 
-# The merge gate's body and label checks, now, while the reviewer's context is fresh. CI is not
-# waited for: merge-pr.sh judges it.
 check_pr_body_and_labels
 
 gh pr comment "$pr" -R "$repo" --body "review-passed $sha"
