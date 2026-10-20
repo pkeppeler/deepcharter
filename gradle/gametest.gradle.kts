@@ -56,6 +56,11 @@ object GametestScan {
 	// that toggles directly. The scan matches the names, not the receiver.
 	private const val HUD_TOGGLE_MARKER = "// hud-toggle:"
 	private val hudToggle = Regex("""\b(?:keyToggleGui|hideGui|KEY_F1)\b|\bhud\s*\.\s*toggle\s*\(""")
+	// A chunk a test forces and never releases pins its whole generation neighbourhood (up to 17 x 17 chunks) for the rest of the run (#569).
+	// FarChunks.force releases it when the test finishes. Any setChunkForced whose last argument is not the literal false, or a TicketType.FORCED
+	// ticket, outside FarChunks.java is flagged, or marked with the comment below, with a reason, on its statement or the comment line above it.
+	private const val FORCE_MARKER = "// force-ok:"
+	private val chunkForce = Regex("""\bsetChunkForced\s*\((?![^;]*?,\s*false\s*\))|\bTicketType\s*\.\s*FORCED\b""")
 	// GameTestHelper.onEachTick queues one runnable per remaining tick of the test's maxTicks, and the runner keeps every finished test until
 	// the run ends, so the suite's live heap grew to 4.4 GB (#548). TestTicks.each keeps one. No suppression: there is no case for the queue.
 	private val onEachTickCall = Regex("""\bonEachTick\b""")
@@ -147,6 +152,14 @@ object GametestScan {
 					val line = lineOf(text, clockWrite.range.first)
 					if (!marked(markedNear, rawLines, line, WORLD_CLOCK_MARKER)) {
 						problems.add("$className:${line + 1} writes a world clock in a server test, which every test in the world sees; write it through TestClocks.paused, which restores it in a finally on the same tick, or mark a deliberate write with '$WORLD_CLOCK_MARKER <reason>' (the scan matches the method name, not the receiver; if this is not a world clock, mark it '$WORLD_CLOCK_MARKER not a clock')")
+					}
+				}
+			}
+			if (source.name != "FarChunks.java") {
+				for (force in chunkForce.findAll(text)) {
+					val line = lineOf(text, force.range.first)
+					if (!marked(markedNear, rawLines, line, FORCE_MARKER)) {
+						problems.add("$className:${line + 1} forces a chunk directly, and nothing releases it when the test ends; use FarChunks.force(helper, level, x, z), which does, or mark a deliberate force with '$FORCE_MARKER <reason>'")
 					}
 				}
 			}
