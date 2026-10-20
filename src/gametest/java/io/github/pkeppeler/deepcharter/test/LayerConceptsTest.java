@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes;
+import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.Hold;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.Scene;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.Size;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.View;
@@ -38,12 +39,13 @@ public class LayerConceptsTest {
     public void everySceneBuildsSealedWithItsLampItsCompanyRockAndItsCrust(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         Size size = LayerConceptScenes.size(server);
+        Hold hold = LayerConceptScenes.heldBy(helper);
         List<Scene> scenes = LayerConceptScenes.read(server);
         if (scenes.size() != LayerConceptScenes.LAYERS.size()) {
             throw helper.assertionException("%s scenes, not one for each layer", scenes.size());
         }
         for (Scene scene : scenes) {
-            LayerConceptScenes.place(LayerConceptScenes.heldBy(helper), server, scene, size);
+            LayerConceptScenes.place(hold, server, scene, size);
             ServerLevel level = scene.level(server);
             Counts counts = count(level, scene.origin(), size);
             if (counts.shellOpen > 0) {
@@ -68,7 +70,7 @@ public class LayerConceptsTest {
                             "scene %s: the camera of %s at %s is in a block", scene.key(), view.name(), eye);
                 }
             }
-            LayerConceptScenes.release(LayerConceptScenes.heldBy(helper), server, scene, size);
+            LayerConceptScenes.release(hold, server, scene, size);
         }
         helper.succeed();
     }
@@ -77,8 +79,9 @@ public class LayerConceptsTest {
     public void theLavaSourcesStandInAirAndStartAFlow(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         Size size = LayerConceptScenes.size(server);
+        Hold hold = LayerConceptScenes.heldBy(helper);
         for (Scene scene : LayerConceptScenes.read(server)) {
-            LayerConceptScenes.place(LayerConceptScenes.heldBy(helper), server, scene, size);
+            LayerConceptScenes.place(hold, server, scene, size);
             ServerLevel level = scene.level(server);
             for (BlockPos at : scene.lava()) {
                 if (!level.getBlockState(scene.origin().offset(at)).isAir()) {
@@ -91,7 +94,7 @@ public class LayerConceptsTest {
                     throw helper.assertionException("scene %s: the lava source %s did not take", scene.key(), at);
                 }
             }
-            LayerConceptScenes.release(LayerConceptScenes.heldBy(helper), server, scene, size);
+            LayerConceptScenes.release(hold, server, scene, size);
         }
         helper.succeed();
     }
@@ -100,6 +103,7 @@ public class LayerConceptsTest {
     public void everyViewsAtmosphereBiomeCarriesTheDecidedFogAmbientColourAndLampTint(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         Size size = LayerConceptScenes.size(server);
+        Hold hold = LayerConceptScenes.heldBy(helper);
         var biomes = server.registryAccess().lookupOrThrow(Registries.BIOME);
         for (int layer : LayerConceptScenes.LAYERS) {
             Object fog = null;
@@ -134,12 +138,12 @@ public class LayerConceptsTest {
             }
             for (Scene scene : LayerConceptScenes.read(server)) {
                 if (scene.layer() == layer) {
-                    LayerConceptScenes.place(LayerConceptScenes.heldBy(helper), server, scene, size);
+                    LayerConceptScenes.place(hold, server, scene, size);
                     // It checks the biome in the corners and the middle of the box, and fails when /fillbiome did not
                     // take.
-                    LayerConceptScenes.setAtmosphere(LayerConceptScenes.heldBy(helper), server, scene, size, "company");
-                    LayerConceptScenes.setAtmosphere(LayerConceptScenes.heldBy(helper), server, scene, size, "deep");
-                    LayerConceptScenes.release(LayerConceptScenes.heldBy(helper), server, scene, size);
+                    LayerConceptScenes.setAtmosphere(hold, server, scene, size, "company");
+                    LayerConceptScenes.setAtmosphere(hold, server, scene, size, "deep");
+                    LayerConceptScenes.release(hold, server, scene, size);
                 }
             }
         }

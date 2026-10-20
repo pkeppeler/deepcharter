@@ -168,7 +168,7 @@ public final class LayerConceptScenes {
         ServerLevel level = scene.level(server);
         BlockPos low = scene.origin();
         BlockPos high = low.offset(size.x() - 1, size.y() - 1, size.z() - 1);
-        forceChunks(hold, level, low, high);
+        eachChunk(hold.force(), level, low, high);
         RoomCarver.carve(level, low, high, Blocks.AIR.defaultBlockState());
         StructureTemplate template = server.getStructureTemplateManager()
                 .get(scene.structure())
@@ -208,10 +208,10 @@ public final class LayerConceptScenes {
      * scenario is short, so without this its chunks are unloaded in between, and loading them again from the server thread waited for the
      * shared worker pool behind the client's chunk meshing, which on a loaded machine did not finish.
      */
-    private static void forceChunks(Hold hold, ServerLevel level, BlockPos low, BlockPos high) {
+    private static void eachChunk(ChunkAction action, ServerLevel level, BlockPos low, BlockPos high) {
         for (int cx = low.getX() >> 4; cx <= high.getX() >> 4; cx++) {
             for (int cz = low.getZ() >> 4; cz <= high.getZ() >> 4; cz++) {
-                hold.force().apply(level, cx, cz);
+                action.apply(level, cx, cz);
                 level.getChunk(cx, cz);
             }
         }
@@ -220,15 +220,12 @@ public final class LayerConceptScenes {
     /** Lets the scene's chunks unload again, with the margin {@link #setAtmosphere} used. Called when a test has done with a built scene. */
     public static void release(Hold hold, MinecraftServer server, Scene scene, Size size) {
         BlockPos low = scene.origin().offset(-ATMOSPHERE_MARGIN, 0, -ATMOSPHERE_MARGIN);
-        ServerLevel level = scene.level(server);
-        BlockPos high =
-                scene.origin().offset(size.x() + ATMOSPHERE_MARGIN - 1, size.y() - 1, size.z() + ATMOSPHERE_MARGIN - 1);
-        for (int cx = low.getX() >> 4; cx <= high.getX() >> 4; cx++) {
-            for (int cz = low.getZ() >> 4; cz <= high.getZ() >> 4; cz++) {
-                hold.release().apply(level, cx, cz);
-                level.getChunk(cx, cz);
-            }
-        }
+        eachChunk(
+                hold.release(),
+                scene.level(server),
+                low,
+                scene.origin()
+                        .offset(size.x() + ATMOSPHERE_MARGIN - 1, size.y() - 1, size.z() + ATMOSPHERE_MARGIN - 1));
     }
 
     /** The biome that carries a layer's atmosphere (fog, ambient light and lamp tint) for a kind of light; {@code make.py} writes it. */
@@ -250,7 +247,7 @@ public final class LayerConceptScenes {
                         size.x() + ATMOSPHERE_MARGIN - 1,
                         size.y() + ATMOSPHERE_MARGIN - 1,
                         size.z() + ATMOSPHERE_MARGIN - 1);
-        forceChunks(hold, level, low, high);
+        eachChunk(hold.force(), level, low, high);
         Identifier biome = atmosphere(scene.layer(), light);
         CommandSourceStack source =
                 server.createCommandSourceStack().withLevel(level).withSuppressedOutput();

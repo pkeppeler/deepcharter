@@ -89,13 +89,13 @@ public class M2SliceTest {
         // The colony's chunk too: a pod there is found by its UUID, which a cable needs, only once the chunk ticks
         // entities.
         List<Awaited> awaited = List.of(
-                Awaited.of(one, BlockPos.containing(X, zoneY(one, 2), Z)),
-                Awaited.of(two, BlockPos.containing(X, zoneY(two, 2), Z)),
-                Awaited.of(
+                new Awaited(one, BlockPos.containing(X, zoneY(one, 2), Z)),
+                new Awaited(two, BlockPos.containing(X, zoneY(two, 2), Z)),
+                new Awaited(
                         server.overworld(), Colony.placed(server).orElseThrow().center()),
                 // The Host's chunk, whose displays the end state inspects: the colony's centre is in it, and this names
                 // it.
-                Awaited.of(
+                new Awaited(
                         server.overworld(),
                         Colony.anchor(server, ColonyAnchor.STATUE).orElseThrow()));
         Runnable allArrived = () -> runTheSlice(helper, server, one, two, awaited);
@@ -109,10 +109,6 @@ public class M2SliceTest {
 
     /** A chunk that the test waits for, and lets go of when it is done (a chunk forced before the test, such as the pad's, stays). */
     private record Awaited(ServerLevel level, BlockPos pos) {
-        static Awaited of(ServerLevel level, BlockPos pos) {
-            return new Awaited(level, pos);
-        }
-
         void release(GameTestHelper helper) {
             FarChunks.release(helper, level, pos.getX() >> 4, pos.getZ() >> 4);
         }
