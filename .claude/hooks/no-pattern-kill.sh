@@ -13,10 +13,11 @@
 # substitution inside double quotes (other than the pidfile idiom), or a variable holding the command;
 # `kill $pid` where the variable was filled by pgrep; pkill spelled through a variable or alias; `case`
 # arms. Unparsable input or command text is allowed (so is an unterminated heredoc, whose body is
-# ignored): a false positive that blocks normal work costs more than a rare miss. No python3: allowed.
-command -v python3 >/dev/null || exit 0
+# ignored): a false positive that blocks normal work costs more than a rare miss. Without uv, tools/py says so on stderr and exits nonzero
+# (not 2), which Claude Code reports without blocking the command.
+py=$(cd "$(dirname "$0")/../.." && pwd)/tools/py
 # shellcheck disable=SC2016  # the Python source is deliberately single-quoted: no shell expansion
-exec python3 -I -c '
+exec "$py" -c '
 import json, re, sys
 
 MSG = """Refused: pattern kills (pkill, killall, kill $(pgrep ...), kill %1, ... | xargs kill) can hit other agents on this Mac.

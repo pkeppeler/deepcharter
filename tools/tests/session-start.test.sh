@@ -10,6 +10,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+py=$root/tools/py
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
@@ -26,7 +27,8 @@ git -C "$work/repo" push -q origin HEAD:main
 git -C "$work/repo" fetch -q origin
 cp "$root/.claude/hooks/session-start.sh" "$work/repo/.claude/hooks/"
 cp "$root/tools/lib/adr.sh" "$work/repo/tools/lib/"
-cp "$root/tools/handoff_check.py" "$work/repo/tools/"
+cp "$root/tools/handoff_check.py" "$root/tools/py" "$work/repo/tools/"
+cp "$root/.python-version" "$work/repo/"
 for i in 1 2 3; do git -C "$work/repo" branch "worktree-agent-$i"; done
 git -C "$work/repo" branch 514-real-work
 git -C "$work/repo" worktree add -q "$work/wt4" -b worktree-agent-4
@@ -61,9 +63,9 @@ check() { # check <description> <expected> <actual>
 # run_hook: print the injected context for the current env.
 run_hook() {
   PATH="$work/bin:$PATH" bash "$root/.claude/hooks/session-start.sh" |
-    python3 -I -c 'import json, sys; print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])'
+    "$py" -c 'import json, sys; print(json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"])'
 }
-in_days() { python3 -I -c '
+in_days() { "$py" -c '
 import sys
 from datetime import datetime, timedelta, timezone
 print((datetime.now(timezone.utc) + timedelta(days=float(sys.argv[1]))).strftime("%Y-%m-%dT%H:%M:%SZ"))' "$1"; }
@@ -138,7 +140,7 @@ check "a compliant handoff gets no rule warning" no "$(has 'breaks the handoff r
 out=$(LIMITS_JSON='{}' HANDOFF=$'#14\n## Open PRs\n#1 x' run_hook)
 check "a derived section warns" yes "$(has 'WARNING: the handoff breaks the handoff rules')"
 check "the warning names the tool" yes "$(has 'tools/handoff.sh')"
-long=$(python3 -I -c 'print("word " * 1001)')
+long=$("$py" -c 'print("word " * 1001)')
 out=$(LIMITS_JSON='{}' HANDOFF="#14 $long" run_hook)
 check "an over-long handoff warns" yes "$(has 'breaks the handoff rules')"
 check "the warning is one line" 1 "$(grep -c 'breaks the handoff rules' <<<"$out")"

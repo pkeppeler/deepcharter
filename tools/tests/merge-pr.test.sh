@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests tools/merge-pr.sh and tools/mark-review-passed.sh with stub
-# gh/git/python3 executables on PATH.
+# gh/git/uv executables on PATH.
 # Usage: tools/tests/merge-pr.test.sh
 set -euo pipefail
 # shellcheck source=/dev/null
@@ -13,6 +13,8 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 mkdir "$work/bin"
 export LOG="$work/calls.log"
+# The roadmap runs through tools/py, which runs the stub uv on the version .python-version names.
+roadmap_line="uv run --no-project --python $(cat "$tools/../.python-version") python -I tools/roadmap.py"
 
 # The gh stub answers the scripts' `--json <field> --jq <expr>` calls with the
 # plain text a real gh prints after the jq filter, driven by STUB_* variables.
@@ -126,9 +128,9 @@ esac
 exit 0
 STUB
 
-cat >"$work/bin/python3" <<'STUB'
+cat >"$work/bin/uv" <<'STUB'
 #!/usr/bin/env bash
-echo "python3 $*" >>"$LOG"
+echo "uv $*" >>"$LOG"
 exit "${STUB_ROADMAP_RC:-0}"
 STUB
 chmod +x "$work/bin/"*
@@ -417,6 +419,8 @@ exited "runs as ./merge-pr.sh from tools/" 0
 # script has no override seam).
 mkdir "$work/tools"
 cp -R "$tools/lib" "$work/tools/lib"
+cp "$tools/py" "$work/tools/py"
+cp "$tools/../.python-version" "$work/.python-version"
 sed 's/^REQUIRED_CHECKS=(.*)$/REQUIRED_CHECKS=(build lint)/' "$script" >"$work/tools/merge-pr.sh"
 grep -q 'REQUIRED_CHECKS=(build lint)' "$work/tools/merge-pr.sh" || fail "required-checks copy was not patched"
 SCRIPT=$work/tools/merge-pr.sh refusal "required check absent" "lacks required check: lint" \
@@ -496,7 +500,7 @@ run_script STUB_ROADMAP_CHANGED=1
 exited "happy path exits 0" 0
 logged "happy path merge invocation" "$merge_line"
 logged "labels read from pinned repo" "gh pr view 7 -R pkeppeler/deepcharter --json labels --jq .labels[].name"
-logged "roadmap regenerated" "python3 -I tools/roadmap.py"
+logged "roadmap regenerated" "$roadmap_line"
 logged "worktree of origin/main" "git worktree add --detach $(wt) origin/main"
 logged "roadmap commit message" "git -C $(wt) commit -m Regenerate roadmap after #7"
 logged "roadmap pushed to main" "git -C $(wt) push origin HEAD:main"
@@ -538,17 +542,17 @@ not_logged "no stacked PR means no retarget" "^gh pr edit"
 run_script STUB_MERGE_RC=1
 exited "merged-despite-error continues to roadmap" 0
 printed "merged-despite-error warns" "exited nonzero but PR #7 is MERGED"
-logged "merged-despite-error ran roadmap" "python3 -I tools/roadmap.py"
+logged "merged-despite-error ran roadmap" "$roadmap_line"
 run_script STUB_MERGE_RC=1 STUB_STATE_AFTER=OPEN
 exited "failed merge exits nonzero" 1
 printed "failed merge says not merged" "PR #7 is not merged"
-not_logged "failed merge skips roadmap" "python3"
+not_logged "failed merge skips roadmap" "^uv"
 
 # Roadmap script missing on main: warn, still succeed.
 run_script STUB_ROADMAP_PRESENT=0
 exited "missing roadmap.py exits 0" 0
 printed "missing roadmap.py warns" "WARNING: tools/roadmap.py not on origin/main"
-not_logged "missing roadmap.py runs nothing" "python3"
+not_logged "missing roadmap.py runs nothing" "^uv"
 
 # Roadmap failure after merge: loud, nonzero, and no push.
 run_script STUB_ROADMAP_RC=1 STUB_ROADMAP_CHANGED=1
@@ -562,7 +566,7 @@ logged "roadmap failure removes worktree" "git worktree remove --force $(wt)"
 run_script STUB_ROADMAP_CHANGED=1 STUB_PUSH_FAILS=1
 exited "push rejected once recovers" 0
 count "retry pushed twice" "push origin HEAD:main" 2
-count "retry reran roadmap.py" "^python3" 2
+count "retry reran roadmap.py" "^uv" 2
 logged "retry reset worktree to origin/main" "git -C $(wt) reset --hard origin/main"
 run_script STUB_ROADMAP_CHANGED=1 STUB_PUSH_FAILS=2
 exited "push rejected twice fails" 1

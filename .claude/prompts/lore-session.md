@@ -15,7 +15,7 @@ Hard constraints from the spec:
 - Notes are found in the world and shared across the charter
 - layer 2 has "something moving in the dark", layer 7 has "THE EYES", and layer 8 (the Furnace) holds the employer's factories and a two-phase final boss
 - homage to the original is fine; copying it is not
-- before you finish, run `python3 -I tools/check-homage.py --reference <main checkout>/original_flash_game/REFERENCE.md` (docs/tooling/homage-check.md) and fix every shared sequence
+- before you finish, run `tools/py tools/check-homage.py --reference <main checkout>/original_flash_game/REFERENCE.md` (docs/tooling/homage-check.md) and fix every shared sequence
 
 Deliverables, drafted in chat first and written to files only after I approve:
 - docs/LORE.md: the canon bible, covering the premise, timeline, employer, reveal, each layer's lore and zone beats, and the post-game hook

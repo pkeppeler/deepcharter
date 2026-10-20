@@ -2,7 +2,7 @@
 
 A marker is a line that starts with seven `<`, `|` or `>` followed by a space or the end of the line. A bare line of seven `=` counts only
 between an opening `<<<<<<<` and the next `>>>>>>>`, so Markdown setext headings and ASCII rules pass. Binary files (a NUL byte) are skipped.
-Usage: python3 -I tools/tests/conflict_markers.py (scans the repository that holds this file)
+Usage: tools/py tools/tests/conflict_markers.py (scans the repository that holds this file)
 """
 import os
 import subprocess

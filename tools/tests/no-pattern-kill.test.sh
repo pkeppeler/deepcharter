@@ -9,13 +9,14 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+py=$root/tools/py
 hook="$root/.claude/hooks/no-pattern-kill.sh"
 failures=0
 
 # run <command>: print the hook's exit code, a newline, then its stderr.
 run() {
   local json err code
-  json=$(python3 -I -c 'import json, sys; print(json.dumps({"tool_name": "Bash", "tool_input": {"command": sys.argv[1]}}))' "$1")
+  json=$("$py" -c 'import json, sys; print(json.dumps({"tool_name": "Bash", "tool_input": {"command": sys.argv[1]}}))' "$1")
   code=0
   err=$(printf '%s' "$json" | bash "$hook" 2>&1 >/dev/null) || code=$?
   printf '%s\n%s' "$code" "$err"

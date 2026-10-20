@@ -289,7 +289,7 @@ def fetch() -> Roadmap:
 
 def main() -> int:
     if len(sys.argv) > 1:
-        print("usage: python3 -I tools/roadmap.py (takes no arguments)", file=sys.stderr)
+        print("usage: tools/py tools/roadmap.py (takes no arguments)", file=sys.stderr)
         return 2
     try:
         roadmap = fetch()

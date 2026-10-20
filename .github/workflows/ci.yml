@@ -25,6 +25,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: ./.github/actions/setup-python-uv
       - uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -37,7 +38,7 @@ jobs:
           cache-read-only: false
       - run: ./gradlew build
       - name: gate checks on fixtures
-        run: python3 -I tools/tests/gate_checks.py
+        run: tools/py tools/tests/gate_checks.py
       # The client run tasks never run on Linux. A dry run with the lock forced on still checks that
       # they serialize into the configuration cache (gradle/clientlock.gradle.kts).
       - run: ./gradlew runClient runClientGameTest runPlay --dry-run --configuration-cache
@@ -55,8 +56,9 @@ jobs:
           persist-credentials: false
       # build-audio-pack.test.sh needs ffmpeg. It makes its own synthetic tones; CI never
       # has, reads or needs the original game audio.
+      - uses: ./.github/actions/setup-python-uv
       - uses: ./.github/actions/install-ffmpeg
-      - run: python3 -I -m unittest discover -s tools/tests -p 'test_*.py'
+      - run: tools/py -m unittest discover -s tools/tests -p 'test_*.py'
       - name: bash tool tests
         run: |
           for t in tools/tests/*.test.sh; do

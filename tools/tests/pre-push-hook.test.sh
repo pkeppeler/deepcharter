@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests .githooks/pre-push with stub gradlew, python3 and shellcheck: skip rules, failure blocking, worktree cwd.
+# Tests .githooks/pre-push with stub gradlew, uv and shellcheck: skip rules, docs-only pushes skipping Gradle, failure blocking, worktree cwd.
 # Usage: tools/tests/pre-push-hook.test.sh
 set -euo pipefail
 # shellcheck source=/dev/null
@@ -10,17 +10,19 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
 mkdir -p "$work/.githooks" "$work/bin" "$work/tools"
-cp "$repo/tools/shellcheck.sh" "$work/tools/shellcheck.sh"
+cp "$repo/tools/shellcheck.sh" "$repo/tools/py" "$work/tools/"
+cp "$repo/.python-version" "$work/.python-version"
 cp "$repo/.githooks/pre-push" "$work/.githooks/pre-push"
 cat >"$work/gradlew" <<'S'
 #!/usr/bin/env bash
 echo "gradlew $*" >>"$STUB_LOG"
 [[ ${STUB_FAIL:-} != gradle ]]
 S
-cat >"$work/bin/python3" <<'S'
+# The hook runs Python through tools/py, which runs uv: the stub uv plays the interpreter.
+cat >"$work/bin/uv" <<'S'
 #!/usr/bin/env bash
-[[ ${1:-} == -c ]] && exit 0 # the interpreter version check passes silently; it is not a counted call
-echo "python3 $*" >>"$STUB_LOG"
+[[ $* == *' -c pass' ]] && exit 0 # the availability probe is not a counted call
+echo "uv $*" >>"$STUB_LOG"
 [[ -z ${STUB_GIT_INIT:-} ]] || { git init -q "$STUB_GIT_INIT" && git -C "$STUB_GIT_INIT" config deepcharter.leak 1; }
 case "$*" in
   *conflict_markers*) [[ ${STUB_FAIL:-} != conflict ]] ;;
@@ -34,7 +36,7 @@ if [[ ${1:-} == --version ]]; then echo "version: ${STUB_SC_VERSION-0.11.0}"; ex
 echo "shellcheck $*" >>"$STUB_LOG"
 [[ ${STUB_FAIL:-} != shellcheck ]]
 S
-chmod +x "$work/gradlew" "$work/bin/python3" "$work/bin/shellcheck" "$work/.githooks/pre-push"
+chmod +x "$work/gradlew" "$work/bin/uv" "$work/bin/shellcheck" "$work/.githooks/pre-push" "$work/tools/py"
 
 failures=0
 check() { # check <description> <expected> <actual>
@@ -75,42 +77,75 @@ STUB_SC_VERSION=0.9.0 run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/n
 check "other local version warns with both versions" "yes" "$(grep -q 'local version is 0.9.0 but CI pins 0.11.0' "$work/out" && echo yes || echo no)"
 check "last line without a newline still counts" "0:5" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
 
-# A python3 older than 3.10 stops the hook before any check, and the message names the interpreter, its version and the minimum.
-mkdir -p "$work/oldbin"
-cat >"$work/oldbin/python3" <<'S'
-#!/usr/bin/env bash
-if [[ ${1:-} == -c ]]; then
-  [[ $2 == *sys.exit* ]] && exit 1
-  echo "3.9.6"
-  exit 0
-fi
-echo "python3 $*" >>"$STUB_LOG"
-S
-chmod +x "$work/oldbin/python3"
+# No uv on PATH stops the hook before any check, with tools/py's install hint. PATH holds only a bin dir with the tools the hook needs.
+mkdir -p "$work/nouvbin"
+for tool in bash git dirname cat; do ln -sf "$(command -v "$tool")" "$work/nouvbin/$tool"; done
 : >"$work/calls"
 status=0
-(cd "$work" && printf '%s' "refs/heads/b $sha refs/heads/b $zero$nl" | STUB_LOG="$work/calls" PATH="$work/oldbin:$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url) \
+(cd "$work" && printf '%s' "refs/heads/b $sha refs/heads/b $zero$nl" | STUB_LOG="$work/calls" PATH="$work/nouvbin" "$(command -v bash)" "$work/.githooks/pre-push" origin url) \
   >"$work/out" 2>&1 || status=$?
-check "python3 older than 3.10 blocks the push" "1" "$status"
-check "old python3 message names path, version and minimum" "yes" \
-  "$(grep -qF "python3 at $work/oldbin/python3 is 3.9.6; the tools need 3.10 or newer" "$work/out" && echo yes || echo no)"
-check "old python3 stops before any check" "0" "$(wc -l <"$work/calls" | tr -d ' ')"
+check "missing uv blocks the push" "1" "$status"
+check "missing uv message says how to install it" "yes" "$(grep -q 'uv not found on PATH.*brew install uv' "$work/out" && echo yes || echo no)"
+check "missing uv stops before any check" "0" "$(wc -l <"$work/calls" | tr -d ' ')"
 status=0
-(cd "$work" && printf '%s' "(delete) $zero refs/heads/b $sha$nl" | STUB_LOG="$work/calls" PATH="$work/oldbin:$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url) \
+(cd "$work" && printf '%s' "(delete) $zero refs/heads/b $sha$nl" | PATH="$work/nouvbin" "$(command -v bash)" "$work/.githooks/pre-push" origin url) \
   >/dev/null 2>&1 || status=$?
-check "old python3 does not block a skipped push" "0" "$status"
+check "missing uv does not block a skipped push" "0" "$status"
 
-# No python3 on PATH has its own message. PATH holds only a bin dir with the tools the hook needs before the check.
-mkdir -p "$work/nopybin"
-for tool in bash git dirname cat; do ln -sf "$(command -v "$tool")" "$work/nopybin/$tool"; done
-status=0
-(cd "$work" && printf '%s' "refs/heads/b $sha refs/heads/b $zero$nl" | PATH="$work/nopybin" "$(command -v bash)" "$work/.githooks/pre-push" origin url) \
-  >"$work/out" 2>&1 || status=$?
-check "missing python3 blocks the push" "1" "$status"
-check "missing python3 has its own message" "yes" "$(grep -qF 'pre-push: python3 not found on PATH; the tools need 3.10 or newer' "$work/out" && echo yes || echo no)"
+# A push whose range touches nothing Gradle reads skips the compile, checkstyle and gate-check steps (3 stub calls: conflict markers,
+# unit tests, shellcheck). Any other path, a new branch off a known origin/main with such a path, an unknown base or a second ref that
+# does touch one runs all 5. The repo is real so the hook can diff the range.
+g=$work/g
+mkdir -p "$g/.githooks" "$g/tools/tests" "$g/docs" "$g/src" "$g/gradle" "$g/config/checkstyle"
+cp "$repo/.githooks/pre-push" "$g/.githooks/pre-push"
+cp "$repo/tools/py" "$repo/tools/shellcheck.sh" "$g/tools/"
+cp "$repo/.python-version" "$g/.python-version"
+cp "$work/gradlew" "$g/gradlew"
+git init -q -b main "$g"
+echo a >"$g/docs/a.md"
+git -C "$g" add -A
+git -C "$g" -c user.name=t -c user.email=t@example.com commit -q -m base
+base=$(git -C "$g" rev-parse HEAD)
+git -C "$g" update-ref refs/remotes/origin/main "$base"
+commit_with() { # commit_with <path>...: one commit touching each path (new content), prints its sha
+  local f
+  for f in "$@"; do mkdir -p "$g/$(dirname "$f")"; echo "$RANDOM$RANDOM" >"$g/$f"; done
+  git -C "$g" add -A
+  git -C "$g" -c user.name=t -c user.email=t@example.com commit -q -m "touch $*"
+  git -C "$g" rev-parse HEAD
+}
+run_range() { # run_range <local sha> <remote sha or $zero>: "<status>:<stub calls>" for a push from the repo $g
+  : >"$work/calls"
+  local status=0
+  (cd "$g" && printf 'refs/heads/b %s refs/heads/b %s\n' "$1" "$2" | STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$g/.githooks/pre-push" origin url) \
+    >"$work/out" 2>&1 || status=$?
+  echo "$status:$(wc -l <"$work/calls" | tr -d ' ')"
+}
+docs=$(commit_with docs/b.md README.md tools/x.py .claude/CLAUDE.md)
+check "docs-only push skips the Gradle steps" "0:3" "$(run_range "$docs" "$base")"
+check "docs-only push says it skipped them" "yes" "$(grep -q 'no Gradle input changed.*skipping' "$work/out" && echo yes || echo no)"
+check "docs-only push never calls gradlew or the gate checks" "0" "$(grep -cE 'gradlew|gate_checks' "$work/calls" || true)"
+check "docs-only new branch (origin/main is the base) skips them" "0:3" "$(run_range "$docs" "$zero")"
+for path in src/A.java gradle/libs.versions.toml build.gradle.kts gradle/x.gradle.kts settings.gradle.kts tools/TestOnlyGate.java \
+  tools/tests/room_carver_gate_check.py tools/tests/gate_batch.py tools/tests/gate_checks.py gradle.properties gradle.lockfile config/checkstyle/checkstyle.xml; do
+  prev=$(git -C "$g" rev-parse HEAD)
+  tip=$(commit_with docs/c.md "$path")
+  check "a change to $path runs everything" "0:5" "$(run_range "$tip" "$prev")"
+done
+check "a range that includes a Gradle path anywhere in it runs everything" "0:5" "$(run_range "$tip" "$base")"
+check "a new branch with a Gradle path runs everything" "0:5" "$(run_range "$tip" "$zero")"
+check "an unknown remote sha runs everything" "0:5" "$(run_range "$docs" "$sha")"
+git -C "$g" update-ref -d refs/remotes/origin/main
+check "a new branch with no origin/main runs everything" "0:5" "$(run_range "$docs" "$zero")"
+git -C "$g" update-ref refs/remotes/origin/main "$base"
+two_refs_status=0
+: >"$work/calls"
+(cd "$g" && printf 'refs/heads/a %s refs/heads/a %s\nrefs/heads/b %s refs/heads/b %s\n' "$docs" "$base" "$tip" "$docs" \
+  | STUB_LOG="$work/calls" PATH="$work/bin:$PATH" bash "$g/.githooks/pre-push" origin url) >"$work/out" 2>&1 || two_refs_status=$?
+check "one docs-only ref plus one Gradle ref runs everything" "0:5" "$two_refs_status:$(wc -l <"$work/calls" | tr -d ' ')"
 
 # Git hands a hook GIT_DIR. A test that runs `git init` must hit its own temp dir, never the repo GIT_DIR names: here a sacrificial
-# bare repo stands in for the real one, and the stub python3 plays the test.
+# bare repo stands in for the real one, and the stub uv plays the test.
 git init -q --bare "$work/sacrificial.git"
 fingerprint() { (cd "$work/sacrificial.git" && find . -type f -exec cksum {} + | sort | cksum); }
 before=$(fingerprint)
@@ -124,7 +159,7 @@ check "the sacrificial repo has no marker from the test" "none" "$(git --git-dir
 # Missing shellcheck: warn, skip it, and let the push through. The PATH holds only the tools the hook needs.
 mkdir -p "$work/nosc"
 for tool in bash env dirname sed; do ln -s "$(command -v "$tool")" "$work/nosc/$tool"; done
-ln -s "$work/bin/python3" "$work/nosc/python3"
+ln -s "$work/bin/uv" "$work/nosc/uv"
 : >"$work/calls"
 missing_status=0
 (cd "$work" && printf '%s' "refs/heads/b $sha refs/heads/b $zero$nl" | STUB_LOG="$work/calls" PATH="$work/nosc" "$(command -v bash)" "$work/.githooks/pre-push" origin url) \
@@ -137,8 +172,10 @@ check "hook is executable in the index" "100755" "$(git -C "$repo" ls-files -s .
 
 # A relative core.hooksPath runs the hook from each worktree's own root.
 tr_repo=$work/tr
-mkdir -p "$tr_repo/.githooks"
+mkdir -p "$tr_repo/.githooks" "$tr_repo/tools"
 cp "$repo/.githooks/pre-push" "$tr_repo/.githooks/pre-push"
+cp "$repo/tools/py" "$tr_repo/tools/py"
+cp "$repo/.python-version" "$tr_repo/.python-version"
 cat >"$tr_repo/gradlew" <<'S'
 #!/usr/bin/env bash
 echo "gradlew in $PWD" >>"$STUB_LOG"

@@ -72,7 +72,7 @@ What changed:
 
 ```sh
 tools/record-evidence.sh terminal-panel     # stills of the seven screens, no test pack
-python3 tools/terminal_concepts.py --preview DIR
+tools/py tools/terminal_concepts.py --preview DIR
 ```
 
 To change the design, edit `tools/terminal_concepts.py` and run it. A test fails when a committed sprite differs from what the generator makes.
