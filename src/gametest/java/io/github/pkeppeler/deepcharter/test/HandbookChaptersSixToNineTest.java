@@ -7,8 +7,10 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.handbook.Directives;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
+import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTriggers;
 import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
@@ -213,6 +215,57 @@ public class HandbookChaptersSixToNineTest {
                 mock.player().getGameProfile().name(),
                 completed(server, mock),
                 before);
+    }
+
+    /**
+     * The credit for towing the Prospector home, with the reason when it is missing (#669: it was missing twice on CI and never
+     * locally). It names each condition of {@code HandbookTriggers.towedProspector} that is false, then the values behind them.
+     */
+    private static void expectTowCredited(
+            GameTestHelper helper,
+            MinecraftServer server,
+            ServerPlayer pilot,
+            PodEntity towed,
+            PodEntity tower,
+            ColonySite.Placed colony,
+            Vec3 positionBeforePoll) {
+        Identifier tow = id(directive("company_property", "tow_prospector"));
+        if (HandbookProgress.completedFor(server, pilot.getUUID()).contains(tow)) {
+            return;
+        }
+        List<String> falseConditions = new ArrayList<>();
+        if (PodTowing.tower(towed).isEmpty()) {
+            falseConditions.add("no tower (PodTowing.tower(towed) is empty)");
+        }
+        int half = ColonyTuning.DEFAULT.padSize() / 2;
+        if (!HandbookTriggers.inColony(towed, colony)) {
+            falseConditions.add("the towed pod is not in the colony");
+        }
+        boolean playerRides = tower.getPassengers().stream().anyMatch(rider -> rider instanceof ServerPlayer);
+        if (!playerRides) {
+            falseConditions.add("no ServerPlayer passenger on the tower");
+        }
+        throw helper.assertionException(
+                "polling the towed Prospector credited nobody. False conditions: %s. Towed at %s before the poll and %s after it (the poll runs follow too), in %s (isTowed=%s), "
+                        + "pad centre %s (half %s, ground %s, clear height %s), tower at %s (seen by the world=%s, "
+                        + "on a ticking chunk=%s), riders %s, pilot alive=%s in %s",
+                falseConditions.isEmpty()
+                        ? "none of the three (so the listener did not run, or ran earlier)"
+                        : falseConditions,
+                positionBeforePoll,
+                towed.position(),
+                towed.level().dimension().identifier(),
+                PodTowing.isTowed(towed),
+                colony.center(),
+                half,
+                colony.groundY(),
+                ColonyTuning.DEFAULT.clearHeight(),
+                tower.position(),
+                server.overworld().getEntity(tower.getUUID()) != null,
+                server.overworld().isPositionEntityTicking(tower.blockPosition()),
+                tower.getPassengers(),
+                pilot.isAlive(),
+                pilot.level().dimension().identifier());
     }
 
     private static Set<String> with(Set<String> base, String... more) {
@@ -569,7 +622,9 @@ public class HandbookChaptersSixToNineTest {
                                 helper,
                                 rival.player().startRiding(wreckHome, true, false),
                                 "the rival should board the towed Prospector");
+                        Vec3 beforePoll = wreckHome.position();
                         poll(wreckHome);
+                        expectTowCredited(helper, server, first, wreckHome, tower, colony, beforePoll);
                         Set<String> towed = with(found, directive("company_property", "tow_prospector"));
                         HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "towing home", both, towed);
                         expect(
@@ -638,6 +693,49 @@ public class HandbookChaptersSixToNineTest {
                         rival.leave();
                     }
                 });
+    }
+
+    /**
+     * The handbook credits a tow from the towed pod's position before {@code PodTowing.follow} moves it (#679). Here the pod sits
+     * on the pad's edge with its tower away at the test site, so one {@code follow} drags it off the pad: the credit exists only if the
+     * handbook's listener ran first.
+     */
+    @GameTest
+    public void aTowAtTheEdgeOfThePadIsCreditedBeforeTheLineDragsThePodOffIt(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        MockPlayer pilot = charterMember(helper, "Tower");
+        PodEntity tower = null;
+        PodEntity towed = null;
+        try {
+            ColonySite.Placed colony = Colony.placed(server).orElseThrow();
+            Vec3 pad = Vec3.atBottomCenterOf(colony.center());
+            int half = ColonyTuning.DEFAULT.padSize() / 2;
+            tower = helper.spawn(PodRegistry.POD, 2, 1, 2);
+            towed = helper.spawn(PodRegistry.PROSPECTOR, 4, 1, 4);
+            // Hitch them at the test site, where both are loaded: the pad's chunks may not be loaded in a full run.
+            PodTowing.attach(tower, towed);
+            towed.setPos(pad.add(half - 0.5, 0, -0.5));
+            expect(helper, pilot.player().startRiding(tower, true, false), "the player should board the tower");
+            Vec3 beforePoll = towed.position();
+            expect(helper, HandbookTriggers.inColony(towed, colony), "the towed pod should start on the pad");
+            poll(towed);
+            expect(
+                    helper,
+                    !HandbookTriggers.inColony(towed, colony),
+                    "the test's premise broke: follow no longer drags the pod off the pad, from %s to %s",
+                    beforePoll,
+                    towed.position());
+            expectTowCredited(helper, server, pilot.player(), towed, tower, colony, beforePoll);
+            helper.succeed();
+        } finally {
+            if (towed != null) {
+                towed.discard();
+            }
+            if (tower != null) {
+                tower.discard();
+            }
+            pilot.leave();
+        }
     }
 
     /**
