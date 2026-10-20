@@ -33,7 +33,7 @@ import net.minecraft.world.level.block.Blocks;
  * with 8 hull left.
  *
  * <p>The pod is a Prospector with the top console, tier 3 (#689). The warning shows at 7 to 8 slabs over the crust, 10 to 11 over the floor, and the pod ends on the crust, 3 over
- * the floor, all inside layer 1's signal-decay band (onset 36, blackout 6). On the stock console the readout plate fails there (intensity 0.87 to 0.97 against the plate's
+ * the floor, all inside layer 1's signal-decay band (onset 36, blackout 6). On the stock console the readout plate fails there (intensity 0.83 at the first warning, up to full blackout, 1, at the crust, against the plate's
  * threshold 0.45) and drops the warning in some cells. Tier 3 has a share of 0, so the decay never reaches the plate. Tier 2 (share 0.3) clears 10 slabs (0.09) but not the
  * crust (0.87), so the later stills would go blank.
  */
