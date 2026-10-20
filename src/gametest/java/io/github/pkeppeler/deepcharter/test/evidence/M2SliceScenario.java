@@ -28,6 +28,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrders;
@@ -1418,7 +1419,14 @@ public class M2SliceScenario extends EvidenceScenario {
             if ((ticks += TICKS_PER_FRAME) > maxTicks) {
                 throw new AssertionError(failure + " within " + ticks + " ticks, the Mole being "
                         + onServer(server -> describe(findPod(server, mole))) + ", the client having "
-                        + ctx.computeOnClient(ClientWait::describe));
+                        + ctx.computeOnClient(ClientWait::describe) + ", its chunk "
+                        + ctx.computeOnClient(client -> client.level == null || client.player == null
+                                ? "unknown"
+                                : "loaded "
+                                        + client.level.hasChunk(
+                                                client.player.chunkPosition().x(),
+                                                client.player.chunkPosition().z()))
+                        + ", held chunks " + LightSync.heldChunks());
             }
         }
     }
@@ -1427,7 +1435,20 @@ public class M2SliceScenario extends EvidenceScenario {
         return found.map(pod -> "at " + pod.position() + " in "
                         + pod.level().dimension().identifier() + ", fuel " + pod.fuel() + ", on ground "
                         + pod.onGround() + ", drilling " + pod.drilling() + ", over "
-                        + pod.level().getBlockState(pod.blockPosition().below()).getBlock())
+                        + pod.level().getBlockState(pod.blockPosition().below()).getBlock()
+                        + ", its chunk sendable "
+                        + (((ServerLevel) pod.level())
+                                        .getChunkSource()
+                                        .chunkMap
+                                        .getChunkToSend(pod.chunkPosition().pack())
+                                != null)
+                        + " and tracked by "
+                        + ((ServerLevel) pod.level())
+                                .players().stream()
+                                        .filter(player ->
+                                                player.getChunkTrackingView().contains(pod.chunkPosition()))
+                                        .count()
+                        + " players")
                 .orElse("in no level");
     }
 

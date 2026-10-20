@@ -5,8 +5,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
@@ -19,28 +21,50 @@ import net.minecraft.world.level.chunk.LevelChunk;
 /**
  * Light is computed off the server thread, and vanilla drops the light update of a chunk that is not yet ticking (issue 427), so a client
  * sent a chunk while light is pending keeps the old light; call this after the last block placed in a chunk a player may be sent.
- *
- * <p>Vanilla tells the players who track a chunk that it is ready to send once, when the chunk starts ticking. A player who comes into
- * view of a chunk while it is held is not sent it then, and nothing tells that player when the hold ends (issue 524: the client never
- * received the chunk). This class watches each hold it makes and, when the chunk is sendable again, marks it pending for every player who
- * tracks it and has not had it since the hold began. A hold that outlasts {@link #TIMEOUT_TICKS} is logged as an error naming the chunk.
+ * Vanilla offers a chunk to its trackers only once, so this also offers it again, when the hold ends, to those who came into view
+ * during the hold (issue 524).
  */
 public final class LightSync {
-    /** Server ticks a hold may last before it is reported: the light of one chunk takes a few ticks, so 30 s is a stuck light engine. */
-    static final int TIMEOUT_TICKS = 600;
+    /** Server ticks a hold may last before it is reported as stuck (30 s). */
+    private static final int TIMEOUT_TICKS = 600;
 
-    /** A chunk whose sending is held, and the players who tracked it throughout the hold (they were or will be sent it by vanilla). */
-    private record Hold(ServerLevel level, ChunkPos chunk, int startTick, Set<UUID> trackedThroughout) {}
+    private record Key(ServerLevel level, ChunkPos chunk) {}
 
-    /** Server thread only. */
-    private static final List<Hold> HOLDS = new ArrayList<>();
+    /** The chunk's hold. {@code trackedThroughout} is server thread only; the rest is read by test threads. */
+    private static final class Hold {
+        final Set<UUID> trackedThroughout;
+        volatile int startTick;
+        boolean reported;
+
+        Hold(int startTick, Set<UUID> trackedThroughout) {
+            this.startTick = startTick;
+            this.trackedThroughout = trackedThroughout;
+        }
+    }
+
+    private static final Map<Key, Hold> HOLDS = new ConcurrentHashMap<>();
 
     private LightSync() {}
 
     public static void init() {
         ServerTickEvents.END_SERVER_TICK.register(LightSync::sweep);
         ServerLifecycleEvents.SERVER_STOPPED.register(
-                server -> HOLDS.removeIf(hold -> hold.level.getServer() == server));
+                server -> HOLDS.keySet().removeIf(key -> key.level.getServer() == server));
+    }
+
+    /** Whether a hold of {@code ticksHeld} ticks is stuck. At or past the limit, so a skipped tick count cannot miss it. */
+    public static boolean timedOut(int ticksHeld) {
+        return ticksHeld >= TIMEOUT_TICKS;
+    }
+
+    /** Each chunk whose sending is held now, with its dimension and how long, for a test's timeout message. */
+    // test-seam: a hung test names the chunk that is held; production reports through the log
+    public static List<String> heldChunks() {
+        List<String> held = new ArrayList<>();
+        HOLDS.forEach((key, hold) -> held.add("chunk " + key.chunk + " in "
+                + key.level.dimension().identifier() + " held for "
+                + (key.level.getServer().getTickCount() - hold.startTick) + " ticks"));
+        return held;
     }
 
     /** As {@link #holdSendUntilLit(ServerLevel, ChunkPos)}, for every chunk the box touches. */
@@ -51,8 +75,7 @@ public final class LightSync {
 
     /**
      * Holds the sending of the chunk, and of each of its eight neighbours that has a loaded holder (light spreads at most 15 blocks, so
-     * one ring is enough), until the light tasks queued so far are done. It is vanilla's {@code ChunkMap.waitForLightBeforeSending},
-     * and the hold is released to every player who comes into view while it lasts.
+     * one ring is enough), until the light tasks queued so far are done: vanilla's {@code ChunkMap.waitForLightBeforeSending}.
      */
     public static void holdSendUntilLit(ServerLevel level, ChunkPos chunk) {
         List<ChunkPos> sendable = new ArrayList<>();
@@ -60,9 +83,13 @@ public final class LightSync {
                 .filter(near -> level.getChunkSource().chunkMap.getChunkToSend(near.pack()) != null)
                 .forEach(sendable::add);
         level.getChunkSource().chunkMap.waitForLightBeforeSending(chunk, 0);
+        int now = level.getServer().getTickCount();
         for (ChunkPos held : sendable) {
-            if (HOLDS.stream().noneMatch(hold -> hold.level == level && hold.chunk.equals(held))) {
-                HOLDS.add(new Hold(level, held, level.getServer().getTickCount(), trackers(level, held)));
+            Hold existing = HOLDS.get(new Key(level, held));
+            if (existing == null) {
+                HOLDS.put(new Key(level, held), new Hold(now, trackers(level, held)));
+            } else {
+                existing.startTick = now; // new light work was queued: the timeout counts from the latest carve
             }
         }
     }
@@ -78,36 +105,39 @@ public final class LightSync {
     }
 
     private static void sweep(MinecraftServer server) {
-        Iterator<Hold> holds = HOLDS.iterator();
+        Iterator<Map.Entry<Key, Hold>> holds = HOLDS.entrySet().iterator();
         while (holds.hasNext()) {
-            Hold hold = holds.next();
-            if (hold.level.getServer() != server) {
+            Map.Entry<Key, Hold> entry = holds.next();
+            Key key = entry.getKey();
+            Hold hold = entry.getValue();
+            if (key.level.getServer() != server) {
                 continue;
             }
-            if (hold.level.getChunkSource().getChunkNow(hold.chunk.x(), hold.chunk.z()) == null) {
+            if (key.level.getChunkSource().getChunkNow(key.chunk.x(), key.chunk.z()) == null) {
                 holds.remove(); // unloaded: the next load sends it the vanilla way
                 continue;
             }
-            LevelChunk sendable = hold.level.getChunkSource().chunkMap.getChunkToSend(hold.chunk.pack());
+            LevelChunk sendable = key.level.getChunkSource().chunkMap.getChunkToSend(key.chunk.pack());
             if (sendable != null) {
-                markPendingForLateTrackers(hold, sendable);
+                markPendingForLateTrackers(key, hold, sendable);
                 holds.remove();
-            } else {
-                if (server.getTickCount() - hold.startTick == TIMEOUT_TICKS) {
-                    DeepCharter.LOGGER.error(
-                            "The sending of chunk {} in {} has been held for {} ticks and the light has not released it",
-                            hold.chunk,
-                            hold.level.dimension().identifier(),
-                            TIMEOUT_TICKS);
-                }
-                hold.trackedThroughout.retainAll(trackers(hold.level, hold.chunk));
+                continue;
             }
+            if (!hold.reported && timedOut(server.getTickCount() - hold.startTick)) {
+                hold.reported = true;
+                DeepCharter.LOGGER.error(
+                        "The sending of chunk {} in {} has been held for {} ticks and the light has not released it",
+                        key.chunk,
+                        key.level.dimension().identifier(),
+                        server.getTickCount() - hold.startTick);
+            }
+            hold.trackedThroughout.retainAll(trackers(key.level, key.chunk));
         }
     }
 
-    private static void markPendingForLateTrackers(Hold hold, LevelChunk chunk) {
-        for (ServerPlayer player : hold.level.players()) {
-            if (player.getChunkTrackingView().contains(hold.chunk)
+    private static void markPendingForLateTrackers(Key key, Hold hold, LevelChunk chunk) {
+        for (ServerPlayer player : key.level.players()) {
+            if (player.getChunkTrackingView().contains(key.chunk)
                     && !hold.trackedThroughout.contains(player.getUUID())) {
                 player.connection.chunkSender.markChunkPendingToSend(chunk);
             }

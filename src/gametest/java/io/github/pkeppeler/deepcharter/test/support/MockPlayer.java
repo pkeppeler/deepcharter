@@ -3,8 +3,9 @@ package io.github.pkeppeler.deepcharter.test.support;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.ReferenceCountUtil;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import net.minecraft.network.Connection;
@@ -38,7 +39,7 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
-    private final Set<ChunkPos> chunksSent = new HashSet<>();
+    private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
     private boolean loaded;
 
     MockPlayer(
@@ -69,9 +70,17 @@ public final class MockPlayer {
         return List.copyOf(sounds);
     }
 
-    /** Every chunk the server has sent this player so far (the mock acknowledges each batch, so sending is not throttled). Read on the mock's tick, so it lags by one. */
+    /**
+     * Every chunk the server has sent this player so far. The mock acknowledges each chunk batch, so sending is not throttled.
+     * Read on the mock's tick, so it lags by one.
+     */
     public Set<ChunkPos> chunksSent() {
-        return Set.copyOf(chunksSent);
+        return Set.copyOf(chunksSent.keySet());
+    }
+
+    /** How many times the server has sent this player the chunk; a chunk it already has is not sent again. */
+    public int timesSent(ChunkPos chunk) {
+        return chunksSent.getOrDefault(chunk, 0);
     }
 
     public ServerPlayer player() {
@@ -161,7 +170,7 @@ public final class MockPlayer {
                     sounds.add(packet.getSound().value().location());
                 }
                 if (outbound instanceof ClientboundLevelChunkWithLightPacket packet) {
-                    chunksSent.add(new ChunkPos(packet.x(), packet.z()));
+                    chunksSent.merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);
                 }
                 if (outbound instanceof ClientboundChunkBatchFinishedPacket && player.connection != null) {
                     player.connection.handleChunkBatchReceived(new ServerboundChunkBatchReceivedPacket(10f));
