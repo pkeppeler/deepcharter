@@ -172,6 +172,7 @@ public final class MockPlayer {
                 if (outbound instanceof ClientboundLevelChunkWithLightPacket packet) {
                     chunksSent.merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);
                 }
+                // connection.tick() above may have disconnected the player, which nulls its listener
                 if (outbound instanceof ClientboundChunkBatchFinishedPacket && player.connection != null) {
                     player.connection.handleChunkBatchReceived(new ServerboundChunkBatchReceivedPacket(10f));
                 }

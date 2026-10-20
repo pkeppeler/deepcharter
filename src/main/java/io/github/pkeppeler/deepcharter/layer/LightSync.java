@@ -34,6 +34,7 @@ public final class LightSync {
     private static final class Hold {
         final Set<UUID> trackedThroughout;
         volatile int startTick;
+        /** Server thread only. */
         boolean reported;
 
         Hold(int startTick, Set<UUID> trackedThroughout) {
@@ -90,6 +91,7 @@ public final class LightSync {
                 HOLDS.put(new Key(level, held), new Hold(now, trackers(level, held)));
             } else {
                 existing.startTick = now; // new light work was queued: the timeout counts from the latest carve
+                existing.reported = false;
             }
         }
     }
