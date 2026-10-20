@@ -3,6 +3,7 @@
 Needs the repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and
 the pre-push hook run it. A failing check names itself: a failing test is <check>_gate_check.<Class>.<method>.
 A passing run leaves the mod json in build/generated/gametest-resources untouched: the fixtures never reach the generation task.
+A run also fails when a fixture case is never read by an assertion (gate_batch.unread_message).
 Usage: python3 -I tools/tests/gate_checks.py [room_carver] [world_data] [world_clock] [tick_wait] [client_filter] [hud_toggle] [testonly] [entity_query] [each_tick] [fixed_pos] [record_holder] [null_marked] [force]   (no argument runs all)
 """
 import importlib
