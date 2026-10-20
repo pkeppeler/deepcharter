@@ -2,9 +2,9 @@
 # Usage: tools/mark-review-passed.sh <pr-number>
 #
 # Records that the PR's CURRENT head commit passed review: posts the comment
-# `review-passed <sha>` and adds the `review-passed` label. First runs the merge gate's closing-reference,
-# demo and feature-map checks (tools/lib/pr-body-checks.sh) and refuses, naming the fix, if one fails. It does not wait for CI. tools/merge-pr.sh
-# refuses if the head has moved since.
+# `review-passed <sha>` and adds the `review-passed` label. First runs the merge gate's
+# closing-reference, demo and feature-map checks (tools/lib/pr-body-checks.sh) and refuses, naming
+# the fix; it does not wait for CI. tools/merge-pr.sh refuses if the head has moved since.
 set -euo pipefail
 
 repo=pkeppeler/deepcharter

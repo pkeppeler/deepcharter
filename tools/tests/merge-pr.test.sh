@@ -569,6 +569,18 @@ exited "mark-review-passed exits 0" 0
 logged "mark reads head sha" "gh pr view 7 -R pkeppeler/deepcharter --json headRefOid --jq .headRefOid"
 logged "mark comments exact body" "gh pr comment 7 -R pkeppeler/deepcharter --body review-passed def456"
 logged "mark adds label" "gh pr edit 7 -R pkeppeler/deepcharter --add-label review-passed"
+# merge-pr.sh calls the lib's steps one at a time, interleaved with its other checks, and mark calls them through
+# check_pr_body_and_labels: the two lists must hold the same steps.
+lib=$tools/lib/pr-body-checks.sh
+wrapped=$(sed -n '/^check_pr_body_and_labels() {$/,/^}$/p' "$lib" | sed -n 's/^  \([a-z_]*\)$/\1/p')
+called=$(grep -oE '^(check|load)_[a-z_]+' "$script" || true)
+[[ -n $wrapped ]] || { echo "cannot read check_pr_body_and_labels from $lib" >&2; exit 1; }
+if [[ $(sort <<<"$wrapped") == "$(sort -u <<<"$called")" ]]; then
+  pass "merge-pr.sh and check_pr_body_and_labels call the same steps"
+else
+  fail "keep the two lists in step: check_pr_body_and_labels calls [$(tr '\n' ' ' <<<"$wrapped")] but merge-pr.sh calls [$(sort -u <<<"$called" | tr '\n' ' ')]"
+fi
+
 # mark runs the merge gate's closing-reference, demo and map checks (tools/lib/pr-body-checks.sh), and never waits for CI.
 SCRIPT=$mark run_script STUB_CLOSING=
 exited "mark refuses a body with no closing reference" 1

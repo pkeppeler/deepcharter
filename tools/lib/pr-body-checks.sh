@@ -1,5 +1,5 @@
 # Sourced by tools/merge-pr.sh and tools/mark-review-passed.sh: the one copy of the PR body and label checks
-# (closing reference, demo, map). The caller sets $repo and $pr first, and gets the checks as functions.
+# (closing reference, demo, map). The caller sets $repo and $pr first.
 # Each failed check calls refuse, which prints one "REFUSED:" line naming the fix and exits 1.
 # Compatible with bash 3.2.
 
