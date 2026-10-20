@@ -7,7 +7,7 @@ import json
 import subprocess
 import tempfile
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Literal
 
@@ -35,13 +35,26 @@ class Result:
 
 RESULTS: Mapping[str, Result] | None = None
 READ: set[str] = set()
+FIELDS = frozenset(field.name for field in fields(Result))
+
+
+class Observed(Result):
+    """A Result that records its case in READ on the first access to one of its fields, so fetching a case without asserting on it does not count."""
+
+    def __init__(self, name: str, wrapped: Result):
+        super().__init__(wrapped.ok, wrapped.message, wrapped.server, wrapped.client)
+        object.__setattr__(self, "_name", name)
+
+    def __getattribute__(self, attribute: str):
+        if attribute in FIELDS:
+            READ.add(object.__getattribute__(self, "_name"))
+        return super().__getattribute__(attribute)
 
 
 def result(name: str) -> Result:
     if RESULTS is None:
         raise RuntimeError("no gate-check results yet; run through tools/tests/gate_checks.py")
-    READ.add(name)
-    return RESULTS[name]
+    return Observed(name, RESULTS[name])
 
 
 def unread_message(cases: Mapping[str, Case]) -> str | None:
