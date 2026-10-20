@@ -34,6 +34,7 @@ case "$1 $2" in
         if [[ -e $LOG.merged ]]; then echo "${STUB_STATE_AFTER-MERGED}"; else echo "${STUB_STATE-OPEN}"; fi ;;
       isDraft) echo "${STUB_DRAFT-false}" ;;
       headRefName) echo "${STUB_BRANCH-12-some-slug}" ;;
+      baseRefName) echo "${STUB_BASE-main}" ;;
       body) printf '%s\n' "${STUB_BODY-Closes #12}" ;;
       closingIssuesReferences)
         [[ ${STUB_CLOSING_FAIL-0} == 1 ]] && exit 1
@@ -81,6 +82,8 @@ review-passed}" ;;
     fi
     echo "${STUB_RUNS-$DEFAULT_RUNS}"
     exit "${STUB_RUNS_RC:-0}" ;;
+  "pr list") [[ ${STUB_LIST_FAIL-0} == 1 ]] && exit 1; printf '%s' "${STUB_STACKED-}" ;; # open PR numbers whose base is the head branch
+  "pr edit") [[ ${STUB_EDIT_FAIL-0} == 1 ]] && exit 1; exit 0 ;;
   "pr merge") touch "$LOG.merged"; exit "${STUB_MERGE_RC:-0}" ;;
 esac
 STUB
@@ -508,6 +511,28 @@ logged "skipped non-required merge invocation" "$merge_line"
 logged "check-runs read for pinned sha" "gh api repos/pkeppeler/deepcharter/commits/abc123/check-runs?filter=all&per_page=100 --paginate --jq .check_runs[] | [.name, (.started_at // \"9999-12-31T23:59:59Z\"), (.id | tostring), .status, (.conclusion // \"\")] | @tsv"
 refusal "every check skipped" "required check that was only skipped" "STUB_RUNS=$(runs "${skipped_required_specs[@]}")"
 not_logged "unchanged roadmap not committed" "git -C .* commit"
+
+# Stacked PRs: an open PR based on this PR's head branch is retargeted to this PR's
+# base before the merge call, because --delete-branch would close it (#663).
+run_script "STUB_STACKED=21
+22
+" STUB_BASE=release
+exited "stacked PRs merge" 0
+logged "stacked PRs listed by base" "gh pr list -R pkeppeler/deepcharter --base 12-some-slug --state open --limit 1000 --json number --jq .[].number"
+logged "first stacked PR retargeted" "gh pr edit 21 -R pkeppeler/deepcharter --base release"
+logged "second stacked PR retargeted" "gh pr edit 22 -R pkeppeler/deepcharter --base release"
+printed "retarget is announced" "Retargeted PR #21 to release"
+retarget_at=$(grep -n '^gh pr edit 22' "$LOG" | cut -d: -f1)
+merge_at=$(grep -n '^gh pr merge' "$LOG" | cut -d: -f1)
+if [[ -n $retarget_at && -n $merge_at && $retarget_at -lt $merge_at ]]; then
+  pass "retarget happens before the merge call"
+else
+  fail "retarget happens before the merge call (edit line '$retarget_at', merge line '$merge_at')"
+fi
+refusal "failed retarget refuses the merge" "REFUSED: PR #7 cannot retarget stacked PR #21 to main" STUB_STACKED=21 STUB_EDIT_FAIL=1
+refusal "unreadable stacked list refuses the merge" "REFUSED: PR #7 could not list the PRs stacked on 12-some-slug" STUB_LIST_FAIL=1
+run_script
+not_logged "no stacked PR means no retarget" "^gh pr edit"
 
 # gh pr merge exits nonzero after merging on GitHub (local cleanup failure).
 run_script STUB_MERGE_RC=1
