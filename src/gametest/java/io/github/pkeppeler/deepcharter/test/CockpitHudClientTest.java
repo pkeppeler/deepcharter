@@ -93,6 +93,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     /** The width of the altimeter's recess in the ribbon sprite (tools/cockpit_ribbon.py), which its longest reading must fit. */
     private static final int ALTIMETER_RECESS_WIDTH = 72;
 
+    /** The least space, in GUI pixels, between a plate's text and the inside edge of its border (#673: the text touched the border on the right). */
+    private static final int PLATE_CLEARANCE = 2;
+
     private static final String LONGEST_ALTIMETER = "-12,345 ft.";
     /** How much of the strip the action bar line takes when it is drawn: a few lines of text. */
     private static final double MESSAGE_DRAWN = 0.02;
@@ -147,6 +150,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 expectTheCockpitHidesExactlyTheVanillaBottomCluster();
                 expectEveryReadoutLineHasAKindAndTheWarningsAreTheAlerts();
                 expectTheRibbonFitsEveryGuiScaleOfEveryWindow(context);
+                expectThePlateHoldsEveryLineClearOfItsBorder(context);
                 expectTheRibbonIsTheDefaultSeatedHud(context);
                 expectCockpitHidesTheVanillaHud(context, singleplayer, pod);
                 expectTheActionBarStaysForTheMessagesOfTheGame(context);
@@ -680,6 +684,57 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }));
         if (!problems.isEmpty()) {
             throw new AssertionError("The Ribbon must fit every GUI scale: " + problems);
+        }
+    }
+
+    /**
+     * Every line the plate can show, alone and in the busiest plate, is clear of the plate sprite's border on both sides: the text starts and ends at least
+     * {@link #PLATE_CLEARANCE} inside the border, measured with the font that draws it (#673).
+     */
+    private void expectThePlateHoldsEveryLineClearOfItsBorder(ClientGameTestContext context) {
+        int border = plateBorder();
+        List<String> problems = context.computeOnClient(client -> {
+            CockpitLook look = CockpitLook.current();
+            CockpitLook.Layout layout = look.ribbon();
+            List<String> found = new ArrayList<>();
+            for (List<CockpitHud.Row> rows : plateCases()) {
+                CockpitHud.Box box = CockpitHud.plateBox(client.font, layout, look, rows, 427, 240);
+                for (CockpitHud.Row row : rows) {
+                    int width = look.tallyGap() * (row.parts().size() - 1);
+                    for (PodStatusHud.Line part : row.parts()) {
+                        width += client.font.width(part.text());
+                    }
+                    int left = look.platePad() - border;
+                    int right = box.width() - border - (look.platePad() + width);
+                    if (left < PLATE_CLEARANCE || right < PLATE_CLEARANCE) {
+                        found.add(row.parts().getFirst().text().getString() + " is " + width
+                                + " px in a plate " + box.width() + " wide with a border of " + border
+                                + ": clear by " + left + " on the left and " + right + " on the right");
+                    }
+                }
+            }
+            return found;
+        });
+        if (!problems.isEmpty()) {
+            throw new AssertionError("The plate's text must clear its border by " + PLATE_CLEARANCE + " px: "
+                    + problems.stream().distinct().toList());
+        }
+    }
+
+    /** The width of the plate sprite's nine-slice border, read from the sprite's own metadata, so it is not restated here. */
+    private static int plateBorder() {
+        try (Reader reader = new InputStreamReader(
+                CockpitHudClientTest.class.getResourceAsStream(
+                        "/assets/deepcharter/textures/gui/sprites/cockpit/ribbon/plate.png.mcmeta"),
+                StandardCharsets.UTF_8)) {
+            JsonObject border = JsonParser.parseReader(reader)
+                    .getAsJsonObject()
+                    .getAsJsonObject("gui")
+                    .getAsJsonObject("scaling")
+                    .getAsJsonObject("border");
+            return Math.max(border.get("left").getAsInt(), border.get("right").getAsInt());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 
