@@ -132,8 +132,6 @@ missing_status=0
 check "missing shellcheck does not block the push" "0" "$missing_status"
 check "missing shellcheck is skipped with a warning" "yes" "$(grep -q 'shellcheck not found, skipping' "$work/out" && echo yes || echo no)"
 
-# The real hook's exec bit is checked by test_exec_bits.py; the copy above is chmod'ed.
-
 # A relative core.hooksPath runs the hook from each worktree's own root.
 tr_repo=$work/tr
 mkdir -p "$tr_repo/.githooks"
