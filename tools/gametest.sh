@@ -6,6 +6,7 @@
 # ending in `*` (for example `pod_drill_test*`). A leading `deepcharter-test:`
 # is accepted and not doubled. Runs from the repo root this script lives in,
 # and keeps any JAVA_TOOL_OPTIONS already set. Fails when no test matches.
+# Refuses a filter with an uppercase letter before Gradle starts (ids are lowercase; PodDrillTest* is the usual slip).
 #
 # --client runs ./gradlew runClientGameTest -PclientTests=<list>: only the client
 # test classes matching a comma-separated list of simple names or globs
@@ -36,6 +37,14 @@ fi
 # The JVM splits JAVA_TOOL_OPTIONS on whitespace, so a space would become extra JVM options.
 if [[ ! $filter =~ ^[A-Za-z0-9_:*.-]+$ ]]; then
   echo "gametest.sh: filter may contain only letters, digits, _ . - : *" >&2
+  exit 2
+fi
+
+# Fabric reports "found no tests" only after about 45 s of server start, so refuse such a filter up front.
+if [[ $filter =~ [A-Z] ]]; then
+  snake=$(printf %s "$filter" | sed -E 's/([a-z0-9])([A-Z])/\1_\2/g' | tr '[:upper:]' '[:lower:]')
+  echo "gametest.sh: filter '$filter' has uppercase letters, but GameTest ids are lowercase snake_case, so it matches nothing." >&2
+  echo "gametest.sh: did you mean '$snake'?" >&2
   exit 2
 fi
 
