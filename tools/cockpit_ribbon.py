@@ -52,7 +52,7 @@ KIND = {"across": 0, "up": 1}
 SHARED = {
     "enabled": 1, "minGuiWidth": MIN_GUI_W, "minGuiHeight": MIN_GUI_H,
     "fuelColor": "#F0A010", "hullColor": "#58B05A", "depthColor": "#F2D21E", "heatColor": "#FF6A1E", "cargoColor": "#6FB7C9", "lowColor": "#FF3A2A",
-    "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "platePad": 3,
+    "offColor": "#141B19", "hullLowFraction": 0.3, "heatRisePerTick": 0.08, "heatFallPerTick": 0.02, "platePad": 5,
     "heatWarning": 0.5, "scannerTitleGap": 2, "lampGap": 2, "tallyGap": 5,
     "cameraInstalled": 0, "cameraStaticPerHull": 4.0, "cameraStaticFallPerTick": 0.03, "cameraStaticDots": 2400, "cameraDotSize": 2,
     "cameraLensHeatPerTick": 0.01, "cameraLensCoolPerTick": 0.02, "cameraLensDead": 1.0, "cameraLensRecover": 0.6,
