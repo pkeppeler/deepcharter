@@ -7,9 +7,9 @@ Read-only audit, 2026-10-20, of the offline sound tools: Surge XT and Dexed as V
 - **vorbis-tools 1.4.3: safe.** No root needed; `oggenc` has no network code.
 - **Dexed 1.0.1: safe.** No network code. One determinism trap.
 - **Surge XT 1.3.4: safe if we load only our own patches.**
-  - **Patch code:** top-level Lua in a patch runs with LuaJIT's `os` and `io`, so a hostile patch could run shell commands.
-  - **Footprint:** the cask runs a root installer that writes about 780 MB, including apps and AU/CLAP plugins, with no way to deselect them.
-  - **Determinism:** the random generator is seeded from the clock, and no option exposes a seed.
+  - **Patch code:** a hostile patch can run shell commands through its Lua (Runtime behaviour, condition 3).
+  - **Footprint:** a root installer writes about 780 MB with no way to deselect parts ([What the installers write](#what-the-installers-write)).
+  - **Determinism:** clock-seeded, no exposed seed ([Determinism](#determinism), condition 5).
 - **Needs the user:** approve two `sudo` installs, or pick the no-root route (condition 2).
 
 ## Versions, hashes, signing
@@ -32,6 +32,8 @@ Read-only audit, 2026-10-20, of the offline sound tools: Surge XT and Dexed as V
 - **vorbis-tools, [V].** `gh attestation verify` passes: homebrew-core `dispatch-build-bottle.yml`.
 
 ## What the installers write
+
+The Surge XT cask runs a root installer that writes about 780 MB, including apps and AU/CLAP plugins, with no way to deselect them.
 
 **[V]** from `pkgutil --expand`, `lsbom`, the Distribution and Scripts files, and Homebrew's `pkg.rb`.
 
@@ -78,7 +80,7 @@ Neither installer adds a launch agent or daemon, a kernel extension, a login ite
 **Code loading:**
 
 - **MTS-ESP, [V].** Both plugins `dlopen` `/Library/Application Support/MTS-ESP/libMTS.dylib` if it exists. The folder is absent and writing it needs admin rights.
-- **Surge Lua, [V].** `LuaSupport.cpp` runs a patch's Lua chunk with `lua_pcall` after `luaL_openlibs`, and sandboxes only the function it defines. Upstream `main` is unchanged. I decoded all 43 shipped formula scripts: none uses `os`, `io`, `ffi`, `require` or `load`.
+- **Surge Lua, [V].** Top-level Lua in a patch runs with LuaJIT's `os` and `io`, so a hostile patch could run shell commands. `LuaSupport.cpp` runs a patch's Lua chunk with `lua_pcall` after `luaL_openlibs`, and sandboxes only the function it defines. Upstream `main` is unchanged. I decoded all 43 shipped formula scripts: none uses `os`, `io`, `ffi`, `require` or `load`.
 
 ## Determinism
 

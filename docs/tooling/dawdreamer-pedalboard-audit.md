@@ -7,8 +7,7 @@ Read-only audit, done 2026-10-20, of [DawDreamer](https://github.com/DBraun/DawD
 - Neither package has telemetry, an update check or a default network call. **V**
 - **pedalboard is small and clean.** The only foreign code it runs is the plugins you load.
 - **DawDreamer is a 123 MB native blob**: JUCE plus a prebuilt libfaust with **LLVM 20.1.8 MCJIT**. It compiles Faust source to native code in-process. **V**
-  - Its Faust compiler has a plain-HTTP fetcher.
-  - Its CI downloads libfaust without a hash check.
+  - Risks: a plain-HTTP Faust fetcher and an LLVM JIT (see [What each does at runtime](#what-each-does-at-runtime) and condition 3).
 - Neither project publishes attestations. Both upload to PyPI with API tokens. **V**
 - Start with pedalboard. Add DawDreamer only if Faust synthesis is wanted.
 
@@ -83,6 +82,7 @@ What this means for us (our reading, not a lawyer's):
 ## Maintenance and footprint
 
 - **DawDreamer:**
+  - Its CI downloads libfaust without a hash check.
   - It is essentially one maintainer, in Alpha. 0.9.0 came 23 months after 0.8.3, and the last commit was on 2026-10-02.
   - CI uses mutable action refs (`@latest`, `@release/v1`).
 - **pedalboard:**
