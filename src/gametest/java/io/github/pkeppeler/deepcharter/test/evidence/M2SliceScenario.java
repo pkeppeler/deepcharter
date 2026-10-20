@@ -28,6 +28,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrders;
@@ -846,18 +847,6 @@ public class M2SliceScenario extends EvidenceScenario {
                                 true);
                 return null;
             });
-            // Workaround for #524 (RoomCarver holds the chunk send; delete this wait when it is fixed).
-            ClientWait.until(
-                    ctx,
-                    "the drift's chunks lit and ready to send to the player",
-                    () -> onServer(
-                            server -> driftChunksReady(ClientLight.serverLevel(server, LayerChain.dimension(2)), site)),
-                    () -> "the chunks "
-                            + onServer(server -> driftChunks(site).stream()
-                                    .filter(chunk -> !chunkReady(
-                                            ClientLight.serverLevel(server, LayerChain.dimension(2)), chunk))
-                                    .toList())
-                            + " were not ready");
             standInLayer(2, at(site, MOLE_AT_U - 2.5, 0, 0), moleAt);
             ClientWait.until(
                     ctx,
@@ -937,23 +926,6 @@ public class M2SliceScenario extends EvidenceScenario {
             }
             snap(HOLD_FRAMES);
             still("35-the-figure-is-gone");
-        }
-
-        /** The chunks the drift and the Mole in it touch. */
-        private static List<ChunkPos> driftChunks(StructureSite site) {
-            BlockPos far = BlockPos.containing(at(site, -DRIFT_LENGTH - 1, 0, -2));
-            BlockPos near = BlockPos.containing(at(site, MOLE_AT_U + 3, 0, 2));
-            return ChunkPos.rangeClosed(ChunkPos.containing(far), ChunkPos.containing(near))
-                    .toList();
-        }
-
-        private static boolean driftChunksReady(ServerLevel level, StructureSite site) {
-            return driftChunks(site).stream().allMatch(chunk -> chunkReady(level, chunk));
-        }
-
-        // #524: the chunk is sent only once its light is computed; a player brought in before that is never sent it.
-        private static boolean chunkReady(ServerLevel level, ChunkPos chunk) {
-            return level.getChunkSource().chunkMap.getChunkToSend(chunk.pack()) != null;
         }
 
         /** A 3 x 4 drift with a rail down it, from the bay's west wall out {@link #DRIFT_LENGTH} blocks. Its shell is sealed first. */
@@ -1509,7 +1481,18 @@ public class M2SliceScenario extends EvidenceScenario {
                 if ((ticks += TICKS_PER_FRAME) > maxTicks) {
                     throw new AssertionError(failure + " within " + ticks + " ticks, the Mole being "
                             + onServer(server -> describe(findPod(server, mole()))) + ", the client having "
-                            + ctx.computeOnClient(ClientWait::describe));
+                            + ctx.computeOnClient(ClientWait::describe) + ", its chunk "
+                            + ctx.computeOnClient(client -> client.level == null || client.player == null
+                                    ? "unknown"
+                                    : "loaded "
+                                            + client.level.hasChunk(
+                                                    client.player
+                                                            .chunkPosition()
+                                                            .x(),
+                                                    client.player
+                                                            .chunkPosition()
+                                                            .z()))
+                            + ", held chunks " + LightSync.heldChunks());
                 }
             }
         }
@@ -1520,7 +1503,20 @@ public class M2SliceScenario extends EvidenceScenario {
                             + pod.onGround() + ", drilling " + pod.drilling() + ", over "
                             + pod.level()
                                     .getBlockState(pod.blockPosition().below())
-                                    .getBlock())
+                                    .getBlock()
+                            + ", its chunk sendable "
+                            + (((ServerLevel) pod.level())
+                                            .getChunkSource()
+                                            .chunkMap
+                                            .getChunkToSend(pod.chunkPosition().pack())
+                                    != null)
+                            + " and tracked by "
+                            + ((ServerLevel) pod.level())
+                                    .players().stream()
+                                            .filter(player -> player.getChunkTrackingView()
+                                                    .contains(pod.chunkPosition()))
+                                            .count()
+                            + " players")
                     .orElse("in no level");
         }
 

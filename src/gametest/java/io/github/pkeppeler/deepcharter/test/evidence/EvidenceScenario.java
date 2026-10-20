@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -30,6 +31,10 @@ import net.minecraft.world.level.GameType;
  *   build/evidence/NAME/screenshots/*.png            still screenshots
  */
 public abstract class EvidenceScenario implements FabricClientGameTest {
+    /** Above the layer 1 signal decay (#502), so the gauges are live: the decay starts {@code onset} slabs above the floor, and a stock console shrinks that. */
+    protected static final int LIVE_GAUGES_FLOOR_Y =
+            SignalDecayTuning.DEFAULT.band(1).onset() + 4;
+
     /** The size of a player's default window, which is also the size of every frame and still. */
     private static final int WIDTH = 854;
 

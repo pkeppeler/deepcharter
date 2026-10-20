@@ -44,6 +44,23 @@ public class MarkedClientTest implements FabricClientGameTest {
     }
 }
 """,
+    "ApostropheClientTest.java": """
+public class ApostropheClientTest implements FabricClientGameTest {
+    /** The chunk's one-line javadoc, with a ' and a " in it. */
+    void first(ClientGameTestContext context) {
+        // tick-wait: the fuse's burn needs 5 ticks, nothing to poll for
+        context.waitFor(client -> true, 5);
+    }
+
+    /**
+     * The test's multi-line javadoc, it's got a ' too.
+     */
+    void second(ClientGameTestContext context) {
+        char quote = '\\'';
+        context.waitFor(client -> true, 1); // tick-wait: the pod's tick
+    }
+}
+""",
     "MentionsClientTest.java": """
 public class MentionsClientTest implements FabricClientGameTest {
     // context.waitFor(client -> true, 40) in a comment is not a wait

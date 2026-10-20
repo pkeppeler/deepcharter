@@ -70,6 +70,25 @@ public class Seams {
     }
 }
 """,
+    # Markers next to apostrophes. Against the old lexer only markedBelowJavadoc was red (it reported line 0); apostropheInMarker and
+    # charThenMarker already passed and stay as regression pins for the new lexer.
+    "fx/QuoteSeams.java": """package fx;
+
+public class QuoteSeams {
+    // test-seam: the test's view of the pod's state
+    public int apostropheInMarker() {
+        return 1;
+    }
+
+    public char charThenMarker() { return '\\''; } // test-seam: the test's quote check
+
+    /** The chunk's javadoc above a marked member. */
+    // test-seam: marked below a one-line javadoc with an apostrophe
+    public int markedBelowJavadoc() {
+        return 2;
+    }
+}
+""",
     "fx/Mod.java": """package fx;
 
 public class Mod {
@@ -195,6 +214,8 @@ public class Polite implements Greeter {
 }
 GREEN_USES = """
         total += seams.calledByMod() + seams.markedAbove() + seams.markedSameLine() + seams.markedAboveWrapped() + seams.viaReference() + seams.calledField;
+        fx.QuoteSeams quoteSeams = new fx.QuoteSeams();
+        total += quoteSeams.apostropheInMarker() + quoteSeams.charThenMarker() + quoteSeams.markedBelowJavadoc();
         total += seams.sharedField + fx.Seams.CONSTANT;
         total += new fx.Square().area() + new fx.Point(1, 2).x() + new fx.Point(1, 2).y();
         total += fx.Direction.valueOf("NORTH").ordinal() + fx.Direction.values().length;
@@ -296,6 +317,33 @@ RED_USES = """
         total += outer.deep() + new fx.Outer.Inner().deep();
         new fx.Hooks().nullable();
 """
+
+# One class per apostrophe placement, so each case is red or green on its own: the old lexer lost its place at the first apostrophe
+# in a comment and then misread every later line, which would make cases in one file fail by cascade. Each declares m() (or the field f)
+# as a test-only member after the placement. Against the old lexer OneLineJavadoc, BlockComment and InlineJavadoc were red (line 0); every other
+# case here passed and stays as a regression pin for the new lexer.
+# (name, class body, member): member is the method m() or the field f
+QUOTE_CASES = [
+    ("OneLineJavadoc", "    /** The chunk's one-line javadoc. */\n    public int m() {\n        return 1;\n    }", "m()"),
+    ("MultiLineJavadoc", "    /**\n     * The chunk's multi-line javadoc,\n     * and the test's second line.\n     */\n    public int m() {\n        return 1;\n    }", "m()"),
+    ("BlockComment", "    /* A block comment, it's here. */\n    public int m() {\n        return 1;\n    }", "m()"),
+    ("MultiLineBlockComment", "    /* A block comment that opens here, it's\n       still open here, with a { brace and a '\n       closed here. */\n    public int m() {\n        return 1;\n    }", "m()"),
+    ("LineComment", "    // A line comment, it's here.\n    public int m() {\n        return 1;\n    }", "m()"),
+    ("TrailingComment", "    public int m() { // it's a trailing comment\n        return 1;\n    }", "m()"),
+    ("InlineJavadoc", "    /** It's a javadoc before code on the same line. */ public int m() {\n        return 1;\n    }", "m()"),
+    ("AfterInlineBlock", "    public int m() { /* it's { */\n        return 1;\n    }", "m()"),
+    ("StringField", "    public String f = \"it's a string\";", "f"),
+    ("AfterString", "    public int m() {\n        return \"it's\".length();\n    }", "m()"),
+    ("AfterQuoteChar", "    public int m() {\n        return '\\'';\n    }", "m()"),
+    ("AfterEscapedBackslashChar", "    public int m() {\n        return '\\\\';\n    }", "m()"),
+    ("TextBlockField", "    public String f = \"\"\"\n        it's a text block with a } brace\n        // and slashes, and a /* that never closes\n        \"\"\";", "f"),
+    ("AfterTextBlock", "    private String t = \"\"\"\n        it's a text block with a } brace\n        // and slashes, and a /* that never closes\n        \"\"\";\n\n    public int m() {\n        return t.length();\n    }", "m()"),
+]
+for name, body, _ in QUOTE_CASES:
+    MOD_RED[f"fx/Q{name}.java"] = f"package fx;\n\npublic class Q{name} {{\n{body}\n}}\n"
+RED_USES += "".join(
+    f"        fx.Q{name} q{name} = new fx.Q{name}();\n        total += q{name}.{'m()' if member == 'm()' else 'f.length()'};\n"
+    for name, _, member in QUOTE_CASES)
 BARE = "; its '// test-seam:' marker has no reason"
 # (file, declaration text, how the gate names it, its --list key)
 RED = [
@@ -314,6 +362,10 @@ RED = [
     ("fx/Marks.java", "public int codeSeparated()", "Marks.codeSeparated()", "fx.Marks#codeSeparated()", ""),
     ("fx/Outer.java", "        public int deep()", "Outer.Inner.deep()", "fx.Outer$Inner#deep()", ""),
     ("fx/Hooks.java", "public String nullable()", "Hooks.nullable()", "fx.Hooks#nullable()", ""),
+]
+RED += [
+    (f"fx/Q{name}.java", "public int m()" if member == "m()" else "public String f", f"Q{name}.{member}", f"fx.Q{name}#{member}", "")
+    for name, _, member in QUOTE_CASES
 ]
 
 
@@ -414,3 +466,19 @@ class TestOnlyGateTest(unittest.TestCase):
         done = self.missing.scan()
         self.assertEqual(1, done.returncode)
         self.assertIn("cannot load fx/Missing, a supertype of fx/Child", done.stderr)
+
+    def test_a_finding_never_reports_line_zero(self):
+        self.assertNotIn(":0 ", self.red.scan().stderr)
+
+    def test_a_source_the_parser_cannot_close_fails_loud_naming_the_file(self):
+        # Compiled whole, then the closing quotes are removed so the source ends inside a text block.
+        tree = Tree(
+            {"fx/Open.java": "package fx;\n\npublic class Open {\n    public String text = \"\"\"\n        x\n        \"\"\";\n\n    public int run() {\n        return 1;\n    }\n}\n"},
+            {"fxtest/ModTest.java": "package fxtest;\n\npublic class ModTest {\n    int run() {\n        return new fx.Open().run() + new fx.Open().text.length();\n    }\n}\n"})
+        self.addCleanup(tree.directory.cleanup)
+        source = tree.work / "mod/fx/Open.java"
+        source.write_text(source.read_text().replace('        """;', "        "))
+        done = tree.scan()
+        self.assertEqual(1, done.returncode, done.stderr)
+        self.assertIn("mod/fx/Open.java", done.stderr)
+        self.assertIn("lost its place", done.stderr)

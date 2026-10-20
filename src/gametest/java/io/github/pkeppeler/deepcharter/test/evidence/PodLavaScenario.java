@@ -27,7 +27,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodLavaScenario extends EvidenceScenario {
     private static final int X = 5000;
     private static final int Z = 5000;
-    private static final int FLOOR_Y = 4;
+    private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;
     private static final int TICKS_PER_FRAME = 6;
     private static final int MAX_TICKS = 600;
     private static final float STOP_HULL = 35f;
