@@ -303,7 +303,7 @@ public final class HandbookTriggers {
     }
 
     /** On the colony's pad: inside its square, from just under the ground to the height it is cleared to. */
-    private static boolean inColony(PodEntity pod, ColonySite.Placed colony) {
+    public static boolean inColony(PodEntity pod, ColonySite.Placed colony) {
         int half = ColonyTuning.DEFAULT.padSize() / 2;
         return pod.level().dimension() == Level.OVERWORLD
                 && Math.abs(pod.getX() - colony.center().getX()) <= half

@@ -68,7 +68,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
@@ -225,7 +224,8 @@ public class HandbookChaptersSixToNineTest {
             ServerPlayer pilot,
             PodEntity towed,
             PodEntity tower,
-            ColonySite.Placed colony) {
+            ColonySite.Placed colony,
+            Vec3 positionBeforePoll) {
         Identifier tow = id(directive("company_property", "tow_prospector"));
         if (HandbookProgress.completedFor(server, pilot.getUUID()).contains(tow)) {
             return;
@@ -235,12 +235,7 @@ public class HandbookChaptersSixToNineTest {
             falseConditions.add("no tower (PodTowing.tower(towed) is empty)");
         }
         int half = ColonyTuning.DEFAULT.padSize() / 2;
-        Vec3 centre = Vec3.atBottomCenterOf(colony.center());
-        boolean inPad = Math.abs(towed.getX() - centre.x) <= half
-                && Math.abs(towed.getZ() - centre.z) <= half
-                && towed.getY() >= colony.groundY() - 1
-                && towed.getY() <= colony.groundY() + ColonyTuning.DEFAULT.clearHeight();
-        if (!inPad || towed.level().dimension() != Level.OVERWORLD) {
+        if (!HandbookTriggers.inColony(towed, colony)) {
             falseConditions.add("the towed pod is not in the colony");
         }
         boolean playerRides = tower.getPassengers().stream().anyMatch(rider -> rider instanceof ServerPlayer);
@@ -248,12 +243,13 @@ public class HandbookChaptersSixToNineTest {
             falseConditions.add("no ServerPlayer passenger on the tower");
         }
         throw helper.assertionException(
-                "polling the towed Prospector credited nobody. False conditions: %s. Towed at %s in %s (isTowed=%s), "
+                "polling the towed Prospector credited nobody. False conditions: %s. Towed at %s before the poll and %s after it (the poll runs follow too), in %s (isTowed=%s), "
                         + "pad centre %s (half %s, ground %s, clear height %s), tower at %s (seen by the world=%s, "
                         + "on a ticking chunk=%s), riders %s, pilot alive=%s in %s",
                 falseConditions.isEmpty()
                         ? "none of the three (so the listener did not run, or ran earlier)"
                         : falseConditions,
+                positionBeforePoll,
                 towed.position(),
                 towed.level().dimension().identifier(),
                 PodTowing.isTowed(towed),
@@ -621,8 +617,9 @@ public class HandbookChaptersSixToNineTest {
                                 helper,
                                 rival.player().startRiding(wreckHome, true, false),
                                 "the rival should board the towed Prospector");
+                        Vec3 beforePoll = wreckHome.position();
                         poll(wreckHome);
-                        expectTowCredited(helper, server, first, wreckHome, tower, colony);
+                        expectTowCredited(helper, server, first, wreckHome, tower, colony, beforePoll);
                         Set<String> towed = with(found, directive("company_property", "tow_prospector"));
                         HandbookChaptersOneToFiveTest.expectCompleted(helper, server, "towing home", both, towed);
                         expect(
@@ -712,12 +709,18 @@ public class HandbookChaptersSixToNineTest {
             towed = helper.spawn(PodRegistry.PROSPECTOR, 4, 1, 4);
             // Hitch them at the test site, where both are loaded: the pad's chunks may not be loaded in a full run.
             PodTowing.attach(tower, towed);
-            // The pad test uses the centre block's coordinates, not its middle. Follow puts the pod back where it
-            // started the tick (the test site, off the pad).
             towed.setPos(pad.add(half - 0.5, 0, -0.5));
             expect(helper, pilot.player().startRiding(tower, true, false), "the player should board the tower");
+            Vec3 beforePoll = towed.position();
+            expect(helper, HandbookTriggers.inColony(towed, colony), "the towed pod should start on the pad");
             poll(towed);
-            expectTowCredited(helper, server, pilot.player(), towed, tower, colony);
+            expect(
+                    helper,
+                    !HandbookTriggers.inColony(towed, colony),
+                    "the test's premise broke: follow no longer drags the pod off the pad, from %s to %s",
+                    beforePoll,
+                    towed.position());
+            expectTowCredited(helper, server, pilot.player(), towed, tower, colony, beforePoll);
             helper.succeed();
         } finally {
             if (towed != null) {

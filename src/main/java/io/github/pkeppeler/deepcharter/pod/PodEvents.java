@@ -23,7 +23,7 @@ import net.minecraft.world.entity.Entity;
  *   <li>{@link #IS_POWERED}: wrecks (#67), lights (#75)</li>
  *   <li>{@link #EXTRA_MASS}: towing (#76)</li>
  *   <li>{@link #IGNORES_BLOCK_COLLISION}: towing (#76)</li>
- *   <li>{@link #AFTER_TICK}: lights (#75), towing (#76)</li>
+ *   <li>{@link #AFTER_TICK}: lights (#75), towing (#76); reads of the pod's state, such as the handbook's, use {@link #OBSERVE}</li>
  *   <li>{@link #REGISTERED}: the hangar's list of a charter's pods (#380)</li>
  * </ul>
  *
@@ -85,7 +85,8 @@ public final class PodEvents {
     /**
      * The {@link #AFTER_TICK} phase of listeners that read the pod where its own tick left it. It runs before the default phase,
      * where towing ({@code PodTowing.follow}) and other listeners move the pod, so a deed such as towing a Prospector onto the pad
-     * is judged from the position the pod ticked to. Register a reader with {@code AFTER_TICK.register(OBSERVE, listener)}.
+     * is judged from the position the pod ticked to. Listeners here must not move or change the pod; anything that does belongs in
+     * the default phase. Register a reader with {@code AFTER_TICK.register(OBSERVE, listener)}.
      */
     public static final Identifier OBSERVE = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "observe");
 
