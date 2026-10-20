@@ -82,7 +82,7 @@ review-passed}" ;;
     fi
     echo "${STUB_RUNS-$DEFAULT_RUNS}"
     exit "${STUB_RUNS_RC:-0}" ;;
-  "pr list") printf '%s' "${STUB_STACKED-}" ;; # open PR numbers whose base is the head branch
+  "pr list") [[ ${STUB_LIST_FAIL-0} == 1 ]] && exit 1; printf '%s' "${STUB_STACKED-}" ;; # open PR numbers whose base is the head branch
   "pr edit") [[ ${STUB_EDIT_FAIL-0} == 1 ]] && exit 1; exit 0 ;;
   "pr merge") touch "$LOG.merged"; exit "${STUB_MERGE_RC:-0}" ;;
 esac
@@ -518,7 +518,7 @@ run_script "STUB_STACKED=21
 22
 " STUB_BASE=release
 exited "stacked PRs merge" 0
-logged "stacked PRs listed by base" "gh pr list -R pkeppeler/deepcharter --base 12-some-slug --state open --json number --jq .[].number"
+logged "stacked PRs listed by base" "gh pr list -R pkeppeler/deepcharter --base 12-some-slug --state open --limit 1000 --json number --jq .[].number"
 logged "first stacked PR retargeted" "gh pr edit 21 -R pkeppeler/deepcharter --base release"
 logged "second stacked PR retargeted" "gh pr edit 22 -R pkeppeler/deepcharter --base release"
 printed "retarget is announced" "Retargeted PR #21 to release"
@@ -530,6 +530,7 @@ else
   fail "retarget happens before the merge call (edit line '$retarget_at', merge line '$merge_at')"
 fi
 refusal "failed retarget refuses the merge" "REFUSED: PR #7 cannot retarget stacked PR #21 to main" STUB_STACKED=21 STUB_EDIT_FAIL=1
+refusal "unreadable stacked list refuses the merge" "REFUSED: PR #7 could not list the PRs stacked on 12-some-slug" STUB_LIST_FAIL=1
 run_script
 not_logged "no stacked PR means no retarget" "^gh pr edit"
 
