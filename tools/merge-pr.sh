@@ -3,9 +3,12 @@
 #        tools/merge-pr.sh --check <pr-number>
 #
 # --check is read-only: it runs the whole gate below (the same functions, no second copy), prints each check's
-# state as the gate reads it and "GATE OK", and stops before retargeting or merging. It exits 1 with the same
-# "REFUSED:" line when the merge would refuse. Two things only the merge needs are printed as notes instead of
-# refusals, so a reviewer can run it earlier: the PR is a draft, and it has no `review-passed` label and comment.
+# state as the gate reads it, and stops before retargeting or merging. Exit 1 with the same "REFUSED:" line: the
+# merge would refuse. Exit 0: nothing blocks the merge except what the last line lists. Two things only the merge
+# needs are notes, not refusals, so a reviewer can run it earlier: the PR is a draft, and it has no `review-passed`
+# label and comment. The last line is "GATE OK: ..." when neither applies, else "GATE OK except: draft, no review
+# pass (the merge would refuse until then)", naming only what applies. It runs `git fetch origin main` (the
+# stale-base rule needs it), so it updates only the local origin/main ref.
 #
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
 # labelled `review-passed` with a `review-passed <head sha>` comment for the
@@ -56,7 +59,7 @@ sha=$(pr_field headRefOid .headRefOid) || refuse "could not be read from GitHub"
 state=$(pr_field state .state)
 [[ $state == OPEN ]] || refuse "is not open (state: $state)"
 
-is_draft=$(pr_field isDraft .isDraft)
+is_draft=$(pr_field isDraft .isDraft) || refuse "could not read isDraft"
 if [[ $gate_only -eq 1 ]]; then
   [[ $is_draft == false ]] && echo "draft: no" || echo "draft: yes (the merge refuses a draft)"
 else
@@ -103,8 +106,10 @@ checks=$(grep $'\t' <<<"$run_lines" | LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n 
   $1 != name { flush(); name = $1; state = "" }
   { s = ($4 == "completed") ? $5 : $4; if (s != "skipped") state = s }
   END { flush() }')
+if [[ $gate_only -eq 1 ]]; then
+  while IFS=$'\t' read -r bucket name; do echo "check $name: $bucket"; done <<<"$checks"
+fi
 while IFS=$'\t' read -r bucket name; do
-  [[ $gate_only -eq 0 ]] || echo "check $name: $bucket"
   case $bucket in
     pass | skipping) ;;
     *) refuse "has a check that is not passing: $name (newest non-skipped run: $bucket)" ;;
@@ -208,7 +213,14 @@ closing_set
   || refuse "closing set changed during the gate (was ${checked_closes:-empty}, now ${closes:-empty}); re-run"
 
 if [[ $gate_only -eq 1 ]]; then
-  echo "GATE OK: PR #$pr at $sha passes the merge gate (check only, nothing changed)"
+  pending=
+  [[ $is_draft == false ]] || pending="draft"
+  [[ -z $review_pass_refusal ]] || pending="${pending:+$pending, }no review pass"
+  if [[ -z $pending ]]; then
+    echo "GATE OK: PR #$pr at $sha passes the merge gate (check only, nothing changed)"
+  else
+    echo "GATE OK except: $pending (the merge would refuse until then)"
+  fi
   exit 0
 fi
 

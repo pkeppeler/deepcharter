@@ -30,9 +30,10 @@ case "$1 $2" in
     [[ ${STUB_VIEW_FAIL-0} == 1 ]] && exit 1
     case "$field" in
       headRefOid) echo "${STUB_SHA-abc123}" ;;
+      headRefOid,headRefName) echo "${STUB_SHA-abc123} ${STUB_BRANCH-12-some-slug}" ;;
       state)
         if [[ -e $LOG.merged ]]; then echo "${STUB_STATE_AFTER-MERGED}"; else echo "${STUB_STATE-OPEN}"; fi ;;
-      isDraft) echo "${STUB_DRAFT-false}" ;;
+      isDraft) [[ ${STUB_DRAFT_FAIL-0} == 1 ]] && exit 1; echo "${STUB_DRAFT-false}" ;;
       headRefName) echo "${STUB_BRANCH-12-some-slug}" ;;
       baseRefName) echo "${STUB_BASE-main}" ;;
       body) printf '%s\n' "${STUB_BODY-Closes #12}" ;;
@@ -604,7 +605,7 @@ check_args "trailing newline" $'7\n'
 run_check
 exited "check passes a PR the gate would merge" 0
 printed "check prints a required check's state" "check build: pass"
-printed "check says the gate passes" "GATE OK"
+printed "check says the gate passes" "GATE OK: PR #7 at abc123 passes the merge gate"
 not_logged "check never merges" "^gh pr merge"
 not_logged "check never edits" "^gh pr edit"
 not_logged "check never comments" "^gh pr comment"
@@ -613,15 +614,27 @@ not_logged "check never pushes" "push"
 run_check "STUB_LABELS=infra" "STUB_COMMENT=nope"
 exited "check passes before the review pass is marked" 0
 printed "check notes the missing review pass" "review-passed: no"
+last=${out##*$'\n'}
+if [[ $last == "GATE OK except: no review pass (the merge would refuse until then)" ]]; then pass "check's last line names the missing review pass"; else fail "check's last line names the missing review pass (got: $last)"; fi
 run_check STUB_DRAFT=true
 exited "check passes a draft" 0
 printed "check notes the draft" "draft: yes"
+last=${out##*$'\n'}
+if [[ $last == "GATE OK except: draft (the merge would refuse until then)" ]]; then pass "check's last line names the draft"; else fail "check's last line names the draft (got: $last)"; fi
+run_check STUB_DRAFT=true "STUB_LABELS=infra"
+last=${out##*$'\n'}
+if [[ $last == "GATE OK except: draft, no review pass (the merge would refuse until then)" ]]; then pass "check's last line names both"; else fail "check's last line names both (got: $last)"; fi
+run_check STUB_DRAFT_FAIL=1
+exited "check refuses an unreadable draft flag" 1
+printed "check keeps the one-line contract on an unreadable draft flag" "REFUSED: PR #7 could not read isDraft"
 run_check STUB_CLOSING=
 exited "check refuses a body with no closing reference" 1
 printed "check names the closing fix" "has no closing reference (put 'Closes #12' in the body)"
 run_check "STUB_RUNS=$(runs build:1:failure build:2:skipped tool-tests:3:success)"
 exited "check refuses a failed run hidden by a later skipped run" 1
 printed "check names the failing check" "not passing: build (newest non-skipped run: failure)"
+printed "check lists the passing check beside the failing one" "check tool-tests: pass"
+printed "check lists the failing check" "check build: failure"
 run_check "STUB_RUNS=$(runs build:1:failure build:2:skipped tool-tests:3:success)" STUB_MERGEABLE=CONFLICTING
 exited "check refuses a conflicting PR" 1
 run_check "STUB_RUNS=$(runs build:1:success tool-tests:2:in_progress)"
@@ -646,7 +659,7 @@ exited "unknown flag is a usage error" 2
 # mark-review-passed.sh
 SCRIPT=$mark run_script STUB_SHA=def456
 exited "mark-review-passed exits 0" 0
-logged "mark reads head sha" "gh pr view 7 -R pkeppeler/deepcharter --json headRefOid --jq .headRefOid"
+logged "mark reads head sha and branch in one call" "gh pr view 7 -R pkeppeler/deepcharter --json headRefOid,headRefName --jq .headRefOid + \" \" + .headRefName"
 logged "mark comments exact body" "gh pr comment 7 -R pkeppeler/deepcharter --body review-passed def456"
 logged "mark adds label" "gh pr edit 7 -R pkeppeler/deepcharter --add-label review-passed"
 # merge-pr.sh calls the lib's steps one at a time, interleaved with its other checks, and mark calls them through
