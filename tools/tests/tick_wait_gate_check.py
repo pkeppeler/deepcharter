@@ -61,6 +61,31 @@ public class ApostropheClientTest implements FabricClientGameTest {
     }
 }
 """,
+    "UrlCommentClientTest.java": """
+public class UrlCommentClientTest implements FabricClientGameTest {
+    void wait(ClientGameTestContext context) {
+        // tick-wait: the fuse needs 5 ticks, nothing to poll for
+        /** see http://x */
+        context.waitFor(client -> true, 5);
+        /* see
+           http://y */
+        context.waitFor(client -> true,
+            5); // tick-wait: wrapped, with a url comment above
+    }
+}
+""",
+    "ProseCommentClientTest.java": """
+public class ProseCommentClientTest implements FabricClientGameTest {
+    void wait(ClientGameTestContext context) {
+        // tick-wait: the fuse needs 5 ticks, nothing to poll for
+        /**
+         * The wait stops here;
+         * the map is {@code {}}
+         */
+        context.waitFor(client -> true, 5);
+    }
+}
+""",
     "MentionsClientTest.java": """
 public class MentionsClientTest implements FabricClientGameTest {
     // context.waitFor(client -> true, 40) in a comment is not a wait
@@ -103,6 +128,9 @@ IN_STRING = 'String note = "// tick-wait: not a comment"; context.waitFor(client
 IN_TEXT_BLOCK = 'String note = """\n            // tick-wait: in a text block\n            """; context.waitFor(client -> true, 5);'
 # palantir-java-format moves a marker within a wrapped statement; the shared markedNear must still not reach a marker that belongs elsewhere.
 NEXT_STATEMENT = "context.waitFor(client -> true, 5);\n        int gap = 0; // tick-wait: belongs to the next statement"
+# A `//` inside a block comment (a URL in javadoc) is not a line comment: the code before the comment still ends its statement.
+URL_COMMENT = "context.waitFor(client -> true, 5); /** see http://x */\n        int gap = 0; // tick-wait: belongs to the next statement"
+URL_BLOCK_COMMENT = "context.waitFor(client -> true, 5); /* see\n           http://x */\n        int gap = 0; // tick-wait: belongs to the next statement"
 BLANK_LINE = "// tick-wait: separated by a blank line\n\n        context.waitFor(client -> true, 5);"
 FAR_END = "context.waitFor(client -> true,\n" + ",\n".join(f"            arg{i}" for i in range(14)) + "); // tick-wait: more than 12 lines away"
 
@@ -111,6 +139,8 @@ BAD = {
     **{f"violation/{label}": ("TicksClientTest.java", CLIENT_CLASS, statement, 4) for label, statement in VIOLATIONS.items()},
     "marker/a bare marker": ("TicksClientTest.java", CLIENT_CLASS, BARE, 5),
     "marker/a marker on the next statement": ("TicksClientTest.java", CLIENT_CLASS, NEXT_STATEMENT, 4),
+    "marker/a marker after a trailing javadoc with a url": ("TicksClientTest.java", CLIENT_CLASS, URL_COMMENT, 4),
+    "marker/a marker after a trailing block comment with a url": ("TicksClientTest.java", CLIENT_CLASS, URL_BLOCK_COMMENT, 4),
     "marker/a marker above a blank line": ("TicksClientTest.java", CLIENT_CLASS, BLANK_LINE, 6),
     "marker/a marker more than 12 lines down a wrapped statement": ("TicksClientTest.java", CLIENT_CLASS, FAR_END, 4),
     "marker/a marker in a string": ("TicksClientTest.java", CLIENT_CLASS, IN_STRING, 4),
