@@ -63,7 +63,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -108,16 +107,14 @@ public class M2SliceTest {
         awaited.forEach(wait -> FarChunks.awaitEntityTicking(helper, wait.level(), wait.pos(), arrived));
     }
 
-    /** A chunk that the test waits for, and whether it was already forced before the test forced it. */
-    private record Awaited(ServerLevel level, BlockPos pos, boolean wasForced) {
+    /** A chunk that the test waits for, and lets go of when it is done (a chunk forced before the test, such as the pad's, stays). */
+    private record Awaited(ServerLevel level, BlockPos pos) {
         static Awaited of(ServerLevel level, BlockPos pos) {
-            return new Awaited(level, pos, level.getForceLoadedChunks().contains(ChunkPos.pack(pos)));
+            return new Awaited(level, pos);
         }
 
-        void release() {
-            if (!wasForced) {
-                level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, false);
-            }
+        void release(GameTestHelper helper) {
+            FarChunks.release(helper, level, pos.getX() >> 4, pos.getZ() >> 4);
         }
     }
 
@@ -426,7 +423,7 @@ public class M2SliceTest {
                         if (hadHands) {
                             FounderStatue.restoreHands(server);
                         }
-                        awaited.forEach(Awaited::release);
+                        awaited.forEach(wait -> wait.release(helper));
                     }
                 });
     }

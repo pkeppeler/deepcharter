@@ -544,7 +544,7 @@ public class TowingTest {
                 PodTowing.attach(pods[0], pods[1]);
                 // Only the tower's chunk is forced from here on: the chunk of the pod is loaded and does not tick
                 // unless the tower asks.
-                level.setChunkForced(podColumn.getX() >> 4, podColumn.getZ() >> 4, false);
+                FarChunks.release(helper, level, podColumn.getX() >> 4, podColumn.getZ() >> 4);
             }
         });
         int[] since = {0};

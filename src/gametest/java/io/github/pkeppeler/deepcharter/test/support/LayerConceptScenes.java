@@ -15,6 +15,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -163,11 +164,11 @@ public final class LayerConceptScenes {
      * Builds the scene in its layer: the box is cleared through {@link RoomCarver}, which seals its shell against worldgen lava first, and
      * the structure is placed in it. The structure holds only solid blocks, so the box stays air where the rock does not stand.
      */
-    public static void place(MinecraftServer server, Scene scene, Size size) {
+    public static void place(Hold hold, MinecraftServer server, Scene scene, Size size) {
         ServerLevel level = scene.level(server);
         BlockPos low = scene.origin();
         BlockPos high = low.offset(size.x() - 1, size.y() - 1, size.z() - 1);
-        forceChunks(level, low, high, true);
+        forceChunks(hold, level, low, high);
         RoomCarver.carve(level, low, high, Blocks.AIR.defaultBlockState());
         StructureTemplate template = server.getStructureTemplateManager()
                 .get(scene.structure())
@@ -179,30 +180,55 @@ public final class LayerConceptScenes {
         template.placeInWorld(level, low, low, new StructurePlaceSettings(), level.getRandom(), Block.UPDATE_CLIENTS);
     }
 
+    /** One chunk operation on a level. */
+    public interface ChunkAction {
+        void apply(ServerLevel level, int chunkX, int chunkZ);
+    }
+
+    /** How a scene's chunks are kept loaded and let go: through a test's {@link FarChunks} hold, or directly in a world no test owns. */
+    public record Hold(ChunkAction force, ChunkAction release) {}
+
+    /** The hold of a server GameTest: its chunks are let go when the test ends, even when it fails. */
+    public static Hold heldBy(GameTestHelper helper) {
+        return new Hold(
+                (level, x, z) -> FarChunks.force(helper, level, x, z),
+                (level, x, z) -> FarChunks.release(helper, level, x, z));
+    }
+
+    /** The hold of the evidence world, which no GameTest owns: the client run discards the world when it ends. */
+    public static final Hold EVIDENCE = new Hold(
+            // force-ok: the evidence world has no GameTestHelper; release() below lets go, and the run discards the
+            // world
+            (level, x, z) -> level.setChunkForced(x, z, true),
+            // force-ok: pairs with the force above
+            (level, x, z) -> level.setChunkForced(x, z, false));
+
     /**
      * Keeps the scene's chunks loaded (or lets them go). A scene is built long before its camera arrives, and the render distance of the
      * scenario is short, so without this its chunks are unloaded in between, and loading them again from the server thread waited for the
      * shared worker pool behind the client's chunk meshing, which on a loaded machine did not finish.
      */
-    private static void forceChunks(ServerLevel level, BlockPos low, BlockPos high, boolean forced) {
+    private static void forceChunks(Hold hold, ServerLevel level, BlockPos low, BlockPos high) {
         for (int cx = low.getX() >> 4; cx <= high.getX() >> 4; cx++) {
             for (int cz = low.getZ() >> 4; cz <= high.getZ() >> 4; cz++) {
-                // force-ok: scenario scenes have no GameTestHelper; place() forces and release() lets go when the test
-                // is done with the scene
-                level.setChunkForced(cx, cz, forced);
+                hold.force().apply(level, cx, cz);
                 level.getChunk(cx, cz);
             }
         }
     }
 
     /** Lets the scene's chunks unload again, with the margin {@link #setAtmosphere} used. Called when a test has done with a built scene. */
-    public static void release(MinecraftServer server, Scene scene, Size size) {
+    public static void release(Hold hold, MinecraftServer server, Scene scene, Size size) {
         BlockPos low = scene.origin().offset(-ATMOSPHERE_MARGIN, 0, -ATMOSPHERE_MARGIN);
-        forceChunks(
-                scene.level(server),
-                low,
-                scene.origin().offset(size.x() + ATMOSPHERE_MARGIN - 1, size.y() - 1, size.z() + ATMOSPHERE_MARGIN - 1),
-                false);
+        ServerLevel level = scene.level(server);
+        BlockPos high =
+                scene.origin().offset(size.x() + ATMOSPHERE_MARGIN - 1, size.y() - 1, size.z() + ATMOSPHERE_MARGIN - 1);
+        for (int cx = low.getX() >> 4; cx <= high.getX() >> 4; cx++) {
+            for (int cz = low.getZ() >> 4; cz <= high.getZ() >> 4; cz++) {
+                hold.release().apply(level, cx, cz);
+                level.getChunk(cx, cz);
+            }
+        }
     }
 
     /** The biome that carries a layer's atmosphere (fog, ambient light and lamp tint) for a kind of light; {@code make.py} writes it. */
@@ -216,7 +242,7 @@ public final class LayerConceptScenes {
      * layer is the same for every texture option, so only the textures differ. Fails if the biome did not take, because the command reports
      * a failure only in the log.
      */
-    public static void setAtmosphere(MinecraftServer server, Scene scene, Size size, String light) {
+    public static void setAtmosphere(Hold hold, MinecraftServer server, Scene scene, Size size, String light) {
         ServerLevel level = scene.level(server);
         BlockPos low = scene.origin().offset(-ATMOSPHERE_MARGIN, -ATMOSPHERE_MARGIN, -ATMOSPHERE_MARGIN);
         BlockPos high = scene.origin()
@@ -224,7 +250,7 @@ public final class LayerConceptScenes {
                         size.x() + ATMOSPHERE_MARGIN - 1,
                         size.y() + ATMOSPHERE_MARGIN - 1,
                         size.z() + ATMOSPHERE_MARGIN - 1);
-        forceChunks(level, low, high, true);
+        forceChunks(hold, level, low, high);
         Identifier biome = atmosphere(scene.layer(), light);
         CommandSourceStack source =
                 server.createCommandSourceStack().withLevel(level).withSuppressedOutput();

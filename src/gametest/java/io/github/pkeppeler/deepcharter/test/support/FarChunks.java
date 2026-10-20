@@ -68,6 +68,15 @@ public final class FarChunks {
     }
 
     /**
+     * Forces a chunk for the rest of the world's life: no test's end lets it go. The colony pad, which tests share, is the case. A
+     * test that holds the same chunk lets go of its own hold only. Server thread only.
+     */
+    public static void pin(ServerLevel level, int chunkX, int chunkZ) {
+        level.setChunkForced(chunkX, chunkZ, true);
+        HOLDS.merge(new Chunk(level, ChunkPos.pack(chunkX, chunkZ)), 1, Integer::sum);
+    }
+
+    /**
      * Lets go of a chunk {@code helper}'s test holds, before the test ends, so the test can wait for it to unload and {@link #force} it
      * again. A chunk the test does not hold is left as it is. Server thread only.
      */

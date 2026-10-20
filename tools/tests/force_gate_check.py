@@ -1,4 +1,4 @@
-"""Tests the chunk-force gate in gradle/gametest.gradle.kts: a setChunkForced that forces, or a forced ticket, in src/gametest outside FarChunks fails the build.
+"""Tests the chunk-force gate in gradle/gametest.gradle.kts: a setChunkForced or updateChunkForced (force or release), or a forced ticket, in src/gametest outside FarChunks fails the build.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
@@ -34,9 +34,8 @@ public class ThroughFarChunksTest {
     @GameTest
     public void forces(GameTestHelper helper) {
         FarChunks.force(helper, level, 3, 4);
-        level.setChunkForced(3, 4, false);
-        level.setChunkForced(
-            3 >> 4, 4 >> 4, false);
+        FarChunks.release(helper, level, 3, 4);
+        FarChunks.pin(level, 3, 4);
     }
 }
 """,
@@ -68,6 +67,11 @@ VIOLATIONS = {
     "a variable": "level.setChunkForced(3, 4, forced);",
     "a lambda": "chunks.forEach(chunk -> level.setChunkForced(chunk.x(), chunk.z(), true));",
     "multi-line": "level.setChunkForced(\n            3 >> 4,\n            4 >> 4,\n            true);",
+    "a release": "level.setChunkForced(3, 4, false);",
+    "a release wrapped": "level.setChunkForced(\n            3 >> 4, 4 >> 4, false);",
+    "a nested false": "level.setChunkForced(3, 4, foo(1, false));",
+    "updateChunkForced": "level.getChunkSource().updateChunkForced(chunk, true);",
+    "a method reference": "chunks.forEach(level::setChunkForced);",
     "a forced ticket": "level.getChunkSource().addTicketWithRadius(TicketType.FORCED, pos, 0);",
 }
 BARE = "// force-ok:\n        level.setChunkForced(3, 4, true);"
@@ -113,8 +117,9 @@ class ForceGateTest(unittest.TestCase):
         result = gate_batch.result(f"{__name__}/{label}")
         self.assertFalse(result.ok, f"the gate should fail the build for {label}")
         module = name.removesuffix(".java").replace("/", ".")
-        self.assertIn(f"{module}:{line} forces a chunk directly", result.message)
+        self.assertIn(f"{module}:{line} sets a chunk's force directly", result.message)
         self.assertIn("FarChunks.force", result.message)
+        self.assertIn("FarChunks.release", result.message)
         self.assertIn("force-ok:", result.message)
         self.assertNotIn("MarkedTest", result.message)
         self.assertNotIn("ThroughFarChunksTest", result.message)

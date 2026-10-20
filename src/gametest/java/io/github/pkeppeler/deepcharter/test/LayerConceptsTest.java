@@ -43,7 +43,7 @@ public class LayerConceptsTest {
             throw helper.assertionException("%s scenes, not one for each layer", scenes.size());
         }
         for (Scene scene : scenes) {
-            LayerConceptScenes.place(server, scene, size);
+            LayerConceptScenes.place(LayerConceptScenes.heldBy(helper), server, scene, size);
             ServerLevel level = scene.level(server);
             Counts counts = count(level, scene.origin(), size);
             if (counts.shellOpen > 0) {
@@ -68,7 +68,7 @@ public class LayerConceptsTest {
                             "scene %s: the camera of %s at %s is in a block", scene.key(), view.name(), eye);
                 }
             }
-            LayerConceptScenes.release(server, scene, size);
+            LayerConceptScenes.release(LayerConceptScenes.heldBy(helper), server, scene, size);
         }
         helper.succeed();
     }
@@ -78,7 +78,7 @@ public class LayerConceptsTest {
         MinecraftServer server = helper.getLevel().getServer();
         Size size = LayerConceptScenes.size(server);
         for (Scene scene : LayerConceptScenes.read(server)) {
-            LayerConceptScenes.place(server, scene, size);
+            LayerConceptScenes.place(LayerConceptScenes.heldBy(helper), server, scene, size);
             ServerLevel level = scene.level(server);
             for (BlockPos at : scene.lava()) {
                 if (!level.getBlockState(scene.origin().offset(at)).isAir()) {
@@ -91,7 +91,7 @@ public class LayerConceptsTest {
                     throw helper.assertionException("scene %s: the lava source %s did not take", scene.key(), at);
                 }
             }
-            LayerConceptScenes.release(server, scene, size);
+            LayerConceptScenes.release(LayerConceptScenes.heldBy(helper), server, scene, size);
         }
         helper.succeed();
     }
@@ -134,12 +134,12 @@ public class LayerConceptsTest {
             }
             for (Scene scene : LayerConceptScenes.read(server)) {
                 if (scene.layer() == layer) {
-                    LayerConceptScenes.place(server, scene, size);
+                    LayerConceptScenes.place(LayerConceptScenes.heldBy(helper), server, scene, size);
                     // It checks the biome in the corners and the middle of the box, and fails when /fillbiome did not
                     // take.
-                    LayerConceptScenes.setAtmosphere(server, scene, size, "company");
-                    LayerConceptScenes.setAtmosphere(server, scene, size, "deep");
-                    LayerConceptScenes.release(server, scene, size);
+                    LayerConceptScenes.setAtmosphere(LayerConceptScenes.heldBy(helper), server, scene, size, "company");
+                    LayerConceptScenes.setAtmosphere(LayerConceptScenes.heldBy(helper), server, scene, size, "deep");
+                    LayerConceptScenes.release(LayerConceptScenes.heldBy(helper), server, scene, size);
                 }
             }
         }
