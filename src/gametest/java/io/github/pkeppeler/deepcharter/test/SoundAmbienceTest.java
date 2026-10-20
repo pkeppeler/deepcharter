@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -15,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -31,6 +33,7 @@ import net.minecraft.world.attribute.BackgroundMusic;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #249: every biome of the surface and of each layer carries its own drone bed in its {@code ambient_sounds}, with
@@ -47,7 +50,7 @@ public class SoundAmbienceTest {
 
     /** The biomes of a layer, from the layer's own biome source. */
     private static Set<Identifier> layerBiomes(MinecraftServer server, int layer) {
-        BiomeSource source = server.getLevel(LayerChain.dimension(layer))
+        BiomeSource source = ClientLight.serverLevel(server, LayerChain.dimension(layer))
                 .getChunkSource()
                 .getGenerator()
                 .getBiomeSource();
@@ -100,8 +103,8 @@ public class SoundAmbienceTest {
         expect(helper, !biomes.isEmpty(), "%s has no biomes", place);
         var registry = server.registryAccess().lookupOrThrow(Registries.BIOME);
         for (Identifier biomeId : biomes) {
-            Biome biome = registry.getValue(biomeId);
-            expect(helper, biome != null, "the biome %s does not load", biomeId);
+            Biome biome =
+                    Objects.requireNonNull(registry.getValue(biomeId), () -> "the biome " + biomeId + " does not load");
             AmbientSounds sounds =
                     biome.getAttributes().applyModifier(EnvironmentAttributes.AMBIENT_SOUNDS, AmbientSounds.EMPTY);
             expect(
@@ -147,7 +150,8 @@ public class SoundAmbienceTest {
         MinecraftServer server = helper.getLevel().getServer();
         var registry = server.registryAccess().lookupOrThrow(Registries.BIOME);
         for (Identifier biomeId : surfaceBiomes(helper)) {
-            Biome biome = registry.getValue(biomeId);
+            Biome biome =
+                    Objects.requireNonNull(registry.getValue(biomeId), () -> "the biome " + biomeId + " does not load");
             expect(
                     helper,
                     biome.getAttributes().contains(EnvironmentAttributes.BACKGROUND_MUSIC),
@@ -166,12 +170,13 @@ public class SoundAmbienceTest {
         MinecraftServer server = helper.getLevel().getServer();
         var registry = server.registryAccess().lookupOrThrow(Registries.BIOME);
         for (int layer = 1; layer <= LayerChain.count(server.registryAccess()); layer++) {
-            BackgroundMusic dimension = server.getLevel(LayerChain.dimension(layer))
+            BackgroundMusic dimension = ClientLight.serverLevel(server, LayerChain.dimension(layer))
                     .dimensionType()
                     .attributes()
                     .applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, BackgroundMusic.EMPTY);
             for (Identifier biomeId : layerBiomes(server, layer)) {
-                BackgroundMusic music = registry.getValue(biomeId)
+                BackgroundMusic music = Objects.requireNonNull(
+                                registry.getValue(biomeId), "registry.getValue(biomeId) is absent")
                         .getAttributes()
                         .applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, dimension);
                 for (boolean creative : List.of(false, true)) {
@@ -214,8 +219,7 @@ public class SoundAmbienceTest {
         MinecraftServer server = helper.getLevel().getServer();
         var registry = server.registryAccess().lookupOrThrow(Registries.BIOME);
         for (int layer = 1; layer <= LayerChain.count(server.registryAccess()); layer++) {
-            List<String> zones = ZONES.get(layer);
-            expect(helper, zones != null, "layer %s has no zone list in this test", layer);
+            List<String> zones = Objects.requireNonNull(ZONES.get(layer), "a layer has no zone list in this test");
             Set<Identifier> listed = new TreeSet<>();
             zones.forEach(zone -> listed.add(id(zone)));
             expect(
@@ -228,7 +232,10 @@ public class SoundAmbienceTest {
             for (String kind : List.of("creak", "knock")) {
                 double above = 0;
                 for (String zone : zones) {
-                    double now = chance(registry.getValue(id(zone)), "ambient.layer_" + layer + "_" + kind);
+                    double now = chance(
+                            Objects.requireNonNull(
+                                    registry.getValue(id(zone)), "registry.getValue(id(zone)) is absent"),
+                            "ambient.layer_" + layer + "_" + kind);
                     expect(
                             helper,
                             now > above,
@@ -246,7 +253,8 @@ public class SoundAmbienceTest {
     }
 
     @FormatMethod
-    private static void expect(GameTestHelper helper, boolean condition, @FormatString String format, Object... args) {
+    private static void expect(
+            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
         if (!condition) {
             throw helper.assertionException(Component.literal(String.format(format, args)));
         }

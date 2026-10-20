@@ -12,9 +12,12 @@ import io.github.pkeppeler.deepcharter.client.theme.BeamLook;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -23,8 +26,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Blocks;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Client GameTest for #248 against real blocks and pods: a pod with a lights part shows a headlamp beam and a pod without one shows
@@ -47,8 +50,8 @@ public class BeamsClientTest implements FabricClientGameTest {
                     context,
                     "both pods and the room's floor on the client",
                     client -> client.level != null
-                            && pod(client, scene.lit()) != null
-                            && pod(client, scene.dark()) != null
+                            && podIfPresent(client, scene.lit()) != null
+                            && podIfPresent(client, scene.dark()) != null
                             && client.level.getBlockState(scene.floor()).is(Blocks.STONE));
             context.runOnClient(client -> {
                 PodEntity lit = pod(client, scene.lit());
@@ -63,8 +66,8 @@ public class BeamsClientTest implements FabricClientGameTest {
                                 + ", got "
                                 + PodBeams.reach(lit));
 
-                BeamDraw open = PodBeams.beamFor(lit, stateOf(lit));
-                require(open != null, "a lit pod in open air should draw a beam");
+                BeamDraw open = Objects.requireNonNull(
+                        PodBeams.beamFor(lit, stateOf(lit)), "a lit pod in open air should draw a beam");
                 // Its headlamp tilts down, so over a bare floor the beam ends where it meets the floor.
                 double height = BeamLook.current().headlamp().height();
                 double floorHit = height
@@ -80,7 +83,7 @@ public class BeamsClientTest implements FabricClientGameTest {
                 // the lamp, so
                 // the floor does not cut it.
                 double length = BeamAim.cast(
-                        client.level,
+                        ClientLight.clientLevel(client),
                         lit.getX(),
                         lit.getY() + BeamLook.current().headlamp().height(),
                         lit.getZ() + BeamLook.current().headlamp().forward(),
@@ -94,7 +97,7 @@ public class BeamsClientTest implements FabricClientGameTest {
             });
             // A wall four blocks in front of the lit pod's lamp cuts the cast to the wall's face.
             singleplayer.getServer().runOnServer(server -> {
-                PodEntity lit = (PodEntity) server.overworld().getEntity(scene.lit());
+                PodEntity lit = TestEntities.require(server.overworld(), scene.lit(), PodEntity.class);
                 for (int dy = 0; dy < 6; dy++) {
                     for (int dx = -3; dx <= 3; dx++) {
                         server.overworld()
@@ -108,7 +111,7 @@ public class BeamsClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the wall on the client",
-                    client -> client.level
+                    client -> ClientLight.clientLevel(client)
                             .getBlockState(BlockPos.containing(
                                     pod(client, scene.lit()).getX(),
                                     pod(client, scene.lit()).getY() + 1,
@@ -120,7 +123,7 @@ public class BeamsClientTest implements FabricClientGameTest {
                 double wallFace = Math.floor(lit.getZ() + 5);
                 double expected = wallFace - (lit.getZ() + forward);
                 double length = BeamAim.cast(
-                        client.level,
+                        ClientLight.clientLevel(client),
                         lit.getX(),
                         lit.getY() + BeamLook.current().headlamp().height(),
                         lit.getZ() + forward,
@@ -135,8 +138,8 @@ public class BeamsClientTest implements FabricClientGameTest {
                 // along its slant.
                 double pitch = BeamLook.current().headlamp().pitch();
                 double slant = (wallFace - (lit.getZ() + forward)) / Math.cos(Math.toRadians(pitch));
-                BeamDraw cut = PodBeams.beamFor(lit, stateOf(lit));
-                require(cut != null, "a beam cut short by a wall is still drawn, shorter");
+                BeamDraw cut = Objects.requireNonNull(
+                        PodBeams.beamFor(lit, stateOf(lit)), "a beam cut short by a wall is still drawn, shorter");
                 require(
                         Math.abs(cut.length() - slant) < TOLERANCE,
                         "the drawn beam should end at the wall, " + slant + " blocks, drawn " + cut.length());
@@ -144,7 +147,8 @@ public class BeamsClientTest implements FabricClientGameTest {
             // Stranded, the pod loses its light block (ADR 0024) and its beam.
             singleplayer
                     .getServer()
-                    .runOnServer(server -> ((PodEntity) server.overworld().getEntity(scene.lit())).setStranded(true));
+                    .runOnServer(server -> TestEntities.require(server.overworld(), scene.lit(), PodEntity.class)
+                            .setStranded(true));
             ClientWait.until(
                     context,
                     "the stranded pod to be dark on the client",
@@ -194,13 +198,17 @@ public class BeamsClientTest implements FabricClientGameTest {
     }
 
     private static PodEntity spawn(ServerLevel level, double x, double y, double z) {
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(x, y, z);
         level.addFreshEntity(pod);
         return pod;
     }
 
     private static PodEntity pod(Minecraft client, int id) {
-        return client.level.getEntity(id) instanceof PodEntity pod ? pod : null;
+        return TestEntities.require(ClientLight.clientLevel(client), id, PodEntity.class);
+    }
+
+    private static @Nullable PodEntity podIfPresent(Minecraft client, int id) {
+        return ClientLight.clientLevel(client).getEntity(id) instanceof PodEntity pod ? pod : null;
     }
 }

@@ -24,10 +24,12 @@ import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.Serials;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
@@ -62,6 +64,7 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #82: the Prospector is a two-seat chassis with its own hitbox, a 3 x 3 bore and a tier 3 cap; wrecks of it
@@ -288,7 +291,7 @@ public class ProspectorChassisTest {
         pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = {null};
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-            pod[0] = PodRegistry.PROSPECTOR.create(level, EntitySpawnReason.COMMAND);
+            pod[0] = TestEntities.create(PodRegistry.PROSPECTOR, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
             expect(helper, pilot.player().startRiding(pod[0]), "the pilot could not board the Prospector");
@@ -975,7 +978,7 @@ public class ProspectorChassisTest {
         navigator.teleportTo(one, new Vec3(x, 8, z), 0, 0);
         PodEntity[] pod = {null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
-            pod[0] = PodRegistry.PROSPECTOR.create(one, EntitySpawnReason.COMMAND);
+            pod[0] = TestEntities.create(PodRegistry.PROSPECTOR, one);
             pod[0].setPos(x, 8, z);
             one.addFreshEntity(pod[0]);
             if (!pilot.player().startRiding(pod[0], true, false)
@@ -999,7 +1002,7 @@ public class ProspectorChassisTest {
                             && arrived.getUUID().equals(pod[0].getUUID()),
                     "the pilot rides the same Prospector after crossing, rides %s",
                     pilot.player().getVehicle());
-            PodEntity arrived = (PodEntity) pilot.player().getVehicle();
+            PodEntity arrived = TestEntities.vehicle(pilot.player(), PodEntity.class);
             expect(
                     helper,
                     arrived.getPassengers().size() == 2
@@ -1028,10 +1031,10 @@ public class ProspectorChassisTest {
         navigator.teleportTo(one, new Vec3(x, 10, z), 0, 0);
         PodEntity[] pods = {null, null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
-            pods[0] = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+            pods[0] = TestEntities.create(PodRegistry.POD, one);
             pods[0].setPos(x, 8, z);
             one.addFreshEntity(pods[0]);
-            pods[1] = PodRegistry.PROSPECTOR.create(one, EntitySpawnReason.COMMAND);
+            pods[1] = TestEntities.create(PodRegistry.PROSPECTOR, one);
             pods[1].setPos(x, 10, z);
             one.addFreshEntity(pods[1]);
             PodTowing.attach(pods[0], pods[1]);
@@ -1058,7 +1061,7 @@ public class ProspectorChassisTest {
                             && PodTowing.isTowed(towed),
                     "the first rider is still in the towed Prospector on its cable, is in %s",
                     pilot.player().getVehicle());
-            PodEntity towed = (PodEntity) pilot.player().getVehicle();
+            PodEntity towed = TestEntities.vehicle(pilot.player(), PodEntity.class);
             expect(
                     helper,
                     towed.getPassengers().size() == 2
@@ -1199,7 +1202,7 @@ public class ProspectorChassisTest {
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }
@@ -1221,7 +1224,8 @@ public class ProspectorChassisTest {
     }
 
     @FormatMethod
-    private static void expect(GameTestHelper helper, boolean condition, @FormatString String format, Object... args) {
+    private static void expect(
+            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
         FoundingMoleHangarTest.expect(helper, condition, format, args);
     }
 
@@ -1235,7 +1239,8 @@ public class ProspectorChassisTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return FoundingMoleHangarTest.failure(helper, format, args);
     }
 }

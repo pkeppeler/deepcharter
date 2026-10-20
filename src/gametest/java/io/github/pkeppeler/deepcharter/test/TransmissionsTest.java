@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
@@ -32,6 +33,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -324,7 +326,10 @@ public class TransmissionsTest {
                 throw helper.assertionException(
                         "joining sends the story so far, in order, once each: %s", deliveredTo(crew));
             }
-            if (data.progress(charter).cursors().get(crewId) != 2) {
+            if (Objects.requireNonNull(
+                            data.progress(charter).cursors().get(crewId),
+                            "data.progress(charter).cursors().get(crewId) is absent")
+                    != 2) {
                 throw helper.assertionException("the member has been sent both: %s", data.progress(charter));
             }
 
@@ -633,8 +638,8 @@ public class TransmissionsTest {
                 .getOrThrow();
         MockPlayer crew = MockPlayers.join(helper, "tx-unreadable");
         CharterId charter = directCharter(helper, crew.player().getUUID());
-        ServerLevel one = server.getLevel(LayerChain.dimension(1));
-        ServerLevel two = server.getLevel(LayerChain.dimension(2));
+        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
         crew.player().setNoGravity(true);
         crew.teleportTo(two, new Vec3(BREACH_COLUMN, two.getMinY() + two.getHeight() / 2, BREACH_COLUMN), 0, 0);
 
@@ -751,7 +756,7 @@ public class TransmissionsTest {
                         "the test needs a saved DataVersion above %s, got %s",
                         olderDataVersion, NbtUtils.getDataVersion(stamped));
             }
-            Tag savedBody = stamped.get("data");
+            Tag savedBody = Objects.requireNonNull(stamped.get("data"), "the stamped save has no data tag");
             NbtIo.writeCompressed(NbtUtils.addDataVersion(stamped, olderDataVersion), file);
 
             try (SavedDataStorage second = storage(server, dir)) {
@@ -776,8 +781,8 @@ public class TransmissionsTest {
     @GameTest(maxTicks = TRIGGER_TICKS)
     public void aBreachCrossingFiresItsTransmissionAndItsBonusForTheCharter(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        ServerLevel one = server.getLevel(LayerChain.dimension(1));
-        ServerLevel two = server.getLevel(LayerChain.dimension(2));
+        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
         // Generate the arrival area in layer 2 now so the crossing does not wait on it.
         for (int dx = -2; dx <= 2; dx++) {
             for (int dz = -2; dz <= 2; dz++) {
@@ -804,9 +809,9 @@ public class TransmissionsTest {
     @GameTest
     public void climbingOutIntoTheSurfaceFiresTheSurfaceArrivalAndNoOtherAscentDoes(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        ServerLevel surface = server.getLevel(LayerChain.dimension(LayerChain.SURFACE));
-        ServerLevel one = server.getLevel(LayerChain.dimension(1));
-        ServerLevel two = server.getLevel(LayerChain.dimension(2));
+        ServerLevel surface = ClientLight.serverLevel(server, LayerChain.dimension(LayerChain.SURFACE));
+        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
         withFreshWorldData(helper, data -> {
             MockPlayer crew = MockPlayers.join(helper, "tx-surface");
             CharterId charter = directCharter(helper, crew.player().getUUID());
@@ -831,7 +836,7 @@ public class TransmissionsTest {
     @GameTest(maxTicks = TRIGGER_TICKS)
     public void standingInAZoneFiresItsTransmissionForTheCharter(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        ServerLevel two = server.getLevel(LayerChain.dimension(2));
+        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
         MockPlayer crew = MockPlayers.join(helper, "tx-zone");
         foundedCharter(helper, crew.player().getUUID());
         crew.player().setPermanentlyInvulnerable(true);

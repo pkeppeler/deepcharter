@@ -6,9 +6,11 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PodReadout;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +21,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.EntitySpawnReason;
 
 /**
  * Client GameTest for the liner HUD (#339): a pod with no liner shows no liner line; once a liner is fitted the HUD shows the rack's slag
@@ -36,7 +37,7 @@ public class PodLinerClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
                 pod.setPos(player.position());
                 player.level().addFreshEntity(pod);
                 if (!player.startRiding(pod)) {
@@ -50,32 +51,32 @@ public class PodLinerClientTest implements FabricClientGameTest {
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity pod
                             && keys(PodReadout.texts(client, pod)).contains("hud.deepcharter.pod.slag_only"));
-            boolean shownWithoutPart =
-                    context.computeOnClient(client -> PodStatusHud.linerLine((PodEntity) client.player.getVehicle())
-                            .isPresent());
+            boolean shownWithoutPart = context.computeOnClient(client -> PodStatusHud.linerLine(
+                            TestEntities.vehicle(ClientSession.player(client), PodEntity.class))
+                    .isPresent());
             if (shownWithoutPart) {
                 throw new AssertionError("A pod with no liner shows no liner line");
             }
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                ScannerPods.fit(server, player, (PodEntity) player.getVehicle(), ComponentTrack.LINER, 1);
+                ScannerPods.fit(server, player, TestEntities.vehicle(player, PodEntity.class), ComponentTrack.LINER, 1);
             });
             ClientWait.until(
                     context,
                     "the liner line on the pod HUD",
-                    client -> client.player.getVehicle() instanceof PodEntity pod
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && PodStatusHud.linerLine(pod).isPresent());
-            int slabs = context.computeOnClient(
-                    client -> slabsInLine(PodStatusHud.linerLine((PodEntity) client.player.getVehicle())));
+            int slabs = context.computeOnClient(client -> slabsInLine(
+                    PodStatusHud.linerLine(TestEntities.vehicle(ClientSession.player(client), PodEntity.class))));
             if (slabs != RING_EVERY) {
                 throw new AssertionError("A new tier 1 liner rings in " + RING_EVERY + " slabs, the HUD says " + slabs);
             }
 
             // The pod has sunk three slabs since its last ring: one more slab and the liner rings.
             singleplayer.getServer().runOnServer(server -> {
-                PodEntity pod = (PodEntity)
-                        server.getPlayerList().getPlayers().getFirst().getVehicle();
+                PodEntity pod =
+                        TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
                 PodLiner.Anchor here =
                         new PodLiner.Anchor(pod.getBlockY(), Mth.floor(pod.getX() - 0.5), Mth.floor(pod.getZ() - 0.5));
                 pod.setAttached(
@@ -86,13 +87,13 @@ public class PodLinerClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "one slab to the next ring on the pod HUD",
-                    client -> client.player.getVehicle() instanceof PodEntity pod
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && PodStatusHud.linerLine(pod)
                                             .map(PodLinerClientTest::slabsOf)
                                             .orElse(-1)
                                     == RING_EVERY - SUNK);
-            List<Component> lines =
-                    context.computeOnClient(client -> PodReadout.texts(client, (PodEntity) client.player.getVehicle()));
+            List<Component> lines = context.computeOnClient(client ->
+                    PodReadout.texts(client, TestEntities.vehicle(ClientSession.player(client), PodEntity.class)));
             boolean rackShown = lines.stream()
                     .anyMatch(line -> line.getContents() instanceof TranslatableContents contents
                             && contents.getKey().equals("hud.deepcharter.pod.slag_only")

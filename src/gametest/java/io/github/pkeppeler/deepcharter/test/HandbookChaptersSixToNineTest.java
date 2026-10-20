@@ -30,11 +30,14 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -46,9 +49,9 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -170,7 +173,7 @@ public class HandbookChaptersSixToNineTest {
     }
 
     private static ServerLevel layer(MinecraftServer server, int layer) {
-        ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
         if (level == null) {
             throw new IllegalStateException("dimension " + LayerChain.dimension(layer) + " did not load");
         }
@@ -184,7 +187,7 @@ public class HandbookChaptersSixToNineTest {
     }
 
     private static PodEntity podIn(GameTestHelper helper, ServerLevel level, EntityType<PodEntity> type, Vec3 at) {
-        PodEntity pod = type.create(level, EntitySpawnReason.TRIGGERED);
+        PodEntity pod = TestEntities.create(type, level, EntitySpawnReason.TRIGGERED);
         expect(helper, pod != null, "the pod should be made");
         pod.setPos(at);
         expect(helper, level.addFreshEntity(pod), "the world should accept the pod at %s", at);
@@ -237,15 +240,19 @@ public class HandbookChaptersSixToNineTest {
                 keys);
         int order = 6;
         for (String chapter : ORDER) {
-            List<String> directives = HandbookChaptersOneToFiveTest.directivesOf(chapters.get(chapter));
+            HandbookChapter shipped =
+                    Objects.requireNonNull(chapters.get(chapter), () -> "no shipped chapter " + chapter);
+            List<String> directives = HandbookChaptersOneToFiveTest.directivesOf(shipped);
+            List<String> pinned =
+                    Objects.requireNonNull(PINNED.get(chapter), () -> "no pinned directives for " + chapter);
             expect(
                     helper,
-                    chapters.get(chapter).order() == order && directives.equals(PINNED.get(chapter)),
+                    shipped.order() == order && directives.equals(pinned),
                     "chapter %s should be number %s with directives %s, got %s with %s",
                     chapter,
                     order,
-                    PINNED.get(chapter),
-                    chapters.get(chapter).order(),
+                    pinned,
+                    shipped.order(),
                     directives);
             order++;
         }
@@ -386,9 +393,7 @@ public class HandbookChaptersSixToNineTest {
                         first.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ScannerRegistry.SCANNER_UNIT));
                         expect(
                                 helper,
-                                UseEntityCallback.EVENT
-                                        .invoker()
-                                        .interact(first, mole.level(), InteractionHand.MAIN_HAND, mole, null)
+                                UseEntity.on(first, mole.level(), InteractionHand.MAIN_HAND, mole)
                                         .consumesAction(),
                                 "the scanner unit should fit the Mole");
                         HandbookChaptersOneToFiveTest.expectCompleted(

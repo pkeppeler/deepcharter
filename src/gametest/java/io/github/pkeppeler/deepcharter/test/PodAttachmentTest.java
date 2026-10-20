@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -14,8 +15,10 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments.Example;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments.Other;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import java.util.Objects;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -34,6 +37,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /** Server GameTests for the versioned pod attachment pattern: defaults, save/load, unreadable versions and a breach crossing. */
 public class PodAttachmentTest {
@@ -111,8 +115,8 @@ public class PodAttachmentTest {
                 Versioned.orThrow(loaded, TestAttachments.EXAMPLE);
                 throw failure(helper, "reading an unreadable attachment must fail loud");
             } catch (IllegalStateException expected) {
-                if (!expected.getMessage().contains(exampleKey)
-                        || !expected.getMessage().contains("99")) {
+                if (!String.valueOf(expected.getMessage()).contains(exampleKey)
+                        || !String.valueOf(expected.getMessage()).contains("99")) {
                     throw failure(
                             helper,
                             "the failure should name the attachment and version, got: %s",
@@ -132,10 +136,10 @@ public class PodAttachmentTest {
             CompoundTag saved = output.buildResult()
                     .getCompound(ATTACHMENTS_KEY)
                     .orElseThrow(() -> failure(helper, "the pod saved no attachments"));
-            if (!future.equals(saved.get(exampleKey))) {
+            if (!future.equals(Objects.requireNonNull(saved.get(exampleKey), "saved.get(exampleKey) is absent"))) {
                 throw failure(helper, "the unreadable data was not written back unchanged: %s", saved.get(exampleKey));
             }
-            if (!other.equals(saved.get(otherKey))) {
+            if (!other.equals(Objects.requireNonNull(saved.get(otherKey), "saved.get(otherKey) is absent"))) {
                 throw failure(helper, "the valid attachment was not saved intact: %s", saved.get(otherKey));
             }
             helper.succeed();
@@ -154,7 +158,8 @@ public class PodAttachmentTest {
         CompoundTag current = new CompoundTag();
         current.putInt("version", TestAttachments.VERSION);
         current.putInt("counter", 3);
-        var codec = TestAttachments.EXAMPLE.persistenceCodec();
+        var codec = Objects.requireNonNull(
+                TestAttachments.EXAMPLE.persistenceCodec(), "the example attachment is persistent");
         for (CompoundTag bad : new CompoundTag[] {noVersion, badBody}) {
             Versioned<Example> read = codec.parse(NbtOps.INSTANCE, bad).getOrThrow();
             if (!(read instanceof Versioned.Unreadable<Example> unreadable) || !bad.equals(unreadable.raw())) {
@@ -205,7 +210,7 @@ public class PodAttachmentTest {
         mock.teleportTo(one, new Vec3(x, 8, z), 0, 0);
         PodEntity[] pod = {null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
-            pod[0] = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+            pod[0] = TestEntities.create(PodRegistry.POD, one);
             pod[0].setPos(x, 8, z);
             one.addFreshEntity(pod[0]);
             Versioned.modifyOrThrow(pod[0], TestAttachments.EXAMPLE, example -> new Example(7));
@@ -242,7 +247,7 @@ public class PodAttachmentTest {
     }
 
     /** Saves {@code pod} (replacing its attachments with {@code attachments} if given), discards it and loads a new pod from the data. */
-    private static Entity reload(GameTestHelper helper, PodEntity pod, CompoundTag attachments) {
+    private static Entity reload(GameTestHelper helper, PodEntity pod, @Nullable CompoundTag attachments) {
         ServerLevel level = helper.getLevel();
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
         pod.saveWithoutId(output);
@@ -271,7 +276,7 @@ public class PodAttachmentTest {
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }
@@ -279,7 +284,8 @@ public class PodAttachmentTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

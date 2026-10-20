@@ -16,11 +16,14 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay.Fault;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.awt.image.BufferedImage;
@@ -35,6 +38,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -50,7 +54,6 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
@@ -108,7 +111,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             try {
                 PodEntity[] made = {null};
                 singleplayer.getServer().runOnServer(server -> {
-                    ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                    ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     player.setGameMode(GameType.SURVIVAL);
                     player.getInventory().setItem(1, new ItemStack(Items.GOLDEN_APPLE));
@@ -123,7 +126,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                             ROOM_RADIUS,
                             Blocks.AIR);
                     player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
-                    PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+                    PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                     pod.setPos(0.5, FEET_Y, 0.5);
                     pod.setNoGravity(true);
                     one.addFreshEntity(pod);
@@ -139,7 +142,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         "the pilot seated in the pod in layer 1",
                         client -> client.player != null
                                 && client.player.getVehicle() instanceof PodEntity
-                                && client.level.dimension().equals(LayerChain.dimension(1)));
+                                && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
                 context.waitTicks(
                         40); // tick-wait: the charter's first transmission arrives a moment after the mount, and is
                 // cleared below
@@ -280,7 +283,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 .getServer()
                 .runOnServer(
                         server -> server.getPlayerList().getPlayers().getFirst().stopRiding());
-        ClientWait.until(context, "the pilot on foot", client -> client.player.getVehicle() == null);
+        ClientWait.until(
+                context,
+                "the pilot on foot",
+                client -> ClientSession.player(client).getVehicle() == null);
         ClientWait.until(
                 context,
                 "the cockpit gone on foot",
@@ -297,7 +303,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 throw new AssertionError("the pilot could not board the pod again");
             }
         });
-        ClientWait.until(context, "the pilot seated again", client -> client.player.getVehicle() instanceof PodEntity);
+        ClientWait.until(
+                context,
+                "the pilot seated again",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
     }
 
     /** A shot with the whole HUD switched off, which is what the vanilla box shows when nothing is drawn in it. */
@@ -311,8 +320,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     private BufferedImage shot(ClientGameTestContext context, String name, boolean message) {
         context.runOnClient(client -> {
             client.gui.hud.setOverlayMessage(message ? Component.literal(MESSAGE) : Component.empty(), false);
-            client.player.setYRot(0f);
-            client.player.setXRot(0f);
+            ClientSession.player(client).setYRot(0f);
+            ClientSession.player(client).setXRot(0f);
             client.gui.toastManager().clear();
             TransmissionOverlay.reset();
         });
@@ -358,11 +367,11 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the pod's fuel and hull on the client",
-                client -> client.player.getVehicle() instanceof PodEntity shown
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
                         && shown.fuel() == 50f
                         && Math.abs(shown.hull() - shown.maxHull() / 2f) < 0.01f);
-        CockpitReading reading =
-                context.computeOnClient(client -> CockpitReading.of((PodEntity) client.player.getVehicle(), 0.25));
+        CockpitReading reading = context.computeOnClient(
+                client -> CockpitReading.of(TestEntities.vehicle(ClientSession.player(client), PodEntity.class), 0.25));
         if (Math.abs(reading.fuel() - 0.5) > 1e-6 || Math.abs(reading.hull() - 0.5) > 1e-3 || reading.heat() != 0.25) {
             throw new AssertionError(
                     "A pod with half a tank and half its hull reads 0.5 and 0.5, and the heat it was given: "
@@ -376,9 +385,10 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 RISE + " blocks higher on the client",
-                client -> client.player.getVehicle() instanceof PodEntity shown && shown.getBlockY() >= FEET_Y + RISE);
-        CockpitReading higher =
-                context.computeOnClient(client -> CockpitReading.of((PodEntity) client.player.getVehicle(), 0));
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && shown.getBlockY() >= FEET_Y + RISE);
+        CockpitReading higher = context.computeOnClient(
+                client -> CockpitReading.of(TestEntities.vehicle(ClientSession.player(client), PodEntity.class), 0));
         if (!(higher.depth() < reading.depth())) {
             throw new AssertionError(
                     "A pod " + RISE + " blocks higher reads shallower: " + reading.depth() + " then " + higher.depth());
@@ -401,17 +411,17 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the stranded pod with a full bay on the client",
-                client -> client.player.getVehicle() instanceof PodEntity shown
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
                         && shown.stranded()
                         && shown.cargoUsed() == PodStats.of(shown).cargoSlots());
         List<List<String>> rows = context.computeOnClient(client -> {
-            PodEntity shown = (PodEntity) client.player.getVehicle();
+            PodEntity shown = TestEntities.vehicle(ClientSession.player(client), PodEntity.class);
             CockpitLook look = CockpitLook.current();
             CockpitReading reading = CockpitReading.of(shown, 0);
             if (Math.abs(reading.cargo() - 1.0) > 1e-9) {
                 throw new AssertionError("A full bay reads 1 on the cargo gauge, got " + reading);
             }
-            List<PodStatusHud.Line> readout = PodStatusHud.readout(client.player, shown);
+            List<PodStatusHud.Line> readout = PodStatusHud.readout(ClientSession.player(client), shown);
             if (!CockpitHud.lampsLit(false, false, false, readout)[3]) {
                 throw new AssertionError("A stranded pod's warning lights the fourth lamp, the readout is " + readout);
             }
@@ -447,7 +457,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the pod ready again on the client",
-                client -> client.player.getVehicle() instanceof PodEntity shown
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
                         && !shown.stranded()
                         && shown.cargoUsed() == 0
                         && shown.fuel() == 50f);
@@ -462,7 +472,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
         int floorFeetY = BLACKOUT_FEET_Y;
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             RoomCarver.carve(
                     one,
                     -ROOM_RADIUS,
@@ -479,12 +489,13 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the pod in the blackout band on the client",
-                client -> client.player.getVehicle() instanceof PodEntity shown
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
                         && shown.getBlockY() <= floorFeetY
                         && shown.stranded()
                         && SignalDecay.intensity(shown) >= 1);
         context.runOnClient(client -> {
-            CockpitDecay decay = CockpitDecay.of(client, (PodEntity) client.player.getVehicle(), CockpitLook.current());
+            CockpitDecay decay = CockpitDecay.of(
+                    client, TestEntities.vehicle(ClientSession.player(client), PodEntity.class), CockpitLook.current());
             for (CockpitHud.Part part : CockpitHud.Part.values()) {
                 if (decay.fault(part) != Fault.DROP) {
                     throw new AssertionError("In the blackout every part of the Ribbon is dark, and " + part + " is "
@@ -541,7 +552,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         }
         // A console of tier 2 is read from the synced parts: the pod climbs to the edge of its band and reads less
         // decay than the stock console does there.
-        double stock = context.computeOnClient(client -> SignalDecay.intensity((PodEntity) client.player.getVehicle()));
+        double stock = context.computeOnClient(
+                client -> SignalDecay.intensity(TestEntities.vehicle(ClientSession.player(client), PodEntity.class)));
         singleplayer
                 .getServer()
                 .runOnServer(server -> ScannerPods.fit(
@@ -549,13 +561,17 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the console part on the client",
-                client ->
-                        client.player.getVehicle() instanceof PodEntity shown && SignalDecay.intensity(shown) < stock);
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
+                        && SignalDecay.intensity(shown) < stock);
         double[] fitted = context.computeOnClient(client -> {
-            PodEntity shown = (PodEntity) client.player.getVehicle();
+            PodEntity shown = TestEntities.vehicle(ClientSession.player(client), PodEntity.class);
             return new double[] {
                 SignalDecay.intensity(shown),
-                SignalDecay.intensity(1, Math.floor(shown.getY() + 1e-3) - client.level.getMinY(), 2)
+                SignalDecay.intensity(
+                        1,
+                        Math.floor(shown.getY() + 1e-3)
+                                - ClientLight.clientLevel(client).getMinY(),
+                        2)
             };
         });
         if (Math.abs(fitted[0] - fitted[1]) > 1e-6) {
@@ -570,7 +586,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the pod out of the band on the client",
-                client -> client.player.getVehicle() instanceof PodEntity shown
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity shown
                         && !shown.stranded()
                         && SignalDecay.intensity(shown) == 0);
         BufferedImage clear = shot(context, "cockpit-decay-clear", false);
@@ -744,7 +760,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         + Arrays.toString(plateBox));
             }
             for (String piece : List.of("band", "bezel")) {
-                if (overlap(plateBox, pieces.get(piece))) {
+                if (overlap(plateBox, Objects.requireNonNull(pieces.get(piece), "pieces.get(piece) is absent"))) {
                     problems.add(where + ": the plate with " + kept.size() + " rows covers the " + piece);
                 }
             }
@@ -830,10 +846,12 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     }
 
     private void expectEveryReadoutLineIsOnThePlate(ClientGameTestContext context) {
-        List<String> keys = context.computeOnClient(
-                client -> PodStatusHud.readout(client.player, (PodEntity) client.player.getVehicle()).stream()
-                        .map(line -> ((TranslatableContents) line.text().getContents()).getKey())
-                        .toList());
+        List<String> keys = context.computeOnClient(client -> PodStatusHud.readout(
+                        ClientSession.player(client),
+                        TestEntities.vehicle(ClientSession.player(client), PodEntity.class))
+                .stream()
+                .map(line -> ((TranslatableContents) line.text().getContents()).getKey())
+                .toList());
         for (String key : Stream.of("hull", "fuel", "cargo", "depth")
                 .map(name -> "hud.deepcharter.pod." + name)
                 .toList()) {

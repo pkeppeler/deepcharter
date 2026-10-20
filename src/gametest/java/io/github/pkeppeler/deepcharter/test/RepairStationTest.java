@@ -24,9 +24,11 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.lang.reflect.Field;
@@ -34,6 +36,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -51,7 +54,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -414,7 +416,8 @@ public class RepairStationTest {
             fund(helper, station, 100_000);
             long balance = 100_000;
             for (Consumable consumable : Consumable.values()) {
-                long price = SHOP_PRICES.get(consumable);
+                long price =
+                        Objects.requireNonNull(SHOP_PRICES.get(consumable), "SHOP_PRICES.get(consumable) is absent");
                 if (consumable.price() != price) {
                     throw helper.assertionException(
                             "%s costs $%d, the shop charges $%d", consumable, consumable.price(), price);
@@ -653,7 +656,7 @@ public class RepairStationTest {
 
     private static void teleportFromLayerOne(
             GameTestHelper helper, Consumable teleporter, double x, double z, double scatter, boolean withPassenger) {
-        ServerLevel one = helper.getLevel().getServer().getLevel(LayerChain.dimension(1));
+        ServerLevel one = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
         if (one == null) {
             throw helper.assertionException("layer 1 did not load");
         }
@@ -678,7 +681,7 @@ public class RepairStationTest {
             pilot.teleportTo(one, new Vec3(x, 40, z), 0, 0);
             passenger.teleportTo(one, new Vec3(x, 40, z), 0, 0);
             pilot.player().setGameMode(GameType.SURVIVAL);
-            PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(x, 40, z);
             one.addFreshEntity(pod);
             PodComponents.register(pod, charter.id());
@@ -710,9 +713,9 @@ public class RepairStationTest {
                         "the pilot is in %s, not at the colony's dimension",
                         player.level().dimension());
             }
-            if (!(player.getVehicle() instanceof PodEntity arrived)) {
+            if (!(TestEntities.vehicle(player) instanceof PodEntity arrived)) {
                 throw helper.assertionException(
-                        "the pilot should still be riding the pod, rides %s", player.getVehicle());
+                        "the pilot should still be riding the pod, rides %s", String.valueOf(player.getVehicle()));
             }
             if (arrived.level() != player.level()) {
                 throw helper.assertionException(
@@ -800,10 +803,10 @@ public class RepairStationTest {
             if (pod.position().distanceTo(before) < 100 || Math.abs(pod.getX() - spawn(server).x) > 1.0) {
                 throw helper.assertionException("the pod should be at the spawn, is at %s", pod.position());
             }
-            if (station.pilot().player().getVehicle() != pod) {
+            if (TestEntities.vehicle(station.pilot().player()) != pod) {
                 throw helper.assertionException(
                         "the pilot should still ride the pod, rides %s",
-                        station.pilot().player().getVehicle());
+                        String.valueOf(station.pilot().player().getVehicle()));
             }
             if (station.pilot().player().position().distanceTo(pod.position()) > 3.0) {
                 throw helper.assertionException(

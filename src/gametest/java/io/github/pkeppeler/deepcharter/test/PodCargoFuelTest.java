@@ -13,8 +13,8 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import java.util.List;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
@@ -40,6 +40,7 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /** Server GameTests for pod cargo, lift and fuel. */
 public class PodCargoFuelTest {
@@ -78,7 +79,7 @@ public class PodCargoFuelTest {
         return pilot;
     }
 
-    private static void cleanUp(GameTestHelper helper, PodEntity pod, MockPlayer pilot) {
+    private static void cleanUp(GameTestHelper helper, PodEntity pod, @Nullable MockPlayer pilot) {
         if (pilot != null) {
             pilot.leave();
         }
@@ -91,9 +92,7 @@ public class PodCargoFuelTest {
     }
 
     private static InteractionResult useOnPod(MockPlayer player, PodEntity pod) {
-        return UseEntityCallback.EVENT
-                .invoker()
-                .interact(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null);
+        return UseEntity.on(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
     }
 
     @GameTest
@@ -288,7 +287,7 @@ public class PodCargoFuelTest {
             }
             helper.succeed();
         } catch (CommandSyntaxException e) {
-            throw helper.assertionException("dump should be allowed for an op: %s", e.getMessage());
+            throw helper.assertionException("dump should be allowed for an op: %s", String.valueOf(e.getMessage()));
         } finally {
             player.leave();
         }
@@ -312,7 +311,7 @@ public class PodCargoFuelTest {
             }
         } catch (CommandSyntaxException e) {
             cleanUp(helper, pod, pilot);
-            throw helper.assertionException("dump should be allowed for an op: %s", e.getMessage());
+            throw helper.assertionException("dump should be allowed for an op: %s", String.valueOf(e.getMessage()));
         }
         double startY = pod.getY();
         pilot.setInput(JUMP);
@@ -378,7 +377,7 @@ public class PodCargoFuelTest {
             }
             helper.succeed();
         } catch (CommandSyntaxException e) {
-            throw helper.assertionException("spawn should be allowed for an op: %s", e.getMessage());
+            throw helper.assertionException("spawn should be allowed for an op: %s", String.valueOf(e.getMessage()));
         } finally {
             player.leave();
         }

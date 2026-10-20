@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.HandbookDrawn;
@@ -33,6 +34,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -727,19 +729,22 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the handbook in the inventory",
-                    client -> handbookSlot(client.player.getInventory()) >= 0);
-            context.runOnClient(
-                    client -> client.player.getInventory().setSelectedSlot(handbookSlot(client.player.getInventory())));
+                    client -> handbookSlot(ClientSession.player(client).getInventory()) >= 0);
+            context.runOnClient(client -> ClientSession.player(client)
+                    .getInventory()
+                    .setSelectedSlot(handbookSlot(ClientSession.player(client).getInventory())));
 
             context.getInput().pressKey(HandbookKeys.OPEN);
             ClientWait.screen(context, HandbookScreen.class);
-            context.runOnClient(client -> client.gui.screen().keyPressed(new KeyEvent(InputConstants.KEY_H, 0, 0)));
+            context.runOnClient(client ->
+                    ClientSession.screen(client, Screen.class).keyPressed(new KeyEvent(InputConstants.KEY_H, 0, 0)));
             ClientWait.until(context, "the handbook screen closed", client -> client.gui.screen() == null);
 
             context.getInput().pressKey(options -> options.keyUse);
             ClientWait.screen(context, HandbookScreen.class);
             context.takeScreenshot("handbook-cover");
-            HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
+            HandbookScreen screen =
+                    context.computeOnClient(client -> ClientSession.screen(client, HandbookScreen.class));
 
             int chapterPage = context.computeOnClient(client -> {
                 List<HandbookPage> pages = HandbookScreen.currentPages(client);

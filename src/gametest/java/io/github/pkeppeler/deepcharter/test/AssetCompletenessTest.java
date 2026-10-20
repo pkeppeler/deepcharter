@@ -26,6 +26,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #226 and #242: every block, item and entity the mod registers has the asset files a resource pack would
@@ -125,7 +126,7 @@ public class AssetCompletenessTest {
      * The definition file must exist; every model it names must exist, with its parents and textures, and every connected-casing
      * model must name its tiles. Returns the parsed file, or null when it is missing or does not parse.
      */
-    private static JsonElement checkDefinition(List<String> problems, String owner, String definition) {
+    private static @Nullable JsonElement checkDefinition(List<String> problems, String owner, String definition) {
         JsonElement json = requireJson(problems, owner, definition);
         if (json == null) {
             return null;
@@ -275,7 +276,7 @@ public class AssetCompletenessTest {
         }
     }
 
-    private static JsonElement requireJson(List<String> problems, String owner, String path) {
+    private static @Nullable JsonElement requireJson(List<String> problems, String owner, String path) {
         InputStream stream = AssetCompletenessTest.class.getResourceAsStream(resource(path));
         if (stream == null) {
             problems.add(owner + ": missing " + resource(path));
@@ -290,7 +291,7 @@ public class AssetCompletenessTest {
     }
 
     /** The file's bytes, or null (and a problem) when it is missing, empty or unreadable. */
-    private static byte[] requireFile(List<String> problems, String owner, String path) {
+    private static byte @Nullable [] requireFile(List<String> problems, String owner, String path) {
         try (InputStream stream = AssetCompletenessTest.class.getResourceAsStream(resource(path))) {
             if (stream == null) {
                 problems.add(owner + ": missing " + resource(path));

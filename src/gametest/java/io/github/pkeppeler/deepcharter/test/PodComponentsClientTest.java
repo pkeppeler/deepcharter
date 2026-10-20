@@ -11,9 +11,11 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
 import io.github.pkeppeler.deepcharter.test.support.PodReadout;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.List;
@@ -22,7 +24,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 
 /**
  * Client GameTest for #65: the parts of a pod reach the client, so the HUD shows the hull as points out of the pod's real
@@ -61,7 +62,7 @@ public class PodComponentsClientTest implements FabricClientGameTest {
                 CharterId charter = Charters.charterOfOrThrow(server, player.getUUID())
                         .orElseThrow()
                         .id();
-                PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
                 pod.setPos(player.position());
                 player.level().addFreshEntity(pod);
                 PodComponents.register(pod, charter);
@@ -88,14 +89,15 @@ public class PodComponentsClientTest implements FabricClientGameTest {
                                     + pod.maxHull() + ", hull=" + pod.hull()
                             : "no pod under the player");
 
-            int maxHull =
-                    context.computeOnClient(client -> Math.round(((PodEntity) client.player.getVehicle()).maxHull()));
+            int maxHull = context.computeOnClient(
+                    client -> Math.round(TestEntities.vehicle(ClientSession.player(client), PodEntity.class)
+                            .maxHull()));
             require(
                     maxHull == HULL_MAX,
                     "The client should work out the pod's maximum hull " + HULL_MAX + " from the synced parts, got "
                             + maxHull);
-            List<Component> lines =
-                    context.computeOnClient(client -> PodReadout.texts(client, (PodEntity) client.player.getVehicle()));
+            List<Component> lines = context.computeOnClient(client ->
+                    PodReadout.texts(client, TestEntities.vehicle(ClientSession.player(client), PodEntity.class)));
             require(
                     lines.getFirst().getString().equals("Hull 150/300"),
                     "The HUD should show the hull as 150/300, showed "
@@ -105,21 +107,23 @@ public class PodComponentsClientTest implements FabricClientGameTest {
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                OreCargoMenu.open(player, (PodEntity) player.getVehicle());
+                OreCargoMenu.open(player, TestEntities.vehicle(player, PodEntity.class));
             });
             ClientWait.screen(context, OreCargoScreen.class);
             ClientWait.until(
                     context,
                     "the cargo menu with its " + LOAD.length + " ore",
-                    client -> client.player.containerMenu instanceof OreCargoMenu menu
+                    client -> ClientSession.player(client).containerMenu instanceof OreCargoMenu menu
                             && OreCargoSlots.shown(menu).size() == LOAD.length,
-                    client -> client.player.containerMenu instanceof OreCargoMenu menu
+                    client -> ClientSession.player(client).containerMenu instanceof OreCargoMenu menu
                             ? OreCargoSlots.shown(menu).size() + " ore"
                             : "no cargo menu");
-            int slots = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).cargoSlots());
-            int menuSlots = context.computeOnClient(client -> client.player.containerMenu.slots.size());
-            int shown =
-                    context.computeOnClient(client -> OreCargoSlots.shown((OreCargoMenu) client.player.containerMenu)
+            int slots = context.computeOnClient(
+                    client -> ((OreCargoMenu) ClientSession.player(client).containerMenu).cargoSlots());
+            int menuSlots = context.computeOnClient(
+                    client -> ClientSession.player(client).containerMenu.slots.size());
+            int shown = context.computeOnClient(
+                    client -> OreCargoSlots.shown((OreCargoMenu) ClientSession.player(client).containerMenu)
                             .size());
             require(
                     slots == BAY_SLOTS && menuSlots == BAY_SLOTS && shown == LOAD.length,

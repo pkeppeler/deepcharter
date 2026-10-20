@@ -16,12 +16,14 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -41,13 +43,13 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the seep sounder (#373), in layer 1. Each test has its own X, so the blocks it changes never touch another test's.
@@ -86,7 +88,7 @@ public class PodSounderTest {
 
     /** As {@link #spawn(GameTestHelper, ServerLevel, int, int)}, owned by {@code owner}, who may then mount it. */
     private static PodEntity spawn(GameTestHelper helper, ServerLevel level, int x, int tier, MockPlayer owner) {
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(x, FLOOR, Z);
         level.addFreshEntity(pod);
         if (tier > 0) {
@@ -372,7 +374,7 @@ public class PodSounderTest {
     @GameTest
     public void aSounderSlowsTheDrillByItsTiersShareAndAPodWithoutOneIsStock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        PodEntity stock = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity stock = TestEntities.create(PodRegistry.POD, level);
         PodEntity one = spawn(helper, level, 0, 1);
         PodEntity two = spawn(helper, level, 0, 2);
         float stockTicks = PodStats.of(stock).ticksPerHardness();
@@ -745,12 +747,12 @@ public class PodSounderTest {
     @GameTest
     public void theSoundersStateSurvivesASaveAndALoad(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         PodSounder.State state = new PodSounder.State(3, 0b1010);
         pod.setAttached(PodSounder.STATE, Versioned.of(state));
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
         pod.saveWithoutId(output);
-        PodEntity loaded = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity loaded = TestEntities.create(PodRegistry.POD, level);
         loaded.load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), output.buildResult()));
         if (!Versioned.readable(loaded, PodSounder.STATE).orElseThrow().equals(state)) {
             throw failure(
@@ -796,12 +798,13 @@ public class PodSounderTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(1));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
         }

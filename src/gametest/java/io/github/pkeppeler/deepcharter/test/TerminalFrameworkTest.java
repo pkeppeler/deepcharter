@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.netty.buffer.ByteBuf;
@@ -42,6 +43,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -67,7 +69,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -665,7 +666,7 @@ public class TerminalFrameworkTest {
                     || entity.type() != type) {
                 throw helper.assertionException(
                         "%s should have a terminal block entity of its type, got %s",
-                        type.id(), helper.getLevel().getBlockEntity(pos));
+                        type.id(), String.valueOf(helper.getLevel().getBlockEntity(pos)));
             }
         }
         helper.succeed();
@@ -905,7 +906,7 @@ public class TerminalFrameworkTest {
                         "the test needs a saved DataVersion above %s, got %s",
                         olderDataVersion, NbtUtils.getDataVersion(stamped));
             }
-            Tag savedBody = stamped.get("data");
+            Tag savedBody = Objects.requireNonNull(stamped.get("data"), "the stamped save has no data tag");
             NbtIo.writeCompressed(NbtUtils.addDataVersion(stamped, olderDataVersion), file);
 
             try (SavedDataStorage second = storage(server, dir)) {
@@ -939,7 +940,7 @@ public class TerminalFrameworkTest {
         try {
             data.repaired(TerminalTypes.FUEL_PUMP);
         } catch (IllegalStateException e) {
-            threw = e.getMessage().contains(Integer.toString(RepairState.VERSION + 1));
+            threw = String.valueOf(e.getMessage()).contains(Integer.toString(RepairState.VERSION + 1));
         }
         if (!threw) {
             throw helper.assertionException("using unreadable repair state should throw and name its version");
@@ -1065,7 +1066,7 @@ public class TerminalFrameworkTest {
 
     private static PodEntity pod(GameTestHelper helper, Vec3 at, Charter owner) {
         ServerLevel level = helper.getLevel();
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(at);
         level.addFreshEntity(pod);
         PodComponents.register(pod, owner.id());

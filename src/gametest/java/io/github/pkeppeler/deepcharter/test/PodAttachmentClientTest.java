@@ -2,12 +2,15 @@ package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments.Example;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.world.entity.Entity;
 
 /** Client GameTest: a versioned pod attachment synced with {@code AttachmentSyncPredicate.all()} reaches the client. */
 public class PodAttachmentClientTest implements FabricClientGameTest {
@@ -25,20 +28,23 @@ public class PodAttachmentClientTest implements FabricClientGameTest {
             singleplayer
                     .getServer()
                     .runOnServer(server -> Versioned.modifyOrThrow(
-                            server.getPlayerList().getPlayers().getFirst().getVehicle(),
+                            TestEntities.vehicle(
+                                    server.getPlayerList().getPlayers().getFirst()),
                             TestAttachments.EXAMPLE,
                             example -> new Example(COUNTER)));
 
             ClientWait.until(
                     context,
                     "the vehicle's example attachment at the counter",
-                    client -> client.player.getVehicle() != null
+                    client -> ClientSession.player(client).getVehicle() != null
                             && Versioned.of(new Example(COUNTER))
-                                    .equals(client.player.getVehicle().getAttached(TestAttachments.EXAMPLE)),
-                    client -> "vehicle attachment "
-                            + (client.player.getVehicle() == null
-                                    ? "none"
-                                    : client.player.getVehicle().getAttached(TestAttachments.EXAMPLE)));
+                                    .equals(TestEntities.vehicle(ClientSession.player(client))
+                                            .getAttached(TestAttachments.EXAMPLE)),
+                    client -> {
+                        Entity vehicle = ClientSession.player(client).getVehicle();
+                        return "vehicle attachment "
+                                + (vehicle == null ? "none" : vehicle.getAttached(TestAttachments.EXAMPLE));
+                    });
         }
     }
 }

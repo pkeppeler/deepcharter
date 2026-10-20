@@ -12,9 +12,12 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -25,7 +28,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ARGB;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -73,7 +75,8 @@ public class RetainedClientTest implements FabricClientGameTest {
 
     /** One model draws both figures; its lens sits in the helmet's bracket; its glowmask lights only the lens, dimly; the render state says whether the lamp is lit. */
     private static void expectTheHelmetLight(Minecraft client, int litId, int unlitId) {
-        EntityRenderer<?, ?> renderer = client.getEntityRenderDispatcher().getRenderer(client.level.getEntity(litId));
+        EntityRenderer<?, ?> renderer = client.getEntityRenderDispatcher()
+                .getRenderer(TestEntities.require(ClientLight.clientLevel(client), litId));
         var model = ((LamplessFigureRenderer) renderer).getGeoModel();
         LamplessFigureRenderState lit = state(client, litId);
         LamplessFigureRenderState unlit = state(client, unlitId);
@@ -104,9 +107,9 @@ public class RetainedClientTest implements FabricClientGameTest {
                 "the figure's renderer draws no glow layer for the lamp");
         expectADimLens(client);
         require(
-                GeckoLibResources.getBakedAnimations()
-                        .cache()
-                        .get(LamplessFigureAssets.resource())
+                Objects.requireNonNull(
+                                GeckoLibResources.getBakedAnimations().cache().get(LamplessFigureAssets.resource()),
+                                "GeckoLib did not bake the figure's animations")
                         .animations()
                         .containsKey(LamplessFigureAssets.CLING),
                 "GeckoLib did not load the cling animation");
@@ -143,13 +146,13 @@ public class RetainedClientTest implements FabricClientGameTest {
     }
 
     private static LamplessFigureRenderState state(Minecraft client, int id) {
-        return (LamplessFigureRenderState)
-                client.getEntityRenderDispatcher().extractEntity(client.level.getEntity(id), 1f);
+        return (LamplessFigureRenderState) client.getEntityRenderDispatcher()
+                .extractEntity(TestEntities.require(ClientLight.clientLevel(client), id), 1f);
     }
 
     private static LamplessFigure spawn(ServerPlayer player, boolean lamp, int dz) {
         ServerLevel level = player.level();
-        LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+        LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
         figure.setNoAi(true);
         figure.setLamp(lamp);
         figure.setPos(player.position().add(0, 0, dz));
@@ -165,8 +168,8 @@ public class RetainedClientTest implements FabricClientGameTest {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             ServerLevel level = player.level();
-            ((LamplessFigure) level.getEntity(ids[0])).discard();
-            ((LamplessFigure) level.getEntity(ids[1])).discard();
+            TestEntities.require(level, ids[0], LamplessFigure.class).discard();
+            TestEntities.require(level, ids[1], LamplessFigure.class).discard();
             player.setGameMode(GameType.SURVIVAL);
             BlockPos origin = player.blockPosition().above(60);
             for (int u = -HALF - 1; u <= HALF + 1; u++) {
@@ -180,14 +183,14 @@ public class RetainedClientTest implements FabricClientGameTest {
                     }
                 }
             }
-            PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(Vec3.atBottomCenterOf(origin.east(APPROACH)));
             level.addFreshEntity(pod);
             player.teleportTo(level, pod.getX(), pod.getY(), pod.getZ(), Set.of(), 0f, 0f, true);
             if (!player.startRiding(pod)) {
                 throw new AssertionError("the player could not mount the pod");
             }
-            LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+            LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
             figure.setPos(Vec3.atBottomCenterOf(origin.west(APPROACH)));
             level.addFreshEntity(figure);
             clinging[0] = figure.getId();
@@ -209,12 +212,11 @@ public class RetainedClientTest implements FabricClientGameTest {
 
     /** Whether the client's copy of the figure looks at the pod's centre with its body and its head: what is drawn is what the server holds. */
     private static boolean faces(Minecraft client, int figureId, int podId) {
-        if (!(client.level.getEntity(figureId) instanceof LamplessFigure figure)
-                || client.level.getEntity(podId) == null) {
+        if (!(ClientLight.clientLevel(client).getEntity(figureId) instanceof LamplessFigure figure)
+                || ClientLight.clientLevel(client).getEntity(podId) == null) {
             return false;
         }
-        Vec3 toPod = client.level
-                .getEntity(podId)
+        Vec3 toPod = TestEntities.require(ClientLight.clientLevel(client), podId)
                 .position()
                 .subtract(figure.position())
                 .multiply(1, 0, 1)

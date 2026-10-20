@@ -9,10 +9,12 @@ import io.github.pkeppeler.deepcharter.pod.PodFuel;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -20,12 +22,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #319: a pod's landing costs hull by its sink speed, not by the distance it fell. A pod that brakes with its
@@ -273,7 +275,7 @@ public class PodHardLandingTest {
     }
 
     private static PodEntity spawn(ServerLevel level, Vec3 at) {
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(at);
         level.addFreshEntity(pod);
         return pod;
@@ -281,7 +283,7 @@ public class PodHardLandingTest {
 
     /** A 3 by 3 shaft through the whole of layer 1 over a stone floor, cut through RoomCarver so its shell is sealed. */
     private static ServerLevel shaft(GameTestHelper helper, int x, int z) {
-        ServerLevel one = helper.getLevel().getServer().getLevel(LayerChain.dimension(1));
+        ServerLevel one = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
         if (one == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
         }
@@ -302,7 +304,8 @@ public class PodHardLandingTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

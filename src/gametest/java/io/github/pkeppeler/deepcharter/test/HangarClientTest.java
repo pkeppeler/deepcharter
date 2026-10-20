@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.hangar.HangarView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.HangarDrawn;
@@ -42,7 +43,8 @@ public class HangarClientTest implements FabricClientGameTest {
                         Optional.<TerminalFeature>of(new HangarView(advanceLeft)));
                 for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
                     context.setScreen(() -> new HangarScreen(view));
-                    HangarScreen screen = context.computeOnClient(client -> (HangarScreen) client.gui.screen());
+                    HangarScreen screen =
+                            context.computeOnClient(client -> ClientSession.screen(client, HangarScreen.class));
                     context.runOnClient(client -> screen.resize(size[0], size[1]));
                     ClientWait.until(
                             context,

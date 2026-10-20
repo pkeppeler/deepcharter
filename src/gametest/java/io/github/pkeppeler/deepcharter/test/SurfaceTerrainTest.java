@@ -41,6 +41,7 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the surface (#240): the generator makes regolith plains, craters, terraced mesas and basalt outcrops, with
@@ -490,7 +491,7 @@ public class SurfaceTerrainTest {
     }
 
     @FormatMethod
-    private static RuntimeException fail(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException fail(GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

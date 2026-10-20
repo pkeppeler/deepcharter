@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
@@ -17,7 +18,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -96,9 +96,7 @@ public class ScannerFittingTest {
     /** Holds one unit in the main hand and uses it on the pod through the game's own entity-use event, as a click does. */
     private static InteractionResult useUnit(Scene scene, PodEntity pod) {
         scene.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ScannerRegistry.SCANNER_UNIT));
-        return UseEntityCallback.EVENT
-                .invoker()
-                .interact(scene.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null);
+        return UseEntity.on(scene.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
     }
 
     private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
@@ -310,9 +308,7 @@ public class ScannerFittingTest {
         try {
             PodEntity pod = pod(helper, scene, Optional.of(charterOf(helper, scene.player())));
             scene.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_INGOT));
-            UseEntityCallback.EVENT
-                    .invoker()
-                    .interact(scene.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null);
+            UseEntity.on(scene.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
             Item held = scene.player().getMainHandItem().getItem();
             if (held != Items.IRON_INGOT
                     || PodComponents.partOf(pod, ComponentTrack.SCANNER).isPresent()) {

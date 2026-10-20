@@ -15,7 +15,9 @@ import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -23,6 +25,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -44,6 +47,7 @@ import net.minecraft.world.level.chunk.ImposterProtoChunk;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -324,7 +328,10 @@ public class LayerStructuresTest {
                 unmet.add(String.format("Notes %s, expected only N%02d", notes.keySet(), number));
             } else {
                 int zone = Zones.index(
-                        level.getMinY(), level.getHeight(), notes.get(number).getY());
+                        level.getMinY(),
+                        level.getHeight(),
+                        Objects.requireNonNull(notes.get(number), "notes.get(number) is absent")
+                                .getY());
                 if (zone != site.kind().zone()) {
                     unmet.add(String.format(
                             "N%02d is in zone %d, not %d",
@@ -646,9 +653,12 @@ public class LayerStructuresTest {
                 4,
                 ColonyAnchor.CONTINUITY_OFFICE);
         buildings.forEach((number, anchor) -> {
-            BlockPos at = colony.anchors().get(anchor);
+            BlockPos at = TestColony.anchor(colony, anchor);
             double distance = Math.hypot(
-                    notes.get(number).getX() - at.getX(), notes.get(number).getZ() - at.getZ());
+                    Objects.requireNonNull(notes.get(number), "notes.get(number) is absent")
+                                    .getX()
+                            - at.getX(),
+                    notes.get(number).getZ() - at.getZ());
             if (distance > NEAR_ANCHOR) {
                 throw failure(
                         helper,
@@ -701,7 +711,7 @@ public class LayerStructuresTest {
     }
 
     /** The first fluid or gas pocket in the site's bounds and the shell round them (limited to the blocks of {@code only} when it is given) as text, or null. */
-    private static String fluidOrGasAt(ServerLevel level, StructureSite site, ChunkPos only) {
+    private static @Nullable String fluidOrGasAt(ServerLevel level, StructureSite site, @Nullable ChunkPos only) {
         BoundingBox box = site.bounds();
         for (BlockPos pos : BlockPos.betweenClosed(
                 box.minX() - 1, box.minY() - 1, box.minZ() - 1, box.maxX() + 1, box.maxY() + 1, box.maxZ() + 1)) {
@@ -721,7 +731,7 @@ public class LayerStructuresTest {
     }
 
     private static ServerLevel level(GameTestHelper helper, int layer) {
-        ServerLevel level = server(helper).getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(server(helper), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }
@@ -730,7 +740,8 @@ public class LayerStructuresTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

@@ -34,4 +34,4 @@ elif [[ $local_version != "$SHELLCHECK_VERSION" ]]; then
 fi
 
 cd "$root"
-shellcheck -x -P SCRIPTDIR tools/*.sh tools/tests/*.sh .claude/hooks/*.sh
+shellcheck tools/*.sh tools/tests/*.sh .claude/hooks/*.sh

@@ -14,8 +14,12 @@ public final class TestEntities {
 
     /** A new {@code type} in {@code level}, made as the {@code /summon} command makes it, not yet added to the level. */
     public static <T extends Entity> T create(EntityType<T> type, Level level) {
-        return Objects.requireNonNull(
-                type.create(level, EntitySpawnReason.COMMAND), () -> "no " + type + " was created");
+        return create(type, level, EntitySpawnReason.COMMAND);
+    }
+
+    /** A new {@code type} in {@code level} for {@code reason}, not yet added to the level. */
+    public static <T extends Entity> T create(EntityType<T> type, Level level, EntitySpawnReason reason) {
+        return Objects.requireNonNull(type.create(level, reason), () -> "no " + type + " was created");
     }
 
     /** The entity with this network id, which must be in {@code level}. */

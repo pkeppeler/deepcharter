@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.HandbookDrawn;
 import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
@@ -172,7 +173,8 @@ public class NotesClientTest implements FabricClientGameTest {
 
             context.runOnClient(client -> HandbookScreen.open(client));
             ClientWait.screen(context, HandbookScreen.class);
-            HandbookScreen screen = context.computeOnClient(client -> (HandbookScreen) client.gui.screen());
+            HandbookScreen screen =
+                    context.computeOnClient(client -> ClientSession.screen(client, HandbookScreen.class));
             context.runOnClient(client -> screen.showNotes());
             context.waitTicks(2);
             require(

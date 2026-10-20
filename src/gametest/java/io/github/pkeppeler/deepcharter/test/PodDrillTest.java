@@ -18,15 +18,18 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -36,13 +39,13 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for pod drilling, driven by a mock pilot's input in layer_1 (and layer_2, for the
@@ -72,10 +75,14 @@ public class PodDrillTest {
      */
     private static final class Rig {
         private final MockPlayer pilot;
-        private PodEntity pod;
+        private @Nullable PodEntity pod;
 
         private Rig(MockPlayer pilot) {
             this.pilot = pilot;
+        }
+
+        PodEntity pod() {
+            return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
         }
 
         boolean ready() {
@@ -103,7 +110,7 @@ public class PodDrillTest {
             pilot.teleportTo(level, at, yaw, 0f);
             Rig rig = new Rig(pilot);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-                PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
                 level.addFreshEntity(pod);
                 if (!pilot.player().startRiding(pod)) {
@@ -136,7 +143,7 @@ public class PodDrillTest {
                 released[0] = true;
             }
             // Landed: the pod has sunk into the bore and rests on its floor.
-            if (released[0] && rig.pod.onGround() && rig.pod.getY() < floor - n + 0.1) {
+            if (released[0] && rig.pod().onGround() && rig.pod().getY() < floor - n + 0.1) {
                 // Bore x in {x-1, x}, z in {Z, Z+1}, y in {floor-n .. floor-1}: nothing else may have changed.
                 for (int bx = x - 4; bx <= x + 3; bx++) {
                     for (int bz = Z - 4; bz <= Z + 4; bz++) {
@@ -157,15 +164,15 @@ public class PodDrillTest {
                         }
                     }
                 }
-                if (Math.abs(rig.pod.getX() - x) > 0.01 || Math.abs(rig.pod.getZ() - (Z + 1)) > 0.01) {
+                if (Math.abs(rig.pod().getX() - x) > 0.01 || Math.abs(rig.pod().getZ() - (Z + 1)) > 0.01) {
                     throw failure(
                             helper,
                             "the pod should end centred in its bore at (%d, %d), it is at %s",
                             x,
                             Z + 1,
-                            rig.pod.position());
+                            rig.pod().position());
                 }
-                rig.pod.discard();
+                rig.pod().discard();
                 helper.succeed();
             }
         });
@@ -186,7 +193,7 @@ public class PodDrillTest {
             if (!rig.ready()) {
                 return;
             }
-            PodEntity pod = rig.pod;
+            PodEntity pod = rig.pod();
             if (!pod.onGround() && pod.horizontalCollision) {
                 airborneAgainstWall[0]++;
                 if (pod.drilling()) {
@@ -206,7 +213,7 @@ public class PodDrillTest {
                         || count(level, x + 3, x + 5, floor, floor + 10, Z - 3, Z + 3, Blocks.AIR) != 0) {
                     throw failure(helper, "the sideways bore is not exactly the 2 x %d in front of the pod", height);
                 }
-                rig.pod.discard();
+                rig.pod().discard();
                 helper.succeed();
             }
         });
@@ -225,22 +232,22 @@ public class PodDrillTest {
             if (!rig.ready()) {
                 return;
             }
-            if (rig.pod.drilling()) {
+            if (rig.pod().drilling()) {
                 throw failure(helper, "the pod started drilling a slab that reaches the ceiling row");
             }
-            if (rig.pod.tickCount < 150) {
+            if (rig.pod().tickCount < 150) {
                 return;
             }
-            if (!rig.pod.horizontalCollision) {
+            if (!rig.pod().horizontalCollision) {
                 throw failure(
                         helper,
                         "the pod is not pressing against the wall, so the test proved nothing: %s",
-                        rig.pod.position());
+                        rig.pod().position());
             }
             if (count(level, x + 2, x + 3, floor, ceiling, Z - 3, Z + 3, Blocks.AIR) != 0) {
                 throw failure(helper, "a block at or under the ceiling was broken");
             }
-            rig.pod.discard();
+            rig.pod().discard();
             helper.succeed();
         });
     }
@@ -264,7 +271,7 @@ public class PodDrillTest {
             if (count(level, x + 2, x + 2, floor, top, Z - 1, Z, Blocks.AIR) != 2 * height) {
                 throw failure(helper, "the wall one row below the ceiling was not bored");
             }
-            rig.pod.discard();
+            rig.pod().discard();
         });
     }
 
@@ -288,13 +295,13 @@ public class PodDrillTest {
             if (shallowTicks[0] < 0
                     && level.getBlockState(new BlockPos(shallowX, shallowFloor - 1, Z))
                             .isAir()) {
-                shallowTicks[0] = shallow.pod.tickCount;
+                shallowTicks[0] = shallow.pod().tickCount;
                 shallow.pilot.releaseInput();
             }
             if (deepTicks[0] < 0
                     && level.getBlockState(new BlockPos(deepX, deepFloor - 1, Z))
                             .isAir()) {
-                deepTicks[0] = deep.pod.tickCount;
+                deepTicks[0] = deep.pod().tickCount;
                 deep.pilot.releaseInput();
             }
             if (shallowTicks[0] < 0 || deepTicks[0] < 0) {
@@ -311,8 +318,8 @@ public class PodDrillTest {
             }
             expectNear(helper, shallowTicks[0], expectedTicks(level, shallowFloor - 1), "shallow");
             expectNear(helper, deepTicks[0], expectedTicks(level, deepFloor - 1), "deep");
-            shallow.pod.discard();
-            deep.pod.discard();
+            shallow.pod().discard();
+            deep.pod().discard();
             helper.succeed();
         });
     }
@@ -353,7 +360,7 @@ public class PodDrillTest {
                 return;
             }
             rig.pilot.releaseInput();
-            List<Item> kept = rig.pod.cargo().entries().stream()
+            List<Item> kept = rig.pod().cargo().entries().stream()
                     .map(entry -> entry.stack().getItem())
                     .toList();
             if (kept.size() != 2
@@ -361,10 +368,13 @@ public class PodDrillTest {
                     || !kept.contains(OreRegistry.item(OreType.EINSTEINIUM))) {
                 throw failure(helper, "cargo should hold exactly the Ironium and the Einsteinium, it holds %s", kept);
             }
-            if (rig.pod.cargoUsed() != 2) {
-                throw failure(helper, "the synced cargo count is %d, expected 2", rig.pod.cargoUsed());
+            if (rig.pod().cargoUsed() != 2) {
+                throw failure(
+                        helper,
+                        "the synced cargo count is %d, expected 2",
+                        rig.pod().cargoUsed());
             }
-            rig.pod.discard();
+            rig.pod().discard();
             helper.succeed();
         });
     }
@@ -393,10 +403,10 @@ public class PodDrillTest {
                 return;
             }
             rig.pilot.releaseInput();
-            List<Item> kept = rig.pod.cargo().entries().stream()
+            List<Item> kept = rig.pod().cargo().entries().stream()
                     .map(entry -> entry.stack().getItem())
                     .toList();
-            if (rig.pod.cargoUsed() != slots
+            if (rig.pod().cargoUsed() != slots
                     || kept.size() != slots
                     || kept.contains(OreRegistry.item(OreType.EINSTEINIUM))) {
                 throw failure(
@@ -405,7 +415,7 @@ public class PodDrillTest {
                         slots,
                         kept);
             }
-            rig.pod.discard();
+            rig.pod().discard();
             helper.succeed();
         });
     }
@@ -428,13 +438,13 @@ public class PodDrillTest {
                 throw failure(
                         helper,
                         "the pod on the ledge did not bore the 2 x 2 below it, it is at %s",
-                        rig.pod.position());
+                        rig.pod().position());
             }
             if (count(level, x + 1, x + 1, floor - 1, floor - 1, Z - 1, Z, Blocks.STONE) != 2) {
                 throw failure(helper, "the bore took the ledge column too");
             }
             rig.pilot.releaseInput();
-            rig.pod.discard();
+            rig.pod().discard();
         });
     }
 
@@ -456,14 +466,14 @@ public class PodDrillTest {
                 throw failure(
                         helper,
                         "the pod did not bore the full wall behind the one-column wall, it is at %s",
-                        rig.pod.position());
+                        rig.pod().position());
             }
             if (!level.getBlockState(new BlockPos(x + 2, floor, Z + 1)).is(Blocks.STONE)
                     || !level.getBlockState(new BlockPos(x + 4, floor, Z + 1)).is(Blocks.STONE)) {
                 throw failure(helper, "the bore reached a column outside the pod's 2 x 2");
             }
             rig.pilot.releaseInput();
-            rig.pod.discard();
+            rig.pod().discard();
         });
     }
 
@@ -522,14 +532,14 @@ public class PodDrillTest {
                 return;
             }
             if (Float.isNaN(start[0])) {
-                start[0] = rig.pod.hull();
+                start[0] = rig.pod().hull();
             }
             if (!level.getBlockState(pocket).is(HazardBlocks.GAS_POCKET)) {
                 float whole = GasHazard.damage(
-                        Depth.feet(Depth.of(level, pocket.getY())), PodComponents.radiatorRatio(rig.pod));
-                float lost = start[0] - rig.pod.hull();
+                        Depth.feet(Depth.of(level, pocket.getY())), PodComponents.radiatorRatio(rig.pod()));
+                float lost = start[0] - rig.pod().hull();
                 rig.pilot.releaseInput();
-                rig.pod.discard();
+                rig.pod().discard();
                 check.accept(lost, whole);
                 helper.succeed();
             }
@@ -619,16 +629,20 @@ public class PodDrillTest {
             if (!rig.ready()) {
                 return;
             }
-            if (rig.pod.drilling()) {
+            if (rig.pod().drilling()) {
                 throw failure(helper, "the pod drills the floor of the last layer, which leads nowhere");
             }
-            if (rig.pod.tickCount < 100) {
+            if (rig.pod().tickCount < 100) {
                 return;
             }
-            if (!rig.pod.onGround() || !two.getBlockState(new BlockPos(x, 2, Z)).is(LayerBlocks.BREACH_CRUST)) {
-                throw failure(helper, "the pod should be standing on intact crust, it is at %s", rig.pod.position());
+            if (!rig.pod().onGround()
+                    || !two.getBlockState(new BlockPos(x, 2, Z)).is(LayerBlocks.BREACH_CRUST)) {
+                throw failure(
+                        helper,
+                        "the pod should be standing on intact crust, it is at %s",
+                        rig.pod().position());
             }
-            rig.pod.discard();
+            rig.pod().discard();
             helper.succeed();
         });
     }
@@ -683,7 +697,7 @@ public class PodDrillTest {
                 "drill-towed",
                 pod -> {},
                 (pod, at) -> {
-                    tower[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                    tower[0] = TestEntities.create(PodRegistry.POD, level);
                     tower[0].setPos(at + 1.3 + trail, FLOOR, Z);
                     level.addFreshEntity(tower[0]);
                     PodTowing.attach(tower[0], pod);
@@ -714,7 +728,7 @@ public class PodDrillTest {
             if (!rig.ready()) {
                 return;
             }
-            PodEntity pod = rig.pod;
+            PodEntity pod = rig.pod();
             if (started[0] < 0 && pod.drilling()) {
                 started[0] = pod.tickCount;
             }
@@ -775,7 +789,7 @@ public class PodDrillTest {
             if (!rig.ready()) {
                 return;
             }
-            PodEntity pod = rig.pod;
+            PodEntity pod = rig.pod();
             if (started[0] < 0 && pod.drilling()) {
                 started[0] = pod.tickCount;
             }
@@ -867,12 +881,13 @@ public class PodDrillTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }

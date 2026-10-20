@@ -52,6 +52,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -78,6 +79,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #81: chapters 1 to 5 and their directives are pinned, their lang text is real, and a scripted run by a
@@ -174,11 +176,12 @@ public class HandbookChaptersOneToFiveTest {
         }
         int order = 1;
         for (String id : ORDER) {
-            HandbookChapter chapter = chapters.get(id);
-            if (chapter.order() != order++ || !directivesOf(chapter).equals(PINNED.get(id))) {
+            HandbookChapter chapter = Objects.requireNonNull(chapters.get(id), () -> "no shipped chapter " + id);
+            List<String> pinned = Objects.requireNonNull(PINNED.get(id), () -> "no pinned directives for " + id);
+            if (chapter.order() != order++ || !directivesOf(chapter).equals(pinned)) {
                 throw helper.assertionException(
                         "chapter %s should be number %s with directives %s, got %s with %s",
-                        id, order - 1, PINNED.get(id), chapter.order(), directivesOf(chapter));
+                        id, order - 1, pinned, chapter.order(), directivesOf(chapter));
             }
         }
         helper.succeed();
@@ -883,7 +886,7 @@ public class HandbookChaptersOneToFiveTest {
     /** A GameTest environment of its own: the batches run one after another, so nothing else runs while the real listener sees the swapped state. */
     private static final String ALONE = "deepcharter-test:alone";
 
-    private static RepairState worldsRepairs;
+    private static @Nullable RepairState worldsRepairs;
 
     // The handbook's own END_SERVER_TICK listener is in the default phase: the swap goes in just before it and comes
     // out just after it,

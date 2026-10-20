@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.ScannerHudTest.HudShot;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.Arrays;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -23,7 +24,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import org.slf4j.Logger;
@@ -91,8 +91,8 @@ public class ScannerFrameTimeClientTest implements FabricClientGameTest {
     private static void mount(TestServerContext server, Chassis chassis, int scannerTier) {
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-            PodEntity pod = (chassis == Chassis.PROSPECTOR ? PodRegistry.PROSPECTOR : PodRegistry.POD)
-                    .create(player.level(), EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(
+                    chassis == Chassis.PROSPECTOR ? PodRegistry.PROSPECTOR : PodRegistry.POD, player.level());
             pod.setPos(player.position());
             player.level().addFreshEntity(pod);
             if (scannerTier > 0) {
@@ -132,8 +132,8 @@ public class ScannerFrameTimeClientTest implements FabricClientGameTest {
                     "the client riding a pod",
                     client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
             int filled = server.computeOnServer(minecraftServer -> {
-                PodEntity pod = (PodEntity)
-                        minecraftServer.getPlayerList().getPlayers().getFirst().getVehicle();
+                PodEntity pod = TestEntities.vehicle(
+                        minecraftServer.getPlayerList().getPlayers().getFirst(), PodEntity.class);
                 ServerLevel level = (ServerLevel) pod.level();
                 Direction facing = pod.getDirection();
                 int count = 0;

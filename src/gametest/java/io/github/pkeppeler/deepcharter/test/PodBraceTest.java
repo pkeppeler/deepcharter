@@ -12,12 +12,14 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
@@ -29,12 +31,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the crust warning and the breach brace (#378). Layer 1 is crust at y 0 to 2 (3 rows of 8 hull each), so a pod with its
@@ -52,7 +54,7 @@ public class PodBraceTest {
     private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }
@@ -60,7 +62,8 @@ public class PodBraceTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -72,7 +75,7 @@ public class PodBraceTest {
 
     /** A Mole with its feet at {@code y}, {@code hull} hull and a brace if {@code braced}; not in the world, so it never ticks. */
     private static PodEntity pod(GameTestHelper helper, ServerLevel level, int y, float hull, boolean braced) {
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(100, y, 3800);
         if (braced) {
             ScannerPods.fit(helper.getLevel().getServer(), owner(helper).player(), pod, ComponentTrack.BRACE, 1);
@@ -387,7 +390,7 @@ public class PodBraceTest {
         pilot.teleportTo(one, new Vec3(x, 10, z), 0f, 0f);
         PodEntity[] pod = {null};
         FarChunks.awaitEntityTicking(helper, one, new BlockPos(x, 10, z), () -> {
-            PodEntity spawned = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+            PodEntity spawned = TestEntities.create(PodRegistry.POD, one);
             spawned.setPos(x, 10, z);
             one.addFreshEntity(spawned);
             if (!pilot.player().startRiding(spawned)) {
@@ -425,7 +428,7 @@ public class PodBraceTest {
         ServerLevel one = layer(helper, 1);
         for (EntityType<PodEntity> type :
                 List.of(PodRegistry.POD, PodRegistry.PROSPECTOR, OddPods.TYPE, OddPods.TALL_TYPE)) {
-            PodEntity pod = type.create(one, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(type, one);
             pod.setPos(100, 10, 3800);
             ScannerPods.fit(helper.getLevel().getServer(), owner(helper).player(), pod, ComponentTrack.BRACE, 1);
             pod.setHull(5f);

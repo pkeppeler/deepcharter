@@ -13,7 +13,9 @@ import io.github.pkeppeler.deepcharter.client.creature.LamplessFigureRenderState
 import io.github.pkeppeler.deepcharter.client.creature.LamplessFigureRenderer;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
@@ -28,7 +30,6 @@ import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ARGB;
-import net.minecraft.world.entity.EntitySpawnReason;
 import org.joml.Matrix4f;
 
 /**
@@ -62,8 +63,7 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 // Face +z, where the figure stands.
                 player.teleportTo(player.level(), player.getX(), player.getY(), player.getZ(), Set.of(), 0f, 10f, true);
-                LamplessFigure figure =
-                        CreatureRegistry.LAMPLESS_FIGURE.create(player.level(), EntitySpawnReason.COMMAND);
+                LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, player.level());
                 figure.setNoAi(true);
                 figure.setPos(player.position().add(0, 0, 4));
                 player.level().addFreshEntity(figure);
@@ -87,7 +87,8 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
             // A figure that is dissolving, half way (its death clock is set and read in one client step, so that the
             // client's own tick cannot move it): see-through.
             context.runOnClient(client -> {
-                ((LamplessFigure) client.level.getEntity(figureId[0])).deathTime = HALF_DISSOLVED_TICKS;
+                TestEntities.require(ClientLight.clientLevel(client), figureId[0], LamplessFigure.class).deathTime =
+                        HALF_DISSOLVED_TICKS;
                 require(
                         drawnDissolving(client, figureId[0]).isEmpty(),
                         "a dissolving figure is drawn wrong: " + drawnDissolving(client, figureId[0]));
@@ -99,7 +100,7 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
 
     /** What is wrong with the way a whole figure (fade 0) is drawn: its state is read as the renderer reads it, so a dropped line in the renderer shows here. */
     private static List<String> drawnWhole(Minecraft client, int id) {
-        LamplessFigure figure = (LamplessFigure) client.level.getEntity(id);
+        LamplessFigure figure = TestEntities.require(ClientLight.clientLevel(client), id, LamplessFigure.class);
         LamplessFigureRenderer renderer = (LamplessFigureRenderer) renderer(client, id);
         LamplessFigureRenderState state = extract(client, figure);
         List<String> wrong = new ArrayList<>();
@@ -110,8 +111,8 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
             wrong.add(
                     "shadow radius " + state.shadowRadius + " is not the full " + LamplessFigureRenderer.SHADOW_RADIUS);
         }
-        if (renderer.getRenderType(state, LamplessFigureAssets.texture())
-                .equals(RenderTypes.entityTranslucent(LamplessFigureAssets.texture()))) {
+        if (RenderTypes.entityTranslucent(LamplessFigureAssets.texture())
+                .equals(renderer.getRenderType(state, LamplessFigureAssets.texture()))) {
             wrong.add("the render type is translucent");
         }
         int alpha = ARGB.alpha(renderer.getRenderColor(new LamplessFigureAnimatable(), figure, 1f));
@@ -123,7 +124,7 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
 
     /** What is wrong with the way a figure that is dissolving (fade above 0) is drawn: a smaller shadow, a translucent type, alpha under 255. */
     private static List<String> drawnDissolving(Minecraft client, int id) {
-        LamplessFigure figure = (LamplessFigure) client.level.getEntity(id);
+        LamplessFigure figure = TestEntities.require(ClientLight.clientLevel(client), id, LamplessFigure.class);
         LamplessFigureRenderer renderer = (LamplessFigureRenderer) renderer(client, id);
         LamplessFigureRenderState state = extract(client, figure);
         List<String> wrong = new ArrayList<>();
@@ -134,8 +135,8 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
             wrong.add("shadow radius " + state.shadowRadius + " did not shrink from "
                     + LamplessFigureRenderer.SHADOW_RADIUS);
         }
-        if (!renderer.getRenderType(state, LamplessFigureAssets.texture())
-                .equals(RenderTypes.entityTranslucent(LamplessFigureAssets.texture()))) {
+        if (!RenderTypes.entityTranslucent(LamplessFigureAssets.texture())
+                .equals(renderer.getRenderType(state, LamplessFigureAssets.texture()))) {
             wrong.add("the render type is not translucent");
         }
         int alpha = ARGB.alpha(renderer.getRenderColor(new LamplessFigureAnimatable(), figure, 1f));
@@ -181,7 +182,7 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
      * ({@code tools/tests/test_lampless_figure.py}) holds the model, in every keyframe, inside the box the renderer culls by.
      */
     private static void notCulledAtTheEdge(Minecraft client, int id) {
-        LamplessFigure figure = (LamplessFigure) client.level.getEntity(id);
+        LamplessFigure figure = TestEntities.require(ClientLight.clientLevel(client), id, LamplessFigure.class);
         LamplessFigureRenderer renderer = (LamplessFigureRenderer) renderer(client, id);
         double edge = DISTANCE * Math.tan(Math.toRadians(FOV_Y_DEGREES) / 2) * ASPECT;
         Matrix4f projection = new Matrix4f().perspective((float) Math.toRadians(FOV_Y_DEGREES), ASPECT, 0.05f, 128f);
@@ -228,6 +229,7 @@ public class LamplessFigureClientTest implements FabricClientGameTest {
     }
 
     private static EntityRenderer<?, ?> renderer(Minecraft client, int id) {
-        return client.getEntityRenderDispatcher().getRenderer(client.level.getEntity(id));
+        return client.getEntityRenderDispatcher()
+                .getRenderer(TestEntities.require(ClientLight.clientLevel(client), id));
     }
 }

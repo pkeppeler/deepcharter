@@ -13,18 +13,21 @@ import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -37,7 +40,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -45,6 +47,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the liner (#339), in layer 1 (the liner works only in a layer). Each test has its own X, so the blocks it changes
@@ -131,7 +134,7 @@ public class PodLinerTest {
     }
 
     private static PodEntity spawnFitted(GameTestHelper helper, ServerLevel level, Vec3 at, int tier, int rack) {
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(at);
         level.addFreshEntity(pod);
         ScannerPods.fit(helper.getLevel().getServer(), owner(helper).player(), pod, ComponentTrack.LINER, tier);
@@ -149,7 +152,7 @@ public class PodLinerTest {
 
     /** A pod that waits for a ring: its anchor is {@code dueAfter(tier)} slabs above its feet, in its own column. */
     private static final class Armed {
-        private PodEntity pod;
+        private @Nullable PodEntity pod;
     }
 
     /**
@@ -275,7 +278,7 @@ public class PodLinerTest {
     }
 
     /** Takes the lava out of the shaft's wall and, if {@code at} is given, puts a source there instead. */
-    private static Consumer<ServerLevel> lavaOnlyAt(int x, BlockPos at) {
+    private static Consumer<ServerLevel> lavaOnlyAt(int x, @Nullable BlockPos at) {
         return level -> {
             removeShaftLava(level, x);
             if (at != null) {
@@ -500,7 +503,7 @@ public class PodLinerTest {
         pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
-            PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(x, FLOOR, Z);
             level.addFreshEntity(pod);
             if (!pilot.player().startRiding(pod)) {
@@ -545,7 +548,7 @@ public class PodLinerTest {
     public void theLinerWaitsWhileThePilotLinesByHandAndTheRingStaysDue(GameTestHelper helper) {
         ringHeld(helper, 5780, pod -> {}, pilot -> {
             PodLining.toggle(pilot.player());
-            if (!PodLining.working((PodEntity) pilot.player().getVehicle())) {
+            if (!PodLining.working(TestEntities.vehicle(pilot.player(), PodEntity.class))) {
                 throw failure(helper, "the press should have started the hand lining");
             }
         });
@@ -568,7 +571,7 @@ public class PodLinerTest {
         pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
-            PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(x, FLOOR, Z);
             level.addFreshEntity(pod);
             if (!pilot.player().startRiding(pod)) {
@@ -652,7 +655,7 @@ public class PodLinerTest {
     @GameTest
     public void aLinerSlowsTheDrillByItsTiersShareAndAPodWithoutOneIsStock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        PodEntity stock = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity stock = TestEntities.create(PodRegistry.POD, level);
         PodEntity one = spawnFitted(helper, level, helper.absoluteVec(new Vec3(1, 2, 1)), 1, 0);
         PodEntity two = spawnFitted(helper, level, helper.absoluteVec(new Vec3(1, 2, 3)), 2, 0);
         float stockTicks = PodStats.of(stock).ticksPerHardness();
@@ -678,12 +681,12 @@ public class PodLinerTest {
     @GameTest
     public void theLinersStateSurvivesASaveAndALoad(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         PodLiner.State state = new PodLiner.State(Optional.of(new PodLiner.Anchor(41, -7, 300)));
         pod.setAttached(PodLiner.STATE, Versioned.of(state));
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
         pod.saveWithoutId(output);
-        PodEntity loaded = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity loaded = TestEntities.create(PodRegistry.POD, level);
         loaded.load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), output.buildResult()));
         if (!Versioned.readable(loaded, PodLiner.STATE).orElseThrow().equals(state)) {
             throw failure(
@@ -721,7 +724,7 @@ public class PodLinerTest {
     /** Watches a pod's liner and notes each ring: the anchor moves down only when the liner lines. */
     private static final class Watch {
         private final PodEntity pod;
-        private PodLiner.Anchor last;
+        private PodLiner.@Nullable Anchor last;
         private int rack;
         int start;
         final List<Ring> rings = new ArrayList<>();
@@ -749,11 +752,19 @@ public class PodLinerTest {
 
     private static final class Rig {
         private final MockPlayer pilot;
-        private PodEntity pod;
-        private Watch watch;
+        private @Nullable PodEntity pod;
+        private @Nullable Watch watch;
 
         private Rig(MockPlayer pilot) {
             this.pilot = pilot;
+        }
+
+        PodEntity pod() {
+            return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
+        }
+
+        Watch watch() {
+            return Objects.requireNonNull(watch, "watch: made with the pod, read before ready()");
         }
 
         boolean ready() {
@@ -765,7 +776,7 @@ public class PodLinerTest {
             pilot.teleportTo(level, at, 0f, 0f);
             Rig rig = new Rig(pilot);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-                PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
                 level.addFreshEntity(pod);
                 if (!pilot.player().startRiding(pod)) {
@@ -791,13 +802,13 @@ public class PodLinerTest {
             if (!rig.ready()) {
                 return;
             }
-            rig.watch.tick();
-            if (rig.pod.blockPosition().getY() > rig.watch.start - 10) {
+            rig.watch().tick();
+            if (rig.pod().blockPosition().getY() > rig.watch().start - 10) {
                 return;
             }
             rig.pilot.releaseInput();
-            List<Ring> rings = rig.watch.rings.stream()
-                    .map(ring -> new Ring(ring.feetY() - rig.watch.start, ring.bricks(), true))
+            List<Ring> rings = rig.watch().rings.stream()
+                    .map(ring -> new Ring(ring.feetY() - rig.watch().start, ring.bricks(), true))
                     .toList();
             if (!rings.equals(expected)) {
                 throw failure(
@@ -807,7 +818,7 @@ public class PodLinerTest {
                         expected,
                         rings);
             }
-            rig.pod.discard();
+            rig.pod().discard();
             helper.succeed();
         });
     }
@@ -842,14 +853,14 @@ public class PodLinerTest {
             if (!rig.ready()) {
                 return;
             }
-            rig.watch.tick();
-            airborne[0] |= !rig.pod.onGround();
-            settled[0] = airborne[0] && rig.pod.onGround() ? settled[0] + 1 : 0;
+            rig.watch().tick();
+            airborne[0] |= !rig.pod().onGround();
+            settled[0] = airborne[0] && rig.pod().onGround() ? settled[0] + 1 : 0;
             if (settled[0] < 4) {
                 return;
             }
-            check.accept(rig.watch.rings);
-            rig.pod.discard();
+            check.accept(rig.watch().rings);
+            rig.pod().discard();
             helper.succeed();
         });
     }
@@ -902,12 +913,13 @@ public class PodLinerTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(1));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
         }

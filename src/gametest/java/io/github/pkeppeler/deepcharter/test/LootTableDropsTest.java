@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -21,6 +22,7 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The drops of every loot table the mod ships, from the real {@code LootTable} with fixed seeds (#469). The tables are in the 26.3 format;
@@ -158,7 +160,8 @@ public class LootTableDropsTest {
             for (int count = range.min(); count <= range.max(); count++) {
                 counts.add(count);
             }
-            if (!seen.get(range.item()).equals(counts)) {
+            if (!Objects.requireNonNull(seen.get(range.item()), "seen.get(range.item()) is absent")
+                    .equals(counts)) {
                 throw helper.assertionException(
                         "salvage_crate drops %s in counts %s over %s seeds, expected every count of %s",
                         range.item(), seen.get(range.item()), SEEDS, counts);
@@ -200,11 +203,12 @@ public class LootTableDropsTest {
         helper.succeed();
     }
 
-    private static List<ItemStack> roll(ServerLevel level, String path, long seed, Float blastRadius) {
+    private static List<ItemStack> roll(ServerLevel level, String path, long seed, @Nullable Float blastRadius) {
         return roll(level, path, seed, blastRadius, ItemStack.EMPTY);
     }
 
-    private static List<ItemStack> roll(ServerLevel level, String path, long seed, Float blastRadius, ItemStack tool) {
+    private static List<ItemStack> roll(
+            ServerLevel level, String path, long seed, @Nullable Float blastRadius, ItemStack tool) {
         var block = BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
         ResourceKey<LootTable> key = block.getLootTable().orElseThrow();
         LootTable table = level.getServer().reloadableRegistries().getLootTable(key);

@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -388,7 +389,7 @@ public class SalvageBootstrapTest {
 
         /** Crafts a terminal part from the grid the handbook's recipe shows: I iron, C copper, R redstone. */
         void craftPart(GameTestHelper helper, String part) {
-            String[] rows = PART_GRIDS.get(part);
+            String[] rows = Objects.requireNonNull(PART_GRIDS.get(part), () -> "no grid for " + part);
             List<Item> cells = new ArrayList<>();
             for (String row : rows) {
                 for (int column = 0; column < row.length(); column++) {
@@ -460,7 +461,9 @@ public class SalvageBootstrapTest {
                             drops(level, block("salvage_crate"), crate + 1).forEach(bag::add);
                         }
                         Set<String> done = new LinkedHashSet<>();
-                        List<String> chapterOne = HandbookChaptersOneToFiveTest.PINNED.get("deepcharter:welcome");
+                        List<String> chapterOne = Objects.requireNonNull(
+                                HandbookChaptersOneToFiveTest.PINNED.get("deepcharter:welcome"),
+                                "the welcome chapter is pinned");
 
                         // Wood: a crate's planks complete the first directive on their own.
                         HandbookChaptersOneToFiveTest.give(player, Items.OAK_PLANKS);

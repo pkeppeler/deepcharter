@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -23,6 +24,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,7 +102,7 @@ public class SurfaceCostTest {
             }
         }
         Map<String, List<Measurement>> results = new LinkedHashMap<>();
-        Run[] current = {null};
+        @Nullable Run[] current = {null};
         int[] cooldown = {0};
         TestTicks.each(helper, () -> {
             if (cooldown[0] > 0) {
@@ -236,7 +238,8 @@ public class SurfaceCostTest {
         LOGGER.info(
                 "[surface-cost] {} columns per world and round, the median of {} rounds; ADR 0029 bar: 1.15x the layers-only world",
                 columnsOf(MEASURED_RADIUS),
-                results.get(WORLDS.getFirst()).size());
+                Objects.requireNonNull(results.get(WORLDS.getFirst()), "results.get(WORLDS.getFirst()) is absent")
+                        .size());
         results.forEach((world, all) -> {
             Measurement m = median(all);
             String against = results.containsKey(BASELINES.get(world))
@@ -327,7 +330,7 @@ public class SurfaceCostTest {
         private final int radius;
         private final int round;
         private final boolean measured;
-        private ServerLevel level;
+        private @Nullable ServerLevel level;
         private int centreChunk;
         private long heapBefore;
         private long cpuBefore;
@@ -340,23 +343,28 @@ public class SurfaceCostTest {
             this.measured = measured;
         }
 
+        private ServerLevel level() {
+            return Objects.requireNonNull(level, "level: found by begin(), read before it ran");
+        }
+
         void begin(GameTestHelper helper) {
             ResourceKey<Level> key =
                     ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", world));
-            level = helper.getLevel().getServer().getLevel(key);
-            if (level == null) {
+            ServerLevel found = helper.getLevel().getServer().getLevel(key);
+            if (found == null) {
                 throw helper.assertionException(Component.literal("no dimension " + key.identifier()));
             }
+            level = found;
             centreChunk = (round + 1) * REGION_SPACING_CHUNKS;
             heapBefore = SMOKE ? 0 : usedHeap();
             cpuBefore = processCpuNanos();
             wallBefore = System.nanoTime();
-            forEachChunk(chunk -> level.setChunkForced(chunk[0], chunk[1], true));
+            forEachChunk(chunk -> level().setChunkForced(chunk[0], chunk[1], true));
         }
 
         boolean isGenerated() {
             boolean[] all = {true};
-            forEachChunk(chunk -> all[0] &= level.getChunkSource().getChunkNow(chunk[0], chunk[1]) != null);
+            forEachChunk(chunk -> all[0] &= level().getChunkSource().getChunkNow(chunk[0], chunk[1]) != null);
             return all[0];
         }
 
@@ -365,7 +373,7 @@ public class SurfaceCostTest {
             double cpuMs = (processCpuNanos() - cpuBefore) / 1e6;
             double wallMs = (System.nanoTime() - wallBefore) / 1e6;
             double heapMb = SMOKE ? 0 : (usedHeap() - heapBefore) / (1024.0 * 1024.0);
-            forEachChunk(chunk -> level.setChunkForced(chunk[0], chunk[1], false));
+            forEachChunk(chunk -> level().setChunkForced(chunk[0], chunk[1], false));
             return new Measurement(cpuMs / columns, heapMb, wallMs / columns);
         }
 

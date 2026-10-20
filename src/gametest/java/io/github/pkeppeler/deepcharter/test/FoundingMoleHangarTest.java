@@ -33,6 +33,7 @@ import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.WreckRegistry;
@@ -61,6 +62,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #77: the derelict Mole in the hangar, its repair by the first charter, a refurbished Mole for a later
@@ -94,12 +96,13 @@ public class FoundingMoleHangarTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    static RuntimeException failure(GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     @FormatMethod
-    static void expect(GameTestHelper helper, boolean condition, @FormatString String format, Object... args) {
+    static void expect(
+            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
         if (!condition) {
             throw failure(helper, format, args);
         }
@@ -250,7 +253,7 @@ public class FoundingMoleHangarTest {
 
     /** A wreck owned by {@code owner}, standing at {@code at} in the world. */
     private static PodEntity wreckAt(GameTestHelper helper, Vec3 at, CharterId owner) {
-        PodEntity pod = PodRegistry.POD.create(helper.getLevel(), EntitySpawnReason.TRIGGERED);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, helper.getLevel(), EntitySpawnReason.TRIGGERED);
         pod.setPos(at);
         helper.getLevel().addFreshEntity(pod);
         PodComponents.register(pod, owner);

@@ -30,6 +30,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Style;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Client GameTest for the terminal panel (#246). With no pack the panel is on and the terminal font is Unscii. Every one of the seven terminal
@@ -156,7 +157,7 @@ public class TerminalPanelClientTest implements FabricClientGameTest {
      * labels keep the panel's margins and the buttons their minimum height; without it they are the whole screen, and the plain CRT
      * has always let a long label run past its button. Always returns null: it runs on the client thread.
      */
-    private static Object check(Screen screen, String when, List<String> problems, boolean panel) {
+    private static @Nullable Object check(Screen screen, String when, List<String> problems, boolean panel) {
         PanelLook.Insets content = panel ? PanelLook.current().content() : new PanelLook.Insets(0, 0, 0, 0);
         Box rect = new Box(
                 content.left(),

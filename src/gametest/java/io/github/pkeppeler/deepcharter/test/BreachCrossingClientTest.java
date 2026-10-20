@@ -3,9 +3,11 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -35,7 +37,7 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
 
             // Both start in layer_1 above a shaft through the crust and stone, a block apart.
             two.server().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 openShaft(one, X);
                 openShaft(one, X + 2);
                 realPlayer(server, mock).teleportTo(one, X, 8, Z, Set.of(), 0, 0, true);
@@ -60,22 +62,19 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
         }
     }
 
+    private static boolean inLayerTwo(MinecraftServer server, UUID id) {
+        ServerPlayer player =
+                Objects.requireNonNull(server.getPlayerList().getPlayer(id), () -> "player " + id + " is not online");
+        return player.level().dimension().equals(LayerChain.dimension(2));
+    }
+
     /** The client is in layer_2 and sees player 2 there; the server agrees about both. */
     private static boolean crossed(ClientGameTestContext context, TwoPlayerServer two, UUID mockId, UUID clientId) {
         boolean clientSees = context.computeOnClient(client -> client.level != null
                 && client.level.dimension().equals(LayerChain.dimension(2))
                 && client.level.getPlayerByUUID(mockId) != null);
-        boolean serverAgrees = two.server()
-                .computeOnServer(server -> server.getPlayerList()
-                                .getPlayer(mockId)
-                                .level()
-                                .dimension()
-                                .equals(LayerChain.dimension(2))
-                        && server.getPlayerList()
-                                .getPlayer(clientId)
-                                .level()
-                                .dimension()
-                                .equals(LayerChain.dimension(2)));
+        boolean serverAgrees =
+                two.server().computeOnServer(server -> inLayerTwo(server, mockId) && inLayerTwo(server, clientId));
         return clientSees && serverAgrees;
     }
 

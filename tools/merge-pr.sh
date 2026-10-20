@@ -28,8 +28,6 @@ fi
 pr=$1
 
 cd "$(dirname "$0")/.."
-# shellcheck source=lib/adr.sh
-source tools/lib/adr.sh
 origin=$(git remote get-url origin)
 [[ $origin =~ github\.com[:/]$repo(\.git)?$ ]] \
   || { echo "REFUSED: origin is '$origin', not $repo" >&2; exit 1; }
@@ -168,8 +166,10 @@ pr_files=$(gh api "repos/$repo/pulls/$pr/files?per_page=100" --paginate \
   --jq '.[] | [.status, .filename, (.previous_filename // "")] | @tsv') || refuse "could not read its changed files"
 main_adrs=$(git ls-tree --name-only origin/main docs/adr/) || main_adrs=
 [[ -n $main_adrs ]] || refuse "could not read the ADR list on origin/main"
+adr_re='^docs/adr/([0-9]{4})-[^/]+\.md$'
 vacated=$'\n'
 added_adrs=()
+max_adr=0
 while IFS=$'\t' read -r status path previous; do
   if [[ $status == removed ]]; then
     vacated+="$path"$'\n'
@@ -179,14 +179,16 @@ while IFS=$'\t' read -r status path previous; do
   [[ $status == added || $status == renamed ]] || continue
   [[ $path =~ $adr_re ]] || continue
   added_adrs+=("$path")
+  max_adr=$((10#${BASH_REMATCH[1]} > max_adr ? 10#${BASH_REMATCH[1]} : max_adr))
 done <<<"$pr_files"
 kept_adrs=
 for path in $main_adrs; do
   [[ $path =~ $adr_re ]] || continue
+  max_adr=$((10#${BASH_REMATCH[1]} > max_adr ? 10#${BASH_REMATCH[1]} : max_adr))
   [[ $vacated != *$'\n'"$path"$'\n'* ]] || continue
   kept_adrs+="$path"$'\n'
 done
-next_free=$(adr_next_free "$main_adrs"$'\n'"$(printf '%s\n' ${added_adrs[@]+"${added_adrs[@]}"})")
+next_free=$(printf '%04d' $((max_adr + 1)))
 seen=
 for path in ${added_adrs[@]+"${added_adrs[@]}"}; do
   [[ $path =~ $adr_re ]]

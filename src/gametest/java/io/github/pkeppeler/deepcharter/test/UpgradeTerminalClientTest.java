@@ -15,8 +15,11 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.List;
@@ -25,13 +28,11 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
@@ -62,7 +63,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
 
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
             ClientWait.screen(context, UpgradeScreen.class);
-            UpgradeScreen screen = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
+            UpgradeScreen screen = context.computeOnClient(client -> ClientSession.screen(client, UpgradeScreen.class));
             require(
                     screen.upgrade().orElseThrow().pod().orElseThrow().cap() == 2,
                     "the screen shows the Mole's cap of 2");
@@ -158,16 +159,14 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                 ServerPlayer player = server2.getPlayerList().getPlayers().getFirst();
                 player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ScannerRegistry.SCANNER_UNIT));
                 require(
-                        UseEntityCallback.EVENT
-                                .invoker()
-                                .interact(player, player.level(), InteractionHand.MAIN_HAND, pod(server2, scene), null)
+                        UseEntity.on(player, player.level(), InteractionHand.MAIN_HAND, pod(server2, scene))
                                 .consumesAction(),
                         "using the crafted unit on the pod should fit it");
             });
             context.setScreen(() -> null);
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.terminal())));
             ClientWait.screen(context, UpgradeScreen.class);
-            UpgradeScreen fitted = context.computeOnClient(client -> (UpgradeScreen) client.gui.screen());
+            UpgradeScreen fitted = context.computeOnClient(client -> ClientSession.screen(client, UpgradeScreen.class));
             ClientWait.until(
                     context,
                     "the upgrade screen finished typing",
@@ -217,7 +216,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
         BlockPos terminal = here.relative(Direction.EAST, 2);
         server.overworld()
                 .setBlock(terminal, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
-        PodEntity pod = PodRegistry.POD.create(server.overworld(), EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, server.overworld());
         BlockPos parked = here.relative(Direction.WEST, 3);
         pod.setPos(parked.getX() + 0.5, parked.getY(), parked.getZ() + 0.5);
         server.overworld().addFreshEntity(pod);
@@ -226,7 +225,7 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
     }
 
     private static PodEntity pod(MinecraftServer server, Scene scene) {
-        return (PodEntity) server.overworld().getEntity(scene.pod());
+        return TestEntities.require(server.overworld(), scene.pod(), PodEntity.class);
     }
 
     private static CrtButton button(ClientGameTestContext context, UpgradeScreen screen, String label) {

@@ -10,19 +10,22 @@ import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -45,6 +48,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #60: stats overrides change what a pod does, the hull has a maximum, and fuel items come
@@ -101,7 +105,7 @@ public class PodStatsTest {
         }
     }
 
-    private static void cleanUp(GameTestHelper helper, PodEntity pod, MockPlayer pilot) {
+    private static void cleanUp(GameTestHelper helper, PodEntity pod, @Nullable MockPlayer pilot) {
         if (pilot != null) {
             pilot.leave();
         }
@@ -513,10 +517,14 @@ public class PodStatsTest {
     /** A mock pilot, and the pod it sits in once the far chunk ticks entities; {@link #pod} stays null until then. */
     private static final class FarRig {
         private final MockPlayer pilot;
-        private PodEntity pod;
+        private @Nullable PodEntity pod;
 
         private FarRig(MockPlayer pilot) {
             this.pilot = pilot;
+        }
+
+        PodEntity pod() {
+            return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
         }
 
         boolean ready() {
@@ -530,7 +538,7 @@ public class PodStatsTest {
             pilot.teleportTo(level, at, 0f, 0f);
             FarRig rig = new FarRig(pilot);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-                PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
                 level.addFreshEntity(pod);
                 if (!pilot.player().startRiding(pod)) {
@@ -545,7 +553,7 @@ public class PodStatsTest {
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw helper.assertionException(
                     Component.literal("dimension " + LayerChain.dimension(layer) + " did not load"));
@@ -577,22 +585,22 @@ public class PodStatsTest {
                 if (!rigs[i].ready()) {
                     continue;
                 }
-                if (start[i] < 0 && rigs[i].pod.drilling()) {
-                    start[i] = rigs[i].pod.tickCount;
+                if (start[i] < 0 && rigs[i].pod().drilling()) {
+                    start[i] = rigs[i].pod().tickCount;
                 }
                 if (start[i] >= 0
                         && end[i] < 0
                         && level.getBlockState(new BlockPos(columns[i], floor - 1, Z))
                                 .isAir()) {
-                    end[i] = rigs[i].pod.tickCount;
+                    end[i] = rigs[i].pod().tickCount;
                 }
             }
             if (end[0] >= 0 && end[1] >= 0) {
                 int slow = end[0] - start[0];
                 int fast = end[1] - start[1];
-                OVERRIDES.remove(rigs[1].pod.getUUID());
-                rigs[0].pod.discard();
-                rigs[1].pod.discard();
+                OVERRIDES.remove(rigs[1].pod().getUUID());
+                rigs[0].pod().discard();
+                rigs[1].pod().discard();
                 if (fast >= slow || Math.abs(2 * fast - slow) > 4) {
                     throw helper.assertionException(Component.literal(String.format(
                             "half the ticks per hardness should bore in about half the ticks, the control took %d and the other %d",
@@ -658,7 +666,7 @@ public class PodStatsTest {
         });
         long[] zeroSince = {-1};
         TestTicks.each(helper, () -> {
-            if (!rig.ready() || rig.pod.hull() != 0f) {
+            if (!rig.ready() || rig.pod().hull() != 0f) {
                 return;
             }
             if (zeroSince[0] < 0) {
@@ -668,11 +676,11 @@ public class PodStatsTest {
             if (helper.getTick() - zeroSince[0] < 5) {
                 return;
             }
-            int events = DEPLETED.getOrDefault(rig.pod.getUUID(), 0);
-            boolean wreck = Wrecks.isWreck(rig.pod);
-            OVERRIDES.remove(rig.pod.getUUID());
-            DEPLETED.remove(rig.pod.getUUID());
-            rig.pod.discard();
+            int events = DEPLETED.getOrDefault(rig.pod().getUUID(), 0);
+            boolean wreck = Wrecks.isWreck(rig.pod());
+            OVERRIDES.remove(rig.pod().getUUID());
+            DEPLETED.remove(rig.pod().getUUID());
+            rig.pod().discard();
             if (events != 1 || !wreck) {
                 throw helper.assertionException(Component.literal(
                         "a crust bore costing 20 should take a hull of 15 to 0, fire HULL_DEPLETED once and leave a wreck, got "
@@ -737,8 +745,6 @@ public class PodStatsTest {
     }
 
     private static InteractionResult useOnPod(MockPlayer player, PodEntity pod) {
-        return UseEntityCallback.EVENT
-                .invoker()
-                .interact(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null);
+        return UseEntity.on(player.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
     }
 }

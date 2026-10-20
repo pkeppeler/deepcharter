@@ -30,6 +30,7 @@ import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.DecayCells;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -37,6 +38,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
@@ -68,13 +70,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -163,7 +165,12 @@ public class LavaBoreTest {
         SOUNDER
     }
 
-    private static final GasMode GAS = parseGas(REQUESTED_GAS);
+    private static final @Nullable GasMode REQUESTED_GAS_MODE = parseGas(REQUESTED_GAS);
+
+    private static GasMode gas() {
+        return Objects.requireNonNull(
+                REQUESTED_GAS_MODE, () -> GAS_ENV + " is not a gas mode: '" + REQUESTED_GAS + "'");
+    }
     /** The tier whose slice the avoiding bot reads: the lowest scanner that shows gas pockets. */
     private static final int GAS_TIER = ScannerTuning.DEFAULT.gasTier();
 
@@ -490,7 +497,10 @@ public class LavaBoreTest {
         boolean braceDear;
         int lastCargoUsed;
         int lastCargoValue;
+
+        @Nullable
         PodEntity pod;
+
         int startY;
         /** What the cab lets the pilot read on this tick (#502): the plate's text and the scanner's window. Always true without the decay. */
         boolean plateReadable = true;
@@ -501,7 +511,9 @@ public class LavaBoreTest {
 
         int darkPlateTicks;
 
+        @Nullable
         Outcome outcome;
+
         String cause = "";
         float startHull;
         float endHull;
@@ -559,7 +571,7 @@ public class LavaBoreTest {
          */
         float hullAtCrust = NO_CRUST;
 
-        float[] broughtBy;
+        float @Nullable [] broughtBy;
         /** The gas pockets within a blast of the pod at the end of the last tick: one that is gone now blew up this tick. */
         final Set<BlockPos> gasPockets = new HashSet<>();
 
@@ -583,13 +595,16 @@ public class LavaBoreTest {
         int linerRings;
 
         boolean linerRanDry;
-        PodLiner.Anchor linerAnchor;
+        PodLiner.@Nullable Anchor linerAnchor;
         int endBricks;
 
         float lastHull;
         float lastHealth;
         long lastTouchTick = Long.MIN_VALUE / 2;
+
+        @Nullable
         BlockPos lastScanned;
+
         final Map<BlockPos, Integer> shownAt = new HashMap<>();
         /** As {@link #shownAt}, for the cells a thermal tier scanner marks as lava. */
         final Map<BlockPos, Integer> thermalShownAt = new HashMap<>();
@@ -623,6 +638,14 @@ public class LavaBoreTest {
             this.leaves = leaves;
         }
 
+        PodEntity pod() {
+            return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
+        }
+
+        float broughtBy(Cause cause) {
+            return Objects.requireNonNull(broughtBy, "broughtBy: set when the crust first took hull")[cause.ordinal()];
+        }
+
         boolean ready() {
             return pod != null;
         }
@@ -648,12 +671,12 @@ public class LavaBoreTest {
             throw helper.assertionException(Component.literal(LINER_ENV + " is a liner tier from 1 to "
                     + ComponentTrack.LINER.maxTier() + ", measured on its own without " + LINING_ENV));
         }
-        if (GAS == null) {
+        if (REQUESTED_GAS_MODE == null) {
             throw helper.assertionException(Component.literal(
                     GAS_ENV + " is 'ignore', 'avoid', 'sounder1' or 'sounder', not '" + REQUESTED_GAS + "'"));
         }
         int measuredSounder = positiveEnv(helper, SOUNDER_ENV, REQUESTED_SOUNDER, 0);
-        if (measuredSounder > ComponentTrack.SOUNDER.maxTier() || (measuredSounder > 0 && GAS != GasMode.IGNORE)) {
+        if (measuredSounder > ComponentTrack.SOUNDER.maxTier() || (measuredSounder > 0 && gas() != GasMode.IGNORE)) {
             throw helper.assertionException(
                     Component.literal(SOUNDER_ENV + " is a sounder tier from 1 to " + ComponentTrack.SOUNDER.maxTier()
                             + ", measured without " + GAS_ENV + " (the part is the bot's only gas sense)"));
@@ -765,7 +788,7 @@ public class LavaBoreTest {
 
     /** The first pilot founds a charter and the rest join it, so a run of sixty bores leaves one charter in the world and not sixty. */
     private static CharterId joinTheCharter(
-            GameTestHelper helper, MinecraftServer server, MockPlayer pilot, CharterId charter, int index) {
+            GameTestHelper helper, MinecraftServer server, MockPlayer pilot, @Nullable CharterId charter, int index) {
         ServerPlayer player = pilot.player();
         if (charter == null) {
             if (Charters.found(server, player.getUUID(), "Lava bore " + player.getScoreboardName())
@@ -820,7 +843,7 @@ public class LavaBoreTest {
                         Blocks.LAVA);
             }
         }
-        PodEntity pod = PodRegistry.typeOf(CHASSIS).create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.typeOf(CHASSIS), level);
         pod.setPos(bore.centreX, feetY, bore.centreZ);
         level.addFreshEntity(pod);
         ScannerPods.fit(server, bore.pilot.player(), pod, SCANNER_TIER);
@@ -886,7 +909,7 @@ public class LavaBoreTest {
 
     private static void step(GameTestHelper helper, Bore bore) {
         ServerPlayer player = bore.pilot.player();
-        PodEntity pod = player.getVehicle() instanceof PodEntity ridden ? ridden : bore.pod;
+        PodEntity pod = player.getVehicle() instanceof PodEntity ridden ? ridden : bore.pod();
         boolean through = player.level().dimension().equals(LayerChain.dimension(2));
         if (through && player.isAlive() && player.getVehicle() instanceof PodEntity crossed) {
             finish(bore, Outcome.SURVIVED, "", crossed);
@@ -1002,18 +1025,18 @@ public class LavaBoreTest {
             noteBrace(bore, pod);
         }
         noteDecay(bore, pod, level);
-        if (bore.phase == Phase.DOWN && !pod.blockPosition().equals(bore.lastScanned)) {
+        if (bore.phase == Phase.DOWN && !Objects.equals(pod.blockPosition(), bore.lastScanned)) {
             bore.lastScanned = pod.blockPosition();
             ScanSlice thermal = noteLavaInView(level, pod, bore, feetY);
             bore.wantLining = bore.lookahead > 0 && bore.scannerReadable && lavaWithin(thermal, bore.lookahead);
             bore.wantAvoid = bore.sounderTier > 0
                     ? bore.plateReadable && soundsPocket(pod, bore.sounderTier)
-                    : switch (GAS) {
+                    : switch (gas()) {
                         case IGNORE -> false;
                         case AVOID -> gasInNextSlab(level, pod);
                         case SOUNDER1, SOUNDER ->
                             podHasGas(level, footprintSlab(pod, 0, 0, -1))
-                                    || (GAS == GasMode.SOUNDER1 && podHasGas(level, footprintSlab(pod, 0, 0, -2)));
+                                    || (gas() == GasMode.SOUNDER1 && podHasGas(level, footprintSlab(pod, 0, 0, -2)));
                     };
         }
         if (pod.fuel() < REFUEL_BELOW_PERCENT) {
@@ -1346,14 +1369,14 @@ public class LavaBoreTest {
         // The tier 2 bound looks at the sides in turn for one whose bore and landing are clear of gas; the others take
         // the side they would have taken.
         // The part of tier 2 does the same from its own marks: the sides it shows a pocket on are not taken.
-        boolean looksAside = GAS == GasMode.SOUNDER || bore.sounderTier == 2;
+        boolean looksAside = gas() == GasMode.SOUNDER || bore.sounderTier == 2;
         List<Side> candidates =
                 looksAside ? List.of(first, first.turnedRight(), first.turnedLeft(), first.opposite()) : List.of(first);
         for (Side side : candidates) {
             double after = side.dx != 0
                     ? pod.getX() + side.dx * SIDE_STEP - bore.centreX
                     : pod.getZ() + side.dz * SIDE_STEP - bore.centreZ;
-            boolean pocketAside = GAS == GasMode.SOUNDER
+            boolean pocketAside = gas() == GasMode.SOUNDER
                     ? gasOnTheWay(bore.level, pod, side)
                     : bore.sounderTier == 2
                             && PodSounder.reading(pod).orElseThrow().marks(side.direction());
@@ -1402,7 +1425,7 @@ public class LavaBoreTest {
         return podHasGas(level, footprintSlab(pod, side.dx * SIDE_STEP, side.dz * SIDE_STEP, -1));
     }
 
-    private static GasMode parseGas(String value) {
+    private static @Nullable GasMode parseGas(String value) {
         if (value == null || value.isBlank()) {
             return GasMode.IGNORE;
         }
@@ -1866,13 +1889,13 @@ public class LavaBoreTest {
                             .filter(b -> b.outcome == Outcome.DIED && b.lastCause == cause)
                             .count(),
                     BRAKING ? "on" : "off",
-                    GAS.name().toLowerCase(Locale.ROOT));
+                    gas().name().toLowerCase(Locale.ROOT));
         }
         LOGGER.info(
                 "[lava-bore] causes are priority-ordered (lava, then gas, then charge, then landing, then crust): a tick takes one cause, so a tick with lava contact and a gas blast books all its hull to lava");
         LOGGER.info(
                 "[lava-bore] gas {}: {} steps aside from a pocket per bore, {} ticks lost hull to a gas blast per bore ({} of them while sidestepping); {}",
-                GAS.name().toLowerCase(Locale.ROOT),
+                gas().name().toLowerCase(Locale.ROOT),
                 String.format(
                         "%.1f",
                         bores.stream().mapToInt(b -> b.gasAvoids).average().orElse(0)),
@@ -1885,16 +1908,16 @@ public class LavaBoreTest {
                                 .mapToInt(b -> b.gasHitsSideways)
                                 .average()
                                 .orElse(0)),
-                GAS == GasMode.SOUNDER || GAS == GasMode.SOUNDER1
+                gas() == GasMode.SOUNDER || gas() == GasMode.SOUNDER1
                         ? "the bot knows every pocket of its footprint, "
-                                + (GAS == GasMode.SOUNDER
+                                + (gas() == GasMode.SOUNDER
                                         ? "its step and landing too: the tier 2 bound"
                                         : "2 slabs down: the tier 1 bound")
                                 + " (no part reads this yet)"
                         : bores.getFirst().sounderTier > 0
                                 ? "the bot reads the tier " + bores.getFirst().sounderTier
                                         + " seep sounder part: its HUD state and range, nothing else about gas"
-                                : GAS == GasMode.IGNORE
+                                : gas() == GasMode.IGNORE
                                         ? "the bot bores straight through"
                                         : "the bot reads a tier " + GAS_TIER + " scanner (the pod keeps its tier "
                                                 + SCANNER_TIER + ")");
@@ -2021,10 +2044,10 @@ public class LavaBoreTest {
                 distribution(killed, b -> Math.max(0f, full - b.hullAtCrust)));
         LOGGER.info(
                 "[lava-bore] crust deaths, hull the brought pod had lost before the crust, per death: lava {} gas {} landing {} other {}; start hull {}",
-                mean(killed, "%.1f", b -> b.broughtBy[Cause.LAVA.ordinal()]),
-                mean(killed, "%.1f", b -> b.broughtBy[Cause.GAS.ordinal()]),
-                mean(killed, "%.1f", b -> b.broughtBy[Cause.LANDING.ordinal()]),
-                mean(killed, "%.1f", b -> b.broughtBy[Cause.OTHER.ordinal()]),
+                mean(killed, "%.1f", b -> b.broughtBy(Cause.LAVA)),
+                mean(killed, "%.1f", b -> b.broughtBy(Cause.GAS)),
+                mean(killed, "%.1f", b -> b.broughtBy(Cause.LANDING)),
+                mean(killed, "%.1f", b -> b.broughtBy(Cause.OTHER)),
                 mean(killed, "%.0f", b -> b.startHull));
         LOGGER.info(
                 "[lava-bore] crust deaths summary: {} deaths, mean brought {}, mean crust took {}, {} short of the full crust cost",
@@ -2334,7 +2357,7 @@ public class LavaBoreTest {
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw helper.assertionException(
                     Component.literal("dimension " + LayerChain.dimension(layer) + " did not load"));

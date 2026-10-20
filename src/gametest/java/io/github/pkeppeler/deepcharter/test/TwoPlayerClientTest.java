@@ -11,11 +11,15 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay;
 import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.IntSupplier;
@@ -25,6 +29,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -90,10 +95,12 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
-            int seen = context.computeOnClient(client -> client.level.players().size());
+            int seen = context.computeOnClient(
+                    client -> ClientLight.clientLevel(client).players().size());
             require(seen == 2, "Expected the real client to see 2 players, saw " + seen);
-            boolean mockVisible = context.computeOnClient(
-                    client -> client.level.getPlayerByUUID(two.mock().player().getUUID()) != null);
+            boolean mockVisible = context.computeOnClient(client -> ClientLight.clientLevel(client)
+                            .getPlayerByUUID(two.mock().player().getUUID())
+                    != null);
             require(mockVisible, "The real client does not see the mock player");
             crossTogether(context, two, () -> {});
         }
@@ -122,12 +129,14 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 "the real client riding a pod in layer_1 with the mock's pod in view",
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
-                        && client.level.dimension().equals(LayerChain.dimension(1))
-                        && client.level.getEntity(rig.mockPod().getId()) instanceof PodEntity);
+                        && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
+                        && ClientLight.clientLevel(client)
+                                        .getEntity(rig.mockPod().getId())
+                                instanceof PodEntity);
         context.runOnClient(client -> {
             client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-            client.player.setYRot(EAST);
-            client.player.setXRot(LOOK_DOWN);
+            ClientSession.player(client).setYRot(EAST);
+            ClientSession.player(client).setXRot(LOOK_DOWN);
         });
         awaitPodTicks(context, two, rig, POD_TICKS_TO_SETTLE);
         // The pods stand on the floor of layer 1, inside the signal decay, where the stock console loses the scanner
@@ -151,7 +160,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the mock stone block",
-                client -> client.level.getBlockState(mockStone).is(Blocks.STONE));
+                client ->
+                        ClientLight.clientLevel(client).getBlockState(mockStone).is(Blocks.STONE));
         float idleFade = context.computeOnClient(client -> BreachEffects.fadeAlpha(0f));
         require(
                 idleFade == 0f,
@@ -188,9 +198,10 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 two.server().runOnServer(server -> two.mock().releaseInput());
                 mockReleased = true;
             }
-            clientSawMockBore |=
-                    context.computeOnClient(client -> client.level.dimension().equals(LayerChain.dimension(1))
-                            && client.level.getBlockState(mockStone).isAir());
+            clientSawMockBore |= context.computeOnClient(client -> ClientLight.clientLevel(client)
+                            .dimension()
+                            .equals(LayerChain.dimension(1))
+                    && ClientLight.clientLevel(client).getBlockState(mockStone).isAir());
             if (realReleased && mockReleased) {
                 break;
             }
@@ -219,7 +230,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
     /** Builds a room in layer 1, then seats the real player and the mock each in a Mole, a few rows above the crust. */
     private static Rig setUp(MinecraftServer server, TwoPlayerServer two) {
-        ServerLevel one = server.getLevel(LayerChain.dimension(1));
+        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
         box(one, 0, 2, LayerBlocks.BREACH_CRUST);
         box(one, STONE_ROW_Y, STONE_ROW_Y, Blocks.STONE);
         shell(one);
@@ -233,8 +244,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         ServerPlayer real = realPlayer(server, two.mock().player());
         real.teleportTo(one, X, FLOOR_Y, Z, Set.of(), EAST, LOOK_DOWN, true);
         int mockPodId = PodMovementClientTest.mountBoth(two);
-        PodEntity realPod = (PodEntity) real.getVehicle();
-        PodEntity mockPod = (PodEntity) two.mock().player().getVehicle();
+        PodEntity realPod = TestEntities.vehicle(real, PodEntity.class);
+        PodEntity mockPod = TestEntities.vehicle(two.mock().player(), PodEntity.class);
         ScannerPods.fit(server, real, realPod, 1);
         require(
                 mockPod.getId() == mockPodId && realPod != mockPod && realPod.level() == one && mockPod.level() == one,
@@ -248,7 +259,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
      * {@link SignalDecayTuning}'s, so a retuned curve moves the test with it.
      */
     private static Vec3 liftOutOfDecay(MinecraftServer server, PodEntity pod) {
-        ServerLevel one = server.getLevel(LayerChain.dimension(1));
+        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
         Vec3 floorPosition = pod.position();
         int clearY = one.getMinY() + SignalDecayTuning.DEFAULT.band(1).onset() + 1;
         int centerX = Mth.floor(floorPosition.x);
@@ -327,7 +338,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 end.realInLayer2() && end.mockInLayer2() && end.bothRiding(),
                 "Each pod should end in layer_2 with its pilot riding: " + end);
         two.server().runOnServer(server -> {
-            ServerLevel one = server.getLevel(LayerChain.dimension(1));
+            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
             for (BlockPos column : Stream.concat(rig.realColumns().stream(), rig.mockColumns().stream())
                     .toList()) {
                 for (int y = 0; y <= 2; y++) {
@@ -340,13 +351,15 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "both players riding pods in layer_2",
-                client -> client.level.dimension().equals(LayerChain.dimension(2))
-                        && client.player.getVehicle() instanceof PodEntity
-                        && client.level.getPlayerByUUID(mockId) != null
-                        && client.level.getPlayerByUUID(mockId).getVehicle() instanceof PodEntity);
+                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2))
+                        && ClientSession.player(client).getVehicle() instanceof PodEntity
+                        && ClientLight.clientLevel(client).getPlayerByUUID(mockId) instanceof AbstractClientPlayer mock
+                        && mock.getVehicle() instanceof PodEntity);
         boolean containsMockPod = context.computeOnClient(client -> {
-            Entity pod = client.level.getPlayerByUUID(mockId).getVehicle();
-            return client.level.getEntity(pod.getId()) == pod;
+            Entity pod = TestEntities.vehicle(Objects.requireNonNull(
+                    ClientLight.clientLevel(client).getPlayerByUUID(mockId),
+                    "the client does not see the mock player"));
+            return ClientLight.clientLevel(client).getEntity(pod.getId()) == pod;
         });
         require(containsMockPod, "The real client's level does not contain the mock's pod");
     }
@@ -363,30 +376,35 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 "the client's pod at " + at + (clear ? " clear of" : " in") + " the signal decay",
                 client -> podAt(client, podId, at, clear),
                 client -> podState(client, podId));
-        long seen = context.computeOnClient(client -> client.level.getGameTime());
+        long seen = context.computeOnClient(
+                client -> ClientLight.clientLevel(client).getGameTime());
         long rescanned = seen + 2L * ScannerTuning.DEFAULT.rescanTicks() + 2;
         ClientWait.until(
                 context,
                 "the scanner to rescan with the pod at " + at,
-                client -> client.level.getGameTime() >= rescanned && podAt(client, podId, at, clear),
-                client -> podState(client, podId) + ", game time " + client.level.getGameTime() + " of " + rescanned);
+                client -> ClientLight.clientLevel(client).getGameTime() >= rescanned && podAt(client, podId, at, clear),
+                client -> podState(client, podId) + ", game time "
+                        + ClientLight.clientLevel(client).getGameTime() + " of " + rescanned);
     }
 
     private static boolean podAt(Minecraft client, int podId, Vec3 at, boolean clear) {
-        return client.level.getEntity(podId) instanceof PodEntity pod
+        return ClientLight.clientLevel(client).getEntity(podId) instanceof PodEntity pod
                 && pod.position().distanceToSqr(at) < 0.0625
-                && client.player.getVehicle() == pod
+                && ClientSession.player(client).getVehicle() == pod
                 && (SignalDecay.intensity(pod) == 0) == clear
-                && client.level.getBlockState(BlockPos.containing(at)).isAir();
+                && ClientLight.clientLevel(client)
+                        .getBlockState(BlockPos.containing(at))
+                        .isAir();
     }
 
     private static String podState(Minecraft client, int podId) {
-        if (!(client.level.getEntity(podId) instanceof PodEntity pod)) {
+        if (!(ClientLight.clientLevel(client).getEntity(podId) instanceof PodEntity pod)) {
             return "no pod " + podId;
         }
         return "the client pod at " + pod.position() + ", decay intensity " + SignalDecay.intensity(pod)
-                + ", ridden by the local player " + (client.player.getVehicle() == pod) + ", cell "
-                + client.level.getBlockState(pod.blockPosition());
+                + ", ridden by the local player "
+                + (ClientSession.player(client).getVehicle() == pod) + ", cell "
+                + ClientLight.clientLevel(client).getBlockState(pod.blockPosition());
     }
 
     /** The scanner is drawn while riding: its pod marker is in the middle of the pod's cells, whatever else is on screen. */
@@ -400,11 +418,10 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         ScannerHudTest.HudShot shot = ScannerHudTest.HudShot.take(context, screenshotName, ScannerHudTest.TIER_ONE);
         int actual = shot.pixel(0, 0);
         int expected = ScannerLook.current().podColor() & RGB;
-        String state = context.computeOnClient(client -> podState(
-                client,
-                client.player.getVehicle() == null
-                        ? -1
-                        : client.player.getVehicle().getId()));
+        String state = context.computeOnClient(client -> {
+            Entity ridden = ClientSession.player(client).getVehicle();
+            return podState(client, ridden == null ? -1 : ridden.getId());
+        });
         require(
                 actual == expected,
                 "%s: the scanner HUD should show the pod's marker %06X, the pixel is %06X (%s; %s)"

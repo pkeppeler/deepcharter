@@ -5,8 +5,11 @@ import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLavaWatch;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PodReadout;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -18,7 +21,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Blocks;
 
 /**
@@ -45,7 +47,7 @@ public class PodLavaWatchClientTest implements FabricClientGameTest {
                         }
                     }
                 }
-                PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(Mth.floor(player.getX()), feet.getY(), Mth.floor(player.getZ()));
                 level.addFreshEntity(pod);
                 if (!player.startRiding(pod)) {
@@ -60,14 +62,15 @@ public class PodLavaWatchClientTest implements FabricClientGameTest {
                             && !PodReadout.texts(client, pod).isEmpty());
             context.waitTicks(
                     30); // tick-wait: long enough for a few looks of the watch (every 10 ticks) to have found nothing
-            if (context.computeOnClient(client -> PodStatusHud.lavaNearLine((PodEntity) client.player.getVehicle())
+            if (context.computeOnClient(client -> PodStatusHud.lavaNearLine(
+                            TestEntities.vehicle(ClientSession.player(client), PodEntity.class))
                     .isPresent())) {
                 throw new AssertionError("A pod with no lava about shows no lava line");
             }
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                BlockPos feet = player.getVehicle().blockPosition();
+                BlockPos feet = TestEntities.vehicle(player).blockPosition();
                 // The source flows over the stone bed at once; the flowing lava stays while the source does.
                 player.level().setBlock(feet.offset(LAVA_AT, 0, 0), Blocks.LAVA.defaultBlockState(), 3);
             });
@@ -80,11 +83,13 @@ public class PodLavaWatchClientTest implements FabricClientGameTest {
                             && serverReading(singleplayer).equals(clientReading(context)),
                     () -> "the server reads " + serverReading(singleplayer) + ", the client " + clientReading(context)
                             + "; " + surroundings(singleplayer));
-            PodStatusHud.Line line = context.computeOnClient(
-                    client -> PodStatusHud.readout(client.player, (PodEntity) client.player.getVehicle()).stream()
-                            .filter(shown -> key(shown.text()).equals("hud.deepcharter.pod.lava_near"))
-                            .findFirst()
-                            .orElseThrow(() -> new AssertionError("The readout should hold the lava line")));
+            PodStatusHud.Line line = context.computeOnClient(client -> PodStatusHud.readout(
+                            ClientSession.player(client),
+                            TestEntities.vehicle(ClientSession.player(client), PodEntity.class))
+                    .stream()
+                    .filter(shown -> key(shown.text()).equals("hud.deepcharter.pod.lava_near"))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("The readout should hold the lava line")));
             if (line.kind() != PodStatusHud.Kind.ALERT) {
                 throw new AssertionError("The lava line is a warning, it is " + line.kind());
             }
@@ -92,7 +97,7 @@ public class PodLavaWatchClientTest implements FabricClientGameTest {
             // Lava over the pod gets its own line, which names the cap. It is read from a pod of the client's own, so
             // that the server's next look cannot overwrite it.
             String above = context.computeOnClient(client -> {
-                PodEntity pod = PodRegistry.POD.create(client.level, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, ClientLight.clientLevel(client));
                 pod.setAttached(PodLavaWatch.STATE, Versioned.of(new PodLavaWatch.State(5, true, 5, 0)));
                 return PodStatusHud.lavaNearLine(pod)
                         .map(PodLavaWatchClientTest::key)
@@ -111,13 +116,13 @@ public class PodLavaWatchClientTest implements FabricClientGameTest {
     private static Optional<Integer> serverReading(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
-                .computeOnServer(server -> PodLavaWatch.warning((PodEntity)
-                                server.getPlayerList().getPlayers().getFirst().getVehicle())
+                .computeOnServer(server -> PodLavaWatch.warning(TestEntities.vehicle(
+                                server.getPlayerList().getPlayers().getFirst(), PodEntity.class))
                         .map(PodLavaWatch.State::blocksOff));
     }
 
     private static Optional<Integer> clientReading(ClientGameTestContext context) {
-        return context.computeOnClient(client -> client.player.getVehicle() instanceof PodEntity pod
+        return context.computeOnClient(client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                 ? PodLavaWatch.warning(pod).map(PodLavaWatch.State::blocksOff)
                 : Optional.empty());
     }
@@ -126,7 +131,7 @@ public class PodLavaWatchClientTest implements FabricClientGameTest {
     private static String surroundings(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
             PodEntity pod =
-                    (PodEntity) server.getPlayerList().getPlayers().getFirst().getVehicle();
+                    TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
             StringBuilder lava = new StringBuilder();
             for (BlockPos pos : BlockPos.betweenClosed(
                     pod.blockPosition().offset(-5, -2, -5), pod.blockPosition().offset(8, 3, 5))) {

@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,6 +27,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the heat shield (#482): a pod with the part burns slag brick, the rack first and then the seated pilot's pack, in place of the hull
@@ -54,7 +56,7 @@ public class PodHeatShieldTest {
 
     private record Scene(PodEntity pod, MockPlayer pilot) {
         int ticks() {
-            return POD_TICKS.get(pod.getUUID());
+            return Objects.requireNonNull(POD_TICKS.get(pod.getUUID()), "POD_TICKS.get(pod.getUUID()) is absent");
         }
     }
 
@@ -305,7 +307,8 @@ public class PodHeatShieldTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

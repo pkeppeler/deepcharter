@@ -10,8 +10,11 @@ import io.github.pkeppeler.deepcharter.client.pod.PodLook;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.io.StringReader;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -20,7 +23,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.Minecraft;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
@@ -38,14 +40,14 @@ public class HotHullClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = server.getLevel(LayerChain.dimension(1));
+                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 // Hung in a sealed room, in a 2 x 2 pool of lava, as the heat shield's test does.
                 RoomCarver.carve(one, -3, 3, FEET_Y - 1, FEET_Y + 6, -3, 3, Blocks.AIR);
                 RoomCarver.carve(one, -1, 0, FEET_Y, FEET_Y, -1, 0, Blocks.LAVA);
                 player.teleportTo(one, 0, FEET_Y, 0, Set.of(), 0f, 0f, true);
-                PodEntity pod = PodRegistry.POD.create(one, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(0, FEET_Y, 0);
                 pod.setNoGravity(true);
                 one.addFreshEntity(pod);
@@ -58,10 +60,10 @@ public class HotHullClientTest implements FabricClientGameTest {
                     "the pod in layer 1, burning",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity pod
-                            && client.level.dimension().equals(LayerChain.dimension(1))
+                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
                             && pod.hullBurning());
             context.runOnClient(client -> {
-                PodEntity pod = (PodEntity) client.player.getVehicle();
+                PodEntity pod = TestEntities.vehicle(ClientSession.player(client), PodEntity.class);
                 PodGeoRenderState state = stateOf(client, pod);
                 require(state.hot, "a pod whose hull burns shows the hot hull in its render state");
                 require(PodHotLayer.draws(state), "the hot-hull layer draws over a burning hull");
@@ -82,13 +84,20 @@ public class HotHullClientTest implements FabricClientGameTest {
             singleplayer
                     .getServer()
                     .runOnServer(server -> RoomCarver.carve(
-                            server.getLevel(LayerChain.dimension(1)), -1, 0, FEET_Y, FEET_Y, -1, 0, Blocks.AIR));
+                            ClientLight.serverLevel(server, LayerChain.dimension(1)),
+                            -1,
+                            0,
+                            FEET_Y,
+                            FEET_Y,
+                            -1,
+                            0,
+                            Blocks.AIR));
             ClientWait.until(
                     context,
                     "the hull cool again",
-                    client -> client.player.getVehicle() instanceof PodEntity pod && !pod.hullBurning());
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod && !pod.hullBurning());
             context.runOnClient(client -> {
-                PodEntity pod = (PodEntity) client.player.getVehicle();
+                PodEntity pod = TestEntities.vehicle(ClientSession.player(client), PodEntity.class);
                 PodGeoRenderState state = stateOf(client, pod);
                 require(!state.hot, "a pod whose hull has stopped burning shows no hot hull in its render state");
                 require(!PodHotLayer.draws(state), "the hot-hull layer is not drawn once the hull is cool");

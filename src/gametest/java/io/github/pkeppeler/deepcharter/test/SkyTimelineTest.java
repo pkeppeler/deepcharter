@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -76,7 +77,8 @@ public class SkyTimelineTest {
     public void theTimelineIsVisualOnlyAndOnItsOwnClock(GameTestHelper helper) {
         Timeline timeline = timeline(helper);
         for (EnvironmentAttribute<?> attribute : timeline.attributes()) {
-            Identifier id = BuiltInRegistries.ENVIRONMENT_ATTRIBUTE.getKey(attribute);
+            Identifier id = Objects.requireNonNull(
+                    BuiltInRegistries.ENVIRONMENT_ATTRIBUTE.getKey(attribute), "a registered attribute has a key");
             if (!id.getPath().startsWith("visual/")) {
                 throw helper.assertionException(
                         "the sky timeline should set visual attributes only, but it sets %s", id);

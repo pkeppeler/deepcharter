@@ -13,11 +13,13 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodRockBite;
 import io.github.pkeppeler.deepcharter.pod.PodRockBiteTuning;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -26,11 +28,11 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the drill that bites Company rock (#526, ADR 0050): a pod whose drill works at tier {@code minTier} or more bores a Company rock slab slowly,
@@ -49,13 +51,14 @@ public class CompanyRockBiteTest {
     private static final class Bite {
         private final MockPlayer pilot;
         private final ServerLevel level;
-        private PodEntity pod;
+        private @Nullable PodEntity pod;
 
         private Bite(MockPlayer pilot, ServerLevel level) {
             this.pilot = pilot;
             this.level = level;
         }
 
+        @Nullable
         PodEntity pod() {
             return pod;
         }
@@ -71,7 +74,7 @@ public class CompanyRockBiteTest {
 
     /** Builds the room and the plate, seats a pilot in a pod of {@code type} with a drill of {@code drillTier}, and holds sprint. */
     private static Bite rig(GameTestHelper helper, int x, EntityType<PodEntity> type, int drillTier, int radiatorTier) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(1));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
         for (int dx = -2; dx <= 2; dx++) {
@@ -85,7 +88,7 @@ public class CompanyRockBiteTest {
         pilot.teleportTo(level, at, 0f, 0f);
         Bite bite = new Bite(pilot, level);
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-            PodEntity pod = type.create(level, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(type, level);
             pod.setPos(at);
             level.addFreshEntity(pod);
             pilot.player().startRiding(pod);
@@ -260,7 +263,8 @@ public class CompanyRockBiteTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

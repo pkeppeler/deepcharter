@@ -7,17 +7,18 @@ import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrders;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
@@ -68,7 +69,7 @@ public class DeepestPointTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodThatBoresToANewDepthRaisesItsCharterDeepestPoint(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel level = server.getLevel(LayerChain.dimension(1));
+        ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
         RoomCarver.carve(level, X - 4, X + 3, FLOOR - 8, FLOOR - 1, Z - 4, Z + 3, Blocks.STONE);
         RoomCarver.carve(level, X - 4, X + 3, FLOOR, FLOOR + 10, Z - 4, Z + 3, Blocks.AIR);
         MockPlayer pilot = charterMember(helper, "dp-bore");
@@ -78,7 +79,7 @@ public class DeepestPointTest {
         boolean[] seated = {false};
         int startDepth = Depth.of(level, FLOOR);
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-            PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(at);
             level.addFreshEntity(pod);
             if (!pilot.player().startRiding(pod)) {
@@ -108,7 +109,7 @@ public class DeepestPointTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void reachingTheTopOfLayerThreeOpensTheMoraleInitiative(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel two = server.getLevel(LayerChain.dimension(2));
+        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
         MockPlayer crew = charterMember(helper, "dp-order");
         crew.player().setPermanentlyInvulnerable(true);
         crew.player().setNoGravity(true);
@@ -142,7 +143,7 @@ public class DeepestPointTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aSpectatorOrACreativePlayerSetsNoRecord(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel two = server.getLevel(LayerChain.dimension(2));
+        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
         MockPlayer ghost = charterMember(helper, "dp-ghost");
         ghost.player().setGameMode(GameType.SPECTATOR);
         ghost.teleportTo(two, new Vec3(X + 200.5, two.getMinY() + 4, Z + 200.5), 0, 0);
@@ -156,7 +157,7 @@ public class DeepestPointTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aMemberInTheNetherSetsNoRecord(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel nether = server.getLevel(Level.NETHER);
+        ServerLevel nether = ClientLight.serverLevel(server, Level.NETHER);
         MockPlayer crew = charterMember(helper, "dp-nether");
         crew.player().setPermanentlyInvulnerable(true);
         crew.player().setNoGravity(true);
