@@ -26,6 +26,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.OptionalDouble;
 import net.minecraft.world.level.block.Blocks;
 
 /**
@@ -273,18 +274,18 @@ public final class EarlyRunModel {
 
     /** The chance that one block of the zone is Company rock, read from the same JSON that the world generator reads (0 for a zone with none). */
     public static double companyRockChance(String zoneName) {
-        return hazardChance(zoneName, "deepcharter:company_rock");
+        return hazardChance(zoneName, "deepcharter:company_rock").orElse(0);
     }
 
-    /** The chance that one block of the zone is the hazard {@code blockId}, read from the same JSON that the world generator reads (0 for a zone with none). */
-    public static double hazardChance(String zoneName, String blockId) {
+    /** The chance that one block of the zone is the hazard {@code blockId}, read from the same JSON that the world generator reads; empty when the zone has no entry for it. */
+    public static OptionalDouble hazardChance(String zoneName, String blockId) {
         for (JsonElement entry : json("/data/deepcharter/worldgen/feature/fill_" + zoneName + ".json")
                 .getAsJsonArray("hazards")) {
             if (entry.getAsJsonObject().get("block").getAsString().equals(blockId)) {
-                return entry.getAsJsonObject().get("chance").getAsDouble();
+                return OptionalDouble.of(entry.getAsJsonObject().get("chance").getAsDouble());
             }
         }
-        return 0;
+        return OptionalDouble.empty();
     }
 
     private static JsonObject json(String resource) {
