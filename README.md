@@ -112,7 +112,7 @@ Lava hurts the pod, not the pilot. The hull bar along the top of your screen dro
 
 ![A pod sits in a pool of lava with its hull glowing orange and red like hot metal](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-hot-hull.png?raw=true)
 
-While lava burns the hull, the pod itself glows like hot metal, red in the seams and orange on the plates. When you climb out of the lava, the glow goes out.
+While lava burns the hull, the pod itself glows like hot metal, red in the seams and orange on the plates. When the pod leaves the lava, the glow goes out.
 
 ### 10. Lining the shaft
 

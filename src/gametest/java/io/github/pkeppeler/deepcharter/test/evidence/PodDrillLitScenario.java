@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import java.util.Set;
@@ -30,7 +31,9 @@ import net.minecraft.world.level.block.Blocks;
 public class PodDrillLitScenario extends EvidenceScenario {
     private static final int X = 4000;
     private static final int Z = 4000;
-    private static final int FLOOR_Y = 4;
+    /** Above the layer 1 signal decay (#502), so the gauges are live: the decay starts {@code onset} slabs above the floor, and a stock console shrinks that. */
+    private static final int FLOOR_Y = SignalDecayTuning.DEFAULT.band(1).onset() + 4;
+
     private static final int SLABS = 3;
     private static final int TICKS_PER_FRAME = 6;
     private static final int MAX_TICKS = 1500;
@@ -107,7 +110,7 @@ public class PodDrillLitScenario extends EvidenceScenario {
     /** Slabs of the layer's rock under the pod with ore in the column it drills, an open room above, and glowstone on the walls. */
     private static void buildBoreRoom(ServerLevel level) {
         Block rock = LayerBlocks.groundOf(level);
-        RoomCarver.carve(level, X - 5, X + 5, 0, FLOOR_Y - 1, Z - 5, Z + 5, rock);
+        RoomCarver.carve(level, X - 5, X + 5, FLOOR_Y - SLABS - 3, FLOOR_Y - 1, Z - 5, Z + 5, rock);
         // Worldgen scatters lava through layer 1's rock, and lava beside the room would flow in and into the bore, so
         // carve it sealed.
         RoomCarver.carve(
