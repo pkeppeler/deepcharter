@@ -38,6 +38,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
     private static final int X = 5000;
     private static final int Z = 5000;
     /** Near the top of layer 1, which is 192 tall, and near the floor of the last layer: the two ends of the depth gauge. */
+    // fixed-pos: near the top of layer 1 (192 tall) on purpose: the upper end of the depth gauge
     private static final int UPPER_FLOOR_Y = 150;
 
     private static final int DEEP_FLOOR_ABOVE_MIN = 20;

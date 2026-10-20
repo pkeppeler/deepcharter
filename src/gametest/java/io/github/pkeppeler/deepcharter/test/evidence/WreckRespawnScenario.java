@@ -54,6 +54,7 @@ public class WreckRespawnScenario extends EvidenceScenario {
                 // Creative while the far chunks load, so the drop in does not kill the player.
                 player.setGameMode(GameType.CREATIVE);
                 player.getInventory().clearContent();
+                // fixed-pos: the player is dropped from the sky over the wreck, above any terrain
                 player.teleportTo(
                         server.overworld(),
                         at.pos().getX() + DISTANCE,

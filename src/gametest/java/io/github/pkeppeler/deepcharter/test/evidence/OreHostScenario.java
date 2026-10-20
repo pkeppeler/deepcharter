@@ -19,6 +19,7 @@ import net.minecraft.world.phys.Vec3;
  * from a distance, and a pair of ores close up. The recording pans along the wall in layer 1, then in layer 2.
  */
 public class OreHostScenario extends EvidenceScenario {
+    // fixed-pos: a room the scenario carves in the rock of layer 1 and of layer 2
     private static final BlockPos ROOM = new BlockPos(2700, 100, 2700);
     private static final int HALF_WIDTH = 6;
     /** A light as bright as a pod lamp gets, two blocks from the wall, so the rock reads in a still. */

@@ -37,6 +37,8 @@ import net.minecraft.world.level.block.Blocks;
 public class PodLiningScenario extends EvidenceScenario {
     private static final int X = 4500;
     private static final int Z = 4500;
+    // fixed-pos: a layer 1 room the scenario carves at this height, above the signal-decay onset of layer 1
+    // (SignalDecayTuning band 1), so the gauges stay live
     private static final int FLOOR_Y = 100;
     private static final int RADIUS = 6;
     private static final int DEPTH = 14;

@@ -27,6 +27,8 @@ import net.minecraft.world.level.block.Blocks;
 public class MoleBoreScenario extends EvidenceScenario {
     private static final int X = 4200;
     private static final int Z = 4200;
+    // fixed-pos: a layer 1 room the scenario carves at this height, above the signal-decay onset of layer 1
+    // (SignalDecayTuning band 1), so the gauges stay live
     private static final int FLOOR_Y = 60;
     private static final int ROOM = 8;
     private static final int ROOM_HEIGHT = 9;

@@ -77,6 +77,7 @@ final class TextureTestWorld {
 
     private static final double EYE = 1.62;
     /** The cavern room in layer 1: its floor is at {@link #ROOM}, and its south wall, where the ores are, at {@code z + WALL}. */
+    // fixed-pos: a cavern room the scenario carves in layer 1
     private static final BlockPos ROOM = new BlockPos(2600, 100, 2600);
 
     static final int WALL = 3;
@@ -84,14 +85,18 @@ final class TextureTestWorld {
     private static final int HEIGHT = 5;
     private static final int LAMP = 12;
     /** The bored shaft: 3 x 3 blocks, from its mouth at {@link #SHAFT} down {@link #SHAFT_DEPTH} blocks. */
+    // fixed-pos: the mouth of a shaft the scenario bores in layer 1
     private static final BlockPos SHAFT = new BlockPos(2640, 150, 2600);
 
     private static final int SHAFT_DEPTH = 28;
     /** The terminal room: three terminals against its south wall, for the 32x terminals of C. */
+    // fixed-pos: a room the scenario carves in layer 1
     private static final BlockPos TERMINAL_ROOM = new BlockPos(2600, 100, 2570);
     /** The seam room: its south wall, at {@code z + WALL}, is plain rock with the ores in a checkerboard. */
+    // fixed-pos: a room the scenario carves in layer 1
     private static final BlockPos SEAM_ROOM = new BlockPos(2600, 100, 2630);
     /** The reference room: its south wall, at {@code z + WALL}, is plain rock with every ore in a column of its own. */
+    // fixed-pos: a room the scenario carves in layer 1
     private static final BlockPos REFERENCE_ROOM = new BlockPos(2600, 100, 2660);
 
     private static final int REFERENCE_HALF_WIDTH = 7;

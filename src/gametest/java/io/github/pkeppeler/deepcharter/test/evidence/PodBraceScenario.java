@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -33,8 +34,8 @@ import net.minecraft.world.level.block.Blocks;
 public class PodBraceScenario extends EvidenceScenario {
     private static final int X = 4900;
     private static final int Z = 5000;
-    private static final int CRUST_TOP_Y = 3;
-    private static final int FLOOR_Y = 15;
+    private static final int CRUST_TOP_Y = LayerTuning.DEFAULT.crustThickness();
+    private static final int FLOOR_Y = CRUST_TOP_Y + 12;
     private static final int RADIUS = 6;
     private static final int TICKS_PER_FRAME = 4;
     private static final int MAX_TICKS = 6000;

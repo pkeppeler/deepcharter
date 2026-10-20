@@ -20,6 +20,7 @@ import net.minecraft.world.phys.Vec3;
 public class TowChainScenario extends EvidenceScenario {
     private static final int X = 2300;
     private static final int Z = 2300;
+    // fixed-pos: a stone slab the scenario builds in the overworld sky, clear of the terrain
     private static final int FLOOR_Y = 200;
     private static final int HEIGHT = 12;
     private static final int PULL_TICKS = 90;

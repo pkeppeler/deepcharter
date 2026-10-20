@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 public class TowSizesScenario extends EvidenceScenario {
     private static final int X = 1200;
     private static final int Z = 1200;
+    // fixed-pos: a stone slab the scenario builds in the overworld sky, clear of the terrain
     private static final int FLOOR_Y = 200;
     /** Blocks between the rows of pods. */
     private static final int ROW_SPACING = 7;

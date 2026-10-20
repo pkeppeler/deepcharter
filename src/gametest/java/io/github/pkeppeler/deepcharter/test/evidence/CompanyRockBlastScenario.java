@@ -37,6 +37,7 @@ import net.minecraft.world.phys.Vec3;
 public class CompanyRockBlastScenario extends EvidenceScenario {
     private static final int X = 5600;
     private static final int Z = 5100;
+    // fixed-pos: a trench and slab the scenario builds in layer 1 and layer 2 at this height, with the HUD hidden
     private static final int FLOOR_Y = 40;
     private static final int TICKS_PER_FRAME = 2;
     private static final int SETTLE_TICKS = 40;

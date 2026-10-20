@@ -28,6 +28,8 @@ import net.minecraft.world.level.block.Blocks;
 public class PodHotHullScenario extends EvidenceScenario {
     private static final int X = 5300;
     private static final int Z = 5000;
+    // fixed-pos: a layer 1 room the scenario carves at this height, above the signal-decay onset of layer 1
+    // (SignalDecayTuning band 1), so the gauges stay live
     private static final int FLOOR_Y = 60;
     private static final int TICKS_PER_FRAME = 4;
     private static final int MAX_TICKS = 900;

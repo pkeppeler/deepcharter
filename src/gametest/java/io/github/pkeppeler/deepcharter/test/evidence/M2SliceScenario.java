@@ -151,7 +151,7 @@ public class M2SliceScenario extends EvidenceScenario {
     private static final int X = 4000;
 
     private static final int Z = 4000;
-    private static final int FLOOR_Y = 4;
+    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
     private static final int ROOM_WEST = 6;
     private static final int ROOM_EAST = 16;
     private static final int ROOM_RADIUS_Z = 6;

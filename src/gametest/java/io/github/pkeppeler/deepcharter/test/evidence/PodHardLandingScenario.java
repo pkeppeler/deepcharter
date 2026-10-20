@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -30,7 +31,7 @@ import net.minecraft.world.phys.AABB;
 public class PodHardLandingScenario extends EvidenceScenario {
     private static final int X = 5200;
     private static final int Z = 5200;
-    private static final int FLOOR_Y = 4;
+    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
     private static final int SHAFT_BLOCKS = 96;
     private static final int BRAKED_TICKS_PER_FRAME = 5;
     private static final int FALL_TICKS_PER_FRAME = 2;
