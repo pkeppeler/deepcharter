@@ -29,7 +29,13 @@ def main(selected: list[str]) -> int:
     gate_batch.RESULTS = gate_batch.run(cases)
     loader = unittest.TestLoader()
     suite = unittest.TestSuite(loader.loadTestsFromModule(module) for module in modules)
-    return 0 if unittest.TextTestRunner(verbosity=1).run(suite).wasSuccessful() else 1
+    if not unittest.TextTestRunner(verbosity=1).run(suite).wasSuccessful():
+        return 1
+    unread = gate_batch.unread_message(cases)
+    if unread:
+        print(unread, file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

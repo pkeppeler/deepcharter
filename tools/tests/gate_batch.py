@@ -34,12 +34,23 @@ class Result:
 
 
 RESULTS: Mapping[str, Result] | None = None
+READ: set[str] = set()
 
 
 def result(name: str) -> Result:
     if RESULTS is None:
         raise RuntimeError("no gate-check results yet; run through tools/tests/gate_checks.py")
+    READ.add(name)
     return RESULTS[name]
+
+
+def unread_message(cases: Mapping[str, Case]) -> str | None:
+    """Names each case whose result no assertion read: a fixture that is built and run but proves nothing."""
+    unread = [name for name in cases if name not in READ]
+    if not unread:
+        return None
+    lines = [f"  {name.partition('/')[0]}: {name.partition('/')[2]}" for name in unread]
+    return "gate_checks: fixture cases no assertion reads (assert each, or delete it):\n" + "\n".join(lines)
 
 
 def run(cases: Mapping[str, Case]) -> Mapping[str, Result]:
