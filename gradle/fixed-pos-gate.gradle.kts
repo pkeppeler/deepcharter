@@ -20,16 +20,16 @@
 object FixedPosGate {
 	private val NUMBER = Regex("""[-+]?\d[\d_]*(?:\.\d+)?[dDfFlL]?""")
 	private val MARKER = Regex("""//\s*fixed-pos:\s*\S""")
-	private val CONSTANT = Regex("""\b(?:int|long|float|double)\s+(?:[A-Z0-9]+_)*Y\s*=\s*[-+]?\d[\d_]*(?:\.\d+)?[dDfFlL]?\s*;""")
+	private val CONSTANT = Regex("""\b(?:int|long|float|double)\s+(?:[A-Z0-9]+_)*Y\s*=\s*${NUMBER.pattern}\s*;""")
 	private val POSITION = Regex("""\b(?:new\s+(?:BlockPos|Vec3i|Vec3)|BlockPos\s*\.\s*containing)\s*\(""")
 	private val MOVE = Regex("""\.\s*(teleportTo|setPosRaw|setPos|moveTo|snapTo|absMoveTo|atY)\s*\(""")
 	private val COMMENT = Regex("(?s)/\\*.*?\\*/|//[^\\n]*")
 	private val notNewline = Regex("[^\\n]")
 	private const val MIN_LITERAL_XZ = 100.0
 
-	private fun isNumber(argument: String?): Boolean = argument != null && NUMBER.matches(argument.trim())
+	private fun isNumber(argument: String?): Boolean = argument != null && NUMBER.matches(argument)
 
-	private fun magnitude(argument: String): Double = argument.trim().replace("_", "").trimEnd('d', 'D', 'f', 'F', 'l', 'L').toDouble().let { Math.abs(it) }
+	private fun magnitude(argument: String): Double = Math.abs(argument.replace("_", "").trimEnd('d', 'D', 'f', 'F', 'l', 'L').toDouble())
 
 	/** The top-level arguments of the call whose opening parenthesis ends just before {@code from}. */
 	private fun arguments(code: String, from: Int): List<String> {

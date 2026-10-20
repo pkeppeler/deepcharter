@@ -1,8 +1,7 @@
 """Tests the fixed-position gate in gradle/fixed-pos-gate.gradle.kts: in an evidence scenario (a file under test/evidence), a numeric literal for a
 world Y fails the build unless a `// fixed-pos: <reason>` marker with a reason sits on its statement or the comment lines above it. A literal Y is a
-`*_Y` constant set to a number, a literal Y in a BlockPos or Vec3 beside literal X and Z of 100 or more, and a literal Y in teleportTo, setPos, moveTo, snapTo or atY.
-An absolute place is a literal Y with literal X and Z of 100 or more (new BlockPos(3616, 40, 3616)). A relative offset (a vector with a small or variable X or Z,
-pos.offset(1, 0, 2), above(3)) is not a position and is left alone.
+`*_Y` constant set to a number, a literal Y in a BlockPos or Vec3 beside literal X and Z of 100 or more (new BlockPos(3616, 40, 3616)), and a literal Y in
+teleportTo, setPos, moveTo, snapTo or atY. A relative offset (a vector with a small or variable X or Z, pos.offset(1, 0, 2), above(3)) is left alone.
 
 Its fixture trees go through checkGametestFixtures in one Gradle run (gate_checks.py, gate_batch.py), so it needs the repo's Gradle wrapper
 on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
