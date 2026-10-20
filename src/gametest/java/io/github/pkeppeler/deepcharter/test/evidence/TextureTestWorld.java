@@ -77,22 +77,22 @@ final class TextureTestWorld {
 
     private static final double EYE = 1.62;
     /** The cavern room in layer 1: its floor is at {@link #ROOM}, and its south wall, where the ores are, at {@code z + WALL}. */
-    private static final BlockPos ROOM = new BlockPos(2600, 100, 2600);
+    private static final BlockPos ROOM = new BlockPos(2600, EvidenceScenario.LAYER_ROOM_Y, 2600);
 
     static final int WALL = 3;
     private static final int HALF_WIDTH = 6;
     private static final int HEIGHT = 5;
     private static final int LAMP = 12;
     /** The bored shaft: 3 x 3 blocks, from its mouth at {@link #SHAFT} down {@link #SHAFT_DEPTH} blocks. */
-    private static final BlockPos SHAFT = new BlockPos(2640, 150, 2600);
+    private static final BlockPos SHAFT = new BlockPos(2640, EvidenceScenario.LAYER_ROOM_Y + 50, 2600);
 
     private static final int SHAFT_DEPTH = 28;
     /** The terminal room: three terminals against its south wall, for the 32x terminals of C. */
-    private static final BlockPos TERMINAL_ROOM = new BlockPos(2600, 100, 2570);
+    private static final BlockPos TERMINAL_ROOM = new BlockPos(2600, EvidenceScenario.LAYER_ROOM_Y, 2570);
     /** The seam room: its south wall, at {@code z + WALL}, is plain rock with the ores in a checkerboard. */
-    private static final BlockPos SEAM_ROOM = new BlockPos(2600, 100, 2630);
+    private static final BlockPos SEAM_ROOM = new BlockPos(2600, EvidenceScenario.LAYER_ROOM_Y, 2630);
     /** The reference room: its south wall, at {@code z + WALL}, is plain rock with every ore in a column of its own. */
-    private static final BlockPos REFERENCE_ROOM = new BlockPos(2600, 100, 2660);
+    private static final BlockPos REFERENCE_ROOM = new BlockPos(2600, EvidenceScenario.LAYER_ROOM_Y, 2660);
 
     private static final int REFERENCE_HALF_WIDTH = 7;
     /** The ores in the cavern wall, by their place in it: blocks east of the room's middle, and up from its floor. */

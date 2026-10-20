@@ -44,7 +44,7 @@ public class SalvageConceptsScenario extends EvidenceScenario {
     /** The great pit's middle, south of the colony (ADR 0036): its floor is the crater. */
     private static final BlockPos PIT = new BlockPos(24, 0, 150);
     /** The carved cave's floor, in layer 1: a lamp-lit room, 32 wide and 16 deep, with the scene in its west half. */
-    private static final BlockPos CAVE = new BlockPos(3000, 100, 3000);
+    private static final BlockPos CAVE = new BlockPos(3000, LAYER_ROOM_Y, 3000);
 
     private static final int CAVE_HALF_WIDTH = 16;
     private static final int CAVE_DEPTH = 14;

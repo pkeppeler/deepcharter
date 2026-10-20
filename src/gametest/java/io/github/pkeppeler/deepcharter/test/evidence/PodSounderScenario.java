@@ -33,7 +33,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodSounderScenario extends EvidenceScenario {
     private static final int X = 4700;
     private static final int Z = 4800;
-    private static final int FLOOR_Y = 100;
+    private static final int FLOOR_Y = LAYER_ROOM_Y;
     private static final int RADIUS = 6;
     private static final int DEPTH = 18;
     private static final int FIRST_POCKET_Y = FLOOR_Y - 4;

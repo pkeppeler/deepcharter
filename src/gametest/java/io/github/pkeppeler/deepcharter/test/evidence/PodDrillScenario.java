@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
@@ -27,7 +28,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodDrillScenario extends EvidenceScenario {
     private static final int X = 4000;
     private static final int Z = 4000;
-    private static final int FLOOR_Y = 4;
+    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
     private static final int TICKS_PER_FRAME = 16;
     private static final int MAX_TICKS = 3000;
     private static final int ARRIVAL_FRAMES = 8;

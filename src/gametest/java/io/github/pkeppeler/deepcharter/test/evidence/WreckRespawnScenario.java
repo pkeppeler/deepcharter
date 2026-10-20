@@ -57,7 +57,7 @@ public class WreckRespawnScenario extends EvidenceScenario {
                 player.teleportTo(
                         server.overworld(),
                         at.pos().getX() + DISTANCE,
-                        200,
+                        SKY_SLAB_Y,
                         at.pos().getZ(),
                         Set.of(),
                         0f,

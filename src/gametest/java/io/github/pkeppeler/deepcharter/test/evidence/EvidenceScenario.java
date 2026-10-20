@@ -35,6 +35,13 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     protected static final int LIVE_GAUGES_FLOOR_Y =
             SignalDecayTuning.DEFAULT.band(1).onset() + 4;
 
+    /** Where a scenario carves a room in a layer: 60 slabs above the live-gauges floor, so the gauges stay live. */
+    protected static final int LAYER_ROOM_Y = LIVE_GAUGES_FLOOR_Y + 60;
+
+    /** Where a scenario builds a slab or hall in the overworld's sky, clear of the terrain. */
+    // fixed-pos: the overworld has no anchor to derive a sky slab from; 200 sits 120 under its 320 build limit
+    protected static final int SKY_SLAB_Y = 200;
+
     /** The size of a player's default window, which is also the size of every frame and still. */
     private static final int WIDTH = 854;
 

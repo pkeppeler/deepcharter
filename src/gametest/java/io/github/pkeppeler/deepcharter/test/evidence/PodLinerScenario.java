@@ -36,7 +36,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodLinerScenario extends EvidenceScenario {
     private static final int X = 4500;
     private static final int Z = 4600;
-    private static final int FLOOR_Y = 100;
+    private static final int FLOOR_Y = LAYER_ROOM_Y;
     private static final int RADIUS = 6;
     private static final int DEPTH = 18;
     /** The tier 2 liner rings when the pod's feet are at 97, 94 and 91: each ring covers the slab below its feet, so a pocket one slab under a ring is lined before the drill opens it. */
