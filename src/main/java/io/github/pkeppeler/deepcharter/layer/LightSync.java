@@ -58,8 +58,7 @@ public final class LightSync {
         return ticksHeld >= TIMEOUT_TICKS;
     }
 
-    /** Each chunk whose sending is held now, with its dimension and how long, for the timeout message of a test. */
-    // test-seam: a hung test names the chunk that is held; production reports through the log
+    /** Each chunk whose sending is held now, with its dimension and how long, for the stuck-hold log and test timeouts. */
     public static List<String> heldChunks() {
         List<String> held = new ArrayList<>();
         HOLDS.forEach((key, hold) -> held.add("chunk " + key.chunk + " in "
@@ -128,10 +127,7 @@ public final class LightSync {
             if (!hold.reported && timedOut(server.getTickCount() - hold.startTick)) {
                 hold.reported = true;
                 DeepCharter.LOGGER.error(
-                        "The sending of chunk {} in {} has been held for {} ticks and the light has not released it",
-                        key.chunk,
-                        key.level.dimension().identifier(),
-                        server.getTickCount() - hold.startTick);
+                        "A chunk hold is stuck: the light has not released it. Held: {}", heldChunks());
             }
             hold.trackedThroughout.retainAll(trackers(key.level, key.chunk));
         }
