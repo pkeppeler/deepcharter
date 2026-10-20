@@ -30,7 +30,7 @@ public final class LightSync {
 
     private record Key(ServerLevel level, ChunkPos chunk) {}
 
-    /** The chunk's hold. {@code trackedThroughout} is server thread only; the rest is read by test threads. */
+    /** One chunk hold. {@code trackedThroughout} is server thread only; test threads read {@code startTick}. */
     private static final class Hold {
         final Set<UUID> trackedThroughout;
         volatile int startTick;
@@ -58,7 +58,7 @@ public final class LightSync {
         return ticksHeld >= TIMEOUT_TICKS;
     }
 
-    /** Each chunk whose sending is held now, with its dimension and how long, for a test's timeout message. */
+    /** Each chunk whose sending is held now, with its dimension and how long, for the timeout message of a test. */
     // test-seam: a hung test names the chunk that is held; production reports through the log
     public static List<String> heldChunks() {
         List<String> held = new ArrayList<>();
