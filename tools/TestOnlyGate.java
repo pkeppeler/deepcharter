@@ -112,6 +112,9 @@ public final class TestOnlyGate {
     }
 
     /** A member declaration found in a source file: where, in which class, and its parameter types as written. */
+    /** A source file's lines as code only, and each line's trailing {@code //} comment (null when none). */
+    private record Lexed(List<String> code, List<String> comments) {}
+
     private record Declaration(int line, String classPath, String name, boolean field, List<String> parameters) {}
 
     private final Map<String, ClassModel> production = new LinkedHashMap<>();
@@ -120,7 +123,7 @@ public final class TestOnlyGate {
     private final List<Path> classDirs = new ArrayList<>();
     private final Map<String, ClassModel> loaded = new HashMap<>();
     private final Map<String, Refs> refs = new HashMap<>();
-    private final Map<Path, List<String>> sourceLines = new HashMap<>();
+    private final Map<Path, Lexed> lexed = new HashMap<>();
     private final Map<Path, List<Declaration>> declarations = new HashMap<>();
     private final List<Path> sourceRoots;
     private final Path root;
@@ -533,7 +536,7 @@ public final class TestOnlyGate {
             }
             if (declaration != null) {
                 line = declaration.line();
-                String marker = markerFor(sourceLines.get(source), line);
+                String marker = markerFor(lexed.get(source), line);
                 if (marker != null && !marker.isBlank()) {
                     return null;
                 }
@@ -600,13 +603,17 @@ public final class TestOnlyGate {
      * The text after {@code // test-seam:} on declaration {@code line} (1-based) or, when that line has none, on a line of the block
      * of comment-only lines directly above it.
      */
-    private static String markerFor(List<String> lines, int line) {
-        String same = marker(lines.get(line - 1));
+    private static String markerFor(Lexed source, int line) {
+        String same = marker(source.comments().get(line - 1));
         if (same != null) {
             return same;
         }
-        for (int above = line - 2; above >= 0 && lines.get(above).strip().startsWith("//"); above--) {
-            String found = marker(lines.get(above));
+        for (int above = line - 2;
+                above >= 0
+                        && source.code().get(above).isBlank()
+                        && source.comments().get(above) != null;
+                above--) {
+            String found = marker(source.comments().get(above));
             if (found != null) {
                 return found;
             }
@@ -621,8 +628,9 @@ public final class TestOnlyGate {
         } catch (IOException e) {
             throw new IllegalStateException("cannot read " + source, e);
         }
-        sourceLines.put(source, lines);
-        List<String> codeLines = codeLines(source, lines);
+        Lexed lexedSource = lex(source, lines);
+        lexed.put(source, lexedSource);
+        List<String> codeLines = lexedSource.code();
         List<Declaration> out = new ArrayList<>();
         ArrayDeque<String> classes = new ArrayDeque<>();
         ArrayDeque<Integer> classDepths = new ArrayDeque<>();
@@ -788,17 +796,19 @@ public final class TestOnlyGate {
     }
 
     /**
-     * Each line as code only: comments removed (line, block and javadoc, across lines), string literals, text blocks and char literals
+     * Each line as code only (and its trailing {@code //} comment, or null): comments removed (line, block and javadoc, across lines), string literals, text blocks and char literals
      * emptied. An apostrophe in a comment is not a char literal. A literal or comment the lexer cannot close fails loudly with the file
      * and line, so a parser that lost its place never goes on to report a bogus line.
      */
-    private static List<String> codeLines(Path source, List<String> lines) {
+    private static Lexed lex(Path source, List<String> lines) {
         List<String> out = new ArrayList<>();
+        List<String> comments = new ArrayList<>();
         boolean inBlock = false;
         boolean inTextBlock = false;
         for (int number = 1; number <= lines.size(); number++) {
             String line = lines.get(number - 1);
             StringBuilder code = new StringBuilder();
+            String comment = null;
             int i = 0;
             while (i < line.length()) {
                 if (inBlock) {
@@ -820,6 +830,7 @@ public final class TestOnlyGate {
                         code.append("\"\"");
                     }
                 } else if (line.startsWith("//", i)) {
+                    comment = line.substring(i);
                     break;
                 } else if (line.startsWith("/*", i)) {
                     inBlock = true;
@@ -842,12 +853,13 @@ public final class TestOnlyGate {
                 }
             }
             out.add(code.toString());
+            comments.add(comment);
         }
         if (inBlock || inTextBlock) {
             throw new IllegalStateException(source + ": unterminated " + (inBlock ? "block comment" : "text block")
                     + " at end of file; the gate's parser lost its place");
         }
-        return out;
+        return new Lexed(out, comments);
     }
 
     /** The index of the closing triple quote at or after {@code from}, or -1. */
@@ -871,24 +883,13 @@ public final class TestOnlyGate {
         return i;
     }
 
-    /** The text after {@code // test-seam:} in a real trailing comment (not inside a literal), or null when there is no marker. */
-    private static String marker(String line) {
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (line.startsWith("/*", i)) {
-                int end = line.indexOf("*/", i + 2);
-                if (end < 0) {
-                    return null;
-                }
-                i = end + 1;
-            } else if (c == '"' || c == '\'') {
-                i = endOfLiteral(line, i);
-            } else if (line.startsWith("//", i)) {
-                Matcher found = Pattern.compile("^//\\s*" + Pattern.quote(MARKER) + "(.*)$")
-                        .matcher(line.substring(i));
-                return found.find() ? found.group(1).trim() : null;
-            }
+    /** The text after {@code // test-seam:} in a line's {@code //} comment (null when it has none), or null when there is no marker. */
+    private static String marker(String comment) {
+        if (comment == null) {
+            return null;
         }
-        return null;
+        Matcher found =
+                Pattern.compile("^//\\s*" + Pattern.quote(MARKER) + "(.*)$").matcher(comment);
+        return found.find() ? found.group(1).trim() : null;
     }
 }
