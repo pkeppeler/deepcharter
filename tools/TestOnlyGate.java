@@ -111,6 +111,9 @@ public final class TestOnlyGate {
         return owner + "#" + name + (field ? ":" : "") + descriptor;
     }
 
+    /** A source file's lines as code only, and each line's trailing {@code //} comment (null when none). */
+    private record Lexed(List<String> code, List<String> comments) {}
+
     /** A member declaration found in a source file: where, in which class, and its parameter types as written. */
     private record Declaration(int line, String classPath, String name, boolean field, List<String> parameters) {}
 
@@ -120,7 +123,7 @@ public final class TestOnlyGate {
     private final List<Path> classDirs = new ArrayList<>();
     private final Map<String, ClassModel> loaded = new HashMap<>();
     private final Map<String, Refs> refs = new HashMap<>();
-    private final Map<Path, List<String>> sourceLines = new HashMap<>();
+    private final Map<Path, Lexed> lexed = new HashMap<>();
     private final Map<Path, List<Declaration>> declarations = new HashMap<>();
     private final List<Path> sourceRoots;
     private final Path root;
@@ -527,9 +530,13 @@ public final class TestOnlyGate {
         if (source != null) {
             where = root.relativize(source.toAbsolutePath().normalize()).toString();
             Declaration declaration = declarationOf(source, classPath, constructor ? innermost : member.name(), member);
+            if (declaration == null && !constructor) {
+                throw new IllegalStateException(
+                        where + ": cannot find the declaration of " + label + "; the gate's parser lost its place");
+            }
             if (declaration != null) {
                 line = declaration.line();
-                String marker = markerFor(sourceLines.get(source), line);
+                String marker = markerFor(lexed.get(source), line);
                 if (marker != null && !marker.isBlank()) {
                     return null;
                 }
@@ -596,13 +603,17 @@ public final class TestOnlyGate {
      * The text after {@code // test-seam:} on declaration {@code line} (1-based) or, when that line has none, on a line of the block
      * of comment-only lines directly above it.
      */
-    private static String markerFor(List<String> lines, int line) {
-        String same = marker(lines.get(line - 1));
+    private static String markerFor(Lexed source, int line) {
+        String same = marker(source.comments().get(line - 1));
         if (same != null) {
             return same;
         }
-        for (int above = line - 2; above >= 0 && lines.get(above).strip().startsWith("//"); above--) {
-            String found = marker(lines.get(above));
+        for (int above = line - 2;
+                above >= 0
+                        && source.code().get(above).isBlank()
+                        && source.comments().get(above) != null;
+                above--) {
+            String found = marker(source.comments().get(above));
             if (found != null) {
                 return found;
             }
@@ -617,36 +628,24 @@ public final class TestOnlyGate {
         } catch (IOException e) {
             throw new IllegalStateException("cannot read " + source, e);
         }
-        sourceLines.put(source, lines);
+        Lexed lexedSource = lex(source, lines);
+        lexed.put(source, lexedSource);
+        List<String> codeLines = lexedSource.code();
         List<Declaration> out = new ArrayList<>();
         ArrayDeque<String> classes = new ArrayDeque<>();
         ArrayDeque<Integer> classDepths = new ArrayDeque<>();
         String pending = null;
         int depth = 0;
-        boolean inBlockComment = false;
         Pattern classDeclaration = Pattern.compile("\\b(?:class|interface|enum|record)\\s+(\\w+)");
         for (int index = 0; index < lines.size(); index++) {
-            String raw = lines.get(index);
-            if (inBlockComment) {
-                int end = raw.indexOf("*/");
-                if (end < 0) {
-                    continue;
-                }
-                raw = raw.substring(end + 2);
-                inBlockComment = false;
-            }
-            String code = code(raw).replaceAll("/\\*.*?\\*/", " ");
-            if (code.contains("/*")) {
-                code = code.substring(0, code.indexOf("/*"));
-                inBlockComment = true;
-            }
+            String code = codeLines.get(index);
             Matcher declared = classDeclaration.matcher(code);
             boolean atMemberLevel = !classes.isEmpty() && depth == classDepths.peek();
             if (declared.find()) {
                 pending = declared.group(1);
             } else if (atMemberLevel) {
                 Declaration member =
-                        memberDeclaration(lines, index, code, String.join(".", reversed(classes)), classes.peek());
+                        memberDeclaration(codeLines, index, code, String.join(".", reversed(classes)), classes.peek());
                 if (member != null) {
                     out.add(member);
                 }
@@ -693,7 +692,7 @@ public final class TestOnlyGate {
 
     /** A method, constructor or field declared on {@code code}, or null: a type or modifiers before the name, never a statement. */
     private static Declaration memberDeclaration(
-            List<String> lines, int index, String code, String classPath, String className) {
+            List<String> codeLines, int index, String code, String classPath, String className) {
         Matcher first = Pattern.compile("[(=;,]").matcher(code);
         if (!first.find()) {
             return null;
@@ -727,17 +726,17 @@ public final class TestOnlyGate {
         if (!method) {
             return new Declaration(index + 1, classPath, name, true, List.of());
         }
-        return new Declaration(index + 1, classPath, name, false, parameterTypes(lines, index, first.start()));
+        return new Declaration(index + 1, classPath, name, false, parameterTypes(codeLines, index, first.start()));
     }
 
     /** The parameter types as written, simple names, generics dropped, varargs as arrays. */
-    private static List<String> parameterTypes(List<String> lines, int index, int open) {
+    private static List<String> parameterTypes(List<String> codeLines, int index, int open) {
         StringBuilder text = new StringBuilder();
         int depth = 0;
         boolean started = false;
         outer:
-        for (int i = index; i < lines.size(); i++) {
-            String code = code(lines.get(i));
+        for (int i = index; i < codeLines.size(); i++) {
+            String code = codeLines.get(i);
             for (int j = i == index ? open : 0; j < code.length(); j++) {
                 char c = code.charAt(j);
                 if (c == '(') {
@@ -796,22 +795,83 @@ public final class TestOnlyGate {
         return type.substring(type.lastIndexOf('.') + 1);
     }
 
-    /** The line without its trailing comment and with string and char literals emptied. */
-    private static String code(String line) {
-        StringBuilder out = new StringBuilder();
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (line.startsWith("//", i)) {
-                break;
+    /**
+     * Each line as code only (and its trailing {@code //} comment, or null): comments removed (line, block and javadoc, across lines), string literals, text blocks and char literals
+     * emptied. An apostrophe in a comment is not a char literal. A literal or comment the lexer cannot close fails loudly with the file
+     * and line, so a parser that lost its place never goes on to report a bogus line.
+     */
+    private static Lexed lex(Path source, List<String> lines) {
+        List<String> out = new ArrayList<>();
+        List<String> comments = new ArrayList<>();
+        boolean inBlock = false;
+        boolean inTextBlock = false;
+        for (int number = 1; number <= lines.size(); number++) {
+            String line = lines.get(number - 1);
+            StringBuilder code = new StringBuilder();
+            String comment = null;
+            int i = 0;
+            while (i < line.length()) {
+                if (inBlock) {
+                    int end = line.indexOf("*/", i);
+                    if (end < 0) {
+                        i = line.length();
+                    } else {
+                        inBlock = false;
+                        i = end + 2;
+                        code.append(' ');
+                    }
+                } else if (inTextBlock) {
+                    int end = endOfTextBlock(line, i);
+                    if (end < 0) {
+                        i = line.length();
+                    } else {
+                        inTextBlock = false;
+                        i = end + 3;
+                        code.append("\"\"");
+                    }
+                } else if (line.startsWith("//", i)) {
+                    comment = line.substring(i);
+                    break;
+                } else if (line.startsWith("/*", i)) {
+                    inBlock = true;
+                    i += 2;
+                } else if (line.startsWith("\"\"\"", i)) {
+                    inTextBlock = true;
+                    i += 3;
+                } else if (line.charAt(i) == '"' || line.charAt(i) == '\'') {
+                    char quote = line.charAt(i);
+                    int end = endOfLiteral(line, i);
+                    if (end >= line.length()) {
+                        throw new IllegalStateException(source + ":" + number + ": unterminated " + quote
+                                + " literal; the gate's parser lost its place");
+                    }
+                    code.append(quote).append(quote);
+                    i = end + 1;
+                } else {
+                    code.append(line.charAt(i));
+                    i++;
+                }
             }
-            if (c == '"' || c == '\'') {
-                i = endOfLiteral(line, i);
-                out.append(c).append(c);
-            } else {
-                out.append(c);
+            out.add(code.toString());
+            comments.add(comment);
+        }
+        if (inBlock || inTextBlock) {
+            throw new IllegalStateException(source + ": unterminated " + (inBlock ? "block comment" : "text block")
+                    + " at end of file; the gate's parser lost its place");
+        }
+        return new Lexed(out, comments);
+    }
+
+    /** The index of the closing triple quote at or after {@code from}, or -1. */
+    private static int endOfTextBlock(String line, int from) {
+        for (int i = from; i < line.length(); i++) {
+            if (line.charAt(i) == '\\') {
+                i++;
+            } else if (line.startsWith("\"\"\"", i)) {
+                return i;
             }
         }
-        return out.toString();
+        return -1;
     }
 
     private static int endOfLiteral(String line, int start) {
@@ -823,18 +883,13 @@ public final class TestOnlyGate {
         return i;
     }
 
-    /** The text after {@code // test-seam:} in a real trailing comment (not inside a literal), or null when there is no marker. */
-    private static String marker(String line) {
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (c == '"' || c == '\'') {
-                i = endOfLiteral(line, i);
-            } else if (line.startsWith("//", i)) {
-                Matcher found = Pattern.compile("^//\\s*" + Pattern.quote(MARKER) + "(.*)$")
-                        .matcher(line.substring(i));
-                return found.find() ? found.group(1).trim() : null;
-            }
+    /** The text after {@code // test-seam:} in a line's {@code //} comment (null when it has none), or null when there is no marker. */
+    private static String marker(String comment) {
+        if (comment == null) {
+            return null;
         }
-        return null;
+        Matcher found =
+                Pattern.compile("^//\\s*" + Pattern.quote(MARKER) + "(.*)$").matcher(comment);
+        return found.find() ? found.group(1).trim() : null;
     }
 }
