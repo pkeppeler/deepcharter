@@ -1,8 +1,10 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 
 /**
@@ -80,6 +82,13 @@ public final class PodEvents {
                 return false;
             });
 
+    /**
+     * The {@link #AFTER_TICK} phase of listeners that read the pod where its own tick left it. It runs before the default phase,
+     * where towing ({@code PodTowing.follow}) and other listeners move the pod, so a deed such as towing a Prospector onto the pad
+     * is judged from the position the pod ticked to. Register a reader with {@code AFTER_TICK.register(OBSERVE, listener)}.
+     */
+    public static final Identifier OBSERVE = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "observe");
+
     /** Fired at the end of each server tick of the pod, after its own movement, drill and fuel. */
     public static final Event<AfterTick> AFTER_TICK =
             EventFactory.createArrayBacked(AfterTick.class, listeners -> pod -> {
@@ -87,6 +96,10 @@ public final class PodEvents {
                     listener.afterTick(pod);
                 }
             });
+
+    static {
+        AFTER_TICK.addPhaseOrdering(OBSERVE, Event.DEFAULT_PHASE);
+    }
 
     /** A pod has just been registered to its owner charter. Server only. */
     public static final Event<Registered> REGISTERED =

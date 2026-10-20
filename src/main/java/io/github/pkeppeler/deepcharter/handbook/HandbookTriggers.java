@@ -103,7 +103,8 @@ public final class HandbookTriggers {
     static void init() {
         TerminalEvents.REPAIRED.register((server, type, charter, player) -> onRepaired(type, player));
         TerminalEvents.ACTED.register((server, type, player, action) -> onActed(type, player, action));
-        PodEvents.AFTER_TICK.register(HandbookTriggers::onPodTick);
+        // The tow is judged from where the pod ticked to, before PodTowing.follow drags it (#679).
+        PodEvents.AFTER_TICK.register(PodEvents.OBSERVE, HandbookTriggers::onPodTick);
         UpgradeEvents.BOUGHT.register((server, player, pod, track, tier) -> {
             if (track == ComponentTrack.SCANNER) {
                 Directives.fire(player, INSTALL_SCANNER);
