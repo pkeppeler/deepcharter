@@ -94,6 +94,14 @@ Below the surface there is no sky. An unlit cave is almost black. The pod's ligh
 
 ![A lampless figure stands in a dark room beside a lit pod](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/reacher.png?raw=true)
 
+![A pod's headlamp throws a faint cone of light across a black room; a second pod waits dark behind it](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/glow-beams.png?raw=true)
+
+A pod with its lights on throws a cone of light from the headlamp. A better lights part throws it farther, and a wall cuts it short. A pod with no lights, or a stranded one, throws none.
+
+![Floodlights on the colony towers throw amber beams into the night sky over the town](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/floodlight-beam.png?raw=true)
+
+The town glows too. Lamps, gauges and floodlights give off a soft amber halo, and the floodlights throw beams through the dust. It is only a look: the rock around you stays as dark as before.
+
 You are not always alone down there. A lampless figure, tall and thin and black, stands at the edge of your light. It never attacks, and it never says what it wants.
 
 ### 9. Lava and the hull
@@ -101,6 +109,10 @@ You are not always alone down there. A lampless figure, tall and thin and black,
 ![Lava burns the hull of a pod](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lava.gif?raw=true)
 
 Lava hurts the pod, not the pilot. The hull bar along the top of your screen drops, and the lamps at its end light, until you leave or repair. At zero the pod is a wreck.
+
+![A pod sits in a pool of lava with its hull glowing orange and red like hot metal](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-hot-hull.png?raw=true)
+
+While lava burns the hull, the pod itself glows like hot metal, red in the seams and orange on the plates. When you climb out of the lava, the glow goes out.
 
 ### 10. Lining the shaft
 
