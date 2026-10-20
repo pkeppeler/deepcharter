@@ -30,6 +30,10 @@ import net.minecraft.world.level.block.Blocks;
  * hull a row and has 3 rows, 24 in all, so the HUD warns from 16 slabs up: the slabs down, the hull, and what the crust takes. The pod stops on the crust and a
  * breach brace is fitted (as if bought at the upgrade terminal). It burns two ore into hull, 8 to 32, the warning goes, and the pod bores the crust into layer 2
  * with 8 hull left.
+ *
+ * <p>The pod is a Prospector with the tier 3 console (#689). Every still sits inside layer 1's signal-decay band (onset 36, blackout 6), where the stock
+ * console's readout plate fails (threshold 0.45; decay 0.83 at the first warning, 1 at the crust) and blanks the warning. Tier 3 has a share of 0, so the plate
+ * never decays. Tier 2 (share 0.3) would clear the first warning (0.09) but not the crust (0.87).
  */
 public class PodBraceScenario extends EvidenceScenario {
     private static final int X = 4900;
@@ -60,11 +64,12 @@ public class PodBraceScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_EAST, LOOK_DOWN, true);
-                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
+                PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, one);
                 pod.setPos(X, FLOOR_Y, Z);
                 pod.setYRot(FACING_EAST);
                 one.addFreshEntity(pod);
                 ScannerPods.fit(server, player, pod, ComponentTrack.FUEL_TANK, 2);
+                ScannerPods.fit(server, player, pod, ComponentTrack.CONSOLE, ComponentTrack.CONSOLE.maxTier());
                 pod.setFuel(100f);
                 pod.setHull(HULL);
                 for (int i = 0; i < ORE; i++) {
