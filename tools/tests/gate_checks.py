@@ -10,6 +10,9 @@ import sys
 import unittest
 from pathlib import Path
 
+if sys.version_info < (3, 10):
+    sys.exit(f"gate_checks: {sys.executable} is Python {sys.version.split()[0]}; the tools need 3.10 or newer. Put a newer python3 first on PATH.")
+
 CHECKS = ("room_carver", "world_data", "world_clock", "tick_wait", "client_filter", "hud_toggle", "testonly", "entity_query", "each_tick", "record_holder")
 
 

@@ -19,6 +19,7 @@ echo "gradlew $*" >>"$STUB_LOG"
 S
 cat >"$work/bin/python3" <<'S'
 #!/usr/bin/env bash
+[[ ${1:-} == -c ]] && exit 0 # the interpreter version check passes silently; it is not a counted call
 echo "python3 $*" >>"$STUB_LOG"
 [[ -z ${STUB_GIT_INIT:-} ]] || { git init -q "$STUB_GIT_INIT" && git -C "$STUB_GIT_INIT" config deepcharter.leak 1; }
 case "$*" in
@@ -73,6 +74,31 @@ check "pinned local version prints no warning" "no" "$(grep -q 'CI pins' "$work/
 STUB_SC_VERSION=0.9.0 run_hook "refs/heads/b $sha refs/heads/b $zero$nl" >/dev/null
 check "other local version warns with both versions" "yes" "$(grep -q 'local version is 0.9.0 but CI pins 0.11.0' "$work/out" && echo yes || echo no)"
 check "last line without a newline still counts" "0:5" "$(run_hook "refs/heads/b $sha refs/heads/b $zero")"
+
+# A python3 older than 3.10 stops the hook before any check, and the message names the interpreter, its version and the minimum.
+mkdir -p "$work/oldbin"
+cat >"$work/oldbin/python3" <<'S'
+#!/usr/bin/env bash
+if [[ ${1:-} == -c ]]; then
+  [[ $2 == *sys.exit* ]] && exit 1
+  echo "3.9.6"
+  exit 0
+fi
+echo "python3 $*" >>"$STUB_LOG"
+S
+chmod +x "$work/oldbin/python3"
+: >"$work/calls"
+status=0
+(cd "$work" && printf '%s' "refs/heads/b $sha refs/heads/b $zero$nl" | STUB_LOG="$work/calls" PATH="$work/oldbin:$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url) \
+  >"$work/out" 2>&1 || status=$?
+check "python3 older than 3.10 blocks the push" "1" "$status"
+check "old python3 message names path, version and minimum" "yes" \
+  "$(grep -qF "python3 at $work/oldbin/python3 is 3.9.6; the tools need 3.10 or newer" "$work/out" && echo yes || echo no)"
+check "old python3 stops before any check" "0" "$(wc -l <"$work/calls" | tr -d ' ')"
+status=0
+(cd "$work" && printf '%s' "(delete) $zero refs/heads/b $sha$nl" | STUB_LOG="$work/calls" PATH="$work/oldbin:$work/bin:$PATH" bash "$work/.githooks/pre-push" origin url) \
+  >/dev/null 2>&1 || status=$?
+check "old python3 does not block a skipped push" "0" "$status"
 
 # Git hands a hook GIT_DIR. A test that runs `git init` must hit its own temp dir, never the repo GIT_DIR names: here a sacrificial
 # bare repo stands in for the real one, and the stub python3 plays the test.
