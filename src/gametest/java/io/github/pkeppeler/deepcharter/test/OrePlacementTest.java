@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -30,7 +31,9 @@ import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -129,6 +132,63 @@ public class OrePlacementTest {
             expectFrequency(helper, zone, counted, HazardBlocks.COMPANY_ROCK, bare * HAZARDS[zone][0]);
             expectFrequency(helper, zone, counted, Blocks.LAVA, bare * HAZARDS[zone][1]);
             expectFrequency(helper, zone, counted, HazardBlocks.GAS_POCKET, bare * HAZARDS[zone][2]);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Zones whose lava may be less than the zone above it (the previous zone in the same layer, or the last of the layer
+     * above), by zone name, each with its reason. A name that is not an exception any more fails too, so the list stays
+     * true. Empty today.
+     */
+    private static final Map<String, String> LAVA_DEPTH_EXCEPTIONS = Map.of();
+
+    /** Lava rarity rises with depth (#232, #717): every zone, top to bottom through the chain, has at least the lava of the one above. */
+    @GameTest
+    public void lavaNeverFallsWithDepth(GameTestHelper helper) {
+        int layers = LayerChain.count(helper.getLevel().getServer().registryAccess());
+        List<String> names = new ArrayList<>();
+        for (int layer = 1; layer <= layers; layer++) {
+            for (int index = 0; index < Zones.COUNT; index++) {
+                // A layer of Zones.COUNT blocks from y=0 has one block per zone: y=2 is the top zone.
+                names.add(Zones.of(layer, 0, Zones.COUNT, Zones.COUNT - 1 - index)
+                        .orElseThrow(() -> failure(helper, "a layer of the chain has no zone names"))
+                        .id()
+                        .getPath());
+            }
+        }
+        double above = 0;
+        String aboveName = "";
+        List<String> excepted = new ArrayList<>();
+        for (String name : names) {
+            double lava = EarlyRunModel.hazardChance(name, "minecraft:lava");
+            LOGGER.info("{} lava chance {}", name, lava);
+            if (lava < above) {
+                if (LAVA_DEPTH_EXCEPTIONS.containsKey(name)) {
+                    excepted.add(name);
+                } else {
+                    throw failure(
+                            helper,
+                            "%s has lava chance %s, less than %s above it (%s); lava rises with depth, or list the zone"
+                                    + " in LAVA_DEPTH_EXCEPTIONS with its reason",
+                            name,
+                            lava,
+                            aboveName,
+                            above);
+                }
+            }
+            above = lava;
+            aboveName = name;
+        }
+        for (String name : LAVA_DEPTH_EXCEPTIONS.keySet()) {
+            if (!excepted.contains(name)) {
+                throw failure(helper, "%s is listed in LAVA_DEPTH_EXCEPTIONS but its lava does not fall", name);
+            }
+        }
+        for (String name : List.of("topsoil_claims", "stone_benches")) {
+            if (EarlyRunModel.hazardChance(name, "minecraft:lava") != 0) {
+                throw failure(helper, "%s must have no lava", name);
+            }
         }
         helper.succeed();
     }

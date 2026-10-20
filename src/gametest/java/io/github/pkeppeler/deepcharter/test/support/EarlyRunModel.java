@@ -273,9 +273,14 @@ public final class EarlyRunModel {
 
     /** The chance that one block of the zone is Company rock, read from the same JSON that the world generator reads (0 for a zone with none). */
     public static double companyRockChance(String zoneName) {
+        return hazardChance(zoneName, "deepcharter:company_rock");
+    }
+
+    /** The chance that one block of the zone is the hazard {@code blockId}, read from the same JSON that the world generator reads (0 for a zone with none). */
+    public static double hazardChance(String zoneName, String blockId) {
         for (JsonElement entry : json("/data/deepcharter/worldgen/feature/fill_" + zoneName + ".json")
                 .getAsJsonArray("hazards")) {
-            if (entry.getAsJsonObject().get("block").getAsString().equals("deepcharter:company_rock")) {
+            if (entry.getAsJsonObject().get("block").getAsString().equals(blockId)) {
                 return entry.getAsJsonObject().get("chance").getAsDouble();
             }
         }
