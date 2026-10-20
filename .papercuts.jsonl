@@ -61,3 +61,42 @@
 {"kind":"cut","id":"pc_1d3ba33fdb3c","ts":"2026-10-15T10:45:53.490Z","agent":"claude-code","text":"claude --bg successor stalled at the CLI workspace-trust and mcpfabric approval dialogs (workspace never trusted interactively in the CLI); a handover must check claude logs <id> right after starting","tags":["claude-sessions"],"severity":"minor","cwd":"/Users/peterjkeppeler/git/deepcharter/.claude/worktrees/585-session-successor","repo":"/Users/peterjkeppeler/git/deepcharter/.claude/worktrees/585-session-successor"}
 {"kind":"cut","id":"pc_640f4bd65d1c","ts":"2026-10-15T13:17:10.405Z","agent":"claude-code","text":"merge queue serialises one full CI (~16 min with the client suite) per PR, so a batch of small disjoint review-passed PRs takes hours; a batched integration run that merges several disjoint PRs on one green CI would prevent it","tags":["merge-queue"],"severity":"minor","cwd":"/Users/peterjkeppeler/git/deepcharter/.claude/worktrees/539-company-rock-glow","repo":"/Users/peterjkeppeler/git/deepcharter/.claude/worktrees/539-company-rock-glow"}
 {"kind":"cut","id":"pc_9d25e21939c4","ts":"2026-10-20T08:19:56.172Z","agent":"claude-code","text":"tools/gametest.sh 'HandbookChaptersSixToNineTest*' (CamelCase glob) matched no test id yet ran the whole server suite (1153 tests) instead of failing, although its header says it fails when no test matches; an agent lost several full-suite runs to it. Fix: make the no-match check actually refuse (and suggest the snake_case id).","tags":["gametest"],"severity":"minor","cwd":"/Users/peterjkeppeler/git/deepcharter","repo":"/Users/peterjkeppeler/git/deepcharter"}
+{"kind":"resolve","id":"pc_1d3ba33fdb3c","ts":"2026-10-20T11:00:08.854Z","agent":"claude-code","note":"fixed by #586: handover verifies with claude agents --json"}
+{"kind":"resolve","id":"pc_890cfed5b9e0","ts":"2026-10-20T11:00:08.858Z","agent":"claude-code","note":"fixed by #664: merge-pr refuses a required check that was only skipped"}
+{"kind":"resolve","id":"pc_3ca22bf5a5dd","ts":"2026-10-20T11:00:08.863Z","agent":"claude-code","note":"fixed: 'Don't chase flakes' rule (run on main first)"}
+{"kind":"resolve","id":"pc_b72364755481","ts":"2026-10-20T11:00:08.866Z","agent":"claude-code","note":"fixed: *_gate_check.py naming rule in gate_checks.py and SKILL.md"}
+{"kind":"resolve","id":"pc_9072997de9da","ts":"2026-10-20T11:00:08.878Z","agent":"claude-code","note":"fixed: pre-push unsets GIT_*; git_env.py"}
+{"kind":"resolve","id":"pc_cdd6ed8fc6b6","ts":"2026-10-20T11:00:08.884Z","agent":"claude-code","note":"fixed by #356: overlay edge-ring test"}
+{"kind":"resolve","id":"pc_39a1a25409f7","ts":"2026-10-20T11:00:08.887Z","agent":"claude-code","note":"fixed by #351: SurfaceTerrainTest heightmaps agree"}
+{"kind":"resolve","id":"pc_725621fb60ac","ts":"2026-10-20T11:00:08.889Z","agent":"claude-code","note":"fixed by #340: cached ffmpeg install"}
+{"kind":"resolve","id":"pc_b757f8c6ca8e","ts":"2026-10-20T11:00:08.895Z","agent":"claude-code","note":"fixed by #272: shellcheck pinned 0.11.0"}
+{"kind":"resolve","id":"pc_598aa40c0242","ts":"2026-10-20T11:00:08.898Z","agent":"claude-code","note":"fixed by #257: message says links or embeds"}
+{"kind":"resolve","id":"pc_1a1c76f37301","ts":"2026-10-20T11:00:08.901Z","agent":"claude-code","note":"fixed by #683: mark-review-passed runs check_demo"}
+{"kind":"resolve","id":"pc_4fd64cea96e1","ts":"2026-10-20T11:00:08.904Z","agent":"claude-code","note":"fixed by #260: client slot lock"}
+{"kind":"resolve","id":"pc_2f62c7b50594","ts":"2026-10-20T11:00:08.910Z","agent":"claude-code","note":"fixed by #183: every mob dies to kill"}
+{"kind":"resolve","id":"pc_36a5c99d6af5","ts":"2026-10-20T11:00:08.916Z","agent":"claude-code","note":"fixed: TestEntities.require"}
+{"kind":"resolve","id":"pc_278365fa8583","ts":"2026-10-20T11:00:08.919Z","agent":"claude-code","note":"fixed by #295: ClientWait.until and tick-wait gate"}
+{"kind":"resolve","id":"pc_0ea5caf45606","ts":"2026-10-20T11:00:08.922Z","agent":"claude-code","note":"fixed by #286: GIF_LADDER"}
+{"kind":"resolve","id":"pc_e983461e6065","ts":"2026-10-20T11:00:08.926Z","agent":"claude-code","note":"fixed by #88: per-feature lang fragments"}
+{"kind":"resolve","id":"pc_85faa5fb28ff","ts":"2026-10-20T11:00:08.929Z","agent":"claude-code","note":"obsolete: cockpit_concepts.py deleted in #520"}
+{"kind":"resolve","id":"pc_647723937dd1","ts":"2026-10-20T11:00:08.932Z","agent":"claude-code","note":"obsolete: entrypoint lists generated (#204)"}
+{"kind":"resolve","id":"pc_0ec06f994702","ts":"2026-10-20T11:00:08.935Z","agent":"claude-code","note":"obsolete: #257 gate reads closingIssuesReferences"}
+{"kind":"resolve","id":"pc_9d25e21939c4","ts":"2026-10-20T11:00:14.886Z","agent":"claude-code","note":"fixed by #691: gametest.sh refuses an uppercase filter"}
+{"kind":"resolve","id":"pc_6f25fd440494","ts":"2026-10-20T11:00:14.890Z","agent":"claude-code","note":"fixed by #691: gametest.sh refuses an uppercase filter"}
+{"kind":"resolve","id":"pc_25aea2663220","ts":"2026-10-20T11:00:14.893Z","agent":"claude-code","note":"fixed: core.sshCommand ServerAliveInterval=15"}
+{"kind":"resolve","id":"pc_84b8ba7153c9","ts":"2026-10-20T11:00:14.896Z","agent":"claude-code","note":"fixed: core.sshCommand ServerAliveInterval=15"}
+{"kind":"resolve","id":"pc_bccd78e5c96a","ts":"2026-10-20T11:00:14.899Z","agent":"claude-code","note":"fixed: per-agent scratch subdirs rule; tools/gametest.sh (#176)"}
+{"kind":"resolve","id":"pc_53cdb20d4c8f","ts":"2026-10-20T11:00:14.902Z","agent":"claude-code","note":"fixed: per-agent scratch subdirs rule; tools/gametest.sh (#176)"}
+{"kind":"resolve","id":"pc_68207f40b729","ts":"2026-10-20T11:00:14.905Z","agent":"claude-code","note":"fixed: per-agent scratch subdirs rule; tools/gametest.sh (#176)"}
+{"kind":"resolve","id":"pc_c1a933abe17d","ts":"2026-10-20T11:00:14.909Z","agent":"claude-code","note":"fixed by #108"}
+{"kind":"resolve","id":"pc_80ff060fcd54","ts":"2026-10-20T11:00:14.912Z","agent":"claude-code","note":"fixed by #108"}
+{"kind":"resolve","id":"pc_3393b69f7aab","ts":"2026-10-20T11:00:14.915Z","agent":"claude-code","note":"fixed by #398: no-pattern-kill.sh hook"}
+{"kind":"resolve","id":"pc_b5fbfd0785a0","ts":"2026-10-20T11:00:14.918Z","agent":"claude-code","note":"fixed by #398: no-pattern-kill.sh hook"}
+{"kind":"resolve","id":"pc_6cdbf6c2cdf6","ts":"2026-10-20T11:00:14.921Z","agent":"claude-code","note":"fixed: SKILL.md Git line (944235c9)"}
+{"kind":"resolve","id":"pc_73a2da2e0278","ts":"2026-10-20T11:00:14.924Z","agent":"claude-code","note":"fixed: SKILL.md Git line (944235c9)"}
+{"kind":"resolve","id":"pc_c2f3be39e873","ts":"2026-10-20T11:00:14.928Z","agent":"claude-code","note":"fixed by #294: merge-queue.sh"}
+{"kind":"resolve","id":"pc_e2f4ede5cd45","ts":"2026-10-20T11:00:14.932Z","agent":"claude-code","note":"fixed by #294: merge-queue.sh"}
+{"kind":"resolve","id":"pc_2b745c50f9dc","ts":"2026-10-20T11:00:14.935Z","agent":"claude-code","note":"fixed by #252: Vulkan on macOS"}
+{"kind":"resolve","id":"pc_bec8209e5ba3","ts":"2026-10-20T11:00:14.938Z","agent":"claude-code","note":"fixed by #252: Vulkan on macOS"}
+{"kind":"resolve","id":"pc_0ca7eaaf792e","ts":"2026-10-20T11:00:14.941Z","agent":"claude-code","note":"fixed by #176 and #284"}
+{"kind":"resolve","id":"pc_bb6973265737","ts":"2026-10-20T11:00:14.946Z","agent":"claude-code","note":"fixed by #176 and #284"}
