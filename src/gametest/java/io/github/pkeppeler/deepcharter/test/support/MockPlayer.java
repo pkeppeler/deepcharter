@@ -133,9 +133,13 @@ public final class MockPlayer {
         confirmDimensionChange();
     }
 
-    /** Disconnect and remove the player. Safe to call when it has already left. */
+    /**
+     * Disconnect and remove the player, also one that died and respawned. Safe to call when it has already left.
+     * The connection is the thing to end, not {@link #player()}: a respawn swaps the ServerPlayer under the same
+     * listener, and Fabric ends its networking addon only when the listener is disconnected (#698).
+     */
     public void leave() {
-        if (isOnline()) {
+        if (connection.isConnected()) {
             connection.disconnect(Component.literal("mock player left"));
             connection.handleDisconnection();
         }

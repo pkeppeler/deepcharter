@@ -1075,7 +1075,6 @@ public class WreckTest {
         RespawnConfig bed = bedConfig(helper);
         ServerPlayer[] respawned = {null};
         Runnable cleanup = () -> {
-            server.getPlayerList().remove(respawned[0] == null ? mock.player() : respawned[0]);
             mock.leave();
             pod.discard();
             clearBed(helper);
@@ -1121,7 +1120,6 @@ public class WreckTest {
         MockPlayer mock = joinLoaded(helper, "wreck-nobed", pod.position());
         ServerPlayer[] respawned = {null};
         Runnable cleanup = () -> {
-            server.getPlayerList().remove(respawned[0] == null ? mock.player() : respawned[0]);
             mock.leave();
             pod.discard();
             clearFloor(helper);
@@ -1228,9 +1226,6 @@ public class WreckTest {
             }
             helper.succeed();
         } finally {
-            if (respawned[0] != null) {
-                server.getPlayerList().remove(respawned[0]);
-            }
             mock.leave();
             pod.discard();
             clearBed(helper);
@@ -1270,7 +1265,6 @@ public class WreckTest {
     /** A player marked to wake at the office who leaves and comes back dies an ordinary death: they wake at their bed. */
     @GameTest
     public void aCrewMemberWhoLeavesAndReturnsBeforeRespawningWakesAtTheirBed(GameTestHelper helper) {
-        MinecraftServer server = server(helper);
         PodEntity pod = spawnOnFloor(helper);
         MockPlayer mock = MockPlayers.joinUnloaded(helper, "wreck-leaver");
         UUID id = mock.player().getUUID();
@@ -1278,9 +1272,6 @@ public class WreckTest {
         MockPlayer[] returned = {null};
         ServerPlayer[] respawned = {null};
         Runnable cleanup = () -> {
-            if (respawned[0] != null) {
-                server.getPlayerList().remove(respawned[0]);
-            }
             if (returned[0] != null) {
                 returned[0].leave();
             }
