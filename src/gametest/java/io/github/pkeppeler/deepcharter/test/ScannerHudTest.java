@@ -13,8 +13,11 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -31,10 +34,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jspecify.annotations.Nullable;
 
 /** Client GameTest: ore pixels in the scanner HUD. */
 public class ScannerHudTest implements FabricClientGameTest {
@@ -57,8 +60,8 @@ public class ScannerHudTest implements FabricClientGameTest {
     /** Places {@code state} {@code ahead} blocks along the ridden pod's facing and {@code up} above its feet. */
     public static void placeBesidePod(TestServerContext server, int ahead, int up, BlockState state) {
         server.runOnServer(minecraftServer -> {
-            PodEntity pod = (PodEntity)
-                    minecraftServer.getPlayerList().getPlayers().getFirst().getVehicle();
+            PodEntity pod = TestEntities.vehicle(
+                    minecraftServer.getPlayerList().getPlayers().getFirst(), PodEntity.class);
             place(
                     (ServerLevel) pod.level(),
                     pod.blockPosition().relative(pod.getDirection(), ahead).above(up),
@@ -82,7 +85,7 @@ public class ScannerHudTest implements FabricClientGameTest {
     public static void mountFirstPlayer(TestServerContext server, int scannerTier) {
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-            PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
             pod.setPos(player.position());
             player.level().addFreshEntity(pod);
             if (scannerTier > 0) {
@@ -107,7 +110,7 @@ public class ScannerHudTest implements FabricClientGameTest {
                 client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
         BlockPos gold = server.computeOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-            PodEntity pod = (PodEntity) player.getVehicle();
+            PodEntity pod = TestEntities.vehicle(player, PodEntity.class);
             Direction facing = pod.getDirection();
             BlockPos feet = pod.blockPosition();
             BlockPos row = feet.above(GOLD_UP);
@@ -120,12 +123,18 @@ public class ScannerHudTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the gold ore block",
-                client -> client.level.getBlockState(gold).is(Blocks.GOLD_ORE));
+                client -> ClientLight.clientLevel(client).getBlockState(gold).is(Blocks.GOLD_ORE));
         context.waitTicks(2 * TUNING.rescanTicks() + 2);
     }
 
     /** A screenshot of the HUD, read cell by cell. */
-    public record HudShot(BufferedImage image, int guiWidth, int guiHeight, int scale, ScanArea area, Decal window) {
+    public record HudShot(
+            BufferedImage image,
+            int guiWidth,
+            int guiHeight,
+            int scale,
+            ScanArea area,
+            @Nullable Decal window) {
         /**
          * A screenshot read with the geometry of {@code area}, the area of the scanner the HUD is showing: the cockpit's window while the client sits in a pod under the
          * Ribbon, else the plain panel at top right.
@@ -270,11 +279,14 @@ public class ScannerHudTest implements FabricClientGameTest {
     public static void leavePod(ClientGameTestContext context, TestServerContext server) {
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-            PodEntity pod = (PodEntity) player.getVehicle();
+            PodEntity pod = TestEntities.vehicle(player, PodEntity.class);
             player.stopRiding();
             pod.discard();
         });
-        ClientWait.until(context, "the player out of the pod", client -> client.player.getVehicle() == null);
+        ClientWait.until(
+                context,
+                "the player out of the pod",
+                client -> ClientSession.player(client).getVehicle() == null);
     }
 
     private static void dismountAndExpectNoHud(ClientGameTestContext context, TestServerContext server, String label) {
@@ -295,8 +307,7 @@ public class ScannerHudTest implements FabricClientGameTest {
     public static void goToLayer(TestServerContext server, int n) {
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-            minecraftServer
-                    .getLevel(LayerChain.dimension(n))
+            ClientLight.serverLevel(minecraftServer, LayerChain.dimension(n))
                     .getChunk(player.getBlockX() >> 4, player.getBlockZ() >> 4);
             try {
                 minecraftServer
@@ -377,7 +388,11 @@ public class ScannerHudTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the client in layer_2",
-                    client -> client.level.dimension().identifier().getPath().equals("layer_2"));
+                    client -> ClientLight.clientLevel(client)
+                            .dimension()
+                            .identifier()
+                            .getPath()
+                            .equals("layer_2"));
             context.waitTicks(40);
             rideWithGoldAhead(context, server, 1);
             expectGoldRow(context, "scanner-layer-2");

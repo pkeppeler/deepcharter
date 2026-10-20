@@ -7,7 +7,9 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest.HudShot;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -49,8 +51,8 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
         ScannerHudTest.placeBesidePod(server, WATER_AHEAD, FLUID_UP, Blocks.WATER);
         ScannerHudTest.placeBesidePod(server, NEAR_AHEAD, FLUID_UP, Blocks.AIR);
         server.runOnServer(minecraftServer -> {
-            PodEntity pod = (PodEntity)
-                    minecraftServer.getPlayerList().getPlayers().getFirst().getVehicle();
+            PodEntity pod = TestEntities.vehicle(
+                    minecraftServer.getPlayerList().getPlayers().getFirst(), PodEntity.class);
             BlockPos beside = pod.blockPosition()
                     .relative(pod.getDirection(), NEAR_AHEAD)
                     .above(FLUID_UP)
@@ -58,15 +60,15 @@ public class ScannerTiersClientTest implements FabricClientGameTest {
             pod.level().setBlock(beside, Blocks.LAVA.defaultBlockState(), 3);
         });
         BlockPos lava = server.computeOnServer(minecraftServer -> {
-            PodEntity pod = (PodEntity)
-                    minecraftServer.getPlayerList().getPlayers().getFirst().getVehicle();
+            PodEntity pod = TestEntities.vehicle(
+                    minecraftServer.getPlayerList().getPlayers().getFirst(), PodEntity.class);
             return pod.blockPosition().relative(pod.getDirection(), LAVA_AHEAD).above(FLUID_UP);
         });
         ClientWait.until(
                 context,
                 "the lava source",
-                client -> client.level.getBlockState(lava).is(Blocks.LAVA),
-                client -> String.valueOf(client.level.getBlockState(lava)));
+                client -> ClientLight.clientLevel(client).getBlockState(lava).is(Blocks.LAVA),
+                client -> String.valueOf(ClientLight.clientLevel(client).getBlockState(lava)));
         context.waitTicks(2 * TUNING.rescanTicks() + 2);
     }
 

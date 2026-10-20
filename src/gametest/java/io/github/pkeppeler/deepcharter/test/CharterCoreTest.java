@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -173,7 +174,7 @@ public class CharterCoreTest {
                         "the test needs a saved DataVersion above %s, got %s",
                         olderDataVersion, NbtUtils.getDataVersion(stamped));
             }
-            Tag savedBody = stamped.get("data");
+            Tag savedBody = Objects.requireNonNull(stamped.get("data"), "the stamped save has no data tag");
             NbtIo.writeCompressed(NbtUtils.addDataVersion(stamped, olderDataVersion), file);
 
             try (SavedDataStorage second = storage(server, dir)) {
@@ -420,7 +421,7 @@ public class CharterCoreTest {
             new Charter(
                     CharterId.random(), "Doubled", Optional.of(player), List.of(), List.of(), List.of(player), 0, 0);
         } catch (IllegalArgumentException e) {
-            threw = e.getMessage().contains("former member");
+            threw = String.valueOf(e.getMessage()).contains("former member");
         }
         if (!threw) {
             throw helper.assertionException("a former member on the roster should be rejected");
@@ -661,7 +662,7 @@ public class CharterCoreTest {
         try {
             data.found(UUID.randomUUID(), uniqueName(), id);
         } catch (IllegalArgumentException e) {
-            threw = e.getMessage().contains("already exists");
+            threw = String.valueOf(e.getMessage()).contains("already exists");
         }
         if (!threw) {
             throw helper.assertionException("founding with an id that exists should throw and say so");
@@ -683,7 +684,7 @@ public class CharterCoreTest {
         try {
             data.find(CharterId.random());
         } catch (IllegalStateException e) {
-            threw = e.getMessage().contains(Integer.toString(CharterData.VERSION + 1));
+            threw = String.valueOf(e.getMessage()).contains(Integer.toString(CharterData.VERSION + 1));
         }
         if (!threw) {
             throw helper.assertionException("using unreadable charter data should throw and name its version");

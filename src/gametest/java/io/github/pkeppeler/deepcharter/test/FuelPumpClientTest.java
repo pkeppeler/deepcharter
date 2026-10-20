@@ -17,7 +17,10 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -29,7 +32,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 
 /**
  * Client GameTest for #69: the pump screen shows the account and the parked pod's tank, its buttons are live only when a press
@@ -59,7 +61,8 @@ public class FuelPumpClientTest implements FabricClientGameTest {
             Scene scene = singleplayer.getServer().computeOnServer(FuelPumpClientTest::setUp);
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.pump())));
             ClientWait.screen(context, FuelPumpScreen.class);
-            FuelPumpScreen screen = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
+            FuelPumpScreen screen =
+                    context.computeOnClient(client -> ClientSession.screen(client, FuelPumpScreen.class));
             ClientWait.until(
                     context,
                     "the fuel pump screen finished typing",
@@ -73,7 +76,8 @@ public class FuelPumpClientTest implements FabricClientGameTest {
                     "the starting balance and a parked pod",
                     client -> ClientCharter.view().isPresent()
                             && ClientCharter.view().get().balance() == START_BALANCE
-                            && !Terminals.parkedPods(client.level, scene.pump()).isEmpty(),
+                            && !Terminals.parkedPods(ClientLight.clientLevel(client), scene.pump())
+                                    .isEmpty(),
                     client -> "charter " + ClientCharter.view());
 
             // 2 of 10 litres: there is room for 5 but not for 10.
@@ -166,7 +170,7 @@ public class FuelPumpClientTest implements FabricClientGameTest {
         TerminalTypes.FUEL_PUMP.parts().forEach(part -> repairs.insert(TerminalTypes.FUEL_PUMP, part));
         BlockPos pump = player.blockPosition().relative(Direction.EAST, 2);
         server.overworld().setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
-        PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
         pod.setPos(player.position().relative(Direction.WEST, 3));
         player.level().addFreshEntity(pod);
         PodComponents.register(pod, charter);
@@ -183,7 +187,7 @@ public class FuelPumpClientTest implements FabricClientGameTest {
     }
 
     private static float litres(Minecraft client, Scene scene) {
-        List<PodEntity> pods = Terminals.parkedPods(client.level, scene.pump());
+        List<PodEntity> pods = Terminals.parkedPods(ClientLight.clientLevel(client), scene.pump());
         return pods.isEmpty() ? -1f : FuelPump.litres(pods.getFirst());
     }
 

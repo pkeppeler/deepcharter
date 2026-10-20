@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodRenames;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -27,7 +28,7 @@ public class PodRenamesTest {
     private static final String RETIRED = "deepcharter:retired_pod_for_test";
 
     private static CompoundTag savedPodUnder(ServerLevel level, String id) {
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setHull(11.5f);
         pod.setFuel(3.25f);
         pod.setStranded(true);

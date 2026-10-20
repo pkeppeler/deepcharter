@@ -37,6 +37,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /** Server GameTests for #74: what a scanner slice covers and shows at each tier. */
 public class ScannerTiersTest {
@@ -57,7 +58,8 @@ public class ScannerTiersTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String message, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String message, @Nullable Object... args) {
         return helper.assertionException(message.formatted(args));
     }
 

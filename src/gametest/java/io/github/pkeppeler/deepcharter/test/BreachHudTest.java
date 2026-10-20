@@ -6,6 +6,8 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -46,20 +48,28 @@ public class BreachHudTest implements FabricClientGameTest {
             assertFadeCoversPodHud(context, singleplayer);
 
             // On the surface the altimeter reads sea level minus Y.
-            assertAltimeter(context, "the surface", client -> SEA_LEVEL - client.player.getBlockY());
+            assertAltimeter(
+                    context,
+                    "the surface",
+                    client -> SEA_LEVEL - ClientSession.player(client).getBlockY());
 
             // In layer 1 low enough that the reading is over a thousand feet, so it has a thousands separator.
             teleport(singleplayer, 1, 5);
             ClientWait.until(
                     context,
                     "the client in layer_1",
-                    client -> client.level.dimension().equals(LayerChain.dimension(1)));
+                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
             assertAltimeter(
                     context,
                     "layer 1",
-                    client -> SEA_LEVEL - OVERWORLD_MIN_Y + LAYER_1_HEIGHT - client.player.getBlockY());
-            String deep = context.computeOnClient(client ->
-                    Altimeter.reading(client.level, client.player.getBlockY()).getString());
+                    client -> SEA_LEVEL
+                            - OVERWORLD_MIN_Y
+                            + LAYER_1_HEIGHT
+                            - ClientSession.player(client).getBlockY());
+            String deep = context.computeOnClient(client -> Altimeter.reading(
+                            ClientLight.clientLevel(client),
+                            ClientSession.player(client).getBlockY())
+                    .getString());
             if (!deep.contains(",")) {
                 throw new AssertionError("A reading over 1,000 ft should group its digits, read: " + deep);
             }
@@ -95,7 +105,8 @@ public class BreachHudTest implements FabricClientGameTest {
                 throw new AssertionError(
                         "The fade should last about " + BreachEffects.fadeTicks() + " ticks, lasted " + length);
             }
-            if (!context.computeOnClient(client -> client.level.dimension().equals(LayerChain.dimension(2)))) {
+            if (!context.computeOnClient(
+                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)))) {
                 throw new AssertionError("The crossing should have put the client in layer 2");
             }
         }
@@ -108,7 +119,10 @@ public class BreachHudTest implements FabricClientGameTest {
      */
     private static void assertFadeCoversPodHud(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
-        ClientWait.until(context, "the client riding a pod", client -> client.player.getVehicle() instanceof PodEntity);
+        ClientWait.until(
+                context,
+                "the client riding a pod",
+                client -> ClientSession.player(client).getVehicle() instanceof PodEntity);
         context.waitTicks(5);
         if (brightestInRibbon(context, context.takeScreenshot("breach-hud-before-fade")) < 200) {
             throw new AssertionError("The Ribbon should be visible before the fade, or this check proves nothing");
@@ -125,7 +139,10 @@ public class BreachHudTest implements FabricClientGameTest {
                 .getServer()
                 .runOnServer(
                         server -> server.getPlayerList().getPlayers().getFirst().stopRiding());
-        ClientWait.until(context, "the player out of the pod", client -> client.player.getVehicle() == null);
+        ClientWait.until(
+                context,
+                "the player out of the pod",
+                client -> ClientSession.player(client).getVehicle() == null);
     }
 
     /** The brightest colour channel in the screenshot where the Ribbon draws, along the top edge. */
@@ -156,7 +173,7 @@ public class BreachHudTest implements FabricClientGameTest {
     /** Teleports the real player into layer {@code layer} at height {@code y}. */
     private static void teleport(TestSingleplayerContext singleplayer, int layer, int y) {
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.teleportTo(level, X, y, Z, Set.of(), 0, 0, true);
         });
@@ -170,7 +187,11 @@ public class BreachHudTest implements FabricClientGameTest {
             ClientGameTestContext context, String where, ToIntFunction<Minecraft> blocksDeep) {
         record Sample(String text, int blocks) {}
         Sample sample = context.computeOnClient(client -> new Sample(
-                Altimeter.reading(client.level, client.player.getBlockY()).getString(), blocksDeep.applyAsInt(client)));
+                Altimeter.reading(
+                                ClientLight.clientLevel(client),
+                                ClientSession.player(client).getBlockY())
+                        .getString(),
+                blocksDeep.applyAsInt(client)));
         int feet = (int) Math.round(sample.blocks() * FEET_PER_BLOCK);
         String expected = String.format(Locale.US, "%,d", -feet) + " ft.";
         if (!sample.text().equals(expected)) {

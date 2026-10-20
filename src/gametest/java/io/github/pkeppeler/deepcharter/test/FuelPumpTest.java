@@ -21,17 +21,18 @@ import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -57,6 +58,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #69: the pump sells fuel at a dollar a litre into a parked pod, an empty account refuses, biofuel is
@@ -447,9 +449,7 @@ public class FuelPumpTest {
             pod.setFuel(0f);
             pod.setStranded(true);
             player.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(FuelRegistry.BIOFUEL, 2));
-            InteractionResult result = UseEntityCallback.EVENT
-                    .invoker()
-                    .interact(player.player(), level, InteractionHand.MAIN_HAND, pod, null);
+            InteractionResult result = UseEntity.on(player.player(), level, InteractionHand.MAIN_HAND, pod);
             if (!result.consumesAction()) {
                 throw helper.assertionException("using biofuel on a pod should refuel it, got %s", result);
             }
@@ -633,7 +633,8 @@ public class FuelPumpTest {
             PodEntity copy = (PodEntity) loaded;
             if (!(copy.getAttached(ReserveTank.STATE) instanceof Versioned.Unreadable<ReserveTank.State>)) {
                 throw helper.assertionException(
-                        "version 99 should load as Unreadable, got %s", copy.getAttached(ReserveTank.STATE));
+                        "version 99 should load as Unreadable, got %s",
+                        String.valueOf(copy.getAttached(ReserveTank.STATE)));
             }
             // None of these may throw: they run every tick and on the client.
             if (!PodStats.of(copy).equals(PodStats.base()) || ReserveTank.isInstalled(copy)) {
@@ -644,9 +645,9 @@ public class FuelPumpTest {
                 ReserveTank.install(copy);
                 throw helper.assertionException("installing into an unreadable state must fail");
             } catch (IllegalStateException expected) {
-                if (!expected.getMessage().contains(key)) {
+                if (!String.valueOf(expected.getMessage()).contains(key)) {
                     throw helper.assertionException(
-                            "the failure should name the attachment, got: %s", expected.getMessage());
+                            "the failure should name the attachment, got: %s", String.valueOf(expected.getMessage()));
                 }
             }
             TagValueOutput output = TagValueOutput.createWithContext(
@@ -654,9 +655,9 @@ public class FuelPumpTest {
             copy.saveWithoutId(output);
             CompoundTag saved =
                     output.buildResult().getCompound(ATTACHMENTS_KEY).orElseThrow();
-            if (!future.equals(saved.get(key))) {
+            if (!Objects.equals(future, saved.get(key))) {
                 throw helper.assertionException(
-                        "the unreadable data was not written back unchanged: %s", saved.get(key));
+                        "the unreadable data was not written back unchanged: %s", String.valueOf(saved.get(key)));
             }
             long logged = log.errors().size();
             if (logged != 1) {
@@ -670,7 +671,7 @@ public class FuelPumpTest {
     }
 
     private static InteractionResult use(Player player, PodEntity pod) {
-        return UseEntityCallback.EVENT.invoker().interact(player, pod.level(), InteractionHand.MAIN_HAND, pod, null);
+        return UseEntity.on(player, pod.level(), InteractionHand.MAIN_HAND, pod);
     }
 
     private static CharterId otherCharter(GameTestHelper helper) {
@@ -697,7 +698,7 @@ public class FuelPumpTest {
                 .orElse(ItemStack.EMPTY);
     }
 
-    private static Entity reload(GameTestHelper helper, PodEntity pod, CompoundTag attachments) {
+    private static Entity reload(GameTestHelper helper, PodEntity pod, @Nullable CompoundTag attachments) {
         ServerLevel level = helper.getLevel();
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
         pod.saveWithoutId(output);

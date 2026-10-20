@@ -25,6 +25,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #399 on a wide chassis ({@link OddPods#CHASSIS}: 3.9 wide, 2.9 tall, a 4-wide, 3-tall bore), neither the Mole's
@@ -44,7 +45,8 @@ public class OddChassisTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

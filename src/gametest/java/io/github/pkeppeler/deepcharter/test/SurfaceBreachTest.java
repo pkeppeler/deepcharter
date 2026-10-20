@@ -7,9 +7,11 @@ import com.mojang.serialization.JsonOps;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +29,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.vehicle.minecart.Minecart;
 import net.minecraft.world.level.Level;
@@ -37,6 +38,7 @@ import net.minecraft.world.level.levelgen.material.rule.MaterialRule;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.portal.PortalShape;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the surface: the breach between the overworld (layer 0) and layer 1, the open
@@ -96,7 +98,7 @@ public class SurfaceBreachTest {
         mock.teleportTo(surface, new Vec3(x, y, z), 0, 0);
         boolean[] ticking = {false};
         FarChunks.awaitEntityTicking(helper, surface, BlockPos.containing(x, y, z), () -> {
-            Minecart cart = EntityTypes.MINECART.create(surface, EntitySpawnReason.COMMAND);
+            Minecart cart = TestEntities.create(EntityTypes.MINECART, surface);
             cart.setPos(x, y, z);
             surface.addFreshEntity(cart);
             if (!mock.player().startRiding(cart, true, false)) {
@@ -238,7 +240,8 @@ public class SurfaceBreachTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -258,7 +261,7 @@ public class SurfaceBreachTest {
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }

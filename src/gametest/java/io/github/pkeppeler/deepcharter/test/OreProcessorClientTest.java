@@ -22,9 +22,11 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -37,7 +39,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
@@ -65,7 +66,8 @@ public class OreProcessorClientTest implements FabricClientGameTest {
 
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
             ClientWait.screen(context, OreProcessorScreen.class);
-            OreProcessorScreen screen = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
+            OreProcessorScreen screen =
+                    context.computeOnClient(client -> ClientSession.screen(client, OreProcessorScreen.class));
             ClientWait.until(
                     context,
                     "the processor screen finished typing",
@@ -261,7 +263,8 @@ public class OreProcessorClientTest implements FabricClientGameTest {
                             LayerChain.topDepth(server.registryAccess(), 3)));
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(processor)));
             ClientWait.screen(context, OreProcessorScreen.class);
-            OreProcessorScreen two = context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
+            OreProcessorScreen two =
+                    context.computeOnClient(client -> ClientSession.screen(client, OreProcessorScreen.class));
             ClientWait.until(
                     context,
                     "the second processor screen finished typing",
@@ -334,7 +337,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
             for (int[] size : new int[][] {{427, 240}, {320, 240}}) {
                 context.setScreen(() -> new OreProcessorScreen(manyView));
                 OreProcessorScreen crowded =
-                        context.computeOnClient(client -> (OreProcessorScreen) client.gui.screen());
+                        context.computeOnClient(client -> ClientSession.screen(client, OreProcessorScreen.class));
                 context.runOnClient(client -> crowded.resize(size[0], size[1]));
                 ClientWait.until(
                         context,
@@ -448,7 +451,7 @@ public class OreProcessorClientTest implements FabricClientGameTest {
         }
         player.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
         player.getInventory().add(OreRegistry.stack(OreType.SILVERIUM));
-        PodEntity pod = PodRegistry.POD.create(server.overworld(), EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, server.overworld());
         pod.setPos(player.position().add(0, 0, 4));
         server.overworld().addFreshEntity(pod);
         pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));

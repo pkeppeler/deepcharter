@@ -12,13 +12,16 @@ import io.github.pkeppeler.deepcharter.pod.SignalDecay;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay.Fault;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay.Instrument;
 import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Objects;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -26,7 +29,7 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntitySpawnReason;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the signal decay (#502): the curve of each layer, the console part that pushes it deeper, the order the instruments fail in and that the
@@ -38,7 +41,8 @@ public class SignalDecayTest {
     private static final double EPSILON = 1e-9;
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -201,7 +205,9 @@ public class SignalDecayTest {
         };
         double last = -1;
         for (Instrument instrument : order) {
-            double threshold = SignalDecayTuning.DEFAULT.thresholds().get(instrument);
+            double threshold = Objects.requireNonNull(
+                    SignalDecayTuning.DEFAULT.thresholds().get(instrument),
+                    "SignalDecayTuning.DEFAULT.thresholds().get(instrument) is absent");
             if (!(threshold > last) && instrument != Instrument.SCANNER) {
                 throw failure(
                         helper,
@@ -251,7 +257,7 @@ public class SignalDecayTest {
             }
             jumps.put(instrument, faults(instrument, 0.99, SEED, Fault.JUMP));
         }
-        double share = jumps.get(Instrument.SCANNER)
+        double share = Objects.requireNonNull(jumps.get(Instrument.SCANNER), "jumps.get(Instrument.SCANNER) is absent")
                 / (double) (jumps.get(Instrument.SCANNER) + faults(Instrument.SCANNER, 0.99, SEED, Fault.DROP));
         if (Math.abs(share - SignalDecayTuning.DEFAULT.jumpShare()) > 0.08) {
             throw failure(
@@ -286,8 +292,8 @@ public class SignalDecayTest {
             throw failure(helper, "a pod outside the layers has no decay");
         }
         surface.discard();
-        ServerLevel layer = helper.getLevel().getServer().getLevel(LayerChain.dimension(1));
-        PodEntity pod = PodRegistry.typeOf(Chassis.MOLE).create(layer, EntitySpawnReason.COMMAND);
+        ServerLevel layer = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
+        PodEntity pod = TestEntities.create(PodRegistry.typeOf(Chassis.MOLE), layer);
         MockPlayer owner = MockPlayers.join(helper, "Decay owner");
         try {
             pod.setPos(0.5, layer.getMinY() + 2, 0.5);
@@ -334,7 +340,7 @@ public class SignalDecayTest {
                 helper.spawn(PodRegistry.POD, helper.absoluteVec(new net.minecraft.world.phys.Vec3(3.5, 2, 1.5)));
         try {
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod, ComponentTrack.HULL, 1);
-            var codec = PodComponents.STATE.persistenceCodec();
+            var codec = Objects.requireNonNull(PodComponents.STATE.persistenceCodec(), "the pod state is persistent");
             var oldSave = codec.encodeStart(NbtOps.INSTANCE, pod.getAttached(PodComponents.STATE))
                     .getOrThrow();
             loaded.setAttached(

@@ -17,10 +17,12 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TerminalTestTypes;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -32,6 +34,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Client GameTest for #59: the offline screen opens and renders, a part button puts a part in through the server, the screen
@@ -92,7 +95,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 
     private static TerminalScreen awaitScreen(ClientGameTestContext context) {
         ClientWait.screen(context, TerminalScreen.class);
-        return context.computeOnClient(client -> (TerminalScreen) client.gui.screen());
+        return context.computeOnClient(client -> ClientSession.screen(client, TerminalScreen.class));
     }
 
     private static void farRequestIsRefused(ClientGameTestContext context, Scene scene) {
@@ -203,7 +206,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
 
         request(context, scene.pump());
         ClientWait.screen(context, FuelPumpScreen.class);
-        FuelPumpScreen screen = context.computeOnClient(client -> (FuelPumpScreen) client.gui.screen());
+        FuelPumpScreen screen = context.computeOnClient(client -> ClientSession.screen(client, FuelPumpScreen.class));
         ClientWait.until(
                 context,
                 "the fuel pump screen finished typing",
@@ -234,7 +237,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
         TerminalScreens.register(TerminalTestTypes.OPEN, InPlaceScreen::new);
         request(context, scene.open());
         ClientWait.screen(context, InPlaceScreen.class);
-        InPlaceScreen screen = context.computeOnClient(client -> (InPlaceScreen) client.gui.screen());
+        InPlaceScreen screen = context.computeOnClient(client -> ClientSession.screen(client, InPlaceScreen.class));
         require(
                 screen.view().repaired() && screen.view().parts().isEmpty(),
                 "a terminal with no repair opens online, with no parts");
@@ -258,7 +261,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
     /** A screen with a text field, standing in for a feature's own online screen. */
     private static final class InPlaceScreen extends CrtScreen implements TerminalViewScreen {
         private TerminalView view;
-        private CrtTextField field;
+        private @Nullable CrtTextField field;
         private int updates;
         private final Typewriter typewriter = typewriter(Component.literal("IN PLACE"), (index, letter) -> {});
 
@@ -296,7 +299,7 @@ public class TerminalFrameworkClientTest implements FabricClientGameTest {
         }
 
         CrtTextField field() {
-            return field;
+            return Objects.requireNonNull(field, "<built by layout() in init()>");
         }
 
         int updates() {

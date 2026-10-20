@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import java.util.ArrayList;
@@ -31,7 +32,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.ProblemReporter;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
@@ -40,6 +40,7 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for hand lining (#313), in the overworld test area (the drill and the layer rock are in {@code PodLiningDrillTest}).
@@ -704,7 +705,7 @@ public class PodLiningTest {
         ServerLevel level = helper.getLevel();
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
         pod.saveWithoutId(output);
-        PodEntity loadedPod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity loadedPod = TestEntities.create(PodRegistry.POD, level);
         loadedPod.load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), output.buildResult()));
         if (!PodLining.of(loadedPod).equals(new PodLining.State(10, 4, 3, false, true))) {
             throw failure(helper, "the stock must survive a save and a load, got %s", PodLining.of(loadedPod));
@@ -741,7 +742,8 @@ public class PodLiningTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

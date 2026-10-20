@@ -18,17 +18,20 @@ import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -39,7 +42,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
@@ -48,6 +50,7 @@ import net.minecraft.world.level.block.piston.PistonBaseBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,7 +112,7 @@ public class OrePlacementTest {
         }
     }
 
-    private static Census[] census;
+    private static Census @Nullable [] census;
 
     @GameTest(maxTicks = 6000)
     public void oreAndHazardFrequenciesMatchTheTablesPerZone(GameTestHelper helper) {
@@ -370,7 +373,7 @@ public class OrePlacementTest {
                 return;
             }
             if (Float.isNaN(before[0])) {
-                before[0] = rig.pod.hull();
+                before[0] = rig.pod().hull();
             }
             if (level.getBlockState(gas).isAir()) {
                 rig.pilot.releaseInput();
@@ -378,11 +381,15 @@ public class OrePlacementTest {
                 if (damage <= 0f) {
                     throw failure(helper, "the test depth gives no gas damage");
                 }
-                if (Math.abs(rig.pod.hull() - (before[0] - damage)) > 1e-3f) {
+                if (Math.abs(rig.pod().hull() - (before[0] - damage)) > 1e-3f) {
                     throw failure(
-                            helper, "the drilled pod has hull %s, expected %s - %s", rig.pod.hull(), before[0], damage);
+                            helper,
+                            "the drilled pod has hull %s, expected %s - %s",
+                            rig.pod().hull(),
+                            before[0],
+                            damage);
                 }
-                rig.pod.discard();
+                rig.pod().discard();
                 helper.succeed();
             }
         });
@@ -476,26 +483,26 @@ public class OrePlacementTest {
                     return;
                 }
             }
-            controlDrilled[0] |= control.pod.drilling();
+            controlDrilled[0] |= control.pod().drilling();
             for (int i = 0; i < blockers.length; i++) {
-                if (refused[i].pod.drilling()
+                if (refused[i].pod().drilling()
                         || !level.getBlockState(blocked[i]).is(blockers[i])) {
                     throw failure(helper, "the drill started on, or removed, %s", blockers[i]);
                 }
             }
-            if (control.pod.tickCount < 120) {
+            if (control.pod().tickCount < 120) {
                 return;
             }
             if (!controlDrilled[0]) {
                 throw failure(helper, "the control pod never drilled the plain stone, so the test proved nothing");
             }
             for (int i = 0; i < blockers.length; i++) {
-                if (!refused[i].pod.onGround()) {
+                if (!refused[i].pod().onGround()) {
                     throw failure(
                             helper,
                             "pod %d is not standing on the floor of its room: %s",
                             i,
-                            refused[i].pod.position());
+                            refused[i].pod().position());
                 }
                 // The pod's whole 2 x 2 slab is refused, so the plain stone beside the blocker stays too.
                 for (int dx = 0; dx <= 1; dx++) {
@@ -508,9 +515,9 @@ public class OrePlacementTest {
                 }
             }
             for (Rig rig : refused) {
-                rig.pod.discard();
+                rig.pod().discard();
             }
-            control.pod.discard();
+            control.pod().discard();
             helper.succeed();
         });
     }
@@ -688,12 +695,12 @@ public class OrePlacementTest {
             for (Component message : rig.pilot.actionBarMessages()) {
                 if (message.getContents() instanceof TranslatableContents translatable
                         && translatable.getKey().equals("deepcharter.ore.company_rock_refused")) {
-                    rig.pod.discard();
+                    rig.pod().discard();
                     helper.succeed();
                     return;
                 }
             }
-            if (rig.pod.tickCount > 200) {
+            if (rig.pod().tickCount > 200) {
                 throw failure(
                         helper,
                         "the pilot got no company-rock message in 200 pod ticks: %s",
@@ -877,7 +884,7 @@ public class OrePlacementTest {
     }
 
     private static PodEntity pod(ServerLevel level, Vec3 at) {
-        PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(at);
         level.addFreshEntity(pod);
         return pod;
@@ -886,10 +893,14 @@ public class OrePlacementTest {
     /** A mock pilot, and the pod it sits in once the far chunk ticks entities. */
     private static final class Rig {
         private final MockPlayer pilot;
-        private PodEntity pod;
+        private @Nullable PodEntity pod;
 
         private Rig(MockPlayer pilot) {
             this.pilot = pilot;
+        }
+
+        PodEntity pod() {
+            return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
         }
 
         boolean ready() {
@@ -902,7 +913,7 @@ public class OrePlacementTest {
             pilot.teleportTo(level, at, 0f, 0f);
             Rig rig = new Rig(pilot);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-                PodEntity pod = pod(level, at);
+                PodEntity pod = OrePlacementTest.pod(level, at);
                 if (!pilot.player().startRiding(pod)) {
                     throw failure(helper, "the pilot could not mount the pod");
                 }
@@ -915,12 +926,13 @@ public class OrePlacementTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }

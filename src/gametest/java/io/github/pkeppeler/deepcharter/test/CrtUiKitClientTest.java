@@ -6,6 +6,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.CrtDemoScreen;
 import java.util.ArrayList;
@@ -123,7 +124,7 @@ public class CrtUiKitClientTest implements FabricClientGameTest {
         context.setScreen(CrtDemoScreen::new);
         ClientWait.screen(context, CrtDemoScreen.class);
         context.waitTicks(5);
-        CrtDemoScreen screen = context.computeOnClient(client -> (CrtDemoScreen) client.gui.screen());
+        CrtDemoScreen screen = context.computeOnClient(client -> ClientSession.screen(client, CrtDemoScreen.class));
         require(screen.presses() == 0, "no presses before the click");
         context.clickScreenButton(CrtDemoScreen.BUTTON_LABEL);
         context.waitTicks(2);
@@ -155,7 +156,7 @@ public class CrtUiKitClientTest implements FabricClientGameTest {
     private static void resizeKeepsTheReveal(ClientGameTestContext context) {
         context.setScreen(CrtDemoScreen::new);
         ClientWait.screen(context, CrtDemoScreen.class);
-        CrtDemoScreen screen = context.computeOnClient(client -> (CrtDemoScreen) client.gui.screen());
+        CrtDemoScreen screen = context.computeOnClient(client -> ClientSession.screen(client, CrtDemoScreen.class));
         context.waitTicks(10);
         context.runOnClient(client -> {
             Typewriter writer = screen.typewriter();

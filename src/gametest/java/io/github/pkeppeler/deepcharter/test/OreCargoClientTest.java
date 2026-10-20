@@ -8,16 +8,17 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreCargoSlots;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.ItemStack;
 
 /** Client GameTest for #56: sneak-using a loaded pod opens a cargo screen that shows the ore and its mass. */
@@ -26,13 +27,13 @@ public class OreCargoClientTest implements FabricClientGameTest {
     public static void sneakUseLoadedPod(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
             pod.setPos(player.position().add(2, 0, 0));
             player.level().addFreshEntity(pod);
             pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
             pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.EINSTEINIUM));
             player.setShiftKeyDown(true);
-            UseEntityCallback.EVENT.invoker().interact(player, player.level(), InteractionHand.MAIN_HAND, pod, null);
+            UseEntity.on(player, player.level(), InteractionHand.MAIN_HAND, pod);
             player.setShiftKeyDown(false);
         });
     }
@@ -48,28 +49,29 @@ public class OreCargoClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the cargo menu with 2 ore and mass " + expected,
-                    client -> client.player.containerMenu instanceof OreCargoMenu menu
+                    client -> ClientSession.player(client).containerMenu instanceof OreCargoMenu menu
                             && OreCargoSlots.shown(menu).size() == 2
                             && menu.cargoMass() == expected,
-                    client -> client.player.containerMenu instanceof OreCargoMenu menu
+                    client -> ClientSession.player(client).containerMenu instanceof OreCargoMenu menu
                             ? OreCargoSlots.shown(menu).size() + " ore, mass " + menu.cargoMass()
                             : "no cargo menu");
 
-            List<ItemStack> shown =
-                    context.computeOnClient(client -> OreCargoSlots.shown((OreCargoMenu) client.player.containerMenu));
+            List<ItemStack> shown = context.computeOnClient(
+                    client -> OreCargoSlots.shown((OreCargoMenu) ClientSession.player(client).containerMenu));
             require(
                     shown.size() == 2
                             && shown.get(0).is(OreRegistry.item(OreType.GOLDIUM))
                             && shown.get(1).is(OreRegistry.item(OreType.EINSTEINIUM)),
                     "The cargo screen should show the Goldium and the Einsteinium, it shows " + shown);
-            int mass = context.computeOnClient(client -> ((OreCargoMenu) client.player.containerMenu).cargoMass());
+            int mass = context.computeOnClient(
+                    client -> ((OreCargoMenu) ClientSession.player(client).containerMenu).cargoMass());
             require(mass == expected, "The cargo screen should show mass " + expected + ", it shows " + mass);
 
-            context.runOnClient(client -> client.player.closeContainer());
+            context.runOnClient(client -> ClientSession.player(client).closeContainer());
             ClientWait.until(
                     context,
                     "the inventory menu back",
-                    client -> client.player.containerMenu == client.player.inventoryMenu);
+                    client -> ClientSession.player(client).containerMenu == ClientSession.player(client).inventoryMenu);
         }
     }
 }

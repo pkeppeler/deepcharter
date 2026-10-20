@@ -7,10 +7,12 @@ import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.Map;
 import java.util.UUID;
@@ -22,13 +24,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.vehicle.minecart.Minecart;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for breach crossing for players and vehicles. Each test uses its own X/Z so
@@ -111,7 +113,7 @@ public class BreachCrossingTest {
         MockPlayer mock = MockPlayers.join(helper, "breach-rides");
         mock.teleportTo(one, new Vec3(x, 8, z), 0, 0);
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
-            Minecart cart = EntityTypes.MINECART.create(one, EntitySpawnReason.COMMAND);
+            Minecart cart = TestEntities.create(EntityTypes.MINECART, one);
             cart.setPos(x, 8, z);
             one.addFreshEntity(cart);
             if (!mock.player().startRiding(cart, true, false)) {
@@ -317,7 +319,8 @@ public class BreachCrossingTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -333,7 +336,7 @@ public class BreachCrossingTest {
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }

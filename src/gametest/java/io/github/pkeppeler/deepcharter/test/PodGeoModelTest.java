@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -368,7 +369,7 @@ public class PodGeoModelTest {
             model.checkTexture("broken.png", new ByteArrayInputStream(png));
             throw helper.assertionException(Component.literal("expected the texture check to fail"));
         } catch (IllegalArgumentException e) {
-            return e.getMessage();
+            return Objects.requireNonNull(e.getMessage(), "the failure has no message");
         }
     }
 
@@ -410,7 +411,7 @@ public class PodGeoModelTest {
             GeoModel model = GeoModel.parse("broken.geo.json", new StringReader(json));
             throw helper.assertionException(Component.literal("expected a failure, parsed " + model));
         } catch (IllegalArgumentException e) {
-            return e.getMessage();
+            return Objects.requireNonNull(e.getMessage(), "the failure has no message");
         }
     }
 

@@ -23,6 +23,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.Nullable;
 
 /** Server GameTests for #57: the sound events, the audio pack map and the placeholder sounds.json agree. */
 public class SoundEventsTest {
@@ -211,7 +212,8 @@ public class SoundEventsTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

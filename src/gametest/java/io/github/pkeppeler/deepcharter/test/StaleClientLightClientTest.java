@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -186,8 +187,8 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the client to hold the chunks of the room",
-                client -> client.level.dimension().equals(Level.OVERWORLD)
-                        && ClientLight.chunksPresent(client.level, room(floor)),
+                client -> ClientLight.clientLevel(client).dimension().equals(Level.OVERWORLD)
+                        && ClientLight.chunksPresent(ClientLight.clientLevel(client), room(floor)),
                 client -> "chunks missing in " + room(floor) + ", " + ClientWait.describe(client)
                         + ", server light idle " + ClientLight.serverLightIdle(context, server));
         record(
@@ -214,15 +215,18 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 server,
                 from,
                 new BlockPos(
-                        column, server.computeOnServer(s -> s.getLevel(from).getMinY() + 40), column));
+                        column,
+                        server.computeOnServer(
+                                s -> ClientLight.serverLevel(s, from).getMinY() + 40),
+                        column));
         server.runOnServer(s -> {
-            ServerLevel level = s.getLevel(from);
+            ServerLevel level = ClientLight.serverLevel(s, from);
             player(s).teleportTo(level, column + 0.5, level.getMinY() - 2, column + 0.5, Set.of(), 0, 0, true);
         });
         ClientWait.until(
                 context,
                 "the client to cross into layer " + layer,
-                client -> client.level.dimension().equals(to),
+                client -> ClientLight.clientLevel(client).dimension().equals(to),
                 ClientWait::describe);
         BlockPos arrival = server.computeOnServer(s -> player(s).blockPosition());
         int radius = LayerTuning.DEFAULT.pocketRadius();
@@ -232,7 +236,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the client to hold the chunks of the pocket",
-                client -> ClientLight.chunksPresent(client.level, pocket),
+                client -> ClientLight.chunksPresent(ClientLight.clientLevel(client), pocket),
                 client -> "chunks missing in " + pocket);
         record(
                 "a breach crossing into layer " + layer + " carves its pocket in the tick the player arrives (#" + trial
@@ -289,8 +293,8 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
     private void hostHandsAndHangarConsole(ClientGameTestContext context, TestServerContext server) {
         ColonySite.Placed colony = server.computeOnServer(s -> Colony.placed(s).orElseThrow());
         arrive(context, server, Level.OVERWORLD, colony.center().above(3));
-        BlockPos statue = colony.anchors().get(ColonyAnchor.STATUE);
-        BlockPos hangar = colony.anchors().get(ColonyAnchor.HANGAR);
+        BlockPos statue = TestColony.anchor(colony, ColonyAnchor.STATUE);
+        BlockPos hangar = TestColony.anchor(colony, ColonyAnchor.HANGAR);
         server.runOnServer(s -> FounderStatue.restoreHands(s));
         record(
                 "the Host's hands restored with the client in the colony",
@@ -327,7 +331,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
         ResourceKey<Level> dimension = LayerChain.dimension(layer);
         List<StructureSite> sites = server.computeOnServer(s -> {
             BlockPos conduit = Colony.anchor(s, ColonyAnchor.CONDUIT).orElseThrow();
-            ServerLevel level = s.getLevel(dimension);
+            ServerLevel level = ClientLight.serverLevel(s, dimension);
             List<StructureSite> found = new ArrayList<>();
             for (StructureKind kind : StructureKind.inLayer(layer)) {
                 found.add(StructureSite.in(
@@ -341,7 +345,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 ServerPlayer player = player(s);
                 player.setGameMode(GameType.SPECTATOR);
                 player.teleportTo(
-                        s.getLevel(dimension),
+                        ClientLight.serverLevel(s, dimension),
                         stand.getX() + 0.5,
                         stand.getY(),
                         stand.getZ() + 0.5,
@@ -357,8 +361,8 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the client to hold the chunks of the " + site.kind() + " in layer " + layer,
-                    client ->
-                            client.level.dimension().equals(dimension) && ClientLight.chunksPresent(client.level, box),
+                    client -> ClientLight.clientLevel(client).dimension().equals(dimension)
+                            && ClientLight.chunksPresent(ClientLight.clientLevel(client), box),
                     client -> "chunks missing in " + box);
             record(
                     "layer " + layer + " structure " + site.kind() + " in cell " + cell
@@ -384,12 +388,12 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
     /** Moves the player to {@code at} in {@code dimension} and waits until the client has the chunk, so the player is in range. */
     private static void arrive(
             ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, BlockPos at) {
-        server.runOnServer(s -> teleport(s, s.getLevel(dimension), at));
+        server.runOnServer(s -> teleport(s, ClientLight.serverLevel(s, dimension), at));
         ClientWait.until(
                 context,
                 "the client to hold the chunk of the player's arrival",
-                client -> client.level.dimension().equals(dimension)
-                        && client.level.getChunkSource().hasChunk(at.getX() >> 4, at.getZ() >> 4),
+                client -> ClientLight.clientLevel(client).dimension().equals(dimension)
+                        && ClientLight.clientLevel(client).getChunkSource().hasChunk(at.getX() >> 4, at.getZ() >> 4),
                 client -> "no chunk at " + at.toShortString());
     }
 

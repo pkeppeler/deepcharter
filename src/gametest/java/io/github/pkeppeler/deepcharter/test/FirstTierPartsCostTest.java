@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -27,6 +28,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,6 +92,14 @@ public class FirstTierPartsCostTest {
             "topsoil_claims");
 
     /** What each part cost at the terminal before #536 and #483, in dollars (UpgradeTuning). */
+    private static String oreZone(ComponentTrack track) {
+        return Objects.requireNonNull(ORE_ZONE.get(track), () -> "no ore zone for " + track);
+    }
+
+    private static Long oldPrice(ComponentTrack track) {
+        return Objects.requireNonNull(OLD_PRICE.get(track), () -> "no old price for " + track);
+    }
+
     private static final Map<ComponentTrack, Long> OLD_PRICE = Map.ofEntries(
             Map.entry(ComponentTrack.FUEL_TANK, 200L),
             Map.entry(ComponentTrack.DRILL, 200L),
@@ -142,7 +152,8 @@ public class FirstTierPartsCostTest {
     private static final double PART_SHARE_MAX = 1.5;
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -268,8 +279,8 @@ public class FirstTierPartsCostTest {
     @GameTest
     public void theOreOfAHazardUnitIsInTheHaulWhereTheHazardDoes(GameTestHelper helper) {
         for (ComponentTrack track : HAZARDS) {
-            Zone zone = Zone.load(ORE_ZONE.get(track));
-            Run run = ORE_ZONE.get(track).equals("upper_levels") ? layerTwoRun() : layerOneRun(ORE_ZONE.get(track));
+            Zone zone = Zone.load(oreZone(track));
+            Run run = oreZone(track).equals("upper_levels") ? layerTwoRun() : layerOneRun(oreZone(track));
             Map<String, Integer> asked = new HashMap<>();
             for (String cell : BootstrapCost.cells(BootstrapCost.recipe(unitPath(track)))) {
                 if (!cell.isEmpty() && cell.startsWith("deepcharter:")) {
@@ -289,7 +300,7 @@ public class FirstTierPartsCostTest {
                             "the %s unit asks for %s, which the %s zone of its hazard does not hold",
                             track,
                             type,
-                            ORE_ZONE.get(track));
+                            oreZone(track));
                 }
                 double perRun = run.ores() * chance / zone.oreChance();
                 runs = Math.max(runs, need / perRun);
@@ -299,7 +310,7 @@ public class FirstTierPartsCostTest {
                         need,
                         type,
                         String.format("%.1f", need / perRun),
-                        ORE_ZONE.get(track),
+                        oreZone(track),
                         String.format("%.2f", perRun),
                         type);
             }
@@ -309,7 +320,7 @@ public class FirstTierPartsCostTest {
                         "the %s unit's ore takes %.1f runs of %s to haul, over the %d allowed",
                         track,
                         runs,
-                        ORE_ZONE.get(track),
+                        oreZone(track),
                         MOST_RUNS_FOR_THE_ORE);
             }
         }
@@ -419,10 +430,10 @@ public class FirstTierPartsCostTest {
             beforeSeconds += EarlyRunModel.runSeconds(zone, stats, 0, run) + RUN_OVERHEAD_SECONDS;
             money += Math.round(run.net());
             beforeRuns++;
-            while (bought < ORDER.size() && money >= OLD_PRICE.get(ORDER.get(bought))) {
+            while (bought < ORDER.size() && money >= oldPrice(ORDER.get(bought))) {
                 ComponentTrack track = ORDER.get(bought);
-                money -= OLD_PRICE.get(track);
-                spent += OLD_PRICE.get(track);
+                money -= oldPrice(track);
+                spent += oldPrice(track);
                 switch (track) {
                     case FUEL_TANK -> tiers[0] = 1;
                     case DRILL -> tiers[1] = 1;
@@ -449,7 +460,7 @@ public class FirstTierPartsCostTest {
             double metal = minutes(level, BootstrapCost.crates(level, unit).mean(), unit);
             double oreMinutes = pace.minutesFor(unit.ore());
             double minutes = metal + oreMinutes;
-            double oldMinutes = pace.minutesFor(OLD_PRICE.get(track));
+            double oldMinutes = pace.minutesFor(oldPrice(track));
             LOGGER.info(
                     "[first-tier] {} unit: {} min ({} of crates, furnace and bench, {} of ${} ore); its old ${} took {} min of runs (share {})",
                     track.id(),
@@ -457,13 +468,13 @@ public class FirstTierPartsCostTest {
                     String.format("%.1f", metal),
                     String.format("%.1f", oreMinutes),
                     unit.ore(),
-                    OLD_PRICE.get(track),
+                    oldPrice(track),
                     String.format("%.1f", oldMinutes),
                     String.format("%.2f", minutes / oldMinutes));
             if (minutes / oldMinutes < PART_SHARE_MIN || minutes / oldMinutes > PART_SHARE_MAX) {
                 outside.add(String.format(
                         "the %s unit takes %.1f minutes, %.2f of the %.1f its old $%d took",
-                        track.id(), minutes, minutes / oldMinutes, oldMinutes, OLD_PRICE.get(track)));
+                        track.id(), minutes, minutes / oldMinutes, oldMinutes, oldPrice(track)));
             }
             if (ORDER.contains(track)) {
                 bag = bag.plus(unit);

@@ -13,10 +13,12 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.test.support.ChargeUse;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.EnumMap;
 import java.util.List;
@@ -33,7 +35,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -44,6 +45,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * #539, ADR 0056: Company rock looks the part of its layer (the {@code host} state, as an ore's, ADR 0055: worldgen sets it, and in layer 2 the joints
@@ -81,7 +83,7 @@ public class CompanyRockLookTest {
     }
 
     private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
         }
@@ -215,7 +217,7 @@ public class CompanyRockLookTest {
         pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-            pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
             if (!pilot.player().startRiding(pod[0])) {
@@ -333,7 +335,7 @@ public class CompanyRockLookTest {
         pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-            pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
             if (!pilot.player().startRiding(pod[0])) {
@@ -477,7 +479,8 @@ public class CompanyRockLookTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

@@ -16,10 +16,13 @@ import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnloadedChunk;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -46,6 +49,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #380, the audit of gameplay decisions that ask an entity query. A query sees only the entities of loaded
@@ -68,7 +72,8 @@ public class EntityQueryAuditTest {
             + (int) STALE_UUID.getLeastSignificantBits() + "]";
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -92,7 +97,7 @@ public class EntityQueryAuditTest {
                 far,
                 new UnloadedChunk.Stages(
                         () -> {
-                            PodEntity made = PodRegistry.POD.create(level, EntitySpawnReason.TRIGGERED);
+                            PodEntity made = TestEntities.create(PodRegistry.POD, level, EntitySpawnReason.TRIGGERED);
                             made.setPos(Vec3.atBottomCenterOf(far));
                             PodComponents.register(made, charter);
                             level.addFreshEntity(made);
@@ -109,7 +114,7 @@ public class EntityQueryAuditTest {
                         },
                         () -> level.getEntity(pod[0]) != null,
                         () -> "the charter's pod",
-                        () -> level.getEntity(pod[0]).discard()));
+                        () -> TestEntities.require(level, pod[0]).discard()));
     }
 
     /**
@@ -118,7 +123,7 @@ public class EntityQueryAuditTest {
      */
     @GameTest(maxTicks = CYCLE_TICKS)
     public void aFigureIsGoneWhenItsChunkUnloadsSoTheCapsNeedNoSavedCount(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(Level.NETHER);
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), Level.NETHER);
         BlockPos far = new BlockPos(16_040, 100, 16_040);
         List<UUID> figures = new ArrayList<>();
         UnloadedChunk.cycle(
@@ -129,8 +134,8 @@ public class EntityQueryAuditTest {
                         () -> {
                             floor(level, far, 3);
                             for (int i = 0; i < CREATURES.maxPerLevel(); i++) {
-                                LamplessFigure figure =
-                                        CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.EVENT);
+                                LamplessFigure figure = TestEntities.create(
+                                        CreatureRegistry.LAMPLESS_FIGURE, level, EntitySpawnReason.EVENT);
                                 figure.setPos(Vec3.atBottomCenterOf(far.above()));
                                 figure.setNoAi(true);
                                 level.addFreshEntity(figure);
@@ -173,7 +178,7 @@ public class EntityQueryAuditTest {
         UUID[] pod = {null};
         boolean[] placed = {false};
         FarChunks.awaitEntityTicking(helper, level, far, () -> {
-            PodEntity made = PodRegistry.POD.create(level, EntitySpawnReason.TRIGGERED);
+            PodEntity made = TestEntities.create(PodRegistry.POD, level, EntitySpawnReason.TRIGGERED);
             made.setPos(Vec3.atBottomCenterOf(far));
             level.addFreshEntity(made);
             pod[0] = made.getUUID();
@@ -195,7 +200,7 @@ public class EntityQueryAuditTest {
                     .noneMatch(found -> found.getUUID().equals(pod[0]))) {
                 throw failure(helper, "a query did not see the pod of a chunk that is loaded and does not tick");
             }
-            level.getEntity(pod[0]).discard();
+            TestEntities.require(level, pod[0]).discard();
             level.getChunkSource().removeTicketWithRadius(TicketType.PORTAL, chunk, 0);
         });
     }
@@ -207,7 +212,7 @@ public class EntityQueryAuditTest {
         ServerLevel level = server.overworld();
         ColonySite real = ColonySite.get(server);
         ColonySite moved = shifted(real, 20_000, 20_000);
-        BlockPos statue = moved.placed().orElseThrow().anchors().get(ColonyAnchor.STATUE);
+        BlockPos statue = TestColony.anchor(moved.placed().orElseThrow(), ColonyAnchor.STATUE);
         AABB around = new AABB(statue).inflate(6);
         UnloadedChunk.cycle(
                 helper,
@@ -302,7 +307,7 @@ public class EntityQueryAuditTest {
         ServerLevel level = server.overworld();
         ColonySite first = shifted(ColonySite.get(server), 40_000, 40_000);
         ColonySite second = shifted(ColonySite.get(server), 50_000, 50_000);
-        BlockPos statue = first.placed().orElseThrow().anchors().get(ColonyAnchor.STATUE);
+        BlockPos statue = TestColony.anchor(first.placed().orElseThrow(), ColonyAnchor.STATUE);
         AABB around = new AABB(statue).inflate(6);
         UnloadedChunk.cycle(
                 helper,
@@ -333,7 +338,7 @@ public class EntityQueryAuditTest {
     public void aRegisteredPodThatNeverEntersTheWorldIsNotCounted(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         CharterId charter = CharterId.random();
-        PodEntity pod = PodRegistry.POD.create(helper.getLevel(), EntitySpawnReason.TRIGGERED);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, helper.getLevel(), EntitySpawnReason.TRIGGERED);
         PodComponents.register(pod, charter);
         if (HangarData.get(server).podCount(charter) != 0) {
             throw failure(helper, "a pod that never entered the world counts for its charter");
@@ -360,7 +365,7 @@ public class EntityQueryAuditTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void anEntityThirtyBlocksFromAPlayerTicksAtTheLowestSimulationDistance(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel level = server.getLevel(Level.NETHER);
+        ServerLevel level = ClientLight.serverLevel(server, Level.NETHER);
         int before = server.getPlayerList().getSimulationDistance();
         server.getPlayerList().setSimulationDistance(3);
         MockPlayer mock = MockPlayers.join(helper, "simulation-distance");
@@ -394,7 +399,7 @@ public class EntityQueryAuditTest {
                 if (!ticking) {
                     return;
                 }
-                pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.TRIGGERED);
+                pod[0] = TestEntities.create(PodRegistry.POD, level, EntitySpawnReason.TRIGGERED);
                 pod[0].setPos(Vec3.atBottomCenterOf(podPos));
                 level.addFreshEntity(pod[0]);
                 if (level.getEntitiesOfClass(PodEntity.class, new AABB(podPos).inflate(2))

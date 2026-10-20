@@ -33,6 +33,7 @@ import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #226. The default theme files hold exactly the look the UI had when its values were constants in Java, and the
@@ -43,7 +44,7 @@ public class ThemeLooksTest {
     private static final String AREA_DIR = "/assets/deepcharter/theme/";
 
     /** The default file of an area, then {@code override} on top of it as a pack would be. */
-    private static ThemeData area(String name, String override) {
+    private static ThemeData area(String name, @Nullable String override) {
         return ThemeData.parse(
                 name,
                 override == null

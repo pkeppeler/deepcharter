@@ -35,19 +35,22 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -63,6 +66,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTest for #85: the scripted run of the evidence scenario {@code m2-slice}, without a client. Two players on one charter
@@ -118,7 +122,7 @@ public class M2SliceTest {
     }
 
     private static ServerLevel layer(GameTestHelper helper, MinecraftServer server, int layer) {
-        ServerLevel level = server.getLevel(LayerChain.dimension(layer));
+        ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
         if (level == null) {
             throw helper.assertionException("layer %s did not load", layer);
         }
@@ -131,7 +135,8 @@ public class M2SliceTest {
     }
 
     @FormatMethod
-    private static void expect(GameTestHelper helper, boolean condition, @FormatString String format, Object... args) {
+    private static void expect(
+            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
         if (!condition) {
             throw helper.assertionException(net.minecraft.network.chat.Component.literal(String.format(format, args)));
         }
@@ -280,9 +285,7 @@ public class M2SliceTest {
                         first.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ScannerRegistry.SCANNER_UNIT));
                         expect(
                                 helper,
-                                UseEntityCallback.EVENT
-                                        .invoker()
-                                        .interact(first, mole.level(), InteractionHand.MAIN_HAND, mole, null)
+                                UseEntity.on(first, mole.level(), InteractionHand.MAIN_HAND, mole)
                                         .consumesAction(),
                                 "the scanner unit should fit the Mole");
                         BlockPos ore = mole.blockPosition().above(2);
@@ -357,14 +360,15 @@ public class M2SliceTest {
                                 Terminals.act(first, terminal, HangarTerminal.RESTORE_WRECK, new CompoundTag()),
                                 "restoring the wreck");
 
-                        PodEntity restored =
-                                (PodEntity) wreck.teleport(new net.minecraft.world.level.portal.TeleportTransition(
+                        PodEntity restored = (PodEntity) Objects.requireNonNull(
+                                wreck.teleport(new net.minecraft.world.level.portal.TeleportTransition(
                                         two,
                                         new Vec3(X, zoneY(two, 2), Z),
                                         Vec3.ZERO,
                                         0f,
                                         0f,
-                                        net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING));
+                                        net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING)),
+                                "the restored wreck did not teleport");
                         director.teleportTo(two, new Vec3(X, zoneY(two, 2), Z), 0, 0);
                         expect(
                                 helper,
@@ -410,7 +414,7 @@ public class M2SliceTest {
                             M2SliceEndState.require(server, charter, restored);
                         } catch (AssertionError open) {
                             throw helper.assertionException(
-                                    net.minecraft.network.chat.Component.literal(open.getMessage()));
+                                    net.minecraft.network.chat.Component.literal(String.valueOf(open.getMessage())));
                         }
                         pods.add(restored);
                         helper.succeed();
@@ -429,7 +433,7 @@ public class M2SliceTest {
 
     private static PodEntity pod(
             GameTestHelper helper, ServerLevel level, net.minecraft.world.entity.EntityType<PodEntity> type, Vec3 at) {
-        PodEntity pod = type.create(level, EntitySpawnReason.TRIGGERED);
+        PodEntity pod = TestEntities.create(type, level, EntitySpawnReason.TRIGGERED);
         expect(helper, pod != null, "the pod should be made");
         pod.setPos(at);
         expect(helper, level.addFreshEntity(pod), "the world should accept the pod at %s", at);

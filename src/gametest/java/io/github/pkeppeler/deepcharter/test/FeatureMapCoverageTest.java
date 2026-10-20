@@ -26,6 +26,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The feature map (#510) covers the game. Every registered {@code deepcharter:} item, block, entity type, terminal,
@@ -146,7 +147,8 @@ public class FeatureMapCoverageTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 

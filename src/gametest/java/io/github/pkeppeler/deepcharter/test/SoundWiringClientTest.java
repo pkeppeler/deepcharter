@@ -17,7 +17,10 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -44,7 +47,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.Music;
 import net.minecraft.world.attribute.EnvironmentAttributes;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -132,23 +134,26 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                 real.teleportTo(level, X + 3.5, FLOOR_Y, Z - 3.5, Set.of(), 0, 0, true);
                 Vec3 at = new Vec3(X, FLOOR_Y, Z - 1);
                 two.mock().teleportTo(level, at, 0, 0);
-                PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
                 level.addFreshEntity(pod);
                 require(two.mock().player().startRiding(pod), "the mock pilot could not mount the pod");
                 return pod.getId();
             });
-            ClientWait.until(context, "the pod in the client's level", client -> client.level.getEntity(podId) != null);
+            ClientWait.until(
+                    context,
+                    "the pod in the client's level",
+                    client -> ClientLight.clientLevel(client).getEntity(podId) != null);
 
             // The client loads the pod a few times while the teleported player's chunks settle; count from the settled
             // pod.
             ClientWait.until(
                     context,
                     "the pod idling with its engine sound heard",
-                    client -> client.level.getEntity(podId) != null
-                            && client.level.getEntity(podId).tickCount > SETTLE_TICKS
+                    client -> ClientLight.clientLevel(client).getEntity(podId) instanceof PodEntity idling
+                            && idling.tickCount > SETTLE_TICKS
                             && heard.count("pod.engine_idle") > 0,
-                    client -> "pod " + client.level.getEntity(podId) + ", engine_idle heard "
+                    client -> "pod " + ClientLight.clientLevel(client).getEntity(podId) + ", engine_idle heard "
                             + heard.count("pod.engine_idle"));
             long idleLoops = heard.count("pod.engine_idle");
             context.waitTicks(SETTLE_TICKS);
@@ -181,7 +186,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
             // Back on the floor, wall in front: pushing into it drills sideways.
             two.server().runOnServer(server -> {
                 ServerLevel level = server.overworld();
-                PodEntity pod = (PodEntity) level.getEntity(podId);
+                PodEntity pod = TestEntities.require(level, podId, PodEntity.class);
                 pod.teleportTo(X, FLOOR_Y, Z - 1);
                 for (int x = X - 2; x <= X + 2; x++) {
                     for (int y = FLOOR_Y; y <= FLOOR_Y + 3; y++) {
@@ -202,7 +207,8 @@ public class SoundWiringClientTest implements FabricClientGameTest {
         for (int burst = 0; burst < BURSTS; burst++) {
             double x = X + ((burst + 1) % 2) * BURST_BLOCKS;
             two.server()
-                    .runOnServer(server -> server.overworld().getEntity(podId).teleportTo(x, FLOOR_Y, Z - 1));
+                    .runOnServer(server ->
+                            TestEntities.require(server.overworld(), podId).teleportTo(x, FLOOR_Y, Z - 1));
             context.waitTicks(BURST_TICKS);
         }
         require(
@@ -229,15 +235,15 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                 context,
                 heard,
                 "the client in layer 1",
-                client -> client.level.dimension().equals(LayerChain.dimension(1)));
+                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
         teleportReal(two, Level.OVERWORLD, X + 3.5, FLOOR_Y, Z - 3.5);
         await(
                 context,
                 heard,
                 "a new pod.engine_idle after returning to the overworld",
-                client -> client.level.dimension().equals(Level.OVERWORLD)
-                        && client.level.getEntity(podId) != null
-                        && client.level.getEntity(podId).tickCount > 0
+                client -> ClientLight.clientLevel(client).dimension().equals(Level.OVERWORLD)
+                        && ClientLight.clientLevel(client).getEntity(podId) instanceof PodEntity returned
+                        && returned.tickCount > 0
                         && heard.count("pod.engine_idle") > idleBefore);
     }
 
@@ -247,7 +253,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                     .filter(player -> player != two.mock().player())
                     .findFirst()
                     .orElseThrow();
-            real.teleportTo(server.getLevel(dimension), x, y, z, Set.of(), 0, 0, true);
+            real.teleportTo(ClientLight.serverLevel(server, dimension), x, y, z, Set.of(), 0, 0, true);
         });
     }
 
@@ -262,7 +268,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 require(
-                        player.startRiding(server.overworld().getEntity(scene.podId())),
+                        player.startRiding(TestEntities.require(server.overworld(), scene.podId())),
                         "the player could not mount the pod");
             });
             await(context, heard, "fuel.low", client -> heard.count("fuel.low") > 0);
@@ -306,7 +312,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 require(
-                        player.startRiding(server.overworld().getEntity(scene.podId())),
+                        player.startRiding(TestEntities.require(server.overworld(), scene.podId())),
                         "the player could not mount the pod");
             });
             await(
@@ -319,12 +325,20 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                     .runOnServer(server -> server.getPlayerList()
                             .getPlayers()
                             .getFirst()
-                            .teleportTo(server.getLevel(LayerChain.dimension(1)), 0.5, 100, 0.5, Set.of(), 0, 0, true));
+                            .teleportTo(
+                                    ClientLight.serverLevel(server, LayerChain.dimension(1)),
+                                    0.5,
+                                    100,
+                                    0.5,
+                                    Set.of(),
+                                    0,
+                                    0,
+                                    true));
             await(
                     context,
                     heard,
                     "pod.engine_idle stopped in layer 1",
-                    client -> client.level.dimension().equals(LayerChain.dimension(1))
+                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
                             && !heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
 
             // Each layer's dimension carries its music, and the client plays what the dimension says.
@@ -340,7 +354,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                                 .getPlayers()
                                 .getFirst()
                                 .teleportTo(
-                                        server.getLevel(LayerChain.dimension(target)),
+                                        ClientLight.serverLevel(server, LayerChain.dimension(target)),
                                         0.5,
                                         100,
                                         0.5,
@@ -355,9 +369,11 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                                 client.level != null && client.level.dimension().equals(LayerChain.dimension(target)));
                 String expected = LAYER_MUSIC.get(layer - 1);
                 Identifier music = context.computeOnClient(client -> {
-                    Music playing = client.level
+                    Music playing = ClientLight.clientLevel(client)
                             .environmentAttributes()
-                            .getValue(EnvironmentAttributes.BACKGROUND_MUSIC, client.player.position())
+                            .getValue(
+                                    EnvironmentAttributes.BACKGROUND_MUSIC,
+                                    ClientSession.player(client).position())
                             .defaultMusic()
                             .orElseThrow(() -> new AssertionError("layer " + target + " has no background music"));
                     client.getMusicManager().startPlaying(playing);
@@ -398,7 +414,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
         server.overworld()
                 .setBlock(processor, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
         player.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
-        PodEntity pod = PodRegistry.POD.create(player.level(), EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
         pod.setPos(player.position().relative(Direction.WEST, 3));
         player.level().addFreshEntity(pod);
         PodComponents.register(pod, charter);

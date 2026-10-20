@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.pod.TowChain;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the geometry of the tow line (#508): where it starts and ends, how far it hangs when slack, that it is straight
@@ -106,7 +107,8 @@ public class TowChainTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

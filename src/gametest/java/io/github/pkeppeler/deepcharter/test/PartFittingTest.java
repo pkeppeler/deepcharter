@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartLabel;
@@ -20,11 +21,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -153,9 +154,7 @@ public class PartFittingTest {
     /** Holds one unit in the main hand and uses it on the pod through the game's own entity-use event, as a click does. */
     private static InteractionResult useUnit(Scene scene, PodEntity pod, ComponentTrack track) {
         scene.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(unit(track)));
-        return UseEntityCallback.EVENT
-                .invoker()
-                .interact(scene.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null);
+        return UseEntity.on(scene.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
     }
 
     private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
@@ -275,7 +274,8 @@ public class PartFittingTest {
                             track,
                             scene.player().getMainHandItem());
                 }
-                if (!FITTED.get(pod.getUUID()).equals(List.of(track.id() + ":1"))) {
+                if (!Objects.requireNonNull(FITTED.get(pod.getUUID()), "FITTED.get(pod.getUUID()) is absent")
+                        .equals(List.of(track.id() + ":1"))) {
                     throw failure(
                             helper,
                             "the fit should fire FITTED once for %s tier 1, got %s",
@@ -442,7 +442,8 @@ public class PartFittingTest {
         if (!PodComponents.partOf(pod, track).equals(before)) {
             throw failure(helper, "%s: the pod's %s changed to %s", what, track, PodComponents.partOf(pod, track));
         }
-        if (!FITTED.get(pod.getUUID()).isEmpty()) {
+        if (!Objects.requireNonNull(FITTED.get(pod.getUUID()), "FITTED.get(pod.getUUID()) is absent")
+                .isEmpty()) {
             throw failure(helper, "%s: a refused fit fired FITTED, %s", what, FITTED.get(pod.getUUID()));
         }
     }
@@ -454,9 +455,7 @@ public class PartFittingTest {
         try {
             PodEntity pod = pod(helper, scene, Optional.of(charterOf(helper, scene.player())));
             scene.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_INGOT));
-            UseEntityCallback.EVENT
-                    .invoker()
-                    .interact(scene.player(), pod.level(), InteractionHand.MAIN_HAND, pod, null);
+            UseEntity.on(scene.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
             if (!scene.player().getMainHandItem().is(Items.IRON_INGOT)) {
                 throw failure(
                         helper,
@@ -499,7 +498,9 @@ public class PartFittingTest {
                         track,
                         UpgradeTuning.DEFAULT.price(track, 1));
             }
-            if (track.maxTier() > 1 && UpgradeTuning.DEFAULT.price(track, 2) != tierTwo.get(track)) {
+            if (track.maxTier() > 1
+                    && UpgradeTuning.DEFAULT.price(track, 2)
+                            != Objects.requireNonNull(tierTwo.get(track), "tierTwo.get(track) is absent")) {
                 throw failure(
                         helper,
                         "%s: tier 2 costs $%d, got $%d",

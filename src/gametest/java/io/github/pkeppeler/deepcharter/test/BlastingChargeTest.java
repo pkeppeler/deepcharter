@@ -11,10 +11,12 @@ import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.test.support.ChargeUse;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -23,10 +25,10 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the blasting charge (#509, ADR 0015): set from the seat on the slab under the pod, a fuse, then a blast that
@@ -70,7 +72,7 @@ public class BlastingChargeTest {
         pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-            pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
             if (!pilot.player().startRiding(pod[0])) {
@@ -281,14 +283,14 @@ public class BlastingChargeTest {
         pilot.teleportTo(level, at, 0f, 0f);
         PodEntity[] pod = new PodEntity[1];
         FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
-            pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(at);
             level.addFreshEntity(pod[0]);
             pilot.player().startRiding(pod[0]);
         });
         int[] step = {0};
         // The mock records an action-bar message on its own tick, so a refusal is read on the next one.
-        Component[] pending = new Component[1];
+        @Nullable Component[] pending = new Component[1];
         TestTicks.each(helper, () -> {
             if (pod[0] == null) {
                 return;
@@ -353,12 +355,13 @@ public class BlastingChargeTest {
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(1));
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
         if (level == null) {
             throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
         }

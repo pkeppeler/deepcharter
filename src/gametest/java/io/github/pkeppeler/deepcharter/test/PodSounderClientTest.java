@@ -4,9 +4,11 @@ import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PodReadout;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -18,7 +20,6 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Blocks;
 
 /**
@@ -46,7 +47,7 @@ public class PodSounderClientTest implements FabricClientGameTest {
                     }
                 }
                 level.setBlock(feet.offset(0, -SLABS_DOWN, 0), HazardBlocks.GAS_POCKET.defaultBlockState(), 3);
-                PodEntity pod = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(Mth.floor(player.getX()), feet.getY(), Mth.floor(player.getZ()));
                 level.addFreshEntity(pod);
                 if (!player.startRiding(pod)) {
@@ -67,12 +68,13 @@ public class PodSounderClientTest implements FabricClientGameTest {
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                ScannerPods.fit(server, player, (PodEntity) player.getVehicle(), ComponentTrack.SOUNDER, 1);
+                ScannerPods.fit(
+                        server, player, TestEntities.vehicle(player, PodEntity.class), ComponentTrack.SOUNDER, 1);
             });
             ClientWait.until(
                     context,
                     "the seepage line of a tier 1 sounder",
-                    client -> client.player.getVehicle() instanceof PodEntity pod
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && !PodStatusHud.sounderLines(pod).isEmpty());
             List<Component> tierOne = sounderLines(context);
             if (tierOne.size() != 1
@@ -84,7 +86,7 @@ public class PodSounderClientTest implements FabricClientGameTest {
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                PodEntity pod = (PodEntity) player.getVehicle();
+                PodEntity pod = TestEntities.vehicle(player, PodEntity.class);
                 ScannerPods.fit(server, player, pod, ComponentTrack.SOUNDER, 2);
                 BlockPos feet = pod.blockPosition();
                 // East of the footprint (x - 1 and x): the block two out, at the level of the pod's feet.
@@ -97,7 +99,7 @@ public class PodSounderClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the tier 2 sounder naming the east side",
-                    client -> client.player.getVehicle() instanceof PodEntity pod
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && PodStatusHud.sounderLines(pod).stream()
                                     .anyMatch(line -> key(line).equals("hud.deepcharter.pod.seepage_beside")));
             List<Component> tierTwo = sounderLines(context);
@@ -113,7 +115,8 @@ public class PodSounderClientTest implements FabricClientGameTest {
     }
 
     private static List<Component> sounderLines(ClientGameTestContext context) {
-        return context.computeOnClient(client -> PodStatusHud.sounderLines((PodEntity) client.player.getVehicle()));
+        return context.computeOnClient(client ->
+                PodStatusHud.sounderLines(TestEntities.vehicle(ClientSession.player(client), PodEntity.class)));
     }
 
     private static String key(Component line) {

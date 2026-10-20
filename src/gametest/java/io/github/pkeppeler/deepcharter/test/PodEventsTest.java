@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,6 +31,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for {@link PodEvents}. Fabric events cannot be unregistered, so the listeners
@@ -84,7 +86,8 @@ public class PodEventsTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
@@ -162,7 +165,7 @@ public class PodEventsTest {
             if (((PodEntity) loaded).hull() != 0f) {
                 throw failure(helper, "the loaded pod should still have no hull");
             }
-            if (DEPLETED.get(id) != 1) {
+            if (Objects.requireNonNull(DEPLETED.get(id), "DEPLETED.get(id) is absent") != 1) {
                 throw failure(helper, "loading must not fire the event again, fired %s", DEPLETED.get(id));
             }
             helper.succeed();

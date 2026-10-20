@@ -9,8 +9,11 @@ import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.awt.image.BufferedImage;
 import java.util.Set;
@@ -20,7 +23,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -49,10 +51,10 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the room's stone floor and air above it",
-                    client -> client.level
+                    client -> ClientLight.clientLevel(client)
                                     .getBlockState(new BlockPos(X, FLOOR_Y - 1, Z))
                                     .is(Blocks.STONE)
-                            && client.level
+                            && ClientLight.clientLevel(client)
                                     .getBlockState(new BlockPos(X + 1, FLOOR_Y, Z))
                                     .isAir());
             int podId = two.server().computeOnServer(server -> board(server.overworld(), two));
@@ -67,10 +69,11 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
             context.waitTicks(2 * ScannerTuning.DEFAULT.rescanTicks() + 2);
 
             boolean ridingTogether = context.computeOnClient(client -> {
-                PodEntity pod = (PodEntity) client.player.getVehicle();
+                PodEntity pod = TestEntities.vehicle(ClientSession.player(client), PodEntity.class);
                 return pod.chassis() == Chassis.PROSPECTOR
                         && pod.getPassengers().size() == 2
-                        && pod.getControllingPassenger() == client.level.getPlayerByUUID(mockId)
+                        && pod.getControllingPassenger()
+                                == ClientLight.clientLevel(client).getPlayerByUUID(mockId)
                         && pod.getPassengers().get(1) == client.player;
             });
             require(
@@ -101,7 +104,7 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the pod with one passenger",
-                    client -> client.player.getVehicle() instanceof PodEntity pod
+                    client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && pod.getPassengers().size() == 1);
             context.waitTicks(2);
             ScannerHudTest.HudShot pilot =
@@ -131,7 +134,7 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
                 .filter(player -> player != two.mock().player())
                 .findFirst()
                 .orElseThrow();
-        PodEntity pod = PodRegistry.PROSPECTOR.create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, level);
         pod.setPos(X + 0.5, FLOOR_Y, Z + 0.5);
         pod.setFuel(100f);
         level.addFreshEntity(pod);

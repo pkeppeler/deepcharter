@@ -9,13 +9,17 @@ import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.PodLoads;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -25,8 +29,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityAttachment;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Client GameTest for #382 and #400: the pilot sits upright inside a canopy. It pins the seat offsets of each chassis to literal values
@@ -75,9 +79,9 @@ public class PodSeatsClientTest implements FabricClientGameTest {
 
     private static void seatAndCheck(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, Chassis chassis) {
-        List<Vec3> seats = SEATS.get(chassis);
+        List<Vec3> seats = Objects.requireNonNull(SEATS.get(chassis), () -> "no pinned seats for " + chassis.id());
         require(
-                seats != null && seats.size() == chassis.seats(),
+                seats.size() == chassis.seats(),
                 chassis.id() + " should have " + chassis.seats() + " pinned seats, has " + seats);
         require(
                 chassis != Chassis.PROSPECTOR || seats.get(0).z > seats.get(1).z,
@@ -89,19 +93,22 @@ public class PodSeatsClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the " + chassis.id() + " with " + chassis.seats() + " riders on the client",
-                client -> client.level.getEntity(pod[0]) instanceof PodEntity shown
+                client -> ClientLight.clientLevel(client).getEntity(pod[0]) instanceof PodEntity shown
                         && shown.getPassengers().size() == chassis.seats()
-                        && client.player.getVehicle() == shown,
-                client -> client.level.getEntity(pod[0]) instanceof PodEntity shown
+                        && ClientSession.player(client).getVehicle() == shown,
+                client -> ClientLight.clientLevel(client).getEntity(pod[0]) instanceof PodEntity shown
                         ? shown.getPassengers().size() + " riders"
                         : "no pod");
         // A rider is drawn where the pod places it, which the client does a tick or two after the passenger list syncs.
         ClientWait.until(
                 context,
                 "every rider of the " + chassis.id() + " in its seat",
-                client -> client.level.getEntity(pod[0]) instanceof PodEntity shown && seated(shown),
-                client -> client.level.getEntity(pod[0]) instanceof PodEntity shown ? riders(shown) : "no pod");
-        context.runOnClient(client -> check(client, (PodEntity) client.level.getEntity(pod[0]), seats));
+                client -> ClientLight.clientLevel(client).getEntity(pod[0]) instanceof PodEntity shown && seated(shown),
+                client -> ClientLight.clientLevel(client).getEntity(pod[0]) instanceof PodEntity shown
+                        ? riders(shown)
+                        : "no pod");
+        context.runOnClient(client ->
+                check(client, TestEntities.require(ClientLight.clientLevel(client), pod[0], PodEntity.class), seats));
 
         singleplayer.getServer().runOnServer(server -> {
             server.getPlayerList().getPlayers().getFirst().stopRiding();
@@ -109,19 +116,20 @@ public class PodSeatsClientTest implements FabricClientGameTest {
                 navigator[0].player().stopRiding();
                 navigator[0].leave();
             }
-            server.overworld().getEntity(pod[0]).discard();
+            TestEntities.require(server.overworld(), pod[0]).discard();
         });
         ClientWait.until(
                 context,
                 "the " + chassis.id() + " gone",
-                client -> client.level.getEntity(pod[0]) == null && client.player.getVehicle() == null);
+                client -> ClientLight.clientLevel(client).getEntity(pod[0]) == null
+                        && ClientSession.player(client).getVehicle() == null);
     }
 
     /** A pod of {@code chassis} facing +z beside the player, with the player aboard and, for a second seat, a mock navigator: the pod's id. */
     private static int board(MinecraftServer server, Chassis chassis, MockPlayer[] navigator) {
         ServerLevel level = server.overworld();
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-        PodEntity pod = PodRegistry.typeOf(chassis).create(level, EntitySpawnReason.COMMAND);
+        PodEntity pod = TestEntities.create(PodRegistry.typeOf(chassis), level);
         pod.setPos(player.position());
         pod.setYRot(0f);
         level.addFreshEntity(pod);
@@ -251,7 +259,7 @@ public class PodSeatsClientTest implements FabricClientGameTest {
     }
 
     /** The cube that the ray from {@code from} along {@code direction} enters first, or null. */
-    private static GeoModel.RestCube firstHit(List<GeoModel.RestCube> cubes, Vec3 from, Vec3 direction) {
+    private static GeoModel.@Nullable RestCube firstHit(List<GeoModel.RestCube> cubes, Vec3 from, Vec3 direction) {
         GeoModel.RestCube first = null;
         double nearest = Double.MAX_VALUE;
         double[] origin = {from.x, from.y, from.z};

@@ -7,7 +7,9 @@ import io.github.pkeppeler.deepcharter.client.beam.FloodlightBeams;
 import io.github.pkeppeler.deepcharter.client.theme.BeamLook;
 import io.github.pkeppeler.deepcharter.client.theme.BeamStyle;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -50,7 +52,9 @@ public class FloodlightBeamsClientTest implements FabricClientGameTest {
                     context,
                     "the client to find the floodlight within its look",
                     client -> FloodlightBeams.beamAt(lamp) != null);
-            BeamDraw open = context.computeOnClient(client -> FloodlightBeams.beamAt(lamp));
+            BeamDraw open = Objects.requireNonNull(
+                    context.computeOnClient(client -> FloodlightBeams.beamAt(lamp)),
+                    "the floodlight beam is not drawn");
             require(
                     Math.abs(open.length() - style.length()) < TOLERANCE,
                     "a floodlight in open air is drawn at its full length " + style.length() + ", drawn "
@@ -75,10 +79,11 @@ public class FloodlightBeamsClientTest implements FabricClientGameTest {
                         BeamDraw beam = FloodlightBeams.beamAt(lamp);
                         return beam != null && Math.abs(beam.length() - expected) < TOLERANCE;
                     },
-                    client -> "the beam was "
-                            + (FloodlightBeams.beamAt(lamp) == null
-                                    ? "not found"
-                                    : FloodlightBeams.beamAt(lamp).length() + " long, not " + expected));
+                    client -> {
+                        BeamDraw beam = FloodlightBeams.beamAt(lamp);
+                        return "the beam was "
+                                + (beam == null ? "not found" : beam.length() + " long, not " + expected);
+                    });
 
             // Broken, it loses its beam at once: on the very client tick that sees the block gone, before the next
             // look, so a list that
@@ -88,7 +93,7 @@ public class FloodlightBeamsClientTest implements FabricClientGameTest {
                     .getServer()
                     .runOnServer(server -> server.overworld().setBlock(lamp, Blocks.AIR.defaultBlockState(), 3));
             ClientWait.until(context, "the client to see the floodlight broken", client -> {
-                if (!client.level.getBlockState(lamp).isAir()) {
+                if (!ClientLight.clientLevel(client).getBlockState(lamp).isAir()) {
                     return false;
                 }
                 beamAfterBreak[0] = FloodlightBeams.beamAt(lamp) != null;

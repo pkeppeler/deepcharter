@@ -14,12 +14,15 @@ import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -34,7 +37,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -47,6 +49,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #83, the placeholder lampless figure. Most tests build a short rail corridor in a far chunk of the
@@ -173,7 +176,7 @@ public class LamplessFigureTest {
                     throw failure(helper, "the figure took damage from %s", source.getMsgId());
                 }
             }
-            pod[0] = PodRegistry.POD.create(level, EntitySpawnReason.COMMAND);
+            pod[0] = TestEntities.create(PodRegistry.POD, level);
             pod[0].setPos(Vec3.atBottomCenterOf(origin.south(3)));
             level.addFreshEntity(pod[0]);
             podHull[0] = pod[0].hull();
@@ -225,7 +228,7 @@ public class LamplessFigureTest {
                 if (!id.getNamespace().equals(MOD_NAMESPACE)) {
                     continue;
                 }
-                Entity entity = type.create(level, EntitySpawnReason.COMMAND);
+                Entity entity = TestEntities.create(type, level);
                 if (!(entity instanceof LivingEntity living)) {
                     skipped.add(id + (entity == null ? " (cannot be created on its own)" : " (not a living entity)"));
                     continue;
@@ -244,7 +247,7 @@ public class LamplessFigureTest {
 
     @GameTest
     public void waterDoesNotPushItAndALeadDoesNotHoldIt(GameTestHelper helper) {
-        LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(helper.getLevel(), EntitySpawnReason.COMMAND);
+        LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, helper.getLevel());
         if (figure.isPushedByFluid()) {
             throw failure(helper, "water pushes the figure");
         }
@@ -271,12 +274,10 @@ public class LamplessFigureTest {
             run.figure = spawnFigure(level, origin, -4, Direction.SOUTH);
         });
         run.onDone = () -> {
-            if (run.player.getHealth() != run.player.getMaxHealth()) {
+            ServerPlayer player = Objects.requireNonNull(run.player, "player: joined by the cause, read before it ran");
+            if (player.getHealth() != player.getMaxHealth()) {
                 throw failure(
-                        helper,
-                        "the player's health went from %s to %s",
-                        run.player.getMaxHealth(),
-                        run.player.getHealth());
+                        helper, "the player's health went from %s to %s", player.getMaxHealth(), player.getHealth());
             }
         };
     }
@@ -345,7 +346,7 @@ public class LamplessFigureTest {
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + RESPAWN_TEST_TICKS)
     public void aKillDelaysTheNextFigureUntilTheDelayEndsOrAServerStarts(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(Level.NETHER);
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), Level.NETHER);
         BlockPos origin = slot(4);
         StructureSite site = new StructureSite(StructureKind.RAILS, origin, true, 4, 0L);
         LamplessFigure[] figure = {null};
@@ -418,7 +419,7 @@ public class LamplessFigureTest {
     /** A level holds {@code maxPerLevel} figures however many sites ask. The End has no fades, no tick spawns and no other figure test. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
     public void aLevelHoldsNoMoreFiguresThanItsCap(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(Level.END);
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), Level.END);
         List<StructureSite> sites = new ArrayList<>();
         for (int i = 0; i <= TUNING.maxPerLevel(); i++) {
             sites.add(new StructureSite(StructureKind.RAILS, slot(10 + i), true, 4, 0L));
@@ -474,7 +475,8 @@ public class LamplessFigureTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
     public void aLoadedRailSiteOfLayerTwoGetsOneFigureWhenAPlayerIsNear(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel().getServer().getLevel(LayerChain.dimension(StructureKind.RAILS.layer()));
+        ServerLevel level = ClientLight.serverLevel(
+                helper.getLevel().getServer(), LayerChain.dimension(StructureKind.RAILS.layer()));
         BlockPos conduit = Colony.anchor(level.getServer(), ColonyAnchor.CONDUIT)
                 .orElseThrow(() -> failure(helper, "the colony was not built"));
         StructureSite site = StructureSite.in(
@@ -523,8 +525,12 @@ public class LamplessFigureTest {
      * walking, whole and alive, for {@link #NO_FADE_TICKS}: the cause does not fade it (#485).
      */
     private static final class StayRun {
+        @Nullable
         LamplessFigure figure;
+
+        @Nullable
         ServerPlayer player;
+
         Runnable onDone = () -> {};
         private int ticks;
         private int causeAt = -1;
@@ -637,7 +643,7 @@ public class LamplessFigureTest {
     }
 
     private static LamplessFigure spawnFigure(ServerLevel level, BlockPos origin, int along, Direction heading) {
-        LamplessFigure figure = CreatureRegistry.LAMPLESS_FIGURE.create(level, EntitySpawnReason.COMMAND);
+        LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
         figure.setPos(Vec3.atBottomCenterOf(origin.offset(0, 0, along)));
         figure.setHeading(heading);
         level.addFreshEntity(figure);
@@ -649,7 +655,8 @@ public class LamplessFigureTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

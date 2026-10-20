@@ -515,7 +515,7 @@ public class ContractTerminalTest {
         if (last == null || !wanted.test(last)) {
             throw helper.assertionException(
                     "%s: last state pushed to %s was %s",
-                    what, player.getGameProfile().name(), last);
+                    what, player.getGameProfile().name(), String.valueOf(last));
         }
     }
 }

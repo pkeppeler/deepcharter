@@ -9,8 +9,10 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.ScannerHudTest.HudShot;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -116,7 +118,7 @@ public class ScannerLegibilityClientTest implements FabricClientGameTest {
                 client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
         List<BlockPos> positions = server.computeOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-            PodEntity pod = (PodEntity) player.getVehicle();
+            PodEntity pod = TestEntities.vehicle(player, PodEntity.class);
             ServerLevel level = (ServerLevel) pod.level();
             Direction facing = pod.getDirection();
             BlockPos row = pod.blockPosition().above(ROW);
@@ -137,7 +139,9 @@ public class ScannerLegibilityClientTest implements FabricClientGameTest {
                 context,
                 "the row of blocks",
                 client -> positions.stream()
-                        .allMatch(at -> !client.level.getBlockState(at).isAir()));
+                        .allMatch(at -> !ClientLight.clientLevel(client)
+                                .getBlockState(at)
+                                .isAir()));
         context.waitTicks(2 * TUNING.rescanTicks() + 2);
     }
 

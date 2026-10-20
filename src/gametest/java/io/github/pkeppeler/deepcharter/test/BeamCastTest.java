@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.beam.BeamCast;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for how long a fake light beam is (#248): the full length in open air, shortened by a wall (the beam stops where it
@@ -85,7 +86,8 @@ public class BeamCastTest {
     }
 
     @FormatMethod
-    private static RuntimeException failure(GameTestHelper helper, @FormatString String format, Object... args) {
+    private static RuntimeException failure(
+            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }
