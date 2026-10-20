@@ -366,7 +366,7 @@ public class PodLightsTest {
             switch (phase[0]) {
                 case 0 -> {
                     if (!lightsNear(level, origin, LOOK).isEmpty()) {
-                        level.setChunkForced(chunkX, chunkZ, false);
+                        FarChunks.release(helper, level, chunkX, chunkZ);
                         unloadBy[0] = FarChunks.deadline();
                         phase[0] = 1;
                     }
@@ -374,7 +374,7 @@ public class PodLightsTest {
                 case 1 -> {
                     if (unloadBy[0].awaitUnloaded(helper, level, chunkX, chunkZ)) {
                         DARK.add(pod[0].getUUID());
-                        level.setChunkForced(chunkX, chunkZ, true);
+                        FarChunks.force(helper, level, chunkX, chunkZ);
                         phase[0] = 2;
                     }
                 }

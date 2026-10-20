@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -122,7 +123,7 @@ public class SurfaceCostTest {
             if (!current[0].isGenerated()) {
                 return;
             }
-            Measurement measurement = current[0].finish();
+            Measurement measurement = current[0].finish(helper);
             if (current[0].measured) {
                 results.computeIfAbsent(current[0].world, world -> new ArrayList<>())
                         .add(measurement);
@@ -359,7 +360,7 @@ public class SurfaceCostTest {
             heapBefore = SMOKE ? 0 : usedHeap();
             cpuBefore = processCpuNanos();
             wallBefore = System.nanoTime();
-            forEachChunk(chunk -> level().setChunkForced(chunk[0], chunk[1], true));
+            forEachChunk(chunk -> FarChunks.force(helper, found, chunk[0], chunk[1]));
         }
 
         boolean isGenerated() {
@@ -368,12 +369,12 @@ public class SurfaceCostTest {
             return all[0];
         }
 
-        Measurement finish() {
+        Measurement finish(GameTestHelper helper) {
             double columns = columnsOf(radius);
             double cpuMs = (processCpuNanos() - cpuBefore) / 1e6;
             double wallMs = (System.nanoTime() - wallBefore) / 1e6;
             double heapMb = SMOKE ? 0 : (usedHeap() - heapBefore) / (1024.0 * 1024.0);
-            forEachChunk(chunk -> level().setChunkForced(chunk[0], chunk[1], false));
+            forEachChunk(chunk -> FarChunks.release(helper, level(), chunk[0], chunk[1]));
             return new Measurement(cpuMs / columns, heapMb, wallMs / columns);
         }
 

@@ -861,7 +861,7 @@ public class HandbookChaptersSixToNineTest {
         TestTicks.each(helper, () -> {
             switch (phase[0]) {
                 case 1 -> {
-                    level.setChunkForced(chunkX, chunkZ, false);
+                    FarChunks.release(helper, level, chunkX, chunkZ);
                     unloadBy[0] = FarChunks.deadline();
                     phase[0] = 2;
                 }

@@ -54,7 +54,7 @@ public final class ColonyChunks {
     /** Keeps the pad's chunks loaded and ticking for as long as the world lives. */
     public static void force(ServerLevel level, ColonySite.Placed colony) {
         for (BlockPos pos : of(colony)) {
-            level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, true);
+            FarChunks.pin(level, pos.getX() >> 4, pos.getZ() >> 4);
         }
     }
 
