@@ -182,13 +182,13 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
 
     /**
      * The box the game culls {@code pod} by. A cutter leads the hitbox by a block and sinks under the floor, so the box is widened to
-     * the model's: the whole model at every heading, every cutter, at any angle of the drill mount.
+     * the model's (every heading, cutter and drill angle), plus the headlamp beam's box ({@link PodBeams#cullingBox}).
      */
     @Override
     public AABB getBoundingBoxForCulling(PodEntity pod, float partialTick) {
         AABB box = super.getBoundingBoxForCulling(pod, partialTick).minmax(modelExtent.move(pod.position()));
-        double beamReach = PodBeams.reach(pod);
-        return beamReach > 0 ? box.inflate(beamReach) : box;
+        AABB beam = PodBeams.cullingBox(pod);
+        return beam == null ? box : box.minmax(beam);
     }
 
     /** The share of the full drill spin that the cutter {@code appearance} shows turns at. */

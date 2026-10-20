@@ -594,6 +594,38 @@ exited "mark-review-passed exits 0" 0
 logged "mark reads head sha" "gh pr view 7 -R pkeppeler/deepcharter --json headRefOid --jq .headRefOid"
 logged "mark comments exact body" "gh pr comment 7 -R pkeppeler/deepcharter --body review-passed def456"
 logged "mark adds label" "gh pr edit 7 -R pkeppeler/deepcharter --add-label review-passed"
+# merge-pr.sh calls the lib's steps one at a time, interleaved with its other checks, and mark calls them through
+# check_pr_body_and_labels: the two lists must hold the same steps.
+lib=$tools/lib/pr-body-checks.sh
+wrapped=$(sed -n '/^check_pr_body_and_labels() {$/,/^}$/p' "$lib" | sed -n 's/^  \([a-z_]*\)$/\1/p')
+called=$(grep -oE '^(check|load)_[a-z_]+' "$script" || true)
+[[ -n $wrapped ]] || { echo "cannot read check_pr_body_and_labels from $lib" >&2; exit 1; }
+if [[ $(sort <<<"$wrapped") == "$(sort -u <<<"$called")" ]]; then
+  pass "merge-pr.sh and check_pr_body_and_labels call the same steps"
+else
+  fail "keep the two lists in step: check_pr_body_and_labels calls [$(tr '\n' ' ' <<<"$wrapped")] but merge-pr.sh calls [$(sort -u <<<"$called" | tr '\n' ' ')]"
+fi
+
+# mark runs the merge gate's closing-reference, demo and map checks (tools/lib/pr-body-checks.sh), and never waits for CI.
+SCRIPT=$mark run_script STUB_CLOSING=
+exited "mark refuses a body with no closing reference" 1
+printed "mark names the closing fix" "has no closing reference (put 'Closes #12' in the body)"
+not_logged "mark refused before commenting" "^gh pr comment"
+not_logged "mark refused before labelling" "^gh pr edit"
+SCRIPT=$mark run_script STUB_FILES="$(files modified:src/main/A.java)" STUB_LABELS=infra
+exited "mark refuses an in-game PR with no demo" 1
+printed "mark names the demo fix" "changes in-game code (src/main/A.java) with no demo"
+SCRIPT=$mark run_script STUB_LABELS=gameplay STUB_BODY="Closes #12"
+exited "mark refuses a gameplay PR with no map change line" 1
+printed "mark names the map fix" "No map change: <reason>"
+SCRIPT=$mark run_script STUB_LABELS=gameplay STUB_BODY="Closes #12
+No map change: tooling only"
+exited "mark passes a gameplay PR with a map change line" 0
+SCRIPT=$mark run_script STUB_MAP_STALE="$(printf 'n1\tplanned\t#12')"
+exited "mark refuses a stale map node" 1
+printed "mark names the stale node" "the node is still planned"
+SCRIPT=$mark run_script
+not_logged "mark does not wait for CI" "check-runs"
 SCRIPT=$mark run_script STUB_ORIGIN=git@github.com:someone/else.git
 exited "mark refuses wrong origin" 1
 not_logged "mark wrong origin calls no gh" "^gh"

@@ -212,7 +212,7 @@ public class ActiveStateTest {
                     boolean unloaded = UNLOADED.contains(chunk.pack());
                     deadline[0].await(helper, level, unloaded, () -> "the chunk " + chunk + " did not unload");
                     if (unloaded) {
-                        level.setChunkForced(chunk.x(), chunk.z(), true);
+                        FarChunks.force(helper, level, chunk.x(), chunk.z());
                         deadline[0] = FarChunks.deadline();
                         phase[0] = 2;
                     }
@@ -241,7 +241,7 @@ public class ActiveStateTest {
             expectActive(helper, FAR, false, "the contract terminal before its chunk unloads");
             UNLOADED.remove(chunk.pack());
             LOADED.remove(chunk.pack());
-            level.setChunkForced(chunk.x(), chunk.z(), false);
+            FarChunks.release(helper, level, chunk.x(), chunk.z());
             deadline[0] = FarChunks.deadline();
             phase[0] = 1;
         });

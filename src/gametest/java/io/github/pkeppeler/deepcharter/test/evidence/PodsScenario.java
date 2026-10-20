@@ -335,8 +335,7 @@ public class PodsScenario extends EvidenceScenario {
                 levelPad(overworld, stage);
                 levelPad(overworld, clipGround);
                 Vec3 pilotSpot = Vec3.atBottomCenterOf(clipGround).add(0, 0, 2);
-                MockPlayer pilot = MockPlayers.join(server, "Pilot", overworld, pilotSpot);
-                pilot.teleportTo(overworld, pilotSpot, CLIP_YAW, 0f);
+                MockPlayer pilot = MockPlayers.join(server, "Pilot", overworld, pilotSpot, CLIP_YAW);
                 pilot.player().setInvisible(true);
                 pilot.player().setPermanentlyInvulnerable(true);
                 if (Charters.found(server, pilot.player().getUUID(), "Pod Works")

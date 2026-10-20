@@ -155,6 +155,8 @@ public class CompanyRockScenario extends EvidenceScenario {
         BlockPos high = absolute(ROCK_HIGH);
         for (int cx = low.getX() >> 4; cx <= high.getX() >> 4; cx++) {
             for (int cz = low.getZ() >> 4; cz <= high.getZ() >> 4; cz++) {
+                // force-ok: an evidence scenario has no GameTestHelper to release through; its world is discarded when
+                // the run ends
                 level.setChunkForced(cx, cz, true);
                 level.getChunk(cx, cz);
             }

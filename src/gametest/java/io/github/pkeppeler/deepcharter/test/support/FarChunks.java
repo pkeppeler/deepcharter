@@ -67,17 +67,41 @@ public final class FarChunks {
         }
     }
 
+    /**
+     * Forces a chunk for the rest of the world's life: no test's end lets it go. The colony pad, which tests share, is the case. A
+     * test that holds the same chunk lets go of its own hold only. Server thread only.
+     */
+    public static void pin(ServerLevel level, int chunkX, int chunkZ) {
+        level.setChunkForced(chunkX, chunkZ, true);
+        HOLDS.merge(new Chunk(level, ChunkPos.pack(chunkX, chunkZ)), 1, Integer::sum);
+    }
+
+    /**
+     * Lets go of a chunk {@code helper}'s test holds, before the test ends, so the test can wait for it to unload and {@link #force} it
+     * again. A chunk the test does not hold is left as it is. Server thread only.
+     */
+    public static void release(GameTestHelper helper, ServerLevel level, int chunkX, int chunkZ) {
+        Chunk chunk = new Chunk(level, ChunkPos.pack(chunkX, chunkZ));
+        List<Chunk> mine = HELD_BY_TEST.get(helper.getBounds());
+        if (mine != null && mine.remove(chunk)) {
+            letGo(chunk);
+        }
+    }
+
     /** Lets go of the chunks that the test with these bounds forced, those no other test holds. Called when a test finishes. */
     public static void release(AABB testBounds) {
         List<Chunk> mine = HELD_BY_TEST.remove(testBounds);
         if (mine == null) {
             return;
         }
-        for (Chunk chunk : mine) {
-            if (HOLDS.merge(chunk, -1, Integer::sum) == 0) {
-                HOLDS.remove(chunk);
-                chunk.level().setChunkForced(ChunkPos.getX(chunk.pos()), ChunkPos.getZ(chunk.pos()), false);
-            }
+        mine.forEach(FarChunks::letGo);
+    }
+
+    /** Drops one hold on a chunk, and unforces it when no test holds it any more. */
+    private static void letGo(Chunk chunk) {
+        if (HOLDS.merge(chunk, -1, Integer::sum) == 0) {
+            HOLDS.remove(chunk);
+            chunk.level().setChunkForced(ChunkPos.getX(chunk.pos()), ChunkPos.getZ(chunk.pos()), false);
         }
     }
 

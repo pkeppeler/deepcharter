@@ -184,7 +184,7 @@ public class EntityQueryAuditTest {
             pod[0] = made.getUUID();
             // A ticket of radius 0 holds the chunk loaded and not ticking once the force is let go.
             level.getChunkSource().addTicketWithRadius(TicketType.PORTAL, chunk, 0);
-            level.setChunkForced(chunk.x(), chunk.z(), false);
+            FarChunks.release(helper, level, chunk.x(), chunk.z());
             placed[0] = true;
         });
         helper.succeedWhen(() -> {

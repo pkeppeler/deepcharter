@@ -55,7 +55,7 @@ def overlap(a, b) -> bool:
 
 def plate_rect(screen: tuple[int, int], state) -> tuple[int, int, int, int]:
     """Where the readout plate is when it shows `state`, put by its anchor."""
-    width, height = cockpit_ribbon.plate_size(state)
+    width, height = cockpit_ribbon.plate_size(LOOK, state)
     ax, ay, x, y = (THEME[STYLE + "Readout" + k] for k in ("AnchorX", "AnchorY", "X", "Y"))
     left = x if ax == 0 else (screen[0] - width) // 2 + x if ax == 1 else screen[0] - width - x
     top = y if ay == 0 else (screen[1] - height) // 2 + y if ay == 1 else screen[1] - height - y

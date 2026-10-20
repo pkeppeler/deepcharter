@@ -27,6 +27,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -78,6 +80,33 @@ public class BeamsClientTest implements FabricClientGameTest {
                         "the beam over a bare floor should be drawn " + floorHit + " blocks long, drawn "
                                 + open.length());
                 require(PodBeams.beamFor(dark, stateOf(dark)) == null, "a dark pod must draw no beam");
+                require(PodBeams.cullingBox(dark) == null, "a dark pod needs no beam in its culling box");
+
+                // The beam's culling box holds the lamp and the beam's end at every heading and pitch, and rises above
+                // the lamp by no more than the radius.
+                AABB box = Objects.requireNonNull(PodBeams.cullingBox(lit), "a lit pod has a beam box")
+                        .inflate(TOLERANCE);
+                var style = BeamLook.current().headlamp();
+                double radius = Math.max(style.startRadius(), style.endRadius());
+                for (int heading = 0; heading < 360; heading += 15) {
+                    Vec3 lamp = lamp(lit, heading);
+                    require(
+                            box.contains(lamp),
+                            "the beam box should hold the lamp at heading " + heading + ", got " + box);
+                    for (double pitch : new double[] {0, 45, 90, style.pitch()}) {
+                        Vec3 end = lamp.add(
+                                BeamAim.dirX(heading, pitch) * reach,
+                                BeamAim.dirY(pitch) * reach,
+                                BeamAim.dirZ(heading, pitch) * reach);
+                        require(
+                                box.contains(end),
+                                "the beam box should hold the beam's end " + end + " at heading " + heading
+                                        + " and pitch " + pitch + ", got " + box);
+                    }
+                    require(
+                            box.maxY <= lamp.y + radius + 2 * TOLERANCE,
+                            "the beam box should rise no more than the radius above the lamp, got " + box);
+                }
 
                 // The cast the renderer makes (BeamAim, one walk of the client's blocks), here level down the room from
                 // the lamp, so
@@ -159,6 +188,14 @@ public class BeamsClientTest implements FabricClientGameTest {
                 require(PodBeams.beamFor(lit, stateOf(lit)) == null, "a stranded pod must draw no beam");
             });
         }
+    }
+
+    private static Vec3 lamp(PodEntity pod, float heading) {
+        var style = BeamLook.current().headlamp();
+        return new Vec3(
+                pod.getX() - Math.sin(Math.toRadians(heading)) * style.forward(),
+                pod.getY() + style.height(),
+                pod.getZ() + Math.cos(Math.toRadians(heading)) * style.forward());
     }
 
     private static PodGeoRenderState stateOf(PodEntity pod) {
