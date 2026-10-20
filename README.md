@@ -144,7 +144,7 @@ A crust of hard rock at the floor of each layer is a breach. Any drill can get t
 
 ![The pod's readout warns CRUST 7 DOWN, HULL 8, IT TAKES 24](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/breach-brace.png?raw=true)
 
-The crust costs hull, so the readout warns you before you reach it: how many slabs down it is, what hull you have, and what the crust will take. Short of hull, you can heal first, or fit the breach brace. Park above the crust with your hands off the controls, and the brace burns ore from the cargo bay to patch the hull (`BRACING  BURNING ORE FOR HULL`).
+The crust costs hull, so the readout warns you before you reach it: how many slabs down it is, what hull you have, and what the crust will take. Near the floor the signal decay can blank the readout, so a good console part is what keeps the warning on screen (the picture is a Prospector with the top console). Short of hull, you can heal first, or fit the breach brace. Park above the crust with your hands off the controls, and the brace burns ore from the cargo bay to patch the hull (`BRACING  BURNING ORE FOR HULL`).
 
 ### 14. The handbook
 

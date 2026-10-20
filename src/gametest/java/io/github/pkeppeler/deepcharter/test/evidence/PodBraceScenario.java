@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
@@ -30,6 +31,11 @@ import net.minecraft.world.level.block.Blocks;
  * hull a row and has 3 rows, 24 in all, so the HUD warns from 16 slabs up: the slabs down, the hull, and what the crust takes. The pod stops on the crust and a
  * breach brace is fitted (as if bought at the upgrade terminal). It burns two ore into hull, 8 to 32, the warning goes, and the pod bores the crust into layer 2
  * with 8 hull left.
+ *
+ * <p>The pod is a Prospector with the top console, tier 3 (#689). The warning shows at 7 to 8 slabs over the crust, 10 to 11 over the floor, and the pod ends on the crust, 3 over
+ * the floor, all inside layer 1's signal-decay band (onset 36, blackout 6). On the stock console the readout plate fails there (intensity 0.87 to 0.97 against the plate's
+ * threshold 0.45) and drops the warning in some cells. Tier 3 has a share of 0, so the decay never reaches the plate. Tier 2 (share 0.3) clears 10 slabs (0.09) but not the
+ * crust (0.87), so the later stills would go blank.
  */
 public class PodBraceScenario extends EvidenceScenario {
     private static final int X = 4900;
@@ -60,11 +66,12 @@ public class PodBraceScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), FACING_EAST, LOOK_DOWN, true);
-                PodEntity pod = TestEntities.create(PodRegistry.POD, one);
+                PodEntity pod = TestEntities.create(PodRegistry.typeOf(Chassis.PROSPECTOR), one);
                 pod.setPos(X, FLOOR_Y, Z);
                 pod.setYRot(FACING_EAST);
                 one.addFreshEntity(pod);
                 ScannerPods.fit(server, player, pod, ComponentTrack.FUEL_TANK, 2);
+                ScannerPods.fit(server, player, pod, ComponentTrack.CONSOLE, ComponentTrack.CONSOLE.maxTier());
                 pod.setFuel(100f);
                 pod.setHull(HULL);
                 for (int i = 0; i < ORE; i++) {
