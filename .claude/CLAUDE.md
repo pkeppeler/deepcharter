@@ -31,7 +31,7 @@ Dig mechanics, hazards and their counterplay, pod upgrades and consumables also 
 - **CI runs on free standard runners** (the repo is public), so minutes are not rationed. Client tests still run only on `gameplay` PRs, for run time. Run recording jobs locally.
 - **Sessions:**
   - For unattended runs, use `/loop` in dynamic mode.
-  - Once context passes about 200k tokens, hand over: let in-flight agents finish, rewrite the handoff, stop the loop, then start the successor:
+  - Once context passes about 500k tokens, hand over: let in-flight agents finish, rewrite the handoff, stop the loop, then start the successor:
     - **Launch** from the main checkout (the repo root, not a worktree or other directory): a session started elsewhere loads none of this repo's hooks or skills.
       `claude --bg --permission-mode <mode> -n "deepcharter $(date -u +%m-%d-%H%M)" "/loop continue Deep Charter"`
       `<mode>` is the current session's permission mode (`auto` today), never a wider one.
