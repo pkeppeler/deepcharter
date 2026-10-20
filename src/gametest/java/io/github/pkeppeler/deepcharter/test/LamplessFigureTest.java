@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -22,7 +23,6 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -267,14 +267,14 @@ public class LamplessFigureTest {
                 () -> run.step(helper, () -> {
                     MockPlayer mock = MockPlayers.join(helper, "figure-approach");
                     mock.teleportTo(level, new Vec3(origin.getX() - 1.5, origin.getY(), origin.getZ() + 0.5), 0f, 0f);
-                    run.player = mock.player();
+                    run.player.set(mock.player());
                 }));
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
             buildCorridor(level, origin);
-            run.figure = spawnFigure(level, origin, -4, Direction.SOUTH);
+            run.figure.set(spawnFigure(level, origin, -4, Direction.SOUTH));
         });
         run.onDone = () -> {
-            ServerPlayer player = Objects.requireNonNull(run.player, "player: joined by the cause, read before it ran");
+            ServerPlayer player = run.player.get();
             if (player.getHealth() != player.getMaxHealth()) {
                 throw failure(
                         helper, "the player's health went from %s to %s", player.getMaxHealth(), player.getHealth());
@@ -291,7 +291,7 @@ public class LamplessFigureTest {
                 helper, () -> run.step(helper, () -> level.setBlock(origin.offset(2, 1, 0), light(LIT_LEVEL), 3)));
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
             buildCorridor(level, origin);
-            run.figure = spawnFigure(level, origin, -4, Direction.SOUTH);
+            run.figure.set(spawnFigure(level, origin, -4, Direction.SOUTH));
         });
     }
 
@@ -525,22 +525,20 @@ public class LamplessFigureTest {
      * walking, whole and alive, for {@link #NO_FADE_TICKS}: the cause does not fade it (#485).
      */
     private static final class StayRun {
-        @Nullable
-        LamplessFigure figure;
-
-        @Nullable
-        ServerPlayer player;
+        final Arrival<LamplessFigure> figure = new Arrival<>("figure", "the far chunk ticks");
+        final Arrival<ServerPlayer> player = new Arrival<>("player", "the cause joins it");
 
         Runnable onDone = () -> {};
         private int ticks;
         private int causeAt = -1;
 
         void step(GameTestHelper helper, Runnable cause) {
-            if (figure == null) {
+            if (!figure.isPresent()) {
                 return;
             }
+            LamplessFigure walker = figure.get();
             ticks++;
-            if (figure.fadeFraction() > 0 || !figure.isAlive() || figure.isRemoved()) {
+            if (walker.fadeFraction() > 0 || !walker.isAlive() || walker.isRemoved()) {
                 throw failure(
                         helper,
                         "the figure faded or went %d ticks in (%d ticks after the cause)",
@@ -554,7 +552,7 @@ public class LamplessFigureTest {
                 causeAt = ticks;
                 cause.run();
             } else if (ticks - causeAt >= NO_FADE_TICKS) {
-                figure.discard();
+                walker.discard();
                 onDone.run();
                 helper.succeed();
             }

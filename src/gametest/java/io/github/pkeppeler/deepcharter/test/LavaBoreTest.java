@@ -30,6 +30,7 @@ import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.DecayCells;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
@@ -498,8 +499,7 @@ public class LavaBoreTest {
         int lastCargoUsed;
         int lastCargoValue;
 
-        @Nullable
-        PodEntity pod;
+        final Arrival<PodEntity> pod = new Arrival<>("pod", "the far chunk ticks");
 
         int startY;
         /** What the cab lets the pilot read on this tick (#502): the plate's text and the scanner's window. Always true without the decay. */
@@ -638,14 +638,6 @@ public class LavaBoreTest {
             this.leaves = leaves;
         }
 
-        PodEntity pod() {
-            return Objects.requireNonNull(pod, "pod: seated once the far chunk ticks, read before ready()");
-        }
-
-        boolean ready() {
-            return pod != null;
-        }
-
         boolean done() {
             return outcome != null;
         }
@@ -736,7 +728,7 @@ public class LavaBoreTest {
                 return;
             }
             for (Bore bore : bores) {
-                if (bore.ready() && !bore.done()) {
+                if (bore.pod.isPresent() && !bore.done()) {
                     step(helper, bore);
                 }
             }
@@ -883,7 +875,7 @@ public class LavaBoreTest {
         bore.lastHull = pod.hull();
         bore.lastHealth = bore.pilot.player().getHealth();
         bore.lastProgressTick = 0;
-        bore.pod = pod;
+        bore.pod.set(pod);
         bore.pilot.setInput(SPRINT);
     }
 
@@ -905,7 +897,7 @@ public class LavaBoreTest {
 
     private static void step(GameTestHelper helper, Bore bore) {
         ServerPlayer player = bore.pilot.player();
-        PodEntity pod = player.getVehicle() instanceof PodEntity ridden ? ridden : bore.pod();
+        PodEntity pod = player.getVehicle() instanceof PodEntity ridden ? ridden : bore.pod.get();
         boolean through = player.level().dimension().equals(LayerChain.dimension(2));
         if (through && player.isAlive() && player.getVehicle() instanceof PodEntity crossed) {
             finish(bore, Outcome.SURVIVED, "", crossed);
@@ -913,7 +905,7 @@ public class LavaBoreTest {
             bore.pilot.releaseInput();
             return;
         }
-        bore.pod = pod;
+        bore.pod.replace(pod);
         bore.pilotTicks++;
         ServerLevel level = bore.level;
         boolean touching = LavaHazard.touchesLava(pod);

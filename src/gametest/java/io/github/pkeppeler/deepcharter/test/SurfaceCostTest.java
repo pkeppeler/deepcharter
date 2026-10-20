@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.io.IOException;
@@ -331,7 +332,7 @@ public class SurfaceCostTest {
         private final int radius;
         private final int round;
         private final boolean measured;
-        private @Nullable ServerLevel level;
+        private final Arrival<ServerLevel> level = new Arrival<>("level", "begin() finds the dimension");
         private int centreChunk;
         private long heapBefore;
         private long cpuBefore;
@@ -344,10 +345,6 @@ public class SurfaceCostTest {
             this.measured = measured;
         }
 
-        private ServerLevel level() {
-            return Objects.requireNonNull(level, "level: found by begin(), read before it ran");
-        }
-
         void begin(GameTestHelper helper) {
             ResourceKey<Level> key =
                     ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", world));
@@ -355,7 +352,7 @@ public class SurfaceCostTest {
             if (found == null) {
                 throw helper.assertionException(Component.literal("no dimension " + key.identifier()));
             }
-            level = found;
+            level.set(found);
             centreChunk = (round + 1) * REGION_SPACING_CHUNKS;
             heapBefore = SMOKE ? 0 : usedHeap();
             cpuBefore = processCpuNanos();
@@ -365,7 +362,7 @@ public class SurfaceCostTest {
 
         boolean isGenerated() {
             boolean[] all = {true};
-            forEachChunk(chunk -> all[0] &= level().getChunkSource().getChunkNow(chunk[0], chunk[1]) != null);
+            forEachChunk(chunk -> all[0] &= level.get().getChunkSource().getChunkNow(chunk[0], chunk[1]) != null);
             return all[0];
         }
 
@@ -374,7 +371,7 @@ public class SurfaceCostTest {
             double cpuMs = (processCpuNanos() - cpuBefore) / 1e6;
             double wallMs = (System.nanoTime() - wallBefore) / 1e6;
             double heapMb = SMOKE ? 0 : (usedHeap() - heapBefore) / (1024.0 * 1024.0);
-            forEachChunk(chunk -> FarChunks.release(helper, level(), chunk[0], chunk[1]));
+            forEachChunk(chunk -> FarChunks.release(helper, level.get(), chunk[0], chunk[1]));
             return new Measurement(cpuMs / columns, heapMb, wallMs / columns);
         }
 
