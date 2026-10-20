@@ -322,28 +322,28 @@ RED_USES = """
 # in a comment and then misread every later line, which would make cases in one file fail by cascade. Each declares m() (or the field f)
 # as a test-only member after the placement. Against the old lexer OneLineJavadoc, BlockComment and InlineJavadoc were red (line 0); every other
 # case here passed and stays as a regression pin for the new lexer.
-# (name, class body, declaration text, member name, test expression using the instance q)
+# (name, class body, member): member is the method m() or the field f
 QUOTE_CASES = [
-    ("OneLineJavadoc", "    /** The chunk's one-line javadoc. */\n    public int m() {\n        return 1;\n    }", "public int m()", "m()", "q.m()"),
-    ("MultiLineJavadoc", "    /**\n     * The chunk's multi-line javadoc,\n     * and the test's second line.\n     */\n    public int m() {\n        return 1;\n    }", "public int m()", "m()", "q.m()"),
-    ("BlockComment", "    /* A block comment, it's here. */\n    public int m() {\n        return 1;\n    }", "public int m()", "m()", "q.m()"),
-    ("MultiLineBlockComment", "    /* A block comment that opens here, it's\n       still open here, with a { brace and a '\n       closed here. */\n    public int m() {\n        return 1;\n    }", "public int m()", "m()", "q.m()"),
-    ("LineComment", "    // A line comment, it's here.\n    public int m() {\n        return 1;\n    }", "public int m()", "m()", "q.m()"),
-    ("TrailingComment", "    public int m() { // it's a trailing comment\n        return 1;\n    }", "public int m()", "m()", "q.m()"),
-    ("InlineJavadoc", "    /** It's a javadoc before code on the same line. */ public int m() {\n        return 1;\n    }", "public int m()", "m()", "q.m()"),
-    ("AfterInlineBlock", "    public int m() { /* it's { */\n        return 1;\n    }", "public int m()", "m()", "q.m()"),
-    ("StringField", "    public String f = \"it's a string\";", "public String f", "f", "q.f.length()"),
-    ("AfterString", "    public int m() {\n        return \"it's\".length();\n    }", "public int m()", "m()", "q.m()"),
-    ("AfterQuoteChar", "    public int m() {\n        return '\\'';\n    }", "public int m()", "m()", "q.m()"),
-    ("AfterEscapedBackslashChar", "    public int m() {\n        return '\\\\';\n    }", "public int m()", "m()", "q.m()"),
-    ("TextBlockField", "    public String f = \"\"\"\n        it's a text block with a } brace\n        // and slashes, and a /* that never closes\n        \"\"\";", "public String f", "f", "q.f.length()"),
-    ("AfterTextBlock", "    private String t = \"\"\"\n        it's a text block with a } brace\n        // and slashes, and a /* that never closes\n        \"\"\";\n\n    public int m() {\n        return t.length();\n    }", "public int m()", "m()", "q.m()"),
+    ("OneLineJavadoc", "    /** The chunk's one-line javadoc. */\n    public int m() {\n        return 1;\n    }", "m()"),
+    ("MultiLineJavadoc", "    /**\n     * The chunk's multi-line javadoc,\n     * and the test's second line.\n     */\n    public int m() {\n        return 1;\n    }", "m()"),
+    ("BlockComment", "    /* A block comment, it's here. */\n    public int m() {\n        return 1;\n    }", "m()"),
+    ("MultiLineBlockComment", "    /* A block comment that opens here, it's\n       still open here, with a { brace and a '\n       closed here. */\n    public int m() {\n        return 1;\n    }", "m()"),
+    ("LineComment", "    // A line comment, it's here.\n    public int m() {\n        return 1;\n    }", "m()"),
+    ("TrailingComment", "    public int m() { // it's a trailing comment\n        return 1;\n    }", "m()"),
+    ("InlineJavadoc", "    /** It's a javadoc before code on the same line. */ public int m() {\n        return 1;\n    }", "m()"),
+    ("AfterInlineBlock", "    public int m() { /* it's { */\n        return 1;\n    }", "m()"),
+    ("StringField", "    public String f = \"it's a string\";", "f"),
+    ("AfterString", "    public int m() {\n        return \"it's\".length();\n    }", "m()"),
+    ("AfterQuoteChar", "    public int m() {\n        return '\\'';\n    }", "m()"),
+    ("AfterEscapedBackslashChar", "    public int m() {\n        return '\\\\';\n    }", "m()"),
+    ("TextBlockField", "    public String f = \"\"\"\n        it's a text block with a } brace\n        // and slashes, and a /* that never closes\n        \"\"\";", "f"),
+    ("AfterTextBlock", "    private String t = \"\"\"\n        it's a text block with a } brace\n        // and slashes, and a /* that never closes\n        \"\"\";\n\n    public int m() {\n        return t.length();\n    }", "m()"),
 ]
-for name, body, _, _, _ in QUOTE_CASES:
+for name, body, _ in QUOTE_CASES:
     MOD_RED[f"fx/Q{name}.java"] = f"package fx;\n\npublic class Q{name} {{\n{body}\n}}\n"
 RED_USES += "".join(
-    f"        fx.Q{name} q{name} = new fx.Q{name}();\n        total += {use.replace('q.', f'q{name}.')};\n"
-    for name, _, _, _, use in QUOTE_CASES)
+    f"        fx.Q{name} q{name} = new fx.Q{name}();\n        total += q{name}.{'m()' if member == 'm()' else 'f.length()'};\n"
+    for name, _, member in QUOTE_CASES)
 BARE = "; its '// test-seam:' marker has no reason"
 # (file, declaration text, how the gate names it, its --list key)
 RED = [
@@ -364,7 +364,8 @@ RED = [
     ("fx/Hooks.java", "public String nullable()", "Hooks.nullable()", "fx.Hooks#nullable()", ""),
 ]
 RED += [
-    (f"fx/Q{name}.java", decl, f"Q{name}.{member}", f"fx.Q{name}#{member}", "") for name, _, decl, member, _ in QUOTE_CASES
+    (f"fx/Q{name}.java", "public int m()" if member == "m()" else "public String f", f"Q{name}.{member}", f"fx.Q{name}#{member}", "")
+    for name, _, member in QUOTE_CASES
 ]
 
 

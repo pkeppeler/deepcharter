@@ -111,10 +111,10 @@ public final class TestOnlyGate {
         return owner + "#" + name + (field ? ":" : "") + descriptor;
     }
 
-    /** A member declaration found in a source file: where, in which class, and its parameter types as written. */
     /** A source file's lines as code only, and each line's trailing {@code //} comment (null when none). */
     private record Lexed(List<String> code, List<String> comments) {}
 
+    /** A member declaration found in a source file: where, in which class, and its parameter types as written. */
     private record Declaration(int line, String classPath, String name, boolean field, List<String> parameters) {}
 
     private final Map<String, ClassModel> production = new LinkedHashMap<>();
