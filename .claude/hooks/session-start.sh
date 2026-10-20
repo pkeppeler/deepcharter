@@ -47,11 +47,7 @@ else:
   echo "## Orchestrator handoff (pinned issue)"
   if handoff=$(t gh issue list --repo "$R" --label handoff --state open --limit 1 --json number,body \
     --jq 'if length == 0 then empty else .[0] | "#\(.number)\n\(.body)" end'); then
-    if [ -z "$handoff" ]; then
-      echo "(no open issue labelled handoff)"
-    else
-      echo "$handoff"
-    fi
+    echo "${handoff:-(no open issue labelled handoff)}"
     # The same rules tools/handoff.sh enforces; this catches an edit made without the tool.
     if [ -n "$handoff" ] && ! rules=$(printf %s "$handoff" | python3 -I tools/handoff_check.py 2>&1); then
       echo

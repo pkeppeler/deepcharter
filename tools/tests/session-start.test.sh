@@ -2,7 +2,7 @@
 # Tests the interaction-limit check in .claude/hooks/session-start.sh with a stub `gh` on PATH:
 # a warning (with the renew command) for a missing limit, a wrong limit and one expiring in
 # 3 days; none for a limit expiring in 150 days; a one-line note when gh fails. Also the derived
-# sections (next free ADR from a fetched origin/main, last merged PRs), the collapsed
+# sections (next free ADR, last merged PRs), the collapsed
 # worktree-agent-* branch line and the one-line warning for a handoff that breaks the rules.
 # Usage: tools/tests/session-start.test.sh
 set -euo pipefail
