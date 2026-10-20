@@ -6,7 +6,6 @@ import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import java.util.Set;
@@ -31,9 +30,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodDrillLitScenario extends EvidenceScenario {
     private static final int X = 4000;
     private static final int Z = 4000;
-    /** Above the layer 1 signal decay (#502), so the gauges are live: the decay starts {@code onset} slabs above the floor, and a stock console shrinks that. */
-    private static final int FLOOR_Y = SignalDecayTuning.DEFAULT.band(1).onset() + 4;
-
+    private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;
     private static final int SLABS = 3;
     private static final int TICKS_PER_FRAME = 6;
     private static final int MAX_TICKS = 1500;

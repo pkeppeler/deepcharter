@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -26,9 +25,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodLavaScenario extends EvidenceScenario {
     private static final int X = 5000;
     private static final int Z = 5000;
-    /** Above the layer 1 signal decay (#502), so the gauges are live: the decay starts {@code onset} slabs above the floor, and a stock console shrinks that. */
-    private static final int FLOOR_Y = SignalDecayTuning.DEFAULT.band(1).onset() + 4;
-
+    private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;
     private static final int TICKS_PER_FRAME = 6;
     private static final int MAX_TICKS = 600;
     private static final float STOP_HULL = 35f;
