@@ -8,7 +8,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
-import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -20,7 +19,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Base class for PR evidence scenarios. Run with tools/record-evidence.sh, which sets
@@ -41,8 +39,6 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     private static final int MINE_LIMIT_TICKS = 160;
 
     private int frame;
-    private @Nullable Path framesDir;
-    private @Nullable Path screenshotsDir;
 
     /** The scenario name: also the output directory name and the argument to record-evidence.sh. */
     protected abstract String name();
@@ -50,12 +46,21 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     /** Drive the game, calling {@link #frame} and {@link #screenshot} as things happen. */
     protected abstract void run(ClientGameTestContext context);
 
+    /** The scenario's output directory, derived from the environment each time it is read. */
+    private Path outputDir() {
+        String root = System.getenv("DEEPCHARTER_EVIDENCE_DIR");
+        if (root == null) {
+            throw new IllegalStateException("DEEPCHARTER_EVIDENCE_DIR is not set; run via tools/record-evidence.sh");
+        }
+        return Path.of(root).toAbsolutePath().resolve(name());
+    }
+
     private Path framesDir() {
-        return Objects.requireNonNull(framesDir, "framesDir was read before the scenario set it");
+        return outputDir().resolve("frames");
     }
 
     private Path screenshotsDir() {
-        return Objects.requireNonNull(screenshotsDir, "screenshotsDir was read before the scenario set it");
+        return outputDir().resolve("screenshots");
     }
 
     @Override
@@ -65,15 +70,8 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
         }
         // A recording is long by design and the CI job limit bounds it.
         ClientTestLog.startUntimed(this);
-        String root = System.getenv("DEEPCHARTER_EVIDENCE_DIR");
-        if (root == null) {
-            throw new IllegalStateException("DEEPCHARTER_EVIDENCE_DIR is not set; run via tools/record-evidence.sh");
-        }
-        Path out = Path.of(root).toAbsolutePath().resolve(name());
-        framesDir = out.resolve("frames");
-        screenshotsDir = out.resolve("screenshots");
         try {
-            deleteTree(out);
+            deleteTree(outputDir());
             Files.createDirectories(framesDir());
             Files.createDirectories(screenshotsDir());
         } catch (IOException e) {

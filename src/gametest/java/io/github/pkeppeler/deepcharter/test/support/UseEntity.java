@@ -11,9 +11,8 @@ import net.minecraft.world.level.Level;
 public final class UseEntity {
     private UseEntity() {}
 
-    @SuppressWarnings(
-            "NullAway") // Fabric passes a null hitResult for an interaction with no hit position, but leaves the
-    // parameter unannotated
+    // Fabric passes a null hitResult for an interaction with no hit position, but leaves the parameter unannotated.
+    @SuppressWarnings("NullAway")
     public static InteractionResult on(Player player, Level level, InteractionHand hand, Entity entity) {
         return UseEntityCallback.EVENT.invoker().interact(player, level, hand, entity, null);
     }

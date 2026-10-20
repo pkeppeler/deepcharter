@@ -7,7 +7,6 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import java.util.Comparator;
-import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -22,7 +21,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "salvage-gather" (#245): a new player on foot, bare handed, with the hotbar showing, walks up to a crate the world
@@ -42,17 +40,6 @@ public class SalvageGatherScenario extends EvidenceScenario {
     /** How far in front of the block the player starts, and how near the walk ends. */
     private static final int START_DISTANCE = 4;
 
-    private @Nullable ClientGameTestContext ctx;
-    private @Nullable TestSingleplayerContext world;
-
-    private ClientGameTestContext ctx() {
-        return Objects.requireNonNull(ctx, "ctx was read before the scenario set it");
-    }
-
-    private TestSingleplayerContext world() {
-        return Objects.requireNonNull(world, "world was read before the scenario set it");
-    }
-
     @Override
     protected String name() {
         return "salvage-gather";
@@ -60,88 +47,29 @@ public class SalvageGatherScenario extends EvidenceScenario {
 
     @Override
     protected void run(ClientGameTestContext context) {
-        ctx = context;
         try (TestSingleplayerContext singleplayer = context.worldBuilder()
                 .setUseConsistentSettings(false)
                 .adjustSettings(state -> state.setSeed("deepcharter-design-tour"))
                 .create()) {
-            world = singleplayer;
             ClientWait.until(
                     context, "the player in the world", client -> client.player != null && client.level != null);
             EvidenceWorld.pin(context, singleplayer);
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
-            BlockPos crate = world().getServer().computeOnServer(server -> nearest(server, "salvage_crate", false));
-            BlockPos stalk = world().getServer().computeOnServer(server -> nearest(server, "fungal_stalk", true));
-            world().getServer()
+            BlockPos crate =
+                    singleplayer.getServer().computeOnServer(server -> nearest(server, "salvage_crate", false));
+            BlockPos stalk = singleplayer.getServer().computeOnServer(server -> nearest(server, "fungal_stalk", true));
+            singleplayer
+                    .getServer()
                     .runOnServer(server -> server.getPlayerList()
                             .getPlayers()
                             .getFirst()
                             .getInventory()
                             .clearContent());
-            gather(crate, false);
-            gather(stalk, true);
+            Run run = new Run(context, singleplayer);
+            run.gather(crate, false);
+            run.gather(stalk, true);
             screenshot(context, "gathered");
         }
-    }
-
-    /** Walks up to {@code target}, breaks it bare handed and picks up what falls; a stalk is broken at its foot and then at head height. */
-    private void gather(BlockPos target, boolean twice) {
-        stand(target);
-        walk(WALK_UP_TICKS);
-        breakBlock(target);
-        if (twice) {
-            breakBlock(target.above());
-        }
-        walk(PICK_UP_TICKS);
-        for (int i = 0; i < HOLD_FRAMES; i++) {
-            ctx().waitTicks(TICKS_PER_FRAME); // tick-wait: the clip holds on the full hotbar for a fixed number of
-            // frames
-            frame(ctx());
-        }
-    }
-
-    /** Puts the player {@link #START_DISTANCE} blocks south of the block, on the ground, bare handed, and looking at it. */
-    private void stand(BlockPos target) {
-        world().getServer().runOnServer(server -> {
-            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            ServerLevel level = player.level();
-            player.setGameMode(GameType.SURVIVAL);
-            player.setNoGravity(false);
-            player.getAbilities().flying = false;
-            player.getAbilities().mayfly = false;
-            player.onUpdateAbilities();
-            BlockPos feet = target.offset(0, 0, START_DISTANCE);
-            while (!level.getBlockState(feet.below()).isFaceSturdy(level, feet.below(), Direction.UP)) {
-                feet = feet.below();
-            }
-            player.teleportTo(level, feet.getX() + 0.5, feet.getY(), feet.getZ() + 0.5, Set.of(), 180f, 0f, true);
-        });
-        ClientWait.until(
-                ctx(),
-                "the player next to " + target.toShortString(),
-                client -> ClientSession.player(client).blockPosition().distSqr(target) < 40
-                        && ClientSession.player(client).onGround()
-                        && ClientLight.clientLevel(client)
-                                .getChunkSource()
-                                .hasChunk(target.getX() >> 4, target.getZ() >> 4));
-        ctx().getInput().lookAt(target);
-        ctx().waitTicks(10); // tick-wait: the chunks and the light round the player come in
-        frame(ctx());
-    }
-
-    /** Holds forward for {@code ticks} ticks, a frame every {@link #TICKS_PER_FRAME}. */
-    private void walk(int ticks) {
-        ctx().getInput().holdKey(options -> options.keyUp);
-        for (int tick = 0; tick < ticks; tick += TICKS_PER_FRAME) {
-            ctx().waitTicks(TICKS_PER_FRAME); // tick-wait: a walk of a fixed length
-            frame(ctx());
-        }
-        ctx().getInput().releaseKey(options -> options.keyUp);
-    }
-
-    /** Mines the block bare handed, a frame every {@link #TICKS_PER_FRAME} ticks. */
-    private void breakBlock(BlockPos target) {
-        mineBlock(ctx(), world(), target, TICKS_PER_FRAME);
     }
 
     /**
@@ -156,6 +84,10 @@ public class SalvageGatherScenario extends EvidenceScenario {
                 .min(Comparator.comparingDouble(SalvageGatherScenario::distance))
                 .orElseThrow(() -> new AssertionError("no " + path + " within " + SURVEY_CHUNKS
                         + " chunks of the colony that a player can walk up to"));
+    }
+
+    private static double distance(BlockPos at) {
+        return Vec3.atCenterOf(at).horizontalDistanceSqr();
     }
 
     private static boolean reachable(ServerLevel level, BlockPos at, boolean foot) {
@@ -176,7 +108,73 @@ public class SalvageGatherScenario extends EvidenceScenario {
         return true;
     }
 
-    private static double distance(BlockPos at) {
-        return Vec3.atCenterOf(at).horizontalDistanceSqr();
+    private final class Run {
+        private final ClientGameTestContext ctx;
+        private final TestSingleplayerContext world;
+
+        Run(ClientGameTestContext ctx, TestSingleplayerContext world) {
+            this.ctx = ctx;
+            this.world = world;
+        }
+
+        /** Walks up to {@code target}, breaks it bare handed and picks up what falls; a stalk is broken at its foot and then at head height. */
+        private void gather(BlockPos target, boolean twice) {
+            stand(target);
+            walk(WALK_UP_TICKS);
+            breakBlock(target);
+            if (twice) {
+                breakBlock(target.above());
+            }
+            walk(PICK_UP_TICKS);
+            for (int i = 0; i < HOLD_FRAMES; i++) {
+                ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: the clip holds on the full hotbar for a fixed number of
+                // frames
+                frame(ctx);
+            }
+        }
+
+        /** Puts the player {@link #START_DISTANCE} blocks south of the block, on the ground, bare handed, and looking at it. */
+        private void stand(BlockPos target) {
+            world.getServer().runOnServer(server -> {
+                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+                ServerLevel level = player.level();
+                player.setGameMode(GameType.SURVIVAL);
+                player.setNoGravity(false);
+                player.getAbilities().flying = false;
+                player.getAbilities().mayfly = false;
+                player.onUpdateAbilities();
+                BlockPos feet = target.offset(0, 0, START_DISTANCE);
+                while (!level.getBlockState(feet.below()).isFaceSturdy(level, feet.below(), Direction.UP)) {
+                    feet = feet.below();
+                }
+                player.teleportTo(level, feet.getX() + 0.5, feet.getY(), feet.getZ() + 0.5, Set.of(), 180f, 0f, true);
+            });
+            ClientWait.until(
+                    ctx,
+                    "the player next to " + target.toShortString(),
+                    client -> ClientSession.player(client).blockPosition().distSqr(target) < 40
+                            && ClientSession.player(client).onGround()
+                            && ClientLight.clientLevel(client)
+                                    .getChunkSource()
+                                    .hasChunk(target.getX() >> 4, target.getZ() >> 4));
+            ctx.getInput().lookAt(target);
+            ctx.waitTicks(10); // tick-wait: the chunks and the light round the player come in
+            frame(ctx);
+        }
+
+        /** Holds forward for {@code ticks} ticks, a frame every {@link #TICKS_PER_FRAME}. */
+        private void walk(int ticks) {
+            ctx.getInput().holdKey(options -> options.keyUp);
+            for (int tick = 0; tick < ticks; tick += TICKS_PER_FRAME) {
+                ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: a walk of a fixed length
+                frame(ctx);
+            }
+            ctx.getInput().releaseKey(options -> options.keyUp);
+        }
+
+        /** Mines the block bare handed, a frame every {@link #TICKS_PER_FRAME} ticks. */
+        private void breakBlock(BlockPos target) {
+            mineBlock(ctx, world, target, TICKS_PER_FRAME);
+        }
     }
 }

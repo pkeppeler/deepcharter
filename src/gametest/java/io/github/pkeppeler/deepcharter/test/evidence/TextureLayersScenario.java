@@ -14,7 +14,6 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.texture.TextureProperties;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -35,7 +34,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "texture-layers" for #242: the texture system's layers in a sealed stone room with no light of its own.
@@ -52,22 +50,6 @@ public class TextureLayersScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 2;
     private static final int SCAN_FRAMES = 24;
 
-    private @Nullable ClientGameTestContext ctx;
-    private @Nullable TestSingleplayerContext sp;
-    private @Nullable BlockPos floor;
-
-    private ClientGameTestContext ctx() {
-        return Objects.requireNonNull(ctx, "ctx was read before the scenario set it");
-    }
-
-    private TestSingleplayerContext sp() {
-        return Objects.requireNonNull(sp, "sp was read before the scenario set it");
-    }
-
-    private BlockPos floor() {
-        return Objects.requireNonNull(floor, "floor was read before the scenario set it");
-    }
-
     @Override
     protected String name() {
         return "texture-layers";
@@ -75,16 +57,37 @@ public class TextureLayersScenario extends EvidenceScenario {
 
     @Override
     protected void run(ClientGameTestContext context) {
-        ctx = context;
         // The HUD is hidden for the stills; a full-suite run goes on to tests that draw on it.
         ClientChecks.withHudHidden(context, () -> shoot(context));
     }
 
     private void shoot(ClientGameTestContext context) {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-            sp = singleplayer;
             context.waitTicks(40);
-            floor = serverGet(server -> player(server).blockPosition().below().above(40));
+            BlockPos floor = singleplayer
+                    .getServer()
+                    .computeOnServer(server -> server.getPlayerList()
+                            .getPlayers()
+                            .getFirst()
+                            .blockPosition()
+                            .below()
+                            .above(40));
+            new Run(context, singleplayer, floor).play();
+        }
+    }
+
+    private final class Run {
+        private final ClientGameTestContext ctx;
+        private final TestSingleplayerContext sp;
+        private final BlockPos floor;
+
+        Run(ClientGameTestContext ctx, TestSingleplayerContext sp, BlockPos floor) {
+            this.ctx = ctx;
+            this.sp = sp;
+            this.floor = floor;
+        }
+
+        private void play() {
             serverDo(server -> {
                 GameRules rules = server.getGameRules();
                 rules.set(GameRules.ADVANCE_TIME, false, server);
@@ -97,7 +100,7 @@ public class TextureLayersScenario extends EvidenceScenario {
                 player.setPermanentlyInvulnerable(true);
                 build(player.level());
             });
-            context.runOnClient(client -> {
+            ctx.runOnClient(client -> {
                 client.options.setCameraType(CameraType.FIRST_PERSON);
                 client.options.particles().set(ParticleStatus.MINIMAL);
                 client.options.bobView().set(false);
@@ -144,146 +147,149 @@ public class TextureLayersScenario extends EvidenceScenario {
             still("lamps-lit-and-dark");
             record(8);
         }
-    }
 
-    /**
-     * A sealed stone box with its floor at {@link #floor}, so no sky reaches in. The south wall holds the six terminals, facing the
-     * camera; the west wall has the seven ores set into its stone; the east wall is a 5 x 4 patch of Conduit casing with an L before it.
-     */
-    private void build(ServerLevel level) {
-        for (int dx = -RADIUS - 1; dx <= RADIUS + 1; dx++) {
-            for (int dz = -RADIUS - 1; dz <= RADIUS + 1; dz++) {
-                for (int dy = 0; dy <= HEIGHT + 1; dy++) {
-                    boolean shell =
-                            dy == 0 || dy == HEIGHT + 1 || Math.abs(dx) == RADIUS + 1 || Math.abs(dz) == RADIUS + 1;
+        /**
+         * A sealed stone box with its floor at {@link #floor}, so no sky reaches in. The south wall holds the six terminals, facing the
+         * camera; the west wall has the seven ores set into its stone; the east wall is a 5 x 4 patch of Conduit casing with an L before it.
+         */
+        private void build(ServerLevel level) {
+            for (int dx = -RADIUS - 1; dx <= RADIUS + 1; dx++) {
+                for (int dz = -RADIUS - 1; dz <= RADIUS + 1; dz++) {
+                    for (int dy = 0; dy <= HEIGHT + 1; dy++) {
+                        boolean shell =
+                                dy == 0 || dy == HEIGHT + 1 || Math.abs(dx) == RADIUS + 1 || Math.abs(dz) == RADIUS + 1;
+                        level.setBlock(
+                                floor.offset(dx, dy, dz),
+                                (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(),
+                                Block.UPDATE_ALL);
+                    }
+                }
+            }
+            MinecraftServer server = level.getServer();
+            RepairState repairs = RepairState.get(server);
+            for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
+                for (Item part : type.parts()) {
+                    repairs.insert(type, part);
+                }
+            }
+            List<TerminalType> row = List.of(
+                    TerminalTypes.FUEL_PUMP,
+                    TerminalTypes.ORE_PROCESSOR,
+                    ContractTerminal.TYPE,
+                    TerminalTypes.UPGRADE_TERMINAL,
+                    TerminalTypes.REPAIR_STATION,
+                    HangarTerminal.TYPE);
+            for (int i = 0; i < row.size(); i++) {
+                BlockPos pos = floor.offset(-5 + 2 * i, 1, RADIUS);
+                level.setBlock(
+                        pos,
+                        row.get(i)
+                                .block()
+                                .defaultBlockState()
+                                .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH),
+                        Block.UPDATE_ALL);
+                TerminalActivity.sync(level, pos);
+            }
+            OreType[] oresInWall = OreType.values();
+            for (int i = 0; i < oresInWall.length; i++) {
+                level.setBlock(
+                        floor.offset(-RADIUS - 1, 2 + (i % 2), -3 + i),
+                        OreBlocks.of(oresInWall[i]).defaultBlockState(),
+                        Block.UPDATE_ALL);
+            }
+            for (int dz = -2; dz <= 2; dz++) {
+                for (int dy = 1; dy <= 4; dy++) {
                     level.setBlock(
-                            floor().offset(dx, dy, dz),
-                            (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(),
+                            floor.offset(RADIUS + 1, dy, dz),
+                            ColonyBlocks.CONDUIT.defaultBlockState(),
                             Block.UPDATE_ALL);
                 }
             }
-        }
-        MinecraftServer server = level.getServer();
-        RepairState repairs = RepairState.get(server);
-        for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
-            for (Item part : type.parts()) {
-                repairs.insert(type, part);
+            for (BlockPos l :
+                    List.of(new BlockPos(RADIUS, 1, -2), new BlockPos(RADIUS, 1, -1), new BlockPos(RADIUS, 2, -2))) {
+                level.setBlock(floor.offset(l), ColonyBlocks.CONDUIT.defaultBlockState(), Block.UPDATE_ALL);
             }
-        }
-        List<TerminalType> row = List.of(
-                TerminalTypes.FUEL_PUMP,
-                TerminalTypes.ORE_PROCESSOR,
-                ContractTerminal.TYPE,
-                TerminalTypes.UPGRADE_TERMINAL,
-                TerminalTypes.REPAIR_STATION,
-                HangarTerminal.TYPE);
-        for (int i = 0; i < row.size(); i++) {
-            BlockPos pos = floor().offset(-5 + 2 * i, 1, RADIUS);
-            level.setBlock(
-                    pos,
-                    row.get(i)
-                            .block()
-                            .defaultBlockState()
-                            .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH),
-                    Block.UPDATE_ALL);
-            TerminalActivity.sync(level, pos);
-        }
-        OreType[] oresInWall = OreType.values();
-        for (int i = 0; i < oresInWall.length; i++) {
-            level.setBlock(
-                    floor().offset(-RADIUS - 1, 2 + (i % 2), -3 + i),
-                    OreBlocks.of(oresInWall[i]).defaultBlockState(),
-                    Block.UPDATE_ALL);
-        }
-        for (int dz = -2; dz <= 2; dz++) {
-            for (int dy = 1; dy <= 4; dy++) {
+            for (BlockPos lamp : List.of(
+                    new BlockPos(0, 1, 4),
+                    new BlockPos(-6, 1, 2),
+                    new BlockPos(5, 1, 3),
+                    new BlockPos(1, 1, -3),
+                    new BlockPos(-1, 1, -3))) {
                 level.setBlock(
-                        floor().offset(RADIUS + 1, dy, dz), ColonyBlocks.CONDUIT.defaultBlockState(), Block.UPDATE_ALL);
+                        floor.offset(lamp),
+                        ColonyBlocks.COMPANY_LAMP.defaultBlockState().setValue(TextureProperties.ACTIVE, false),
+                        Block.UPDATE_ALL);
+            }
+            player(server)
+                    .teleportTo(level, floor.getX() + 0.5, floor.getY() + 1, floor.getZ() + 0.5, Set.of(), 0, 0, true);
+        }
+
+        private void lamp(BlockPos offset, boolean lit) {
+            serverDo(server -> {
+                ServerLevel level = player(server).level();
+                BlockPos pos = floor.offset(offset);
+                level.setBlock(pos, level.getBlockState(pos).setValue(TextureProperties.ACTIVE, lit), Block.UPDATE_ALL);
+            });
+        }
+
+        /** A point dx east, dy up and dz south of the bottom centre of the block above the floor's middle. */
+        private Vec3 centre(double dx, double dy, double dz) {
+            return Vec3.atBottomCenterOf(floor.above()).add(dx, dy - 1, dz);
+        }
+
+        private void view(Vec3 eye, Vec3 target, int wait) {
+            Vec3 d = target.subtract(eye);
+            float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
+            float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
+            serverDo(server -> {
+                ServerPlayer player = player(server);
+                player.teleportTo(player.level(), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
+            });
+            ClientWait.until(
+                    ctx,
+                    "the camera at the eye, facing yaw " + yaw + " and pitch " + pitch,
+                    client -> ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
+                            && Math.abs(Mth.wrapDegrees(
+                                            ClientSession.player(client).getYRot() - yaw))
+                                    < 0.01f
+                            && Math.abs(ClientSession.player(client).getXRot() - pitch) < 0.01f,
+                    client -> "the player at " + ClientSession.player(client).position() + " facing yaw "
+                            + ClientSession.player(client).getYRot() + " and pitch "
+                            + ClientSession.player(client).getXRot());
+            ctx.waitTicks(wait);
+        }
+
+        /** Waits until the light engine has no work left, then a few ticks for the chunk meshes, and shoots the still. */
+        private void still(String stillName) {
+            for (int poll = 0;
+                    serverGet(server -> player(server).level().getLightEngine().hasLightWork());
+                    poll++) {
+                if (poll > 200) {
+                    throw new AssertionError("the light did not settle before the still " + stillName);
+                }
+                ctx.waitTicks(2);
+            }
+            ctx.waitTicks(10);
+            screenshot(ctx, stillName);
+        }
+
+        private void record(int frames) {
+            for (int i = 0; i < frames; i++) {
+                ctx.waitTicks(TICKS_PER_FRAME);
+                frame(ctx);
             }
         }
-        for (BlockPos l :
-                List.of(new BlockPos(RADIUS, 1, -2), new BlockPos(RADIUS, 1, -1), new BlockPos(RADIUS, 2, -2))) {
-            level.setBlock(floor().offset(l), ColonyBlocks.CONDUIT.defaultBlockState(), Block.UPDATE_ALL);
+
+        private static ServerPlayer player(MinecraftServer server) {
+            return server.getPlayerList().getPlayers().getFirst();
         }
-        for (BlockPos lamp : List.of(
-                new BlockPos(0, 1, 4),
-                new BlockPos(-6, 1, 2),
-                new BlockPos(5, 1, 3),
-                new BlockPos(1, 1, -3),
-                new BlockPos(-1, 1, -3))) {
-            level.setBlock(
-                    floor().offset(lamp),
-                    ColonyBlocks.COMPANY_LAMP.defaultBlockState().setValue(TextureProperties.ACTIVE, false),
-                    Block.UPDATE_ALL);
+
+        private <T> T serverGet(Function<MinecraftServer, T> action) {
+            return sp.getServer().computeOnServer(action::apply);
         }
-        player(server)
-                .teleportTo(
-                        level, floor().getX() + 0.5, floor().getY() + 1, floor().getZ() + 0.5, Set.of(), 0, 0, true);
-    }
 
-    private void lamp(BlockPos offset, boolean lit) {
-        serverDo(server -> {
-            ServerLevel level = player(server).level();
-            BlockPos pos = floor().offset(offset);
-            level.setBlock(pos, level.getBlockState(pos).setValue(TextureProperties.ACTIVE, lit), Block.UPDATE_ALL);
-        });
-    }
-
-    /** A point dx east, dy up and dz south of the bottom centre of the block above the floor's middle. */
-    private Vec3 centre(double dx, double dy, double dz) {
-        return Vec3.atBottomCenterOf(floor().above()).add(dx, dy - 1, dz);
-    }
-
-    private void view(Vec3 eye, Vec3 target, int wait) {
-        Vec3 d = target.subtract(eye);
-        float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
-        float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
-        serverDo(server -> {
-            ServerPlayer player = player(server);
-            player.teleportTo(player.level(), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
-        });
-        ClientWait.until(
-                ctx(),
-                "the camera at the eye, facing yaw " + yaw + " and pitch " + pitch,
-                client -> ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
-                        && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - yaw)) < 0.01f
-                        && Math.abs(ClientSession.player(client).getXRot() - pitch) < 0.01f,
-                client -> "the player at " + ClientSession.player(client).position() + " facing yaw "
-                        + ClientSession.player(client).getYRot() + " and pitch "
-                        + ClientSession.player(client).getXRot());
-        ctx().waitTicks(wait);
-    }
-
-    /** Waits until the light engine has no work left, then a few ticks for the chunk meshes, and shoots the still. */
-    private void still(String stillName) {
-        for (int poll = 0;
-                serverGet(server -> player(server).level().getLightEngine().hasLightWork());
-                poll++) {
-            if (poll > 200) {
-                throw new AssertionError("the light did not settle before the still " + stillName);
-            }
-            ctx().waitTicks(2);
+        private void serverDo(Consumer<MinecraftServer> action) {
+            sp.getServer().runOnServer(action::accept);
         }
-        ctx().waitTicks(10);
-        screenshot(ctx(), stillName);
-    }
-
-    private void record(int frames) {
-        for (int i = 0; i < frames; i++) {
-            ctx().waitTicks(TICKS_PER_FRAME);
-            frame(ctx());
-        }
-    }
-
-    private static ServerPlayer player(MinecraftServer server) {
-        return server.getPlayerList().getPlayers().getFirst();
-    }
-
-    private <T> T serverGet(Function<MinecraftServer, T> action) {
-        return sp().getServer().computeOnServer(action::apply);
-    }
-
-    private void serverDo(Consumer<MinecraftServer> action) {
-        sp().getServer().runOnServer(action::accept);
     }
 }
