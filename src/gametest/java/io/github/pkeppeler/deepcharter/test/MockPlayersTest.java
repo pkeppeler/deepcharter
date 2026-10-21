@@ -8,12 +8,14 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerCommonPacketListenerImpl;
@@ -27,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 public class MockPlayersTest {
     private static final AtomicReference<WeakReference<ServerPlayer>> PROBE = new AtomicReference<>();
     private static final AtomicReference<WeakReference<ServerPlayer>> OUTSIDE_PROBE = new AtomicReference<>();
+    private static final AtomicReference<List<WeakReference<ServerPlayer>>> RESPAWN_PROBE = new AtomicReference<>();
     private static final AtomicReference<@Nullable Runnable> AFTER_TICK = new AtomicReference<>();
 
     static {
@@ -292,16 +295,42 @@ public class MockPlayersTest {
         AFTER_TICK.set(helper::succeed);
     }
 
+    /** Respawns its mock as the Respawn button does, so the sweep must disconnect the listener (#698). */
+    @GameTest
+    public void retentionProbeRespawnsItsMock(GameTestHelper helper) {
+        MockPlayer mock = MockPlayers.join(helper, "retention-respawn");
+        ServerPlayer dead = mock.player();
+        dead.setGameMode(GameType.SURVIVAL);
+        dead.kill(helper.getLevel());
+        dead.connection.handleClientCommand(
+                new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
+        ServerPlayer reborn = dead.connection.getPlayer();
+        if (reborn == dead) {
+            throw helper.assertionException("the respawn should replace the dead ServerPlayer");
+        }
+        RESPAWN_PROBE.set(List.of(new WeakReference<>(dead), new WeakReference<>(reborn)));
+        helper.succeedWhen(() -> {
+            if (helper.getTick() < 2) {
+                throw helper.assertionException("waiting two ticks");
+            }
+        });
+    }
+
     /** A finished test lets go of its mock player (#656). Runs with the two probes above: filter the class, not one test. */
     @GameTest(maxTicks = 200)
     public void finishedTestDoesNotRetainItsMock(GameTestHelper helper) {
         helper.succeedWhen(() -> {
-            for (AtomicReference<WeakReference<ServerPlayer>> probeRef : List.of(PROBE, OUTSIDE_PROBE)) {
-                WeakReference<ServerPlayer> probe = probeRef.get();
-                if (probe == null) {
-                    throw helper.assertionException(
-                            "a probe test has not joined its mock yet; run the whole MockPlayersTest class, not this test alone");
-                }
+            List<WeakReference<ServerPlayer>> respawned = RESPAWN_PROBE.get();
+            WeakReference<ServerPlayer> first = PROBE.get();
+            WeakReference<ServerPlayer> outside = OUTSIDE_PROBE.get();
+            if (respawned == null || first == null || outside == null) {
+                throw helper.assertionException(
+                        "a probe test has not joined its mock yet; run the whole MockPlayersTest class, not this test alone");
+            }
+            List<WeakReference<ServerPlayer>> probes = new ArrayList<>(respawned);
+            probes.add(first);
+            probes.add(outside);
+            for (WeakReference<ServerPlayer> probe : probes) {
                 System.gc();
                 if (probe.get() != null) {
                     throw helper.assertionException("a finished test still holds its mock ServerPlayer");

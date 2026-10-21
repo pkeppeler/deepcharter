@@ -45,6 +45,7 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -52,7 +53,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.SimpleMenuProvider;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
@@ -353,7 +353,9 @@ public class HandbookCoreTest {
                     throw helper.assertionException("waiting for the handbook to be issued");
                 }
                 player.kill(level);
-                server.getPlayerList().respawn(player, false, Entity.RemovalReason.KILLED);
+                // The Respawn button, so the listener follows the new player and the mock's leave ends the right one.
+                player.connection.handleClientCommand(
+                        new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
                 died[0] = true;
             }
             ServerPlayer reborn = server.getPlayerList().getPlayer(id);
@@ -367,8 +369,6 @@ public class HandbookCoreTest {
                 throw helper.assertionException(
                         "the respawned player holds exactly one handbook, holds %s", handbooksHeld(reborn));
             }
-            // The mock only knows the dead body, so it cannot remove the respawned player itself.
-            server.getPlayerList().remove(reborn);
         });
     }
 

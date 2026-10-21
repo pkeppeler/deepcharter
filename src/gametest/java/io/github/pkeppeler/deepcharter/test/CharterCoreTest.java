@@ -518,9 +518,11 @@ public class CharterCoreTest {
         String name = uniqueName();
         List<String> seen = new ArrayList<>();
         CharterId[] mine = new CharterId[1];
+        // Fabric events cannot be unregistered, so the listener holds the id, never the mock (#698).
+        UUID firstId = first.player().getUUID();
         CharterEvents.REVIVED.register((s, charter, director) -> {
             if (charter.id().equals(mine[0])) {
-                seen.add("revived " + director.equals(first.player().getUUID()) + " "
+                seen.add("revived " + director.equals(firstId) + " "
                         + charter.director().equals(Optional.of(director)));
             }
         });
