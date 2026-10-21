@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.pod;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -11,7 +12,6 @@ import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.WeakHashMap;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -82,9 +82,8 @@ public final class PodBrace {
 
     private static Optional<Ahead> ahead(PodEntity pod) {
         Level level = pod.level();
-        OptionalInt layer = LayerChain.layerOf(
-                level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
-        if (layer.isEmpty() || layer.getAsInt() >= LayerChain.count(level.registryAccess())) {
+        Optional<Band> band = LayerChain.layerAt(level, PodFootprint.of(pod).feetY());
+        if (band.isEmpty() || band.get().layer() >= LayerChain.count(level.registryAccess())) {
             return Optional.empty();
         }
         int thickness = LayerTuning.DEFAULT.crustThickness();
