@@ -4,10 +4,8 @@ import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import com.mojang.serialization.Dynamic;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -16,6 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestAttachments;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments.Example;
 import io.github.pkeppeler.deepcharter.test.support.TestAttachments.Other;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import java.util.Objects;
@@ -36,7 +35,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
-import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /** Server GameTests for the versioned pod attachment pattern: defaults, save/load, unreadable versions and a breach crossing. */
@@ -204,14 +202,14 @@ public class PodAttachmentTest {
     public void theAttachmentSurvivesABreachCrossing(GameTestHelper helper) {
         double x = 2000.5;
         double z = 2000.5;
-        ServerLevel one = layer(helper, 1);
+        ServerLevel one = TestLayers.level(helper, 1);
         openShaft(one, x, z);
         MockPlayer mock = MockPlayers.join(helper, "attachment-crossing");
-        mock.teleportTo(one, new Vec3(x, 8, z), 0, 0);
+        mock.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         PodEntity[] pod = {null};
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, TestLayers.worldY(1, 8), z), () -> {
             pod[0] = TestEntities.create(PodRegistry.POD, one);
-            pod[0].setPos(x, 8, z);
+            pod[0].setPos(x, TestLayers.worldY(1, 8), z);
             one.addFreshEntity(pod[0]);
             Versioned.modifyOrThrow(pod[0], TestAttachments.EXAMPLE, example -> new Example(7));
             if (!mock.player().startRiding(pod[0], true, false)) {
@@ -221,10 +219,13 @@ public class PodAttachmentTest {
         // The pod falls by itself (PodMovement brings its own gravity) and leaves layer_1 through the open floor.
         helper.succeedWhen(() -> {
             if (pod[0] == null) {
-                throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+                throw failure(
+                        helper,
+                        "waiting for the chunk at %s to tick entities",
+                        BlockPos.containing(x, TestLayers.worldY(1, 8), z));
             }
             ServerPlayer player = mock.player();
-            if (!player.level().dimension().equals(LayerChain.dimension(2))) {
+            if (!TestLayers.isIn(player.level(), 2)) {
                 throw failure(
                         helper,
                         "the rider is still in %s (pod ticked %s times)",
@@ -273,14 +274,6 @@ public class PodAttachmentTest {
                 column.offset(1, 0, 1).atY(level.getMinY() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
     }
 
     @FormatMethod

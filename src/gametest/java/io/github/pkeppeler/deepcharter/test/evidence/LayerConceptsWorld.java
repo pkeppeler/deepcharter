@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
@@ -11,6 +10,7 @@ import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.Scene;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.Size;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.View;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -215,7 +215,7 @@ final class LayerConceptsWorld {
         ClientWait.until(
                 ctx,
                 "the camera at " + eye + " in the scene of layer " + scene.layer(),
-                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(scene.dimension()))
+                client -> TestLayers.isIn(ClientLight.clientLevel(client), scene.dimension())
                         && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
                         && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - yaw)) < 0.01f
                         && Math.abs(ClientSession.player(client).getXRot() - pitch) < 0.01f);

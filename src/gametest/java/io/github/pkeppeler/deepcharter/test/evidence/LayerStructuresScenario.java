@@ -5,12 +5,12 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Locale;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -118,7 +118,7 @@ public class LayerStructuresScenario extends EvidenceScenario {
     /** Finds the kind's site, and generates its chunks, on the server. */
     private static StructureSite prepare(TestSingleplayerContext singleplayer, StructureKind kind) {
         return singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(kind.layer()));
+            ServerLevel level = TestLayers.level(server, kind.layer());
             StructureSite site = kind == StructureKind.WRECK
                     ? LayerStructures.prospector(server)
                             .orElseThrow(() -> new AssertionError("the colony was not built when the world started"))
@@ -143,7 +143,7 @@ public class LayerStructuresScenario extends EvidenceScenario {
     }
 
     private void tour(ClientGameTestContext context, TestSingleplayerContext singleplayer, StructureSite site) {
-        ResourceKey<Level> layer = LayerChain.dimension(site.kind().layer());
+        ResourceKey<Level> layer = TestLayers.dimension(site.kind().layer());
         String shot = site.kind().name().toLowerCase(Locale.ROOT).replace('_', '-');
         switch (site.kind()) {
             case TOPSOIL_SHAFT, BENCHES_SHAFT, DEEP_SHAFT -> {

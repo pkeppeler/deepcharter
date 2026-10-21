@@ -5,7 +5,6 @@ import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -21,6 +20,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.Set;
@@ -203,8 +203,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
                         MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
                 StructureSite prospector = LayerStructures.prospector(server)
                         .orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
-                ServerLevel level = ClientLight.serverLevel(
-                        server, LayerChain.dimension(prospector.kind().layer()));
+                ServerLevel level = TestLayers.level(server, prospector.kind().layer());
                 BoundingBox box = prospector.bounds();
                 for (int chunkX = box.minX() >> 4; chunkX <= box.maxX() >> 4; chunkX++) {
                     for (int chunkZ = box.minZ() >> 4; chunkZ <= box.maxZ() >> 4; chunkZ++) {
@@ -368,15 +367,7 @@ public class ProspectorChassisScenario extends EvidenceScenario {
             player.getAbilities().flying = true;
             player.onUpdateAbilities();
             player.teleportTo(
-                    ClientLight.serverLevel(
-                            server, LayerChain.dimension(site.kind().layer())),
-                    at.x,
-                    at.y,
-                    at.z,
-                    Set.of(),
-                    yaw,
-                    pitch,
-                    true);
+                    TestLayers.level(server, site.kind().layer()), at.x, at.y, at.z, Set.of(), yaw, pitch, true);
         });
     }
 }

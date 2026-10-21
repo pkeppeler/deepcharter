@@ -5,7 +5,6 @@ import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -19,7 +18,6 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Zone;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -28,6 +26,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -105,14 +104,6 @@ final class ChassisChecks {
         }
     }
 
-    private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
-        }
-        return level;
-    }
-
     /** A bed of stone with an open room above it, {@link #RADIUS} blocks round {@code x}, {@link #Z}. */
     private static void site(ServerLevel level, int x) {
         RoomCarver.carve(level, x - RADIUS, x + RADIUS, FLOOR - 12, FLOOR - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
@@ -145,7 +136,7 @@ final class ChassisChecks {
     void boresDownTheWholeFootprintAndNothingMore(GameTestHelper helper) {
         int x = 9000 + shift;
         int n = 3;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         MockPlayer pilot = MockPlayers.join(helper, chassis.id() + "-bore-down");
         PodEntity[] pod = {null};
@@ -210,7 +201,7 @@ final class ChassisChecks {
 
     void boresSidewaysTheWholeHeightAndWidth(GameTestHelper helper) {
         int x = 9048 + shift;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         // A wall of stone the pod meets: it stops when its east face touches it, then centres on its bore.
         int wallX = x + 4;
@@ -268,7 +259,7 @@ final class ChassisChecks {
 
     void linesTheRingOfTheWholeFootprintAndBoxHeight(GameTestHelper helper) {
         int x = 9096 + shift;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         MockPlayer pilot = MockPlayers.join(helper, chassis.id() + "-lining");
         pilot.player().setGameMode(GameType.SURVIVAL);
@@ -334,7 +325,7 @@ final class ChassisChecks {
      */
     void linerLinesTheWholeRingLavaCanReachAndNothingElse(GameTestHelper helper) {
         int x = 9480 + shift;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         MockPlayer owner = MockPlayers.join(helper, chassis.id() + "-liner-" + OWNERS.incrementAndGet());
         owner.player().setGameMode(GameType.SURVIVAL);
@@ -395,7 +386,7 @@ final class ChassisChecks {
 
     private void sounds(
             GameTestHelper helper, int x, int tier, Consumer<ServerLevel> build, Consumer<PodEntity> check) {
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         build.accept(level);
         MockPlayer owner = MockPlayers.join(helper, chassis.id() + "-sounder-" + OWNERS.incrementAndGet());
@@ -457,7 +448,7 @@ final class ChassisChecks {
 
     void scansLavaAMarginBeyondTheWholeBore(GameTestHelper helper) {
         int x = 9240 + shift;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         MockPlayer owner = MockPlayers.join(helper, chassis.id() + "-scanner");
         owner.player().setGameMode(GameType.SURVIVAL);
@@ -495,7 +486,7 @@ final class ChassisChecks {
 
     void landsHardBySinkSpeedAndTheHullTakesIt(GameTestHelper helper) {
         int x = 9288 + shift;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         Vec3 start = new Vec3(x, FLOOR + 10, Z);
         PodEntity[] pod = {null};
@@ -518,7 +509,7 @@ final class ChassisChecks {
 
     void trailsTowedWithoutTheTwoHullsOverlapping(GameTestHelper helper) {
         int x = 9336 + shift;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         Vec3 start = new Vec3(x - 4, FLOOR + 10, Z);
         PodEntity[] pods = {null, null};
@@ -605,7 +596,7 @@ final class ChassisChecks {
      */
     void wreckKeepsItsBoxAndTheBayParksClearOfIt(GameTestHelper helper) {
         int x = 9432 + shift;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         BlockPos anchor = new BlockPos(x, FLOOR, Z);
         MockPlayer pilot = MockPlayers.join(helper, chassis.id() + "-wreck");
@@ -650,7 +641,7 @@ final class ChassisChecks {
      */
     void parksInBayPlacesThatFitAndNeverOverlap(GameTestHelper helper) {
         int x = 9384 + shift;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         BlockPos anchor = new BlockPos(x, FLOOR, Z);
         FarChunks.awaitEntityTicking(helper, level, anchor, () -> {

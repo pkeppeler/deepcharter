@@ -2,14 +2,12 @@ package io.github.pkeppeler.deepcharter.test;
 
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -17,6 +15,7 @@ import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.List;
@@ -98,7 +97,7 @@ public class PodLiningDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aBoredSlabOfStoneAndOreKeepsTheOreAsCargoAndTheStoneAsSpoil(GameTestHelper helper) {
         int x = 3700;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x);
         level.setBlock(
                 new BlockPos(x - 1, FLOOR - 1, Z - 1),
@@ -130,7 +129,7 @@ public class PodLiningDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodWithoutTheHopperKeepsNoSpoilAndStillKeepsOre(GameTestHelper helper) {
         int x = 3892;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x);
         level.setBlock(
                 new BlockPos(x - 1, FLOOR - 1, Z - 1),
@@ -158,7 +157,7 @@ public class PodLiningDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aFullBayLosesTheRockAndDrillingGoesOn(GameTestHelper helper) {
         int x = 3764;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x);
         Rig rig = Rig.await(helper, level, x, "spoil-full", (pod, pilot) -> {
             fitHopper(helper, pod, pilot);
@@ -183,7 +182,7 @@ public class PodLiningDrillTest {
     @GameTest(maxTicks = MAX_TICKS + 400)
     public void theDrillWaitsWhileThePilotLinesAndGoesOnAfter(GameTestHelper helper) {
         int x = 3828;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x);
         // The pod stands in an open room, so its ring is open at the pod's own two levels: 8 cells each, 16 bricks.
         Rig rig = Rig.await(helper, level, x, "line-and-drill", (pod, pilot) -> {
@@ -229,13 +228,5 @@ public class PodLiningDrillTest {
     private static RuntimeException failure(
             GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
-        }
-        return level;
     }
 }

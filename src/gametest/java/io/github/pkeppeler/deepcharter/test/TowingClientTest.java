@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.List;
 import java.util.Objects;
@@ -36,7 +37,7 @@ import org.jspecify.annotations.Nullable;
 public class TowingClientTest implements FabricClientGameTest {
     private static final int X = 700;
     private static final int Z = 700;
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
     /** Long enough for the tower to drive out the 4.9 blocks of slack the pod starts with and then pull it 5 blocks. */
     private static final int DRIVE_TICKS = 100;
 

@@ -7,7 +7,6 @@ import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
@@ -17,6 +16,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -209,8 +209,8 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
      * Layer 2's rock holds lava, which lights what it touches, so a pocket carved out of it must not keep that glow on the client.
      */
     private void breachInto(ClientGameTestContext context, TestServerContext server, int layer, int trial) {
-        ResourceKey<Level> from = LayerChain.dimension(layer - 1);
-        ResourceKey<Level> to = LayerChain.dimension(layer);
+        ResourceKey<Level> from = TestLayers.dimension(layer - 1);
+        ResourceKey<Level> to = TestLayers.dimension(layer);
         int column = 4_000 + layer * 1_000 + trial * 200;
         arriveSpectator(
                 context,
@@ -330,7 +330,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
      */
     private void layerStructuresOnArrival(
             ClientGameTestContext context, TestServerContext server, int layer, int cell) {
-        ResourceKey<Level> dimension = LayerChain.dimension(layer);
+        ResourceKey<Level> dimension = TestLayers.dimension(layer);
         List<StructureSite> sites = server.computeOnServer(s -> {
             BlockPos conduit = Colony.anchor(s, ColonyAnchor.CONDUIT).orElseThrow();
             ServerLevel level = ClientLight.serverLevel(s, dimension);
