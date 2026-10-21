@@ -1582,3 +1582,46 @@ For a person the early-game cost is the dark display and the noise: a first dive
 
 The bite is 9.6 times slower than stone and costs about a charge's price per slab ($21.82 against $20, in fuel and hull repair); the tier 3 drill itself costs $1,250, 3.6 layer 2 runs of $348. The tier buys freedom from carrying charges, not a discount: charges stay the cheaper, quicker answer for a few slabs (3 s fuse against an 8.65 s bite), and the bite is the one that never runs out. A full stock hull reaches the 20 hull floor after about 6 slabs, so a long bite wants repair stops. The first tuning had 1 and then 0.5 hull a second ($17.50 and $13.17 a slab), and made the bite cheaper and handier than a charge, so charges had no niche. A radiator cuts the heat (tier 3: 0.6). The test holds a bitten slab between one and two times a charge's price per slab. Tuning knobs: `PodRockBiteTuning` (`minTier` 3, `hardness` 15, `fuelMultiplier` 3, `heatHullPerSecond` 1.5, `hullFloor` 20).
 
+
+## The Kells' shaft (#716, A)
+
+**Problem.** The lava ladder (#232) ends with "abandoned lined shafts from earlier charters are something to find". The Kells drilled from the Workings toward the Hollows ([LORE](../LORE.md), CY 19 and 20), so layer 2 has one: a place that shows what lining is for, and lets a pilot meet the counter on purpose.
+
+**What it is.** One shaft at the end of every rail line in Prospector's Run (a structure of [ADR 0025](../adr/0025-layer-structures-are-drawn-from-the-seed-when-a-fresh-chunk-loads.md), `KELLS_SHAFT`). A drift with a rail runs from the line's last column to a lip. A 2 x 2 hollow, 20 to 80 blocks deep, goes from the lip to the first block above the crust. The layer 3 end is not built: the shaft stops at the crust until layer 3 has worldgen (#716 keeps that part open).
+- **Gaps.** 2 to 4 per shaft. A gap is a block of lava standing in the brick wall (one more behind it), with three rows of slag brick round it.
+- **Bulkhead.** At each gap the Kells sealed the hollow from below with a plug of brick. It has a hole beside the gap, and lava stands in the cell under the hole. A pod lands on the plug with the gap one row below its feet.
+- **Decay.** Timber sets every third row, a quarter of their blocks fallen. A reserve of slag bricks, one for each gap, stands in the drift wall at the lip.
+
+**The ladder.** By hand: the pod lands on the bulkhead, the pilot presses R, and hand lining (#313) bricks the gap and the lava under the hole. Then the pod bores the plug and goes on. A pod that bores the plug without lining sinks into the lava. Hand lining stops the rotor (`PodLining`'s stats listener), so a pod cannot line in the air: that is why there are bulkheads. The liner (#339) and the heat shield have the same job here as in any bore.
+
+**Decisions (A).**
+- The shaft's lava is its own, planted from the seed after the seal clears worldgen's lava near it. The number and place of the gaps therefore never read a neighbouring chunk that may not exist yet.
+- A lava block in the wall alone never touches a pod: the touch reach is 0.01 and the Mole is 0.05 narrower than the hollow. The lava under the hole is what burns.
+- A lined gap costs bricks beyond the gap: the lava under the hole and any open cell of the ring (a cave beside the shaft).
+- The reserve is one brick per gap, in a wall niche, so a pilot with no hopper can still line the first gap.
+
+**Measured.** `KellsShaftBoreTest`: `DEEPCHARTER_KELLS_SHAFTS=30 tools/gametest.sh 'kells_shaft_bore_test*'`. 30 shafts of one world seed (50.7 blocks deep and 3.0 gaps on average), each with a stock Mole with a tier 1 scanner and a rack of 24 bricks, from the rail line's floor to the crust. The shaft pods sink on the rotor at 0.3 blocks a tick, land on each bulkhead and bore it; the lined one presses R there when a lava cell is in reach. Each shaft column has a shaft of its own (a lined gap stays lined). The straight bore goes 8 blocks to the side of a bare shaft from the same height, with the bot of [Lava vs. a straight bore](#lava-vs-a-straight-bore-measured) (sprint to drill, step two blocks aside from a refused slab, brake in a fall). The lined bore presses R when it rests on a slab with lava within 3 slabs below and 2 across, read off the blocks and not a scanner, so it is a better pilot than the earlier lining bot. The runs are deterministic.
+
+| 30 runs of each | Shaft, hand lining | Shaft, no lining | Straight bore, no lining | Straight bore, hand lining |
+|---|---|---|---|---|
+| Reach the crust alive | 30 | 28 | 0 | 0 |
+| Touch lava | 2 | 30 | 26 | 16 |
+| Die in lava | 0 | 2 | 26 | 13 |
+| Lava contacts a run (mean) | 0.10 | 2.77 | 1.00 | 0.63 |
+| Ticks in lava a run (mean) | 1.2 | 56.6 | 136.5 | 154.6 |
+| Hull lost to lava a run (mean) | 0.6 | 28.3 | 78.2 | 24.0 |
+| Bricks a run (mean) | 8.5 | 0 | 0 | 20.2 |
+| Lining presses a run (mean) | 2.9 | 0 | 0 | 3.7 |
+| Pod ticks a run (mean) | 791 | 431 | 632 | 1,516 |
+
+- **The shaft is a different dig.** The same Mole reaches the crust 30 times in 30 with lining and 28 in 30 without; beside it the straight bore reaches it 0 times in 30 either way, which matches the layer 1 tables. Lava is the only thing that ends a shaft run: the other deaths are the bore's stalls.
+- **Lining costs time and bricks and saves the hull.** It takes 360 more pod ticks (the presses, the bricks and the plugs) and 8.5 bricks, and 28 hull.
+- **The bare shaft hurts but rarely kills.** Each gap is one contact of about 20 ticks (10 hull); 2 of 30 bare Moles died in lava (not traced further).
+- **The bore columns are a bot's numbers, not a pilot's.** 4 bare and 13 lined bores stalled: the bot's sidestep cannot get out of a slab refused on every side (Company Rock, and in the lined column also its own brick), so the pod stands until the stall limit. Read the lined bore as a floor on what lining buys, as the earlier tables are.
+
+**Tuning knobs.** `StructureKind` `KELLS_OFFSET` (36), the gaps (2 + `pick(3)`), `KELLS_WALL_REACH` (1 row each way), `KELLS_SET_SPACING` (3), the clearances of the first and last gap (8 from the top, 3 from the bottom), the share of fallen timber (0.25). The rail line's placement margin grows by the shaft's reach (`StructureKind.margin()`).
+
+**Open questions.**
+- The layer 3 end waits on layer 3 worldgen: should the shaft's crust be a breach?
+- Should a pod with the liner part (rung 2) skip the bulkheads' lava, since it lines as it drills? It lines only cells lava can reach, so it should: not measured.
+- Do 2 gaps in 3 bare runs cost enough hull to make a shaft with no lining a real choice, or is 28 hull too cheap?
