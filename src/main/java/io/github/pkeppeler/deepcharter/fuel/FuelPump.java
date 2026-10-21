@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.outpost.OutpostAccess;
 import io.github.pkeppeler.deepcharter.outpost.OutpostRates;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
@@ -39,8 +40,8 @@ public final class FuelPump {
     private FuelPump() {}
 
     static void init() {
-        TerminalActions.register(TerminalTypes.FUEL_PUMP, BUY, FuelPump::buy);
-        TerminalActions.register(TerminalTypes.FUEL_PUMP, FILL, FuelPump::fill);
+        TerminalActions.register(TerminalTypes.FUEL_PUMP, BUY, OutpostAccess.ownerOnly(FuelPump::buy));
+        TerminalActions.register(TerminalTypes.FUEL_PUMP, FILL, OutpostAccess.ownerOnly(FuelPump::fill));
         ParkedPodView.register(TerminalTypes.FUEL_PUMP);
     }
 

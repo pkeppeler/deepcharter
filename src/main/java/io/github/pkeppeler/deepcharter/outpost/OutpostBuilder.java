@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
@@ -21,6 +20,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.phys.AABB;
 
 /**
  * Builds the outpost of a charter at the floor of layer 1, the start of layer 2: a lit steel hall with the colony's fuel pump and ore processor
@@ -28,17 +28,19 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
  * which is the floor of the hall.
  *
  * <p>The hall is {@value #RADIUS_BLOCKS} blocks out each way from that block and {@value #HEIGHT} blocks high inside, in the Company's kit
- * ({@link ColonyKit}): plated walls and ceiling, a concrete floor and corner posts. The middle of the floor is left as it was, the breach
- * crust, so a pod can drill down to layer 2 from the hall, with a hazard band round it; and the ceiling above is left as it was too, so a shaft that
+ * ({@link ColonyKit}): plated walls and ceiling, a concrete floor and corner posts. The middle of the floor is left as it was (the breach
+ * crust when the kit is used on the crust top, rock when it is used above it, up to the floor band), so a pod can drill down to layer 2 from the hall, with a hazard band round it; and the ceiling above is left as it was too, so a shaft that
  * ends over the hall stays open and a pod can drop in. A pod that climbs out of layer 2 arrives in the hall (the crossing keeps the column), where
  * the pump fills its tank and the terminal buys its ore, at {@link OutpostRates}.
  *
- * <p>The shell is sealed against lava and gas before the cut ({@link RoomSeal}); a block entity in the hall's volume refuses the build, and
- * every check is made before the first block. The outpost is recorded in {@link OutpostData}.
+ * <p>The shell is sealed against lava and gas before the cut ({@link RoomSeal}); a block entity or any entity but the builder in the hall's volume, or another outpost within two
+ * halls' reach, refuses the build, and every check is made before the first block, so a refusal keeps the kit and changes nothing. The outpost is recorded in {@link OutpostData}.
  */
 public final class OutpostBuilder {
     static final int RADIUS_BLOCKS = 4;
     static final int HEIGHT = 5;
+    /** The shell's distance from the middle: the walls stand this far out. */
+    static final int EDGE = RADIUS_BLOCKS + 1;
     /** The breach under the floor stays open this many blocks out from the middle (a 3 by 3 pit). */
     private static final int PIT = 1;
     /** The ceiling stays as it was this many blocks out from the middle (5 by 5), so any shaft up to 3 wide that the click lies in stays open. */
@@ -52,10 +54,7 @@ public final class OutpostBuilder {
 
     /** Builds the outpost on the top of {@code clicked}, or returns why not. Checks everything before it changes anything. */
     public static Optional<Component> build(ServerPlayer player, ServerLevel level, BlockPos clicked, Direction face) {
-        OptionalInt layer = level.dimensionTypeRegistration()
-                .unwrapKey()
-                .map(type -> LayerChain.layerOf(type.identifier()))
-                .orElse(OptionalInt.empty());
+        OptionalInt layer = OutpostRates.layerOf(level);
         if (layer.isEmpty() || layer.getAsInt() != LAYER) {
             return refusal("not_here");
         }
@@ -82,12 +81,18 @@ public final class OutpostBuilder {
         if (data.of(charter.get().id(), LAYER).isPresent()) {
             return refusal("has_one");
         }
-        int edge = RADIUS_BLOCKS + 1;
-        BlockPos shellMin = clicked.offset(-edge, 0, -edge);
-        BlockPos shellMax = clicked.offset(edge, HEIGHT + 1, edge);
+        if (data.overlapping(LAYER, clicked).isPresent()) {
+            return refusal("overlaps");
+        }
+        BlockPos shellMin = clicked.offset(-EDGE, 0, -EDGE);
+        BlockPos shellMax = clicked.offset(EDGE, HEIGHT + 1, EDGE);
         if (level.isOutsideBuildHeight(shellMax)) {
-            return Optional.of(
-                    Component.translatable("message.deepcharter.outpost.not_floor", OutpostTuning.DEFAULT.floorBand()));
+            return refusal("no_room_above");
+        }
+        AABB shell = AABB.encapsulatingFullBlocks(shellMin, shellMax);
+        // entity-query: the hall is cut with whatever stands in it, so any entity but the builder refuses the kit
+        if (!level.getEntities(player, shell).isEmpty()) {
+            return refusal("occupied");
         }
         for (BlockPos pos : BlockPos.betweenClosed(shellMin, shellMax)) {
             if (level.getBlockEntity(pos) != null) {
@@ -112,9 +117,8 @@ public final class OutpostBuilder {
         for (BlockPos pos : BlockPos.betweenClosed(interiorMin, interiorMax)) {
             level.setBlock(pos, air, FLAGS);
         }
-        int edge = RADIUS_BLOCKS + 1;
-        for (int dx = -edge; dx <= edge; dx++) {
-            for (int dz = -edge; dz <= edge; dz++) {
+        for (int dx = -EDGE; dx <= EDGE; dx++) {
+            for (int dz = -EDGE; dz <= EDGE; dz++) {
                 int out = Math.max(Math.abs(dx), Math.abs(dz));
                 if (out > PIT) {
                     Block floorBlock = out == HATCH ? ColonyKit.HAZARD_BAND : ColonyKit.CONCRETE_FOOTING;
@@ -124,7 +128,7 @@ public final class OutpostBuilder {
                     level.setBlock(
                             floor.offset(dx, HEIGHT + 1, dz), ColonyKit.RIVETED_PLATE.defaultBlockState(), FLAGS);
                 }
-                if (out == edge) {
+                if (out == EDGE) {
                     for (int dy = 1; dy <= HEIGHT; dy++) {
                         level.setBlock(floor.offset(dx, dy, dz), ColonyKit.RIVETED_PLATE.defaultBlockState(), FLAGS);
                     }

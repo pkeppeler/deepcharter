@@ -41,6 +41,15 @@ public final class OutpostData extends SavedData {
                         Codec.INT.fieldOf("layer").forGetter(Outpost::layer),
                         BlockPos.CODEC.fieldOf("centre").forGetter(Outpost::centre))
                 .apply(instance, Outpost::new));
+
+        /** True when {@code pos} is in the hall: inside its shell, from the floor to the ceiling. */
+        public boolean contains(BlockPos pos) {
+            int dy = pos.getY() - centre.getY();
+            return Math.abs(pos.getX() - centre.getX()) <= OutpostBuilder.EDGE
+                    && Math.abs(pos.getZ() - centre.getZ()) <= OutpostBuilder.EDGE
+                    && dy >= 0
+                    && dy <= OutpostBuilder.HEIGHT + 1;
+        }
     }
 
     private static final Codec<Versioned<List<Outpost>>> VERSIONED_CODEC =
@@ -81,6 +90,20 @@ public final class OutpostData extends SavedData {
     public Optional<Outpost> of(CharterId charter, int layer) {
         return state.orThrow().stream()
                 .filter(outpost -> outpost.charter().equals(charter) && outpost.layer() == layer)
+                .findFirst();
+    }
+
+    /**
+     * The first outpost in {@code layer}, of any charter, whose hall a hall with its floor middle at {@code centre} would touch: the
+     * middles are within two edges of each other, level by level, in both x and z.
+     */
+    public Optional<Outpost> overlapping(int layer, BlockPos centre) {
+        return state.orThrow().stream()
+                .filter(outpost -> outpost.layer() == layer)
+                .filter(outpost -> Math.max(
+                                Math.abs(outpost.centre().getX() - centre.getX()),
+                                Math.abs(outpost.centre().getZ() - centre.getZ()))
+                        <= 2 * OutpostBuilder.EDGE)
                 .findFirst();
     }
 

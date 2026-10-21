@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.outpost.OutpostAccess;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
@@ -44,7 +45,7 @@ public final class WorkOrders {
     private WorkOrders() {}
 
     static void register() {
-        TerminalActions.register(TerminalTypes.ORE_PROCESSOR, DELIVER, WorkOrders::runDeliver);
+        TerminalActions.register(TerminalTypes.ORE_PROCESSOR, DELIVER, OutpostAccess.ownerOnly(WorkOrders::runDeliver));
     }
 
     private static Optional<Component> runDeliver(TerminalAction.Context context) {

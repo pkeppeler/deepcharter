@@ -507,8 +507,9 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 **What it does.** A charter crafts an **outpost kit** (four Bronzium, two Ironium, a pump motor, an ore feeder and redstone: $300 of ore, under one layer 2 run) and uses it on the top of a block at the layer 1 floor, within 8 blocks of the top of the breach crust (`OutpostTuning.floorBand`). It unfolds a lit steel hall cut into the rock round that block, in the colony kit:
 - 9 by 9 inside and 5 high, plated walls and ceiling, a concrete floor, corner posts, six wall lamps (the same sodium lamps as the colony).
 - The colony's own **fuel pump** and **ore processor** (the sell terminal) stand against the north wall. They are the same blocks, so they work once the colony's are repaired (the repair state is world-wide) and a pod parked in the hall is served as it is at the colony.
-- The middle 3 by 3 of the floor is left as it was, the breach crust, ringed with a hazard band: a pod drills down to layer 2 from the hall. The middle 5 by 5 of the ceiling is left as it was too, so a shaft that ends over the hall stays open and a pod drops in. A pod that climbs out of layer 2 arrives in the hall (the crossing keeps the column).
-- A charter has one outpost a layer. The kit is refused off the layer 1 floor, on a side face, without a charter, with a block entity (a terminal) in the way, and a second time. A refused kit stays in the hand. The hall's blocks are Company property, unbreakable in survival like the colony's, so an outpost is never destroyed (SPEC section 11).
+- The middle 3 by 3 of the floor is left as it was, ringed with a hazard band: a pod drills down to layer 2 from the hall. It is the breach crust when the kit is used on the crust top, and plain rock when it is used higher (up to the floor band), which the drill still bores. The middle 5 by 5 of the ceiling is left as it was too, so a shaft that ends over the hall stays open and a pod drops in. A pod that climbs out of layer 2 arrives in the hall (the crossing keeps the column).
+- A charter has one outpost a layer. The kit is refused off the layer 1 floor, on a side face, without a charter, with a block entity (a terminal) in the way, with any entity but the builder in the hall (`occupied`), within 10 blocks of another outpost's middle (`overlaps`: the halls would cut into each other), and a second time. A refusal is made before the first block and keeps the kit, so the cut never deletes a build or buries an entity. A refused kit stays in the hand. The hall's blocks are Company property, unbreakable in survival like the colony's, so an outpost is never destroyed (SPEC section 11).
+- **The terminals are the owner's.** A pump or a sell terminal at depth serves only a pod and a player of the charter whose hall it stands in (`OutpostAccess`, wrapped round every pump and processor action); a second charter, and a terminal at depth that stands in no hall (one placed by hand), is refused with `not_yours`. SPEC section 11 makes sharing a toggle that is off by default: the toggle is [#752](https://github.com/pkeppeler/deepcharter/issues/752).
 - The shell is sealed against lava and gas before the cut (`RoomSeal`), and the outposts are saved per charter in `OutpostData` (version 1, `Unreadable` fallback).
 
 **What it costs to run.** Prices depend on the level the terminal is in (`OutpostRates`), so every pump and sell terminal underground is an outpost's: a litre costs 2 times the colony's ($2) and ore pays 80 percent of its value (Ironium $24, Bronzium $48, Silverium $80, Goldium $200, Platinium $600, Einsteinium $1,600). SPEC says outposts sell at worse rates, so the surface trip still matters: for the 25 percent that these terms take from a run, for the upgrade, repair and hangar terminals, which stay in the colony, and for the first descent. The screens read the same rates, so what they show is what is charged.
@@ -522,6 +523,24 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 
 The run count is the same, 3.36 against 3.99, so the Prospector pace of PR 206 holds. The outpost's prices take 25 percent of what the same run nets at the colony ($553). Every other layer 2 band in `EconomyAffordabilityTest` and `FirstTierPartsCostTest` holds, except the matter transmitter: at $1,390 it was 3.36 runs against its band of 3.5 to 4.0, so its price goes back to the $1,500 it had before #319 (3.63 runs).
 
+The rise in the net, 19 percent, made every price pinned in runs of a layer 2 run relatively cheaper. The ratios (price over the net of the run that pays for it; the liner and the sounder use their own pods' runs, with the drill penalty each adds):
+
+| Price | Before (surface start) | After (outpost start) |
+|---|---|---|
+| Console tier 2 ($500) | 1.44 | 1.21 |
+| Console tier 3 ($1,250) | 3.59 | 3.02 |
+| Radiator tier 2 ($1,250) | 3.59 | 3.02 |
+| Thermal scanner tier 2 ($500) | 1.44 | 1.21 |
+| Liner tier 2 ($1,000; run $300, now $364) | 3.33 | 2.75 |
+| Seep sounder tier 2 ($1,000; run $313, now $375) | 3.20 | 2.67 |
+| Hull nanobots ($345) | 0.99 | 0.83 |
+| Plastic explosives ($300) | 0.86 | 0.73 |
+| Quantum teleporter ($690) | 1.98 | 1.67 |
+| Matter transmitter ($1,390 before, $1,500 after) | 3.99 | 3.63 |
+| Tier 3 drill ($1,250) | 3.59 | 3.02 |
+
+So prices got relatively cheaper as the net rose 19 percent, and every band still holds because each band is a range, not a point: the matter transmitter is the one price that fell under its band (3.5 to 4.0), so it alone was raised.
+
 **Trade-offs.** The outpost saves the shaft climb and turns the run into a loop in layer 2, but it pays less for the same ore and charges double for the fuel, so a pilot who is carrying a full bay out of a deep run weighs the climb against the discount. It is one more thing to build before layer 2, at the price of an ore stack that a first layer 2 run replaces.
 
 **Knobs.** `OutpostTuning` (`sellPercent` 80, `fuelPriceFactor` 2, `floorBand` 8), the kit's recipe (`data/deepcharter/recipe/outpost_kit.json`), the hall's size (`OutpostBuilder`), `Consumable.MATTER_TRANSMITTER` ($1,500).
@@ -529,7 +548,7 @@ The run count is the same, 3.36 against 3.99, so the Prospector pace of PR 206 h
 **Open questions.**
 - Beds (a respawn point), storage and repair terminals belong to an outpost in SPEC section 11 and are not built here: the hall has the two terminals that the issue asks for. The repair terminal waits for a repair price that is not the colony's.
 - Rated materials (SPEC section 11: an outpost built below its depth's rating is uninhabitable) matter from layer 3 on. The layer 1 floor has no rating, so the kit works only there; each deeper floor needs the rating rules first.
-- Sharing an outpost with other charters (the SPEC toggle) is not built: the terminals serve only a charter's own pods, as at the colony, and the data holds the owner.
+- Sharing an outpost with other charters (the SPEC toggle, default off) is not built: only the owning charter is served (see the terminals above), and the data holds the owner. Filed as [#752](https://github.com/pkeppeler/deepcharter/issues/752).
 
 ## Hard landings (#319, A)
 

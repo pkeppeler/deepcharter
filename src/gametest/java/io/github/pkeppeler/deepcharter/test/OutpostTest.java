@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.outpost.OutpostAccess;
 import io.github.pkeppeler.deepcharter.outpost.OutpostBuilder;
 import io.github.pkeppeler.deepcharter.outpost.OutpostData;
 import io.github.pkeppeler.deepcharter.outpost.OutpostRegistry;
@@ -23,6 +24,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
 import io.github.pkeppeler.deepcharter.terminal.TerminalParts;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
@@ -78,6 +80,9 @@ public class OutpostTest {
     private static final String BLOCKED = "message.deepcharter.outpost.blocked";
     private static final String HAS_ONE = "message.deepcharter.outpost.has_one";
     private static final String NOT_FLOOR = "message.deepcharter.outpost.not_floor";
+    private static final String NOT_YOURS = "message.deepcharter.outpost.not_yours";
+    private static final String OCCUPIED = "message.deepcharter.outpost.occupied";
+    private static final String OVERLAPS = "message.deepcharter.outpost.overlaps";
     private static final String NOT_HERE = "message.deepcharter.outpost.not_here";
     private static final String NOT_ON_TOP = "message.deepcharter.outpost.not_on_top";
 
@@ -331,6 +336,177 @@ public class OutpostTest {
             }
             if (OutpostData.get(helper.getLevel().getServer())
                     .of(stage.charter(), 1)
+                    .isPresent()) {
+                throw failure(helper, "a refused kit records no outpost");
+            }
+        });
+    }
+
+    /** A second charter's player, on a charter of their own, standing in the hall of {@code stage}. */
+    private static Stage stranger(GameTestHelper helper, Stage stage) {
+        MinecraftServer server = helper.getLevel().getServer();
+        MockPlayer mock = MockPlayers.join(helper, "stranger-" + stage.floor().getX());
+        mock.player().setGameMode(GameType.SURVIVAL);
+        if (Charters.found(
+                        server,
+                        mock.player().getUUID(),
+                        "Stranger Test " + UUID.randomUUID().toString().substring(0, 8))
+                .isPresent()) {
+            throw failure(helper, "founding the stranger's charter should succeed");
+        }
+        CharterId charter = Charters.charterOfOrThrow(server, mock.player().getUUID())
+                .orElseThrow()
+                .id();
+        mock.teleportTo(stage.level(), Vec3.atBottomCenterOf(stage.floor().offset(-1, 1, -2)), 0f, 0f);
+        return new Stage(stage.level(), stage.floor(), mock, charter);
+    }
+
+    /** The key of the translatable {@code refusal}, or its text. */
+    private static String keyOf(Optional<Component> refusal) {
+        return refusal.map(message -> message.getContents() instanceof TranslatableContents translatable
+                        ? translatable.getKey()
+                        : message.getString())
+                .orElse("nothing: it was served");
+    }
+
+    private static TerminalAction.Context contextAt(Stage stage, BlockPos pos) {
+        MinecraftServer server = stage.level().getServer();
+        return new TerminalAction.Context(
+                server,
+                stage.player(),
+                Charters.readableCharterOf(server, stage.player().getUUID()),
+                TerminalTypes.FUEL_PUMP,
+                pos,
+                new CompoundTag());
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSecondChartersPodIsRefusedFuelAndSalesAtAnOutpostAndTheOwnerIsServed(GameTestHelper helper) {
+        Stage owner = stage(helper, 8700, true);
+        whenReady(helper, owner, () -> {
+            useKit(owner, owner.floor(), Direction.UP);
+            MinecraftServer server = helper.getLevel().getServer();
+            Stage other = stranger(helper, owner);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, owner.level());
+            pod.setPos(Vec3.atBottomCenterOf(owner.floor().offset(1, 1, 2)));
+            owner.level().addFreshEntity(pod);
+            try {
+                PodComponents.register(pod, other.charter());
+                pod.setFuel(0f);
+                Charters.deposit(server, other.charter(), 1000);
+                for (int i = 0; i < 3; i++) {
+                    other.player().getInventory().add(OreRegistry.stack(OreType.IRONIUM));
+                }
+                BlockPos pump = owner.floor().offset(PUMP);
+                BlockPos processor = owner.floor().offset(PROCESSOR);
+                if (Terminals.act(other.player(), pump, FuelPump.FILL, new CompoundTag())
+                        .isEmpty()) {
+                    throw failure(helper, "a second charter's pod should be refused fuel at the outpost");
+                }
+                if (Terminals.act(other.player(), processor, OreProcessor.SELL_INVENTORY, new CompoundTag())
+                        .isEmpty()) {
+                    throw failure(helper, "a second charter's ore should be refused a sale at the outpost");
+                }
+                if (pod.fuel() != 0f) {
+                    throw failure(helper, "a refused fill must leave the tank empty, it has %s", pod.fuel());
+                }
+                if (balance(helper, other) != 1000) {
+                    throw failure(
+                            helper, "a refusal must leave the balance at $1000, it is $%d", balance(helper, other));
+                }
+                if (other.player()
+                                .getInventory()
+                                .countItem(OreRegistry.stack(OreType.IRONIUM).getItem())
+                        != 3) {
+                    throw failure(helper, "a refused sale must keep the ore");
+                }
+                String said = keyOf(OutpostAccess.refusal(contextAt(other, pump)));
+                if (!said.equals(NOT_YOURS)) {
+                    throw failure(helper, "the refusal should be %s, it was %s", NOT_YOURS, said);
+                }
+                // The owner's own pod is served at the same pump.
+                PodEntity ownPod = TestEntities.create(PodRegistry.POD, owner.level());
+                ownPod.setPos(Vec3.atBottomCenterOf(owner.floor().offset(2, 1, 2)));
+                owner.level().addFreshEntity(ownPod);
+                try {
+                    PodComponents.register(ownPod, owner.charter());
+                    ownPod.setFuel(0f);
+                    pod.discard();
+                    Charters.deposit(server, owner.charter(), 1000);
+                    owner.mock()
+                            .teleportTo(
+                                    owner.level(),
+                                    Vec3.atBottomCenterOf(owner.floor().offset(-1, 1, -2)),
+                                    0f,
+                                    0f);
+                    var served = Terminals.act(owner.player(), pump, FuelPump.FILL, new CompoundTag());
+                    if (served.isPresent() || ownPod.fuel() <= 0f) {
+                        throw failure(helper, "the owner should be served at their own pump, got %s", served);
+                    }
+                } finally {
+                    ownPod.discard();
+                }
+            } finally {
+                pod.discard();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPumpAtDepthWithNoOutpostServesNoOne(GameTestHelper helper) {
+        Stage stage = stage(helper, 8800, true);
+        whenReady(helper, stage, () -> {
+            BlockPos pump = stage.floor().offset(3, 1, 3);
+            stage.level().setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), Block.UPDATE_CLIENTS);
+            Charters.deposit(helper.getLevel().getServer(), stage.charter(), 1000);
+            String said = keyOf(OutpostAccess.refusal(contextAt(stage, pump)));
+            if (!said.equals(NOT_YOURS)) {
+                throw failure(helper, "an unowned pump at depth should refuse with %s, it said %s", NOT_YOURS, said);
+            }
+            if (Terminals.act(stage.player(), pump, FuelPump.FILL, new CompoundTag())
+                    .isEmpty()) {
+                throw failure(helper, "an unowned pump at depth should refuse the fill");
+            }
+            if (balance(helper, stage) != 1000) {
+                throw failure(helper, "a refusal must leave the balance alone");
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theKitIsRefusedAndKeptWhereAnotherEntityStandsInTheHall(GameTestHelper helper) {
+        Stage stage = stage(helper, 8900, true);
+        whenReady(helper, stage, () -> {
+            PodEntity pod = TestEntities.create(PodRegistry.POD, stage.level());
+            pod.setPos(Vec3.atBottomCenterOf(stage.floor().offset(3, 2, 3)));
+            stage.level().addFreshEntity(pod);
+            try {
+                expectRefusal(helper, stage, stage.floor(), Direction.UP, OCCUPIED, "a pod in the hall");
+            } finally {
+                pod.discard();
+            }
+            if (!stage.level().getBlockState(stage.floor().offset(3, 2, 3)).is(Blocks.STONE)) {
+                throw failure(helper, "a refused kit must cut nothing");
+            }
+            if (OutpostData.get(helper.getLevel().getServer())
+                    .of(stage.charter(), 1)
+                    .isPresent()) {
+                throw failure(helper, "a refused kit records no outpost");
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theKitIsRefusedAndKeptWhereAnotherChartersHallStands(GameTestHelper helper) {
+        Stage first = stage(helper, 9000, true);
+        Stage second = stage(helper, 9010, true);
+        whenReady(helper, first, () -> {
+            if (!useKit(first, first.floor(), Direction.UP).consumesAction()) {
+                throw failure(helper, "the first kit should build");
+            }
+            expectRefusal(helper, second, second.floor(), Direction.UP, OVERLAPS, "a hall 10 blocks from another");
+            if (OutpostData.get(helper.getLevel().getServer())
+                    .of(second.charter(), 1)
                     .isPresent()) {
                 throw failure(helper, "a refused kit records no outpost");
             }

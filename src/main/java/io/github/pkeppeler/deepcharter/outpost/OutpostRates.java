@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.outpost;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import java.util.OptionalInt;
 import net.minecraft.world.level.Level;
 
 /**
@@ -14,12 +15,17 @@ import net.minecraft.world.level.Level;
 public final class OutpostRates {
     private OutpostRates() {}
 
-    /** True in a layer of the chain, false on the surface (the colony's level) and in any other dimension. */
-    public static boolean atDepth(Level level) {
+    /** The layer {@code level} is in the chain, or empty on the surface (the colony's level) and in any other dimension. */
+    public static OptionalInt layerOf(Level level) {
         return level.dimensionTypeRegistration()
                 .unwrapKey()
-                .map(type -> LayerChain.layerOf(type.identifier()).isPresent())
-                .orElse(false);
+                .map(type -> LayerChain.layerOf(type.identifier()))
+                .orElse(OptionalInt.empty());
+    }
+
+    /** True in a layer of the chain, false on the surface (the colony's level) and in any other dimension. */
+    public static boolean atDepth(Level level) {
+        return layerOf(level).isPresent();
     }
 
     /** Dollars one litre costs at a fuel pump in {@code level}. */

@@ -3,8 +3,12 @@
   "message.deepcharter.outpost.blocked": "Company property stands in the way of the hall",
   "message.deepcharter.outpost.built": "The outpost is up: a fuel pump and a sell terminal, lit, at the breach",
   "message.deepcharter.outpost.has_one": "Your charter has an outpost in this layer already",
+  "message.deepcharter.outpost.no_room_above": "There is no room above for the hall: the world ends too soon over this floor",
   "message.deepcharter.outpost.not_floor": "This is not the floor: set the kit within %s blocks of the breach crust",
   "message.deepcharter.outpost.not_here": "An outpost goes up at the floor of layer 1",
   "message.deepcharter.outpost.not_on_top": "Set the kit on the top of a floor block",
+  "message.deepcharter.outpost.not_yours": "This terminal belongs to another charter's outpost, or to none",
+  "message.deepcharter.outpost.occupied": "Something stands in the hall's volume: clear it, and stand clear yourself",
+  "message.deepcharter.outpost.overlaps": "Another outpost is too close: set the kit at least 11 blocks clear of its middle",
   "message.deepcharter.outpost.unreadable": "The outposts were saved by another version of the mod"
 }
