@@ -5,7 +5,6 @@ import io.github.pkeppeler.deepcharter.client.fuel.FuelPumpScreen;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -17,6 +16,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OutpostScene;
 import io.github.pkeppeler.deepcharter.test.support.OutpostScene.Scene;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -51,7 +51,7 @@ public class OutpostScenario extends EvidenceScenario {
                     context,
                     "the player in layer 1 with the charter's balance",
                     client -> client.player != null
-                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
+                            && TestLayers.isIn(ClientLight.clientLevel(client), 1)
                             && ClientCharter.view().isPresent());
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -143,7 +143,7 @@ public class OutpostScenario extends EvidenceScenario {
             context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 PodEntity pod = one.getEntitiesOfClass(
                                 PodEntity.class, player.getBoundingBox().inflate(8))
                         .getFirst();
@@ -165,8 +165,8 @@ public class OutpostScenario extends EvidenceScenario {
             for (int i = 0; i < DROP_FRAME_LIMIT; i++) {
                 context.waitTicks(2);
                 frame(context);
-                boolean down = context.computeOnClient(client ->
-                        client.level != null && client.level.dimension().equals(LayerChain.dimension(2)));
+                boolean down =
+                        context.computeOnClient(client -> client.level != null && TestLayers.isIn(client.level, 2));
                 if (down) {
                     break;
                 }
@@ -174,7 +174,7 @@ public class OutpostScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the client in layer 2",
-                    client -> client.level != null && client.level.dimension().equals(LayerChain.dimension(2)));
+                    client -> client.level != null && TestLayers.isIn(client.level, 2));
             context.waitTicks(40);
             clearTransmissions(context);
             hold(context);

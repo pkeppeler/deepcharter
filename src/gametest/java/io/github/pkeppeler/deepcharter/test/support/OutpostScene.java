@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.outpost.OutpostRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -53,7 +52,7 @@ public final class OutpostScene {
 
     /** Stages the shaft bottom and puts the first player at it, a charter founded, the terminals repaired and the kit in hand. */
     public static Scene stage(MinecraftServer server) {
-        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel one = TestLayers.level(server, 1);
         BlockPos floor = new BlockPos(X, one.getMinY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
         RoomCarver.carve(
                 one,
@@ -97,7 +96,7 @@ public final class OutpostScene {
     public static void standIn(MinecraftServer server, Scene scene, double dx, double dz, float yaw, float pitch) {
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
         player.teleportTo(
-                ClientLight.serverLevel(server, LayerChain.dimension(1)),
+                TestLayers.level(server, 1),
                 scene.floor().getX() + dx,
                 scene.floor().getY() + 1,
                 scene.floor().getZ() + dz,
@@ -109,7 +108,7 @@ public final class OutpostScene {
 
     /** A pod of the charter parked in the hall at ({@code dx}, {@code dz}), with {@code fuelPercent} of its tank. */
     public static PodEntity parkPod(MinecraftServer server, Scene scene, double dx, double dz, float fuelPercent) {
-        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel one = TestLayers.level(server, 1);
         PodEntity pod = TestEntities.create(PodRegistry.POD, one);
         pod.setPos(
                 scene.floor().getX() + dx,

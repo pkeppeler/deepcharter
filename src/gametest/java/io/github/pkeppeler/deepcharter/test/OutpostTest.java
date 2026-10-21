@@ -9,7 +9,6 @@ import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -27,12 +26,12 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalParts;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -97,7 +96,7 @@ public class OutpostTest {
     }
 
     private static ServerLevel layerOne(GameTestHelper helper) {
-        return ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
+        return TestLayers.level(helper, 1);
     }
 
     /** The floor of layer 1: the top block of the breach crust, in a column of solid stone with a 2 by 2 shaft up from it. */
@@ -525,7 +524,7 @@ public class OutpostTest {
                     });
         });
         TestTicks.each(helper, () -> {
-            if (!ready[0] || !stage.player().level().dimension().equals(LayerChain.dimension(2))) {
+            if (!ready[0] || !TestLayers.isIn(stage.player().level(), 2)) {
                 return;
             }
             if (!(stage.player().getVehicle() instanceof PodEntity arrived)) {
