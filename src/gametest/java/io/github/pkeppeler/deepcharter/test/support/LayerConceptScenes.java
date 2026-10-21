@@ -40,7 +40,9 @@ public final class LayerConceptScenes {
     private static final String NAMESPACE = "deepcharter-test";
     private static final Identifier SCENES = Identifier.fromNamespaceAndPath(NAMESPACE, "layer_concepts/scenes.json");
     /** Where the first scene stands in X and Z (on a chunk boundary, so a scene touches as few chunks as it can); its Y comes per layer. */
-    private static final BlockPos ORIGIN = new BlockPos(3008, 0, 3008);
+    private static final int ORIGIN_X = 3008;
+
+    private static final int ORIGIN_Z = 3008;
 
     /** The gap between two layers' scenes along X. */
     private static final int GAP = 128;
@@ -129,7 +131,7 @@ public final class LayerConceptScenes {
     }
 
     private static Scene parse(int layer, JsonObject body) {
-        BlockPos origin = ORIGIN.offset(GAP * (layer - 1), TestLayers.worldY(layer, 40), 0);
+        BlockPos origin = TestLayers.pos(layer, ORIGIN_X + GAP * (layer - 1), 40, ORIGIN_Z);
         List<BlockPos> lava = new ArrayList<>();
         for (JsonElement at : body.getAsJsonArray("lava")) {
             JsonArray xyz = at.getAsJsonArray();
