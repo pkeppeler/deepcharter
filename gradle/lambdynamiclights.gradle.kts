@@ -4,8 +4,8 @@ import java.security.MessageDigest
 // Opt-in LambDynamicLights for the dev client (#629, docs/tooling/lambdynamiclights-audit.md). Off unless DEEPCHARTER_LDL=1, and then
 // only the client runs (runClient, runPlay, runClientGameTest) load it: the shipped jar, the server runs, CI and the build never see it.
 //
-// The jar is fetched from the audited Modrinth URL into run/ldl (git-ignored), checked against the audited sha512 and handed to Fabric
-// Loader with -Dfabric.addMods. It is never a Gradle dependency (audit condition 2) and never committed or bundled (condition 3).
+// The jar is fetched into run/ldl (git-ignored), checked against the audited sha512 and handed to Fabric Loader with -Dfabric.addMods:
+// never a Gradle dependency (audit condition 2), never committed or bundled (condition 3).
 // tools/tests/test_ldl_pin.py keeps the pin below equal to the audit page.
 val ldlFileName = "lambdynamiclights-4.13.0+26.3.jar"
 val ldlUrl = "https://cdn.modrinth.com/data/yBW8D80W/versions/rylKnJ4M/lambdynamiclights-4.13.0%2B26.3.jar"

@@ -31,7 +31,6 @@ import org.jspecify.annotations.Nullable;
  * Evidence scenario "ldl-dark-layers" (#629): a pod with a lights part and a pod without one stand in a sealed, pitch-dark chamber of
  * layer 1 and then of layer 2, and the player drives the lit one down the chamber with the HUD shown. Record it once as the game ships and
  * once with {@code DEEPCHARTER_LDL=1} (LambDynamicLights loaded) to see what the dynamic light adds and whether the dark pod stays dark.
- * Nothing in the scenario depends on LambDynamicLights.
  *
  * <p>Stills per layer {@code N}: {@code layer-N-pods-at-rest} and {@code layer-N-driving}. The clip is the drive in layer 2.
  */
@@ -80,9 +79,7 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
             // The chamber's chunks stay loaded and ticking, so the pods in them cannot unload before the player mounts.
             for (int cx = (FLOOR.getX() - 1) >> 4; cx <= (FLOOR.getX() + LENGTH) >> 4; cx++) {
                 for (int cz = (FLOOR.getZ() - HALF_WIDTH - 1) >> 4; cz <= (FLOOR.getZ() + HALF_WIDTH + 1) >> 4; cz++) {
-                    // force-ok: an evidence scenario has no GameTestHelper to release through; its world is discarded
-                    // when
-                    // the scenario ends.
+                    // force-ok: no GameTestHelper to release through; the world is discarded
                     level.setChunkForced(cx, cz, true);
                     level.getChunk(cx, cz);
                 }
