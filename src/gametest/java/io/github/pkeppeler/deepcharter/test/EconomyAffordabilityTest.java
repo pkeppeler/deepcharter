@@ -55,6 +55,13 @@ public class EconomyAffordabilityTest {
     private static final int CONSOLE_TIER_TWO_RUNS = 2;
 
     private static final int CONSOLE_TIER_THREE_RUNS = 4;
+    /**
+     * The heat shield's tier 2 (#712), the best a Mole takes, in runs of a Mole with tier 2 parts in layer 2 at most; its tier 3, a Prospector's, in runs of a
+     * Prospector with tier 3 parts in layer 2 at most. Tier 1 is crafted.
+     */
+    private static final int HEAT_SHIELD_TIER_TWO_RUNS = 4;
+
+    private static final int HEAT_SHIELD_TIER_THREE_RUNS = 2;
     /** The radiator matters from layer 3 on, and its first purchase, tier 2 now that tier 1 is crafted, costs what the others' tier 3 does: this many layer 2 runs of a Mole with tier 2 parts, at most. */
     private static final int RADIATOR_RUNS = 5;
     /** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
@@ -181,6 +188,57 @@ public class EconomyAffordabilityTest {
                     run.toAfford(price),
                     run.net(),
                     LINER_TIER_TWO_RUNS);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The heat shield (#712) is the lava ladder's rung 3 and is bought in layer 2 or below: tier 2 ($1,250, the best a Mole takes) in at most {@value #HEAT_SHIELD_TIER_TWO_RUNS}
+     * runs of a Mole with tier 2 parts, tier 3 ($2,500, a Prospector's) in at most {@value #HEAT_SHIELD_TIER_THREE_RUNS} layer 2 runs of a Prospector with tier 3 parts. Tier 1 is crafted.
+     */
+    @GameTest
+    public void theHeatShieldTiersTwoAndThreeAreAffordableAfterTheirLayerTwoRuns(GameTestHelper helper) {
+        Run mole = upgradedRunInLayerTwo();
+        Run prospector = EarlyRunModel.run(
+                Chassis.PROSPECTOR,
+                Zone.load("upper_levels"),
+                EarlyRunModel.mole(3, 3, 3),
+                EarlyRunModel.layerOneBlocks(),
+                0f);
+        long tierTwo = UpgradeTuning.DEFAULT.price(ComponentTrack.HEAT_SHIELD, 2);
+        long tierThree = UpgradeTuning.DEFAULT.price(ComponentTrack.HEAT_SHIELD, 3);
+        LOGGER.info(
+                "[economy] heat shield tier 2 ${}: {} Mole layer 2 runs of {}; tier 3 ${}: {} Prospector layer 2 runs of {}",
+                tierTwo,
+                mole.toAfford(tierTwo),
+                mole,
+                tierThree,
+                prospector.toAfford(tierThree),
+                prospector);
+        if (tierTwo != 1250L || tierThree != 2500L) {
+            throw failure(
+                    helper,
+                    "the heat shield's tiers 2 and 3 cost $1250 and $2500, found $%d and $%d",
+                    tierTwo,
+                    tierThree);
+        }
+        if (mole.toAfford(tierTwo) > HEAT_SHIELD_TIER_TWO_RUNS) {
+            throw failure(
+                    helper,
+                    "heat shield tier 2 costs $%d, which is %d Mole layer 2 runs of $%.0f; at most %d are allowed",
+                    tierTwo,
+                    mole.toAfford(tierTwo),
+                    mole.net(),
+                    HEAT_SHIELD_TIER_TWO_RUNS);
+        }
+        if (prospector.toAfford(tierThree) > HEAT_SHIELD_TIER_THREE_RUNS) {
+            throw failure(
+                    helper,
+                    "heat shield tier 3 costs $%d, which is %d Prospector layer 2 runs of $%.0f; at most %d are allowed",
+                    tierThree,
+                    prospector.toAfford(tierThree),
+                    prospector.net(),
+                    HEAT_SHIELD_TIER_THREE_RUNS);
         }
         helper.succeed();
     }

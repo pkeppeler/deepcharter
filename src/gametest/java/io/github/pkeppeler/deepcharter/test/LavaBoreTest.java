@@ -37,6 +37,7 @@ import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
@@ -206,7 +207,7 @@ public class LavaBoreTest {
     static final String BRACE_ENV = "DEEPCHARTER_LAVA_BORES_BRACE";
 
     private static final String REQUESTED_BRACE = System.getenv(BRACE_ENV);
-    /** The tier of the real heat shield part (#482) the pod carries; 1 is the only tier. */
+    /** The tier of the real heat shield part (#482, #712) the pod carries, 1 to 3; tier 3 rides a Mole-sized frame with a Prospector's cap. */
     static final String SHIELD_ENV = "DEEPCHARTER_LAVA_BORES_SHIELD";
 
     private static final String REQUESTED_SHIELD = System.getenv(SHIELD_ENV);
@@ -831,7 +832,9 @@ public class LavaBoreTest {
                         Blocks.LAVA);
             }
         }
-        PodEntity pod = TestEntities.create(PodRegistry.typeOf(CHASSIS), level);
+        // A tier 3 shield needs the Prospector's cap (#712); OddPods.DEEP_MOLE is the Mole's frame with that cap.
+        PodEntity pod = TestEntities.create(
+                bore.shieldTier > CHASSIS.tierCap() ? OddPods.DEEP_MOLE_TYPE : PodRegistry.typeOf(CHASSIS), level);
         pod.setPos(bore.centreX, feetY, bore.centreZ);
         level.addFreshEntity(pod);
         ScannerPods.fit(server, bore.pilot.player(), pod, SCANNER_TIER);

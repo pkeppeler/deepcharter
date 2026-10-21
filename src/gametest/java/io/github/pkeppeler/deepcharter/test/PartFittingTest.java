@@ -488,6 +488,7 @@ public class PartFittingTest {
                 Map.entry(ComponentTrack.LIGHTS, 375L),
                 Map.entry(ComponentTrack.LINER, 1000L),
                 Map.entry(ComponentTrack.SOUNDER, 1000L),
+                Map.entry(ComponentTrack.HEAT_SHIELD, 1250L),
                 Map.entry(ComponentTrack.SCANNER, 500L),
                 Map.entry(ComponentTrack.CONSOLE, 500L));
         for (ComponentTrack track : ComponentTrack.values()) {

@@ -71,7 +71,7 @@ class Theme(unittest.TestCase):
         self.assertEqual((320, 240), (THEME["minGuiWidth"], THEME["minGuiHeight"]))
 
     def test_the_generator_has_nothing_to_rewrite(self):
-        self.assertEqual([], cockpit_ribbon.check(), "run `python3 tools/cockpit_ribbon.py` to rewrite the cockpit")
+        self.assertEqual([], cockpit_ribbon.check(), "run `tools/py tools/cockpit_ribbon.py` to rewrite the cockpit")
 
     def test_the_generator_never_calls_round_which_breaks_a_tie_differently_on_two_machines(self):
         source = (TOOLS / "cockpit_ribbon.py").read_text(encoding="utf-8")

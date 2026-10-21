@@ -5,7 +5,7 @@ Story text must be homage, not copy (SPEC section 1, LORE.md guardrail 9). `tool
 ## Run it
 
 ```
-python3 -I tools/check-homage.py
+tools/py tools/check-homage.py
 ```
 
 - It compares every five-word sequence in `docs/**/*.md`, the root `README.md` and `CONTEXT.md`, `src/lang/**/*.json` and `src/main/resources/data/**/*.json` (in-game text, transmissions, handbook chapters) with section 6 of `original_flash_game/REFERENCE.md`.
