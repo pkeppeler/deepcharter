@@ -192,6 +192,31 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
                             .computeOnServer(server2 ->
                                     PodComponents.effectiveTier(pod(server2, scene), ComponentTrack.SCANNER) == 2),
                     "the server installed the tier 2 scanner over the crafted one");
+
+            // #712: the heat shield sells tiers 2 and 3; a Mole works a tier 3 as tier 2.
+            context.runOnClient(client -> UpgradeShown.reveal(fitted, ComponentTrack.HEAT_SHIELD));
+            context.clickScreenButton("HEAT SHIELD  T0");
+            ClientWait.until(
+                    context,
+                    "the heat shield track selected",
+                    client -> UpgradeShown.isChosen(fitted, ComponentTrack.HEAT_SHIELD));
+            List<String> shield = labels(context, fitted);
+            require(
+                    shield.contains("TIER 1  CRAFTED, NOT SOLD")
+                            && shield.contains("BUY TIER 2  $1250")
+                            && shield.contains("BUY TIER 3  $5000  (WORKS AS TIER 2)"),
+                    "the heat shield lists tier 1 as crafted, tier 2 at $1250 and tier 3 at $5000, got " + shield);
+            context.clickScreenButton("BUY TIER 2  $1250");
+            ClientWait.until(
+                    context,
+                    "the heat shield tier 2 install label",
+                    client -> labels(fitted).contains("TIER 2  INSTALLED"));
+            require(
+                    singleplayer
+                            .getServer()
+                            .computeOnServer(server2 ->
+                                    PodComponents.effectiveTier(pod(server2, scene), ComponentTrack.HEAT_SHIELD) == 2),
+                    "the server installed the tier 2 heat shield");
             context.setScreen(() -> null);
         }
     }
