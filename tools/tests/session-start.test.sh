@@ -9,6 +9,8 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
+command -v jq >/dev/null || { echo "FAIL: session-start.test.sh needs jq (the gh stub applies the hook's --jq filter)"; exit 1; }
+
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 py=$root/tools/py
 work=$(mktemp -d)
@@ -50,6 +52,13 @@ if [[ $1 == api ]]; then
 fi
 if [[ $1 == issue ]]; then printf '%s\n' "${HANDOFF:-}"; exit 0; fi
 if [[ $1 == pr && $* == *merged* ]]; then printf '%s\n' "${MERGED:-}"; exit 0; fi
+if [[ $1 == pr && $* == *open* ]]; then
+  [[ ${OPEN_MODE:-} != fail ]] || exit 1
+  jq=
+  while (($#)); do [[ $1 == --jq ]] && jq=$2; shift; done
+  printf '%s\n' "${OPEN_PRS:-[]}" | jq -r "$jq"
+  exit 0
+fi
 exit 0
 S
 chmod +x "$work/bin/gh"
@@ -144,6 +153,21 @@ long=$("$py" -c 'print("word " * 1001)')
 out=$(LIMITS_JSON='{}' HANDOFF="#14 $long" run_hook)
 check "an over-long handoff warns" yes "$(has 'breaks the handoff rules')"
 check "the warning is one line" 1 "$(grep -c 'breaks the handoff rules' <<<"$out")"
+
+# Open PRs: a CONFLICTING one is marked; UNKNOWN is flagged as not known; MERGEABLE is unmarked.
+prs='[{"number":11,"title":"Clean","headRefName":"11-clean","isDraft":false,"mergeable":"MERGEABLE","labels":[{"name":"stage:reviewed"}]},
+{"number":12,"title":"Broken","headRefName":"12-broken","isDraft":true,"mergeable":"CONFLICTING","labels":[]},
+{"number":13,"title":"Fresh","headRefName":"13-fresh","isDraft":false,"mergeable":"UNKNOWN","labels":[]}]'
+out=$(LIMITS_JSON='{}' OPEN_PRS="$prs" run_hook)
+line() { grep -F "$1" <<<"$out" || true; }
+check "open PRs keep their stage" yes "$([[ $(line '#11 Clean') == *'stages: stage:reviewed'* ]] && echo yes || echo no)"
+check "a MERGEABLE PR is unmarked" no "$([[ $(line '#11 Clean') == *'CONFLICT'* || $(line '#11 Clean') == *'UNKNOWN'* ]] && echo yes || echo no)"
+check "a CONFLICTING PR is marked" yes "$([[ $(line '#12 Broken') == *'CONFLICTING: merge origin/main into the branch'* ]] && echo yes || echo no)"
+check "a CONFLICTING draft keeps its draft flag" yes "$([[ $(line '#12 Broken') == *' draft '* ]] && echo yes || echo no)"
+check "an UNKNOWN PR says mergeability is not known" yes "$([[ $(line '#13 Fresh') == *'mergeability not known yet'* ]] && echo yes || echo no)"
+check "an UNKNOWN PR is not marked CONFLICTING" no "$([[ $(line '#13 Fresh') == *'CONFLICTING'* ]] && echo yes || echo no)"
+out=$(LIMITS_JSON='{}' OPEN_MODE=fail run_hook)
+check "open PR fetch failure is noted" yes "$(has '(could not fetch PRs)')"
 
 [[ $failures -eq 0 ]] || { echo "$failures failure(s)"; exit 1; }
 echo "all passed"

@@ -32,9 +32,10 @@ case "$1 $2" in
     [[ ${STUB_VIEW_FAIL-0} == 1 ]] && exit 1
     case "$field" in
       headRefOid) echo "${STUB_SHA-abc123}" ;;
+      headRefOid,headRefName) echo "${STUB_SHA-abc123} ${STUB_BRANCH-12-some-slug}" ;;
       state)
         if [[ -e $LOG.merged ]]; then echo "${STUB_STATE_AFTER-MERGED}"; else echo "${STUB_STATE-OPEN}"; fi ;;
-      isDraft) echo "${STUB_DRAFT-false}" ;;
+      isDraft) [[ ${STUB_DRAFT_FAIL-0} == 1 ]] && exit 1; echo "${STUB_DRAFT-false}" ;;
       headRefName) echo "${STUB_BRANCH-12-some-slug}" ;;
       baseRefName) echo "${STUB_BASE-main}" ;;
       body) printf '%s\n' "${STUB_BODY-Closes #12}" ;;
@@ -113,6 +114,11 @@ case "$1" in
     printf '%s' "${STUB_MAIN_ADRS-docs/adr/0007-seven.md
 docs/adr/0018-eighteen.md
 }" ;;
+  ls-remote)
+    # The branch tip on origin: STUB_REMOTE_SHA, else the PR's head sha. STUB_LSREMOTE_FAIL=1 fails; empty prints no line.
+    [[ ${STUB_LSREMOTE_FAIL-0} == 1 ]] && exit 1
+    remote_sha=${STUB_REMOTE_SHA-${STUB_SHA-abc123}}
+    [[ -z $remote_sha ]] || printf '%s\t%s\n' "$remote_sha" "$3" ;;
   remote) echo "${STUB_ORIGIN-git@github.com:pkeppeler/deepcharter.git}" ;;
   cat-file) [[ ${STUB_ROADMAP_PRESENT-1} == 1 ]] || exit 1 ;;
   worktree) if [[ $2 == add ]]; then mkdir -p "$4"; fi ;;
@@ -215,6 +221,16 @@ refusal() {
     fail "$name (rc=$rc out=$out)"
   fi
 }
+
+# run_check [VAR=value ...]: run `merge-pr.sh --check 7`.
+run_check() {
+  reset
+  rc=0
+  out=$(env "$@" PATH="$work/bin:$PATH" bash "$script" --check 7 2>&1) || rc=$?
+}
+
+# last_line_is NAME TEXT: the output's last line is exactly TEXT.
+last_line_is() { local last=${out##*$'\n'}; if [[ $last == "$2" ]]; then pass "$1"; else fail "$1 (got: $last)"; fi; }
 
 wt() { grep -o '[^ ]*/wt' "$LOG" | head -1; }
 
@@ -405,6 +421,7 @@ exited "failed run then newer success merges" 0
 logged "merge after re-run" "$merge_line"
 refusal "conflicting PR" "REFUSED: PR #7 is not mergeable" STUB_MERGEABLE=CONFLICTING
 refusal "unknown mergeability" "REFUSED: PR #7 is not mergeable" STUB_MERGEABLE=UNKNOWN
+refusal "conflicting PR says to merge origin/main" "merge origin/main into the branch" STUB_MERGEABLE=CONFLICTING
 refusal "gh pr view fails silently" "REFUSED: PR #7 could not be read" STUB_VIEW_FAIL=1
 refusal "zero checks includes gh output" "gh: Not Found" "STUB_RUNS=gh: Not Found" STUB_RUNS_RC=1
 refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/else.git
@@ -592,10 +609,62 @@ check_args "two arguments" 7 --admin
 check_args "non-numeric argument" abc
 check_args "trailing newline" $'7\n'
 
+# merge-pr.sh --check <n>: the gate's verdict, read-only.
+run_check
+exited "check passes a PR the gate would merge" 0
+printed "check prints a required check's state" "check build: pass"
+printed "check says the gate passes" "GATE OK: PR #7 at abc123 passes the merge gate"
+not_logged "check never merges" "^gh pr merge"
+not_logged "check never edits" "^gh pr edit"
+not_logged "check never comments" "^gh pr comment"
+not_logged "check never retargets (no stacked-PR listing)" "^gh pr list"
+not_logged "check never pushes" "push"
+run_check "STUB_LABELS=infra" "STUB_COMMENT=nope"
+exited "check passes before the review pass is marked" 0
+printed "check notes the missing review pass" "review-passed: no"
+last_line_is "check's last line names the missing review pass" "GATE OK except: no review pass (the merge would refuse until then)"
+run_check STUB_DRAFT=true
+exited "check passes a draft" 0
+printed "check notes the draft" "draft: yes"
+last_line_is "check's last line names the draft" "GATE OK except: draft (the merge would refuse until then)"
+run_check STUB_DRAFT=true "STUB_LABELS=infra"
+last_line_is "check's last line names both" "GATE OK except: draft, no review pass (the merge would refuse until then)"
+run_check STUB_DRAFT_FAIL=1
+exited "check refuses an unreadable draft flag" 1
+printed "check keeps the one-line contract on an unreadable draft flag" "REFUSED: PR #7 could not read isDraft"
+run_check STUB_CLOSING=
+exited "check refuses a body with no closing reference" 1
+printed "check names the closing fix" "has no closing reference (put 'Closes #12' in the body)"
+run_check "STUB_RUNS=$(runs build:1:failure build:2:skipped tool-tests:3:success)"
+exited "check refuses a failed run hidden by a later skipped run" 1
+printed "check names the failing check" "not passing: build (newest non-skipped run: failure)"
+printed "check lists the passing check beside the failing one" "check tool-tests: pass"
+printed "check lists the failing check" "check build: failure"
+run_check "STUB_RUNS=$(runs build:1:failure build:2:skipped tool-tests:3:success)" STUB_MERGEABLE=CONFLICTING
+exited "check refuses a conflicting PR" 1
+run_check "STUB_RUNS=$(runs build:1:success tool-tests:2:in_progress)"
+exited "check refuses a running required check" 1
+printed "check shows the running state" "check tool-tests: in_progress"
+run_check "STUB_RUNS=$(runs build:1:success)"
+exited "check refuses a missing required check" 1
+printed "check names the missing check" "lacks required check: tool-tests"
+run_check STUB_ORIGIN=git@github.com:someone/else.git
+exited "check refuses wrong origin" 1
+reset
+rc=0
+out=$(PATH="$work/bin:$PATH" bash "$script" --check 7 8 2>&1) || rc=$?
+exited "check with two PRs is a usage error" 2
+rc=0
+out=$(PATH="$work/bin:$PATH" bash "$script" --check 2>&1) || rc=$?
+exited "check without a PR is a usage error" 2
+rc=0
+out=$(PATH="$work/bin:$PATH" bash "$script" --verify 7 2>&1) || rc=$?
+exited "unknown flag is a usage error" 2
+
 # mark-review-passed.sh
 SCRIPT=$mark run_script STUB_SHA=def456
 exited "mark-review-passed exits 0" 0
-logged "mark reads head sha" "gh pr view 7 -R pkeppeler/deepcharter --json headRefOid --jq .headRefOid"
+logged "mark reads head sha and branch in one call" "gh pr view 7 -R pkeppeler/deepcharter --json headRefOid,headRefName --jq .headRefOid + \" \" + .headRefName"
 logged "mark comments exact body" "gh pr comment 7 -R pkeppeler/deepcharter --body review-passed def456"
 logged "mark adds label" "gh pr edit 7 -R pkeppeler/deepcharter --add-label review-passed"
 # merge-pr.sh calls the lib's steps one at a time, interleaved with its other checks, and mark calls them through
@@ -611,6 +680,19 @@ else
 fi
 
 # mark runs the merge gate's closing-reference, demo and map checks (tools/lib/pr-body-checks.sh), and never waits for CI.
+SCRIPT=$mark run_script STUB_SHA=def456 STUB_REMOTE_SHA=abc123
+exited "mark refuses a head that lags the pushed branch" 1
+printed "mark names both shas and the fix" "head def456 on GitHub but origin/12-some-slug is at abc123 (wait, or 'gh pr close 7 && gh pr reopen 7')"
+not_logged "mark stale head refused before commenting" "^gh pr comment"
+not_logged "mark stale head refused before labelling" "^gh pr edit"
+SCRIPT=$mark run_script STUB_REMOTE_SHA=
+exited "mark refuses a branch missing on origin" 1
+printed "mark names the missing branch" "origin has no branch 12-some-slug"
+SCRIPT=$mark run_script STUB_LSREMOTE_FAIL=1
+exited "mark refuses when origin is unreadable" 1
+printed "mark names the unreadable origin" "could not read origin/12-some-slug"
+SCRIPT=$mark run_script
+logged "mark reads the branch tip" "git ls-remote origin refs/heads/12-some-slug"
 SCRIPT=$mark run_script STUB_CLOSING=
 exited "mark refuses a body with no closing reference" 1
 printed "mark names the closing fix" "has no closing reference (put 'Closes #12' in the body)"
