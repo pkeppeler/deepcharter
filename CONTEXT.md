@@ -50,6 +50,15 @@ _Avoid_: level, biome, dimension (that is the implementation)
 
 **Campaign world**:
 The one tall world that holds the surface as its top band and the story layers, ending at the finale's floor. Crossing a breach in it has no teleport.
+
+**Band**:
+A fixed range of Y in the campaign world: the surface, a layer, or unbuilt depth. Its edges are on section boundaries.
+_Avoid_: level, floor
+
+**Unbuilt depth**:
+The plain rock of the campaign world below the last built layer. Nothing is in it yet.
+_Avoid_: void, empty space
+
 **Seam**:
 The join between two tall worlds, including the campaign world and the first uncharted world, crossed by a fast background swap inside a grained crust.
 _Avoid_: portal, loading screen

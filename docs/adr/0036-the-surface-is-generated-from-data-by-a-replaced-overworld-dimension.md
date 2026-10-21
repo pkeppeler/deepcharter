@@ -6,6 +6,8 @@ status: accepted
 
 Builds on [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md) (our own dry surface) and [ADR 0030](0030-art-direction-decisions.md) (the art direction). Amends [ADR 0011](0011-the-surface-is-layer-0-with-an-open-floor.md): the open floor now comes from our own material rule. Issue #240.
 
+Amended by [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md): the campaign world overrides the overworld dimension type.
+
 ## Decision
 
 - **The overworld is replaced by a data pack dimension.** `data/minecraft/dimension/overworld.json` has the generator: `deepcharter:surface` noise settings and a `multi_noise` biome source of three surface biomes. It wins over every world preset, checked in real worlds (see Checked in real worlds). The GameTest server ignores it (it bakes a flat world), so `deepcharter:surface_sample` in the test preset holds a copy, and `SurfaceTerrainTest` keeps the copy equal to the shipped file.
