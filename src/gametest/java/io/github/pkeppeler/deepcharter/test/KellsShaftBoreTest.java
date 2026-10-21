@@ -101,6 +101,36 @@ public class KellsShaftBoreTest {
     private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
     private static final Input STRAFE_EAST = new Input(false, false, true, false, false, false, false);
     private static final Input STRAFE_WEST = new Input(false, false, false, true, false, false, false);
+    private static final Input DRIVE_SOUTH = new Input(true, false, false, false, false, false, false);
+    private static final Input DRIVE_NORTH = new Input(false, true, false, false, false, false, false);
+
+    /** A way to step aside from a refused slab: the pod faces south, and the input that drives it that way. */
+    private enum Side {
+        EAST(1, 0, STRAFE_EAST),
+        WEST(-1, 0, STRAFE_WEST),
+        SOUTH(0, 1, DRIVE_SOUTH),
+        NORTH(0, -1, DRIVE_NORTH);
+
+        final int dx;
+        final int dz;
+        final Input input;
+
+        Side(int dx, int dz, Input input) {
+            this.dx = dx;
+            this.dz = dz;
+            this.input = input;
+        }
+
+        /** How far the pod is along this side's direction, in blocks from the world's origin. */
+        double along(PodEntity pod) {
+            return pod.getX() * dx + pod.getZ() * dz;
+        }
+
+        /** The next side to try, round the compass. */
+        Side next() {
+            return values()[(ordinal() + 1) % values().length];
+        }
+    }
 
     private enum Column {
         SHAFT_LINED("shaft, lined", true, true),
@@ -155,8 +185,9 @@ public class KellsShaftBoreTest {
         // The straight bore's bot.
         boolean sideways;
         int idleTicks;
-        boolean east = true;
+        Side side = Side.NORTH;
         double sideStart;
+        double lastAlong;
 
         @Nullable
         BlockPos lastLooked;
@@ -336,6 +367,21 @@ public class KellsShaftBoreTest {
             run.lastProgressTick = run.ticks;
         }
         if (run.ticks - run.lastProgressTick > NO_PROGRESS_TICKS || run.ticks > RUN_TICK_BUDGET) {
+            BlockPos below = pod.blockPosition().below();
+            LOGGER.info(
+                    "[kells-bore] stalled {} at {} ground {} drilling {} sideways {} idle {} fuel {} stranded {} below {}",
+                    run.column.label,
+                    pod.position(),
+                    pod.onGround(),
+                    pod.drilling(),
+                    run.sideways,
+                    run.idleTicks,
+                    pod.fuel(),
+                    pod.stranded(),
+                    BlockPos.betweenClosedStream(below.offset(-1, 0, -1), below.offset(1, 0, 1))
+                            .map(c -> c.toShortString() + "="
+                                    + pod.level().getBlockState(c).getBlock().getDescriptionId())
+                            .toList());
             finish(run, Outcome.STALLED, pod);
             return;
         }
@@ -384,7 +430,7 @@ public class KellsShaftBoreTest {
 
     /** A straight bore, as {@code LavaBoreTest}'s bot drives it, down to the crust. */
     private static void driveBore(Run run, PodEntity pod) {
-        Input base = run.sideways ? (run.east ? STRAFE_EAST : STRAFE_WEST) : SPRINT;
+        Input base = run.sideways ? run.side.input : SPRINT;
         if (!pod.onGround() && -pod.getDeltaMovement().y > BRAKE_ABOVE_SINK) {
             run.pilot.setInput(new Input(
                     base.forward(), base.backward(), base.left(), base.right(), true, base.shift(), base.sprint()));
@@ -412,25 +458,31 @@ public class KellsShaftBoreTest {
         if (!run.sideways) {
             run.idleTicks = pod.onGround() && !pod.drilling() ? run.idleTicks + 1 : 0;
             if (run.idleTicks >= STUCK_TICKS) {
-                run.sideways = true;
-                run.east = !run.east;
-                run.sideStart = pod.getX();
-                run.idleTicks = 0;
+                startSidestep(run, pod, run.side.next());
             }
         } else {
-            double moved = Math.abs(pod.getX() - run.sideStart);
-            if (moved >= SIDE_STEP - 0.05) {
+            double along = run.side.along(pod);
+            if (along - run.sideStart >= SIDE_STEP - 0.05) {
                 run.sideways = false;
                 run.idleTicks = 0;
                 return;
             }
-            run.idleTicks = !pod.drilling() && moved < 1e-3 ? run.idleTicks + 1 : 0;
+            boolean still = Math.abs(along - run.lastAlong) < 1e-4 && !pod.drilling();
+            run.lastAlong = along;
+            run.idleTicks = still ? run.idleTicks + 1 : 0;
             if (run.idleTicks >= STUCK_TICKS) {
-                run.east = !run.east;
-                run.sideStart = pod.getX();
-                run.idleTicks = 0;
+                // The slab beside the pod is refused too: try the next side from where the pod is.
+                startSidestep(run, pod, run.side.next());
             }
         }
+    }
+
+    private static void startSidestep(Run run, PodEntity pod, Side side) {
+        run.sideways = true;
+        run.side = side;
+        run.sideStart = side.along(pod);
+        run.lastAlong = run.sideStart;
+        run.idleTicks = 0;
     }
 
     /** Lava in the {@link #LINING_LOOKAHEAD} slabs below the pod's feet, or beside its box, within {@link #LINING_SPREAD} of it. */
