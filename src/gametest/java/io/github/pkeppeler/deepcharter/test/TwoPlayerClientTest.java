@@ -6,7 +6,6 @@ import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay;
 import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
@@ -17,6 +16,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.List;
 import java.util.Objects;
@@ -51,7 +51,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     // bore.
     private static final int X = 4000;
     private static final int Z = 4000;
-    private static final int FLOOR_Y = 4;
+    private static final int FLOOR_Y = TestLayers.worldY(1, 4);
     private static final int STONE_ROW_Y = FLOOR_Y - 1;
     private static final int ROOM_WEST = 6;
     private static final int ROOM_EAST = 16;
@@ -129,7 +129,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 "the real client riding a pod in layer_1 with the mock's pod in view",
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
-                        && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
+                        && TestLayers.isIn(ClientLight.clientLevel(client), 1)
                         && ClientLight.clientLevel(client)
                                         .getEntity(rig.mockPod().getId())
                                 instanceof PodEntity);
@@ -198,9 +198,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 two.server().runOnServer(server -> two.mock().releaseInput());
                 mockReleased = true;
             }
-            clientSawMockBore |= context.computeOnClient(client -> ClientLight.clientLevel(client)
-                            .dimension()
-                            .equals(LayerChain.dimension(1))
+            clientSawMockBore |= context.computeOnClient(client -> TestLayers.isIn(ClientLight.clientLevel(client), 1)
                     && ClientLight.clientLevel(client).getBlockState(mockStone).isAir());
             if (realReleased && mockReleased) {
                 break;
@@ -230,7 +228,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
     /** Builds a room in layer 1, then seats the real player and the mock each in a Mole, a few rows above the crust. */
     private static Rig setUp(MinecraftServer server, TwoPlayerServer two) {
-        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel one = TestLayers.level(server, 1);
         box(one, 0, 2, LayerBlocks.BREACH_CRUST);
         box(one, STONE_ROW_Y, STONE_ROW_Y, Blocks.STONE);
         shell(one);
@@ -259,7 +257,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
      * {@link SignalDecayTuning}'s, so a retuned curve moves the test with it.
      */
     private static Vec3 liftOutOfDecay(MinecraftServer server, PodEntity pod) {
-        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel one = TestLayers.level(server, 1);
         Vec3 floorPosition = pod.position();
         int clearY = one.getMinY() + SignalDecayTuning.DEFAULT.band(1).onset() + 1;
         int centerX = Mth.floor(floorPosition.x);
@@ -310,7 +308,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     }
 
     private static boolean inLayer2(ServerPlayer player) {
-        return player.level().dimension().equals(LayerChain.dimension(2));
+        return TestLayers.isIn(player.level(), 2);
     }
 
     private static ServerPlayer realPlayer(MinecraftServer server, ServerPlayer mock) {
@@ -338,7 +336,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 end.realInLayer2() && end.mockInLayer2() && end.bothRiding(),
                 "Each pod should end in layer_2 with its pilot riding: " + end);
         two.server().runOnServer(server -> {
-            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel one = TestLayers.level(server, 1);
             for (BlockPos column : Stream.concat(rig.realColumns().stream(), rig.mockColumns().stream())
                     .toList()) {
                 for (int y = 0; y <= 2; y++) {
@@ -351,7 +349,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "both players riding pods in layer_2",
-                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2))
+                client -> TestLayers.isIn(ClientLight.clientLevel(client), 2)
                         && ClientSession.player(client).getVehicle() instanceof PodEntity
                         && ClientLight.clientLevel(client).getPlayerByUUID(mockId) instanceof AbstractClientPlayer mock
                         && mock.getVehicle() instanceof PodEntity);

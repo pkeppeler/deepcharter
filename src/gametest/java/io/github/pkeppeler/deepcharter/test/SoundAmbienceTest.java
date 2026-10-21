@@ -7,7 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -50,10 +50,8 @@ public class SoundAmbienceTest {
 
     /** The biomes of a layer, from the layer's own biome source. */
     private static Set<Identifier> layerBiomes(MinecraftServer server, int layer) {
-        BiomeSource source = ClientLight.serverLevel(server, LayerChain.dimension(layer))
-                .getChunkSource()
-                .getGenerator()
-                .getBiomeSource();
+        BiomeSource source =
+                TestLayers.level(server, layer).getChunkSource().getGenerator().getBiomeSource();
         Set<Identifier> ids = new TreeSet<>();
         source.possibleBiomes()
                 .forEach(biome -> ids.add(biome.unwrapKey().orElseThrow().identifier()));
@@ -170,7 +168,7 @@ public class SoundAmbienceTest {
         MinecraftServer server = helper.getLevel().getServer();
         var registry = server.registryAccess().lookupOrThrow(Registries.BIOME);
         for (int layer = 1; layer <= LayerChain.count(server.registryAccess()); layer++) {
-            BackgroundMusic dimension = ClientLight.serverLevel(server, LayerChain.dimension(layer))
+            BackgroundMusic dimension = TestLayers.level(server, layer)
                     .dimensionType()
                     .attributes()
                     .applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, BackgroundMusic.EMPTY);

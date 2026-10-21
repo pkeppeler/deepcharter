@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -17,7 +18,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public class ScanSliceTest {
     private static final ScanArea AREA = ScannerTuning.DEFAULT.tierOneArea();
     /** Well above the flat test world, so a 32-block dive stays inside the build limits. */
-    private static final int ORIGIN_Y = 100;
+    private static final int ORIGIN_Y = TestLayers.worldY(TestLayers.SURFACE, 100);
 
     private static BlockPos origin(GameTestHelper helper) {
         BlockPos at = helper.absolutePos(new BlockPos(2, 0, 2));

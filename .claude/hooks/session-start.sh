@@ -3,6 +3,7 @@
 # Also derives what the handoff must not carry: the next free ADR number and the last merged PRs.
 # Network calls are bounded; a failure degrades to a note and never blocks the session.
 cd "$(dirname "$0")/../.." || exit 0
+py=$PWD/tools/py
 adr_lib=0
 # shellcheck source=../../tools/lib/adr.sh
 source tools/lib/adr.sh 2>/dev/null && adr_lib=1
@@ -18,7 +19,7 @@ t() { perl -e 'alarm shift; exec @ARGV' "${T:-10}" "$@" 2>/dev/null; }
     echo "(could not check the interaction limit: gh failed)"
     echo
   else
-    warn=$(printf %s "$limits" | python3 -I -c '
+    warn=$(printf %s "$limits" | "$py" -c '
 import json, sys
 from datetime import datetime, timedelta, timezone
 d = json.load(sys.stdin)  # bad JSON exits nonzero: the caller reports a parse error
@@ -49,7 +50,7 @@ else:
     --jq 'if length == 0 then empty else .[0] | "#\(.number)\n\(.body)" end'); then
     echo "${handoff:-(no open issue labelled handoff)}"
     # The same rules tools/handoff.sh enforces; this catches an edit made without the tool.
-    if [ -n "$handoff" ] && ! rules=$(printf %s "$handoff" | python3 -I tools/handoff_check.py 2>&1); then
+    if [ -n "$handoff" ] && ! rules=$(printf %s "$handoff" | "$py" tools/handoff_check.py 2>&1); then
       echo
       echo "WARNING: the handoff breaks the handoff rules ($(printf %s "$rules" | paste -sd';' -)); rewrite it with tools/handoff.sh <file>"
     fi
@@ -74,8 +75,8 @@ else:
     || echo "(could not fetch merged PRs)"
   echo
   echo "## Open PRs and their pipeline stage"
-  t gh pr list --repo "$R" --state open --json number,title,headRefName,isDraft,labels \
-    --jq '.[] | "#\(.number) \(.title) [\(.headRefName)]\(if .isDraft then " draft" else "" end) stages: \([.labels[].name | select(startswith("stage:") or . == "review-passed")] | join(","))"' \
+  t gh pr list --repo "$R" --state open --json number,title,headRefName,isDraft,labels,mergeable \
+    --jq '.[] | "#\(.number) \(.title) [\(.headRefName)]\(if .isDraft then " draft" else "" end) stages: \([.labels[].name | select(startswith("stage:") or . == "review-passed")] | join(","))\(if .mergeable == "CONFLICTING" then "  CONFLICTING: merge origin/main into the branch" elif .mergeable == "UNKNOWN" then "  (mergeability not known yet)" else "" end)"' \
     || echo "(could not fetch PRs)"
   echo
   echo "## Local-only state (not on GitHub)"
@@ -93,7 +94,7 @@ else:
   git stash list | sed 's/^/stash: /'
 } > /tmp/deepcharter-handoff.$$ 2>&1
 
-python3 -I -c '
+"$py" -c '
 import json, sys
 ctx = open(sys.argv[1]).read()
 print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": ctx}}))

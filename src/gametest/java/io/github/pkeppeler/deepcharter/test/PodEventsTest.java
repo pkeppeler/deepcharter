@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -39,7 +40,7 @@ import org.jspecify.annotations.Nullable;
  * run sees the defaults.
  */
 public class PodEventsTest {
-    private static final int FLOOR_Y = 1;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     /** The pod starts at z 3.5 with a 1.9-wide hull, so a wall at z 5 stops it after 0.55 blocks. */
     private static final int WALL_Z = 5;

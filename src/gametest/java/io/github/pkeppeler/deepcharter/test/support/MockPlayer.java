@@ -133,9 +133,9 @@ public final class MockPlayer {
         confirmDimensionChange();
     }
 
-    /** Disconnect and remove the player. Safe to call when it has already left. */
+    /** Disconnect and remove the player, also one that respawned (#698). Safe to call when it has already left. */
     public void leave() {
-        if (isOnline()) {
+        if (connection.isConnected()) {
             connection.disconnect(Component.literal("mock player left"));
             connection.handleDisconnection();
         }

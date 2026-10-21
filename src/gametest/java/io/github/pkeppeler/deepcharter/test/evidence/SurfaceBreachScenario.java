@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -75,9 +76,7 @@ public class SurfaceBreachScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the client on the surface",
-                    client -> ClientLight.clientLevel(client)
-                            .dimension()
-                            .equals(LayerChain.dimension(LayerChain.SURFACE)));
+                    client -> TestLayers.isIn(ClientLight.clientLevel(client), LayerChain.SURFACE));
             context.waitTicks(SETTLE_TICKS);
             screenshot(context, "overworld-surface");
             for (int i = 0; i < SURFACE_FRAMES; i++) {
@@ -94,7 +93,7 @@ public class SurfaceBreachScenario extends EvidenceScenario {
                     surface.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);
                 }
                 // Generate the arrival area in layer 1 now so the client has less to wait for after the crossing.
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 for (int dx = -2; dx <= 2; dx++) {
                     for (int dz = -2; dz <= 2; dz++) {
                         one.getChunk(column.getX() / 16 + dx, column.getZ() / 16 + dz);
@@ -145,7 +144,7 @@ public class SurfaceBreachScenario extends EvidenceScenario {
         while (singleplayer.getServer().computeOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             ServerLevel level = player.level();
-            if (!level.dimension().equals(LayerChain.dimension(1))) {
+            if (!TestLayers.isIn(level, 1)) {
                 return false;
             }
             double y = Math.min(player.getY() + CLIMB_STEP, level.getMaxY() + LayerTuning.DEFAULT.pocketRadius());

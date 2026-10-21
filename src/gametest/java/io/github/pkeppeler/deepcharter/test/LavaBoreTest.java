@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.LavaHazard;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -31,15 +30,16 @@ import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.DecayCells;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.OddPods;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
@@ -206,7 +206,7 @@ public class LavaBoreTest {
     static final String BRACE_ENV = "DEEPCHARTER_LAVA_BORES_BRACE";
 
     private static final String REQUESTED_BRACE = System.getenv(BRACE_ENV);
-    /** The tier of the real heat shield part (#482) the pod carries; 1 is the only tier. */
+    /** The tier of the real heat shield part (#482, #712) the pod carries, 1 to 3; tier 3 rides a Mole-sized frame with a Prospector's cap. */
     static final String SHIELD_ENV = "DEEPCHARTER_LAVA_BORES_SHIELD";
 
     private static final String REQUESTED_SHIELD = System.getenv(SHIELD_ENV);
@@ -260,15 +260,15 @@ public class LavaBoreTest {
      * The smoke case starts its pods low, in a shaft cut with RoomCarver from the top of the rock, so that a bore is a thousand ticks
      * and not the six thousand of the whole layer. The control starts on the crust and must get through; the other starts in Deep Claim.
      */
-    private static final int SMOKE_CROSSING_Y = 3;
+    private static final int SMOKE_CROSSING_Y = TestLayers.worldY(1, 3);
 
-    private static final int SMOKE_LAVA_Y = 24;
+    private static final int SMOKE_LAVA_Y = TestLayers.worldY(1, 24);
     /**
      * The lava block the smoke bore must meet first, 3 slabs below its start: above any lava the world seed put in the shaft's way, and in the scanner's view from the first scan.
      * The height was picked for the game test world's seed 0, so a different seed may need a different value.
      * It is in the scan plane (the pod faces south, so the plane is the pod's x) and in the pod's footprint.
      */
-    private static final int SMOKE_LAVA_BLOCK_Y = 21;
+    private static final int SMOKE_LAVA_BLOCK_Y = TestLayers.worldY(1, 21);
 
     private static final int NO_SHAFT = Integer.MIN_VALUE;
     /** From this many bores the report prints a verdict as well: fewer say nothing about a rate. */
@@ -290,7 +290,7 @@ public class LavaBoreTest {
 
     private static final int CHUNK_Z = 2500;
     private static final int CHUNK_SPACING = 2;
-    private static final int PILOT_WAIT_Y = 150;
+    private static final int PILOT_WAIT_Y = TestLayers.worldY(1, 150);
 
     private static final int SIDE_STEP = 2;
     /** The chassis the bot drives, the Mole. Its footprint is as {@code PodFootprint} (package private in the main code) reads it: the bore square. */
@@ -650,7 +650,7 @@ public class LavaBoreTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + BORE_TICK_BUDGET + 2000)
     public void aStockMoleBoresFromTheTopOfLayerOneToLayerTwoAndTheLavaIsCounted(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         int count = boreCount(helper);
         boolean smoke = REQUESTED_BORES == null || REQUESTED_BORES.isBlank();
         int measuredLookahead = positiveEnv(helper, LINING_ENV, REQUESTED_LINING, 0);
@@ -831,7 +831,9 @@ public class LavaBoreTest {
                         Blocks.LAVA);
             }
         }
-        PodEntity pod = TestEntities.create(PodRegistry.typeOf(CHASSIS), level);
+        // A tier 3 shield needs the Prospector's cap (#712); OddPods.DEEP_MOLE is the Mole's frame with that cap.
+        PodEntity pod = TestEntities.create(
+                bore.shieldTier > CHASSIS.tierCap() ? OddPods.DEEP_MOLE_TYPE : PodRegistry.typeOf(CHASSIS), level);
         pod.setPos(bore.centreX, feetY, bore.centreZ);
         level.addFreshEntity(pod);
         ScannerPods.fit(server, bore.pilot.player(), pod, SCANNER_TIER);
@@ -898,7 +900,7 @@ public class LavaBoreTest {
     private static void step(GameTestHelper helper, Bore bore) {
         ServerPlayer player = bore.pilot.player();
         PodEntity pod = player.getVehicle() instanceof PodEntity ridden ? ridden : bore.pod.get();
-        boolean through = player.level().dimension().equals(LayerChain.dimension(2));
+        boolean through = TestLayers.isIn(player.level(), 2);
         if (through && player.isAlive() && player.getVehicle() instanceof PodEntity crossed) {
             finish(bore, Outcome.SURVIVED, "", crossed);
             crossed.discard();
@@ -2342,14 +2344,5 @@ public class LavaBoreTest {
                                     .map(e -> e.zone() + "@" + e.contactY())
                                     .toList()));
         }
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw helper.assertionException(
-                    Component.literal("dimension " + LayerChain.dimension(layer) + " did not load"));
-        }
-        return level;
     }
 }

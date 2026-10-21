@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
@@ -12,6 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -30,9 +30,9 @@ import net.minecraft.world.level.block.Blocks;
  * "HULL BURNING", and the hull starts to fall. The pilot pulls the rotor and climbs out of the lava with most of the hull left.
  */
 public class PodHeatShieldScenario extends EvidenceScenario {
-    private static final int X = 5100;
-    private static final int Z = 5000;
-    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
+    static final int X = 5100;
+    static final int Z = 5000;
+    static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
     private static final int TICKS_PER_FRAME = 4;
     private static final int MAX_TICKS = 900;
     private static final int RACK = 12;
@@ -49,21 +49,8 @@ public class PodHeatShieldScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-                RoomCarver.carve(one, X - 6, X + 6, FLOOR_Y - 1, FLOOR_Y + 13, Z - 6, Z + 6, Blocks.STONE);
-                RoomCarver.carve(
-                        one,
-                        new BlockPos(X - 5, FLOOR_Y, Z - 5),
-                        new BlockPos(X + 5, FLOOR_Y + 12, Z + 5),
-                        Blocks.AIR.defaultBlockState(),
-                        Block.UPDATE_ALL);
-                for (BlockPos lamp : new BlockPos[] {
-                    new BlockPos(X + 5, FLOOR_Y + 4, Z), new BlockPos(X - 5, FLOOR_Y + 4, Z),
-                    new BlockPos(X, FLOOR_Y + 4, Z + 5), new BlockPos(X, FLOOR_Y + 4, Z - 5),
-                    new BlockPos(X + 5, FLOOR_Y + 9, Z), new BlockPos(X - 5, FLOOR_Y + 9, Z)
-                }) {
-                    one.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), 3);
-                }
+                ServerLevel one = TestLayers.level(server, 1);
+                carveRoom(one, FLOOR_Y);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.teleportTo(one, X, FLOOR_Y, Z, Set.of(), 0, LOOK_DOWN, true);
@@ -81,7 +68,7 @@ public class PodHeatShieldScenario extends EvidenceScenario {
                     "the pilot seated in the shielded pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                            && TestLayers.isIn(ClientLight.clientLevel(client), 1));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 ClientSession.player(client).setXRot(LOOK_DOWN);
@@ -97,7 +84,7 @@ public class PodHeatShieldScenario extends EvidenceScenario {
             screenshot(context, "pod-heat-shield-before");
 
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 for (int x = X - 2; x <= X + 2; x++) {
                     for (int z = Z - 2; z <= Z + 2; z++) {
                         one.setBlock(new BlockPos(x, FLOOR_Y, z), Blocks.LAVA.defaultBlockState(), 3);
@@ -156,7 +143,25 @@ public class PodHeatShieldScenario extends EvidenceScenario {
         }
     }
 
-    private static int bricks(TestSingleplayerContext singleplayer) {
+    /** The sealed stone room of layer 1 the shield scenarios stage in, lit by glowstone. */
+    static void carveRoom(ServerLevel one, int floorY) {
+        RoomCarver.carve(one, X - 6, X + 6, floorY - 1, floorY + 13, Z - 6, Z + 6, Blocks.STONE);
+        RoomCarver.carve(
+                one,
+                new BlockPos(X - 5, floorY, Z - 5),
+                new BlockPos(X + 5, floorY + 12, Z + 5),
+                Blocks.AIR.defaultBlockState(),
+                Block.UPDATE_ALL);
+        for (BlockPos lamp : new BlockPos[] {
+            new BlockPos(X + 5, floorY + 4, Z), new BlockPos(X - 5, floorY + 4, Z),
+            new BlockPos(X, floorY + 4, Z + 5), new BlockPos(X, floorY + 4, Z - 5),
+            new BlockPos(X + 5, floorY + 9, Z), new BlockPos(X - 5, floorY + 9, Z)
+        }) {
+            one.setBlock(lamp, Blocks.GLOWSTONE.defaultBlockState(), 3);
+        }
+    }
+
+    static int bricks(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
                 .computeOnServer(server -> TestEntities.vehicle(
@@ -164,7 +169,7 @@ public class PodHeatShieldScenario extends EvidenceScenario {
                         .glazeBricks());
     }
 
-    private static float podHull(TestSingleplayerContext singleplayer) {
+    static float podHull(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
                 .computeOnServer(server -> TestEntities.vehicle(
@@ -172,7 +177,7 @@ public class PodHeatShieldScenario extends EvidenceScenario {
                         .hull());
     }
 
-    private static double podY(TestSingleplayerContext singleplayer) {
+    static double podY(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
                 .computeOnServer(server -> TestEntities.vehicle(

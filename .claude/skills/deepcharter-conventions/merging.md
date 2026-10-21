@@ -1,6 +1,6 @@
 # Merging
 
-Merge only through `tools/merge-pr.sh <n>`, which refuses and gives the reason. It retargets open PRs stacked on the PR's branch to its base first, because `--delete-branch` would close them. To merge several review-passed PRs, use the queue instead of a hand-rolled waiter: `tools/merge-queue.sh <n>...`.
+Merge only through `tools/merge-pr.sh <n>`, which refuses and gives the reason. It retargets open PRs stacked on the PR's branch to its base first, because `--delete-branch` would close them. To read the gate's verdict without merging or labelling, run `tools/merge-pr.sh --check <n>`: it runs the same checks as the merge, prints each check's state (its newest non-skipped run), and exits 1 with the `REFUSED:` line when the merge would refuse. Exit 0 means nothing blocks the merge except what the last line lists (`GATE OK except: draft, no review pass`). A draft and a missing `review-passed` pass are notes, not refusals. It runs `git fetch origin main`, which updates only the local `origin/main` ref. Reviewers judge CI and the body and label rules from this, never from `gh pr checks` or `statusCheckRollup`: a later skipped run hides an earlier failed one there (PR 397 passed review with a red client suite). To merge several review-passed PRs, use the queue instead of a hand-rolled waiter: `tools/merge-queue.sh <n>...`.
 
 - It merges the PRs one at a time, in the order given. For each it waits until no workflow run for the head is unfinished, then runs the gate.
 - On a stale-base refusal it runs `gh pr close <n> && gh pr reopen <n>`, waits for CI again and retries (3 times). On `mergeable: UNKNOWN` it waits 30 s and retries (4 times).
@@ -11,9 +11,10 @@ Merge only through `tools/merge-pr.sh <n>`, which refuses and gives the reason. 
 
 ## GitHub and CI gotchas
 
+- `tools/mark-review-passed.sh` refuses when GitHub's `headRefOid` differs from `git ls-remote origin <branch>` (right after a close/reopen it can lag the push): wait, or close and reopen.
 - The gate blocks on any failing check on the head sha, not only `REQUIRED_CHECKS`.
-- `client-gametest` shows "skipping" for runs from a non-`gameplay` label event (every stage-label change): look for a real run in `gh pr view <n> --json statusCheckRollup` before believing the client suite was skipped.
+- `client-gametest` shows "skipping" for runs from a non-`gameplay` label event (every stage-label change): run `tools/merge-pr.sh --check <n>` before believing the client suite was skipped (it reads the newest non-skipped run; the client job is not in its required list, but a failing one is shown and refuses).
 - A PR pushed while draft can end with only skipped CI on its head even after `gh pr ready`, and a conflicting PR gets none: check `gh run list --branch <b>`, then `gh pr close <n> && gh pr reopen <n>`. After a local conflict resolution a PR head can stay stale and conflicting; close and reopen to sync, then re-mark the pass.
 - After a base PR merges, a dependent PR's re-run can check out GitHub's stale `refs/pull/N/merge`: see `HEAD is now at` in `gh run view <id> --log`, and close and reopen once `gh api repos/pkeppeler/deepcharter/pulls/N --jq .merge_commit_sha` is fresh. A client-suite failure on a queue re-run whose merge commit passed before gets one `gh run rerun <id> --failed`, then a re-queue (#584).
 - `merge-queue.sh` reports "state: unknown" if `gh` goes missing after a merge: check `gh pr view <n> --json state` before re-queuing. A papercut written in the main checkout blocks the queue's main update: hand the line to an in-flight PR and restore the file.
-- `gh pr edit --remove-label X --add-label X` in one call removes X. `jq` is not installed: use `gh --jq` or `python3 -I`. `pull_requests[].base.sha` on a run is live, not the base at run time.
+- `gh pr edit --remove-label X --add-label X` in one call removes X. `jq` is not installed: use `gh --jq` or `tools/py`. `pull_requests[].base.sha` on a run is live, not the base at run time.

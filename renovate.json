@@ -1,1 +1,15 @@
-{"$schema":"https://docs.renovatebot.com/renovate-schema.json","extends":["github>pkeppeler/renovate"]}
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["github>pkeppeler/renovate"],
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/test/**",
+    "**/tests/**",
+    "**/__fixtures__/**",
+    "tooling/**"
+  ]
+}

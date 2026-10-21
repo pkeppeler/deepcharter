@@ -5,10 +5,10 @@ The Ribbon is one slim band along the top edge with a bar for each gauge, the al
 hung from its right end, and a plate for the text readout under that. The sprites are under textures/gui/sprites/cockpit/ribbon/ in src/main/resources/assets/deepcharter/. A
 resource pack restyles the Ribbon key by key, or turns it off with `enabled` 0 (ADR 0032, docs/design/skins.md).
 
-    python3 tools/cockpit_ribbon.py              write the sprites and the theme file
-    python3 tools/cockpit_ribbon.py --check      list the files that differ from what the generator makes (what the test runs)
-    python3 tools/cockpit_ribbon.py --preview D  write a mock of the Ribbon in each state on a 427 x 240 screen into directory D
-    python3 tools/cockpit_ribbon.py --coverage   print the share of a 427 x 240 screen the Ribbon covers
+    tools/py tools/cockpit_ribbon.py              write the sprites and the theme file
+    tools/py tools/cockpit_ribbon.py --check      list the files that differ from what the generator makes (what the test runs)
+    tools/py tools/cockpit_ribbon.py --preview D  write a mock of the Ribbon in each state on a 427 x 240 screen into directory D
+    tools/py tools/cockpit_ribbon.py --coverage   print the share of a 427 x 240 screen the Ribbon covers
 
 Standard library only. A sprite is the same bytes on every run: the only randomness is `random.Random` with a fixed seed, and every coordinate is a whole number, never
 `round`, which breaks a tie to the even number on one machine and the other way on another.

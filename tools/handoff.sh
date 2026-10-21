@@ -17,7 +17,7 @@ file=$1
 [[ -f $file ]] || { echo "REFUSED: $file is not a file" >&2; exit 1; }
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-if ! problems=$(python3 -I "$here/handoff_check.py" <"$file"); then
+if ! problems=$("$here/py" "$here/handoff_check.py" <"$file"); then
   echo "REFUSED: $problems" >&2
   exit 1
 fi

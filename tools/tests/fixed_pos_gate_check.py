@@ -1,11 +1,12 @@
-"""Tests the fixed-position gate in gradle/fixed-pos-gate.gradle.kts: in an evidence scenario (a file under test/evidence), a numeric literal for a
-world Y fails the build unless a `// fixed-pos: <reason>` marker with a reason sits on its statement or the comment lines above it. A literal Y is a
+"""Tests the fixed-position gate in gradle/fixed-pos-gate.gradle.kts: in any file of src/gametest (a GameTest, an evidence scenario, test support), a numeric
+literal for a world Y fails the build unless a `// fixed-pos: <reason>` marker with a reason sits on its statement or the comment lines above it. A call to
+`LayerChain.dimension(` fails the same way anywhere but in TestLayers.java, which is the one place a layer becomes a level. A literal Y is a
 `*_Y` constant set to a number, a literal Y in a BlockPos or Vec3 beside literal X and Z of 100 or more (new BlockPos(3616, 40, 3616)), and a literal Y in
 teleportTo, setPos, moveTo, snapTo or atY. A relative offset (a vector with a small or variable X or Z, pos.offset(1, 0, 2), above(3)) is left alone.
 
 Its fixture trees go through checkGametestFixtures in one Gradle run (gate_checks.py, gate_batch.py), so it needs the repo's Gradle wrapper
 on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
-Usage: python3 -I tools/tests/gate_checks.py fixed_pos
+Usage: tools/py tools/tests/gate_checks.py fixed_pos
 """
 import unittest
 
@@ -67,10 +68,21 @@ public class MentionsScenario extends EvidenceScenario {
     }
 }
 """,
-    "support/OutsideEvidence.java": """
-public class OutsideEvidence {
-    private static final int FLOOR_Y = 4;
-    BlockPos at = new BlockPos(0, 64, 0);
+    "support/TestLayers.java": """
+public final class TestLayers {
+    public static ResourceKey<Level> dimension(int layer) {
+        return LayerChain.dimension(layer);
+    }
+}
+""",
+    "support/TestLayersMention.java": """
+/** Asks {@code LayerChain.dimension(1)} for a level, which it must not. */
+public class TestLayersMention {
+    // LayerChain.dimension(2) in a comment is not a call
+    ResourceKey<Level> key(int layer) {
+        String text = "LayerChain.dimension(1)";
+        return TestLayers.dimension(layer);
+    }
 }
 """,
 }
@@ -105,7 +117,24 @@ MARKERS = {
     "a marker above a blank line": (BLANK_LINE, 5),
     "a marker in a string": (IN_STRING, 3),
 }
+# Not an evidence scenario: the gate covers every file of src/gametest.
+OUTSIDE_EVIDENCE = "private static final int FLOOR_Y = 4;"
+# label: (statement in a class body, line the gate reports)
+LAYER_CALLS = {
+    "LayerChain.dimension": ("ResourceKey<Level> key = LayerChain.dimension(1);", 3),
+    "LayerChain.dimension on the next line": ("ResourceKey<Level> key = LayerChain\n        .dimension(1);", 3),
+    "LayerChain.dimension in a lambda": ("Function<Integer, ResourceKey<Level>> key = layer -> LayerChain.dimension(layer);", 3),
+}
+MARKED_LAYER_CALL = "// fixed-pos: a layer key for a registry lookup\n    ResourceKey<Level> key = LayerChain.dimension(1);"
 BAD = {**{f"literal/{label}": case for label, case in STATEMENTS.items()}, **{f"marker/{label}": case for label, case in MARKERS.items()}}
+
+
+def named_class(name: str, statement: str) -> str:
+    return f"""
+public class {name} {{
+    {statement}
+}}
+"""
 
 
 def staging(statement: str) -> str:
@@ -122,6 +151,12 @@ def fixture(extra: dict[str, str]) -> dict[str, str]:
 
 CASES = {
     "clean": Case(fixture({}), None, gate="fixed_pos"),
+    "marked layer call": Case(fixture({"StagesTest.java": named_class("StagesTest", MARKED_LAYER_CALL)}), None, gate="fixed_pos"),
+    "outside evidence": Case(fixture({"StagesTest.java": named_class("StagesTest", OUTSIDE_EVIDENCE)}), None, gate="fixed_pos"),
+    **{
+        f"layer/{label}": Case(fixture({"NamesLayerTest.java": named_class("NamesLayerTest", statement)}), None, gate="fixed_pos")
+        for label, (statement, _) in LAYER_CALLS.items()
+    },
     **{label: Case(fixture({"evidence/StagesScenario.java": staging(statement)}), None, gate="fixed_pos") for label, (statement, _) in BAD.items()},
 }
 
@@ -137,7 +172,7 @@ class FixedPosGateTest(unittest.TestCase):
         self.assertFalse(result.ok, f"the gate should fail the build for {label}")
         self.assertIn(f"StagesScenario.java:{line} stages at a literal world Y", result.message)
         self.assertIn("// fixed-pos: <reason>", result.message)
-        for exempt in ("RelativeScenario", "MarkedScenario", "MentionsScenario", "OutsideEvidence"):
+        for exempt in ("RelativeScenario", "MarkedScenario", "MentionsScenario", "support/TestLayers.java", "TestLayersMention"):
             self.assertNotIn(exempt, result.message)
 
     def test_relative_marked_and_mentioned_forms_pass(self):
@@ -148,6 +183,23 @@ class FixedPosGateTest(unittest.TestCase):
         for label in STATEMENTS:
             with self.subTest(label):
                 self.check_fails(f"literal/{label}")
+
+    def test_literal_world_y_outside_an_evidence_scenario_fails(self):
+        result = outcome("outside evidence")
+        self.assertFalse(result.ok, "the gate should fail the build for a literal Y in a GameTest")
+        self.assertIn("StagesTest.java:3 stages at a literal world Y", result.message)
+
+    def test_layer_chain_dimension_fails_outside_test_layers(self):
+        for label, (_, line) in LAYER_CALLS.items():
+            with self.subTest(label):
+                result = outcome(f"layer/{label}")
+                self.assertFalse(result.ok, f"the gate should fail the build for {label}")
+                self.assertIn(f"NamesLayerTest.java:{line} names LayerChain.dimension", result.message)
+                self.assertNotIn("support/TestLayers.java", result.message)
+
+    def test_marked_layer_call_passes(self):
+        result = outcome("marked layer call")
+        self.assertTrue(result.ok, result.message)
 
     def test_marker_without_a_reason_or_in_a_string_does_not_count(self):
         for label in MARKERS:

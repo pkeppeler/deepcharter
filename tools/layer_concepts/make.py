@@ -3,8 +3,8 @@
 #447; round 1 was #241) from the Python sources in this directory.
 
 Usage: tools/layer_concepts/make.py [--check]
-       python3 tools/textures/texgen.py            draws the shipped textures from the recipes written here
-       python3 tools/textures/texgen.py --variant layer_grain   (and layer_form_1, _2, _3): draws a test pack's textures
+       tools/py tools/textures/texgen.py            draws the shipped textures from the recipes written here
+       tools/py tools/textures/texgen.py --variant layer_grain   (and layer_form_1, _2, _3): draws a test pack's textures
 
   - the shipped rock of layers 1 and 2, the user's pick of round 2 (Grain): the texgen recipes tools/textures/recipes/layer_rock.json, and the
     blockstates, models and item definitions of the four blocks (packed shale and its rubble, green shale and its rubble) in the mod's assets

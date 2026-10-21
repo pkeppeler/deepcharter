@@ -8,7 +8,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 tools=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 root=$(cd "$tools/.." && pwd)
-for needed in ffmpeg ffprobe git zip unzip python3; do
+py=$tools/py
+for needed in ffmpeg ffprobe git zip unzip uv; do
   if ! command -v "$needed" >/dev/null 2>&1; then
     echo "error: $needed is required to run this test" >&2
     exit 1
@@ -49,7 +50,7 @@ shortlines=$(awk '!/^[ \t]*(#|$)/ && NF < 2 { print $1 }' "$real_map")
 check "every real map line names a source file (${shortlines:-none})" "$([[ -z $shortlines ]] && echo 0 || echo 1)"
 missing=
 for id in $ids; do
-  if ! python3 -I -c 'import json, sys; sys.exit(0 if sys.argv[2] in json.load(open(sys.argv[1])) else 1)' "$sounds_json" "$id"; then
+  if ! "$py" -c 'import json, sys; sys.exit(0 if sys.argv[2] in json.load(open(sys.argv[1])) else 1)' "$sounds_json" "$id"; then
     missing="$missing $id"
   fi
 done
@@ -82,7 +83,7 @@ pack=$out/deepcharter-audio-pack
 
 ok "builds into an ignored path" build "$out"
 ok "writes pack.mcmeta" test -f "$pack/pack.mcmeta"
-ok "pack.mcmeta is valid JSON" python3 -I -m json.tool "$pack/pack.mcmeta"
+ok "pack.mcmeta is valid JSON" "$py" -m json.tool "$pack/pack.mcmeta"
 ok "writes a zip" test -f "$out/deepcharter-audio-pack.zip"
 sounds_dir=$pack/assets/deepcharter/sounds
 for f in test_single_1 test_variants_1 test_variants_2; do
@@ -91,9 +92,9 @@ for f in test_single_1 test_variants_1 test_variants_2; do
   check "$f.ogg is vorbis (got '${codec:-none}')" "$([[ $codec == vorbis ]] && echo 0 || echo 1)"
 done
 pack_sounds=$pack/assets/deepcharter/sounds.json
-ok "pack sounds.json is valid JSON" python3 -I -m json.tool "$pack_sounds"
+ok "pack sounds.json is valid JSON" "$py" -m json.tool "$pack_sounds"
 check_sounds() {
-  python3 -I -c '
+  "$py" -c '
 import json, sys
 d = json.load(open(sys.argv[1]))
 ok = (d["test.single"]["replace"] is True

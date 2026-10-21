@@ -12,5 +12,5 @@ tools=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 
-python3 -I "$tools/textures/texgen.py" --sheet "$stage/texture-reference.png"
+"$tools/py" "$tools/textures/texgen.py" --sheet "$stage/texture-reference.png"
 "$tools/pr-media.sh" readme "$stage/texture-reference.png"

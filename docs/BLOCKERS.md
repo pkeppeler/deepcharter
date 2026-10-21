@@ -4,7 +4,7 @@ The orchestrator writes this log during unattended runs. It never stops for a bl
 
 ## 2026-10-14: Renovate opens no PRs: the wrong Renovate app reaches this repo
 
-**Status:** open, needs the user.
+**Status:** resolved 2026-10-20. The user installed the self-hosted App `pkeppeler-renovate` on this repo and removed the Mend app; a dry run (pkeppeler/renovate run 39417651532) found the repo and resolved the shared preset, and #564 is closed. The text below is the original report.
 
 `renovate.json` extends `github>pkeppeler/renovate`, the private shared preset of the self-hosted Renovate that `pkeppeler/renovate`'s workflow runs. That workflow's GitHub App is not installed on this repo: its 2026-10-14 22:57 UTC run autodiscovered only `pkeppeler/renovate`. The Mend-hosted "Renovate" app is installed here instead. It cannot read the private preset, so it opened #564 ("Cannot find preset's package") and stopped.
 

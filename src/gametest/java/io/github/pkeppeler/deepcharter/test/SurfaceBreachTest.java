@@ -7,11 +7,11 @@ import com.mojang.serialization.JsonOps;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +70,7 @@ public class SurfaceBreachTest {
         fallWhileIn(helper, mock, surface);
         helper.succeedWhen(() -> {
             ServerPlayer player = mock.player();
-            expectIn(helper, player, LayerChain.dimension(1));
+            expectIn(helper, player, TestLayers.dimension(1));
             if (FROM_SURFACE.getOrDefault(player.getUUID(), 0) != 1) {
                 throw failure(
                         helper, "expected one CROSSED event from layer 0, saw %s", FROM_SURFACE.get(player.getUUID()));
@@ -78,7 +78,7 @@ public class SurfaceBreachTest {
             if (Math.abs(player.getX() - x) > 0.5 || Math.abs(player.getZ() - z) > 0.5) {
                 throw failure(helper, "arrived at x=%s z=%s, expected %s %s", player.getX(), player.getZ(), x, z);
             }
-            ServerLevel one = layer(helper, 1);
+            ServerLevel one = TestLayers.level(helper, 1);
             if (player.getY() > one.getMaxY()
                     || player.getY() < one.getMaxY() - LayerTuning.DEFAULT.pocketHeight() - 1) {
                 throw failure(
@@ -115,7 +115,7 @@ public class SurfaceBreachTest {
         });
         helper.succeedWhen(() -> {
             ServerPlayer player = mock.player();
-            expectIn(helper, player, LayerChain.dimension(1));
+            expectIn(helper, player, TestLayers.dimension(1));
             if (!(player.getVehicle() instanceof Minecart)) {
                 throw failure(helper, "the player is riding %s after crossing, not a minecart", player.getVehicle());
             }
@@ -126,7 +126,7 @@ public class SurfaceBreachTest {
     public void risingAboveLayerOnesTopReturnsToTheOverworld(GameTestHelper helper) {
         double x = 2700.5;
         double z = 2700.5;
-        ServerLevel one = layer(helper, 1);
+        ServerLevel one = TestLayers.level(helper, 1);
         MockPlayer mock = MockPlayers.join(helper, "surface-rises");
         mock.teleportTo(one, new Vec3(x, one.getMaxY() + 2, z), 0, 0);
         helper.succeedWhen(() -> {
@@ -189,7 +189,7 @@ public class SurfaceBreachTest {
     @GameTest
     public void aPortalCannotBeLit(GameTestHelper helper) {
         ServerLevel surface = surface(helper);
-        BlockPos origin = new BlockPos(3000, 40, 3000);
+        BlockPos origin = TestLayers.pos(TestLayers.SURFACE, 3000, 40, 3000);
         // A 4 wide, 5 tall obsidian frame in the x axis, with a 2 by 3 opening.
         for (int dx = 0; dx < 4; dx++) {
             for (int dy = 0; dy < 5; dy++) {
@@ -258,13 +258,5 @@ public class SurfaceBreachTest {
 
     private static ServerLevel surface(GameTestHelper helper) {
         return helper.getLevel().getServer().overworld();
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
     }
 }

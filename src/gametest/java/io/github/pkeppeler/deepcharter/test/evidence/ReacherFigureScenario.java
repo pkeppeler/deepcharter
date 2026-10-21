@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -17,6 +16,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
@@ -163,7 +163,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
                     ctx,
                     "the camera in layer " + LAYER,
                     client -> client.level != null
-                            && client.level.dimension().equals(LayerChain.dimension(LAYER))
+                            && TestLayers.isIn(client.level, LAYER)
                             && client.gui.screen() == null);
             serverDo(server -> {
                 ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
@@ -209,7 +209,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
         }
 
         private static ServerLevel layer(MinecraftServer server) {
-            return ClientLight.serverLevel(server, LayerChain.dimension(LAYER));
+            return TestLayers.level(server, LAYER);
         }
 
         /** Logs the block light (0 to 15) at the pod, under the figure in both places, on the wall behind it in the lit stills and on the far wall: how far the lamp reaches. */

@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -11,12 +10,12 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -55,7 +54,7 @@ import org.jspecify.annotations.Nullable;
  * from data. An override is keyed by pod, so that a test's pod is the only one it touches.
  */
 public class PodStatsTest {
-    private static final int FLOOR_Y = 1;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final float SOUTH = 0f;
     private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
@@ -544,20 +543,11 @@ public class PodStatsTest {
         }
     }
 
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw helper.assertionException(
-                    Component.literal("dimension " + LayerChain.dimension(layer) + " did not load"));
-        }
-        return level;
-    }
-
     @GameTest(maxTicks = FAR_TICKS)
     public void halvedTicksPerHardnessBoresInAboutHalfTheTicks(GameTestHelper helper) {
         int x = 4000;
         int floor = 60;
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - 3, x + 8, floor - 8, floor - 1, Z - 3, Z + 4, Blocks.STONE);
         RoomCarver.carve(level, x - 3, x + 8, floor, floor + 10, Z - 3, Z + 4, Blocks.AIR);
         FarRig[] rigs = new FarRig[2];
@@ -607,17 +597,17 @@ public class PodStatsTest {
     /** Boring the one crust row left under a pod in layer 1 with the pod's hull and crust damage set; checks the pod that arrives in layer 2. */
     private static void borePodThroughCrust(
             GameTestHelper helper, int x, float hull, float crustDamage, Consumer<PodEntity> check) {
-        ServerLevel one = layer(helper, 1);
+        ServerLevel one = TestLayers.level(helper, 1);
         RoomCarver.carve(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
         RoomCarver.carve(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
         UUID[] id = new UUID[1];
-        FarRig rig = FarRig.await(helper, one, new Vec3(x, 1, Z), "crust-stats-" + x, pod -> {
+        FarRig rig = FarRig.await(helper, one, TestLayers.vec(1, x, 1, Z), "crust-stats-" + x, pod -> {
             id[0] = pod.getUUID();
             OVERRIDES.put(pod.getUUID(), stats -> stats.withCrustHullDamage(crustDamage));
             pod.setHull(hull);
         });
         TestTicks.each(helper, () -> {
-            if (!rig.pod.isPresent() || !rig.pilot.player().level().dimension().equals(LayerChain.dimension(2))) {
+            if (!rig.pod.isPresent() || !TestLayers.isIn(rig.pilot.player().level(), 2)) {
                 return;
             }
             rig.pilot.releaseInput();
@@ -650,10 +640,10 @@ public class PodStatsTest {
         // Since #67 a pod at hull 0 is a wreck: the drill stops with the power and the pilot dies, so the pod does not
         // cross.
         int x = 4128;
-        ServerLevel one = layer(helper, 1);
+        ServerLevel one = TestLayers.level(helper, 1);
         RoomCarver.carve(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
         RoomCarver.carve(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
-        FarRig rig = FarRig.await(helper, one, new Vec3(x, 1, Z), "crust-stats-" + x, pod -> {
+        FarRig rig = FarRig.await(helper, one, TestLayers.vec(1, x, 1, Z), "crust-stats-" + x, pod -> {
             OVERRIDES.put(pod.getUUID(), stats -> stats.withCrustHullDamage(20f));
             pod.setHull(15f);
         });

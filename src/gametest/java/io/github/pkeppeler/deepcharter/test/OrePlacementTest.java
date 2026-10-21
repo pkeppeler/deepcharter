@@ -19,20 +19,24 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -66,9 +70,7 @@ public class OrePlacementTest {
     private static final int Z = 3000;
 
     /** Zone names top to bottom, layer 1 then layer 2: the six sampled zones in order. */
-    private static final String[] ZONE_NAMES = {
-        "topsoil_claims", "stone_benches", "deep_claim", "upper_levels", "shift_change", "prospectors_run"
-    };
+    private static final String[] ZONE_NAMES = zoneNames(2).toArray(String[]::new);
 
     /**
      * The original's rows for each zone, inclusive (REFERENCE.md section 4): layer 1 is rows 6 to 65 and layer 2 rows 65
@@ -87,20 +89,6 @@ public class OrePlacementTest {
      * platinium below.
      */
     private static final double[] CICATRIUM = {0, 0, 0, 0, 0.0002, 0.0006};
-
-    /**
-     * Chance that a stone block with no ore becomes rock, lava or gas, per zone. The original's hazard bands are
-     * compressed into the layers: rock from Stone Benches, lava and gas from Deep Claim, each stepping up as the
-     * original's rows 200, 450 and 550 do (8%, 13%, 40% rock of the solid tiles), times {@link #SLAB_SCALE}.
-     */
-    private static final double[][] HAZARDS = {
-        {0, 0, 0},
-        {0.02, 0, 0},
-        {0.025, 0.0125, 0.0125},
-        {0.0333, 0.0167, 0.0167},
-        {0.05, 0.025, 0.025},
-        {0.1, 0.05, 0.05}
-    };
 
     private static final int SIDE = 6;
     private static final int FIRST_CHUNK = 400;
@@ -126,9 +114,83 @@ public class OrePlacementTest {
                 expectFrequency(helper, zone, counted, block, expected);
             }
             double bare = 1 - oreTotal;
-            expectFrequency(helper, zone, counted, HazardBlocks.COMPANY_ROCK, bare * HAZARDS[zone][0]);
-            expectFrequency(helper, zone, counted, Blocks.LAVA, bare * HAZARDS[zone][1]);
-            expectFrequency(helper, zone, counted, HazardBlocks.GAS_POCKET, bare * HAZARDS[zone][2]);
+            String name = ZONE_NAMES[zone];
+            double gas =
+                    EarlyRunModel.hazardChance(name, "deepcharter:gas_pocket").orElse(0);
+            expectFrequency(
+                    helper, zone, counted, HazardBlocks.COMPANY_ROCK, bare * EarlyRunModel.companyRockChance(name));
+            expectFrequency(helper, zone, counted, Blocks.LAVA, bare * lavaChance(helper, name, zone));
+            expectFrequency(helper, zone, counted, HazardBlocks.GAS_POCKET, bare * gas);
+        }
+        helper.succeed();
+    }
+
+    /** Zones whose lava may be less than the zone above it, by zone name, each with its reason. A name that is no longer an exception fails too. */
+    private static final Map<String, String> LAVA_DEPTH_EXCEPTIONS = Map.of();
+
+    /** Zone names top to bottom through {@code layers} layers of the chain. */
+    private static List<String> zoneNames(int layers) {
+        List<String> names = new ArrayList<>();
+        for (int layer = 1; layer <= layers; layer++) {
+            for (int index = 0; index < Zones.COUNT; index++) {
+                // A layer of Zones.COUNT blocks from y=0 has one block per zone: y=2 is the top zone.
+                names.add(Zones.of(layer, 0, Zones.COUNT, Zones.COUNT - 1 - index)
+                        .orElseThrow(() -> new IllegalStateException("a layer of the chain has no zone names"))
+                        .id()
+                        .getPath());
+            }
+        }
+        return names;
+    }
+
+    /**
+     * The lava chance of the zone at {@code position} in {@link #zoneNames}, from the shipped fill JSON. The two top zones
+     * may have no entry (0); a deeper zone without one fails, so a renamed or dropped entry cannot pass as 0.
+     */
+    private static double lavaChance(GameTestHelper helper, String name, int position) {
+        OptionalDouble lava = EarlyRunModel.hazardChance(name, "minecraft:lava");
+        if (lava.isEmpty() && position >= 2) {
+            throw failure(helper, "no minecraft:lava entry in fill_%s.json", name);
+        }
+        return lava.orElse(0);
+    }
+
+    /** Lava rarity rises with depth (#232, #717): every zone, top to bottom through the chain, has at least the lava of the one above. */
+    @GameTest
+    public void lavaNeverFallsWithDepth(GameTestHelper helper) {
+        List<String> names =
+                zoneNames(LayerChain.count(helper.getLevel().getServer().registryAccess()));
+        double above = 0;
+        String aboveName = "";
+        List<String> excepted = new ArrayList<>();
+        for (int position = 0; position < names.size(); position++) {
+            String name = names.get(position);
+            double lava = lavaChance(helper, name, position);
+            LOGGER.info("{} lava chance {}", name, lava);
+            if (position < 2 && lava != 0) {
+                throw failure(helper, "%s must have no lava", name);
+            }
+            if (lava < above) {
+                if (LAVA_DEPTH_EXCEPTIONS.containsKey(name)) {
+                    excepted.add(name);
+                } else {
+                    throw failure(
+                            helper,
+                            "%s has lava chance %s, less than %s above it (%s); lava rises with depth, or list the zone"
+                                    + " in LAVA_DEPTH_EXCEPTIONS with its reason",
+                            name,
+                            lava,
+                            aboveName,
+                            above);
+                }
+            }
+            above = lava;
+            aboveName = name;
+        }
+        for (String name : LAVA_DEPTH_EXCEPTIONS.keySet()) {
+            if (!excepted.contains(name)) {
+                throw failure(helper, "%s is listed in LAVA_DEPTH_EXCEPTIONS but its lava does not fall", name);
+            }
         }
         helper.succeed();
     }
@@ -194,8 +256,8 @@ public class OrePlacementTest {
 
     @GameTest
     public void aGasBlastClearsOnlyNaturalRock(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
-        BlockPos centre = new BlockPos(7000, 60, Z);
+        ServerLevel level = TestLayers.level(helper, 1);
+        BlockPos centre = TestLayers.pos(1, 7000, 60, Z);
         stoneCube(level, centre, 3);
         Map<BlockPos, Block> kept = new LinkedHashMap<>();
         Map<BlockPos, Block> cleared = new LinkedHashMap<>();
@@ -277,8 +339,8 @@ public class OrePlacementTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aGasBlastCostsAPodDepthTimesRadiator(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
-        BlockPos centre = new BlockPos(7100, 60, Z);
+        ServerLevel level = TestLayers.level(helper, 1);
+        BlockPos centre = TestLayers.pos(1, 7100, 60, Z);
         FarChunks.awaitEntityTicking(helper, level, centre, () -> {
             stoneCube(level, centre, 3);
             PodEntity near = pod(level, Vec3.atBottomCenterOf(centre.above()));
@@ -314,8 +376,8 @@ public class OrePlacementTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aTierTwoRadiatorTakesThreeQuartersOfAGasBlast(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
-        BlockPos centre = new BlockPos(7800, 60, Z);
+        ServerLevel level = TestLayers.level(helper, 1);
+        BlockPos centre = TestLayers.pos(1, 7800, 60, Z);
         FarChunks.awaitEntityTicking(helper, level, centre, () -> {
             MinecraftServer server = level.getServer();
             UUID founder = UUID.randomUUID();
@@ -362,7 +424,7 @@ public class OrePlacementTest {
     public void aPodDrillingIntoGasPaysTheBlast(GameTestHelper helper) {
         int x = 9000;
         int floor = 60;
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor);
         BlockPos gas = new BlockPos(x - 1, floor - 1, Z - 1);
         level.setBlock(gas, HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
@@ -399,9 +461,9 @@ public class OrePlacementTest {
     @GameTest
     public void handsCannotBreakAModOreInLayerTwo(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "ore-hands");
-        ServerLevel one = layer(helper, 1);
-        ServerLevel two = layer(helper, 2);
-        BlockPos pos = new BlockPos(7200, 80, Z);
+        ServerLevel one = TestLayers.level(helper, 1);
+        ServerLevel two = TestLayers.level(helper, 2);
+        BlockPos pos = TestLayers.pos(1, 7200, 80, Z);
         Block ironium = OreBlocks.of(OreType.IRONIUM);
         mock.teleportTo(two, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
         mock.player().setGameMode(GameType.SURVIVAL);
@@ -433,9 +495,9 @@ public class OrePlacementTest {
     @GameTest
     public void handsCannotBreakCompanyRockInAnyLayer(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "company-hands");
-        BlockPos pos = new BlockPos(7300, 80, Z);
+        BlockPos pos = TestLayers.pos(1, 7300, 80, Z);
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             mock.teleportTo(level, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
             level.setBlock(pos, HazardBlocks.COMPANY_ROCK.defaultBlockState(), 3);
             for (GameType mode : new GameType[] {GameType.SURVIVAL, GameType.ADVENTURE}) {
@@ -460,7 +522,7 @@ public class OrePlacementTest {
     public void aPodDrillCannotBoreCompanyRockOrAnyUndiggableBlock(GameTestHelper helper) {
         int floor = 60;
         Block[] blockers = {HazardBlocks.COMPANY_ROCK, Blocks.COARSE_DIRT};
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         Rig[] refused = new Rig[blockers.length];
         BlockPos[] blocked = new BlockPos[blockers.length];
         for (int i = 0; i < blockers.length; i++) {
@@ -525,8 +587,8 @@ public class OrePlacementTest {
     /** Gas vents when it is mined (see {@code GasHazard}): by hand here, by a drill in {@code aPodDrillingIntoGasPaysTheBlast}. */
     @GameTest
     public void handBreakingAGasPocketVentsIt(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
-        BlockPos centre = new BlockPos(7400, 60, Z);
+        ServerLevel level = TestLayers.level(helper, 1);
+        BlockPos centre = TestLayers.pos(1, 7400, 60, Z);
         stoneCube(level, centre, 3);
         MockPlayer mock = MockPlayers.join(helper, "gas-hands");
         mock.teleportTo(level, Vec3.atBottomCenterOf(centre.above(6)), 0, 0);
@@ -554,8 +616,8 @@ public class OrePlacementTest {
     /** A pocket that is removed by anything but mining (a command, carving, fluid, a moved block) is only removed. */
     @GameTest
     public void removingAGasPocketWithoutMiningItDoesNotVent(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
-        BlockPos centre = new BlockPos(7500, 60, Z);
+        ServerLevel level = TestLayers.level(helper, 1);
+        BlockPos centre = TestLayers.pos(1, 7500, 60, Z);
         int[] flags = {Block.UPDATE_ALL, Block.UPDATE_ALL | Block.UPDATE_MOVE_BY_PISTON, Block.UPDATE_CLIENTS};
         for (int flag : flags) {
             stoneCube(level, centre, 3);
@@ -607,16 +669,16 @@ public class OrePlacementTest {
     /** A crossing carves a pocket with lava and gas around it: the carve seals them out, so nothing flows or blasts in. */
     @GameTest(maxTicks = 400)
     public void aDescendingArrivalPocketIsSealedAgainstLavaAndGas(GameTestHelper helper) {
-        ServerLevel from = layer(helper, 1);
-        ServerLevel to = layer(helper, 2);
+        ServerLevel from = TestLayers.level(helper, 1);
+        ServerLevel to = TestLayers.level(helper, 2);
         BlockPos bottom = new BlockPos(7600, to.getMaxY() - LayerTuning.DEFAULT.pocketHeight(), Z);
         expectSealedArrival(helper, "seal-down", from, new Vec3(7600.5, from.getMinY() - 2, Z + 0.5), to, bottom, true);
     }
 
     @GameTest(maxTicks = 400)
     public void anAscendingArrivalPocketIsSealedAgainstLavaAndGas(GameTestHelper helper) {
-        ServerLevel from = layer(helper, 2);
-        ServerLevel to = layer(helper, 1);
+        ServerLevel from = TestLayers.level(helper, 2);
+        ServerLevel to = TestLayers.level(helper, 1);
         BlockPos bottom = new BlockPos(7700, to.getMinY() + LayerTuning.DEFAULT.crustThickness(), Z);
         expectSealedArrival(helper, "seal-up", from, new Vec3(7700.5, from.getMaxY() + 2, Z + 0.5), to, bottom, false);
     }
@@ -684,7 +746,7 @@ public class OrePlacementTest {
     public void aPilotIsToldWhenCompanyRockRefusesTheDrill(GameTestHelper helper) {
         int x = 9300;
         int floor = 60;
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor);
         level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
         Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), "company-pilot");
@@ -740,7 +802,7 @@ public class OrePlacementTest {
         }
         Census[] result = new Census[ZONE_NAMES.length];
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             int minY = level.getMinY();
             int height = level.getHeight();
             Map<Block, Integer>[] found = newCounters(3);
@@ -921,13 +983,5 @@ public class OrePlacementTest {
     private static RuntimeException failure(
             GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
     }
 }

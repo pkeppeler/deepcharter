@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.test;
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -12,11 +11,11 @@ import io.github.pkeppeler.deepcharter.pod.SignalDecay;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay.Fault;
 import io.github.pkeppeler.deepcharter.pod.SignalDecay.Instrument;
 import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.EnumMap;
@@ -292,7 +291,7 @@ public class SignalDecayTest {
             throw failure(helper, "a pod outside the layers has no decay");
         }
         surface.discard();
-        ServerLevel layer = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
+        ServerLevel layer = TestLayers.level(helper.getLevel().getServer(), 1);
         PodEntity pod = TestEntities.create(PodRegistry.typeOf(Chassis.MOLE), layer);
         MockPlayer owner = MockPlayers.join(helper, "Decay owner");
         try {
