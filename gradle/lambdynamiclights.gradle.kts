@@ -25,7 +25,8 @@ abstract class FetchLambDynamicLights : DefaultTask() {
 		if (target.isFile && digest(target) == sha512.get()) return
 		target.parentFile.mkdirs()
 		val partial = File(target.parentFile, target.name + ".part")
-		URI(url.get()).toURL().openStream().use { input -> partial.outputStream().use { input.copyTo(it) } }
+		val connection = URI(url.get()).toURL().openConnection().apply { connectTimeout = 15_000; readTimeout = 30_000 }
+		connection.getInputStream().use { input -> partial.outputStream().use { input.copyTo(it) } }
 		val actual = digest(partial)
 		if (actual != sha512.get()) {
 			partial.delete()

@@ -14,16 +14,19 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "ldl-dark-layers" (#629): a pod with a lights part and a pod without one stand in a sealed, pitch-dark chamber of
@@ -38,6 +41,9 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
     private static final int LENGTH = 40;
     private static final int HALF_WIDTH = 6;
     private static final int HEIGHT = 6;
+    /** How far east of the chamber's floor block the lit pod starts. */
+    private static final int LIT_X = 14;
+
     private static final int LIGHTS_TIER = 3;
     private static final int TICKS_PER_FRAME = 4;
     private static final int DRIVE_FRAMES = 30;
@@ -67,10 +73,21 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
 
     private void visit(ClientGameTestContext context, TestSingleplayerContext singleplayer, int layer) {
         int[] litId = {0};
+        UUID[] litUuid = {null};
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.stopRiding();
             ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            // The chamber's chunks stay loaded and ticking, so the pods in them cannot unload before the player mounts.
+            for (int cx = (FLOOR.getX() - 1) >> 4; cx <= (FLOOR.getX() + LENGTH) >> 4; cx++) {
+                for (int cz = (FLOOR.getZ() - HALF_WIDTH - 1) >> 4; cz <= (FLOOR.getZ() + HALF_WIDTH + 1) >> 4; cz++) {
+                    // force-ok: an evidence scenario has no GameTestHelper to release through; its world is discarded
+                    // when
+                    // the scenario ends.
+                    level.setChunkForced(cx, cz, true);
+                    level.getChunk(cx, cz);
+                }
+            }
             RoomCarver.carve(
                     level,
                     FLOOR.offset(-1, 0, -HALF_WIDTH - 1),
@@ -85,7 +102,7 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
                     Block.UPDATE_ALL);
             player.teleportTo(level, FLOOR.getX() + 1, FLOOR.getY() + 1, FLOOR.getZ() + 0.5, Set.of(), -90f, 4f, true);
             PodEntity lit = TestEntities.create(PodRegistry.POD, level);
-            lit.setPos(FLOOR.getX() + 14, FLOOR.getY() + 1, FLOOR.getZ() + 0.5);
+            lit.setPos(FLOOR.getX() + LIT_X, FLOOR.getY() + 1, FLOOR.getZ() + 0.5);
             lit.setFuel(100f);
             level.addFreshEntity(lit);
             PodComponents.register(
@@ -105,6 +122,7 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
             dark.setFuel(100f);
             level.addFreshEntity(dark);
             litId[0] = lit.getId();
+            litUuid[0] = lit.getUUID();
         });
         ClientWait.until(
                 context,
@@ -118,10 +136,19 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
         ClientWait.until(context, "the arrival transmission over", client -> !TransmissionOverlay.active());
         screenshot(context, "layer-" + layer + "-pods-at-rest");
 
+        ClientWait.until(
+                context,
+                "the lit pod on the server in layer " + layer,
+                () -> singleplayer.getServer().computeOnServer(server -> litPod(server, layer, litUuid[0]) != null),
+                () -> singleplayer.getServer().computeOnServer(server -> {
+                    ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+                    BlockPos spot = FLOOR.offset(LIT_X, 1, 0);
+                    return "pod " + litUuid[0] + " not in " + level.dimension().identifier() + "; chunk at " + spot
+                            + " loaded: " + level.isLoaded(spot);
+                }));
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
-            if (!player.startRiding(TestEntities.require(level, litId[0], PodEntity.class))) {
+            if (!player.startRiding(Objects.requireNonNull(litPod(server, layer, litUuid[0]), "waited for above"))) {
                 throw new AssertionError("the player could not mount the lit pod");
             }
         });
@@ -144,5 +171,11 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
         }
         screenshot(context, "layer-" + layer + "-driving");
         context.getInput().releaseKey(options -> options.keyUp);
+    }
+
+    /** The lit pod, or null while the server does not hold it in the layer. */
+    private static @Nullable PodEntity litPod(MinecraftServer server, int layer, UUID id) {
+        ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+        return level.getEntity(id) instanceof PodEntity pod ? pod : null;
     }
 }

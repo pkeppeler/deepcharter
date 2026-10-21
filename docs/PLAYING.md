@@ -40,10 +40,10 @@ There are no trees and no ore on the surface. The Company's salvage crates lie i
 
 ## Optional mod: dynamic lights
 
-[LambDynamicLights](https://modrinth.com/mod/lambdynamiclights) makes light sources shine while they move. A lit pod's glow slides smoothly with the pod instead of stepping from block to block, and a Retained's helmet lamp throws a faint amber pool on the floor under it. A torch or lava bucket in your hand lights up too. Nothing else changes: the dark stays dark, and a pod with no lights part throws no light. It is for the client only, so the host does not need it.
+[LambDynamicLights](https://modrinth.com/mod/lambdynamiclights) makes light sources shine while they move. A lit pod's glow slides smoothly with the pod instead of stepping from block to block. A torch or lava bucket in your hand lights up too. Nothing else changes: the dark stays dark, a pod with no lights part stays dark in the open dark, and the Retained throw no light. It is for the client only, so the host does not need it.
 
 - **Version:** use exactly **4.13.0+26.3**, the one we tried. [Download it from Modrinth](https://modrinth.com/mod/lambdynamiclights/version/4.13.0+26.3) and drop the jar in the instance's mods folder (Prism: right-click the instance, **Folder**, **.minecraft/mods**). The build does not include it, because its licence does not let us hand the jar out.
-- **What breaks:** nothing we saw with Sodium 0.9.2 and Lithium 0.26.2 in the dark layers: the cockpit gauges, the headlamp beam, the glowing lamp on a Retained's helmet and the tow cable all drew as before. We did not try the colony's terminals or the scanner map with it. A Minecraft update can stop it loading, so keep the version above.
+- **What breaks:** nothing we saw with Sodium 0.9.2 and Lithium 0.26.2 in the dark layers: the cockpit gauges, the headlamp beam and the tow cable all drew as before. We did not try the colony's terminals or the scanner map with it. A Minecraft update can stop it loading, so keep the version above.
 - **Cost:** it rebuilds the chunks near a light each time the light moves. If the game stutters, open **Options, Video Settings**, find its **Dynamic Lights** setting and turn it down or off, or remove the jar.
 - **Reporting a bug:** reproduce it without the jar first. A flicker or stutter that only shows with it is LambDynamicLights' and not ours.
 
