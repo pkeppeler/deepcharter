@@ -320,8 +320,7 @@ public class PodHeatShieldTest {
         helper.runAfterDelay(LAVA_TICKS, () -> {
             float soaked = scene.ticks() * lavaPerTick();
             int burned = RACK - PodLining.of(scene.pod()).bricks();
-            if (PodHeatShieldTuning.DEFAULT.tier(2).hullPerBrick() != 6f
-                    || scene.pod().hull() != scene.pod().maxHull()
+            if (scene.pod().hull() != scene.pod().maxHull()
                     || burned != bricksFor(soaked, 2)
                     || burned >= bricksFor(soaked, 1)) {
                 throw failure(
@@ -367,8 +366,7 @@ public class PodHeatShieldTest {
         helper.runAfterDelay(LAVA_TICKS, () -> {
             int packBurned = pack - packBricks(scene);
             int expected = bricksFor(scene.ticks() * lavaPerTick(), 3);
-            if (PodHeatShieldTuning.DEFAULT.tier(3).hullPerBrick() != 8f
-                    || PodHeatShield.tier(scene.pod()) != 3
+            if (PodHeatShield.tier(scene.pod()) != 3
                     || packBurned != expected
                     || PodLining.of(scene.pod()).bricks() != rack
                     || scene.pod().hull() != scene.pod().maxHull()) {

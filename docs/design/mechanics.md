@@ -960,9 +960,9 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 - **It soaks lava only.** A fall, gas and the crust are not its business. A radiator still counts: a cooler pod burns fewer bricks.
 - **Feedback.** While the glaze has bricks the HUD swaps "HULL BURNING" for "GLAZE HOLDING  14 BRICKS LEFT" (the same alert colour, so the cockpit lamp stays lit: the pod is still in lava). When the bricks are spent it shows "GLAZE SPENT" over "HULL BURNING". Each brick burned plays a crackle (`pod.glaze_burn`; vanilla `block.fire.ambient` as the placeholder). The hull hiss plays only when lava reaches the hull. The count is a synced pod field (`glazeBricks`), kept by the server each tick, so the HUD reads one number.
 
-**Trade-offs.** The bricks are the liner's: a pod that glazes has fewer bricks to line with, and a rack of 24 holds one usual bore of lining (12 to 14 bricks). So the shield is a reason to carry a pack, and to keep the spoil hopper. It adds no weight and slows nothing. The prices of the tiers above 1 are in [the tiers section](#heat-shield-tiers-2-and-3-712-a).
+**Trade-offs.** The bricks are the liner's: a pod that glazes has fewer bricks to line with, and a rack of 24 holds one usual bore of lining (12 to 14 bricks). So the shield is a reason to carry a pack, and to keep the spoil hopper. It adds no weight and slows nothing.
 
-**Tuning knobs.** `PodHeatShieldTuning.tiers` and the prices: see [the tiers section](#heat-shield-tiers-2-and-3-712-a). The sound `pod.glaze_burn`. Skins: the part's item icon, model and lang keys, the two HUD lines.
+**Tuning knobs.** `PodHeatShieldTuning.tiers` (hull a brick, pack first) and `UpgradeTuning` `HEAT_SHIELD` (prices); the tiers are in [the tiers section](#heat-shield-tiers-2-and-3-712-a). The sound `pod.glaze_burn`. Skins: the part's item icon, model and lang keys, the two HUD lines.
 
 ### The heat shield vs. the ladder: measured
 
@@ -1014,8 +1014,6 @@ The tier 1 part equals its bound to the bore and the tier 2 part beats it by 3, 
 A full rack of 24 buys about 10 s of lava at tier 1, 14 s at tier 2 and 19 s at tier 3. Tier 3 burns the pilot's pack before the rack, so the rack stays for lining. Only a pack the pilot may use (`PodLining.mayUseStores`) burns; with no usable pack tier 3 burns the rack.
 
 **Trade-offs.** The bricks are still the liner's. Tier 3 asks for a Prospector, so it is also a bet on a bigger hangar bill. `EconomyAffordabilityTest` pins the prices: tier 2 is 4 layer 2 runs of a Mole with tier 2 parts ($348 a run), tier 3 is 2 layer 2 runs of a Prospector with tier 3 parts ($1,693 a run, about two Prospector restores of 4 Mole runs).
-
-**Tuning knobs.** `PodHeatShieldTuning.tiers` (hull a brick, pack first), `UpgradeTuning` `HEAT_SHIELD` prices.
 
 ### Heat shield tiers: measured
 
