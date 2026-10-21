@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -45,7 +46,7 @@ public class LayerBandTest {
     }
 
     private static void expectBand(GameTestHelper helper, int layer, int minY, int height) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
+        ServerLevel level = TestLayers.level(helper, layer);
         for (int y : new int[] {level.getMinY(), level.getMinY() + height / 2, level.getMaxY()}) {
             Band band = bandAt(helper, level, y);
             if (!band.isLayer() || band.layer() != layer || band.minY() != minY || band.height() != height) {
