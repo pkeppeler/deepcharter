@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.client.pod.LiningKeys;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -10,12 +9,14 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
-import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -23,11 +24,15 @@ import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Evidence scenario "kells-shaft" (#716): a Mole with the spoil hopper and a rack of slag brick rolls along the rail at the head of the Kells' shaft and
@@ -38,17 +43,19 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 public class KellsShaftScenario extends EvidenceScenario {
     /** The spacing cell of the shaft that is shown. */
     private static final int CELL = 3;
+
     private static final int LAYER = StructureKind.KELLS_SHAFT.layer();
 
     private static final int TICKS_PER_FRAME = 4;
-    private static final int SETTLE_TICKS = 80;
     private static final int MAX_TICKS = 6000;
     private static final int BRICKS = 24;
-    private static final float LOOK_DOWN = 40f;
     /** The pilot lets the pod sink this fast, in blocks a tick, the same as the measuring test's pilot. */
     private static final double SINK = 0.3;
 
     private static final int RESTING_TICKS = 6;
+    private static final double CAMERA_UP = 3.2;
+    private static final int GAP_LOOK = 5;
+    private static final float MIN_FUEL = 10f;
     /** Frames shown after the lining is done, with the pod boring the bulkhead. */
     private static final int AFTER_FRAMES = 40;
 
@@ -60,7 +67,12 @@ public class KellsShaftScenario extends EvidenceScenario {
     }
 
     /** What the scenario reads of the pod on a tick. */
-    private record PodState(double y, double vy, boolean onGround, boolean lining, float hull) {}
+    private record PodState(double y, boolean onGround, boolean lining, int used, float hull) {}
+
+    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
+    private static final Input ROTOR = new Input(false, false, false, false, true, false, false);
+    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
+    private static final Input IDLE = new Input(false, false, false, false, false, false, false);
 
     @Override
     protected void run(ClientGameTestContext context) {
@@ -69,90 +81,62 @@ public class KellsShaftScenario extends EvidenceScenario {
             StructureSite site = prepare(singleplayer);
             int floor = site.origin().getY() + site.height() - 3;
             float yaw = site.alongZ() ? 0f : -90f;
+            Descent descent = new Descent(site, floor);
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel two = TestLayers.level(server, LAYER);
-                ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.setGameMode(GameType.SURVIVAL);
-                player.addEffect(new MobEffectInstance(
+                ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();
+                camera.setGameMode(GameType.SPECTATOR);
+                camera.addEffect(new MobEffectInstance(
                         MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
-                BlockPos start = pos(site, -3.2, floor, -0.5);
-                player.teleportTo(two, start.getX() + 0.5, floor, start.getZ() + 0.5, Set.of(), yaw, LOOK_DOWN, true);
+                Vec3 start = new Vec3(worldX(site, -3.2, -0.5), floor, worldZ(site, -3.2, -0.5));
+                MockPlayer pilot = MockPlayers.join(server, "Kells pilot", two, start, yaw);
+                pilot.player().setGameMode(GameType.SURVIVAL);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, two);
-                pod.setPos(worldX(site, -3.2, -0.5), floor, worldZ(site, -3.2, -0.5));
+                pod.setPos(start);
                 pod.setYRot(yaw);
                 two.addFreshEntity(pod);
-                ScannerPods.fit(server, player, pod, 2);
-                ScannerPods.fit(server, player, pod, ComponentTrack.SPOIL_HOPPER, 1);
+                ScannerPods.fit(server, pilot.player(), pod, 2);
+                ScannerPods.fit(server, pilot.player(), pod, ComponentTrack.SPOIL_HOPPER, 1);
                 pod.setFuel(100f);
                 PodLining.modify(pod, state -> new PodLining.State(0, BRICKS, 0, false, false));
-                if (!player.startRiding(pod)) {
-                    throw new AssertionError("the player could not mount the pod");
+                if (!pilot.player().startRiding(pod)) {
+                    throw new AssertionError("the pilot could not mount the pod");
                 }
+                descent.start(pilot, pod, camera);
+                descent.look();
             });
             ClientWait.until(
                     context,
-                    "the pilot riding a pod in layer 2",
-                    client -> client.player != null
-                            && client.player.getVehicle() instanceof PodEntity
-                            && TestLayers.isIn(ClientLight.clientLevel(client), LAYER));
-            context.runOnClient(client -> {
-                client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-                ClientSession.player(client).setXRot(LOOK_DOWN);
-            });
-            context.waitTicks(SETTLE_TICKS);
-            screenshot(context, "kells-shaft-the-lip");
-            for (int i = 0; i < 4; i++) {
-                frame(context);
+                    "the camera in layer 2",
+                    client -> client.player != null && TestLayers.isIn(ClientLight.clientLevel(client), LAYER));
+            context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+            for (int i = 0; i < 20; i++) {
+                singleplayer.getServer().runOnServer(server -> descent.look());
                 context.waitTicks(TICKS_PER_FRAME);
             }
+            screenshot(context, "kells-shaft-the-lip");
 
-            // Roll to the lip and drop in.
-            context.getInput().holdKey(options -> options.keyUp);
-            boolean rotor = false;
             boolean recording = true;
             boolean shotGap = false;
             boolean lined = false;
-            int resting = 0;
-            double restedAt = Double.NaN;
             int afterFrames = 0;
-            boolean released = false;
+            int resting = 0;
+            PodState state = null;
             for (int tick = 0; tick < MAX_TICKS; tick++) {
-                PodState state = read(singleplayer);
-                if (!released && state.y() < floor - 0.5) {
-                    context.getInput().releaseKey(options -> options.keyUp);
-                    released = true;
-                }
-                boolean wantRotor = !state.onGround() && state.vy() < -SINK && released;
-                if (wantRotor != rotor) {
-                    rotor = wantRotor;
-                    if (rotor) {
-                        context.getInput().holdKey(options -> options.keyJump);
-                    } else {
-                        context.getInput().releaseKey(options -> options.keyJump);
-                    }
-                }
-                resting = released && state.onGround() && !state.lining() ? resting + 1 : 0;
+                state = singleplayer.getServer().computeOnServer(server -> descent.step());
+                resting = descent.released() && state.onGround() && !state.lining() ? resting + 1 : 0;
                 if (state.y() <= site.origin().getY() + CRUST_BAND - 0.5) {
                     break;
                 }
-                if (resting == RESTING_TICKS && !lined && recording) {
-                    // Landed on the first bulkhead: the gap is in the wall beside the pod.
-                    if (!shotGap) {
-                        shotGap = true;
-                        restedAt = state.y();
-                        for (int i = 0; i < 6; i++) {
-                            context.waitTicks(TICKS_PER_FRAME);
-                            frame(context);
-                        }
-                        screenshot(context, "kells-shaft-the-gap");
+                if (recording && !shotGap && resting == RESTING_TICKS) {
+                    shotGap = true;
+                    for (int i = 0; i < 6; i++) {
+                        context.waitTicks(TICKS_PER_FRAME);
+                        frame(context);
                     }
-                    context.getInput().pressKey(LiningKeys.LINE);
-                    context.getInput().holdKey(options -> options.keySprint);
-                    resting = 0;
-                } else if (resting == RESTING_TICKS && (lined || !recording)) {
-                    context.getInput().pressKey(LiningKeys.LINE);
+                    screenshot(context, "kells-shaft-the-gap");
                 }
-                if (recording && shotGap && !lined && !state.lining() && state.onGround() && liningDone(singleplayer)) {
+                if (recording && shotGap && !lined && state.used() > 0 && !state.lining()) {
                     lined = true;
                     screenshot(context, "kells-shaft-lined");
                 }
@@ -163,38 +147,114 @@ public class KellsShaftScenario extends EvidenceScenario {
                         screenshot(context, "kells-shaft-bored-through");
                     }
                 }
-                context.waitTicks(1); // tick-wait: the pilot is polled and steered on every tick of the descent
+                context.waitTicks(1); // tick-wait: the pilot is steered on every tick of the descent
             }
-            context.getInput().releaseKey(options -> options.keyJump);
-            context.getInput().releaseKey(options -> options.keySprint);
-            if (!shotGap || !lined) {
-                throw new AssertionError("The pod should land on a bulkhead and line it, landed " + shotGap + ", lined "
-                        + lined + " (rested at " + restedAt + ")");
+            if (!shotGap || !lined || state == null) {
+                throw new AssertionError(
+                        "The pod should land on a bulkhead and line it, landed " + shotGap + ", lined " + lined);
             }
-            PodState end = read(singleplayer);
-            if (end.y() > site.origin().getY() + CRUST_BAND || end.hull() < 1f) {
-                throw new AssertionError("The pod should reach the crust of the shaft alive: " + end);
+            if (state.y() > site.origin().getY() + CRUST_BAND || state.hull() < 1f) {
+                throw new AssertionError("The pod should reach the crust of the shaft alive: " + state);
             }
             screenshot(context, "kells-shaft-the-crust");
         }
     }
 
-    /** The lining of the pod's slab is over: the pod holds no work and has placed bricks. */
-    private static boolean liningDone(TestSingleplayerContext singleplayer) {
-        return singleplayer.getServer().computeOnServer(server -> {
-            PodEntity pod =
-                    TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
-            return !PodLining.working(pod) && PodLining.of(pod).used() > 0;
-        });
-    }
+    /** The pilot's bot and the camera, which run on the server a tick at a time. */
+    private static final class Descent {
+        private final StructureSite site;
+        private final int floor;
+        private @Nullable MockPlayer pilot;
+        private @Nullable PodEntity pod;
+        private @Nullable ServerPlayer camera;
+        private boolean released;
 
-    private static PodState read(TestSingleplayerContext singleplayer) {
-        return singleplayer.getServer().computeOnServer(server -> {
-            PodEntity pod =
-                    TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
+        Descent(StructureSite site, int floor) {
+            this.site = site;
+            this.floor = floor;
+        }
+
+        void start(MockPlayer pilot, PodEntity pod, ServerPlayer camera) {
+            this.pilot = Objects.requireNonNull(pilot, "pilot");
+            this.pod = pod;
+            this.camera = camera;
+        }
+
+        boolean released() {
+            return released;
+        }
+
+        /** One tick of the pilot: roll to the lip, sink on the rotor, land on a bulkhead, line a gap in reach, bore on. */
+        PodState step() {
+            MockPlayer pilot = Objects.requireNonNull(this.pilot, "the pilot is mounted before the first step");
+            PodEntity pod = Objects.requireNonNull(this.pod, "the pod is placed before the first step");
+            if (pod.fuel() < MIN_FUEL) {
+                pod.setFuel(100f);
+                pod.setStranded(false);
+            }
+            boolean lining = PodLining.working(pod);
+            if (!released) {
+                pilot.setInput(FORWARD);
+                released = pod.getY() < floor - 0.5;
+            } else {
+                if (!lining && pod.onGround() && lavaToLine(pod)) {
+                    PodLining.toggle(pilot.player());
+                    lining = PodLining.working(pod);
+                }
+                boolean rotor = !pod.onGround() && pod.getDeltaMovement().y < -SINK;
+                pilot.setInput(rotor ? ROTOR : !lining && pod.onGround() ? SPRINT : IDLE);
+            }
+            look();
             return new PodState(
-                    pod.getY(), pod.getDeltaMovement().y, pod.onGround(), PodLining.working(pod), pod.hull());
-        });
+                    pod.getY(), pod.onGround(), lining, PodLining.of(pod).used(), pod.hull());
+        }
+
+        /** The camera: down the rail to the lip while the pod rolls, then above the pod, looking toward the nearest gap in the wall. */
+        void look() {
+            PodEntity pod = Objects.requireNonNull(this.pod, "the pod is placed before the camera moves");
+            ServerPlayer camera = Objects.requireNonNull(this.camera, "the camera is set before it moves");
+            Vec3 at;
+            Vec3 target;
+            if (!released) {
+                at = new Vec3(worldX(site, -8, -0.5), floor + 1.6, worldZ(site, -8, -0.5));
+                target = pod.position().add(0, 1, 0);
+            } else {
+                int[] gap = nearestGap(pod);
+                double du = gap == null ? 1 : gap[0] + 0.5 - 0.0;
+                double dv = gap == null ? 0 : gap[1] + 0.5;
+                // The camera is over the pod's cell, toward the side the gap is not on, and looks at the gap's cell.
+                at = new Vec3(
+                        worldX(site, -0.3 - 0.3 * Math.signum(du), -0.5 - 0.3 * Math.signum(dv)),
+                        pod.getY() + CAMERA_UP,
+                        worldZ(site, -0.3 - 0.3 * Math.signum(du), -0.5 - 0.3 * Math.signum(dv)));
+                int gapY = gap == null ? (int) pod.getY() - 1 : gap[2];
+                target = new Vec3(worldX(site, du - 0.5, dv - 0.5), gapY + 0.5, worldZ(site, du - 0.5, dv - 0.5));
+            }
+            Vec3 d = target.subtract(at);
+            float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
+            float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
+            camera.teleportTo((ServerLevel) pod.level(), at.x, at.y, at.z, Set.of(), yaw, pitch, true);
+        }
+
+        /** The ring cell holding lava nearest below the pod: its {@code u} and {@code v} in the shaft's axes, and its Y; null when none is within reach. */
+        private int @Nullable [] nearestGap(PodEntity pod) {
+            int[][] sides = {{-2, -1}, {-2, 0}, {1, -1}, {1, 0}, {-1, -2}, {0, -2}, {-1, 1}, {0, 1}};
+            for (int y = (int) Math.floor(pod.getY()) + 1; y > (int) Math.floor(pod.getY()) - GAP_LOOK; y--) {
+                for (int[] side : sides) {
+                    BlockPos cell = BlockPos.containing(
+                            worldX(site, side[0] + 0.5, side[1] + 0.5), y, worldZ(site, side[0] + 0.5, side[1] + 0.5));
+                    if (pod.level().getFluidState(cell).is(FluidTags.LAVA)) {
+                        return new int[] {side[0], side[1], y};
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static boolean lavaToLine(PodEntity pod) {
+            return PodLining.cellsToLine(pod).stream()
+                    .anyMatch(cell -> pod.level().getFluidState(cell).is(FluidTags.LAVA));
+        }
     }
 
     /** The shaft of the cell, with the chunks of it and of the rail line made full. */
@@ -227,9 +287,5 @@ public class KellsShaftScenario extends EvidenceScenario {
 
     private static double worldZ(StructureSite site, double u, double v) {
         return site.origin().getZ() + (site.alongZ() ? u : v);
-    }
-
-    private static BlockPos pos(StructureSite site, double u, int y, double v) {
-        return BlockPos.containing(worldX(site, u, v), y, worldZ(site, u, v));
     }
 }

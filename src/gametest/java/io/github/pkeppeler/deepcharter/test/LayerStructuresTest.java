@@ -584,7 +584,7 @@ public class LayerStructuresTest {
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void theKellsShaftRunsFromTheRailLineToTheCrustAndHasGapsInItsLining(GameTestHelper helper) {
-        ServerLevel level = level(helper, 2);
+        ServerLevel level = TestLayers.level(helper, 2);
         BlockPos conduit = conduit(helper);
         StructureSite rails = StructureSite.in(
                 level.getSeed(),
