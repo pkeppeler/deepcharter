@@ -1,6 +1,6 @@
 # Puts the Python from .python-version and uv on PATH, so tools/py (uv on that version) runs as it does on a Mac (#710).
 # setup-python is first-party and takes the version from the same file; uv is installed from PyPI at a pinned version, so no
-# third-party action runs. Bump the uv pin here, in one place.
+# third-party action runs. Renovate bumps the pin (customManagers:githubActionsVersions matches the comment below).
 name: Set up Python and uv
 description: Install the Python that .python-version names and a pinned uv, so tools/py works.
 
@@ -12,4 +12,7 @@ runs:
         python-version-file: .python-version
     - name: install uv
       shell: bash
-      run: python -m pip install --disable-pip-version-check "uv==0.13.0"
+      env:
+        # renovate: datasource=pypi depName=uv
+        UV_VERSION: 0.13.0
+      run: python -m pip install --disable-pip-version-check "uv==${UV_VERSION}"

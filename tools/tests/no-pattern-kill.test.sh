@@ -126,5 +126,17 @@ done
 out=$(run 'pkill java')
 if [[ $out == *'./gradlew --stop'* ]]; then echo "ok   message mentions gradlew --stop"; else echo "FAIL message lacks gradlew --stop: $out"; failures=$((failures + 1)); fi
 
+# Without uv the guard fails closed: exit 2 and a message, so a pkill is not let through by a broken guard.
+nouv=$(mktemp -d)
+trap 'rm -rf "$nouv"' EXIT
+code=0
+err=$(printf '%s' '{"tool_name": "Bash", "tool_input": {"command": "pkill java"}}' | PATH="$nouv" "$(command -v bash)" "$hook" 2>&1 >/dev/null) || code=$?
+if [[ $code == 2 && $err == *'no-pattern-kill: uv missing, refusing Bash calls'* && $err == *'brew install uv'* ]]; then
+  echo "ok   no uv: refuses with exit 2 and the install hint"
+else
+  echo "FAIL no uv -> exit $code: $err"
+  failures=$((failures + 1))
+fi
+
 [[ $failures == 0 ]] || { echo "$failures failure(s)"; exit 1; }
 echo "all passed"

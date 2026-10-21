@@ -13,9 +13,13 @@
 # substitution inside double quotes (other than the pidfile idiom), or a variable holding the command;
 # `kill $pid` where the variable was filled by pgrep; pkill spelled through a variable or alias; `case`
 # arms. Unparsable input or command text is allowed (so is an unterminated heredoc, whose body is
-# ignored): a false positive that blocks normal work costs more than a rare miss. Without uv, tools/py says so on stderr and exits nonzero
-# (not 2), which Claude Code reports without blocking the command.
-py=$(cd "$(dirname "$0")/../.." && pwd)/tools/py
+# ignored): a false positive that blocks normal work costs more than a rare miss. Without uv (or tools/py) the guard cannot judge any
+# command, and only exit 2 blocks in a PreToolUse hook, so it fails closed: it refuses every Bash call and says how to install uv.
+py=$(cd "${0%/*}/../.." && pwd)/tools/py
+if ! command -v uv >/dev/null 2>&1 || [[ ! -x $py ]]; then
+  echo "no-pattern-kill: uv missing, refusing Bash calls; install uv (brew install uv). tools/py runs this guard." >&2
+  exit 2
+fi
 # shellcheck disable=SC2016  # the Python source is deliberately single-quoted: no shell expansion
 exec "$py" -c '
 import json, re, sys

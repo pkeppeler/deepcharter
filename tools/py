@@ -6,7 +6,7 @@ set -euo pipefail
 
 root=$(cd "${BASH_SOURCE[0]%/*}/.." && pwd -P)
 if ! command -v uv >/dev/null 2>&1; then
-  echo "tools/py: uv not found on PATH; the tools run through it. Install it (brew install uv, or https://docs.astral.sh/uv/getting-started/installation/)." >&2
+  echo "tools/py: uv not found on PATH; the tools run through it. Install it (brew install uv, or https://docs.astral.sh/uv/getting-started/installation/), and a local interpreter (brew install python@3.14, or uv python install 3.14)." >&2
   exit 127
 fi
 if [[ ! -r $root/.python-version ]]; then
@@ -14,4 +14,6 @@ if [[ ! -r $root/.python-version ]]; then
   exit 1
 fi
 version=$(<"$root/.python-version")
+# Never download an interpreter on a machine that lacks one: it is unaudited code, and a download can outlast a hook's timeout.
+export UV_PYTHON_DOWNLOADS="${UV_PYTHON_DOWNLOADS:-never}"
 exec uv run --no-project --python "$version" python -I "$@"

@@ -38,6 +38,19 @@ status=0
 (STUB_UV_RC=7 STUB_LOG="$work/log" PATH="$work/bin:$PATH" "$work/tools/py" -c pass) >/dev/null 2>&1 || status=$?
 check "exit status of the interpreter passes through" "7" "$status"
 
+# uv never downloads an interpreter unless the caller allows it: a download is unaudited code and can outlast a hook's timeout.
+env_stub=$work/envbin
+mkdir -p "$env_stub"
+cat >"$env_stub/uv" <<'S'
+#!/usr/bin/env bash
+echo "downloads=${UV_PYTHON_DOWNLOADS-unset}" >"$STUB_LOG"
+S
+chmod +x "$env_stub/uv"
+(cd /tmp && env -u UV_PYTHON_DOWNLOADS STUB_LOG="$work/log" PATH="$env_stub:$PATH" "$work/tools/py" -c pass) >/dev/null 2>&1
+check "uv sees UV_PYTHON_DOWNLOADS=never by default" "downloads=never" "$(cat "$work/log")"
+(cd /tmp && UV_PYTHON_DOWNLOADS=automatic STUB_LOG="$work/log" PATH="$env_stub:$PATH" "$work/tools/py" -c pass) >/dev/null 2>&1
+check "an explicit UV_PYTHON_DOWNLOADS is kept" "downloads=automatic" "$(cat "$work/log")"
+
 # uv missing: its own message with an install hint, and no fallback to a bare python3 on PATH.
 mkdir -p "$work/nouv"
 ln -s "$work/bin/python3" "$work/nouv/python3"
@@ -45,6 +58,7 @@ ln -s "$work/bin/python3" "$work/nouv/python3"
 status=0
 (STUB_LOG="$work/log" PATH="$work/nouv" "$(command -v bash)" "$work/tools/py" -c pass) >"$work/out" 2>&1 || status=$?
 check "missing uv fails" "127" "$status"
+check "missing uv message suggests a local interpreter too" "yes" "$(grep -q 'brew install python@3.14' "$work/out" && echo yes || echo no)"
 check "missing uv message says how to install" "yes" "$(grep -q 'uv not found.*brew install uv' "$work/out" && echo yes || echo no)"
 check "missing uv never runs a bare python3" "0" "$(wc -l <"$work/log" | tr -d ' ')"
 

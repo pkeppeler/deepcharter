@@ -14,6 +14,8 @@ set -uo pipefail
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 py=$root/tools/py
+# The lock holder below is killed by PID, so it must be the interpreter itself: through tools/py that PID is uv, and killing uv leaves python holding the lock.
+pyexe=$("$py" -c 'import sys; print(sys.executable)')
 work=$(cd "$(mktemp -d)" && pwd -P)
 pids=()
 kill_pids() {
@@ -136,7 +138,7 @@ order_is() { [[ $(tr '\n' ' ' <"$order") == "$1" ]]; }
 hold_old() {
   rm -f "$work/old.ready"
   mkdir -p "$locks"
-  "$py" -c '
+  "$pyexe" -I -c '
 import fcntl, sys, time
 f = open(sys.argv[1], "a")
 fcntl.lockf(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
