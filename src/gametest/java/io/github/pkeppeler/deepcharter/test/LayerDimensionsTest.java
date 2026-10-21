@@ -131,10 +131,7 @@ public class LayerDimensionsTest {
         expectInt(helper, LayerChain.count(registries), 2);
         expectInt(helper, LayerChain.topDepth(registries, 1), 127);
         expectInt(helper, LayerChain.topDepth(registries, 2), 127 + 192);
-        expectInt(
-                helper,
-                Depth.of(registries, Identifier.fromNamespaceAndPath("deepcharter", "layer_2"), 255),
-                127 + 192 + 1);
+        expectInt(helper, Depth.of(TestLayers.level(helper, 2), TestLayers.worldY(2, 255)), 127 + 192 + 1);
         helper.succeed();
     }
 
