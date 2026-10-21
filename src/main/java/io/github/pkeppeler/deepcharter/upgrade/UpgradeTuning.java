@@ -130,11 +130,12 @@ public record UpgradeTuning(Map<ComponentTrack, Tiers> tracks) {
         // PodBraceTuning. $200 is two stock layer-1 runs,
         // and the crust it answers ends layer 1 (EconomyAffordabilityTest).
         tracks.put(ComponentTrack.BRACE, new Tiers(List.of(0f, 1f), List.of(0L, 0L)));
-        // Invented (#482): the heat shield has no stock part. One tier, 1 for "fitted"; what it does is in
-        // PodHeatShieldTuning. $750 is three layer 2 runs of a hopper pod
-        // (EconomyAffordabilityTest): dearer than the liner's tier 1, because it is the pod that stays in lava, and
-        // under the liner's tier 2.
-        tracks.put(ComponentTrack.HEAT_SHIELD, new Tiers(List.of(0f, 1f), List.of(0L, 0L)));
+        // Invented (#482, #712): the heat shield has no stock part. Its value is the tier number; what each tier does
+        // is in PodHeatShieldTuning. Tier 1 is crafted (FirstTierPartsCostTest, the old $750). Tier 2, the best a Mole
+        // takes, is priced with the other tier 3 parts and tier 3, a Prospector's, at $2,500: two layer 2 runs of a
+        // Prospector
+        // with tier 3 parts, about two Prospector restores (EconomyAffordabilityTest).
+        tracks.put(ComponentTrack.HEAT_SHIELD, new Tiers(List.of(0f, 1f, 2f, 3f), List.of(0L, 0L, 1250L, 2500L)));
         // Invented (#502): every pod ships with the stock console (tier 0). Its value is the share of the signal
         // decay's distance from the floor that is left
         // (SignalDecayTuning): 1 is the stock reach, 0 is none, so the top tier is immune and a Mole (cap 2) cannot
