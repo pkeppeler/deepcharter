@@ -580,7 +580,7 @@ public class LayerStructuresTest {
     /**
      * The Kells' shaft (#716) hangs off the end of the rail line of its cell and runs down to the first block above the crust.
      * Its hollow is a clear 2 x 2, its top meets the line's last column through a drift with a rail, and its lava is the
-     * gaps: each is one lava block in a ring of slag brick, backed by one more, and each has a brick in the reserve at the head.
+     * gaps: each is one lava block in a ring of slag brick, backed by one more, with a bulkhead of brick across the hollow at its row, and each has a brick in the reserve at the head.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void theKellsShaftRunsFromTheRailLineToTheCrustAndHasGapsInItsLining(GameTestHelper helper) {
@@ -652,17 +652,6 @@ public class LayerStructuresTest {
     private static List<String> kellsUnmet(ServerLevel level, StructureSite rails, StructureSite shaft) {
         List<String> unmet = new ArrayList<>();
         int top = shaft.height() - 1;
-        for (int y = 0; y <= top; y++) {
-            for (int u = -1; u <= 0; u++) {
-                for (int v = -1; v <= 0; v++) {
-                    BlockState state = level.getBlockState(at(shaft, u, y, v));
-                    if (!state.isAir()) {
-                        unmet.add(String.format("the hollow at y %d holds %s", y, state));
-                        return unmet;
-                    }
-                }
-            }
-        }
         // The gaps: the side cells of the ring that hold lava.
         int[][] sides = {{-2, -1}, {-2, 0}, {1, -1}, {1, 0}, {-1, -2}, {0, -2}, {-1, 1}, {0, 1}};
         List<int[]> gaps = new ArrayList<>();
@@ -670,6 +659,37 @@ public class LayerStructuresTest {
             for (int[] side : sides) {
                 if (level.getBlockState(at(shaft, side[0], y, side[1])).is(Blocks.LAVA)) {
                     gaps.add(new int[] {side[0], y, side[1]});
+                }
+            }
+        }
+        // The hollow is clear but for a bulkhead of slag brick across it at the row of each gap, with a hole beside the
+        // gap and a lava
+        // block in the cell under the hole.
+        for (int y = 0; y <= top; y++) {
+            for (int u = -1; u <= 0; u++) {
+                for (int v = -1; v <= 0; v++) {
+                    String expected = "air";
+                    for (int[] gap : gaps) {
+                        int holeU = gap[0] == -2 ? -1 : gap[0] == 1 ? 0 : gap[0];
+                        int holeV = gap[2] == -2 ? -1 : gap[2] == 1 ? 0 : gap[2];
+                        boolean hole = u == holeU && v == holeV;
+                        if (y == gap[1]) {
+                            expected = hole ? "air" : "slag";
+                        } else if (y == gap[1] - 1 && hole) {
+                            expected = "lava";
+                        }
+                    }
+                    BlockState state = level.getBlockState(at(shaft, u, y, v));
+                    boolean right = switch (expected) {
+                        case "slag" -> state.is(SlagBrick.BLOCK);
+                        case "lava" -> state.is(Blocks.LAVA);
+                        default -> state.isAir();
+                    };
+                    if (!right) {
+                        unmet.add(String.format(
+                                "the hollow at (%d, %d, %d) holds %s, expected %s", u, y, v, state, expected));
+                        return unmet;
+                    }
                 }
             }
         }

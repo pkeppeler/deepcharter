@@ -130,7 +130,8 @@ public enum StructureKind {
     /**
      * The Kells' shaft: a 2 x 2 hollow, 20 to 80 blocks deep, from a drift at the end of the rail line to the first block above
      * the crust. Where it was cut through lava the Kells walled it in slag brick, two to four rings of three rows, and in the
-     * middle row of each ring the lining has failed: one block of the wall is lava, with one more behind it. A pod can
+     * middle row of each ring the lining has failed: one block of the wall is lava, with one more behind it, and across the hollow
+     * at that row a bulkhead of brick, which a pod lands on, with a hole beside the gap and lava under the hole. A pod can
      * go down, and its hand lining closes the gaps. Timber sets, some fallen, line the rest. At the head, in the wall of the drift,
      * is the reserve they left: one brick for each gap.
      */
@@ -291,6 +292,18 @@ public enum StructureKind {
             int[] side = KELLS_SIDES[p.pick(20 + k, KELLS_SIDES.length)];
             p.set(side[0], rows[k], side[1], Blocks.LAVA.defaultBlockState());
             p.set(side[0] + side[2], rows[k], side[1] + side[3], Blocks.LAVA.defaultBlockState());
+            // The bulkhead: the Kells sealed each failing wall from below with a plug of brick across the hollow, level
+            // with the gap, so a
+            // pod coming down lands on it with the gap one row below its feet, where its hand lining reaches. The plug
+            // has a hole beside
+            // the gap, and lava stands in the cell under the hole, which the lining reaches too. A pod that bores the
+            // plug without lining
+            // sinks into that lava.
+            p.box(-1, rows[k], -1, 0, rows[k], 0, brick);
+            int holeU = side[0] - side[2];
+            int holeV = side[1] - side[3];
+            p.set(holeU, rows[k], holeV, Blocks.AIR.defaultBlockState());
+            p.set(holeU, rows[k] - 1, holeV, Blocks.LAVA.defaultBlockState());
         }
         // The drift: the line's last column, a rail to the lip, and the reserve in the wall.
         int floor = height - DRIFT_HEIGHT;
