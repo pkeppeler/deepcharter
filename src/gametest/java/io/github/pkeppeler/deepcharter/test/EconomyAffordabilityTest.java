@@ -59,7 +59,7 @@ public class EconomyAffordabilityTest {
      */
     private static final int HEAT_SHIELD_TIER_TWO_RUNS = 4;
 
-    private static final int HEAT_SHIELD_TIER_THREE_RUNS = 3;
+    private static final int HEAT_SHIELD_TIER_THREE_RUNS = 2;
     /** The radiator matters from layer 3 on, and its first purchase, tier 2 now that tier 1 is crafted, costs what the others' tier 3 does: this many layer 2 runs of a Mole with tier 2 parts, at most. */
     private static final int RADIATOR_RUNS = 5;
     /** The Prospector restore takes this many runs of a Mole with tier 2 parts in layer 2, at least and at most. */
@@ -194,7 +194,7 @@ public class EconomyAffordabilityTest {
 
     /**
      * The heat shield (#712) is the lava ladder's rung 3 and is bought in layer 2 or below: tier 2 ($1,250, the best a Mole takes) in at most {@value #HEAT_SHIELD_TIER_TWO_RUNS}
-     * runs of a Mole with tier 2 parts, tier 3 ($5,000, a Prospector's) in at most {@value #HEAT_SHIELD_TIER_THREE_RUNS} layer 2 runs of a Prospector with tier 3 parts. Tier 1 is crafted.
+     * runs of a Mole with tier 2 parts, tier 3 ($2,500, a Prospector's) in at most {@value #HEAT_SHIELD_TIER_THREE_RUNS} layer 2 runs of a Prospector with tier 3 parts. Tier 1 is crafted.
      */
     @GameTest
     public void theHeatShieldTiersTwoAndThreeAreAffordableAfterTheirLayerTwoRuns(GameTestHelper helper) {
@@ -215,10 +215,10 @@ public class EconomyAffordabilityTest {
                 tierThree,
                 prospector.toAfford(tierThree),
                 prospector);
-        if (tierTwo != 1250L || tierThree != 5000L) {
+        if (tierTwo != 1250L || tierThree != 2500L) {
             throw failure(
                     helper,
-                    "the heat shield's tiers 2 and 3 cost $1250 and $5000, found $%d and $%d",
+                    "the heat shield's tiers 2 and 3 cost $1250 and $2500, found $%d and $%d",
                     tierTwo,
                     tierThree);
         }

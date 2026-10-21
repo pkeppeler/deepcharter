@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.UpgradeShown;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
@@ -204,8 +205,12 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
             require(
                     shield.contains("TIER 1  CRAFTED, NOT SOLD")
                             && shield.contains("BUY TIER 2  $1250")
-                            && shield.contains("BUY TIER 3  $5000  (WORKS AS TIER 2)"),
-                    "the heat shield lists tier 1 as crafted, tier 2 at $1250 and tier 3 at $5000, got " + shield);
+                            && shield.contains("BUY TIER 3  $2500  (WORKS AS TIER 2)"),
+                    "the heat shield lists tier 1 as crafted, tier 2 at $1250 and tier 3 at $2500, got " + shield);
+            require(
+                    context.computeOnClient(client -> DrawnText.of(fitted).stream()
+                            .anyMatch(drawn -> drawn.text().contains("BURNS THE PACK'S BRICKS FIRST"))),
+                    "the heat shield's tier 3 note says it burns the pack first");
             context.clickScreenButton("BUY TIER 2  $1250");
             ClientWait.until(
                     context,

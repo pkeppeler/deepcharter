@@ -76,7 +76,7 @@ public class PodHeatShieldTiersScenario extends EvidenceScenario {
                             .anyMatch(slot -> slot.track() == ComponentTrack.HEAT_SHIELD && slot.installed() == 2));
             hold(context);
             screenshot(context, "heat-shield-tier-2");
-            context.clickScreenButton("BUY TIER 3  $5000  (WORKS AS TIER 2)");
+            context.clickScreenButton("BUY TIER 3  $2500  (WORKS AS TIER 2)");
             ClientWait.until(
                     context,
                     "the heat shield tier 3 installed",

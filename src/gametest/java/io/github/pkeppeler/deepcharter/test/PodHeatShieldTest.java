@@ -339,6 +339,27 @@ public class PodHeatShieldTest {
     }
 
     @GameTest(maxTicks = LAVA_TICKS + 20)
+    public void aTierTwoShieldBurnsTheRackBeforeThePack(GameTestHelper helper) {
+        int rack = 6;
+        int pack = 30;
+        Scene scene = scene(helper, 2, PodRegistry.POD, rack, pack, true, false);
+        helper.runAfterDelay(LAVA_TICKS, () -> {
+            int rackBurned = rack - PodLining.of(scene.pod()).bricks();
+            if (packBricks(scene) != pack || rackBurned != bricksFor(scene.ticks() * lavaPerTick(), 2)) {
+                throw failure(
+                        helper,
+                        "a tier 2 shield burns the rack first and leaves the pack of %d whole while the rack lasts: %d rack bricks should burn, found %d and %d in the pack",
+                        pack,
+                        bricksFor(scene.ticks() * lavaPerTick(), 2),
+                        rackBurned,
+                        packBricks(scene));
+            }
+            scene.pod().discard();
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = LAVA_TICKS + 20)
     public void aTierThreeShieldOnAProspectorSoaksEightHullABrickFromThePackFirst(GameTestHelper helper) {
         int rack = 6;
         int pack = 30;
