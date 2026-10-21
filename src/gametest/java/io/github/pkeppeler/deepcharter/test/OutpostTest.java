@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
+import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -32,6 +33,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.List;
@@ -453,5 +455,81 @@ public class OutpostTest {
                 .getRecipeFor(RecipeType.CRAFTING, input, level)
                 .map(holder -> holder.value().assemble(input))
                 .orElse(ItemStack.EMPTY);
+    }
+
+    /**
+     * The acceptance of #320: a pilot who fills the tank at the outpost and drills the crust of the breach in the hall's floor drops into layer 2 with a full tank,
+     * which is where a layer 2 run starts. The crust is the middle of the hall's floor, left as it was.
+     */
+    @GameTest(maxTicks = MAX_TICKS + 400)
+    public void aPodFilledInTheHallDropsThroughItsBreachIntoLayerTwoWithAFullTank(GameTestHelper helper) {
+        Stage stage = stage(helper, 8500, true);
+        boolean[] ready = {false};
+        float full = PodTuning.DEFAULT.shell().fullFuel();
+        MinecraftServer server = helper.getLevel().getServer();
+        RepairState repaired = new RepairState();
+        TerminalTypes.FUEL_PUMP.parts().forEach(part -> repaired.insert(TerminalTypes.FUEL_PUMP, part));
+        FarChunks.awaitEntityTicking(helper, stage.level(), stage.floor(), () -> {
+            WorldData.swap(server)
+                    .with(RepairState.TYPE, repaired)
+                    .with(OutpostData.TYPE, new OutpostData())
+                    .run(() -> {
+                        if (!useKit(stage, stage.floor(), Direction.UP).consumesAction()) {
+                            throw failure(helper, "the kit should build");
+                        }
+                        Charters.deposit(server, stage.charter(), 100);
+                        PodEntity pod = TestEntities.create(PodRegistry.POD, stage.level());
+                        pod.setPos(
+                                stage.floor().getX() + 1.0,
+                                stage.floor().getY() + 1,
+                                stage.floor().getZ() + 1.0);
+                        stage.level().addFreshEntity(pod);
+                        PodComponents.register(pod, stage.charter());
+                        pod.setFuel(0f);
+                        stage.mock()
+                                .teleportTo(
+                                        stage.level(),
+                                        Vec3.atBottomCenterOf(stage.floor().offset(-1, 1, -2)),
+                                        0f,
+                                        0f);
+                        if (Terminals.act(stage.player(), stage.floor().offset(PUMP), FuelPump.FILL, new CompoundTag())
+                                .isPresent()) {
+                            throw failure(helper, "the outpost pump should fill the pod");
+                        }
+                        if (!stage.player().startRiding(pod)) {
+                            throw failure(helper, "the pilot could not mount the pod");
+                        }
+                        // The drill's way through the crust of the breach, under the pod: 2 by 2 columns, the 3 blocks
+                        // of the crust.
+                        for (int dx = 0; dx <= 1; dx++) {
+                            for (int dz = 0; dz <= 1; dz++) {
+                                for (int dy = 0; dy < LayerTuning.DEFAULT.crustThickness(); dy++) {
+                                    if (!BreachService.breakCrust(
+                                            stage.level(), stage.floor().offset(dx, -dy, dz))) {
+                                        throw failure(
+                                                helper,
+                                                "the hall's floor should hold crust at %s",
+                                                stage.floor().offset(dx, -dy, dz));
+                                    }
+                                }
+                            }
+                        }
+                        ready[0] = true;
+                    });
+        });
+        TestTicks.each(helper, () -> {
+            if (!ready[0] || !stage.player().level().dimension().equals(LayerChain.dimension(2))) {
+                return;
+            }
+            if (!(stage.player().getVehicle() instanceof PodEntity arrived)) {
+                throw failure(helper, "the pilot should arrive in layer 2 still in the pod");
+            }
+            // The engine idles while the pod drops, a few ticks of it: within a hundredth of the tank.
+            if (arrived.fuel() < full * 0.99f) {
+                throw failure(
+                        helper, "the pod should start layer 2 with a full tank, it has %s of %s", arrived.fuel(), full);
+            }
+            helper.succeed();
+        });
     }
 }
