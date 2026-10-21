@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.layer;
 
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
+import java.util.Optional;
 import java.util.OptionalInt;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
@@ -12,15 +14,20 @@ public final class Depth {
     private Depth() {}
 
     public static int of(Level level, int y) {
-        Identifier type =
-                level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier();
-        return of(level.registryAccess(), type, y);
+        Optional<Band> band = LayerChain.bandAt(level, y).filter(Band::isLayer);
+        if (band.isEmpty()) {
+            return LayerTuning.DEFAULT.seaLevel() - y;
+        }
+        Band layer = band.get();
+        return LayerChain.topDepth(level.registryAccess(), layer.layer()) + (layer.minY() + layer.height() - y);
     }
 
     /** In a layer: its top depth plus the distance below its top. Elsewhere: sea level minus y. */
+    // test-seam: LayerDimensionsTest pins the registry-only path; the cutover (#214) deletes it with the dimension-type
+    // readers
     public static int of(RegistryAccess registries, Identifier dimensionType, int y) {
-        OptionalInt found = LayerChain.layerOf(dimensionType);
-        if (found.isEmpty()) {
+        OptionalInt found = LayerChain.indexOf(dimensionType);
+        if (found.isEmpty() || found.getAsInt() == LayerChain.SURFACE) {
             return LayerTuning.DEFAULT.seaLevel() - y;
         }
         int layer = found.getAsInt();

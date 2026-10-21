@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -11,7 +12,7 @@ import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.OptionalInt;
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -262,9 +263,8 @@ public final class PodDrill {
 
         /** The last layer's crust has nothing under it: a hole would only drop the pod into the void. */
         private boolean crustLeadsOn() {
-            OptionalInt layer = LayerChain.layerOf(
-                    level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
-            return layer.isEmpty() || layer.getAsInt() < LayerChain.count(level.registryAccess());
+            Optional<Band> band = LayerChain.bandAt(level, level.getMinY()).filter(Band::isLayer);
+            return band.isEmpty() || band.get().layer() < LayerChain.count(level.registryAccess());
         }
     }
 }

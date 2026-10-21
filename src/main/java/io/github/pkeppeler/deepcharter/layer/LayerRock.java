@@ -1,9 +1,9 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import java.util.OptionalInt;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
@@ -26,17 +26,16 @@ public final class LayerRock {
     public static void init() {
         // Both sides: the client's refusal stops the crack animation; the server's is the backstop.
         AttackBlockCallback.EVENT.register((player, level, hand, pos, direction) ->
-                !player.isCreative() && isOutOfReachOfHands(level, level.getBlockState(pos))
+                !player.isCreative() && isOutOfReachOfHands(level, pos, level.getBlockState(pos))
                         ? InteractionResult.FAIL
                         : InteractionResult.PASS);
-        PlayerBlockBreakEvents.BEFORE.register(
-                (level, player, pos, state, blockEntity) -> player.isCreative() || !isOutOfReachOfHands(level, state));
+        PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, blockEntity) ->
+                player.isCreative() || !isOutOfReachOfHands(level, pos, state));
     }
 
     /** True for rock in layer 2 and below. */
-    private static boolean isOutOfReachOfHands(Level level, BlockState state) {
-        OptionalInt layer = LayerChain.layerOf(
-                level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
-        return layer.isPresent() && layer.getAsInt() > 1 && state.is(DEEP_ROCK);
+    private static boolean isOutOfReachOfHands(Level level, BlockPos pos, BlockState state) {
+        return state.is(DEEP_ROCK)
+                && LayerChain.bandAt(level, pos.getY()).stream().anyMatch(band -> band.layer() > 1);
     }
 }

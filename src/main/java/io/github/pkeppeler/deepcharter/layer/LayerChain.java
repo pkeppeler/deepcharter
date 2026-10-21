@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import java.util.Optional;
 import java.util.OptionalInt;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
@@ -22,6 +23,29 @@ public final class LayerChain {
     private static final String PREFIX = "layer_";
 
     private LayerChain() {}
+
+    /**
+     * A vertical span of the chain: {@code layer} is {@link #SURFACE} or the layer number, {@code minY} and {@code height} the blocks it
+     * spans in its level. For now a band is a whole dimension.
+     */
+    public record Band(int layer, int minY, int height) {
+        /** True for a layer, false for the surface. */
+        public boolean isLayer() {
+            return layer != SURFACE;
+        }
+    }
+
+    /**
+     * The band that {@code y} in {@code level} falls in; empty for a level that is not in the chain (the Nether, the End). Fails for a
+     * dimension type given inline by a data pack, which has no key.
+     */
+    public static Optional<Band> bandAt(Level level, int y) {
+        Identifier type =
+                level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier();
+        return indexOf(type).stream()
+                .mapToObj(layer -> new Band(layer, level.getMinY(), level.getHeight()))
+                .findFirst();
+    }
 
     public static ResourceKey<Level> dimension(int layer) {
         return layer == SURFACE ? Level.OVERWORLD : ResourceKey.create(Registries.DIMENSION, id(layer));

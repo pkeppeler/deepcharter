@@ -1,8 +1,9 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.LinkedHashSet;
-import java.util.OptionalInt;
+import java.util.Optional;
 import java.util.Set;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
@@ -54,12 +55,11 @@ public final class BreachService {
     }
 
     private static void crossEntities(ServerLevel level) {
-        OptionalInt found = LayerChain.indexOf(
-                level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
-        if (found.isEmpty()) {
+        Optional<Band> band = LayerChain.bandAt(level, level.getMinY());
+        if (band.isEmpty()) {
             return;
         }
-        int layer = found.getAsInt();
+        int layer = band.get().layer();
         int layers = LayerChain.count(level.registryAccess());
         // Anything else that falls out is the void's. Collect first: a crossing changes the player list.
         Set<Entity> descending = new LinkedHashSet<>();

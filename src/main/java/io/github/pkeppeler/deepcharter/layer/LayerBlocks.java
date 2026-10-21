@@ -1,8 +1,8 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.function.Function;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -80,18 +80,18 @@ public final class LayerBlocks {
 
     /** The rock of the layer that a level is; empty for a level that is no layer (the surface, a test's). Fails for a layer with no rock block yet. */
     public static Optional<Block> layerGroundOf(Level level) {
-        OptionalInt layer = LayerChain.layerOf(
-                level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
-        if (layer.isEmpty()) {
+        Optional<Band> band = LayerChain.bandAt(level, level.getMinY()).filter(Band::isLayer);
+        if (band.isEmpty()) {
             return Optional.empty();
         }
+        int layer = band.get().layer();
         return Optional.of(
-                switch (layer.getAsInt()) {
+                switch (layer) {
                     case 1 -> PACKED_SHALE;
                     case 2 -> GREEN_SHALE;
                     default ->
                         throw new IllegalStateException(
-                                "Layer " + layer.getAsInt() + " has no rock block yet (layer 3 waits for M3, #504)");
+                                "Layer " + layer + " has no rock block yet (layer 3 waits for M3, #504)");
                 });
     }
 

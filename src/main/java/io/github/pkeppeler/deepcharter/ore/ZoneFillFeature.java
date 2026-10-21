@@ -5,6 +5,8 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -80,8 +82,9 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
 
     @Override
     public boolean place(WorldGenLevel level, ChunkGenerator generator, RandomSource random, BlockPos origin) {
-        int minY = level.getMinY();
-        int height = level.getHeight();
+        Band band = LayerChain.bandAt(level.getLevel(), origin.getY()).orElseThrow();
+        int minY = band.minY();
+        int height = band.height();
         int firstX = origin.getX() >> 4 << 4;
         int firstZ = origin.getZ() >> 4 << 4;
         // The chunk itself, not the region: a block lookup through the region costs several times as much, and this

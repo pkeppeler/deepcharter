@@ -3,20 +3,18 @@ package io.github.pkeppeler.deepcharter.layer;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 /**
@@ -45,26 +43,24 @@ public final class LayerStructures {
 
     private static void draw(ServerLevel level, LevelChunk chunk) {
         // A dimension type given inline by a data pack has no key: it is no layer. A callback never throws.
-        Optional<ResourceKey<DimensionType>> type =
-                level.dimensionTypeRegistration().unwrapKey();
-        if (type.isEmpty()) {
+        if (level.dimensionTypeRegistration().unwrapKey().isEmpty()) {
             return;
         }
-        OptionalInt layer = LayerChain.layerOf(type.get().identifier());
-        if (layer.isEmpty()) {
+        Optional<Band> band = LayerChain.bandAt(level, level.getMinY()).filter(Band::isLayer);
+        if (band.isEmpty()) {
             return;
         }
+        int layer = band.get().layer();
         Optional<BlockPos> conduit = Colony.anchor(level.getServer(), ColonyAnchor.CONDUIT);
         if (conduit.isEmpty()) {
             if (LOGGED_NO_COLONY.compareAndSet(false, true)) {
                 DeepCharter.LOGGER.warn(
-                        "A chunk of layer {} generated before the colony was built, so it gets no structures",
-                        layer.getAsInt());
+                        "A chunk of layer {} generated before the colony was built, so it gets no structures", layer);
             }
             return;
         }
-        List<StructureSite> sites = sitesIn(
-                level.getSeed(), layer.getAsInt(), level.getMinY(), level.getHeight(), chunk.getPos(), conduit.get());
+        List<StructureSite> sites =
+                sitesIn(level.getSeed(), layer, band.get().minY(), band.get().height(), chunk.getPos(), conduit.get());
         try {
             for (StructureSite site : sites) {
                 StructurePlan plan = new StructurePlan(site, level, chunk);
@@ -84,7 +80,7 @@ public final class LayerStructures {
                 DeepCharter.LOGGER.error(
                         "Layer structures failed in chunk {} of layer {}; this and later chunks may lack theirs",
                         chunk.getPos(),
-                        layer.getAsInt(),
+                        layer,
                         e);
             }
         } finally {

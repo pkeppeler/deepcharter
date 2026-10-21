@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -183,8 +184,9 @@ public final class Wrecks {
     private static void report(ServerLevel level, Charter charter, PodEntity pod) {
         MinecraftServer server = level.getServer();
         BlockPos pos = pod.blockPosition();
-        OptionalInt layer = LayerChain.layerOf(
-                level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
+        OptionalInt layer = LayerChain.bandAt(level, pos.getY()).filter(Band::isLayer).stream()
+                .mapToInt(Band::layer)
+                .findFirst();
         Component message = layer.isPresent()
                 ? Component.translatable(
                         "deepcharter.wreck.report.layer", layer.getAsInt(), pos.getX(), pos.getY(), pos.getZ())

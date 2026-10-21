@@ -1,10 +1,11 @@
 package io.github.pkeppeler.deepcharter.pod;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.Objects;
-import java.util.OptionalInt;
+import java.util.Optional;
 import net.minecraft.world.level.Level;
 
 /**
@@ -63,14 +64,14 @@ public final class SignalDecay {
     /** The decay at the pod now: 0 outside the layers, else the curve of its layer at its height with its console. Works on both sides, from synced state. */
     public static double intensity(PodEntity pod) {
         Level level = pod.level();
-        OptionalInt layer = LayerChain.layerOf(
-                level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
-        if (layer.isEmpty()) {
+        int feetY = PodFootprint.of(pod).feetY();
+        Optional<Band> band = LayerChain.bandAt(level, feetY).filter(Band::isLayer);
+        if (band.isEmpty()) {
             return 0;
         }
         return intensity(
-                layer.getAsInt(),
-                PodFootprint.of(pod).feetY() - level.getMinY(),
+                band.get().layer(),
+                feetY - band.get().minY(),
                 PodComponents.effectiveTier(pod, ComponentTrack.CONSOLE));
     }
 

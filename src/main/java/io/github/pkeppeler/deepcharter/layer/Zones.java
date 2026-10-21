@@ -1,9 +1,9 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.List;
 import java.util.Optional;
-import java.util.OptionalInt;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
@@ -47,12 +47,11 @@ public final class Zones {
 
     /** The zone at {@code y}; empty on the surface and outside the layer's height, so any player Y is safe to ask. */
     public static Optional<Zone> of(Level level, int y) {
-        OptionalInt found = LayerChain.layerOf(
-                level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier());
-        if (found.isEmpty()) {
+        Optional<Band> band = LayerChain.bandAt(level, y).filter(Band::isLayer);
+        if (band.isEmpty()) {
             return Optional.empty();
         }
-        return of(found.getAsInt(), level.getMinY(), level.getHeight(), y);
+        return of(band.get().layer(), band.get().minY(), band.get().height(), y);
     }
 
     /** The zone at {@code y} of a layer of {@code height} blocks from {@code minY}; empty for an unnamed layer or an outside y. */
