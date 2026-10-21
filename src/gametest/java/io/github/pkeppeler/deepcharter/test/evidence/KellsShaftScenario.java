@@ -32,6 +32,9 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.Team;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -91,6 +94,11 @@ public class KellsShaftScenario extends EvidenceScenario {
                 Vec3 start = new Vec3(worldX(site, -3.2, -0.5), floor, worldZ(site, -3.2, -0.5));
                 MockPlayer pilot = MockPlayers.join(server, "Kells pilot", two, start, yaw);
                 pilot.player().setGameMode(GameType.SURVIVAL);
+                // The pilot's name tag would hang over the pod in every frame.
+                Scoreboard scoreboard = server.getScoreboard();
+                PlayerTeam hidden = scoreboard.addPlayerTeam("kells-shaft-pilot");
+                hidden.setNameTagVisibility(Team.Visibility.NEVER);
+                scoreboard.addPlayerToTeam(pilot.player().getScoreboardName(), hidden);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, two);
                 pod.setPos(start);
                 pod.setYRot(yaw);
@@ -110,6 +118,8 @@ public class KellsShaftScenario extends EvidenceScenario {
                     "the camera in layer 2",
                     client -> client.player != null && TestLayers.isIn(ClientLight.clientLevel(client), LAYER));
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+            // The pilot's "joined the game" line would sit over the bottom of every frame.
+            context.runOnClient(client -> client.gui.hud.getChat().clearMessages(false));
             for (int i = 0; i < 20; i++) {
                 singleplayer.getServer().runOnServer(server -> descent.look());
                 context.waitTicks(TICKS_PER_FRAME);
