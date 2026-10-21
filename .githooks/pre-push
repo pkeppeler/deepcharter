@@ -15,25 +15,32 @@ if top=$(git rev-parse --show-toplevel 2>/dev/null); then
 fi
 
 # git feeds one line per ref: <local ref> <local sha> <remote ref> <remote sha>.
-# Run the checks unless every ref is a branch delete or targets pr-media.
+# Run the checks unless every ref is a branch delete or targets pr-media. The Gradle-backed steps (compile, checkstyle, gate fixture
+# checks, minutes on a cold daemon) also run unless every checked ref changes nothing Gradle reads. CI runs everything either way.
+gradle_inputs='^(src/|gradle/|config/|gradlew|gradle\.properties$|[^/]*\.lockfile$|([^/]*/)*[^/]*\.gradle\.kts$|tools/[^/]*\.java$|tools/tests/(gate_checks|gate_batch|[a-z_]*_gate_check)\.py$)'
+touches_gradle_inputs() { # <local sha> <remote sha>; an unknown base counts as a yes
+  local base files
+  if [[ $2 =~ ^0+$ ]]; then
+    base=$(git -C "$root" merge-base "$1" origin/main 2>/dev/null) || return 0
+  else
+    base=$2
+  fi
+  files=$(git -C "$root" diff --name-only "$base" "$1" 2>/dev/null) || return 0
+  grep -qE "$gradle_inputs" <<<"$files"
+}
 need_checks=0
-while read -r _ local_sha remote_ref _ || [[ -n ${local_sha:-} ]]; do
+need_gradle=0
+while read -r _ local_sha remote_ref remote_sha || [[ -n ${local_sha:-} ]]; do
   [[ $local_sha =~ ^0+$ ]] && continue
   [[ $remote_ref == refs/heads/pr-media ]] && continue
   need_checks=1
+  if touches_gradle_inputs "$local_sha" "$remote_sha"; then need_gradle=1; fi
 done
 [[ $need_checks -eq 1 ]] || exit 0
 
-# The tools use Python 3.10+ syntax. Under an older python3 the first test fails with import errors that look like a broken change.
-# tools/tests/gate_checks.py repeats this check, because CI and agents run it without the hook.
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "pre-push: python3 not found on PATH; the tools need 3.10 or newer. Put one on PATH, or skip the hook once with: git push --no-verify" >&2
-  exit 1
-fi
-if ! python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))' >/dev/null 2>&1; then
-  echo "pre-push: python3 at $(command -v python3) is $(python3 -c 'import sys; print("%d.%d.%d" % sys.version_info[:3])' 2>/dev/null || echo 'of unknown version'); the tools need 3.10 or newer. Put a newer python3 first on PATH, or skip the hook once with: git push --no-verify" >&2
-  exit 1
-fi
+# The tools run through tools/py: uv on the Python in .python-version, so the PATH's python3 never matters (#710).
+# This probe fails first, with tools/py's message, instead of inside the first check.
+"$root/tools/py" -c pass || exit 1
 
 cd "$root"
 # Git exports GIT_DIR and its siblings to a hook; a test that runs git in a temp repo must not inherit them.
@@ -43,13 +50,17 @@ fail() {
   exit 1
 }
 echo "pre-push: conflict markers" >&2
-python3 -I tools/tests/conflict_markers.py \
+tools/py tools/tests/conflict_markers.py \
   || fail "conflict markers"
-echo "pre-push: compile and checkstyle (waits if another Gradle build holds the lock; Ctrl-C and push with --no-verify to skip)" >&2
-./gradlew -q compileJava compileClientJava compileGametestJava checkstyleMain checkstyleClient checkstyleGametest \
-  || fail "compile or checkstyle"
+if [[ $need_gradle -eq 1 ]]; then
+  echo "pre-push: compile and checkstyle (waits if another Gradle build holds the lock; Ctrl-C and push with --no-verify to skip)" >&2
+  ./gradlew -q compileJava compileClientJava compileGametestJava checkstyleMain checkstyleClient checkstyleGametest \
+    || fail "compile or checkstyle"
+else
+  echo "pre-push: no Gradle input changed in the pushed range, skipping compile, checkstyle and gate checks (CI runs them)" >&2
+fi
 echo "pre-push: tool unit tests" >&2
-python3 -I -m unittest discover -s tools/tests -p 'test_*.py' \
+tools/py -m unittest discover -s tools/tests -p 'test_*.py' \
   || fail "tool unit tests"
 echo "pre-push: shellcheck" >&2
 if command -v shellcheck >/dev/null 2>&1; then
@@ -57,6 +68,8 @@ if command -v shellcheck >/dev/null 2>&1; then
 else
   echo "pre-push: shellcheck not found, skipping it (CI runs it)" >&2
 fi
-echo "pre-push: gate checks on fixtures (one Gradle run)" >&2
-python3 -I tools/tests/gate_checks.py \
-  || fail "gate checks"
+if [[ $need_gradle -eq 1 ]]; then
+  echo "pre-push: gate checks on fixtures (one Gradle run)" >&2
+  tools/py tools/tests/gate_checks.py \
+    || fail "gate checks"
+fi

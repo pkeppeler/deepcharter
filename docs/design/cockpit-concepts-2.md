@@ -25,7 +25,7 @@
 | *Round 1, Consoles* | A rim and two consoles. | 76 x 108 and 124 x 178. | In the right console. | 29.0 % | 13.5 % | 42.4 % |
 | *The plain HUD* | Text and a scanner. | None. | 147 x 123, top right. | text only | 17.6 % | 17.6 % |
 
-**Coverage** is the share of a 427 x 240 GUI (an 854 x 480 window at GUI scale 2) that the option's sprites make opaque in the calm state, a pixel under two pieces counted once: **status** is every housing, the frame and the plate (the plate at the width of its calm rows), **scanner** is its bezel and window. `python3 tools/cockpit_concepts.py --coverage` prints it, and `tools/tests/test_cockpit_concepts.py` fails a compact look whose status goes over 9 % or is as big as its scanner. The four options cut the status of Consoles by three quarters or more (29.0 % to 6.6 to 8.5 %); the total is 17 to 21 %, about the plain HUD's scanner alone.
+**Coverage** is the share of a 427 x 240 GUI (an 854 x 480 window at GUI scale 2) that the option's sprites make opaque in the calm state, a pixel under two pieces counted once: **status** is every housing, the frame and the plate (the plate at the width of its calm rows), **scanner** is its bezel and window. `tools/py tools/cockpit_concepts.py --coverage` prints it, and `tools/tests/test_cockpit_concepts.py` fails a compact look whose status goes over 9 % or is as big as its scanner. The four options cut the status of Consoles by three quarters or more (29.0 % to 6.6 to 8.5 %); the total is 17 to 21 %, about the plain HUD's scanner alone.
 
 ## How they are drawn, and how to see them
 

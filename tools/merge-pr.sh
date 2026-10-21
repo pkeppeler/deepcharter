@@ -266,7 +266,7 @@ regenerate_roadmap() {
   git worktree add --detach "$tmp/wt" origin/main || return 1
   local attempt
   for attempt in 1 2; do
-    (cd "$tmp/wt" && python3 -I tools/roadmap.py) || return 1
+    (py=$PWD/tools/py && cd "$tmp/wt" && "$py" tools/roadmap.py) || return 1
     [[ -n $(git -C "$tmp/wt" status --porcelain -- docs/ROADMAP.md) ]] || return 0
     git -C "$tmp/wt" add docs/ROADMAP.md || return 1
     git -C "$tmp/wt" commit -m "Regenerate roadmap after #$pr" || return 1

@@ -14,8 +14,8 @@ class CommittedFiles(unittest.TestCase):
             _, files = pc.build(name, pc.MODEL_DIR, pc.TEXTURE_DIR)
             for path, data in files.items():
                 with self.subTest(path=path.name):
-                    self.assertTrue(path.exists(), f"{path} is missing: run python3 -I tools/pod_concepts.py")
-                    self.assertEqual(path.read_bytes(), data, f"{path} is stale: run python3 -I tools/pod_concepts.py")
+                    self.assertTrue(path.exists(), f"{path} is missing: run tools/py tools/pod_concepts.py")
+                    self.assertEqual(path.read_bytes(), data, f"{path} is stale: run tools/py tools/pod_concepts.py")
 
     def test_the_concepts_are_not_in_the_mod(self):
         # The concepts are made on request (--concepts); the pack holds only the pods.

@@ -2,9 +2,9 @@
 """Writes the pod models: the Mole and the Prospector of #243, and (on request) the concepts of #334 and #366 they come from.
 
 Usage:
-  python3 -I tools/pod_concepts.py                     write the pods into src/main/resources
-  python3 -I tools/pod_concepts.py --check             exit 1 if a written file differs from what this script makes
-  python3 -I tools/pod_concepts.py --concepts DIR      also write every concept's files into DIR (they are not in the mod)
+  tools/py tools/pod_concepts.py                     write the pods into src/main/resources
+  tools/py tools/pod_concepts.py --check             exit 1 if a written file differs from what this script makes
+  tools/py tools/pod_concepts.py --concepts DIR      also write every concept's files into DIR (they are not in the mod)
 
 This script is the source of the pods. Its output is plain Blockbench-compatible data: per pod a Bedrock
 geometry with named bones and box UV, a 1-texel-per-pixel texture and a glowmask for the lamps, a hot mask for a hull
@@ -1828,7 +1828,7 @@ def main(argv=None):
                 directory.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(data)
     if stale:
-        print("stale, run python3 -I tools/pod_concepts.py: " + ", ".join(str(p) for p in stale), file=sys.stderr)
+        print("stale, run tools/py tools/pod_concepts.py: " + ", ".join(str(p) for p in stale), file=sys.stderr)
         return 1
     return 0
 

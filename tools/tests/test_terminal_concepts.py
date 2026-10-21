@@ -105,7 +105,7 @@ class Panel(unittest.TestCase):
         self.assertGreaterEqual(contrast(under_scanline, "#" + crt["backgroundColor"].lstrip("#")), 3.5)
 
     def test_the_generator_has_nothing_to_rewrite(self):
-        self.assertEqual([], terminal_concepts.check(), "run `python3 tools/terminal_concepts.py` to rewrite the panel")
+        self.assertEqual([], terminal_concepts.check(), "run `tools/py tools/terminal_concepts.py` to rewrite the panel")
 
 
 class Font(unittest.TestCase):

@@ -6,6 +6,7 @@ the real generator, two branches that each add a texture recipe merge into main 
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -26,7 +27,7 @@ def git(cwd: Path, *args: str) -> str:
 
 
 def texgen(cwd: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["python3", "-I", str(cwd / "tools/textures/texgen.py"), *args], cwd=cwd, env=clean_env(cwd), capture_output=True, text=True)
+    return subprocess.run([sys.executable, "-I", str(cwd / "tools/textures/texgen.py"), *args], cwd=cwd, env=clean_env(cwd), capture_output=True, text=True)
 
 
 class RealRepoTest(unittest.TestCase):
