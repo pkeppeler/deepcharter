@@ -84,11 +84,6 @@ public final class OutpostData extends SavedData {
                 .findFirst();
     }
 
-    /** Every outpost, in the order built. */
-    public List<Outpost> all() {
-        return List.copyOf(state.orThrow());
-    }
-
     /** Records an outpost. Throws when the charter has one in that layer already: the kit checks first. */
     void add(Outpost outpost) {
         if (of(outpost.charter(), outpost.layer()).isPresent()) {

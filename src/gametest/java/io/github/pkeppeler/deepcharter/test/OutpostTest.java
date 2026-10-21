@@ -250,7 +250,7 @@ public class OutpostTest {
                         helper,
                         "the charter's outpost in layer 1 should be recorded at %s, the data holds %s",
                         stage.floor(),
-                        data.all());
+                        data.of(stage.charter(), 1));
             }
         });
     }
@@ -330,7 +330,9 @@ public class OutpostTest {
             if (!stage.level().getBlockState(blocker).is(TerminalTypes.FUEL_PUMP.block())) {
                 throw failure(helper, "a refused kit must leave the blocker standing");
             }
-            if (!OutpostData.get(helper.getLevel().getServer()).all().isEmpty()) {
+            if (OutpostData.get(helper.getLevel().getServer())
+                    .of(stage.charter(), 1)
+                    .isPresent()) {
                 throw failure(helper, "a refused kit records no outpost");
             }
         });
@@ -345,7 +347,10 @@ public class OutpostTest {
                 throw failure(helper, "the first kit should build");
             }
             expectRefusal(helper, stage, second, Direction.UP, HAS_ONE, "a second outpost of the charter in layer 1");
-            if (OutpostData.get(helper.getLevel().getServer()).all().size() != 1) {
+            if (OutpostData.get(helper.getLevel().getServer())
+                    .of(stage.charter(), 1)
+                    .filter(outpost -> outpost.centre().equals(stage.floor()))
+                    .isEmpty()) {
                 throw failure(helper, "the second kit must record nothing");
             }
         });
@@ -362,7 +367,9 @@ public class OutpostTest {
                     Direction.UP,
                     CharterRefusal.NOT_ON_A_CHARTER.translationKey(),
                     "a player on no charter");
-            if (!OutpostData.get(helper.getLevel().getServer()).all().isEmpty()) {
+            if (OutpostData.get(helper.getLevel().getServer())
+                    .of(stage.charter(), 1)
+                    .isPresent()) {
                 throw failure(helper, "a refused kit records no outpost");
             }
         });
@@ -391,7 +398,7 @@ public class OutpostTest {
                         .id());
         WorldData.with(server, OutpostData.TYPE, new OutpostData(), () -> {
             expectRefusal(helper, stage, floor, Direction.UP, NOT_HERE, "a kit used on the surface");
-            if (!OutpostData.get(server).all().isEmpty()) {
+            if (OutpostData.get(server).of(stage.charter(), 1).isPresent()) {
                 throw failure(helper, "a refused kit records no outpost");
             }
         });
