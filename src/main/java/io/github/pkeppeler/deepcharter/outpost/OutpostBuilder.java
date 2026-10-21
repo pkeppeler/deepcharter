@@ -54,7 +54,7 @@ public final class OutpostBuilder {
 
     /** Builds the outpost on the top of {@code clicked}, or returns why not. Checks everything before it changes anything. */
     public static Optional<Component> build(ServerPlayer player, ServerLevel level, BlockPos clicked, Direction face) {
-        OptionalInt layer = OutpostRates.layerOf(level);
+        OptionalInt layer = OutpostRates.layerOf(level, clicked.getY());
         if (layer.isEmpty() || layer.getAsInt() != LAYER) {
             return refusal("not_here");
         }

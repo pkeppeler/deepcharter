@@ -22,7 +22,8 @@ public final class OutpostAccess {
 
     /** Why the acting charter may not use the terminal at {@code context.pos()}, or empty at the colony and in the charter's own hall. */
     public static Optional<Component> refusal(TerminalAction.Context context) {
-        OptionalInt layer = OutpostRates.layerOf(context.player().level());
+        OptionalInt layer =
+                OutpostRates.layerOf(context.player().level(), context.pos().getY());
         if (layer.isEmpty()) {
             return Optional.empty();
         }

@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.outpost;
 
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import java.util.OptionalInt;
 import net.minecraft.world.level.Level;
@@ -15,17 +16,17 @@ import net.minecraft.world.level.Level;
 public final class OutpostRates {
     private OutpostRates() {}
 
-    /** The layer {@code level} is in the chain, or empty on the surface (the colony's level) and in any other dimension. */
-    public static OptionalInt layerOf(Level level) {
-        return level.dimensionTypeRegistration()
-                .unwrapKey()
-                .map(type -> LayerChain.layerOf(type.identifier()))
-                .orElse(OptionalInt.empty());
+    /** The layer that {@code y} in {@code level} is in, or empty on the surface (the colony's level) and in any other dimension. */
+    public static OptionalInt layerOf(Level level, int y) {
+        return LayerChain.layerAt(level, y).stream().mapToInt(Band::layer).findFirst();
     }
 
-    /** True in a layer of the chain, false on the surface (the colony's level) and in any other dimension. */
+    /**
+     * True in a layer of the chain, false on the surface (the colony's level) and in any other dimension. A dimension is one layer from
+     * its floor to its ceiling, so the floor stands for the level.
+     */
     public static boolean atDepth(Level level) {
-        return layerOf(level).isPresent();
+        return layerOf(level, level.getMinY()).isPresent();
     }
 
     /** Dollars one litre costs at a fuel pump in {@code level}. */
