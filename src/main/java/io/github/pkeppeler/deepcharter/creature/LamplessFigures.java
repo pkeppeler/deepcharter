@@ -90,7 +90,9 @@ public final class LamplessFigures {
             Set<StructureSite> visited = new HashSet<>();
             double range = CreatureTuning.DEFAULT.spawnRangeBlocks();
             for (ServerPlayer player : level.players()) {
-                Band band = LayerChain.bandAt(level, player.getBlockY()).orElseThrow();
+                Band band = LayerChain.bandAt(level, player.getBlockY())
+                        .orElseThrow(() -> new IllegalStateException(
+                                "rail level " + level.dimension().identifier() + " is not in the layer chain"));
                 StructureSite site = LayerStructures.nearest(
                         level.getSeed(),
                         StructureKind.RAILS,

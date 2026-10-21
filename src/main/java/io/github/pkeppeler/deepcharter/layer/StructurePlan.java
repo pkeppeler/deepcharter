@@ -30,12 +30,14 @@ final class StructurePlan {
     private final StructureSite site;
     private final ServerLevel level;
     private final LevelChunk chunk;
+    private final Band band;
     private final ChunkPos chunkPos;
 
-    StructurePlan(StructureSite site, ServerLevel level, LevelChunk chunk) {
+    StructurePlan(StructureSite site, ServerLevel level, LevelChunk chunk, Band band) {
         this.site = site;
         this.level = level;
         this.chunk = chunk;
+        this.band = band;
         this.chunkPos = chunk.getPos();
     }
 
@@ -48,7 +50,6 @@ final class StructurePlan {
     void seal() {
         BoundingBox bounds = site.bounds();
         BlockState ground = LayerBlocks.groundOf(level).defaultBlockState();
-        Band band = LayerChain.bandAt(level, bounds.minY()).orElseThrow();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int x = Math.max(bounds.minX() - 1, chunkPos.getMinBlockX());
                 x <= Math.min(bounds.maxX() + 1, chunkPos.getMaxBlockX());

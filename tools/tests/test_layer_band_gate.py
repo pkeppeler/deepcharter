@@ -2,7 +2,7 @@
 
 `LayerChain.layerOf` and `LayerChain.indexOf` parse a dimension type's id, so a caller of either reads the layer from the dimension: the
 reading that the grained crust (#214) has to change in one place. This scans `src/main` and `src/client`, pure Python so the CI
-`tool-tests` job (no JDK) runs it. `Depth.java` is the one exception: its registry overload is kept for the tests until the cutover.
+`tool-tests` job (no JDK) runs it.
 """
 import re
 import tempfile
@@ -12,7 +12,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 CALL = re.compile(r"\bLayerChain\s*\.\s*(?:layerOf|indexOf)\s*\(")
-ALLOWED = frozenset({"src/main/java/io/github/pkeppeler/deepcharter/layer/Depth.java"})
 
 
 def violations(root: Path) -> list[str]:
@@ -21,8 +20,6 @@ def violations(root: Path) -> list[str]:
     for source in ("src/main", "src/client"):
         for path in sorted((root / source).glob("**/*.java")):
             relative = path.relative_to(root).as_posix()
-            if relative in ALLOWED:
-                continue
             for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
                 if CALL.search(line.split("//", 1)[0]):
                     found.append(f"{relative}:{number}")

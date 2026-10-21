@@ -63,7 +63,7 @@ public final class LayerStructures {
                 sitesIn(level.getSeed(), layer, band.get().minY(), band.get().height(), chunk.getPos(), conduit.get());
         try {
             for (StructureSite site : sites) {
-                StructurePlan plan = new StructurePlan(site, level, chunk);
+                StructurePlan plan = new StructurePlan(site, level, chunk, band.get());
                 plan.seal();
                 site.kind().draw(plan, site.height());
                 if (site.kind() == StructureKind.WRECK) {
