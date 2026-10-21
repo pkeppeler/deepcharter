@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.outpost.OutpostRates;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
@@ -21,7 +22,7 @@ import net.minecraft.server.MinecraftServer;
  * The fuel pump's two actions. {@link #BUY} sells exactly the litres asked for (with {@link #LITRES_KEY}) and refuses when the
  * charter's account cannot pay for all of them or the whole litres of room in the tank are fewer. {@link #FILL} fills the tank, and when the account
  * cannot pay for a full tank it sells as many litres as the account pays for; it refuses only when it can sell none. Litres are
- * whole, at {@link FuelTuning#pricePerLitre()} dollars each. Only {@link #FILL} rounds up: a tank with 4.2 litres of room is charged for 5, and one with less than a litre is charged for 1.
+ * whole, at {@link OutpostRates#fuelPricePerLitre} dollars each ({@link FuelTuning#pricePerLitre()} at the colony, dearer at depth). Only {@link #FILL} rounds up: a tank with 4.2 litres of room is charged for 5, and one with less than a litre is charged for 1.
  *
  * <p>The fuel goes into the pod parked at the pump (see {@link Terminals#parkedPods}). Selling clears Stranded, because the pod has fuel.
  * The screen never decides: it shows what it can see and the server checks every press.
@@ -87,7 +88,7 @@ public final class FuelPump {
             return Optional.of(Component.translatable("message.deepcharter.fuel.no_room", wholeRoom));
         }
         int roomLitres = (int) Math.ceil(room - FULL_TOLERANCE);
-        long price = FuelTuning.DEFAULT.pricePerLitre();
+        long price = OutpostRates.fuelPricePerLitre(context.player().level());
         long affordable =
                 Charters.findOrThrow(server, charter.get()).orElseThrow().account() / price;
         int minimum = partial ? 1 : litres;

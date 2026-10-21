@@ -1,0 +1,10 @@
+{
+  "item.deepcharter.outpost_kit": "Outpost Kit",
+  "message.deepcharter.outpost.blocked": "Company property stands in the way of the hall",
+  "message.deepcharter.outpost.built": "The outpost is up: a fuel pump and a sell terminal, lit, at the breach",
+  "message.deepcharter.outpost.has_one": "Your charter has an outpost in this layer already",
+  "message.deepcharter.outpost.not_floor": "This is not the floor: set the kit within %s blocks of the breach crust",
+  "message.deepcharter.outpost.not_here": "An outpost goes up at the floor of layer 1",
+  "message.deepcharter.outpost.not_on_top": "Set the kit on the top of a floor block",
+  "message.deepcharter.outpost.unreadable": "The outposts were saved by another version of the mod"
+}

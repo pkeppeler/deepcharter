@@ -2,11 +2,13 @@ package io.github.pkeppeler.deepcharter.test;
 
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
+import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarTuning;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.outpost.OutpostTuning;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodBrace;
@@ -96,8 +98,7 @@ public class EconomyAffordabilityTest {
     }
 
     private static Run upgradedRunInLayerTwo(float extraMass) {
-        return EarlyRunModel.run(
-                Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks(), extraMass);
+        return EarlyRunModel.layerTwoRun(Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), extraMass);
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
@@ -166,10 +167,9 @@ public class EconomyAffordabilityTest {
      */
     @GameTest
     public void theLinerTierTwoIsAffordableAfterItsLayerTwoRuns(GameTestHelper helper) {
-        Run run = EarlyRunModel.run(
+        Run run = EarlyRunModel.layerTwoRun(
                 Zone.load("upper_levels"),
                 EarlyRunModel.withLiner(EarlyRunModel.mole(2, 2, 2), 2),
-                EarlyRunModel.layerOneBlocks(),
                 EarlyRunModel.hopperMass());
         long price = UpgradeTuning.DEFAULT.price(ComponentTrack.LINER, 2);
         LOGGER.info("[economy] liner tier 2 ${}: {} layer 2 runs of {}", price, run.toAfford(price), run);
@@ -229,10 +229,9 @@ public class EconomyAffordabilityTest {
     @GameTest
     public void aLinedRunToLayerTwoNetsMoreThanAnUnlinedLayerOneRun(GameTestHelper helper) {
         Run layerOne = stockRunInLayerOne();
-        Run lined = EarlyRunModel.run(
+        Run lined = EarlyRunModel.layerTwoRun(
                 Zone.load("upper_levels"),
                 EarlyRunModel.withLiner(EarlyRunModel.mole(2, 2, 2), 2),
-                EarlyRunModel.layerOneBlocks(),
                 EarlyRunModel.hopperMass());
         LOGGER.info(
                 "[economy] lined layer 2 run {}; an unlined layer 1 run nets ${}", lined, Math.round(layerOne.net()));
@@ -300,10 +299,8 @@ public class EconomyAffordabilityTest {
      */
     @GameTest
     public void theSounderTierTwoIsAffordableAfterItsLayerTwoRuns(GameTestHelper helper) {
-        Run run = EarlyRunModel.run(
-                Zone.load("upper_levels"),
-                EarlyRunModel.withSounder(EarlyRunModel.mole(2, 2, 2), 2),
-                EarlyRunModel.layerOneBlocks());
+        Run run = EarlyRunModel.layerTwoRun(
+                Zone.load("upper_levels"), EarlyRunModel.withSounder(EarlyRunModel.mole(2, 2, 2), 2));
         long price = UpgradeTuning.DEFAULT.price(ComponentTrack.SOUNDER, 2);
         LOGGER.info("[economy] sounder tier 2 ${}: {} layer 2 runs of {}", price, run.toAfford(price), run);
         if (run.toAfford(price) > SOUNDER_TIER_TWO_RUNS) {
@@ -429,7 +426,94 @@ public class EconomyAffordabilityTest {
         helper.succeed();
     }
 
-    /** The layer 2 runs assume a pod that starts at the bottom of layer 1's shaft; the Prospector takes this many of them. */
+    /** The slabs and the net dollars of a Mole with tier 2 parts in `upper_levels`, from the outpost (#320) and, as before, from the surface. Literals: a change to the fuel, the drill, the ore or the outpost's terms moves them. */
+    private static final int OUTPOST_RUN_SLABS = 48;
+
+    private static final int OUTPOST_RUN_NET = 413;
+    private static final int SURFACE_START_RUN_SLABS = 31;
+    private static final int SURFACE_START_RUN_NET = 348;
+    /** What the outpost's prices take from a layer 2 run, as a share of what the same run nets at the colony's prices, at least and at most. */
+    private static final double OUTPOST_TERMS_SHARE_MIN = 0.15;
+
+    private static final double OUTPOST_TERMS_SHARE_MAX = 0.35;
+
+    /**
+     * A layer 2 run starts at the outpost on the layer 1 floor (#320): the pod is at the bottom of the shaft with a full tank and climbs only the slabs it
+     * bored, so it bores deeper on the same tank than a run that starts at the surface and climbs the whole shaft back. The outpost's prices (dearer fuel,
+     * a smaller share of the ore) take a fifth to a third of the run, so the colony still pays more for the same ore, and the run still nets more than
+     * the one that starts at the surface, so the outpost is worth building.
+     */
+    @GameTest
+    public void aLayerTwoRunStartsAtTheOutpostWithAFullTankAndNetsMoreThanOneFromTheSurface(GameTestHelper helper) {
+        Zone zone = Zone.load("upper_levels");
+        PodStats stats = EarlyRunModel.mole(2, 2, 2);
+        Run outpost = EarlyRunModel.layerTwoRun(zone, stats);
+        Run surface = EarlyRunModel.run(zone, stats, EarlyRunModel.layerOneBlocks());
+        double colonyNet = outpost.gross() * 100 / OutpostTuning.DEFAULT.sellPercent()
+                - outpost.litres() * FuelTuning.DEFAULT.pricePerLitre();
+        double share = 1 - outpost.net() / colonyNet;
+        LOGGER.info(
+                "[economy] layer 2 run from the outpost {}; from the surface {}; the outpost's prices take {} of the colony-priced net ${}",
+                outpost,
+                surface,
+                share,
+                Math.round(colonyNet));
+        if (outpost.slabs() != OUTPOST_RUN_SLABS || Math.round(outpost.net()) != OUTPOST_RUN_NET) {
+            throw failure(
+                    helper,
+                    "a layer 2 run from the outpost bores %d slabs and nets $%.0f, expected %d and $%d",
+                    outpost.slabs(),
+                    outpost.net(),
+                    OUTPOST_RUN_SLABS,
+                    OUTPOST_RUN_NET);
+        }
+        if (surface.slabs() != SURFACE_START_RUN_SLABS || Math.round(surface.net()) != SURFACE_START_RUN_NET) {
+            throw failure(
+                    helper,
+                    "a layer 2 run from the surface bores %d slabs and nets $%.0f, expected %d and $%d",
+                    surface.slabs(),
+                    surface.net(),
+                    SURFACE_START_RUN_SLABS,
+                    SURFACE_START_RUN_NET);
+        }
+        if (outpost.litres() > stats.tankLitres()) {
+            throw failure(
+                    helper,
+                    "a layer 2 run from the outpost burns %.1f L of a %.1f L tank: it has no pump underground",
+                    outpost.litres(),
+                    stats.tankLitres());
+        }
+        if (outpost.net() <= surface.net()) {
+            throw failure(
+                    helper,
+                    "a run from the outpost nets $%.0f, no more than the $%.0f of one from the surface",
+                    outpost.net(),
+                    surface.net());
+        }
+        if (share < OUTPOST_TERMS_SHARE_MIN || share > OUTPOST_TERMS_SHARE_MAX) {
+            throw failure(
+                    helper,
+                    "the outpost's prices take %.2f of the run's colony-priced net, outside %.2f to %.2f",
+                    share,
+                    OUTPOST_TERMS_SHARE_MIN,
+                    OUTPOST_TERMS_SHARE_MAX);
+        }
+        helper.succeed();
+    }
+
+    /** The ore in the outpost kit's recipe (four Bronzium, two Ironium) is worth less than one layer 2 run, so a charter builds its outpost on the first one. */
+    @GameTest
+    public void theOutpostKitsOreCostsLessThanOneLayerTwoRun(GameTestHelper helper) {
+        long ore = 4L * OreType.BRONZIUM.value() + 2L * OreType.IRONIUM.value();
+        double run = upgradedRunInLayerTwo().net();
+        LOGGER.info("[economy] outpost kit: ${} of ore against a layer 2 run of ${}", ore, Math.round(run));
+        if (ore > run) {
+            throw failure(helper, "the outpost kit's ore is worth $%d, more than a layer 2 run of $%.0f", ore, run);
+        }
+        helper.succeed();
+    }
+
+    /** The layer 2 runs start at the charter's outpost at the bottom of layer 1's shaft (#320), with a full tank; the Prospector takes this many of them, as it did from the surface. */
     @GameTest
     public void theProspectorRestoreTakesTheLayerTwoRunsThePlanSays(GameTestHelper helper) {
         int runs = upgradedRunInLayerTwo()
@@ -488,8 +572,7 @@ public class EconomyAffordabilityTest {
     @GameTest
     public void theCompanyAdvanceIsAtLeastTheCicatriumTheProspectorRestoreTakes(GameTestHelper helper) {
         HangarTuning.RestoreCost cost = HangarTuning.DEFAULT.restoreCost(Chassis.PROSPECTOR);
-        Run run = EarlyRunModel.run(
-                Zone.load("prospectors_run"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
+        Run run = EarlyRunModel.layerTwoRun(Zone.load("prospectors_run"), EarlyRunModel.mole(2, 2, 2));
         LOGGER.info(
                 "[economy] Prospector restore: {} Cicatrium, {} advanced; from ore alone, at {} per run in the deepest zone, it would take {} runs",
                 cost.catalysts(),
@@ -509,7 +592,7 @@ public class EconomyAffordabilityTest {
     @GameTest
     public void cicatriumFoundInTheOreIsNotAnIncomeStream(GameTestHelper helper) {
         Zone deepest = Zone.load("prospectors_run");
-        Run run = EarlyRunModel.run(deepest, EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
+        Run run = EarlyRunModel.layerTwoRun(deepest, EarlyRunModel.mole(2, 2, 2));
         double sold = run.catalysts() * OreType.CICATRIUM.value();
         LOGGER.info(
                 "[economy] a layer 2 run in prospectors_run: {} Cicatrium, ${} if sold, against ${} of other ore",

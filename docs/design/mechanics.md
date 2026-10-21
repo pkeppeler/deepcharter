@@ -481,7 +481,7 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 | 6 | 150 | 1 |
 
 - **Once is possible.** A Mole with the tier 2 tank bores layer 1 on its 25 L plus about 57 fuel items (114 L) fed at the bottom, or 45 with a reserve tank. That is one stack of coal. The pod arrives in layer 2 empty, with a 192-block climb behind it.
-- **Repeatedly is not.** A second layer 2 run starts at the surface again, and the shaft cannot be driven down. Each run would be a fresh 139 L bore. The Prospector restore's runs (`EconomyAffordabilityTest`) need a pod that can start a run at the shaft bottom: by the braked drive down (#319), or an outpost with a fuel pump and a sell terminal there (SPEC section 11, built at depth).
+- **Repeatedly is not.** A second layer 2 run starts at the surface again, and the shaft cannot be driven down. Each run would be a fresh 139 L bore. The Prospector restore's runs (`EconomyAffordabilityTest`) need a pod that can start a run at the shaft bottom: by the braked drive down (#319), or an outpost with a fuel pump and a sell terminal there (SPEC section 11, built at depth). Both are built: the braked drive down is [Hard landings (#319)](#hard-landings-319-a) and the outpost is [Outposts at the layer 1 floor (#320)](#outposts-at-the-layer-1-floor-320-a), which also makes each run start there with a full tank.
 - **Model limits (A).** The bore is counted from the top of the layer. The rock starts at y 150 to 170, so the true bore is shorter, by a tenth or less. The bore also takes the dearest zone's drill time for all of it. Both overstate the litres.
 
 **Decision (A).** No tuning change. A tuning fix cannot work: to bore 139 L on one tank the tier would have to be 6 ($125,000), and to make a 192-block drop survivable the fall damage would have to be near zero, which removes the hazard. Both fixes are new mechanics, so they are not built here (follow-up issues in the PR). `EconomyAffordabilityTest` now pins the numbers above and the Prospector run count, so a change to fuel, tanks, hull, fall damage or layer 1's height shows here.
@@ -489,7 +489,7 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 **Ladder (candidates, in the order of effort).**
 1. By hand: a stack of coal and a one-way bore, then the Prospector wreck's salvage. Works once (today).
 2. Impact-speed fall damage (built, #319): the hull pays for the speed at landing, as in Motherload, so a rotor-braked descent is safe. It costs the thrust burn on the way down (about 0.3 L per 20 blocks in the PodCargoFuelTest drops, so about 3 L for the shaft) and the pilot's attention, and it makes the rotor matter in the dive.
-3. Outposts (SPEC section 11) at the layer 1 floor, with a fuel terminal: the pod starts each layer 2 run there. The charter builds it once and every pod shares it.
+3. Outposts (SPEC section 11) at the layer 1 floor, with a fuel terminal: the pod starts each layer 2 run there. The charter builds it once and every pod shares it. Built, #320: [Outposts at the layer 1 floor (#320)](#outposts-at-the-layer-1-floor-320-a).
 4. Mastery: a bigger tank or hull makes the one-way bore short (1 tank at tier 6, or a hull that takes the drop).
 
 **Trade-offs.** Impact-speed damage makes falls readable and gives the rotor a second job, but it softens the fall hazard in the layers below. Outposts give the charter something to build and defend, but need layer 2's terminals, so they cannot be the first fix.
@@ -499,6 +499,37 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 **Open questions.**
 - Is the first descent meant to be the one-way bore with a stack of coal? The handbook's chapter 8 ("Your first breach") should say so if it is.
 - Should the descent's own ore count towards the first layer 2 run's income? It is not counted.
+
+## Outposts at the layer 1 floor (#320, A)
+
+**Problem.** The layer 2 runs of `EarlyRunModel` started at the surface: the pod drove down the 192-block shaft, bored, and climbed the whole shaft back to the pump and the processor in the colony. The shaft's climb ate most of the tank (a Mole with tier 2 parts bored 31 slabs a run) and there was no pump or buyer underground. SPEC section 11 puts player-built outposts at depth with a sell, fuel and repair terminal.
+
+**What it does.** A charter crafts an **outpost kit** (four Bronzium, two Ironium, a pump motor, an ore feeder and redstone: $300 of ore, under one layer 2 run) and uses it on the top of a block at the layer 1 floor, within 8 blocks of the top of the breach crust (`OutpostTuning.floorBand`). It unfolds a lit steel hall cut into the rock round that block, in the colony kit:
+- 9 by 9 inside and 5 high, plated walls and ceiling, a concrete floor, corner posts, six wall lamps (the same sodium lamps as the colony).
+- The colony's own **fuel pump** and **ore processor** (the sell terminal) stand against the north wall. They are the same blocks, so they work once the colony's are repaired (the repair state is world-wide) and a pod parked in the hall is served as it is at the colony.
+- The middle 3 by 3 of the floor is left as it was, the breach crust, ringed with a hazard band: a pod drills down to layer 2 from the hall. The middle 5 by 5 of the ceiling is left as it was too, so a shaft that ends over the hall stays open and a pod drops in. A pod that climbs out of layer 2 arrives in the hall (the crossing keeps the column).
+- A charter has one outpost a layer. The kit is refused off the layer 1 floor, on a side face, without a charter, with a block entity (a terminal) in the way, and a second time. A refused kit stays in the hand. The hall's blocks are Company property, unbreakable in survival like the colony's, so an outpost is never destroyed (SPEC section 11).
+- The shell is sealed against lava and gas before the cut (`RoomSeal`), and the outposts are saved per charter in `OutpostData` (version 1, `Unreadable` fallback).
+
+**What it costs to run.** Prices depend on the level the terminal is in (`OutpostRates`), so every pump and sell terminal underground is an outpost's: a litre costs 2 times the colony's ($2) and ore pays 80 percent of its value (Ironium $24, Bronzium $48, Silverium $80, Goldium $200, Platinium $600, Einsteinium $1,600). SPEC says outposts sell at worse rates, so the surface trip still matters: for the 25 percent that these terms take from a run, for the upgrade, repair and hangar terminals, which stay in the colony, and for the first descent. The screens read the same rates, so what they show is what is charged.
+
+**The model.** `EarlyRunModel.layerTwoRun` starts at the outpost with a full tank: no drive down the shaft, a climb of only the slabs bored, and the outpost's prices. The first descent is one braked drive from the surface (2 L).
+
+| A Mole with tier 2 drill, tank and bay, layer 2 upper levels | Slabs | Litres | Net | Prospector restore ($1,390) |
+|---|---|---|---|---|
+| Before (from the surface) | 31 | 24.7 | $348 | 4 runs |
+| After (from the outpost) | 48 | 24.4 | $413 | 4 runs |
+
+The run count is the same, 3.36 against 3.99, so the Prospector pace of PR 206 holds. The outpost's prices take 25 percent of what the same run nets at the colony ($553). Every other layer 2 band in `EconomyAffordabilityTest` and `FirstTierPartsCostTest` holds, except the matter transmitter: at $1,390 it was 3.36 runs against its band of 3.5 to 4.0, so its price goes back to the $1,500 it had before #319 (3.63 runs).
+
+**Trade-offs.** The outpost saves the shaft climb and turns the run into a loop in layer 2, but it pays less for the same ore and charges double for the fuel, so a pilot who is carrying a full bay out of a deep run weighs the climb against the discount. It is one more thing to build before layer 2, at the price of an ore stack that a first layer 2 run replaces.
+
+**Knobs.** `OutpostTuning` (`sellPercent` 80, `fuelPriceFactor` 2, `floorBand` 8), the kit's recipe (`data/deepcharter/recipe/outpost_kit.json`), the hall's size (`OutpostBuilder`), `Consumable.MATTER_TRANSMITTER` ($1,500).
+
+**Open questions.**
+- Beds (a respawn point), storage and repair terminals belong to an outpost in SPEC section 11 and are not built here: the hall has the two terminals that the issue asks for. The repair terminal waits for a repair price that is not the colony's.
+- Rated materials (SPEC section 11: an outpost built below its depth's rating is uninhabitable) matter from layer 3 on. The layer 1 floor has no rating, so the kit works only there; each deeper floor needs the rating rules first.
+- Sharing an outpost with other charters (the SPEC toggle) is not built: the terminals serve only a charter's own pods, as at the colony, and the data holds the owner.
 
 ## Hard landings (#319, A)
 

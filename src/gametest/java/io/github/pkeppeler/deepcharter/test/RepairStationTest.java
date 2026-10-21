@@ -85,7 +85,7 @@ public class RepairStationTest {
             Consumable.BLASTING_CHARGE, 40L,
             Consumable.SHAPED_CHARGE, 100L,
             Consumable.QUANTUM_TELEPORTER, 690L,
-            Consumable.MATTER_TRANSMITTER, 1_390L);
+            Consumable.MATTER_TRANSMITTER, 1_500L);
 
     private static final long PER_HP = 1L;
     private static final int ARENA = 4;
