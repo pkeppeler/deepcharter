@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.test;
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
@@ -11,12 +10,12 @@ import io.github.pkeppeler.deepcharter.pod.PodLavaWatch;
 import io.github.pkeppeler.deepcharter.pod.PodLavaWatchTuning;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import java.util.Map;
@@ -128,7 +127,7 @@ public class PodLavaWatchTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FLOW_TICKS)
     public void lavaFlowingDownTheShaftFromOutsideTheLinersViewWarnsBeforeTheHullBurns(GameTestHelper helper) {
         int x = 7000;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         int[] warnedAt = {-1};
         int[] warnedBlocksOff = {0};
@@ -180,7 +179,7 @@ public class PodLavaWatchTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + QUIET_TICKS + 100)
     public void aPodWithNoLavaAboutIsNotWarned(GameTestHelper helper) {
         int x = 7064;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         quietFor(helper, level, x, staged -> {}, () -> {});
     }
@@ -192,7 +191,7 @@ public class PodLavaWatchTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + QUIET_TICKS + 100)
     public void lavaSealedOffByARockPlugInTheShaftIsNotWarned(GameTestHelper helper) {
         int x = 7128;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         int plug = FLOOR + 8;
         RoomCarver.carve(level, x - 1, x, plug, plug, Z - 1, Z, Blocks.STONE);
@@ -257,7 +256,7 @@ public class PodLavaWatchTest {
             Optional<Integer> expected,
             boolean expectedAbove,
             boolean piloted) {
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         run(
                 helper,
@@ -349,7 +348,7 @@ public class PodLavaWatchTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + QUIET_TICKS + 200)
     public void lavaThatSettlesBeyondTheNearBandWarnsOnceThenFallsQuiet(GameTestHelper helper) {
         int x = 7768;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         boolean[] warned = {false};
         BlockPos source = new BlockPos(x + CORRIDOR, FLOOR, Z);
@@ -398,7 +397,7 @@ public class PodLavaWatchTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + QUIET_TICKS + 200)
     public void lavaThatSettlesWithinTheNearBandKeepsWarning(GameTestHelper helper) {
         int x = 7832;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         run(
                 helper,
@@ -451,7 +450,7 @@ public class PodLavaWatchTest {
     }
 
     private static void capTheShaft(GameTestHelper helper, int x, boolean openBeside) {
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         int capY = FLOOR + BOX;
         if (openBeside) {
@@ -580,13 +579,5 @@ public class PodLavaWatchTest {
     private static RuntimeException failure(
             GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
-        }
-        return level;
     }
 }

@@ -14,7 +14,6 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigures;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -24,6 +23,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -78,7 +78,7 @@ public class RetainedTest {
 
     private static final int FIRST_SLOT_X = 6408;
     private static final int SLOT_Z_SPACING = 64;
-    private static final int FLOOR_Y = 100;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 100);
     /** Ticks for a figure to walk 11 blocks to a pod: the slowest walk is 1 block a second. */
     private static final int APPROACH_BUDGET_TICKS = 11 * 20;
     /** Ticks for a grip on a tank filled to {@link #LOW_TANK_PERCENT} to reach the floor: 15 points of a stock tank is 1.5 litres, 10 seconds at 0.15 a second, with a margin for a loaded runner. */
@@ -884,8 +884,8 @@ public class RetainedTest {
     @GameTest
     public void rollsRiseWithDepthAndTheDeepIsNotRare(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+        ServerLevel one = TestLayers.level(server, 1);
+        ServerLevel two = TestLayers.level(server, 2);
         int tries = 40000;
         int inOne = 0;
         int inTwo = 0;
@@ -938,9 +938,9 @@ public class RetainedTest {
     public void aFigureMayAppearInTheDarkOfLayersOneAndTwoAndNowhereElse(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         List<ServerLevel> layers =
-                List.of(server.getLevel(LayerChain.dimension(1)), server.getLevel(LayerChain.dimension(2)));
+                List.of(server.getLevel(TestLayers.dimension(1)), server.getLevel(TestLayers.dimension(2)));
         ServerLevel overworld = ClientLight.serverLevel(server, Level.OVERWORLD);
-        BlockPos column = new BlockPos(7208, 128, 7208);
+        BlockPos column = TestLayers.pos(2, 7208, 128, 7208);
         BlockPos overworldPos = slot(5).above(2);
         int[] ready = {0};
         int[] phase = {0};
@@ -1064,8 +1064,8 @@ public class RetainedTest {
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theGamesOwnSpawnerRollsRareAndOnlyWhereTheRulesAllow(GameTestHelper helper) {
-        ServerLevel two = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(2));
-        BlockPos column = new BlockPos(7272, 128, 7208);
+        ServerLevel two = TestLayers.level(helper.getLevel().getServer(), 2);
+        BlockPos column = TestLayers.pos(2, 7272, 128, 7208);
         LamplessFigure[] figure = {null};
         int[] phase = {0};
         int[] since = {0};

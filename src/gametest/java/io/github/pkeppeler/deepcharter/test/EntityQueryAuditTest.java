@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnloadedChunk;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -88,7 +89,7 @@ public class EntityQueryAuditTest {
     public void aCharterCountsItsPodsWhoseChunkIsNotLoaded(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel level = server.overworld();
-        BlockPos far = new BlockPos(16_000, 140, 16_000);
+        BlockPos far = TestLayers.pos(TestLayers.SURFACE, 16_000, 140, 16_000);
         CharterId charter = CharterId.random();
         UUID[] pod = {null};
         UnloadedChunk.cycle(
@@ -124,7 +125,7 @@ public class EntityQueryAuditTest {
     @GameTest(maxTicks = CYCLE_TICKS)
     public void aFigureIsGoneWhenItsChunkUnloadsSoTheCapsNeedNoSavedCount(GameTestHelper helper) {
         ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), Level.NETHER);
-        BlockPos far = new BlockPos(16_040, 100, 16_040);
+        BlockPos far = new BlockPos(16_040, 100, 16_040); // fixed-pos: the Nether, which is not a layer
         List<UUID> figures = new ArrayList<>();
         UnloadedChunk.cycle(
                 helper,
@@ -173,7 +174,7 @@ public class EntityQueryAuditTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aQuerySeesEntitiesOfALoadedChunkThatDoesNotTick(GameTestHelper helper) {
         ServerLevel level = helper.getLevel().getServer().overworld();
-        BlockPos far = new BlockPos(16_300, 140, 16_300);
+        BlockPos far = TestLayers.pos(TestLayers.SURFACE, 16_300, 140, 16_300);
         ChunkPos chunk = ChunkPos.containing(far);
         UUID[] pod = {null};
         boolean[] placed = {false};
@@ -249,7 +250,7 @@ public class EntityQueryAuditTest {
         BlockPos centre = Colony.placed(server)
                 .orElseThrow(() -> failure(helper, "the colony was not built"))
                 .center();
-        BlockPos far = new BlockPos(16_200, 140, 16_200);
+        BlockPos far = TestLayers.pos(TestLayers.SURFACE, 16_200, 140, 16_200);
         UnloadedChunk.cycle(
                 helper,
                 level,
@@ -371,7 +372,7 @@ public class EntityQueryAuditTest {
         MockPlayer mock = MockPlayers.join(helper, "simulation-distance");
         // The player stands in the last block column of its chunk, so 30 blocks east is the far end of the second chunk
         // beyond.
-        Vec3 at = new Vec3(17_007.5, 100, 17_000.5);
+        Vec3 at = TestLayers.vec(TestLayers.SURFACE, 17_007.5, 100, 17_000.5);
         BlockPos podPos = BlockPos.containing(at.x + 30, at.y, at.z);
         FarChunks.Deadline deadline = FarChunks.deadline();
         boolean[] moved = {false};

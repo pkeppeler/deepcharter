@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -26,7 +25,7 @@ public class DeepCharterClientGameTest implements FabricClientGameTest {
                 StringBuilder out = new StringBuilder();
                 int[] heights = {192, 256};
                 for (int layer = 1; layer <= 2; layer++) {
-                    ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+                    ServerLevel level = TestLayers.level(server, layer);
                     if (level == null) {
                         out.append("layer_").append(layer).append(" is not loaded; ");
                     } else if (level.getMinY() != 0 || level.getHeight() != heights[layer - 1]) {

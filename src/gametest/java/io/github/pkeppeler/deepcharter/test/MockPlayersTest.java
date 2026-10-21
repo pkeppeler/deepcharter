@@ -1,10 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
@@ -222,7 +221,7 @@ public class MockPlayersTest {
     public void loadedMockStaysDamageableAfterChangingDimension(GameTestHelper helper) {
         ServerPlayer player = MockPlayers.join(helper, "crosser").player();
         player.setGameMode(GameType.SURVIVAL);
-        ServerLevel other = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
+        ServerLevel other = TestLayers.level(helper.getLevel().getServer(), 1);
         player.teleport(
                 new TeleportTransition(other, new Vec3(0.5, 8, 0.5), Vec3.ZERO, 0, 0, TeleportTransition.DO_NOTHING));
         if (!player.isChangingDimension()) {

@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
@@ -41,7 +40,9 @@ public final class LayerConceptScenes {
     private static final String NAMESPACE = "deepcharter-test";
     private static final Identifier SCENES = Identifier.fromNamespaceAndPath(NAMESPACE, "layer_concepts/scenes.json");
     /** Where the first scene stands (on a chunk boundary, so a scene touches as few chunks as it can), and the gap between two layers' scenes along X. */
-    private static final BlockPos ORIGIN = new BlockPos(3008, 40, 3008);
+    private static final BlockPos ORIGIN = new BlockPos(
+            3008, 40,
+            3008); // fixed-pos: the first scene of each layer carves its own room; Y is the same in every layer;
 
     private static final int GAP = 128;
     private static final int ATMOSPHERE_MARGIN = 8;
@@ -79,7 +80,7 @@ public final class LayerConceptScenes {
 
         public ServerLevel level(MinecraftServer server) {
             return Objects.requireNonNull(
-                    server.getLevel(LayerChain.dimension(dimension)),
+                    server.getLevel(TestLayers.dimension(dimension)),
                     "the server has no level for layer dimension " + dimension);
         }
 

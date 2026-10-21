@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -12,6 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Arrays;
 import java.util.List;
@@ -31,7 +31,7 @@ import net.minecraft.world.level.block.Blocks;
  * the slabs, the hull and the price. A breach brace with no ore says so; with ore it burns one ore into 12 hull, the hull outlasts the crust and the lines go.
  */
 public class PodBraceClientTest implements FabricClientGameTest {
-    private static final int FEET_Y = 10;
+    private static final int FEET_Y = TestLayers.worldY(1, 10);
     private static final float HULL = 20f;
     private static final int ORE = 3;
 
@@ -41,7 +41,7 @@ public class PodBraceClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 // An open room: the pod settles on its floor, where the brace can work (it waits for a pod at rest).
@@ -60,7 +60,7 @@ public class PodBraceClientTest implements FabricClientGameTest {
                     "the pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity pod
-                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
+                            && TestLayers.isIn(ClientLight.clientLevel(client), 1)
                             && Math.round(pod.hull()) == Math.round(HULL));
             List<Component> lines = crustLines(context);
             if (lines.size() != 1) {

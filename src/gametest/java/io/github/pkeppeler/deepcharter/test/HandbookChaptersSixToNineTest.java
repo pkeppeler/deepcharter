@@ -17,7 +17,6 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarEvents;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -32,12 +31,12 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -172,14 +171,6 @@ public class HandbookChaptersSixToNineTest {
         if (!condition) {
             throw helper.assertionException(format, args);
         }
-    }
-
-    private static ServerLevel layer(MinecraftServer server, int layer) {
-        ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
-        if (level == null) {
-            throw new IllegalStateException("dimension " + LayerChain.dimension(layer) + " did not load");
-        }
-        return level;
     }
 
     /** A Y inside zone {@code index} of the layer (0 is the top third, 2 the bottom). */
@@ -355,8 +346,8 @@ public class HandbookChaptersSixToNineTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aTwoPlayerCharterCompletesChaptersSixToNineInOrder(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel one = layer(server, 1);
-        ServerLevel two = layer(server, 2);
+        ServerLevel one = TestLayers.level(server, 1);
+        ServerLevel two = TestLayers.level(server, 2);
         AtomicInteger ready = new AtomicInteger();
         Runnable arrived = () -> {
             if (ready.incrementAndGet() == 2) {
@@ -762,7 +753,9 @@ public class HandbookChaptersSixToNineTest {
             TerminalEvents.ACTED
                     .invoker()
                     .onActed(server, TerminalTypes.REPAIR_STATION, drifter.player(), RepairStation.REPAIR_TOTAL);
-            BreachEvents.CROSSED.invoker().onCrossed(drifter.player(), layer(server, 1), layer(server, 2), 1, 2);
+            BreachEvents.CROSSED
+                    .invoker()
+                    .onCrossed(drifter.player(), TestLayers.level(server, 1), TestLayers.level(server, 2), 1, 2);
             HangarEvents.RESTORED.invoker().onRestored(server, drifter.player(), pod);
             HandbookTriggers.pollPlayer(server, drifter.player());
             expect(helper, drifter.player().startRiding(pod, true, false), "the drifter should board the pod");
@@ -812,7 +805,9 @@ public class HandbookChaptersSixToNineTest {
             TerminalEvents.ACTED
                     .invoker()
                     .onActed(server, TerminalTypes.UPGRADE_TERMINAL, rival.player(), RepairStation.REPAIR);
-            BreachEvents.CROSSED.invoker().onCrossed(rival.player(), layer(server, 1), layer(server, 2), 1, 2);
+            BreachEvents.CROSSED
+                    .invoker()
+                    .onCrossed(rival.player(), TestLayers.level(server, 1), TestLayers.level(server, 2), 1, 2);
             expectNothingNew(helper, server, "the rival's deeds", member, memberBoarded);
             Set<Identifier> rivals = completed(server, rival);
             for (String done : List.of(
@@ -853,7 +848,7 @@ public class HandbookChaptersSixToNineTest {
     public void theOreCheckNeverLoadsAChunkAndReadsAnUnloadedOneAsAir(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel level = helper.getLevel();
-        BlockPos origin = new BlockPos(7_200, 64, 7_200);
+        BlockPos origin = TestLayers.pos(TestLayers.SURFACE, 7_200, 64, 7_200);
         int chunkX = origin.getX() >> 4;
         int chunkZ = origin.getZ() >> 4;
         int[] phase = {0};
@@ -1043,7 +1038,9 @@ public class HandbookChaptersSixToNineTest {
                             .onActed(server, TerminalTypes.REPAIR_STATION, pilot.player(), action);
                 }
                 if (chartersReadable[0]) {
-                    BreachEvents.CROSSED.invoker().onCrossed(pilot.player(), layer(server, 1), layer(server, 2), 1, 2);
+                    BreachEvents.CROSSED
+                            .invoker()
+                            .onCrossed(pilot.player(), TestLayers.level(server, 1), TestLayers.level(server, 2), 1, 2);
                 }
                 HangarEvents.RESTORED.invoker().onRestored(server, pilot.player(), wrecked);
                 HandbookTriggers.pollPlayer(server, pilot.player());

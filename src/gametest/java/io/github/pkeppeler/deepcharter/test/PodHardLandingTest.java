@@ -2,19 +2,18 @@ package io.github.pkeppeler.deepcharter.test;
 
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -41,9 +40,9 @@ public class PodHardLandingTest {
     private static final int SHAFT_X = 2400;
     private static final int SHAFT_Z = 2400;
     /** Layer 1 spans y 0 to 191. The shaft is open from y 2 to the ceiling, over a floor of stone up to y 1. */
-    private static final int SHAFT_FLOOR_TOP_Y = 1;
+    private static final int SHAFT_FLOOR_TOP_Y = TestLayers.worldY(1, 1);
 
-    private static final int SHAFT_TOP_Y = 191;
+    private static final int SHAFT_TOP_Y = TestLayers.worldY(1, 191);
     private static final int SHAFT_DROP_BLOCKS = 187;
     private static final double SHAFT_SPAWN_Y = SHAFT_FLOOR_TOP_Y + 1 + SHAFT_DROP_BLOCKS;
     /** Ticks of the pod's own fall or braked descent, on top of the wait for the chunk. */
@@ -283,10 +282,7 @@ public class PodHardLandingTest {
 
     /** A 3 by 3 shaft through the whole of layer 1 over a stone floor, cut through RoomCarver so its shell is sealed. */
     private static ServerLevel shaft(GameTestHelper helper, int x, int z) {
-        ServerLevel one = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (one == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
-        }
+        ServerLevel one = TestLayers.level(helper.getLevel().getServer(), 1);
         RoomCarver.carve(
                 one,
                 new BlockPos(x - 1, one.getMinY(), z - 1),

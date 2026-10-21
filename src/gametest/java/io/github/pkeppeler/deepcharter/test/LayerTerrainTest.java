@@ -13,11 +13,11 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -79,7 +79,7 @@ public class LayerTerrainTest {
     public void theCrustFloorIsIntact(GameTestHelper helper) {
         int rows = LayerTuning.DEFAULT.crustThickness();
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             int floor = level.getMinY();
             for (int x = 700; x < 748; x++) {
                 for (int z = 700; z < 748; z++) {
@@ -108,7 +108,7 @@ public class LayerTerrainTest {
     @GameTest
     public void terrainIsNoiseWithCaves(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             int lowest = Integer.MAX_VALUE;
             int highest = Integer.MIN_VALUE;
             int caveCells = 0;
@@ -138,7 +138,7 @@ public class LayerTerrainTest {
     @GameTest
     public void onlyTheRetainedSpawnNaturally(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             for (int zone = 0; zone < 3; zone++) {
                 BlockPos pos = new BlockPos(0, zoneMiddle(level, zone), 0);
                 level.getChunk(pos.getX() >> 4, pos.getZ() >> 4, ChunkStatus.FULL);
@@ -163,13 +163,17 @@ public class LayerTerrainTest {
     @GameTest
     public void zoneBoundsAreRight(GameTestHelper helper) {
         // Zone 0 is the top third. Layer 1 is 192 tall: thirds at 64 and 128. Layer 2 is 256 tall: 85.33 and 170.67.
-        expectZones(helper, layer(helper, 1), new int[] {0, 63, 64, 127, 128, 191}, new int[] {2, 2, 1, 1, 0, 0});
-        expectZones(helper, layer(helper, 2), new int[] {0, 85, 86, 170, 171, 255}, new int[] {2, 2, 1, 1, 0, 0});
+        expectZones(
+                helper, TestLayers.level(helper, 1), new int[] {0, 63, 64, 127, 128, 191}, new int[] {2, 2, 1, 1, 0, 0
+                });
+        expectZones(
+                helper, TestLayers.level(helper, 2), new int[] {0, 85, 86, 170, 171, 255}, new int[] {2, 2, 1, 1, 0, 0
+                });
         if (Zones.of(helper.getLevel().getServer().overworld(), 63).isPresent()) {
             throw failure(helper, "the surface has a zone");
         }
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             for (int bad : new int[] {level.getMinY() - 1, level.getMaxY() + 1, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
                 if (Zones.of(level, bad).isPresent()) {
                     throw failure(helper, "layer_%d y=%d is outside the layer and should have no zone", layer, bad);
@@ -207,7 +211,7 @@ public class LayerTerrainTest {
     @GameTest
     public void eachZoneHasItsOwnBiomeNamedInTheLore(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             for (int zone = 0; zone < 3; zone++) {
                 Identifier expected = Identifier.fromNamespaceAndPath("deepcharter", ZONES[layer - 1][zone]);
                 Zones.Zone found = Zones.of(level, zoneMiddle(level, zone)).orElseThrow();
@@ -229,9 +233,9 @@ public class LayerTerrainTest {
     @GameTest
     public void handsCannotBreakDeepRock(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "terrain-hands");
-        ServerLevel one = layer(helper, 1);
-        ServerLevel two = layer(helper, 2);
-        BlockPos pos = new BlockPos(1700, 80, 1700);
+        ServerLevel one = TestLayers.level(helper, 1);
+        ServerLevel two = TestLayers.level(helper, 2);
+        BlockPos pos = TestLayers.pos(2, 1700, 80, 1700);
         mock.teleportTo(two, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
         mock.player().setGameMode(GameType.SURVIVAL);
         two.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
@@ -268,9 +272,9 @@ public class LayerTerrainTest {
     @GameTest
     public void startingToBreakDeepRockByHandIsRefused(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "terrain-attack");
-        ServerLevel one = layer(helper, 1);
-        ServerLevel two = layer(helper, 2);
-        BlockPos pos = new BlockPos(1750, 80, 1750);
+        ServerLevel one = TestLayers.level(helper, 1);
+        ServerLevel two = TestLayers.level(helper, 2);
+        BlockPos pos = TestLayers.pos(2, 1750, 80, 1750);
         two.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
         one.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
         two.setBlock(pos.east(), Blocks.DIRT.defaultBlockState(), 3);
@@ -304,7 +308,7 @@ public class LayerTerrainTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodDrillBreaksDeepRock(GameTestHelper helper) {
-        ServerLevel two = layer(helper, 2);
+        ServerLevel two = TestLayers.level(helper, 2);
         int x = 1800;
         int z = 1800;
         int floor = 80;
@@ -333,7 +337,7 @@ public class LayerTerrainTest {
     @GameTest
     public void generatorMatchesTheDimensionType(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             if (!(level.getChunkSource().getGenerator() instanceof NoiseBasedChunkGenerator generator)) {
                 throw failure(helper, "layer_%d is not generated by noise", layer);
             }
@@ -379,7 +383,7 @@ public class LayerTerrainTest {
     public void chunkGenerationTimeIsLogged(GameTestHelper helper) {
         int side = 4;
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             int base = 100_000 + layer * 1000;
             long start = System.nanoTime();
             for (int cx = base; cx < base + side; cx++) {
@@ -551,13 +555,5 @@ public class LayerTerrainTest {
     private static RuntimeException failure(
             GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
     }
 }

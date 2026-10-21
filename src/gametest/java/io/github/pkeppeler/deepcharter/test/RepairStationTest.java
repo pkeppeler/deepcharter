@@ -6,7 +6,6 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -24,11 +23,11 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.lang.reflect.Field;
@@ -656,10 +655,7 @@ public class RepairStationTest {
 
     private static void teleportFromLayerOne(
             GameTestHelper helper, Consumable teleporter, double x, double z, double scatter, boolean withPassenger) {
-        ServerLevel one = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (one == null) {
-            throw helper.assertionException("layer 1 did not load");
-        }
+        ServerLevel one = TestLayers.level(helper.getLevel().getServer(), 1);
         MinecraftServer server = helper.getLevel().getServer();
         // Riders wait at the join point, inside the colony's foundation, while the far chunk loads. Creative takes no
         // damage; an unloaded mock would be immune only for vanilla's first 60 ticks.
@@ -678,11 +674,11 @@ public class RepairStationTest {
         boolean[] used = {false};
         FarChunks.awaitEntityTicking(helper, one, at, () -> {
             // Only now: layer 1 is solid rock, and a rider put there while the chunk loads suffocates on a slow runner.
-            pilot.teleportTo(one, new Vec3(x, 40, z), 0, 0);
-            passenger.teleportTo(one, new Vec3(x, 40, z), 0, 0);
+            pilot.teleportTo(one, TestLayers.vec(1, x, 40, z), 0, 0);
+            passenger.teleportTo(one, TestLayers.vec(1, x, 40, z), 0, 0);
             pilot.player().setGameMode(GameType.SURVIVAL);
             PodEntity pod = TestEntities.create(PodRegistry.POD, one);
-            pod.setPos(x, 40, z);
+            pod.setPos(x, TestLayers.worldY(1, 40), z);
             one.addFreshEntity(pod);
             PodComponents.register(pod, charter.id());
             pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
@@ -870,7 +866,8 @@ public class RepairStationTest {
                 // The chunk is loaded now: the pod must stand on its ground, not at the bottom of the world an unloaded
                 // chunk reports.
                 int surface = overworld
-                        .getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 64, 0))
+                        .getHeightmapPos(
+                                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, TestLayers.pos(TestLayers.SURFACE, x, 64, 0))
                         .getY();
                 if (surface <= overworld.getMinY() || Math.abs(station.pod().getY() - surface) > 0.01) {
                     throw helper.assertionException(
@@ -894,12 +891,13 @@ public class RepairStationTest {
             LevelData.RespawnData original = overworld.getRespawnData();
             Map<BlockPos, BlockState> saved = new HashMap<>();
             try {
-                overworld.setRespawnData(LevelData.RespawnData.of(Level.OVERWORLD, new BlockPos(x, 64, 0), 0f, 0f));
+                overworld.setRespawnData(LevelData.RespawnData.of(
+                        Level.OVERWORLD, TestLayers.pos(TestLayers.SURFACE, x, 64, 0), 0f, 0f));
                 if (load) {
                     overworld.getChunk(x >> 4, 0);
                 }
-                BlockPos ground =
-                        overworld.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 64, 0));
+                BlockPos ground = overworld.getHeightmapPos(
+                        Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, TestLayers.pos(TestLayers.SURFACE, x, 64, 0));
                 for (BlockPos offset : touched) {
                     BlockPos at = ground.offset(offset);
                     saved.put(at, overworld.getBlockState(at));

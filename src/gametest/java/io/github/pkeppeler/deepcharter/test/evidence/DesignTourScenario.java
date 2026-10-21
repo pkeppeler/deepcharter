@@ -29,7 +29,6 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
@@ -60,6 +59,7 @@ import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
@@ -536,7 +536,7 @@ public class DesignTourScenario extends EvidenceScenario {
          */
         private void verify(String stillName, int layer, Vec3 eye, Vec3 target, Subject subject) {
             String problem = serverGet(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+                ServerLevel level = TestLayers.level(server, layer);
                 BlockPos centre = BlockPos.containing(target);
                 int reach = (int) Math.ceil(subject.radius());
                 boolean found = BlockPos.betweenClosedStream(
@@ -872,7 +872,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
         private PodEntity spawnPod(EntityType<PodEntity> type, int layer, Vec3 at, float yaw, boolean lights) {
             return serverGet(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+                ServerLevel level = TestLayers.level(server, layer);
                 PodEntity pod = TestEntities.create(type, level);
                 pod.setPos(at);
                 pod.setYRot(yaw);
@@ -1170,10 +1170,10 @@ public class DesignTourScenario extends EvidenceScenario {
 
         private void layerOne() {
             serverDo(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 loadChunks(one, LAYER_X, LAYER_Z, 3);
             });
-            Vec3 cell = serverGet(server -> openCell(ClientLight.serverLevel(server, LayerChain.dimension(1))));
+            Vec3 cell = serverGet(server -> openCell(TestLayers.level(server, 1)));
             terrainViews(1, cell);
 
             // The structures of layer 1: the three shafts, one in each zone.
@@ -1198,21 +1198,22 @@ public class DesignTourScenario extends EvidenceScenario {
             int x = LAYER_X + 200;
             int z = LAYER_Z + 200;
             serverDo(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 loadChunks(one, x, z, 2);
-                BlockPos min = new BlockPos(x - 3, 3, z - 3);
-                BlockPos max = new BlockPos(x + 3, 8, z + 3);
+                BlockPos min = TestLayers.pos(1, x - 3, 3, z - 3);
+                BlockPos max = TestLayers.pos(1, x + 3, 8, z + 3);
                 RoomCarver.carve(one, min, max, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
             });
             litRooms.add(new LitRoom(
-                    LayerChain.dimension(1), new Box(new BlockPos(x - 3, 3, z - 3), new BlockPos(x + 3, 8, z + 3))));
+                    TestLayers.dimension(1),
+                    new Box(TestLayers.pos(1, x - 3, 3, z - 3), TestLayers.pos(1, x + 3, 8, z + 3))));
             nightVision();
-            view(1, new Vec3(x + 0.5, 6.5, z + 0.5), new Vec3(x + 0.5, 1.5, z + 1.5), 120);
+            view(1, TestLayers.vec(1, x + 0.5, 6.5, z + 0.5), TestLayers.vec(1, x + 0.5, 1.5, z + 1.5), 120);
             still("layer-1-breach-crust-floor");
-            view(1, new Vec3(x - 2.5, 4.5, z - 2.5), new Vec3(x + 1.5, 3, z + 1.5), 20);
+            view(1, TestLayers.vec(1, x - 2.5, 4.5, z - 2.5), TestLayers.vec(1, x + 1.5, 3, z + 1.5), 20);
             still("layer-1-breach-crust-floor-low");
             serverDo(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 for (int dx = -1; dx <= 1; dx++) {
                     for (int dz = -1; dz <= 1; dz++) {
                         for (int y = one.getMinY(); y <= one.getMinY() + 3; y++) {
@@ -1221,7 +1222,7 @@ public class DesignTourScenario extends EvidenceScenario {
                     }
                 }
             });
-            view(1, new Vec3(x + 0.5, 6.5, z + 0.5), new Vec3(x + 0.5, 1.5, z + 1.5), 40);
+            view(1, TestLayers.vec(1, x + 0.5, 6.5, z + 0.5), TestLayers.vec(1, x + 0.5, 1.5, z + 1.5), 40);
             still("layer-1-breach-crust-broken");
         }
 
@@ -1232,7 +1233,7 @@ public class DesignTourScenario extends EvidenceScenario {
             int x = LAYER_X + 200;
             int z = LAYER_Z + 200;
             serverDo(server -> {
-                ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel two = TestLayers.level(server, 2);
                 loadChunks(two, x, z, 3);
             });
             hud(true);
@@ -1248,13 +1249,13 @@ public class DesignTourScenario extends EvidenceScenario {
             // load.
             EvidencePins.breachFadeAlpha = FADE_SHOT_ALPHA;
             serverDo(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 player(server).teleportTo(one, x + 0.5, one.getMinY() - 1, z + 0.5, Set.of(), 0, 60, true);
             });
             ClientWait.until(
                     ctx,
                     "layer 2 with the breach fade running and no screen",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2))
+                    client -> TestLayers.isIn(ClientLight.clientLevel(client), 2)
                             && client.gui.screen() == null
                             && BreachEffects.fadeAlpha(0f) > 0f);
             settle("hud-breach-fade");
@@ -1277,25 +1278,23 @@ public class DesignTourScenario extends EvidenceScenario {
                 ctx.waitTick();
             }
             ClientWait.until(
-                    ctx,
-                    "the client in layer 2",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)));
+                    ctx, "the client in layer 2", client -> TestLayers.isIn(ClientLight.clientLevel(client), 2));
             clearTransmissions();
         }
 
         private void layerTwo() {
             serverDo(server -> {
-                ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel two = TestLayers.level(server, 2);
                 loadChunks(two, LAYER_X, LAYER_Z, 3);
             });
             hud(false);
-            Vec3 cell = serverGet(server -> openCell(ClientLight.serverLevel(server, LayerChain.dimension(2))));
+            Vec3 cell = serverGet(server -> openCell(TestLayers.level(server, 2)));
             terrainViews(2, cell);
 
             // A pod in the dark with a scanner: the HUD at depth.
             // A sealed hall, so that no lava or gas of the cave reaches the pod.
             Vec3 hall = serverGet(server -> {
-                ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel two = TestLayers.level(server, 2);
                 int x = LAYER_X + 120;
                 int z = LAYER_Z + 120;
                 int floor = (two.getMinY() + two.getMaxY()) / 2;
@@ -1306,7 +1305,7 @@ public class DesignTourScenario extends EvidenceScenario {
                 return new Vec3(x + 0.5, floor + EYE, z + 0.5);
             });
             litRooms.add(new LitRoom(
-                    LayerChain.dimension(2),
+                    TestLayers.dimension(2),
                     new Box(
                             BlockPos.containing(hall).offset(-6, -1, -6),
                             BlockPos.containing(hall).offset(6, 6, 6))));
@@ -1497,7 +1496,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
         private StructureSite siteOf(StructureKind kind, @Nullable BlockPos near) {
             StructureSite site = serverGet(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(kind.layer()));
+                ServerLevel level = TestLayers.level(server, kind.layer());
                 BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT).orElseThrow();
                 return LayerStructures.nearest(
                         level.getSeed(),
@@ -1513,8 +1512,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
         private void loadSite(StructureSite site) {
             serverDo(server -> {
-                ServerLevel level = ClientLight.serverLevel(
-                        server, LayerChain.dimension(site.kind().layer()));
+                ServerLevel level = TestLayers.level(server, site.kind().layer());
                 BoundingBox box = site.bounds();
                 for (int cx = box.minX() >> 4; cx <= box.maxX() >> 4; cx++) {
                     for (int cz = box.minZ() >> 4; cz <= box.maxZ() >> 4; cz++) {
@@ -1576,21 +1574,14 @@ public class DesignTourScenario extends EvidenceScenario {
                 player.getAbilities().flying = true;
                 player.onUpdateAbilities();
                 player.teleportTo(
-                        ClientLight.serverLevel(server, LayerChain.dimension(layer)),
-                        eye.x,
-                        eye.y - EYE,
-                        eye.z,
-                        Set.of(),
-                        yaw,
-                        pitch,
-                        true);
+                        TestLayers.level(server, layer), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
             });
             // Arrived exactly, looking exactly: a camera still a block short, or a turn short, makes a different
             // picture.
             ClientWait.until(
                     ctx,
                     "the camera at the eye in layer " + layer + ", facing yaw " + yaw + " and pitch " + pitch,
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer))
+                    client -> TestLayers.isIn(ClientLight.clientLevel(client), layer)
                             && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
                             && Math.abs(Mth.wrapDegrees(
                                             ClientSession.player(client).getYRot() - yaw))
@@ -1610,7 +1601,7 @@ public class DesignTourScenario extends EvidenceScenario {
         private void awaitLight(PodEntity pod) {
             long deadline = System.nanoTime() + SETTLE_LIMIT_NANOS;
             while (!serverGet(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(0));
+                ServerLevel level = TestLayers.level(server, 0);
                 return BlockPos.betweenClosedStream(
                                 BlockPos.containing(pod.getX(), pod.getBoundingBox().minY, pod.getZ()),
                                 BlockPos.containing(pod.getX(), pod.getBoundingBox().maxY, pod.getZ()))
