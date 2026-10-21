@@ -100,3 +100,4 @@
 {"kind":"resolve","id":"pc_bec8209e5ba3","ts":"2026-10-20T11:00:14.938Z","agent":"claude-code","note":"fixed by #252: Vulkan on macOS"}
 {"kind":"resolve","id":"pc_0ca7eaaf792e","ts":"2026-10-20T11:00:14.941Z","agent":"claude-code","note":"fixed by #176 and #284"}
 {"kind":"resolve","id":"pc_bb6973265737","ts":"2026-10-20T11:00:14.946Z","agent":"claude-code","note":"fixed by #176 and #284"}
+{"kind":"cut","id":"pc_d0570aba3538","ts":"2026-10-21T23:07:34.104Z","agent":"claude-code","text":"New tooling pages (play-test.md LDL section, Gradle script header comments) restate the method and conditions their audit page already holds; the conventions skill's 'state the method once' rule covers only audit pages. Extending it to say: method lives in the audit page, other pages link to it, would have saved a simplifier pass on #736.","tags":["conventions"],"severity":"minor","cwd":"/Users/peterjkeppeler/git/deepcharter","repo":"/Users/peterjkeppeler/git/deepcharter"}
