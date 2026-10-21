@@ -52,7 +52,7 @@ _Avoid_: level, biome, dimension (that is the implementation)
 The one tall world that holds the surface as its top band and the story layers, ending at the finale's floor. Crossing a breach in it has no teleport.
 
 **Band**:
-A fixed range of Y in the campaign world: the surface, a layer, or unbuilt depth. Its edges are on section boundaries.
+A fixed range of Y in the campaign world: the surface, a layer, or unbuilt depth.
 _Avoid_: level, floor
 
 **Unbuilt depth**:

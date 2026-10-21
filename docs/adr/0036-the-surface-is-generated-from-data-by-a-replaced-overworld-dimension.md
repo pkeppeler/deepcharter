@@ -6,7 +6,7 @@ status: accepted
 
 Builds on [ADR 0029](0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md) (our own dry surface) and [ADR 0030](0030-art-direction-decisions.md) (the art direction). Amends [ADR 0011](0011-the-surface-is-layer-0-with-an-open-floor.md): the open floor now comes from our own material rule. Issue #240.
 
-Amended by [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md): the campaign world overrides the overworld dimension type.
+Amended by [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md): the campaign world overrides the overworld dimension type; an old world with a colony now refuses to start.
 
 ## Decision
 
