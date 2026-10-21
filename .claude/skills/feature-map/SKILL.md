@@ -48,8 +48,8 @@ A node lacking an icon or still is fine, and the gallery says "no still yet". Ev
 
 ## Regenerate and publish
 
-1. `python3 -I tools/feature_map.py` validates the map and writes the git-ignored local outputs; `--check` validates only. Commit `map.json` alone. When you merge main into a branch that still tracks the old outputs, take main's deletion of both files.
-2. `python3 -I tools/feature_map.py --check-stills` also checks every still is on `origin/pr-media` (local ref, no network; `git fetch origin pr-media` first).
+1. `tools/py tools/feature_map.py` validates the map and writes the git-ignored local outputs; `--check` validates only. Commit `map.json` alone. When you merge main into a branch that still tracks the old outputs, take main's deletion of both files.
+2. `tools/py tools/feature_map.py --check-stills` also checks every still is on `origin/pr-media` (local ref, no network; `git fetch origin pr-media` first).
 3. After a PR that moves several nodes: `tools/feature-map.sh --publish` draws the poster and publishes `feature-map.svg` (and a `.png` when Chrome is installed) to `pr-media/readme/`. The README shows it; it is never committed.
 4. `--mermaid-images` draws icons on the Mermaid nodes. GitHub may not render that shape, so the generated output uses text nodes with an emoji per kind.
 

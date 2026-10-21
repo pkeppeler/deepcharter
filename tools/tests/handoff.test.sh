@@ -8,6 +8,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+py=$root/tools/py
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
@@ -54,7 +55,7 @@ check "edit targets the handoff issue number" yes "$(grep -qF 'issue edit 14' "$
 check "edit sends the file's body" "$(cat "$good")" "$(cat "$work/log.body")"
 
 long="$work/long.md"
-python3 -I -c 'print("word " * 1001)' >"$long"
+"$py" -c 'print("word " * 1001)' >"$long"
 run_tool "$long"
 check "1,001 words refuses" 1 "$status"
 check "long refusal names the count and limit" yes "$(has '1001 words')"
@@ -62,7 +63,7 @@ check "long refusal names the fix" yes "$(has 'cut it to 1,000 words')"
 check "long refusal does not edit" no "$(edited)"
 
 exact="$work/exact.md"
-python3 -I -c 'print("word " * 1000)' >"$exact"
+"$py" -c 'print("word " * 1000)' >"$exact"
 run_tool "$exact"
 check "exactly 1,000 words passes" 0 "$status"
 

@@ -44,8 +44,8 @@ Paths are under `src/main/resources/` in the repo and under `assets/deepcharter/
 Every PNG under `textures/block/` and `textures/item/` is generated ([ADR 0037](../adr/0037-texture-layers-are-generated-data-and-casings-connect-through-one-model-type.md)). `tools/textures/texgen.py` draws each one from a palette and a recipe, using the Python standard library only. Do not edit the PNGs: edit a recipe or the palette, then rebuild.
 
 ```sh
-python3 tools/textures/texgen.py          # rebuild the mod's textures
-python3 tools/textures/texgen.py --check  # what the tool test runs; writes nothing
+tools/py tools/textures/texgen.py          # rebuild the mod's textures
+tools/py tools/textures/texgen.py --check  # what the tool test runs; writes nothing
 ```
 
 The reference sheet, [texture-reference.png](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/texture-reference.png?raw=true), shows the palette and every texture at light levels 15, 7, 3 and 0, with glow layers at full light. It is the style guide for new art, generated or curated. It is generated and never committed (a tracked copy conflicted between parallel PRs): `tools/texture-sheet.sh` publishes it to `pr-media/readme/`, and `texgen.py --sheet FILE` writes one anywhere.
@@ -59,7 +59,7 @@ The reference sheet, [texture-reference.png](https://github.com/pkeppeler/deepch
 Build the skin's whole texture set into its pack. A `--recipes` directory is optional, for a skin that redraws a texture and does not only recolour it. Its recipes and templates replace the default ones by name:
 
 ```sh
-python3 tools/textures/texgen.py --palette skins/<option>/palette.json [--recipes skins/<option>/recipes] \
+tools/py tools/textures/texgen.py --palette skins/<option>/palette.json [--recipes skins/<option>/recipes] \
     --out skins/<option>/pack/assets/deepcharter/textures --sheet skins/<option>/texture-reference.png
 ```
 

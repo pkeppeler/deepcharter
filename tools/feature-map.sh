@@ -11,11 +11,11 @@ set -euo pipefail
 tools=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 case ${1-} in
-  "") python3 -I "$tools/feature_map.py" ;;
+  "") "$tools/py" "$tools/feature_map.py" ;;
   --publish)
     stage=$(mktemp -d)
     trap 'rm -rf "$stage"' EXIT
-    python3 -I "$tools/feature_map.py" --check-stills --poster "$stage/feature-map.svg"
+    "$tools/py" "$tools/feature_map.py" --check-stills --poster "$stage/feature-map.svg"
     files=("$stage/feature-map.svg")
     for chrome in "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" chromium google-chrome; do
       if command -v "$chrome" >/dev/null 2>&1; then

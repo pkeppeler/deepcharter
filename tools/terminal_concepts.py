@@ -4,9 +4,9 @@
 The panel is `theme/panel.json` (what places it) and `textures/gui/sprites/panel/*.png` (with `.png.mcmeta` for the nine-slice ones), under
 src/main/resources/assets/deepcharter/. A resource pack restyles or switches it off key by key (ADR 0032, docs/design/skins.md).
 
-    python3 tools/terminal_concepts.py              write the panel
-    python3 tools/terminal_concepts.py --check      list the files that differ from what the generator makes (what the test runs)
-    python3 tools/terminal_concepts.py --preview D  write a mock of the panel (nine-slice scaled to 427 x 240) into directory D
+    tools/py tools/terminal_concepts.py              write the panel
+    tools/py tools/terminal_concepts.py --check      list the files that differ from what the generator makes (what the test runs)
+    tools/py tools/terminal_concepts.py --preview D  write a mock of the panel (nine-slice scaled to 427 x 240) into directory D
 
 Standard library only. A sprite is the same bytes on every run: the only randomness is `random.Random` with a fixed seed.
 """

@@ -4,7 +4,7 @@ Needs the repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of
 the pre-push hook run it. A failing check names itself: a failing test is <check>_gate_check.<Class>.<method>.
 A passing run leaves the mod json in build/generated/gametest-resources untouched: the fixtures never reach the generation task.
 A run also fails when a fixture case is never read by an assertion (gate_batch.unread_message).
-Usage: python3 -I tools/tests/gate_checks.py [room_carver] [world_data] [world_clock] [tick_wait] [client_filter] [hud_toggle] [testonly] [entity_query] [each_tick] [fixed_pos] [record_holder] [null_marked] [force]   (no argument runs all)
+Usage: tools/py tools/tests/gate_checks.py [room_carver] [world_data] [world_clock] [tick_wait] [client_filter] [hud_toggle] [testonly] [entity_query] [each_tick] [fixed_pos] [record_holder] [null_marked] [force]   (no argument runs all)
 """
 import importlib
 import sys
@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 if sys.version_info < (3, 10):
-    sys.exit(f"gate_checks: {sys.executable} is Python {sys.version.split()[0]}; the tools need 3.10 or newer. Put a newer python3 first on PATH.")
+    sys.exit(f"gate_checks: {sys.executable} is Python {sys.version.split()[0]}; the tools need 3.10 or newer. Run it through tools/py.")
 
 CHECKS = ("room_carver", "world_data", "world_clock", "tick_wait", "client_filter", "hud_toggle", "testonly", "entity_query", "each_tick", "fixed_pos", "record_holder", "null_marked", "force")
 

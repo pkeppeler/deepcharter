@@ -120,9 +120,9 @@ Every texture comes from our generator: palettes and recipes as data ([skins.md]
 To rebuild and check the packs:
 
 ```sh
-python3 tools/textures/texgen.py --variant b    # and c, d
-python3 tools/textures/texgen.py --variant b --check
-python3 -I -m unittest discover -s tools/tests -p 'test_tex*.py'
+tools/py tools/textures/texgen.py --variant b    # and c, d
+tools/py tools/textures/texgen.py --variant b --check
+tools/py -m unittest discover -s tools/tests -p 'test_tex*.py'
 ```
 
 `test_texture_packs.py` checks three things in each pack:

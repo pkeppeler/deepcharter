@@ -2,8 +2,8 @@
 """Builds the mod's own sounds from their recipes, and checks that every shipped OGG is a recipe's work.
 
 Usage:
-  python3 -I tools/sounds/soundgen.py [NAME ...]    render the recipes (all, or the named ones), encode the OGGs, write the manifest
-  python3 -I tools/sounds/soundgen.py --check       exit 1 on a shipped OGG with no recipe, a recipe with no OGG, a recipe that no longer
+  tools/py tools/sounds/soundgen.py [NAME ...]    render the recipes (all, or the named ones), encode the OGGs, write the manifest
+  tools/py tools/sounds/soundgen.py --check       exit 1 on a shipped OGG with no recipe, a recipe with no OGG, a recipe that no longer
                                                     makes the PCM it was committed with, or an OGG that is not the one committed
 Options: --out DIR (default src/main/resources/assets/deepcharter/sounds), --manifest FILE (default tools/sounds/manifest.json).
 

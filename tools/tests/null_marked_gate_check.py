@@ -1,6 +1,6 @@
 """Tests the null-marked gate in gradle/null-marked-gate.gradle.kts: a package with Java sources and no @NullMarked package-info fails,
 naming the package and the fix (step 7c of #550), and the gate scans every src/*/java tree.
-Usage: python3 -I tools/tests/gate_checks.py null_marked
+Usage: tools/py tools/tests/gate_checks.py null_marked
 """
 import unittest
 from pathlib import Path
