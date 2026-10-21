@@ -234,17 +234,34 @@ public enum StructureKind {
         return Arrays.stream(values()).filter(kind -> kind.layer == layer).toList();
     }
 
-    /** The side cells of the Kells' shaft's ring, as {@code (u, v)}, and the way out from each: a pod's lining reaches the cells beside it, not the corners. */
-    private static final int[][] KELLS_SIDES = {
-        {-2, -1, -1, 0},
-        {-2, 0, -1, 0},
-        {1, -1, 1, 0},
-        {1, 0, 1, 0},
-        {-1, -2, 0, -1},
-        {0, -2, 0, -1},
-        {-1, 1, 0, 1},
-        {0, 1, 0, 1}
-    };
+    /**
+     * A side cell of the Kells' shaft's ring (a pod's lining reaches the cells beside it, not the corners), and the way out from it.
+     *
+     * @param u    along the line
+     * @param v    across it
+     * @param outU the step along the line from the hollow's cell beside it to it, and on to the rock behind
+     * @param outV the same across the line
+     */
+    private record RingSide(int u, int v, int outU, int outV) {
+        /** The cell of the hollow beside this one, which a bulkhead has the hole in. */
+        int holeU() {
+            return u - outU;
+        }
+
+        int holeV() {
+            return v - outV;
+        }
+    }
+
+    private static final List<RingSide> KELLS_SIDES = List.of(
+            new RingSide(-2, -1, -1, 0),
+            new RingSide(-2, 0, -1, 0),
+            new RingSide(1, -1, 1, 0),
+            new RingSide(1, 0, 1, 0),
+            new RingSide(-1, -2, 0, -1),
+            new RingSide(0, -2, 0, -1),
+            new RingSide(-1, 1, 0, 1),
+            new RingSide(0, 1, 0, 1));
 
     /** The weeps in the shaft are placed in this many rows clear of the drift at the top and of the bottom. */
     private static final int KELLS_TOP_CLEARANCE = 8;
@@ -289,21 +306,17 @@ public enum StructureKind {
                     }
                 }
             }
-            int[] side = KELLS_SIDES[p.pick(20 + k, KELLS_SIDES.length)];
-            p.set(side[0], rows[k], side[1], Blocks.LAVA.defaultBlockState());
-            p.set(side[0] + side[2], rows[k], side[1] + side[3], Blocks.LAVA.defaultBlockState());
-            // The bulkhead: the Kells sealed each failing wall from below with a plug of brick across the hollow, level
-            // with the gap, so a
-            // pod coming down lands on it with the gap one row below its feet, where its hand lining reaches. The plug
-            // has a hole beside
-            // the gap, and lava stands in the cell under the hole, which the lining reaches too. A pod that bores the
-            // plug without lining
-            // sinks into that lava.
+            RingSide side = KELLS_SIDES.get(p.pick(20 + k, KELLS_SIDES.size()));
+            BlockState lava = Blocks.LAVA.defaultBlockState();
+            p.set(side.u(), rows[k], side.v(), lava);
+            p.set(side.u() + side.outU(), rows[k], side.v() + side.outV(), lava);
+            // The bulkhead: a plug of brick across the hollow at the gap's row, which a pod lands on, so that
+            // the gap is one row below its feet, in reach of its hand lining. The plug has a hole beside the
+            // gap and lava under the hole, in reach of the lining too: a pod that bores the plug without lining sinks
+            // into it.
             p.box(-1, rows[k], -1, 0, rows[k], 0, brick);
-            int holeU = side[0] - side[2];
-            int holeV = side[1] - side[3];
-            p.set(holeU, rows[k], holeV, Blocks.AIR.defaultBlockState());
-            p.set(holeU, rows[k] - 1, holeV, Blocks.LAVA.defaultBlockState());
+            p.set(side.holeU(), rows[k], side.holeV(), Blocks.AIR.defaultBlockState());
+            p.set(side.holeU(), rows[k] - 1, side.holeV(), lava);
         }
         // The drift: the line's last column, a rail to the lip, and the reserve in the wall.
         int floor = height - DRIFT_HEIGHT;
