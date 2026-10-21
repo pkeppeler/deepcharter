@@ -65,7 +65,7 @@ public final class SignalDecay {
     public static double intensity(PodEntity pod) {
         Level level = pod.level();
         int feetY = PodFootprint.of(pod).feetY();
-        Optional<Band> band = LayerChain.bandAt(level, feetY).filter(Band::isLayer);
+        Optional<Band> band = LayerChain.layerAt(level, feetY);
         if (band.isEmpty()) {
             return 0;
         }

@@ -6,7 +6,6 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.netty.buffer.ByteBuf;
@@ -164,9 +163,7 @@ public final class PodLiner {
     }
 
     private static boolean inLayer(PodEntity pod) {
-        return LayerChain.bandAt(pod.level(), pod.getBlockY())
-                .filter(Band::isLayer)
-                .isPresent();
+        return LayerChain.layerAt(pod.level(), pod.getBlockY()).isPresent();
     }
 
     /**

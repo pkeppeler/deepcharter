@@ -9,7 +9,7 @@ public final class Depth {
     private Depth() {}
 
     public static int of(Level level, int y) {
-        Optional<Band> band = LayerChain.bandAt(level, y).filter(Band::isLayer);
+        Optional<Band> band = LayerChain.layerAt(level, y);
         if (band.isEmpty()) {
             return LayerTuning.DEFAULT.seaLevel() - y;
         }

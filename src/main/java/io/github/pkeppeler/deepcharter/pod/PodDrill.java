@@ -263,7 +263,7 @@ public final class PodDrill {
 
         /** The last layer's crust has nothing under it: a hole would only drop the pod into the void. */
         private boolean crustLeadsOn() {
-            Optional<Band> band = LayerChain.bandAt(level, level.getMinY()).filter(Band::isLayer);
+            Optional<Band> band = LayerChain.layerAt(level, level.getMinY());
             return band.isEmpty() || band.get().layer() < LayerChain.count(level.registryAccess());
         }
     }

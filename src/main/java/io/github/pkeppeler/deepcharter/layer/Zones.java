@@ -47,7 +47,7 @@ public final class Zones {
 
     /** The zone at {@code y}; empty on the surface and outside the layer's height, so any player Y is safe to ask. */
     public static Optional<Zone> of(Level level, int y) {
-        Optional<Band> band = LayerChain.bandAt(level, y).filter(Band::isLayer);
+        Optional<Band> band = LayerChain.layerAt(level, y);
         if (band.isEmpty()) {
             return Optional.empty();
         }

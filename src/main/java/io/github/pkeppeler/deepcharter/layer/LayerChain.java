@@ -47,6 +47,11 @@ public final class LayerChain {
                 .findFirst();
     }
 
+    /** {@link #bandAt} for a layer; empty on the surface too. */
+    public static Optional<Band> layerAt(Level level, int y) {
+        return bandAt(level, y).filter(Band::isLayer);
+    }
+
     public static ResourceKey<Level> dimension(int layer) {
         return layer == SURFACE ? Level.OVERWORLD : ResourceKey.create(Registries.DIMENSION, id(layer));
     }

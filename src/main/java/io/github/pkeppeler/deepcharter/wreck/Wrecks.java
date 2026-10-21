@@ -184,7 +184,7 @@ public final class Wrecks {
     private static void report(ServerLevel level, Charter charter, PodEntity pod) {
         MinecraftServer server = level.getServer();
         BlockPos pos = pod.blockPosition();
-        OptionalInt layer = LayerChain.bandAt(level, pos.getY()).filter(Band::isLayer).stream()
+        OptionalInt layer = LayerChain.layerAt(level, pos.getY()).stream()
                 .mapToInt(Band::layer)
                 .findFirst();
         Component message = layer.isPresent()

@@ -80,7 +80,7 @@ public final class LayerBlocks {
 
     /** The rock of the layer that a level is; empty for a level that is no layer (the surface, a test's). Fails for a layer with no rock block yet. */
     public static Optional<Block> layerGroundOf(Level level) {
-        Optional<Band> band = LayerChain.bandAt(level, level.getMinY()).filter(Band::isLayer);
+        Optional<Band> band = LayerChain.layerAt(level, level.getMinY());
         if (band.isEmpty()) {
             return Optional.empty();
         }

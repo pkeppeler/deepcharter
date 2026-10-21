@@ -46,7 +46,7 @@ public final class LayerStructures {
         if (level.dimensionTypeRegistration().unwrapKey().isEmpty()) {
             return;
         }
-        Optional<Band> band = LayerChain.bandAt(level, level.getMinY()).filter(Band::isLayer);
+        Optional<Band> band = LayerChain.layerAt(level, level.getMinY());
         if (band.isEmpty()) {
             return;
         }

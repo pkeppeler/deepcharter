@@ -82,8 +82,7 @@ public final class PodBrace {
 
     private static Optional<Ahead> ahead(PodEntity pod) {
         Level level = pod.level();
-        Optional<Band> band =
-                LayerChain.bandAt(level, PodFootprint.of(pod).feetY()).filter(Band::isLayer);
+        Optional<Band> band = LayerChain.layerAt(level, PodFootprint.of(pod).feetY());
         if (band.isEmpty() || band.get().layer() >= LayerChain.count(level.registryAccess())) {
             return Optional.empty();
         }
