@@ -26,7 +26,7 @@ public enum ComponentTrack implements StringRepresentable {
     LINER("liner", 2, false),
     SOUNDER("sounder", 2, false),
     BRACE("brace", 1, false),
-    HEAT_SHIELD("heat_shield", 1, false),
+    HEAT_SHIELD("heat_shield", 3, false),
     CONSOLE("console", 3, false);
 
     public static final Codec<ComponentTrack> CODEC = StringRepresentable.fromEnum(ComponentTrack::values);

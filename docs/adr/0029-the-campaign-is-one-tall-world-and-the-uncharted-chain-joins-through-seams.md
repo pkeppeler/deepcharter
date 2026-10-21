@@ -6,6 +6,8 @@ status: accepted
 
 Supersedes [ADR 0003](0003-depth-as-chained-layer-dimensions.md). Amends [ADR 0011](0011-the-surface-is-layer-0-with-an-open-floor.md). Measurements: issue #185 and draft PR #187.
 
+Amended by [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md): the band Ys, `min_y` and `max_y` are fixed.
+
 One dimension, the **campaign world**, holds the surface and story layers 1 to 8. Below it, the uncharted layers are a chain of 2048-tall worlds, joined by **seams**.
 
 ## Decision

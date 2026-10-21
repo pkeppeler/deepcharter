@@ -26,9 +26,7 @@ public class DeepCharterClientGameTest implements FabricClientGameTest {
                 int[] heights = {192, 256};
                 for (int layer = 1; layer <= 2; layer++) {
                     ServerLevel level = TestLayers.level(server, layer);
-                    if (level == null) {
-                        out.append("layer_").append(layer).append(" is not loaded; ");
-                    } else if (level.getMinY() != 0 || level.getHeight() != heights[layer - 1]) {
+                    if (level.getMinY() != 0 || level.getHeight() != heights[layer - 1]) {
                         out.append("layer_")
                                 .append(layer)
                                 .append(" has minY ")

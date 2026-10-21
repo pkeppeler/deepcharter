@@ -12,8 +12,8 @@ import net.minecraft.world.phys.Vec3;
 /**
  * The one place a test or evidence scenario turns a layer and a local Y into a level and a world position. A layer is its
  * number ({@link LayerChain#SURFACE} for the surface); a local Y is a height inside that layer. Tests never name
- * {@code LayerChain.dimension} or a layer's Y themselves ({@code checkTestLayersGate}), so a change in how layers are laid out
- * edits this class only.
+ * {@code LayerChain.dimension} or a layer's Y themselves ({@code checkFixedPosGate}), so a change in how layers are laid out
+ * edits this class only. {@code SURFACE} positions are in the flat test overworld; GameTests reach it through the helper's level.
  */
 public final class TestLayers {
     /** The surface, the overworld of the chain. */
@@ -46,14 +46,14 @@ public final class TestLayers {
         return localY;
     }
 
-    /** The world position of ({@code x}, {@code localY}, {@code z}) in {@code layer}. */
-    public static BlockPos pos(int layer, int x, int localY, int z) {
-        return new BlockPos(x, worldY(layer, localY), z);
-    }
-
     /** The world Y of a fractional {@code localY} in {@code layer}. */
     public static double worldY(int layer, double localY) {
         return localY;
+    }
+
+    /** The world position of ({@code x}, {@code localY}, {@code z}) in {@code layer}. */
+    public static BlockPos pos(int layer, int x, int localY, int z) {
+        return new BlockPos(x, worldY(layer, localY), z);
     }
 
     /** The world position, with fractions, of ({@code x}, {@code localY}, {@code z}) in {@code layer}. */
