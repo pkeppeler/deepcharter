@@ -25,6 +25,7 @@ Issue #739, part of #214 (design in #213). Amends [ADR 0029](0029-the-campaign-i
 - **No crust under the surface.** The open floor of ADR 0011 stays, so layer 1 starts directly under the surface floor.
 - **Old saves are not migrated.** M3 needs a new world, as each version already does. A world gets a world-format stamp when its colony is first built. An unstamped world that has a colony refuses to start, with a message that points to [PLAYING.md](../PLAYING.md).
 - **Each M3 release that adds a layer needs a new world.**
+- **Lazy fill (#233) stays in M6.** M3 layers are generated in full.
 - **Layers differ in light and fog only through biome attributes.** `ambient_light`, `cardinal_light` and `has_skylight` belong to the dimension type, which is now one for all bands.
 
 ## Why
