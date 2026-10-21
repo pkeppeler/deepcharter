@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
+import io.github.pkeppeler.deepcharter.pod.PodHeatShield;
 import io.github.pkeppeler.deepcharter.pod.PodHeatShieldTuning;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -14,6 +15,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -23,6 +25,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
@@ -51,7 +54,12 @@ public class PodHeatShieldTest {
 
     /** Bricks a shield needs to soak {@code hull} of lava: a brick is burned as soon as a tick's damage finds none left. */
     private static int bricksFor(float hull) {
-        return (int) Math.ceil(hull / PodHeatShieldTuning.DEFAULT.hullPerBrick() - EPSILON);
+        return bricksFor(hull, 1);
+    }
+
+    /** Bricks a shield of {@code tier} needs to soak {@code hull} of lava. */
+    private static int bricksFor(float hull, int tier) {
+        return (int) Math.ceil(hull / PodHeatShieldTuning.DEFAULT.tier(tier).hullPerBrick() - EPSILON);
     }
 
     private record Scene(PodEntity pod, MockPlayer pilot) {
@@ -66,16 +74,28 @@ public class PodHeatShieldTest {
      */
     private static Scene scene(
             GameTestHelper helper, boolean shield, int rack, int pack, boolean seated, boolean stranger) {
+        return scene(helper, shield ? 1 : 0, PodRegistry.POD, rack, pack, seated, stranger);
+    }
+
+    /** As above for a shield of {@code tier} (0 for a bare pod) on a pod of {@code type}. */
+    private static Scene scene(
+            GameTestHelper helper,
+            int tier,
+            EntityType<PodEntity> type,
+            int rack,
+            int pack,
+            boolean seated,
+            boolean stranger) {
         for (int x = 0; x <= 8; x++) {
             for (int z = 0; z <= 6; z++) {
                 helper.setBlock(new BlockPos(x, 1, z), Blocks.STONE);
             }
         }
         helper.setBlock(new BlockPos(3, 2, 3), Blocks.LAVA);
-        PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(3.5, 2, 3.5));
+        PodEntity pod = helper.spawn(type, new Vec3(3.5, 2, 3.5));
         MockPlayer owner = MockPlayers.join(helper, "Shield owner " + OWNERS.incrementAndGet());
-        if (shield) {
-            ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod, ComponentTrack.HEAT_SHIELD, 1);
+        if (tier > 0) {
+            ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod, ComponentTrack.HEAT_SHIELD, tier);
         } else {
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod, ComponentTrack.SCANNER, 1);
         }
@@ -126,7 +146,7 @@ public class PodHeatShieldTest {
         int rack = 3;
         Scene scene = scene(helper, true, rack, 0, false, false);
         helper.runAfterDelay(LAVA_TICKS + 20, () -> {
-            float soakable = rack * PodHeatShieldTuning.DEFAULT.hullPerBrick();
+            float soakable = rack * PodHeatShieldTuning.DEFAULT.tier(1).hullPerBrick();
             float expected = scene.pod().maxHull() - (scene.ticks() * lavaPerTick() - soakable);
             if (PodLining.of(scene.pod()).bricks() != 0 || Math.abs(scene.pod().hull() - expected) > EPSILON) {
                 throw failure(
@@ -294,15 +314,179 @@ public class PodHeatShieldTest {
         });
     }
 
+    @GameTest(maxTicks = LAVA_TICKS + 20)
+    public void aTierTwoShieldSoaksSixHullABrick(GameTestHelper helper) {
+        Scene scene = scene(helper, 2, PodRegistry.POD, RACK, 0, false, false);
+        helper.runAfterDelay(LAVA_TICKS, () -> {
+            float soaked = scene.ticks() * lavaPerTick();
+            int burned = RACK - PodLining.of(scene.pod()).bricks();
+            if (scene.pod().hull() != scene.pod().maxHull()
+                    || burned != bricksFor(soaked, 2)
+                    || burned >= bricksFor(soaked, 1)) {
+                throw failure(
+                        helper,
+                        "a tier 2 shield soaks 6 hull a brick: %s hull of lava takes %d bricks (tier 1 would take %d), found %d burned and hull %s",
+                        soaked,
+                        bricksFor(soaked, 2),
+                        bricksFor(soaked, 1),
+                        burned,
+                        scene.pod().hull());
+            }
+            scene.pod().discard();
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = LAVA_TICKS + 20)
+    public void aTierTwoShieldBurnsTheRackBeforeThePack(GameTestHelper helper) {
+        int rack = 6;
+        int pack = 30;
+        Scene scene = scene(helper, 2, PodRegistry.POD, rack, pack, true, false);
+        helper.runAfterDelay(LAVA_TICKS, () -> {
+            int rackBurned = rack - PodLining.of(scene.pod()).bricks();
+            if (packBricks(scene) != pack || rackBurned != bricksFor(scene.ticks() * lavaPerTick(), 2)) {
+                throw failure(
+                        helper,
+                        "a tier 2 shield burns the rack first and leaves the pack of %d whole while the rack lasts: %d rack bricks should burn, found %d and %d in the pack",
+                        pack,
+                        bricksFor(scene.ticks() * lavaPerTick(), 2),
+                        rackBurned,
+                        packBricks(scene));
+            }
+            scene.pod().discard();
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = LAVA_TICKS + 20)
+    public void aTierThreeShieldOnAProspectorSoaksEightHullABrickFromThePackFirst(GameTestHelper helper) {
+        int rack = 6;
+        int pack = 30;
+        Scene scene = scene(helper, 3, PodRegistry.PROSPECTOR, rack, pack, true, false);
+        helper.runAfterDelay(LAVA_TICKS, () -> {
+            int packBurned = pack - packBricks(scene);
+            int expected = bricksFor(scene.ticks() * lavaPerTick(), 3);
+            if (PodHeatShield.tier(scene.pod()) != 3
+                    || packBurned != expected
+                    || PodLining.of(scene.pod()).bricks() != rack
+                    || scene.pod().hull() != scene.pod().maxHull()) {
+                throw failure(
+                        helper,
+                        "a tier 3 shield burns the pack first, 8 hull a brick: %d pack bricks should burn after %d ticks and the rack of %d stay whole, found %d from the pack and %d in the rack; hull %s",
+                        expected,
+                        scene.ticks(),
+                        rack,
+                        packBurned,
+                        PodLining.of(scene.pod()).bricks(),
+                        scene.pod().hull());
+            }
+            scene.pod().discard();
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = LAVA_TICKS + 20)
+    public void aTierThreeShieldTakesTheRackOnceThePackIsSpent(GameTestHelper helper) {
+        int rack = 20;
+        int pack = 2;
+        Scene scene = scene(helper, 3, PodRegistry.PROSPECTOR, rack, pack, true, false);
+        helper.runAfterDelay(LAVA_TICKS, () -> {
+            int burned = rack + pack - PodLining.of(scene.pod()).bricks() - packBricks(scene);
+            if (packBricks(scene) != 0
+                    || burned != bricksFor(scene.ticks() * lavaPerTick(), 3)
+                    || scene.pod().hull() != scene.pod().maxHull()) {
+                throw failure(
+                        helper,
+                        "with the pack of %d spent the rack burns: %d bricks should burn after %d ticks, found %d with %d in the pack and %d in the rack; hull %s",
+                        pack,
+                        bricksFor(scene.ticks() * lavaPerTick(), 3),
+                        scene.ticks(),
+                        burned,
+                        packBricks(scene),
+                        PodLining.of(scene.pod()).bricks(),
+                        scene.pod().hull());
+            }
+            scene.pod().discard();
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = LAVA_TICKS + 20)
+    public void aTierThreeShieldBurnsTheRackWhenThePackIsAnotherCrews(GameTestHelper helper) {
+        Scene scene = scene(helper, 3, PodRegistry.PROSPECTOR, RACK, 20, false, true);
+        helper.runAfterDelay(LAVA_TICKS, () -> {
+            int burned = RACK - PodLining.of(scene.pod()).bricks();
+            if (packBricks(scene) != 20
+                    || burned != bricksFor(scene.ticks() * lavaPerTick(), 3)
+                    || scene.pod().hull() != scene.pod().maxHull()) {
+                throw failure(
+                        helper,
+                        "a stranger's pack is not the shield's to burn: the rack should burn %d bricks and the pack keep 20, found %d burned and %d in the pack; hull %s",
+                        bricksFor(scene.ticks() * lavaPerTick(), 3),
+                        burned,
+                        packBricks(scene),
+                        scene.pod().hull());
+            }
+            scene.pod().discard();
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = LAVA_TICKS + 20)
+    public void aMoleFitsATierThreeShieldButItWorksAsTierTwo(GameTestHelper helper) {
+        Scene scene = scene(helper, 3, PodRegistry.POD, 6, 30, true, false);
+        helper.runAfterDelay(LAVA_TICKS, () -> {
+            int burned = 6 - PodLining.of(scene.pod()).bricks();
+            if (PodHeatShield.tier(scene.pod()) != 2
+                    || packBricks(scene) != 30
+                    || burned != bricksFor(scene.ticks() * lavaPerTick(), 2)) {
+                throw failure(
+                        helper,
+                        "a Mole's cap makes a tier 3 shield work as tier 2 (6 hull a brick, rack first): tier %d, %d burned from the rack (expected %d), %d in the pack",
+                        PodHeatShield.tier(scene.pod()),
+                        burned,
+                        bricksFor(scene.ticks() * lavaPerTick(), 2),
+                        packBricks(scene));
+            }
+            scene.pod().discard();
+            helper.succeed();
+        });
+    }
+
     @GameTest
     public void aBrickMustAbsorbHull(GameTestHelper helper) {
         try {
-            new PodHeatShieldTuning(0f);
+            new PodHeatShieldTuning.Tier(0f, false);
         } catch (IllegalArgumentException expected) {
             helper.succeed();
             return;
         }
         throw failure(helper, "a brick that absorbs no hull should be refused");
+    }
+
+    @GameTest
+    public void theTuningHasOneTierForEachPartTierAndEachSoaksMore(GameTestHelper helper) {
+        List<PodHeatShieldTuning.Tier> tiers = PodHeatShieldTuning.DEFAULT.tiers();
+        if (tiers.size() != ComponentTrack.HEAT_SHIELD.maxTier()) {
+            throw failure(
+                    helper,
+                    "the shield has %d part tiers, the tuning %d",
+                    ComponentTrack.HEAT_SHIELD.maxTier(),
+                    tiers.size());
+        }
+        for (int tier = 2; tier <= tiers.size(); tier++) {
+            if (!(PodHeatShieldTuning.DEFAULT.tier(tier).hullPerBrick()
+                    > PodHeatShieldTuning.DEFAULT.tier(tier - 1).hullPerBrick())) {
+                throw failure(helper, "tier %d should soak more hull a brick than tier %d", tier, tier - 1);
+            }
+        }
+        try {
+            new PodHeatShieldTuning(List.of());
+        } catch (IllegalArgumentException expected) {
+            helper.succeed();
+            return;
+        }
+        throw failure(helper, "a tuning with no tier should be refused");
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.

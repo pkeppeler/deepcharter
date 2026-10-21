@@ -23,6 +23,7 @@ import java.util.Optional;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
+import net.minecraft.locale.Language;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
@@ -60,6 +61,10 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
     private int hintX;
 
     private int hintY;
+    /** Where the note under the chosen track's tiers is drawn: set by the last layout. */
+    private int noteX;
+
+    private int noteY;
     private final ScrollList scroll = new ScrollList(
             "screen.deepcharter.upgrade.scroll",
             () -> ComponentTrack.values().length,
@@ -117,6 +122,8 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
                                 .orElse(0)
                         * PITCH
                 + rowGap;
+        noteX = tierX;
+        noteY = listTop() + selected.maxTier() * PITCH + rowGap;
         hintX = tierX + CLOSE_WIDTH + COLUMN_GAP;
         hintY = closeY + (rowHeight - font.lineHeight) / 2;
         addRenderableWidget(new CrtButton(
@@ -261,7 +268,20 @@ public final class UpgradeScreen extends CrtScreen implements TerminalViewScreen
                 contentWidth(MARGIN));
         CrtDraw.glowText(graphics, font, status(), contentLeft(MARGIN), below, tuning.phosphorColor());
         scroll.hint().ifPresent(hint -> CrtDraw.glowText(graphics, font, hint, hintX, hintY, tuning.phosphorColor()));
+        String[] note = note();
+        for (int line = 0; line < note.length; line++) {
+            CrtDraw.glowText(graphics, font, note[line], noteX, noteY + line * font.lineHeight, tuning.phosphorColor());
+        }
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    }
+
+    /** What the chosen track's top tier does that its price does not say, one string for each line; none for a track with no note (#712: the heat shield's pack-first order). */
+    private String[] note() {
+        String key = "screen.deepcharter.upgrade.note." + selected.id();
+        if (!Language.getInstance().has(key)) {
+            return new String[0];
+        }
+        return Component.translatable(key).getString().split("\n");
     }
 
     /** The pod, its tier cap and the account, or why there is no pod. */
