@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -49,7 +50,7 @@ import net.minecraft.world.phys.Vec3;
 public class ActiveStateTest {
     private static final TerminalType PUMP = TerminalTypes.FUEL_PUMP;
     /** Far from every other test's chunks, so the chunk test can unload its own. */
-    private static final BlockPos FAR = new BlockPos(-3536, 70, 3536);
+    private static final BlockPos FAR = TestLayers.pos(TestLayers.SURFACE, -3536, 70, 3536);
 
     private static final Set<Long> UNLOADED = ConcurrentHashMap.newKeySet();
     private static final Set<Long> LOADED = ConcurrentHashMap.newKeySet();

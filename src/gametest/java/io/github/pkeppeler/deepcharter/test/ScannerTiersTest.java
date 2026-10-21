@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.scanner.ScanSlice.Cell;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.ArrayList;
@@ -42,7 +43,7 @@ import org.jspecify.annotations.Nullable;
 /** Server GameTests for #74: what a scanner slice covers and shows at each tier. */
 public class ScannerTiersTest {
     /** Well above the flat test world, so every tier's dive stays inside the build limits. */
-    private static final int ORIGIN_Y = 150;
+    private static final int ORIGIN_Y = TestLayers.worldY(TestLayers.SURFACE, 150);
 
     private static final AtomicInteger CHARTERS = new AtomicInteger();
 

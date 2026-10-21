@@ -1,15 +1,14 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreBlock.Host;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -55,18 +54,10 @@ public class OreHostTest {
         return layer == 1 ? Host.PACKED_SHALE : Host.GREEN_SHALE;
     }
 
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw helper.assertionException("dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
-    }
-
     @GameTest(maxTicks = 6000)
     public void generatedOreInEachLayerSitsInThatLayersRock(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             Map<Host, Integer> found = new EnumMap<>(Host.class);
             for (int cx = FIRST_CHUNK; cx < FIRST_CHUNK + SIDE; cx++) {
                 for (int cz = FIRST_CHUNK; cz < FIRST_CHUNK + SIDE; cz++) {
@@ -98,8 +89,8 @@ public class OreHostTest {
     public void anOreItemPlacedInALayerTakesThatLayersRock(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "ore-host-place");
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = layer(helper, layer);
-            BlockPos floor = new BlockPos(7400, 80, 3000 + layer * 8);
+            ServerLevel level = TestLayers.level(helper, layer);
+            BlockPos floor = TestLayers.pos(layer, 7400, 80, 3000 + layer * 8);
             mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above(4)), 0, 0);
             mock.player().setGameMode(GameType.SURVIVAL);
             int last = floor.getX() + OreType.values().length;

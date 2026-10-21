@@ -24,6 +24,7 @@ import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -200,7 +201,7 @@ public class WorkOrdersTest {
     public void aHandsDisplayWithoutItsStateDiscardsItselfOnLoad(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel level = server.overworld();
-        BlockPos far = new BlockPos(14_000, 120, 14_000);
+        BlockPos far = TestLayers.pos(TestLayers.SURFACE, 14_000, 120, 14_000);
         level.getChunk(far.getX() >> 4, far.getZ() >> 4);
         for (String piece : List.of("founder_c", "founder_c_hands")) {
             server.getCommands()
@@ -240,7 +241,7 @@ public class WorkOrdersTest {
     public void handsThatTheWorldOwesSurviveTheirChunkBeingUnloadedAndLoadedAgain(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel level = server.overworld();
-        BlockPos far = new BlockPos(15_000, 120, 15_000);
+        BlockPos far = TestLayers.pos(TestLayers.SURFACE, 15_000, 120, 15_000);
         // The state of these hands is the marker 3 blocks under them, in their own chunk: other tests, which share the
         // colony's, cannot touch it.
         BlockPos marker = far.below(3);

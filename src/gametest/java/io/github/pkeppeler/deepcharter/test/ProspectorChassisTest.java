@@ -12,7 +12,6 @@ import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
@@ -24,12 +23,12 @@ import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.Serials;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
@@ -280,7 +279,7 @@ public class ProspectorChassisTest {
 
     @GameTest(maxTicks = DRILL_TICKS)
     public void aProspectorBoresThreeByThree(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(
                 level, BORE_X - 5, BORE_X + 5, BORE_FLOOR - 8, BORE_FLOOR - 1, BORE_Z - 5, BORE_Z + 5, Blocks.STONE);
         RoomCarver.carve(
@@ -354,7 +353,7 @@ public class ProspectorChassisTest {
     @GameTest(maxTicks = 12000)
     public void everyWreckSiteHoldsAnUnownedProspectorWreckAndOnlyPROSPECTOR0002HasALampAndN10(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel level = layer(helper, 2);
+        ServerLevel level = TestLayers.level(helper, 2);
         BlockPos conduit = conduit(helper);
         StructureSite ordinary = StructureSite.in(
                 level.getSeed(),
@@ -970,16 +969,16 @@ public class ProspectorChassisTest {
     public void aProspectorCrossesABreachWithBothRidersInTheirSeats(GameTestHelper helper) {
         double x = 3700.5;
         double z = 3700.5;
-        ServerLevel one = layer(helper, 1);
+        ServerLevel one = TestLayers.level(helper, 1);
         openShaft(one, x, z);
         MockPlayer pilot = MockPlayers.join(helper, "prospector-cross-pilot");
         MockPlayer navigator = MockPlayers.join(helper, "prospector-cross-navigator");
-        pilot.teleportTo(one, new Vec3(x, 8, z), 0, 0);
-        navigator.teleportTo(one, new Vec3(x, 8, z), 0, 0);
+        pilot.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
+        navigator.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         PodEntity[] pod = {null};
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, TestLayers.worldY(2, 8), z), () -> {
             pod[0] = TestEntities.create(PodRegistry.PROSPECTOR, one);
-            pod[0].setPos(x, 8, z);
+            pod[0].setPos(x, TestLayers.worldY(2, 8), z);
             one.addFreshEntity(pod[0]);
             if (!pilot.player().startRiding(pod[0], true, false)
                     || !navigator.player().startRiding(pod[0], true, false)) {
@@ -988,11 +987,14 @@ public class ProspectorChassisTest {
         });
         helper.succeedWhen(() -> {
             if (pod[0] == null) {
-                throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+                throw failure(
+                        helper,
+                        "waiting for the chunk at %s to tick entities",
+                        BlockPos.containing(x, TestLayers.worldY(2, 8), z));
             }
             expect(
                     helper,
-                    pilot.player().level().dimension().equals(LayerChain.dimension(2)),
+                    TestLayers.isIn(pilot.player().level(), 2),
                     "the pilot should have crossed to layer 2, is in %s",
                     pilot.player().level().dimension());
             expect(
@@ -1023,19 +1025,19 @@ public class ProspectorChassisTest {
     public void aTowedProspectorKeepsBothRidersInTheirSeatsAcrossABreach(GameTestHelper helper) {
         double x = 3800.5;
         double z = 3800.5;
-        ServerLevel one = layer(helper, 1);
+        ServerLevel one = TestLayers.level(helper, 1);
         openShaft(one, x, z);
         MockPlayer pilot = MockPlayers.join(helper, "prospector-tow-pilot");
         MockPlayer navigator = MockPlayers.join(helper, "prospector-tow-navigator");
-        pilot.teleportTo(one, new Vec3(x, 10, z), 0, 0);
-        navigator.teleportTo(one, new Vec3(x, 10, z), 0, 0);
+        pilot.teleportTo(one, TestLayers.vec(1, x, 10, z), 0, 0);
+        navigator.teleportTo(one, TestLayers.vec(1, x, 10, z), 0, 0);
         PodEntity[] pods = {null, null};
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, TestLayers.worldY(2, 8), z), () -> {
             pods[0] = TestEntities.create(PodRegistry.POD, one);
-            pods[0].setPos(x, 8, z);
+            pods[0].setPos(x, TestLayers.worldY(2, 8), z);
             one.addFreshEntity(pods[0]);
             pods[1] = TestEntities.create(PodRegistry.PROSPECTOR, one);
-            pods[1].setPos(x, 10, z);
+            pods[1].setPos(x, TestLayers.worldY(2, 10), z);
             one.addFreshEntity(pods[1]);
             PodTowing.attach(pods[0], pods[1]);
             if (!pilot.player().startRiding(pods[1], true, false)
@@ -1045,12 +1047,15 @@ public class ProspectorChassisTest {
         });
         helper.succeedWhen(() -> {
             if (pods[1] == null) {
-                throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+                throw failure(
+                        helper,
+                        "waiting for the chunk at %s to tick entities",
+                        BlockPos.containing(x, TestLayers.worldY(2, 8), z));
             }
             expect(
                     helper,
-                    pilot.player().level().dimension().equals(LayerChain.dimension(2))
-                            && navigator.player().level().dimension().equals(LayerChain.dimension(2)),
+                    TestLayers.isIn(pilot.player().level(), 2)
+                            && TestLayers.isIn(navigator.player().level(), 2),
                     "both riders of the towed Prospector should have crossed to layer 2, they are in %s and %s",
                     pilot.player().level().dimension(),
                     navigator.player().level().dimension());
@@ -1199,14 +1204,6 @@ public class ProspectorChassisTest {
             throw failure(helper, "founding a charter should succeed");
         }
         return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
     }
 
     private static int air(ServerLevel level, int x1, int x2, int y1, int y2, int z1, int z2) {

@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -69,7 +70,7 @@ public class DeepestPointTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodThatBoresToANewDepthRaisesItsCharterDeepestPoint(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(1));
+        ServerLevel level = TestLayers.level(server, 1);
         RoomCarver.carve(level, X - 4, X + 3, FLOOR - 8, FLOOR - 1, Z - 4, Z + 3, Blocks.STONE);
         RoomCarver.carve(level, X - 4, X + 3, FLOOR, FLOOR + 10, Z - 4, Z + 3, Blocks.AIR);
         MockPlayer pilot = charterMember(helper, "dp-bore");
@@ -109,7 +110,7 @@ public class DeepestPointTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void reachingTheTopOfLayerThreeOpensTheMoraleInitiative(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+        ServerLevel two = TestLayers.level(server, 2);
         MockPlayer crew = charterMember(helper, "dp-order");
         crew.player().setPermanentlyInvulnerable(true);
         crew.player().setNoGravity(true);
@@ -143,7 +144,7 @@ public class DeepestPointTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aSpectatorOrACreativePlayerSetsNoRecord(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+        ServerLevel two = TestLayers.level(server, 2);
         MockPlayer ghost = charterMember(helper, "dp-ghost");
         ghost.player().setGameMode(GameType.SPECTATOR);
         ghost.teleportTo(two, new Vec3(X + 200.5, two.getMinY() + 4, Z + 200.5), 0, 0);

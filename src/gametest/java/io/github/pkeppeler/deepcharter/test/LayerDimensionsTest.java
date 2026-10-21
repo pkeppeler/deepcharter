@@ -8,9 +8,9 @@ import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -36,7 +36,7 @@ public class LayerDimensionsTest {
     @GameTest(dimension = "deepcharter:layer_1")
     public void gameTestRunsInLayerOne(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        if (!level.dimension().equals(LayerChain.dimension(1))) {
+        if (!TestLayers.isIn(level, 1)) {
             throw helper.assertionException("test ran in %s, not deepcharter:layer_1", level.dimension());
         }
         helper.succeed();
@@ -68,13 +68,13 @@ public class LayerDimensionsTest {
 
     @GameTest
     public void layersAreDarkerWithDepth(GameTestHelper helper) {
-        float one = level(helper, 1).dimensionType().ambientLight();
-        float two = level(helper, 2).dimensionType().ambientLight();
+        float one = TestLayers.level(helper, 1).dimensionType().ambientLight();
+        float two = TestLayers.level(helper, 2).dimensionType().ambientLight();
         if (!(two < one)) {
             throw helper.assertionException("layer_2 ambient light %s should be below layer_1's %s", two, one);
         }
-        if (level(helper, 1).dimensionType().hasSkyLight()
-                || level(helper, 2).dimensionType().hasSkyLight()) {
+        if (TestLayers.level(helper, 1).dimensionType().hasSkyLight()
+                || TestLayers.level(helper, 2).dimensionType().hasSkyLight()) {
             throw helper.assertionException("layers must have no skylight");
         }
         helper.succeed();
@@ -85,7 +85,7 @@ public class LayerDimensionsTest {
         Block crust = BuiltInRegistries.BLOCK.getValue(CRUST_ID);
         for (int layer = 1; layer <= 2; layer++) {
             int thickness = LayerTuning.DEFAULT.crustThickness();
-            ServerLevel level = level(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             int floor = level.getMinY();
             for (int dy = 0; dy < thickness; dy++) {
                 if (!level.getBlockState(new BlockPos(5, floor + dy, 5)).is(crust)) {
@@ -101,8 +101,8 @@ public class LayerDimensionsTest {
 
     @GameTest
     public void depthMatchesTheFormula(GameTestHelper helper) {
-        ServerLevel one = level(helper, 1);
-        ServerLevel two = level(helper, 2);
+        ServerLevel one = TestLayers.level(helper, 1);
+        ServerLevel two = TestLayers.level(helper, 2);
         expectInt(helper, Depth.of(one, one.getMaxY() + 1), 127);
         expectInt(helper, Depth.of(one, 100), 127 + 92);
         expectInt(helper, Depth.of(two, two.getMaxY() + 1), 127 + 192);
@@ -117,8 +117,8 @@ public class LayerDimensionsTest {
     /** The floor of each link and the top of the next share one depth. */
     @GameTest
     public void depthIsContinuousAcrossTheBoundary(GameTestHelper helper) {
-        ServerLevel one = level(helper, 1);
-        ServerLevel two = level(helper, 2);
+        ServerLevel one = TestLayers.level(helper, 1);
+        ServerLevel two = TestLayers.level(helper, 2);
         ServerLevel surface = helper.getLevel().getServer().overworld();
         expectInt(helper, Depth.of(two, two.getMaxY() + 1), Depth.of(one, one.getMinY()));
         expectInt(helper, Depth.of(one, one.getMaxY() + 1), Depth.of(surface, surface.getMinY()));
@@ -173,7 +173,7 @@ public class LayerDimensionsTest {
             var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
             server.getCommands().getDispatcher().execute("deepcharter layer goto 2", source);
             ServerLevel level = mock.player().level();
-            if (!level.dimension().equals(LayerChain.dimension(2))) {
+            if (!TestLayers.isIn(level, 2)) {
                 throw helper.assertionException("player is in %s after goto 2", level.dimension());
             }
             Vec3 pos = mock.player().position();
@@ -202,8 +202,8 @@ public class LayerDimensionsTest {
         MockPlayer mock =
                 MockPlayers.join(server, "layer-goto-block", helper.getLevel(), helper.absoluteVec(Vec3.ZERO));
         try {
-            ServerLevel layer = level(helper, 2);
-            mock.player().setPos(300_000.5, 80, 300_000.5);
+            ServerLevel layer = TestLayers.level(helper, 2);
+            mock.player().setPos(300_000.5, TestLayers.worldY(2, 80), 300_000.5);
             layer.getChunk(300_000 >> 4, 300_000 >> 4);
             BlockPos block = new BlockPos(300_000, layer.getMaxY() - 2, 300_000);
             layer.setBlockAndUpdate(block, SurfaceBlocks.REGOLITH.defaultBlockState());
@@ -226,8 +226,8 @@ public class LayerDimensionsTest {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer mock = MockPlayers.join(server, "layer-goto-far", helper.getLevel(), helper.absoluteVec(Vec3.ZERO));
         try {
-            mock.player().setPos(200_000.5, 80, 200_000.5);
-            ServerLevel layer = level(helper, 1);
+            mock.player().setPos(200_000.5, TestLayers.worldY(1, 80), 200_000.5);
+            ServerLevel layer = TestLayers.level(helper, 1);
             if (layer.getChunkSource().getChunkNow(200_000 >> 4, 200_000 >> 4) != null) {
                 throw helper.assertionException("the far chunk was already loaded, so the test proves nothing");
             }
@@ -253,16 +253,8 @@ public class LayerDimensionsTest {
         }
     }
 
-    private static ServerLevel level(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw helper.assertionException("dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
-    }
-
     private static void expectLayer(GameTestHelper helper, int layer, int minY, int height) {
-        ServerLevel level = level(helper, layer);
+        ServerLevel level = TestLayers.level(helper, layer);
         if (level.getMinY() != minY || level.getHeight() != height) {
             throw helper.assertionException(
                     "layer_%d: expected minY %d height %d, got minY %d height %d",

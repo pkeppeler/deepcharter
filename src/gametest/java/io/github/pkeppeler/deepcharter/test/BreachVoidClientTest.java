@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -91,8 +92,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                 for (int layer : new int[] {LayerChain.SURFACE, 1, 2}) {
                     int minY = singleplayer
                             .getServer()
-                            .computeOnServer(
-                                    server -> openHole(ClientLight.serverLevel(server, LayerChain.dimension(layer))));
+                            .computeOnServer(server -> openHole(TestLayers.level(server, layer)));
                     Vec3 hole = new Vec3(X + 0.5, minY + 0.5, Z + 0.5);
                     View[] views = {
                         new View(
@@ -151,7 +151,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                 Blocks.AIR.defaultBlockState());
         BlockPos low = new BlockPos(X - HOLE_RADIUS, minY, Z - HOLE_RADIUS);
         BlockPos high = new BlockPos(X + HOLE_RADIUS, minY + SHAFT_DEPTH - 1, Z + HOLE_RADIUS);
-        if (level.dimension().equals(LayerChain.dimension(LayerChain.SURFACE))) {
+        if (TestLayers.isIn(level, LayerChain.SURFACE)) {
             // The surface has no crust: its floor is open, and the hole is a shaft bored to the bottom.
             RoomCarver.carve(level, low, high, Blocks.AIR.defaultBlockState());
         } else {
@@ -216,7 +216,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                         .getPlayers()
                         .getFirst()
                         .teleportTo(
-                                ClientLight.serverLevel(server, LayerChain.dimension(layer)),
+                                TestLayers.level(server, layer),
                                 eye.x,
                                 eye.y - EYE,
                                 eye.z,
@@ -227,7 +227,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the camera at " + name,
-                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer))
+                client -> TestLayers.isIn(ClientLight.clientLevel(client), layer)
                         && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
                         && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - angles[0])) < 0.01f
                         && Math.abs(ClientSession.player(client).getXRot() - angles[1]) < 0.01f);
@@ -238,7 +238,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                                 client -> client.gui.screen() == null && client.levelRenderer.hasRenderedAllSections())
                         && singleplayer
                                 .getServer()
-                                .computeOnServer(server -> !ClientLight.serverLevel(server, LayerChain.dimension(layer))
+                                .computeOnServer(server -> !TestLayers.level(server, layer)
                                         .getLightEngine()
                                         .hasLightWork()),
                 () -> "chunks still rendering or light still settling");
@@ -382,7 +382,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                                 MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false)));
         int[] podId = new int[1];
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            ServerLevel level = TestLayers.level(server, layer);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setNoGravity(true);
             pod.setPos(X + 0.5, minY - 1.0, Z + 0.5);
@@ -409,8 +409,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         } finally {
             singleplayer
                     .getServer()
-                    .runOnServer(server -> TestEntities.require(
-                                    ClientLight.serverLevel(server, LayerChain.dimension(layer)), podId[0])
+                    .runOnServer(server -> TestEntities.require(TestLayers.level(server, layer), podId[0])
                             .discard());
         }
     }
