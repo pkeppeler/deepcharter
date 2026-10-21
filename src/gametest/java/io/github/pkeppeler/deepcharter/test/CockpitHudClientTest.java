@@ -10,7 +10,6 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
@@ -25,6 +24,7 @@ import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.awt.image.BufferedImage;
@@ -70,12 +70,12 @@ import net.minecraft.world.level.block.Blocks;
  * GUI scale (1 to 4 and Auto) of every common window, with the longest warnings.
  */
 public class CockpitHudClientTest implements FabricClientGameTest {
-    private static final int FEET_Y = 150;
+    private static final int FEET_Y = TestLayers.worldY(1, 150);
     private static final int ROOM_RADIUS = 8;
     private static final int ROOM_HEIGHT = 30;
     private static final int RISE = 20;
     /** The pod's feet this high over the floor of layer 1 are inside the signal decay's blackout band, above the breach crust. */
-    private static final int BLACKOUT_FEET_Y = 4;
+    private static final int BLACKOUT_FEET_Y = TestLayers.worldY(1, 4);
     /** The middle of the bottom of the screen at GUI scale 2 (427 x 240): where the hotbar, the hearts, the held item name and the action bar are, clear of every console. */
     private static final int[] VANILLA_BOX = {126, 165, 298, 232};
     /** The rows of the held item name and the action bar (the dismount hint), over the hotbar and the hearts: a leaked line of text is a few percent of the box above but most of this strip. */
@@ -115,7 +115,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             try {
                 PodEntity[] made = {null};
                 singleplayer.getServer().runOnServer(server -> {
-                    ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                    ServerLevel one = TestLayers.level(server, 1);
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                     player.setGameMode(GameType.SURVIVAL);
                     player.getInventory().setItem(1, new ItemStack(Items.GOLDEN_APPLE));
@@ -146,7 +146,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         "the pilot seated in the pod in layer 1",
                         client -> client.player != null
                                 && client.player.getVehicle() instanceof PodEntity
-                                && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                                && TestLayers.isIn(ClientLight.clientLevel(client), 1));
                 context.waitTicks(
                         40); // tick-wait: the charter's first transmission arrives a moment after the mount, and is
                 // cleared below
@@ -478,7 +478,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
             ClientGameTestContext context, TestSingleplayerContext singleplayer, PodEntity pod) {
         int floorFeetY = BLACKOUT_FEET_Y;
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel one = TestLayers.level(server, 1);
             RoomCarver.carve(
                     one,
                     -ROOM_RADIUS,

@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
@@ -40,10 +39,14 @@ public final class LayerConceptScenes {
     public static final List<Integer> LAYERS = List.of(1, 2, 3);
     private static final String NAMESPACE = "deepcharter-test";
     private static final Identifier SCENES = Identifier.fromNamespaceAndPath(NAMESPACE, "layer_concepts/scenes.json");
-    /** Where the first scene stands (on a chunk boundary, so a scene touches as few chunks as it can), and the gap between two layers' scenes along X. */
-    private static final BlockPos ORIGIN = new BlockPos(3008, 40, 3008);
+    /** Where the first scene stands in X and Z (on a chunk boundary, so a scene touches as few chunks as it can); its Y comes per layer. */
+    private static final int ORIGIN_X = 3008;
 
+    private static final int ORIGIN_Z = 3008;
+
+    /** The gap between two layers' scenes along X. */
     private static final int GAP = 128;
+
     private static final int ATMOSPHERE_MARGIN = 8;
     private static final int FILL_SLICE = 16;
 
@@ -79,7 +82,7 @@ public final class LayerConceptScenes {
 
         public ServerLevel level(MinecraftServer server) {
             return Objects.requireNonNull(
-                    server.getLevel(LayerChain.dimension(dimension)),
+                    server.getLevel(TestLayers.dimension(dimension)),
                     "the server has no level for layer dimension " + dimension);
         }
 
@@ -128,7 +131,7 @@ public final class LayerConceptScenes {
     }
 
     private static Scene parse(int layer, JsonObject body) {
-        BlockPos origin = ORIGIN.offset(GAP * (layer - 1), 0, 0);
+        BlockPos origin = TestLayers.pos(layer, ORIGIN_X + GAP * (layer - 1), 40, ORIGIN_Z);
         List<BlockPos> lava = new ArrayList<>();
         for (JsonElement at : body.getAsJsonArray("lava")) {
             JsonArray xyz = at.getAsJsonArray();

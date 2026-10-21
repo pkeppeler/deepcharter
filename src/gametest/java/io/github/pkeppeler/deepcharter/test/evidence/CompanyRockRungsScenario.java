@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -13,6 +12,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -67,7 +67,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
 
     private void shapedCharge(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel one = TestLayers.level(server, 1);
             room(one, X);
             for (int dx = -1; dx <= 0; dx++) {
                 for (int dz = -1; dz <= 0; dz++) {
@@ -99,7 +99,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity pod
                         && pod.onGround()
-                        && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                        && TestLayers.isIn(ClientLight.clientLevel(client), 1));
         context.runOnClient(client -> {
             client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
             ClientSession.player(client).setXRot(LOOK_DOWN);
@@ -199,7 +199,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
 
     private void biteWithTheDrill(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel one = TestLayers.level(server, 1);
             room(one, BITE_X);
             for (int dx = -2; dx <= 2; dx++) {
                 for (int dz = -2; dz <= 2; dz++) {
@@ -318,7 +318,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
 
     private static boolean blasted(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel one = TestLayers.level(server, 1);
             for (int dx = -1; dx <= 0; dx++) {
                 for (int dz = -1; dz <= 0; dz++) {
                     for (int dy = -ROWS; dy <= -1; dy++) {
@@ -335,7 +335,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
 
     private static boolean stopped(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+            ServerLevel one = TestLayers.level(server, 1);
             for (BlockPos stays : stays()) {
                 if (!one.getBlockState(stays).is(HazardBlocks.COMPANY_ROCK)) {
                     return false;
@@ -348,7 +348,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
     private static boolean slabBored(TestSingleplayerContext singleplayer) {
         return singleplayer
                 .getServer()
-                .computeOnServer(server -> ClientLight.serverLevel(server, LayerChain.dimension(1))
+                .computeOnServer(server -> TestLayers.level(server, 1)
                         .getBlockState(new BlockPos(BITE_X, FLOOR_Y - 1, Z))
                         .isAir());
     }

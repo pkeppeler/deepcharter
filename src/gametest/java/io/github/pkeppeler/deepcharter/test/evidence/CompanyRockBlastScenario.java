@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.CompanyRockBlock;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -13,6 +12,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -69,7 +69,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
         // Only the layer 2 run is a recording: the GIF is the layer that glows.
         boolean recording = layer == 2;
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            ServerLevel level = TestLayers.level(server, layer);
             build(level, layer);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.setGameMode(GameType.SURVIVAL);
@@ -79,7 +79,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
                 context,
                 "the slab of Company rock in layer " + layer,
                 client -> client.player != null
-                        && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer))
+                        && TestLayers.isIn(ClientLight.clientLevel(client), layer)
                         && ClientLight.clientLevel(client)
                                 .getBlockState(slabCell())
                                 .is(HazardBlocks.COMPANY_ROCK));
@@ -93,7 +93,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
 
         // Seat the player, set the charge from the seat, climb out and go back to the trench.
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            ServerLevel level = TestLayers.level(server, layer);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(X, FLOOR_Y, Z);
@@ -109,7 +109,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
                 client ->
                         client.player != null && client.player.getVehicle() instanceof PodEntity pod && pod.onGround());
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            ServerLevel level = TestLayers.level(server, layer);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.getInventory()
                     .setItem(

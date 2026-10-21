@@ -11,7 +11,6 @@ import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -20,13 +19,13 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.wreck.WreckEvents;
@@ -80,7 +79,7 @@ import org.jspecify.annotations.Nullable;
 
 /** Server GameTests for #67: a pod at hull 0 is a wreck, and the restore hook makes it a pod again. */
 public class WreckTest {
-    private static final int FLOOR_Y = 1;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final int IDLE_TICKS = 100;
     private static final String ATTACHMENTS_KEY = "fabric:attachments";
@@ -569,27 +568,27 @@ public class WreckTest {
     public void theCharterIsToldTheLayer(GameTestHelper helper) {
         double x = 2400.5;
         double z = 2400.5;
-        ServerLevel two = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(2));
-        if (two == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(2));
-        }
+        ServerLevel two = TestLayers.level(helper.getLevel().getServer(), 2);
         MockPlayer mock = MockPlayers.join(helper, "wreck-layer");
         Charters.found(helper.getLevel().getServer(), mock.player().getUUID(), uniqueName())
                 .ifPresent(refusal -> {
                     throw failure(helper, "could not found a charter: %s", refusal);
                 });
-        mock.teleportTo(two, new Vec3(x, 8, z), 0, 0);
+        mock.teleportTo(two, TestLayers.vec(2, x, 8, z), 0, 0);
         PodEntity[] pod = {null};
-        FarChunks.awaitEntityTicking(helper, two, BlockPos.containing(x, 8, z), () -> {
+        FarChunks.awaitEntityTicking(helper, two, BlockPos.containing(x, TestLayers.worldY(2, 8), z), () -> {
             pod[0] = TestEntities.create(PodRegistry.POD, two);
-            pod[0].setPos(x, 8, z);
+            pod[0].setPos(x, TestLayers.worldY(2, 8), z);
             two.addFreshEntity(pod[0]);
             mock.player().startRiding(pod[0], true, false);
             wreck(pod[0]);
         });
         helper.succeedWhen(() -> {
             if (pod[0] == null) {
-                throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+                throw failure(
+                        helper,
+                        "waiting for the chunk at %s to tick entities",
+                        BlockPos.containing(x, TestLayers.worldY(2, 8), z));
             }
             Report report = REPORTS.get(pod[0].getUUID());
             if (report == null) {
@@ -967,22 +966,19 @@ public class WreckTest {
     public void aCrustBreachThatTakesTheLastHullKillsThePilotWhoDoesNotCross(GameTestHelper helper) {
         int x = 4600;
         int z = 3000;
-        ServerLevel one = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (one == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
-        }
+        ServerLevel one = TestLayers.level(helper.getLevel().getServer(), 1);
         for (BlockPos pos : BlockPos.betweenClosed(x - 2, 0, z - 2, x + 2, 2, z + 2)) {
             one.setBlock(pos, LayerBlocks.BREACH_CRUST.defaultBlockState(), Block.UPDATE_CLIENTS);
         }
         RoomCarver.carve(one, x - 2, x + 2, 1, 8, z - 2, z + 2, Blocks.AIR);
         MockPlayer pilot = MockPlayers.join(helper, "wreck-crust");
-        pilot.teleportTo(one, new Vec3(x, 1, z), 0f, 0f);
+        pilot.teleportTo(one, TestLayers.vec(1, x, 1, z), 0f, 0f);
         PodEntity[] pod = {null};
         long[] zeroSince = {-1};
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 1, z), () -> {
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, TestLayers.worldY(1, 1), z), () -> {
             pilot.confirmDimensionChange();
             PodEntity created = TestEntities.create(PodRegistry.POD, one);
-            created.setPos(x, 1, z);
+            created.setPos(x, TestLayers.worldY(1, 1), z);
             one.addFreshEntity(created);
             CRUST_PODS.add(created.getUUID());
             created.setHull(15f);
@@ -1012,7 +1008,7 @@ public class WreckTest {
                         pilot.player().connection.hasClientLoaded(),
                         pilot.player().getVehicle());
             }
-            if (!pilot.player().level().dimension().equals(LayerChain.dimension(1)) || pod[0].isRemoved()) {
+            if (!TestLayers.isIn(pilot.player().level(), 1) || pod[0].isRemoved()) {
                 throw failure(
                         helper,
                         "the wreck must stay in layer 1, pilot in %s",

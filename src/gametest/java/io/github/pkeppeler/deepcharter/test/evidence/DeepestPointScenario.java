@@ -11,11 +11,11 @@ import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -162,7 +162,7 @@ public class DeepestPointScenario extends EvidenceScenario {
     private void descend(ClientGameTestContext context, TestServerContext server, int layer, int rowsAboveFloor) {
         BlockPos wall = server.computeOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-            ServerLevel level = ClientLight.serverLevel(minecraftServer, LayerChain.dimension(layer));
+            ServerLevel level = TestLayers.level(minecraftServer, layer);
             int y = level.getMinY() + rowsAboveFloor;
             RoomCarver.carve(
                     level,
@@ -177,7 +177,7 @@ public class DeepestPointScenario extends EvidenceScenario {
                 context,
                 "the client to see the room's wall in layer " + layer,
                 client -> client.level != null
-                        && client.level.dimension().equals(LayerChain.dimension(layer))
+                        && TestLayers.isIn(client.level, layer)
                         && !client.level.getBlockState(wall).isAir());
         context.waitTicks(ARRIVAL_TICKS);
         frame(context);

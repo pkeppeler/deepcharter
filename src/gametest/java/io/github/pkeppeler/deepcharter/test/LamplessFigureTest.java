@@ -9,7 +9,6 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigures;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -20,6 +19,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,7 +61,7 @@ public class LamplessFigureTest {
 
     private static final int FIRST_SLOT_X = 6008;
     private static final int SLOT_Z_SPACING = 64;
-    private static final int FLOOR_Y = 100;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 100);
     private static final int WALK_TICKS = 400;
     private static final int WINDOW_TICKS = 20;
     /** Blocks of path in {@link #WINDOW_TICKS} below which the figure has stopped; it walks about three times as far. */
@@ -456,17 +456,17 @@ public class LamplessFigureTest {
     public void onlyTheRailLevelLooksForSitesAndOnlyOnTheInterval(GameTestHelper helper) {
         int interval = TUNING.spawnIntervalTicks();
         for (long time : new long[] {0, interval, 7L * interval}) {
-            expectSpawnTick(helper, LayerChain.dimension(StructureKind.RAILS.layer()), time, true);
+            expectSpawnTick(helper, TestLayers.dimension(StructureKind.RAILS.layer()), time, true);
         }
         for (long time : new long[] {1, interval - 1, interval + 1, 7L * interval + 3}) {
-            expectSpawnTick(helper, LayerChain.dimension(StructureKind.RAILS.layer()), time, false);
+            expectSpawnTick(helper, TestLayers.dimension(StructureKind.RAILS.layer()), time, false);
         }
         for (ResourceKey<Level> other : List.of(
                 Level.OVERWORLD,
                 Level.NETHER,
                 Level.END,
-                LayerChain.dimension(1),
-                LayerChain.dimension(StructureKind.RAILS.layer() + 1))) {
+                TestLayers.dimension(1),
+                TestLayers.dimension(StructureKind.RAILS.layer() + 1))) {
             expectSpawnTick(helper, other, 0, false);
             expectSpawnTick(helper, other, interval, false);
         }
@@ -475,8 +475,7 @@ public class LamplessFigureTest {
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
     public void aLoadedRailSiteOfLayerTwoGetsOneFigureWhenAPlayerIsNear(GameTestHelper helper) {
-        ServerLevel level = ClientLight.serverLevel(
-                helper.getLevel().getServer(), LayerChain.dimension(StructureKind.RAILS.layer()));
+        ServerLevel level = TestLayers.level(helper.getLevel().getServer(), StructureKind.RAILS.layer());
         BlockPos conduit = Colony.anchor(level.getServer(), ColonyAnchor.CONDUIT)
                 .orElseThrow(() -> failure(helper, "the colony was not built"));
         StructureSite site = StructureSite.in(

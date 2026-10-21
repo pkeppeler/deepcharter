@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -39,7 +40,7 @@ import net.minecraft.world.phys.Vec3;
  * its own site, far from every other test's blocks, in the overworld.
  */
 public class PodChunkLoadTest {
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
     /** No neighbour updates: a block set at a chunk edge with them loads the chunk next door, which would load it before the test starts. */
     private static final int BUILD_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 

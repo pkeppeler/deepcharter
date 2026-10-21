@@ -1,13 +1,13 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -43,7 +43,7 @@ public class PodLavaScenario extends EvidenceScenario {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 box(one, FLOOR_Y - 1, FLOOR_Y - 1, 6, Blocks.STONE);
                 box(one, FLOOR_Y, FLOOR_Y + 8, 6, Blocks.STONE);
                 // room-carver: a room cut inside the solid stone box built just above, so no worldgen lava is in or
@@ -70,7 +70,7 @@ public class PodLavaScenario extends EvidenceScenario {
                     "the player riding a pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                            && TestLayers.isIn(ClientLight.clientLevel(client), 1));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 ClientSession.player(client).setXRot(LOOK_DOWN);
@@ -83,7 +83,7 @@ public class PodLavaScenario extends EvidenceScenario {
             screenshot(context, "pod-lava-before");
 
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 for (int x = X - 2; x <= X + 2; x++) {
                     for (int z = Z - 2; z <= Z + 2; z++) {
                         one.setBlock(new BlockPos(x, FLOOR_Y, z), Blocks.LAVA.defaultBlockState(), 3);

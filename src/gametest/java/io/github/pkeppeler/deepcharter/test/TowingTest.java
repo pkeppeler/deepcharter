@@ -6,7 +6,6 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -22,6 +21,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import java.util.ArrayList;
@@ -65,7 +65,7 @@ import org.jspecify.annotations.Nullable;
  */
 public class TowingTest {
     private static final String ATTACHMENTS_KEY = "fabric:attachments";
-    private static final int FLOOR_Y = 1;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final double EPSILON = 1e-6;
     /** Ticks a pod needs, once its chunk ticks, to fall through the shaft and cross. */
@@ -173,7 +173,7 @@ public class TowingTest {
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aTowedPodTrailsOnTheGroundAtTheLineLengthWithoutSinkingOrTakingDamage(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         int x = GROUND_X;
         RoomCarver.carve(level, x, x + 40, TOW_FLOOR - 12, TOW_FLOOR - 1, TOW_Z, TOW_Z + 10, Blocks.STONE);
         RoomCarver.carve(level, x, x + 40, TOW_FLOOR, TOW_FLOOR + 8, TOW_Z, TOW_Z + 10, Blocks.AIR);
@@ -240,7 +240,7 @@ public class TowingTest {
     /** In the air the towed pod hangs from the line like a sling load: below its tower and a little behind it while the tower flies on. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aTowedPodHangsBelowAndBehindItsTowerInTheAir(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         Vec3 start = skyRoom(level, SKY_X);
         // The tower flies east at 0.2 a tick for 100 ticks, from a pod hanging straight below it. The pod swings about
         // the place it settles
@@ -298,7 +298,7 @@ public class TowingTest {
     }
 
     private static void slackLine(GameTestHelper helper, int x, boolean noGravity) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         Vec3 start = skyRoom(level, x);
         Vec3 towedStart = start.add(0, -1, 0);
         int settle = 60;
@@ -325,7 +325,7 @@ public class TowingTest {
     /** A jerk of the tower swings the pod, and the swing only dies away: no window of 30 ticks swings wider than the one before. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
     public void aSwingingTowedPodSettlesAndNeverSwingsWider(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         Vec3 start = skyRoom(level, SKY_X + 64);
         int jerkTicks = 24;
         int window = 30;
@@ -370,7 +370,7 @@ public class TowingTest {
     /** Up a 2-wide shaft and out of its top, the towed pod hangs in the shaft below the tower and its hull is never in a wall. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
     public void aTowUpAShaftAndOutOfItsTopNeverPutsThePodInTheWalls(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         Vec3 base = shaft(level, SHAFT_X);
         towScene(
                 helper,
@@ -401,7 +401,7 @@ public class TowingTest {
     /** Up the shaft and along a gallery, the line follows the bend: the pod is carried round the corner, never through the rock of it. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
     public void aTowRoundABendInAShaftFollowsTheTowersPathWithoutSnagging(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         Vec3 base = shaft(level, SHAFT_X + 128);
         // 6 up the shaft at 0.15 a tick (40 ticks) to the gallery's floor, then 15 east along it (100 ticks).
         towScene(
@@ -443,7 +443,7 @@ public class TowingTest {
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aPodWithNoPathBehindItsTowerStillFollowsAfterAReload(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         int x = RELOAD_X;
         RoomCarver.carve(level, x, x + 40, TOW_FLOOR - 12, TOW_FLOOR - 1, TOW_Z, TOW_Z + 10, Blocks.STONE);
         RoomCarver.carve(level, x, x + 40, TOW_FLOOR, TOW_FLOOR + 8, TOW_Z, TOW_Z + 10, Blocks.AIR);
@@ -491,7 +491,7 @@ public class TowingTest {
     /** A pod that hangs below a tower falling 20 blocks fast, and swings when it stops, takes no hard landing: the line holds it. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
     public void aTowedPodTakesNoDamageWhenItsTowerDropsFast(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         Vec3 high = skyRoom(level, SKY_X + 128).add(0, 5, 0);
         float[] hullStart = {0f};
         towScene(
@@ -529,7 +529,7 @@ public class TowingTest {
     /** The pod's chunk is kept ticking by its tower: at a chunk's edge the long line leaves the pod across the border. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aTowedPodInANeighbouringChunkKeepsTicking(GameTestHelper helper) {
-        ServerLevel level = layer(helper, 1);
+        ServerLevel level = TestLayers.level(helper, 1);
         int x = CHUNK_X;
         BlockPos towerColumn = new BlockPos(x + 15, TOW_FLOOR, TOW_Z);
         BlockPos podColumn = new BlockPos(x + 16 + 6, TOW_FLOOR, TOW_Z);
@@ -1058,10 +1058,10 @@ public class TowingTest {
     public void theTowedPodCrossesABreachWithItsTower(GameTestHelper helper) {
         double x = 2100.5;
         double z = 2100.5;
-        ServerLevel one = layer(helper, 1);
+        ServerLevel one = TestLayers.level(helper, 1);
         openShaft(one, x, z);
         MockPlayer mock = MockPlayers.join(helper, "towing-crossing");
-        mock.teleportTo(one, new Vec3(x, 8, z), 0, 0);
+        mock.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         PodEntity[] pods = {null, null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
             pods[0] = spawn(one, x, 8, z);
@@ -1076,7 +1076,7 @@ public class TowingTest {
                 throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
             }
             ServerPlayer player = mock.player();
-            if (!player.level().dimension().equals(LayerChain.dimension(2))) {
+            if (!TestLayers.isIn(player.level(), 2)) {
                 throw failure(
                         helper,
                         "the rider is still in %s (tower ticked %s times)",
@@ -1115,12 +1115,12 @@ public class TowingTest {
     public void aRiderInTheTowedPodCrossesWithIt(GameTestHelper helper) {
         double x = 2200.5;
         double z = 2200.5;
-        ServerLevel one = layer(helper, 1);
+        ServerLevel one = TestLayers.level(helper, 1);
         openShaft(one, x, z);
         MockPlayer pilot = MockPlayers.join(helper, "towing-pilot");
         MockPlayer rider = MockPlayers.join(helper, "towing-rider");
-        pilot.teleportTo(one, new Vec3(x, 8, z), 0, 0);
-        rider.teleportTo(one, new Vec3(x, 10, z), 0, 0);
+        pilot.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
+        rider.teleportTo(one, TestLayers.vec(1, x, 10, z), 0, 0);
         PodEntity[] pods = {null, null};
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
             pods[0] = spawn(one, x, 8, z);
@@ -1136,7 +1136,7 @@ public class TowingTest {
                 throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
             }
             ServerPlayer seated = rider.player();
-            if (!seated.level().dimension().equals(LayerChain.dimension(2))) {
+            if (!TestLayers.isIn(seated.level(), 2)) {
                 throw failure(
                         helper,
                         "the rider in the towed pod is still in %s",
@@ -1150,7 +1150,7 @@ public class TowingTest {
                         "the rider should still ride the towed pod on its cable, is on %s",
                         seated.getVehicle());
             }
-            if (!pilot.player().level().dimension().equals(LayerChain.dimension(2))) {
+            if (!TestLayers.isIn(pilot.player().level(), 2)) {
                 throw failure(
                         helper,
                         "the pilot is still in %s",
@@ -1438,14 +1438,6 @@ public class TowingTest {
                 column.offset(1, 0, 1).atY(level.getMinY() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
     }
 
     @FormatMethod

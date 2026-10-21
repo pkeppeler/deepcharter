@@ -8,7 +8,6 @@ import io.github.pkeppeler.deepcharter.client.scanner.ScannerHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
@@ -18,6 +17,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -307,8 +307,7 @@ public class ScannerHudTest implements FabricClientGameTest {
     public static void goToLayer(TestServerContext server, int n) {
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-            ClientLight.serverLevel(minecraftServer, LayerChain.dimension(n))
-                    .getChunk(player.getBlockX() >> 4, player.getBlockZ() >> 4);
+            TestLayers.level(minecraftServer, n).getChunk(player.getBlockX() >> 4, player.getBlockZ() >> 4);
             try {
                 minecraftServer
                         .getCommands()
