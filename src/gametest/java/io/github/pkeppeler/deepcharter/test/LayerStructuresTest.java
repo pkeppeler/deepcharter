@@ -11,10 +11,12 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
+import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
@@ -73,6 +75,8 @@ public class LayerStructuresTest {
     private static final int DISK_CELL = 6;
     private static final int CASING_CELL = 7;
     private static final int SEAM_CELL = 8;
+    /** A cell of its own for the Kells' shaft, which no other test draws. */
+    private static final int KELLS_CELL = 9;
     /** The rail line is 65 blocks long and 5 wide (ADR 0025). */
     private static final int RAILS_HALF_U = 32;
 
@@ -89,6 +93,7 @@ public class LayerStructuresTest {
             case PUNCH_CLOCK ->
                 Map.of(Blocks.BOOKSHELF, 1, Blocks.SEA_LANTERN, 1, Blocks.IRON_BLOCK, 1, HandbookRegistry.NOTE, 1);
             case RAILS -> Map.of(Blocks.OAK_PLANKS, 1, Blocks.OAK_LOG, 1, Blocks.RAIL, 1);
+            case KELLS_SHAFT -> Map.of(SlagBrick.BLOCK, 12, Blocks.OAK_PLANKS, 1, Blocks.RAIL, 1, Blocks.LAVA, 2);
             case WRECK -> Map.of(Blocks.BLACKSTONE, 1, Blocks.DEEPSLATE_TILES, 1, Blocks.RAIL, 1);
         };
     }
@@ -309,7 +314,8 @@ public class LayerStructuresTest {
                 unmet.add(BuiltInRegistries.BLOCK.getKey(expected.getKey()) + " " + count + "/" + expected.getValue());
             }
         }
-        String fluid = fluidOrGasAt(level, site, null);
+        // The Kells' shaft keeps lava in its gaps on purpose: its own test says where.
+        String fluid = site.kind() == StructureKind.KELLS_SHAFT ? null : fluidOrGasAt(level, site, null);
         if (fluid != null) {
             unmet.add(fluid);
         }
@@ -569,6 +575,172 @@ public class LayerStructuresTest {
                         site.origin().toShortString());
             }
         });
+    }
+
+    /**
+     * The Kells' shaft (#716) hangs off the end of the rail line of its cell and runs down to the first block above the crust.
+     * Its hollow is a clear 2 x 2, its top meets the line's last column through a drift with a rail, and its lava is the
+     * gaps: each is one lava block in a ring of slag brick, backed by one more, and each has a brick in the reserve at the head.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    public void theKellsShaftRunsFromTheRailLineToTheCrustAndHasGapsInItsLining(GameTestHelper helper) {
+        ServerLevel level = level(helper, 2);
+        BlockPos conduit = conduit(helper);
+        StructureSite rails = StructureSite.in(
+                level.getSeed(),
+                StructureKind.RAILS,
+                level.getMinY(),
+                level.getHeight(),
+                KELLS_CELL,
+                KELLS_CELL,
+                conduit);
+        StructureSite shaft = StructureSite.in(
+                level.getSeed(),
+                StructureKind.KELLS_SHAFT,
+                level.getMinY(),
+                level.getHeight(),
+                KELLS_CELL,
+                KELLS_CELL,
+                conduit);
+        if (!at(rails, StructureKind.KELLS_OFFSET, 0, 0)
+                        .atY(shaft.origin().getY())
+                        .equals(shaft.origin())
+                || shaft.alongZ() != rails.alongZ()) {
+            throw failure(
+                    helper,
+                    "the shaft at %s is not %d blocks along the rail line at %s",
+                    shaft.origin().toShortString(),
+                    StructureKind.KELLS_OFFSET,
+                    rails.origin().toShortString());
+        }
+        if (shaft.origin().getY() != level.getMinY() + LayerTuning.DEFAULT.crustThickness()) {
+            throw failure(
+                    helper,
+                    "the shaft's floor row is y=%d, not the first block above the crust",
+                    shaft.origin().getY());
+        }
+        if (shaft.origin().getY() + shaft.height() - 3 != rails.origin().getY()) {
+            throw failure(
+                    helper,
+                    "the shaft's drift is at y=%d but the rail line's floor is at y=%d",
+                    shaft.origin().getY() + shaft.height() - 3,
+                    rails.origin().getY());
+        }
+        for (StructureSite site : List.of(rails, shaft)) {
+            for (ChunkPos chunk : chunksOf(site)) {
+                level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+            }
+        }
+        FarChunks.Deadline deadline = FarChunks.deadline();
+        TestTicks.each(helper, () -> {
+            List<String> unmet = kellsUnmet(level, rails, shaft);
+            if (!unmet.isEmpty()) {
+                deadline.await(
+                        helper,
+                        level,
+                        false,
+                        () -> String.format(
+                                "the Kells' shaft at %s did not settle: %s",
+                                shaft.origin().toShortString(), unmet));
+                return;
+            }
+            helper.succeed();
+        });
+    }
+
+    /** What the Kells' shaft lacks, as text; empty when it stands as designed. */
+    private static List<String> kellsUnmet(ServerLevel level, StructureSite rails, StructureSite shaft) {
+        List<String> unmet = new ArrayList<>();
+        int top = shaft.height() - 1;
+        for (int y = 0; y <= top; y++) {
+            for (int u = -1; u <= 0; u++) {
+                for (int v = -1; v <= 0; v++) {
+                    BlockState state = level.getBlockState(at(shaft, u, y, v));
+                    if (!state.isAir()) {
+                        unmet.add(String.format("the hollow at y %d holds %s", y, state));
+                        return unmet;
+                    }
+                }
+            }
+        }
+        // The gaps: the side cells of the ring that hold lava.
+        int[][] sides = {{-2, -1}, {-2, 0}, {1, -1}, {1, 0}, {-1, -2}, {0, -2}, {-1, 1}, {0, 1}};
+        List<int[]> gaps = new ArrayList<>();
+        for (int y = 0; y <= top; y++) {
+            for (int[] side : sides) {
+                if (level.getBlockState(at(shaft, side[0], y, side[1])).is(Blocks.LAVA)) {
+                    gaps.add(new int[] {side[0], y, side[1]});
+                }
+            }
+        }
+        if (gaps.size() < 2 || gaps.size() > 4) {
+            unmet.add(gaps.size() + " gaps, expected 2 to 4");
+        }
+        for (int[] gap : gaps) {
+            // The lava is backed by one more block, away from the hollow.
+            int backU = gap[0] == -2 ? -3 : gap[0] == 1 ? 2 : gap[0];
+            int backV = gap[2] == -2 ? -3 : gap[2] == 1 ? 2 : gap[2];
+            if (!level.getBlockState(at(shaft, backU, gap[1], backV)).is(Blocks.LAVA)) {
+                unmet.add("the gap at y " + gap[1] + " has no lava behind it");
+            }
+            // The rest of the ring, one row each way, is slag brick.
+            for (int y = gap[1] - 1; y <= gap[1] + 1; y++) {
+                for (int u = -2; u <= 1; u++) {
+                    for (int v = -2; v <= 1; v++) {
+                        boolean inside = u >= -1 && u <= 0 && v >= -1 && v <= 0;
+                        boolean theGap = u == gap[0] && y == gap[1] && v == gap[2];
+                        if (!inside
+                                && !theGap
+                                && !level.getBlockState(at(shaft, u, y, v)).is(SlagBrick.BLOCK)) {
+                            unmet.add(String.format(
+                                    "the lining at (%d, %d, %d) is %s, not slag brick",
+                                    u, y, v, level.getBlockState(at(shaft, u, y, v))));
+                            return unmet;
+                        }
+                    }
+                }
+            }
+        }
+        // The head: the drift is open from the line's last column to the lip, with a rail, and the reserve is in the
+        // wall.
+        for (int y = top - 2; y <= top; y++) {
+            for (int u = -4; u <= -2; u++) {
+                for (int v = -1; v <= 0; v++) {
+                    BlockState state = level.getBlockState(at(shaft, u, y, v));
+                    if (!state.isAir() && !state.is(Blocks.RAIL)) {
+                        unmet.add(String.format("the drift at (%d, %d, %d) holds %s", u, y, v, state));
+                        return unmet;
+                    }
+                }
+            }
+        }
+        if (!level.getBlockState(at(shaft, -3, top - 2, 0)).is(Blocks.RAIL)) {
+            unmet.add("no rail in the drift");
+        }
+        BlockState lineEnd = level.getBlockState(at(rails, RAILS_HALF_U, 0, 0));
+        if (!lineEnd.isAir() && !lineEnd.is(Blocks.RAIL)) {
+            unmet.add("the line's last column holds " + lineEnd);
+        }
+        int reserve = 0;
+        for (int u = -3; u <= -2; u++) {
+            for (int y = top - 2; y <= top - 1; y++) {
+                if (level.getBlockState(at(shaft, u, y, 1)).is(SlagBrick.BLOCK)) {
+                    reserve++;
+                }
+            }
+        }
+        if (reserve != gaps.size()) {
+            unmet.add(reserve + " bricks in the reserve for " + gaps.size() + " gaps");
+        }
+        BoundingBox box = shaft.bounds();
+        for (BlockPos pos :
+                BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
+            if (level.getBlockState(pos).is(HazardBlocks.GAS_POCKET)) {
+                unmet.add("a gas pocket at " + pos.toShortString());
+                break;
+            }
+        }
+        return unmet;
     }
 
     @GameTest

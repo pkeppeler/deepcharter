@@ -28,6 +28,9 @@ public record StructureSite(StructureKind kind, BlockPos origin, boolean alongZ,
     public static StructureSite in(
             long worldSeed, StructureKind kind, int minY, int levelHeight, int cellX, int cellZ, BlockPos conduit) {
         LayerTuning tuning = LayerTuning.DEFAULT;
+        if (kind == StructureKind.KELLS_SHAFT) {
+            return shaftOf(in(worldSeed, StructureKind.RAILS, minY, levelHeight, cellX, cellZ, conduit), minY);
+        }
         Zones.Span zone = Zones.span(minY, levelHeight, kind.zone());
         Zones.Span usable = new Zones.Span(
                 Math.max(zone.low(), minY + tuning.structureFloorMargin()),
@@ -45,7 +48,7 @@ public record StructureSite(StructureKind kind, BlockPos origin, boolean alongZ,
                 ^ cellX * 341873128712L
                 ^ cellZ * 132897987541L);
         int spacing = tuning.structureSpacing();
-        int margin = kind.reach() + 1;
+        int margin = kind.margin();
         int casing = ColonyTuning.DEFAULT.conduitRadius();
         for (int attempt = 0; attempt < PLACEMENT_TRIES; attempt++) {
             int x = cellX * spacing + margin + random.nextInt(spacing - 2 * margin);
@@ -53,17 +56,37 @@ public record StructureSite(StructureKind kind, BlockPos origin, boolean alongZ,
             int y = usable.low() + 1 + random.nextInt(floors);
             StructureSite site =
                     new StructureSite(kind, new BlockPos(x, y, z), random.nextBoolean(), height, random.nextLong());
-            if (!site.bounds()
-                    .intersects(
-                            conduit.getX() - casing,
-                            conduit.getZ() - casing,
-                            conduit.getX() + casing,
-                            conduit.getZ() + casing)) {
+            // The Kells' shaft hangs off the end of the rail line, so a line whose shaft would meet the casing is
+            // passed over.
+            boolean shaftClear =
+                    kind != StructureKind.RAILS || !meets(shaftOf(site, minY).bounds(), conduit, casing);
+            if (shaftClear && !meets(site.bounds(), conduit, casing)) {
                 return site;
             }
         }
         throw new IllegalStateException(kind + " found no place in cell (" + cellX + ", " + cellZ
                 + ") clear of the Conduit at " + conduit.toShortString());
+    }
+
+    /**
+     * The Kells' shaft of the rail line {@code rails}: it stands {@link StructureKind#KELLS_OFFSET} blocks along the line from
+     * its centre, past the end the line stops at, and runs down from the floor of the line to the first block above the crust.
+     */
+    private static StructureSite shaftOf(StructureSite rails, int minY) {
+        int bottom = minY + LayerTuning.DEFAULT.crustThickness();
+        // The hollow's top row is the roof of the drift that joins the line, 2 above its floor.
+        int height = rails.origin().getY() + StructureKind.DRIFT_HEIGHT - bottom;
+        BlockPos origin = new BlockPos(
+                rails.origin().getX() + (rails.alongZ() ? 0 : StructureKind.KELLS_OFFSET),
+                bottom,
+                rails.origin().getZ() + (rails.alongZ() ? StructureKind.KELLS_OFFSET : 0));
+        return new StructureSite(
+                StructureKind.KELLS_SHAFT, origin, rails.alongZ(), height, rails.seed() ^ 0x5DEECE66DL);
+    }
+
+    private static boolean meets(BoundingBox bounds, BlockPos conduit, int casing) {
+        return bounds.intersects(
+                conduit.getX() - casing, conduit.getZ() - casing, conduit.getX() + casing, conduit.getZ() + casing);
     }
 
     /** The blocks the structure may change: its hollow, its floor and roof, and the walls round them. */

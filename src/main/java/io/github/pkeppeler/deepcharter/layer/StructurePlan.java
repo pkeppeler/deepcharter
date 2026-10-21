@@ -105,6 +105,11 @@ final class StructurePlan {
         return new SplittableRandom(site.seed() ^ u * 73856093L ^ y * 19349663L ^ v * 83492791L).nextDouble() < chance;
     }
 
+    /** A whole number from 0 up to {@code bound}, the same for the same {@code salt} in the same structure every time. */
+    int pick(int salt, int bound) {
+        return new SplittableRandom(site.seed() ^ salt * 0x9E3779B97F4A7C15L).nextInt(bound);
+    }
+
     /** A rail that runs along the structure's long axis. */
     BlockState railAlongU() {
         return Blocks.RAIL

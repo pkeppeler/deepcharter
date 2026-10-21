@@ -36,15 +36,16 @@ public record LayerTuning(
             throw new IllegalArgumentException(
                     "structureSpacing must be a positive multiple of 16, got " + structureSpacing);
         }
-        // A site keeps reach + 1 blocks from its cell's edge, so that its shell lies in the cell too; the cell needs
-        // room left to place it.
+        // A site keeps its margin from its cell's edge, so that its shell lies in the cell too; the cell needs room
+        // left
+        // to place it.
         int widest = Arrays.stream(StructureKind.values())
-                .mapToInt(StructureKind::reach)
+                .mapToInt(StructureKind::margin)
                 .max()
                 .orElseThrow();
-        if (structureSpacing <= 2 * (widest + 1)) {
+        if (structureSpacing <= 2 * widest) {
             throw new IllegalArgumentException(
-                    "structureSpacing " + structureSpacing + " leaves no room for a structure of reach " + widest);
+                    "structureSpacing " + structureSpacing + " leaves no room for a structure with margin " + widest);
         }
     }
 }

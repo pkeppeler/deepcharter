@@ -192,6 +192,15 @@ public class LayerStructuresScenario extends EvidenceScenario {
                     frame(context);
                 }
             }
+            case KELLS_SHAFT -> {
+                // Down the shaft from the drift, looking at the far wall.
+                for (int i = 0; i < SHAFT_FRAMES; i++) {
+                    fly(singleplayer, layer, at(site, -0.5, site.height() - 4 - 6.0 * i, -0.5), at(site, 1.5, 0, -0.5));
+                    settle(context, i);
+                    frame(context);
+                }
+                screenshot(context, shot + "-descent");
+            }
             case WRECK -> {
                 // The site nearest the Conduit: PROSPECTOR-0002's, with the middle clear for the pod.
                 Vec3 centre = at(site, 0, 0.5, 0);
