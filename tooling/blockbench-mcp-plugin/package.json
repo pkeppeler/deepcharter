@@ -44,12 +44,12 @@
     "bun": "^1.3.8"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.8",
+    "@types/bun": "1.4.3",
     "blockbench-types": "5.2.0-beta.2",
-    "replicate": "^1.4.0",
-    "tinycolor2": "^1.6.0",
-    "typescript": "^5.9.3",
-    "zod-to-json-schema": "^3.25.1"
+    "replicate": "1.4.0",
+    "tinycolor2": "1.6.0",
+    "typescript": "5.9.3",
+    "zod-to-json-schema": "3.25.2"
   },
   "bin": {
     "blockbench-mcp-headless": "bin/blockbench-mcp-headless.mjs"

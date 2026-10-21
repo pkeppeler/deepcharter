@@ -35,7 +35,7 @@ jobs:
             jdk: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up JDK 21 (toolchain target for 1.21.x)
         uses: actions/setup-java@v6
@@ -54,7 +54,7 @@ jobs:
           java-version-file: ""
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
         with:
           gradle-home-cache-cleanup: true
 
@@ -66,7 +66,7 @@ jobs:
 
       - name: Upload jars
         if: success()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: minecraft-fabric-mcp-${{ matrix.minecraft }}
           path: |
@@ -84,7 +84,7 @@ jobs:
     needs: build
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up JDK 21
         uses: actions/setup-java@v6
@@ -99,7 +99,7 @@ jobs:
           java-version: 25
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
 
       - name: chiseledBuild
         run: ./gradlew chiseledBuild --no-daemon --stacktrace
