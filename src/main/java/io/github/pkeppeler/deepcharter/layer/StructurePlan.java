@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.SplittableRandom;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -29,12 +30,14 @@ final class StructurePlan {
     private final StructureSite site;
     private final ServerLevel level;
     private final LevelChunk chunk;
+    private final Band band;
     private final ChunkPos chunkPos;
 
-    StructurePlan(StructureSite site, ServerLevel level, LevelChunk chunk) {
+    StructurePlan(StructureSite site, ServerLevel level, LevelChunk chunk, Band band) {
         this.site = site;
         this.level = level;
         this.chunk = chunk;
+        this.band = band;
         this.chunkPos = chunk.getPos();
     }
 
@@ -54,8 +57,8 @@ final class StructurePlan {
             for (int z = Math.max(bounds.minZ() - 1, chunkPos.getMinBlockZ());
                     z <= Math.min(bounds.maxZ() + 1, chunkPos.getMaxBlockZ());
                     z++) {
-                for (int y = Math.max(bounds.minY() - 1, level.getMinY());
-                        y <= Math.min(bounds.maxY() + 1, level.getMaxY());
+                for (int y = Math.max(bounds.minY() - 1, band.minY());
+                        y <= Math.min(bounds.maxY() + 1, band.minY() + band.height() - 1);
                         y++) {
                     pos.set(x, y, z);
                     if (RoomSeal.needsSealing(chunk.getBlockState(pos))) {
