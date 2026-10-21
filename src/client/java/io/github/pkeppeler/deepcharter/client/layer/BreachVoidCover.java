@@ -34,10 +34,8 @@ public final class BreachVoidCover {
 
     /** A world of the surface or a layer; a dimension type that is not a registry entry (a direct holder) is not one. */
     private static boolean inLayerChain(ClientLevel level) {
-        return level.dimensionTypeRegistration()
-                .unwrapKey()
-                .map(key -> LayerChain.indexOf(key.identifier()).isPresent())
-                .orElse(false);
+        return level.dimensionTypeRegistration().unwrapKey().isPresent()
+                && LayerChain.bandAt(level, level.getMinY()).isPresent();
     }
 
     private static void submit(LevelRenderContext context) {

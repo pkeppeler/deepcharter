@@ -1,16 +1,14 @@
 package io.github.pkeppeler.deepcharter.colony;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.Optional;
-import java.util.OptionalInt;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.dimension.DimensionType;
 
 /**
  * The Conduit: a Company pipe that runs from the colony's ore processor straight down through every layer, at the same X and Z
@@ -31,20 +29,18 @@ public final class Conduit {
 
     private static void onChunkLoad(ServerLevel level, LevelChunk chunk) {
         // A dimension type given inline by a data pack has no key: it is no layer. A callback never throws.
-        Optional<ResourceKey<DimensionType>> type =
-                level.dimensionTypeRegistration().unwrapKey();
-        if (type.isEmpty()) {
+        if (level.dimensionTypeRegistration().unwrapKey().isEmpty()) {
             return;
         }
-        OptionalInt layer = LayerChain.indexOf(type.get().identifier());
-        if (layer.isEmpty()) {
+        Optional<Band> band = LayerChain.bandAt(level, level.getMinY());
+        if (band.isEmpty()) {
             return;
         }
         Optional<ColonySite.Placed> placed = Colony.placed(level.getServer());
         if (placed.isEmpty()) {
             return;
         }
-        place(level, chunk, placed.get(), layer.getAsInt());
+        place(level, chunk, placed.get(), band.get().layer());
     }
 
     /** Sets the missing casing blocks that lie in {@code chunk}. */

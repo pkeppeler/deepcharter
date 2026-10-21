@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
@@ -89,11 +90,14 @@ public final class LamplessFigures {
             Set<StructureSite> visited = new HashSet<>();
             double range = CreatureTuning.DEFAULT.spawnRangeBlocks();
             for (ServerPlayer player : level.players()) {
+                Band band = LayerChain.bandAt(level, player.getBlockY())
+                        .orElseThrow(() -> new IllegalStateException(
+                                "rail level " + level.dimension().identifier() + " is not in the layer chain"));
                 StructureSite site = LayerStructures.nearest(
                         level.getSeed(),
                         StructureKind.RAILS,
-                        level.getMinY(),
-                        level.getHeight(),
+                        band.minY(),
+                        band.height(),
                         player.blockPosition(),
                         conduit.get());
                 if (player.distanceToSqr(
