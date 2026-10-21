@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.test;
 
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -10,12 +9,12 @@ import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
 import io.github.pkeppeler.deepcharter.test.support.ChargeUse;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -66,7 +65,7 @@ public class ShapedChargeTest {
 
     private static void scene(
             GameTestHelper helper, int x, Consumer<ServerLevel> build, Consumer<PodEntity> afterSet, Verify verify) {
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - BED, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
         build.accept(level);
@@ -255,7 +254,7 @@ public class ShapedChargeTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 700)
     public void aShapedChargeIsRefusedAndKeptWhereABlastingChargeIsAndWhenTheRunEndsOnLava(GameTestHelper helper) {
         int x = 4272;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - BED, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
         MockPlayer pilot = MockPlayers.join(helper, "shaped-refused");
@@ -336,7 +335,7 @@ public class ShapedChargeTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aShapedChargeIsRefusedWhenOnlyTheFarColumnOfTheFootprintEndsOnLava(GameTestHelper helper) {
         int x = 4336;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - BED, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
         rock(level, x - 1, -1, 3); // a run that ends on stone
@@ -397,13 +396,5 @@ public class ShapedChargeTest {
     private static RuntimeException failure(
             GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
-        }
-        return level;
     }
 }

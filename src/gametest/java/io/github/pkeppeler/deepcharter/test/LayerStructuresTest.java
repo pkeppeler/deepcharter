@@ -17,9 +17,9 @@ import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -82,7 +82,7 @@ public class LayerStructuresTest {
 
     private static final int RAILS_HALF_V = 2;
     /** A Conduit in no cell a test draws. */
-    private static final BlockPos FAR_CONDUIT = new BlockPos(-100_000, 64, -100_000);
+    private static final BlockPos FAR_CONDUIT = TestLayers.pos(TestLayers.SURFACE, -100_000, 64, -100_000);
 
     /** What a generated site must hold at least: each block is checked for presence, not for a count the blueprint happens to give. */
     private static Map<Block, Integer> minimum(StructureKind kind, int height) {
@@ -138,7 +138,7 @@ public class LayerStructuresTest {
     @GameTest
     public void everyKindHasOneSiteInEachCellInsideItsCellAndZone(GameTestHelper helper) {
         BlockPos conduit = conduit(helper);
-        ServerLevel[] layers = {level(helper, 1), level(helper, 2)};
+        ServerLevel[] layers = {TestLayers.level(helper, 1), TestLayers.level(helper, 2)};
         for (ServerLevel level : layers) {
             int layer = LayerChain.layerOf(level.dimensionTypeRegistration()
                             .unwrapKey()
@@ -180,7 +180,7 @@ public class LayerStructuresTest {
     @GameTest
     public void sitesFollowTheSeedAndNothingElse(GameTestHelper helper) {
         BlockPos conduit = conduit(helper);
-        ServerLevel level = level(helper, 2);
+        ServerLevel level = TestLayers.level(helper, 2);
         int differing = 0;
         for (StructureKind kind : StructureKind.inLayer(2)) {
             for (int cell = 0; cell < 8; cell++) {
@@ -214,7 +214,7 @@ public class LayerStructuresTest {
         BlockPos conduit = conduit(helper);
         List<StructureSite> sites = new ArrayList<>();
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = level(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             for (StructureKind kind : StructureKind.inLayer(layer)) {
                 StructureSite site = StructureSite.in(
                         level.getSeed(), kind, level.getMinY(), level.getHeight(), CELL, CELL, conduit);
@@ -230,7 +230,7 @@ public class LayerStructuresTest {
         TestTicks.each(helper, () -> {
             List<String> failing = new ArrayList<>();
             for (StructureSite site : sites) {
-                ServerLevel level = level(helper, site.kind().layer());
+                ServerLevel level = TestLayers.level(helper, site.kind().layer());
                 // The chunk states are read first and without loading: reading a block loads an unloaded chunk.
                 String chunks = chunkStates(level, site);
                 Map<Block, Integer> found = census(level, site);
@@ -251,7 +251,7 @@ public class LayerStructuresTest {
             if (!failing.isEmpty()) {
                 deadline.await(
                         helper,
-                        level(helper, 1),
+                        TestLayers.level(helper, 1),
                         false,
                         () -> String.format("structures did not settle in %d s: %s", FarChunks.WAIT_SECONDS, failing));
                 return;
@@ -373,7 +373,7 @@ public class LayerStructuresTest {
     public void sitesAvoidTheConduitCasing(GameTestHelper helper) {
         int radius = ColonyTuning.DEFAULT.conduitRadius();
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = level(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             for (StructureKind kind : StructureKind.inLayer(layer)) {
                 StructureSite free = StructureSite.in(
                         level.getSeed(), kind, level.getMinY(), level.getHeight(), CELL, CELL, FAR_CONDUIT);
@@ -409,7 +409,7 @@ public class LayerStructuresTest {
 
     @GameTest(maxTicks = 600)
     public void aStructureSealsItsShellOfFluidAndGasBeforeTheCarve(GameTestHelper helper) {
-        ServerLevel level = level(helper, 2);
+        ServerLevel level = TestLayers.level(helper, 2);
         StructureSite site = StructureSite.in(
                 level.getSeed(),
                 StructureKind.RAILS,
@@ -469,7 +469,7 @@ public class LayerStructuresTest {
 
     @GameTest(maxTicks = 600)
     public void aChunkLoadedFromDiskIsNotDrawnInto(GameTestHelper helper) {
-        ServerLevel level = level(helper, 2);
+        ServerLevel level = TestLayers.level(helper, 2);
         StructureSite site = StructureSite.in(
                 level.getSeed(),
                 StructureKind.WRECK,
@@ -506,7 +506,7 @@ public class LayerStructuresTest {
 
     @GameTest(maxTicks = 600)
     public void theConduitCasingInsideASiteSurvivesTheDraw(GameTestHelper helper) {
-        ServerLevel level = level(helper, 2);
+        ServerLevel level = TestLayers.level(helper, 2);
         StructureSite site = StructureSite.in(
                 level.getSeed(),
                 StructureKind.WRECK,
@@ -536,7 +536,7 @@ public class LayerStructuresTest {
 
     @GameTest(maxTicks = 1200)
     public void thePiecesOfAStructureAcrossChunkBordersMeet(GameTestHelper helper) {
-        ServerLevel level = level(helper, 2);
+        ServerLevel level = TestLayers.level(helper, 2);
         StructureKind kind = StructureKind.RAILS;
         StructureSite site = StructureSite.in(
                 level.getSeed(), kind, level.getMinY(), level.getHeight(), SEAM_CELL, SEAM_CELL, conduit(helper));
@@ -768,7 +768,7 @@ public class LayerStructuresTest {
         MinecraftServer server = server(helper);
         BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT)
                 .orElseThrow(() -> failure(helper, "the colony was not built"));
-        ServerLevel level = level(helper, 2);
+        ServerLevel level = TestLayers.level(helper, 2);
         StructureSite prospector =
                 LayerStructures.prospector(server).orElseThrow(() -> failure(helper, "no Prospector site"));
         StructureSite best = null;
@@ -920,14 +920,6 @@ public class LayerStructuresTest {
 
     private static MinecraftServer server(GameTestHelper helper) {
         return helper.getLevel().getServer();
-    }
-
-    private static ServerLevel level(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(server(helper), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.

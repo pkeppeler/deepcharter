@@ -25,7 +25,6 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
@@ -34,6 +33,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
@@ -229,9 +229,7 @@ public class ColonyTest {
                 throw new IllegalStateException("unreadable data answered a lookup");
             }
         });
-        paths.put(
-                "chunk load",
-                () -> ClientLight.serverLevel(server, LayerChain.dimension(1)).getChunk(7000 >> 4, 7000 >> 4));
+        paths.put("chunk load", () -> TestLayers.level(server, 1).getChunk(7000 >> 4, 7000 >> 4));
         UnreadableChecks.assertSavedDataNoThrow(helper, "colony", server, ColonySite.TYPE, paths);
         helper.succeed();
     }
@@ -348,7 +346,7 @@ public class ColonyTest {
             throw failure(helper, "the centre %s of the dry ground is in water", centre.toShortString());
         }
         // On dry ground the spawn itself is the centre.
-        BlockPos dry = new BlockPos(9500, 0, 9500);
+        BlockPos dry = TestLayers.pos(TestLayers.SURFACE, 9500, 0, 9500);
         if (!ColonyBuilder.findDryGround(level, dry).equals(Optional.of(dry))) {
             throw failure(
                     helper,
@@ -553,7 +551,7 @@ public class ColonyTest {
         double x = centre.getX() + radius + LayerTuning.DEFAULT.pocketRadius() + 0.5;
         double z = centre.getZ() + 0.5;
         ServerLevel surface = server.overworld();
-        ServerLevel one = level(helper, 1);
+        ServerLevel one = TestLayers.level(helper, 1);
         for (int y = surface.getMinY(); y <= surface.getMinY() + 10; y++) {
             // room-carver: the overworld surface, which opens onto layer 1 but is not layer rock
             surface.setBlock(BlockPos.containing(x, y, z), Blocks.AIR.defaultBlockState(), 3);
@@ -601,7 +599,7 @@ public class ColonyTest {
         int layers = LayerChain.count(server.registryAccess());
         int[] loaded = {0};
         for (int layer = 0; layer <= layers; layer++) {
-            ServerLevel level = level(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             // The corners of the casing: they name every chunk that holds a part of it.
             for (BlockPos corner : corners(centre)) {
                 FarChunks.awaitEntityTicking(helper, level, corner.atY(level.getMinY() + 8), () -> loaded[0]++);
@@ -612,7 +610,7 @@ public class ColonyTest {
                 throw failure(helper, "waiting for the Conduit's chunks to tick");
             }
             for (int layer = 0; layer <= layers; layer++) {
-                ServerLevel level = level(helper, layer);
+                ServerLevel level = TestLayers.level(helper, layer);
                 int top = layer == LayerChain.SURFACE
                         ? placed(helper).groundY() + ColonyTuning.DEFAULT.conduitStack()
                         : level.getMaxY();
@@ -645,7 +643,7 @@ public class ColonyTest {
         MockPlayer mock = MockPlayers.join(helper, "conduit-hands");
         int[] loaded = {0};
         for (int layer = 0; layer <= layers; layer++) {
-            ServerLevel level = level(helper, layer);
+            ServerLevel level = TestLayers.level(helper, layer);
             FarChunks.awaitEntityTicking(helper, level, centre.atY(level.getMinY() + 8), () -> loaded[0]++);
         }
         helper.succeedWhen(() -> {
@@ -657,7 +655,7 @@ public class ColonyTest {
             // suffocate.
             player.setGameMode(GameType.SURVIVAL);
             for (int layer = 0; layer <= layers; layer++) {
-                ServerLevel level = level(helper, layer);
+                ServerLevel level = TestLayers.level(helper, layer);
                 player.teleportTo(
                         level, centre.getX() + 0.5, level.getMinY() + 20, centre.getZ() + 4.5, Set.of(), 0, 0, true);
                 int highest = layer == LayerChain.SURFACE ? placed(helper).groundY() + 5 : level.getMaxY() - 2;
@@ -708,7 +706,7 @@ public class ColonyTest {
      * every block of it standing.
      */
     private static void podMeetsTheConduit(GameTestHelper helper, int layer) {
-        ServerLevel level = level(helper, layer);
+        ServerLevel level = TestLayers.level(helper, layer);
         BlockPos centre = TestColony.anchor(placed(helper), ColonyAnchor.CONDUIT);
         int radius = ColonyTuning.DEFAULT.conduitRadius();
         int floor = 60;
@@ -988,14 +986,6 @@ public class ColonyTest {
 
     private static MinecraftServer server(GameTestHelper helper) {
         return helper.getLevel().getServer();
-    }
-
-    private static ServerLevel level(GameTestHelper helper, int layer) {
-        ServerLevel level = ClientLight.serverLevel(server(helper), LayerChain.dimension(layer));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(layer));
-        }
-        return level;
     }
 
     private static ColonySite.Placed placed(GameTestHelper helper) {

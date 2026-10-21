@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.test;
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.layer.Depth;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodDrill;
@@ -13,13 +12,13 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodRockBite;
 import io.github.pkeppeler.deepcharter.pod.PodRockBiteTuning;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -74,7 +73,7 @@ public class CompanyRockBiteTest {
 
     /** Builds the room and the plate, seats a pilot in a pod of {@code type} with a drill of {@code drillTier}, and holds sprint. */
     private static Bite rig(GameTestHelper helper, int x, EntityType<PodEntity> type, int drillTier, int radiatorTier) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
+        ServerLevel level = TestLayers.level(helper.getLevel().getServer(), 1);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR - 8, FLOOR - 1, Z - ROOM, Z + ROOM, Blocks.STONE);
         RoomCarver.carve(level, x - ROOM, x + ROOM, FLOOR, FLOOR + 10, Z - ROOM, Z + ROOM, Blocks.AIR);
         for (int dx = -2; dx <= 2; dx++) {

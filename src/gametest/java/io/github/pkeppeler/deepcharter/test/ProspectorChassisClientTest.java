@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.awt.image.BufferedImage;
 import java.util.Set;
@@ -35,7 +36,7 @@ import net.minecraft.world.phys.Vec3;
 public class ProspectorChassisClientTest implements FabricClientGameTest {
     private static final int X = 1200;
     private static final int Z = 1200;
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
     private static final int ROOM_RADIUS = 6;
     private static final int ROOM_HEIGHT = 8;
     private static final int POD_CELLS = 3;

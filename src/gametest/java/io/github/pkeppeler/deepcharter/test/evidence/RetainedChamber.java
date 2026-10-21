@@ -1,9 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -50,9 +49,7 @@ final class RetainedChamber {
         ClientWait.until(
                 ctx,
                 "the player in layer " + LAYER,
-                client -> client.level != null
-                        && client.level.dimension().equals(LayerChain.dimension(LAYER))
-                        && client.gui.screen() == null);
+                client -> client.level != null && TestLayers.isIn(client.level, LAYER) && client.gui.screen() == null);
     }
 
     /** A stone chamber with its floor block at {@link #FLOOR}: {@code length} blocks along x, {@code 2 * halfWidth + 1} across, {@code height} high, sealed. */
@@ -112,7 +109,7 @@ final class RetainedChamber {
     }
 
     static ServerLevel layer(MinecraftServer server) {
-        return ClientLight.serverLevel(server, LayerChain.dimension(LAYER));
+        return TestLayers.level(server, LAYER);
     }
 
     void serverDo(Consumer<MinecraftServer> action) {

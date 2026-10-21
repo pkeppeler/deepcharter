@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -68,7 +69,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
     private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
     private static final int X = 500;
     private static final int Z = 500;
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
     private static final int BURSTS = 12;
     private static final int BURST_TICKS = 5;
     private static final double BURST_BLOCKS = 0.5;
@@ -230,12 +231,8 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                 "pod.engine_idle playing before leaving the overworld",
                 client -> heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
         long idleBefore = heard.count("pod.engine_idle");
-        teleportReal(two, LayerChain.dimension(1), 0.5, 100, 0.5);
-        await(
-                context,
-                heard,
-                "the client in layer 1",
-                client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+        teleportReal(two, TestLayers.dimension(1), 0.5, TestLayers.worldY(1, 100), 0.5);
+        await(context, heard, "the client in layer 1", client -> TestLayers.isIn(ClientLight.clientLevel(client), 1));
         teleportReal(two, Level.OVERWORLD, X + 3.5, FLOOR_Y, Z - 3.5);
         await(
                 context,
@@ -326,9 +323,9 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                             .getPlayers()
                             .getFirst()
                             .teleportTo(
-                                    ClientLight.serverLevel(server, LayerChain.dimension(1)),
+                                    TestLayers.level(server, 1),
                                     0.5,
-                                    100,
+                                    TestLayers.worldY(1, 100),
                                     0.5,
                                     Set.of(),
                                     0,
@@ -338,7 +335,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                     context,
                     heard,
                     "pod.engine_idle stopped in layer 1",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
+                    client -> TestLayers.isIn(ClientLight.clientLevel(client), 1)
                             && !heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
 
             // Each layer's dimension carries its music, and the client plays what the dimension says.
@@ -354,9 +351,9 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                                 .getPlayers()
                                 .getFirst()
                                 .teleportTo(
-                                        ClientLight.serverLevel(server, LayerChain.dimension(target)),
+                                        TestLayers.level(server, target),
                                         0.5,
-                                        100,
+                                        TestLayers.worldY(target, 100),
                                         0.5,
                                         Set.of(),
                                         0,
@@ -365,8 +362,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                 ClientWait.until(
                         context,
                         "the client in the target layer",
-                        client ->
-                                client.level != null && client.level.dimension().equals(LayerChain.dimension(target)));
+                        client -> client.level != null && TestLayers.isIn(client.level, target));
                 String expected = LAYER_MUSIC.get(layer - 1);
                 Identifier music = context.computeOnClient(client -> {
                     Music playing = ClientLight.clientLevel(client)

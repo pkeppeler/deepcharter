@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.layer.LavaHazard;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
@@ -15,13 +14,13 @@ import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -71,6 +70,9 @@ public class KellsShaftBoreTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(KellsShaftBoreTest.class);
     static final String SHAFTS_ENV = "DEEPCHARTER_KELLS_SHAFTS";
     private static final String REQUESTED_SHAFTS = System.getenv(SHAFTS_ENV);
+    /** The layer the Kells' shaft is in. */
+    private static final int LAYER = StructureKind.KELLS_SHAFT.layer();
+
     private static final int SMOKE_SHAFTS = 1;
     /** The spacing cells of the shafts: one cell each, along x, far from every other test. */
     private static final int FIRST_CELL_X = 40;
@@ -601,11 +603,6 @@ public class KellsShaftBoreTest {
     }
 
     private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(2));
-        if (level == null) {
-            throw helper.assertionException(
-                    Component.literal("dimension " + LayerChain.dimension(2) + " did not load"));
-        }
-        return level;
+        return TestLayers.level(helper, LAYER);
     }
 }

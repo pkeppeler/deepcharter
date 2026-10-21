@@ -1,9 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreType;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +56,7 @@ public class OreHostScenario extends EvidenceScenario {
             blocks.put(new BlockPos(-6 + 2 * i, i % 2 == 0 ? 0 : 2, 0), OreBlocks.of(ores[i]));
         }
         world.serverDo(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            ServerLevel level = TestLayers.level(server, layer);
             TextureTestWorld.buildWall(level, ROOM, HALF_WIDTH, blocks);
             level.setBlock(ROOM.offset(0, 2, 1), TextureTestWorld.lamp(LAMP), Block.UPDATE_ALL);
         });

@@ -4,11 +4,11 @@ import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -34,7 +34,7 @@ public class BreachHudTest implements FabricClientGameTest {
     /** Written out here, not read from Depth, so the test checks the maths rather than repeating it. */
     private static final int SEA_LEVEL = 63;
 
-    private static final int OVERWORLD_MIN_Y = -64;
+    private static final int OVERWORLD_MIN_Y = TestLayers.worldY(TestLayers.SURFACE, -64);
     private static final int LAYER_1_HEIGHT = 192;
     private static final double FEET_PER_BLOCK = 3.28;
 
@@ -56,9 +56,7 @@ public class BreachHudTest implements FabricClientGameTest {
             // In layer 1 low enough that the reading is over a thousand feet, so it has a thousands separator.
             teleport(singleplayer, 1, 5);
             ClientWait.until(
-                    context,
-                    "the client in layer_1",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                    context, "the client in layer_1", client -> TestLayers.isIn(ClientLight.clientLevel(client), 1));
             assertAltimeter(
                     context,
                     "layer 1",
@@ -105,8 +103,7 @@ public class BreachHudTest implements FabricClientGameTest {
                 throw new AssertionError(
                         "The fade should last about " + BreachEffects.fadeTicks() + " ticks, lasted " + length);
             }
-            if (!context.computeOnClient(
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)))) {
+            if (!context.computeOnClient(client -> TestLayers.isIn(ClientLight.clientLevel(client), 2))) {
                 throw new AssertionError("The crossing should have put the client in layer 2");
             }
         }
@@ -173,7 +170,7 @@ public class BreachHudTest implements FabricClientGameTest {
     /** Teleports the real player into layer {@code layer} at height {@code y}. */
     private static void teleport(TestSingleplayerContext singleplayer, int layer, int y) {
         singleplayer.getServer().runOnServer(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            ServerLevel level = TestLayers.level(server, layer);
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.teleportTo(level, X, y, Z, Set.of(), 0, 0, true);
         });

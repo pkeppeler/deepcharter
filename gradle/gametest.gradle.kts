@@ -316,7 +316,7 @@ tasks.register("checkGametestFixtures") {
 					val root = File(c["root"] as String)
 					val problems = fixedPosProblems(root, root, blankLiterals, markedNear)
 					if (problems.isNotEmpty()) {
-						throw GradleException("Literal world Y in evidence scenarios. $fixedPosAdvice\n  " + problems.joinToString("\n  "))
+						throw GradleException("Literal world Y or LayerChain.dimension in tests and scenarios. $fixedPosAdvice\n  " + problems.joinToString("\n  "))
 					}
 					report[name] = linkedMapOf("ok" to true, "message" to "", "server" to emptyList<String>(), "client" to emptyList<String>())
 					continue

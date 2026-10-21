@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import java.util.List;
@@ -44,7 +45,7 @@ import org.jspecify.annotations.Nullable;
 
 /** Server GameTests for pod cargo, lift and fuel. */
 public class PodCargoFuelTest {
-    private static final int FLOOR_Y = 1;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final float SOUTH = 0f;
     private static final Input JUMP = new Input(false, false, false, false, true, false, false);

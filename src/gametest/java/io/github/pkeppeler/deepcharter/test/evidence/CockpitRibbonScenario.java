@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -83,7 +84,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
                     var type = server.registryAccess()
                             .lookupOrThrow(Registries.DIMENSION_TYPE)
                             .getValueOrThrow(LayerChain.type(1));
-                    return new Room(LayerChain.dimension(1), type.minY() + type.height() - UPPER_FLOOR_BELOW_TOP);
+                    return new Room(TestLayers.dimension(1), type.minY() + type.height() - UPPER_FLOOR_BELOW_TOP);
                 });
                 Room deep = singleplayer.getServer().computeOnServer(server -> {
                     int last = LayerChain.count(server.registryAccess());
@@ -91,7 +92,7 @@ public class CockpitRibbonScenario extends EvidenceScenario {
                             .lookupOrThrow(Registries.DIMENSION_TYPE)
                             .getValueOrThrow(LayerChain.type(last))
                             .minY();
-                    return new Room(LayerChain.dimension(last), minY + DEEP_FLOOR_ABOVE_MIN);
+                    return new Room(TestLayers.dimension(last), minY + DEEP_FLOOR_ABOVE_MIN);
                 });
                 singleplayer.getServer().runOnServer(server -> {
                     buildRoom(server, upper, ROOM_RADIUS, ROOM_RADIUS);

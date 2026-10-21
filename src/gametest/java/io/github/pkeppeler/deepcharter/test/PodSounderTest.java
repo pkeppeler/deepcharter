@@ -4,7 +4,6 @@ import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.layer.Depth;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -16,7 +15,6 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -24,6 +22,7 @@ import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -99,7 +98,7 @@ public class PodSounderTest {
 
     /** Builds the site, lets {@code build} add its pockets, spawns the pod, and runs {@code check} on the pod after it has settled for a few ticks. */
     private void reads(GameTestHelper helper, int x, int tier, Consumer<ServerLevel> build, Consumer<PodEntity> check) {
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         build.accept(level);
         PodEntity[] pod = {null};
@@ -271,7 +270,7 @@ public class PodSounderTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aPodWhosePartIsGoneLosesItsStaleMarks(GameTestHelper helper) {
         int x = 6912;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         PodEntity[] pod = {null};
         int[] ticks = {0};
@@ -304,7 +303,7 @@ public class PodSounderTest {
             PodEvents.IS_POWERED.register(pod -> !UNPOWERED.contains(pod.getUUID()));
         }
         int x = 6528;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         pocket(level, x, FLOOR - 1, Z);
         PodEntity[] pod = {null};
@@ -328,7 +327,7 @@ public class PodSounderTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void theMarksFollowAPocketThatIsMinedAway(GameTestHelper helper) {
         int x = 6576;
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         pocket(level, x, FLOOR - 1, Z);
         PodEntity[] pod = {null};
@@ -418,7 +417,7 @@ public class PodSounderTest {
 
     /** As above; with {@code bystander}, a second pod with a tier 2 sounder of its own stands within the blast's reach and drills nothing, and its loss is noted too. */
     private void drillOverAPocket(GameTestHelper helper, int x, int tier, boolean bystander, Consumer<Bleed> check) {
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         BlockPos pocket = new BlockPos(x, FLOOR - 1, Z);
         pocket(level, x, FLOOR - 1, Z);
@@ -595,7 +594,7 @@ public class PodSounderTest {
     }
 
     private void inThePause(GameTestHelper helper, int x, PauseScript script) {
-        ServerLevel level = layer(helper);
+        ServerLevel level = TestLayers.level(helper, 1);
         site(level, x);
         BlockPos pocket = new BlockPos(x, FLOOR - 1, Z);
         pocket(level, x, FLOOR - 1, Z);
@@ -801,13 +800,5 @@ public class PodSounderTest {
     private static RuntimeException failure(
             GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    private static ServerLevel layer(GameTestHelper helper) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), LayerChain.dimension(1));
-        if (level == null) {
-            throw failure(helper, "dimension %s did not load", LayerChain.dimension(1));
-        }
-        return level;
     }
 }

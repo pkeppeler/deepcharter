@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -23,7 +24,7 @@ import net.minecraft.world.phys.Vec3;
 public class PodDrillClientTest implements FabricClientGameTest {
     private static final int X = 500;
     private static final int Z = 500;
-    private static final int FLOOR_Y = 200;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
     private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     @Override

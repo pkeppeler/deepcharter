@@ -14,7 +14,6 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
@@ -35,7 +34,6 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.M2SliceEndState;
@@ -43,6 +41,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -83,8 +82,8 @@ public class M2SliceTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theScriptedSliceReachesItsEndState(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        ServerLevel one = layer(helper, server, 1);
-        ServerLevel two = layer(helper, server, 2);
+        ServerLevel one = TestLayers.level(server, 1);
+        ServerLevel two = TestLayers.level(server, 2);
         AtomicInteger ready = new AtomicInteger();
         // The colony's chunk too: a pod there is found by its UUID, which a cable needs, only once the chunk ticks
         // entities.
@@ -112,14 +111,6 @@ public class M2SliceTest {
         void release(GameTestHelper helper) {
             FarChunks.release(helper, level, pos.getX() >> 4, pos.getZ() >> 4);
         }
-    }
-
-    private static ServerLevel layer(GameTestHelper helper, MinecraftServer server, int layer) {
-        ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
-        if (level == null) {
-            throw helper.assertionException("layer %s did not load", layer);
-        }
-        return level;
     }
 
     private static double zoneY(ServerLevel level, int index) {

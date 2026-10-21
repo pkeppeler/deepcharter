@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -11,6 +10,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Optional;
 import java.util.Set;
@@ -29,7 +29,7 @@ import net.minecraft.world.level.block.Blocks;
  * and not that the hull burns. When the bricks are spent it says the glaze is spent and the hull burns. A pod with no shield shows only the hull burning.
  */
 public class PodHeatShieldClientTest implements FabricClientGameTest {
-    private static final int FEET_Y = 10;
+    private static final int FEET_Y = TestLayers.worldY(1, 10);
     private static final int RACK = 6;
 
     @Override
@@ -38,7 +38,7 @@ public class PodHeatShieldClientTest implements FabricClientGameTest {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 // Hung in a sealed room, in a 2 x 2 pool of lava: no gravity holds the pod where it is, so the reading
@@ -60,7 +60,7 @@ public class PodHeatShieldClientTest implements FabricClientGameTest {
                     "the pod in layer 1, burning",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity pod
-                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
+                            && TestLayers.isIn(ClientLight.clientLevel(client), 1)
                             && pod.hullBurning());
             ClientWait.until(
                     context,
@@ -109,15 +109,8 @@ public class PodHeatShieldClientTest implements FabricClientGameTest {
 
             singleplayer
                     .getServer()
-                    .runOnServer(server -> RoomCarver.carve(
-                            ClientLight.serverLevel(server, LayerChain.dimension(1)),
-                            -1,
-                            0,
-                            FEET_Y,
-                            FEET_Y,
-                            -1,
-                            0,
-                            Blocks.AIR));
+                    .runOnServer(server ->
+                            RoomCarver.carve(TestLayers.level(server, 1), -1, 0, FEET_Y, FEET_Y, -1, 0, Blocks.AIR));
             ClientWait.until(
                     context,
                     "no glaze line out of lava",

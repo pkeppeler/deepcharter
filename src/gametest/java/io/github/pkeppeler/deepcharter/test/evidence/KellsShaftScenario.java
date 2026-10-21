@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.client.pod.LiningKeys;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
@@ -15,6 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -38,6 +38,7 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 public class KellsShaftScenario extends EvidenceScenario {
     /** The spacing cell of the shaft that is shown. */
     private static final int CELL = 3;
+    private static final int LAYER = StructureKind.KELLS_SHAFT.layer();
 
     private static final int TICKS_PER_FRAME = 4;
     private static final int SETTLE_TICKS = 80;
@@ -69,7 +70,7 @@ public class KellsShaftScenario extends EvidenceScenario {
             int floor = site.origin().getY() + site.height() - 3;
             float yaw = site.alongZ() ? 0f : -90f;
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel two = TestLayers.level(server, LAYER);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
                 player.addEffect(new MobEffectInstance(
@@ -93,7 +94,7 @@ public class KellsShaftScenario extends EvidenceScenario {
                     "the pilot riding a pod in layer 2",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)));
+                            && TestLayers.isIn(ClientLight.clientLevel(client), LAYER));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 ClientSession.player(client).setXRot(LOOK_DOWN);
@@ -199,7 +200,7 @@ public class KellsShaftScenario extends EvidenceScenario {
     /** The shaft of the cell, with the chunks of it and of the rail line made full. */
     private static StructureSite prepare(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(2));
+            ServerLevel level = TestLayers.level(server, LAYER);
             StructureSite site = StructureSite.in(
                     level.getSeed(),
                     StructureKind.KELLS_SHAFT,

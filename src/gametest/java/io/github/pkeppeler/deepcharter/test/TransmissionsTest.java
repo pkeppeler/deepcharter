@@ -10,9 +10,9 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
@@ -638,8 +638,8 @@ public class TransmissionsTest {
                 .getOrThrow();
         MockPlayer crew = MockPlayers.join(helper, "tx-unreadable");
         CharterId charter = directCharter(helper, crew.player().getUUID());
-        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+        ServerLevel one = TestLayers.level(server, 1);
+        ServerLevel two = TestLayers.level(server, 2);
         crew.player().setNoGravity(true);
         crew.teleportTo(two, new Vec3(BREACH_COLUMN, two.getMinY() + two.getHeight() / 2, BREACH_COLUMN), 0, 0);
 
@@ -781,8 +781,8 @@ public class TransmissionsTest {
     @GameTest(maxTicks = TRIGGER_TICKS)
     public void aBreachCrossingFiresItsTransmissionAndItsBonusForTheCharter(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+        ServerLevel one = TestLayers.level(server, 1);
+        ServerLevel two = TestLayers.level(server, 2);
         // Generate the arrival area in layer 2 now so the crossing does not wait on it.
         for (int dx = -2; dx <= 2; dx++) {
             for (int dz = -2; dz <= 2; dz++) {
@@ -809,9 +809,9 @@ public class TransmissionsTest {
     @GameTest
     public void climbingOutIntoTheSurfaceFiresTheSurfaceArrivalAndNoOtherAscentDoes(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        ServerLevel surface = ClientLight.serverLevel(server, LayerChain.dimension(LayerChain.SURFACE));
-        ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+        ServerLevel surface = TestLayers.level(server, LayerChain.SURFACE);
+        ServerLevel one = TestLayers.level(server, 1);
+        ServerLevel two = TestLayers.level(server, 2);
         withFreshWorldData(helper, data -> {
             MockPlayer crew = MockPlayers.join(helper, "tx-surface");
             CharterId charter = directCharter(helper, crew.player().getUUID());
@@ -836,7 +836,7 @@ public class TransmissionsTest {
     @GameTest(maxTicks = TRIGGER_TICKS)
     public void standingInAZoneFiresItsTransmissionForTheCharter(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        ServerLevel two = ClientLight.serverLevel(server, LayerChain.dimension(2));
+        ServerLevel two = TestLayers.level(server, 2);
         MockPlayer crew = MockPlayers.join(helper, "tx-zone");
         foundedCharter(helper, crew.player().getUUID());
         crew.player().setPermanentlyInvulnerable(true);

@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -16,6 +15,7 @@ import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -66,7 +66,7 @@ final class SignalDecayDescent {
             EvidencePins.handsHidden = true;
             try {
                 singleplayer.getServer().runOnServer(server -> {
-                    ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                    ServerLevel one = TestLayers.level(server, 1);
                     RoomCarver.carve(
                             one,
                             X - ROOM_RADIUS - 1,
@@ -113,7 +113,7 @@ final class SignalDecayDescent {
                         "the pilot seated in the pod in layer 1",
                         client -> client.player != null
                                 && client.player.getVehicle() instanceof PodEntity
-                                && ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1)));
+                                && TestLayers.isIn(ClientLight.clientLevel(client), 1));
                 context.runOnClient(client -> {
                     ClientSession.player(client).setXRot(25f);
                     ClientSession.player(client).setYRot(0f);

@@ -1,8 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -75,7 +75,7 @@ public class LayerTerrainScenario extends EvidenceScenario {
     private void flyThrough(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, int layer, int frames) {
         List<Vec3> route = singleplayer.getServer().computeOnServer(server -> {
-            ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+            ServerLevel level = TestLayers.level(server, layer);
             return smooth(findRoute(level));
         });
         int stride = Math.max(1, (int) Math.ceil(route.size() / (double) frames));
@@ -93,7 +93,7 @@ public class LayerTerrainScenario extends EvidenceScenario {
             float shownYaw = yaw;
             float shownPitch = Mth.clamp(pitch, -60f, 60f);
             singleplayer.getServer().runOnServer(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(layer));
+                ServerLevel level = TestLayers.level(server, layer);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(level, at.x, at.y - EYE_HEIGHT, at.z, Set.of(), shownYaw, shownPitch, true);
             });
@@ -101,7 +101,7 @@ public class LayerTerrainScenario extends EvidenceScenario {
                 ClientWait.until(
                         context,
                         "the client in layer " + layer,
-                        client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer)));
+                        client -> TestLayers.isIn(ClientLight.clientLevel(client), layer));
                 context.waitTicks(40);
                 first = false;
             }

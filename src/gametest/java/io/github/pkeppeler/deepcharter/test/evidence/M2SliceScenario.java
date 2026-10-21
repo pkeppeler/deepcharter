@@ -25,7 +25,6 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
@@ -57,6 +56,7 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
@@ -495,7 +495,7 @@ public class M2SliceScenario extends EvidenceScenario {
             refuelWithCoal();
             ctx.getInput().holdKey(options -> options.keySprint);
             recordUntil(
-                    server -> podIn(server, mole.get(), LayerChain.dimension(1)),
+                    server -> podIn(server, mole.get(), TestLayers.dimension(1)),
                     WAIT_TICKS * 3,
                     "The Mole did not cross into layer 1",
                     () -> {});
@@ -703,8 +703,8 @@ public class M2SliceScenario extends EvidenceScenario {
             say(
                     "9. Handbook chapters 6 and 7. SHORTCUT: the Mole is lowered to a room at the floor of layer 1, in the Deep Claim, with ore planted in its walls. The camera has night vision so the dark can be seen.");
             onServer(server -> {
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
-                ServerLevel layerTwo = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel one = TestLayers.level(server, 1);
+                ServerLevel layerTwo = TestLayers.level(server, 2);
                 for (int dx = -3; dx <= 3; dx++) {
                     for (int dz = -3; dz <= 3; dz++) {
                         one.getChunk(X / 16 + dx, Z / 16 + dz, ChunkStatus.FULL);
@@ -719,7 +719,7 @@ public class M2SliceScenario extends EvidenceScenario {
                 real(server)
                         .addEffect(new MobEffectInstance(
                                 MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
-                ServerLevel one = ClientLight.serverLevel(server, LayerChain.dimension(1));
+                ServerLevel one = TestLayers.level(server, 1);
                 PodEntity pod = pod(server, mole.get());
                 pod.setFuel(100f);
                 Entity arrived = pod.teleport(new TeleportTransition(
@@ -732,7 +732,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the player riding a pod in layer 1",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(1))
+                    client -> TestLayers.isIn(ClientLight.clientLevel(client), 1)
                             && ClientSession.player(client).getVehicle() instanceof PodEntity);
             ctx.runOnClient(client -> ClientSession.player(client).setYRot(-90f));
             ctx.waitTicks(60);
@@ -758,7 +758,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ctx.runOnClient(client -> ClientSession.player(client).setXRot(35f));
             ctx.getInput().holdKey(options -> options.keySprint);
             recordUntil(
-                    server -> podIn(server, mole.get(), LayerChain.dimension(2)),
+                    server -> podIn(server, mole.get(), TestLayers.dimension(2)),
                     WAIT_TICKS * 5,
                     "The Mole did not cross into layer 2",
                     stillOnce(
@@ -768,9 +768,7 @@ public class M2SliceScenario extends EvidenceScenario {
                             "31-boring-through-the-crust"));
             ctx.getInput().releaseKey(options -> options.keySprint);
             ClientWait.until(
-                    ctx,
-                    "the client in layer 2",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2)));
+                    ctx, "the client in layer 2", client -> TestLayers.isIn(ClientLight.clientLevel(client), 2));
             say("10. Layer 2, the Old Workings. The first breach is crossed.");
             awaitServer(server -> directiveDone(server, "first_breach/breach_workings"));
             refuelWithCoal();
@@ -800,7 +798,7 @@ public class M2SliceScenario extends EvidenceScenario {
             Vec3 figureStart = at(site, FIGURE_AT_U, 0, 0);
             Vec3 moleAt = at(site, MOLE_AT_U, 0, 0);
             onServer(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel level = TestLayers.level(server, 2);
                 Vec3 far = at(site, -DRIFT_LENGTH - 3, 0, 3);
                 Vec3 near = at(site, 7, 0, -3);
                 for (int chunkX = Math.min((int) far.x, (int) near.x) >> 4;
@@ -823,7 +821,7 @@ public class M2SliceScenario extends EvidenceScenario {
             LamplessFigure[] figure = {null};
             dismount();
             onServer(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel level = TestLayers.level(server, 2);
                 cutDrift(level, site);
                 pod(server, mole.get())
                         .teleportTo(
@@ -841,7 +839,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the drift's rail under the Mole on the client",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2))
+                    client -> TestLayers.isIn(ClientLight.clientLevel(client), 2)
                             && ClientLight.clientLevel(client)
                                     .getBlockState(BlockPos.containing(moleAt))
                                     .is(Blocks.RAIL),
@@ -865,7 +863,7 @@ public class M2SliceScenario extends EvidenceScenario {
             showTransmission("32a-transmission-in-prospectors-run");
             say("11. SHORTCUT: the figure is placed at the far end of the drift. It walks toward the Mole.");
             onServer(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel level = TestLayers.level(server, 2);
                 LamplessFigure made = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
                 made.setPos(figureStart);
                 made.setHeading(site.alongZ() ? Direction.SOUTH : Direction.EAST);
@@ -907,7 +905,7 @@ public class M2SliceScenario extends EvidenceScenario {
             snap(3);
             still("34-the-figure-comes-to-the-mole");
             onServer(server -> {
-                figure[0].kill(ClientLight.serverLevel(server, LayerChain.dimension(2)));
+                figure[0].kill(TestLayers.level(server, 2));
                 return null;
             });
             for (int frames = 0; frames < 40 && !onServer(server -> figure[0].isRemoved()); frames++) {
@@ -953,7 +951,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the player riding the Mole in layer 2 with no screen open",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2))
+                    client -> TestLayers.isIn(ClientLight.clientLevel(client), 2)
                             && ClientSession.player(client).getVehicle() instanceof PodEntity
                             && client.gui.screen() == null);
             ctx.getInput().holdKey(options -> options.keyUp);
@@ -993,7 +991,7 @@ public class M2SliceScenario extends EvidenceScenario {
         }
 
         private static List<PodEntity> wrecksAt(MinecraftServer server, Vec3 bay) {
-            return ClientLight.serverLevel(server, LayerChain.dimension(2))
+            return TestLayers.level(server, 2)
                     .getEntitiesOfClass(
                             PodEntity.class,
                             new AABB(BlockPos.containing(bay)).inflate(6),
@@ -1251,7 +1249,7 @@ public class M2SliceScenario extends EvidenceScenario {
             snap(HOLD_FRAMES);
             still("54-two-crew-in-the-prospector");
             onServer(server -> {
-                ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                ServerLevel level = TestLayers.level(server, 2);
                 PodEntity pod = pod(server, prospector.get());
                 Entity arrived = pod.teleport(
                         new TeleportTransition(level, park, Vec3.ZERO, 0f, 0f, TeleportTransition.DO_NOTHING));
@@ -1263,7 +1261,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the player riding a pod in layer 2",
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(2))
+                    client -> TestLayers.isIn(ClientLight.clientLevel(client), 2)
                             && ClientSession.player(client).getVehicle() instanceof PodEntity);
             awaitServer(server -> directiveDone(server, "company_property/reach_workings_floor"));
             ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
@@ -1549,7 +1547,7 @@ public class M2SliceScenario extends EvidenceScenario {
             FarChunks.Deadline deadline = FarChunks.deadline();
             while (true) {
                 Vec3 waiting = onServer(server -> {
-                    ServerLevel level = ClientLight.serverLevel(server, LayerChain.dimension(2));
+                    ServerLevel level = TestLayers.level(server, 2);
                     return positions.stream()
                             .filter(at -> !level.isPositionEntityTicking(BlockPos.containing(at)))
                             .findFirst()
@@ -1560,7 +1558,7 @@ public class M2SliceScenario extends EvidenceScenario {
                 }
                 if (deadline.expired()) {
                     throw new AssertionError("chunk " + chunkOf(BlockPos.containing(waiting)) + " in "
-                            + LayerChain.dimension(2) + " was not entity-ticking after " + FarChunks.WAIT_SECONDS
+                            + TestLayers.dimension(2) + " was not entity-ticking after " + FarChunks.WAIT_SECONDS
                             + " s (beat " + beat + ")");
                 }
                 ctx.waitTicks(1);
@@ -1633,21 +1631,13 @@ public class M2SliceScenario extends EvidenceScenario {
             float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
             onServer(server -> {
                 ServerPlayer real = real(server);
-                real.teleportTo(
-                        ClientLight.serverLevel(server, LayerChain.dimension(layer)),
-                        feet.x,
-                        feet.y,
-                        feet.z,
-                        Set.of(),
-                        yaw,
-                        pitch,
-                        true);
+                real.teleportTo(TestLayers.level(server, layer), feet.x, feet.y, feet.z, Set.of(), yaw, pitch, true);
                 return null;
             });
             ClientWait.until(
                     ctx,
                     "the player at the feet in layer " + layer,
-                    client -> ClientLight.clientLevel(client).dimension().equals(LayerChain.dimension(layer))
+                    client -> TestLayers.isIn(ClientLight.clientLevel(client), layer)
                             && ClientSession.player(client).distanceToSqr(feet) < 1.0);
             ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             ctx.waitTicks(4);
