@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import io.github.pkeppeler.deepcharter.test.support.TickLists;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -311,6 +312,27 @@ public class MockPlayersTest {
         helper.succeedWhen(() -> {
             if (helper.getTick() < 2) {
                 throw helper.assertionException("waiting two ticks");
+            }
+        });
+    }
+
+    /** A mock that left is dropped from the tick list's stale snapshot (#723). */
+    @GameTest
+    public void aLeftMockIsNotHeldByTheTickList(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        MockPlayer mock = MockPlayers.join(helper, "retention-ticklist");
+        ServerPlayer player = mock.player();
+        TickLists.snapshotAsIfChangedWhileTicking(level);
+        if (!TickLists.retains(level, player)) {
+            throw helper.assertionException("the snapshot should hold the live mock");
+        }
+        mock.leave();
+        helper.succeedWhen(() -> {
+            for (ServerLevel each : level.getServer().getAllLevels()) {
+                if (TickLists.retains(each, player)) {
+                    throw helper.assertionException(
+                            "the tick list of " + each.dimension().identifier() + " still holds the mock that left");
+                }
             }
         });
     }

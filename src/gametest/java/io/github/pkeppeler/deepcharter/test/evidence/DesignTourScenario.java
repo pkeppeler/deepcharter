@@ -1528,15 +1528,6 @@ public class DesignTourScenario extends EvidenceScenario {
             });
         }
 
-        /** The world position of a point in the structure's own axes, {@code y} up from the floor of its hollow. */
-        private static Vec3 at(StructureSite site, double u, double y, double v) {
-            BlockPos origin = site.origin();
-            return new Vec3(
-                    origin.getX() + 0.5 + (site.alongZ() ? v : u),
-                    origin.getY() + y,
-                    origin.getZ() + 0.5 + (site.alongZ() ? u : v));
-        }
-
         // ------------------------------------------------------------------------------------------------
         // transmissions
 

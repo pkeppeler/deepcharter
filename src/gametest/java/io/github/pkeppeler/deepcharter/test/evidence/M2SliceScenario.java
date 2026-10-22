@@ -1695,15 +1695,6 @@ public class M2SliceScenario extends EvidenceScenario {
             return (float) Math.toDegrees(Math.atan2(-(to.x - from.x), to.z - from.z));
         }
 
-        /** The world position of a point in the structure's own axes, {@code y} up from the floor of its hollow. */
-        private static Vec3 at(StructureSite site, double u, double y, double v) {
-            BlockPos origin = site.origin();
-            return new Vec3(
-                    origin.getX() + 0.5 + (site.alongZ() ? v : u),
-                    origin.getY() + y,
-                    origin.getZ() + 0.5 + (site.alongZ() ? u : v));
-        }
-
         /** The room in the Deep Claim: crust, a row of stone with ore in it, an airy room, lamps and ore in the walls. */
         private static void buildRoom(ServerLevel level) {
             RoomCarver.carve(
