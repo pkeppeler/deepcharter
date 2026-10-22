@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.test.support.TickLists;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
@@ -311,6 +312,31 @@ public class MockPlayersTest {
         helper.succeedWhen(() -> {
             if (helper.getTick() < 2) {
                 throw helper.assertionException("waiting two ticks");
+            }
+        });
+    }
+
+    /**
+     * A mock that leaves while the level's tick list still holds a snapshot of it is dropped from that snapshot too (#723):
+     * vanilla copies the list when an entity is added or removed during an iteration, and the copy kept every mock that
+     * was ticking, to the end of the run.
+     */
+    @GameTest
+    public void aLeftMockIsNotHeldByTheTickList(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        MockPlayer mock = MockPlayers.join(helper, "retention-ticklist");
+        ServerPlayer player = mock.player();
+        TickLists.snapshotAsIfChangedWhileTicking(level);
+        if (!TickLists.retains(level, player)) {
+            throw helper.assertionException("the snapshot should hold the live mock");
+        }
+        mock.leave();
+        helper.succeedWhen(() -> {
+            for (ServerLevel each : level.getServer().getAllLevels()) {
+                if (TickLists.retains(each, player)) {
+                    throw helper.assertionException(
+                            "the tick list of " + each.dimension().identifier() + " still holds the mock that left");
+                }
             }
         });
     }
