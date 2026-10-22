@@ -51,7 +51,7 @@ The measured losses, with numbers and stills, are in [art direction section 6](.
 
 ### What the cutover (#214) must handle
 
-1. **The timeline against the biomes.** Data-only: tracks that `multiply` (the layer biomes set 0 and the surface biomes a neutral base). The vanilla `minecraft:day` timeline multiplies the same attributes by the gameplay clock (0.24 at night), so the surface would darken at gameplay night, which the sky timeline avoids today by overriding. The type could list its own gameplay timeline in place of `minecraft:day`. Code: a client hook keyed by `LayerChain.bandAt` that sets the lightmap and fog values. Each fog value has the same problem as the factor.
+1. **The timeline against the biomes.** Data-only: tracks that `multiply` (the layer biomes set 0 and the surface biomes a neutral base), as vanilla's `minecraft:day` does with the gameplay clock; the type could list its own gameplay timeline in place of it, because `day` darkens the surface at gameplay night, which the sky timeline's overrides avoid today. Code: a client hook keyed by `LayerChain.bandAt` that sets the lightmap and fog values. Each fog value has the same problem as the factor.
 2. **Pick one `cardinal_light`** and accept the ceiling difference, or hook it by band.
 3. **Pick one `ambient_light`.**
 4. **Decide the server-side sky light** in a layer shaft: the server keeps sky light 15 in an open shaft.

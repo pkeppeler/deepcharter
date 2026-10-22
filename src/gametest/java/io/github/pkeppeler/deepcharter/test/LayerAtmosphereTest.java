@@ -135,12 +135,12 @@ public class LayerAtmosphereTest {
                         zone + " sky light factor at its place",
                         0f,
                         read.getValue(EnvironmentAttributes.SKY_LIGHT_FACTOR, pos));
+                Vector3fc ambient = read.getValue(EnvironmentAttributes.AMBIENT_LIGHT_COLOR, pos);
                 expect(
-                        sameColour(
-                                read.getValue(EnvironmentAttributes.AMBIENT_LIGHT_COLOR, pos), wanted.ambientColour()),
+                        sameColour(ambient, wanted.ambientColour()),
                         "the zone %s reads ambient light colour %s",
                         zone,
-                        read.getValue(EnvironmentAttributes.AMBIENT_LIGHT_COLOR, pos));
+                        ambient);
             });
         }
         helper.succeed();
