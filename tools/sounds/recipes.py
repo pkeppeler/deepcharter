@@ -186,6 +186,8 @@ HYMNS = {
 def _hymn(seed, play):
     """The motif played on one reed, then bent by how deep it is."""
     rng = random.Random(seed)
+    sin = math.sin
+    harmonic_weights = [(h, h**1.1) for h in range(1, 9)]
     beat = play["beat"]
     length = sum(beats for _, beats in HYMN) * beat + 0.5
     count = dsp.seconds(length)
@@ -201,7 +203,7 @@ def _hymn(seed, play):
         phases = dsp.phase_of([freq * (1 + wobble[start + i]) for i in range(span)])
         breath = dsp.filt(dsp.noise(rng, span), "bp", 1800, 1.0)
         for i, p in enumerate(phases):
-            reed = sum(math.sin(h * p) / h**1.1 for h in range(1, 9))
+            reed = sum([sin(h * p) / weight for h, weight in harmonic_weights])
             held = min(1.0, i / dsp.seconds(0.1)) * min(1.0, (span - i) / dsp.seconds(0.35))
             out[start + i] += (reed + 0.08 * breath[i]) * held
         at += beats * beat
