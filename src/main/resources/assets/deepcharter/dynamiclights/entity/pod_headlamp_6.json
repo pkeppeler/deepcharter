@@ -1,0 +1,7 @@
+{
+  "match": {
+    "type": ["deepcharter:pod", "deepcharter:prospector"],
+    "location": { "light": { "block": { "min": 5 } } }
+  },
+  "luminance": 6
+}

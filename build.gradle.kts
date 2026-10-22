@@ -262,6 +262,7 @@ apply(from = "gradle/gametest.gradle.kts")
 apply(from = "gradle/colour-gate.gradle.kts")
 apply(from = "gradle/test-only-gate.gradle.kts")
 apply(from = "gradle/clientlock.gradle.kts")
+apply(from = "gradle/lambdynamiclights.gradle.kts")
 apply(from = "gradle/run-jvm.gradle.kts")
 
 tasks.processResources {
