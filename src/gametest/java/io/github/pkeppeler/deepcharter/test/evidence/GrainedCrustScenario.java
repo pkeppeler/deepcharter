@@ -35,7 +35,7 @@ import net.minecraft.world.phys.Vec3;
  *
  * <ol>
  *   <li>The pod is driven at the wall: the drill skates (sparks, a squeal, heat) and the wall stays.
- *   <li>Cobblestone is placed against the wall, the way a player places it: the first time, a message says why, and on the next pulse the
+ *   <li>A block is placed against the wall, the way a player places it: the first time, a message says why, and on the next pulse the
  *       blocks crumble and drop nothing.
  *   <li>Water is set to flow at the wall and is absorbed there.
  *   <li>The floor under the pod turns to grained crust: the stopped pod loses hull on each pulse, the same pod driven across it loses
@@ -134,7 +134,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         }
         singleplayer.getServer().runOnServer(server -> {
             PodEntity pod = pod(server);
-            pod.setPos(X - 2, FLOOR_Y, Z + 0.5);
+            pod.setPos(X - 3, FLOOR_Y, Z + 0.5);
             pod.setFuel(100f);
         });
         context.waitTicks(20);
@@ -143,6 +143,8 @@ public class GrainedCrustScenario extends EvidenceScenario {
     /** Rule 2: blocks placed against the wall are told off once and crumble on the pulse. */
     private void crumble(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         refill(singleplayer);
+        // From the seat the wall is ahead, with the blocks against it.
+        context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         // Place about three seconds before a pulse, so that the blocks stand long enough to be seen.
         int waited = 0;
         while (!singleplayer.getServer().computeOnServer(server -> {
@@ -157,8 +159,9 @@ public class GrainedCrustScenario extends EvidenceScenario {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             for (int y = 0; y < 3; y++) {
-                BlockPos wall = new BlockPos(WALL_X, FLOOR_Y + y, Z + 3);
-                ItemStack stack = new ItemStack(Items.COBBLESTONE);
+                BlockPos wall = new BlockPos(WALL_X, FLOOR_Y + y, Z + 1);
+                // A sponge: no recipe asks for it, so no "new recipes" toast covers the screen.
+                ItemStack stack = new ItemStack(Items.SPONGE);
                 player.setItemInHand(InteractionHand.MAIN_HAND, stack);
                 BlockHitResult hit =
                         new BlockHitResult(Vec3.atCenterOf(wall).add(-0.5, 0, 0), Direction.WEST, wall, false);
@@ -187,13 +190,21 @@ public class GrainedCrustScenario extends EvidenceScenario {
 
     /** Rule 3: water runs at the wall and is gone where it touches it. */
     private void absorb(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
-        singleplayer
-                .getServer()
-                .runOnServer(server -> level(server)
-                        .setBlock(
-                                new BlockPos(WALL_X - 4, FLOOR_Y, Z - 3),
-                                Blocks.WATER.defaultBlockState(),
-                                Block.UPDATE_ALL));
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel one = level(server);
+            // A channel of stone from a cap to the wall keeps the water in a line, so the cell against the wall is easy
+            // to see.
+            for (int x = WALL_X - 5; x < WALL_X; x++) {
+                for (int y = 0; y < 2; y++) {
+                    one.setBlock(
+                            new BlockPos(x, FLOOR_Y + y, Z - 3), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+                    one.setBlock(
+                            new BlockPos(x, FLOOR_Y + y, Z - 1), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+                }
+            }
+            one.setBlock(new BlockPos(WALL_X - 6, FLOOR_Y, Z - 2), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+            one.setBlock(new BlockPos(WALL_X - 5, FLOOR_Y, Z - 2), Blocks.WATER.defaultBlockState(), Block.UPDATE_ALL);
+        });
         for (int i = 0; i < 14; i++) {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);
@@ -201,20 +212,21 @@ public class GrainedCrustScenario extends EvidenceScenario {
                 screenshot(context, "grained-crust-absorbed");
             }
         }
-        if (singleplayer
-                .getServer()
-                .computeOnServer(server -> !level(server)
-                        .getFluidState(new BlockPos(WALL_X - 1, FLOOR_Y, Z - 3))
-                        .isEmpty())) {
+        // The water keeps trying and the wall keeps absorbing it: the cell holds it for a tick in each few, never for
+        // two samples running.
+        boolean first = againstWall(singleplayer);
+        context.waitTicks(
+                2); // tick-wait: two samples a couple of ticks apart, for a fluid that is gone a tick after it arrives
+        if (first && againstWall(singleplayer)) {
             throw new AssertionError("the water stayed against the wall");
         }
         singleplayer.getServer().runOnServer(server -> {
             ServerLevel one = level(server);
-            for (int x = ROOM_WEST; x < WALL_X; x++) {
-                for (int z = Z - HALF_WIDTH; z <= Z + HALF_WIDTH; z++) {
-                    BlockPos pos = new BlockPos(x, FLOOR_Y, z);
-                    if (!one.getFluidState(pos).isEmpty()) {
-                        one.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+            // The channel and its water go, so the pod can drive over the floor again.
+            for (int x = WALL_X - 6; x < WALL_X; x++) {
+                for (int y = 0; y < 2; y++) {
+                    for (int z = Z - 3; z <= Z - 1; z++) {
+                        one.setBlock(new BlockPos(x, FLOOR_Y + y, z), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
                     }
                 }
             }
@@ -225,6 +237,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
     /** Rule 4: the floor turns to grained crust. A pod that stops on it is squeezed, one that keeps moving is not, and a player on foot is hurt. */
     private void squeeze(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         float full = refill(singleplayer);
+        context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
         singleplayer.getServer().runOnServer(server -> {
             ServerLevel one = level(server);
             for (int x = ROOM_WEST; x < WALL_X - 1; x++) {
@@ -364,6 +377,15 @@ public class GrainedCrustScenario extends EvidenceScenario {
         return level(server).getEntities(PodRegistry.POD, pod -> true).getFirst();
     }
 
+    /** True while the cell against the wall, at the end of the water's channel, holds a fluid. */
+    private static boolean againstWall(TestSingleplayerContext singleplayer) {
+        return singleplayer
+                .getServer()
+                .computeOnServer(server -> !level(server)
+                        .getFluidState(new BlockPos(WALL_X - 1, FLOOR_Y, Z - 2))
+                        .isEmpty());
+    }
+
     private static float refill(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
             PodEntity pod = pod(server);
@@ -392,7 +414,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         return singleplayer.getServer().computeOnServer(server -> GrainedCrust.ticksToPulse(level(server)));
     }
 
-    /** How many of the three cobblestones are still standing against the wall. */
+    /** How many of the three sponges are still standing against the wall. */
     private static int placed(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
             int standing = 0;

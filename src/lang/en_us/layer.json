@@ -6,7 +6,7 @@
   "block.deepcharter.packed_shale_rubble": "Packed Shale Rubble",
   "deepcharter.layer.goto.no_such_layer": "No layer %s: the chain has %s layers",
   "deepcharter.layer.goto.success": "Moved to layer %s",
-  "deepcharter.layer.grain_no_place": "[PLACEHOLDER #12: the lore session writes this text] The grain flexes and sheds anything rigid. What you build against it crumbles on the next pulse.",
-  "deepcharter.layer.grain_skates": "[PLACEHOLDER #12: the lore session writes this text] The drill skates across the grain and cannot bite. Dig down with it.",
-  "deepcharter.layer.grain_squeeze": "[PLACEHOLDER #12: the lore session writes this text] The grain squeezes. Keep moving."
+  "deepcharter.layer.grain_no_place": "[PLACEHOLDER #12] The grain flexes and sheds anything rigid. What you build against it crumbles on the next pulse.",
+  "deepcharter.layer.grain_skates": "[PLACEHOLDER #12] The drill skates across the grain. Dig down, not across.",
+  "deepcharter.layer.grain_squeeze": "[PLACEHOLDER #12] The grain squeezes. Keep moving."
 }
