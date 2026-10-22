@@ -66,11 +66,15 @@ min_median() {
 log=
 samples=
 sampler=
-cleanup() {
+stop_sampler() {
   if [[ -n $sampler ]]; then
     kill "$sampler" 2>/dev/null || true
     wait "$sampler" 2>/dev/null || true
+    sampler=
   fi
+}
+cleanup() {
+  stop_sampler
   rm -f "$log" "$samples"
 }
 trap cleanup EXIT
@@ -101,14 +105,10 @@ for world in "$@"; do
     done
   ) &
   sampler=$!
-  set +e
+  status=0
   GRADLE_OPTS="${GRADLE_OPTS:-} -Dorg.gradle.daemon=false" DEEPCHARTER_SURFACE_COST="$rounds" \
-    DEEPCHARTER_SURFACE_COST_ONLY="$world" tools/gametest.sh 'surface_cost_test*' >"$log" 2>&1
-  status=$?
-  set -e
-  kill "$sampler" 2>/dev/null || true
-  wait "$sampler" 2>/dev/null || true
-  sampler=
+    DEEPCHARTER_SURFACE_COST_ONLY="$world" tools/gametest.sh 'surface_cost_test*' >"$log" 2>&1 || status=$?
+  stop_sampler
   foreign_cpu >>"$samples"
   end=$(load1)
   peak=$(sort -n "$samples" | tail -1)
