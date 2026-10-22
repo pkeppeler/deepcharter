@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Installs ffmpeg for the install-ffmpeg action (#338, #777); the action explains the cache.
 # Usage: DEBS=<dir> [CACHE_HIT=true] [MATCHED_KEY=<key>] tools/install-ffmpeg.sh
-# A cache hit installs offline. Otherwise a bounded apt install uses DEBS as its archives dir, so a
-# stale set (another image's) fills what it can and apt fetches only the differing packages. Sources
-# in order, each with its own limit (worst case about 5 min):
+# A cache hit installs offline. Otherwise a bounded apt install uses DEBS as its archives dir.
+# Sources in order, each with its own limit (worst case about 5 min):
 #   1. the runner's default mirror, no index update
 #   2. the official archive.ubuntu.com and security.ubuntu.com, after an index update of just those
 set -euo pipefail

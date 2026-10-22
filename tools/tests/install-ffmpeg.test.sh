@@ -64,10 +64,11 @@ run() { # run <name> [VAR=value...]: leaves $work/<name>.{out,calls,debs}, sets 
     "$tools/install-ffmpeg.sh" >"$work/$name.out" 2>&1 || status=$?
 }
 has() { grep -qF -- "$2" "$work/$1.$3"; echo $?; } # has <name> <text> <out|calls>
+lacks() { echo $((1 - $(has "$@"))); }               # lacks <name> <text> <out|calls>
 
 run miss
 check "a miss with a healthy default mirror succeeds" "$status"
-check "  using the default mirror only" "$(has miss 'official=yes' calls | awk '{print 1 - $1}')"
+check "  using the default mirror only" "$(lacks miss 'official=yes' calls)"
 check "  with one bounded attempt" "$(($(grep -c '^timeout' "$work/miss.calls") - 1))"
 
 run mirror APT_DEFAULT_FAILS=1
@@ -90,14 +91,14 @@ check "  the error names the official mirrors" "$(has both 'archive.ubuntu.com a
 
 run updatefails APT_DEFAULT_FAILS=1 APT_UPDATE_FAILS=1
 check "a failing official index update exits non-zero" "$((status == 0))"
-check "  skips the official install" "$(has updatefails 'apt-get install official=yes' calls | awk '{print 1 - $1}')"
+check "  skips the official install" "$(lacks updatefails 'apt-get install official=yes' calls)"
 check "  the error names the update failure" "$(has updatefails 'archive.ubuntu.com and security.ubuntu.com exited 100' out)"
 check "  and still names the default mirror" "$(has updatefails "the runner's default apt mirror exited 100;" out)"
 
 run updatetimeout APT_DEFAULT_FAILS=1 APT_TIMEOUT_ON=2
 check "an official index update that times out exits non-zero" "$((status == 0))"
 check "  the error says the official mirrors timed out" "$(has updatetimeout 'archive.ubuntu.com and security.ubuntu.com timed out' out)"
-check "  skips the official install" "$(has updatetimeout 'apt-get install official=yes' calls | awk '{print 1 - $1}')"
+check "  skips the official install" "$(lacks updatetimeout 'apt-get install official=yes' calls)"
 
 run installtimeout APT_DEFAULT_FAILS=1 APT_TIMEOUT_ON=3
 check "an official install that times out exits non-zero" "$((status == 0))"
@@ -112,13 +113,13 @@ kept=0
 [[ -e $work/stale.debs/old.deb ]] || kept=1
 check "  keeps the stale debs as the archives dir" "$kept"
 check "  hands apt the stale dir as its archives dir" "$(has stale "Dir::Cache::archives=$work/stale.debs" calls)"
-check "  does not install offline with dpkg -i" "$(has stale 'dpkg -i' calls | awk '{print 1 - $1}')"
+check "  does not install offline with dpkg -i" "$(lacks stale 'dpkg -i' calls)"
 
 run hit MATCHED_KEY=k CACHE_HIT=true
 check "an empty exact hit is an error" "$((status == 0))"
 touch "$work/hit.debs/a.deb"
 run hit MATCHED_KEY=k CACHE_HIT=true
 check "an exact hit installs offline" "$status"
-check "  without apt" "$(has hit apt-get calls | awk '{print 1 - $1}')"
+check "  without apt" "$(lacks hit apt-get calls)"
 
 exit $((failures > 0))
