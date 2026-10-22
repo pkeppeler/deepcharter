@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
@@ -20,6 +21,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Base class for PR evidence scenarios. Run with tools/record-evidence.sh, which sets
@@ -150,6 +152,15 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
         }
         throw new AssertionError("the block at " + target.toShortString() + " was not broken in " + MINE_LIMIT_TICKS
                 + " ticks bare handed");
+    }
+
+    /** The world position of a point in the structure's own axes, {@code y} up from the floor of its hollow; {@code u} and {@code v} are from the middle of the origin block. */
+    protected static Vec3 at(StructureSite site, double u, double y, double v) {
+        BlockPos origin = site.origin();
+        return new Vec3(
+                origin.getX() + 0.5 + (site.alongZ() ? v : u),
+                origin.getY() + y,
+                origin.getZ() + 0.5 + (site.alongZ() ? u : v));
     }
 
     /** Take a named still screenshot. */

@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SPRINT;
+
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
@@ -36,7 +39,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -69,9 +71,6 @@ public class ProspectorChassisScenario extends EvidenceScenario {
     private static final float LOOK_DOWN = 40f;
     /** The navigator looks along the slab, across the pod, so that the camera behind sees both riders side by side. */
     private static final float SIDE_ON = 90f;
-
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     @Override
     protected String name() {
@@ -345,15 +344,6 @@ public class ProspectorChassisScenario extends EvidenceScenario {
                 }
             }
         }
-    }
-
-    /** The world position of a point in the structure's own axes, {@code y} up from the floor of its hollow. */
-    private static Vec3 at(StructureSite site, double u, double y, double v) {
-        BlockPos origin = site.origin();
-        return new Vec3(
-                origin.getX() + 0.5 + (site.alongZ() ? v : u),
-                origin.getY() + y,
-                origin.getZ() + 0.5 + (site.alongZ() ? u : v));
     }
 
     /** Puts the player at {@code at} in the site's layer, looking at {@code target}. */
