@@ -33,7 +33,8 @@ cat >"$bin/apt-get" <<'S'
 #!/usr/bin/env bash
 official=no
 [[ " $* " == *"Dir::Etc::sourcelist=/dev/null"* ]] && official=yes
-echo "apt-get $1 official=$official" >>"$CALLS"
+echo "apt-get $1 official=$official args: $*" >>"$CALLS"
+if [[ $1 == update && ${APT_UPDATE_FAILS:-} == 1 ]]; then exit 100; fi
 if [[ $1 == install && $official == no && ${APT_DEFAULT_FAILS:-} == 1 ]]; then exit 100; fi
 if [[ $1 == install && $official == yes && ${APT_OFFICIAL_FAILS:-} == 1 ]]; then exit 100; fi
 if [[ $1 == install ]]; then
@@ -74,6 +75,9 @@ check "a stalled default mirror falls back to the official mirrors" "$status"
 check "  runs the official index update" "$(has mirror 'apt-get update official=yes' calls)"
 check "  installs from the official mirrors" "$(has mirror 'apt-get install official=yes' calls)"
 check "  warns which source failed" "$(has mirror "the runner's default apt mirror exited 100" out)"
+check "  bounds each step: 100 s install, 45 s update, 120 s install" \
+  "$([[ $(grep '^timeout' "$work/mirror.calls" | tr '\n' ' ') == 'timeout 100 timeout 45 timeout 120 ' ]] && echo 0 || echo 1)"
+check "  the official update waits for the dpkg lock" "$(has mirror 'apt-get update official=yes args: update -q -o DPkg::Lock::Timeout=20' calls)"
 
 run timedout APT_TIMEOUT_ON=1
 check "a timed-out default mirror falls back too" "$status"
@@ -84,6 +88,22 @@ check "both sources failing exits non-zero" "$((status == 0))"
 check "  the error names the default mirror" "$(has both "the runner's default apt mirror exited 100;" out)"
 check "  the error names the official mirrors" "$(has both 'archive.ubuntu.com and security.ubuntu.com exited 100' out)"
 
+run updatefails APT_DEFAULT_FAILS=1 APT_UPDATE_FAILS=1
+check "a failing official index update exits non-zero" "$((status == 0))"
+check "  skips the official install" "$(has updatefails 'apt-get install official=yes' calls | awk '{print 1 - $1}')"
+check "  the error names the update failure" "$(has updatefails 'archive.ubuntu.com and security.ubuntu.com exited 100' out)"
+check "  and still names the default mirror" "$(has updatefails "the runner's default apt mirror exited 100;" out)"
+
+run updatetimeout APT_DEFAULT_FAILS=1 APT_TIMEOUT_ON=2
+check "an official index update that times out exits non-zero" "$((status == 0))"
+check "  the error says the official mirrors timed out" "$(has updatetimeout 'archive.ubuntu.com and security.ubuntu.com timed out' out)"
+check "  skips the official install" "$(has updatetimeout 'apt-get install official=yes' calls | awk '{print 1 - $1}')"
+
+run installtimeout APT_DEFAULT_FAILS=1 APT_TIMEOUT_ON=3
+check "an official install that times out exits non-zero" "$((status == 0))"
+check "  the error says the official mirrors timed out" "$(has installtimeout 'archive.ubuntu.com and security.ubuntu.com timed out' out)"
+check "  the error names the default mirror" "$(has installtimeout "the runner's default apt mirror exited 100;" out)"
+
 mkdir -p "$work/stale.debs"
 touch "$work/stale.debs/old.deb"
 run stale MATCHED_KEY=ffmpeg-debs-ubuntu24-old APT_DEFAULT_FAILS=1
@@ -91,6 +111,7 @@ check "a stale set still falls back to the official mirrors" "$status"
 kept=0
 [[ -e $work/stale.debs/old.deb ]] || kept=1
 check "  keeps the stale debs as the archives dir" "$kept"
+check "  hands apt the stale dir as its archives dir" "$(has stale "Dir::Cache::archives=$work/stale.debs" calls)"
 check "  does not install offline with dpkg -i" "$(has stale 'dpkg -i' calls | awk '{print 1 - $1}')"
 
 run hit MATCHED_KEY=k CACHE_HIT=true

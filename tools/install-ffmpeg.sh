@@ -44,8 +44,9 @@ if [[ ${DONE:-} != true ]]; then
   status=0
   timeout -k 5 100 "${apt_install[@]}" || status=$?
   if [[ $status -ne 0 ]]; then
-    failed+=("the runner's default apt mirror $(reason "$status")")
-    echo "::warning::${failed[-1]}; retrying from archive.ubuntu.com"
+    first="the runner's default apt mirror $(reason "$status")"
+    failed+=("$first")
+    echo "::warning::$first; retrying from archive.ubuntu.com"
     sudo dpkg --configure -a || true
     work=$(mktemp -d)
     trap 'rm -rf "$work"' EXIT
@@ -67,7 +68,7 @@ Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 S
     official=(-o Dir::Etc::sourcelist=/dev/null -o "Dir::Etc::sourceparts=$work/sources" -o "Dir::State::Lists=$work/lists")
     status=0
-    timeout -k 5 45 sudo apt-get update -q "${official[@]}" || status=$?
+    timeout -k 5 45 sudo apt-get update -q -o DPkg::Lock::Timeout=20 "${official[@]}" || status=$?
     if [[ $status -eq 0 ]]; then
       timeout -k 5 120 "${apt_install[@]}" "${official[@]}" || status=$?
     fi
