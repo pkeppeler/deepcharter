@@ -26,6 +26,9 @@ closing_set() {
 # Sets $branch, $issue, $body and $closes (not in a subshell, so a refusal exits the script).
 check_closing_reference() {
   branch=$(pr_field headRefName .headRefName) || refuse "has no readable head branch"
+  if [[ $branch == renovate/* ]]; then
+    refuse "has head branch '$branch', not <issue>-<slug>: Renovate rewrites its body. File an issue, push Renovate's commits to <issue>-<slug> (regenerate locks and gradle/verification-metadata.xml if a Gradle version changed), open a PR that closes it, close this one with a pointer"
+  fi
   [[ $branch =~ ^([0-9]+)- ]] || refuse "has head branch '$branch', not <issue>-<slug>"
   issue=${BASH_REMATCH[1]}
   body=$(pr_field body .body) || refuse "has no readable body"
