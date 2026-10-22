@@ -558,6 +558,38 @@ public class OutpostTest {
     }
 
     @GameTest(maxTicks = MAX_TICKS)
+    public void aDormantOwnersOutpostIsClosedToGuestsAndReopensAsItWasLeftWhenTheCharterIsRevived(
+            GameTestHelper helper) {
+        Stage owner = stage(helper, 9300, true);
+        whenReady(helper, owner, () -> {
+            useKit(owner, owner.floor(), Direction.UP);
+            MinecraftServer server = helper.getLevel().getServer();
+            Charters.setOutpostsShared(server, owner.player().getUUID(), true);
+            Stage guest = stranger(helper, owner);
+            TerminalAction.Context guestContext = contextAt(guest, owner.floor().offset(PUMP));
+            if (OutpostAccess.refusal(guestContext).isPresent()) {
+                throw failure(helper, "a guest should be served while the owner is shared and has a Director");
+            }
+            if (Charters.leave(server, owner.player().getUUID()).isPresent()) {
+                throw failure(helper, "the owner's only member should be able to leave");
+            }
+            if (!Charters.findOrThrow(server, owner.charter()).orElseThrow().dormant()) {
+                throw failure(helper, "the owner's charter should be dormant");
+            }
+            if (!keyOf(OutpostAccess.refusal(guestContext)).equals(CLOSED)) {
+                throw failure(helper, "a dormant owner's outposts are closed to guests, whatever the flag says");
+            }
+            if (Charters.revive(server, owner.player().getUUID(), owner.charter())
+                    .isPresent()) {
+                throw failure(helper, "the former member should revive the charter");
+            }
+            if (OutpostAccess.refusal(guestContext).isPresent()) {
+                throw failure(helper, "a revived charter is open again, as it was left");
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
     public void aPumpAtDepthWithNoOutpostServesNoOne(GameTestHelper helper) {
         Stage stage = stage(helper, 8800, true);
         whenReady(helper, stage, () -> {

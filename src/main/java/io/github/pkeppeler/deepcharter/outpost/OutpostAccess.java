@@ -15,7 +15,8 @@ import net.minecraft.server.MinecraftServer;
  * charter: the charter whose hall the terminal stands in is always served, and another charter is served only while the owner's
  * Director has opened the charter's outposts to others (a charter setting, off for a new charter). A guest gets the outpost's own rates
  * ({@link OutpostRates}) and the owner takes no cut, because SPEC section 6 allows no money to pass between charters.
- * A terminal at depth that stands in no hall, such as one placed by hand, serves no one.
+ * A charter with no Director is dormant and its outposts are closed to guests, because nobody can close them; the setting is kept, so a
+ * revived charter is open again as it was left. A terminal at depth that stands in no hall, such as one placed by hand, serves no one.
  */
 public final class OutpostAccess {
     private OutpostAccess() {}
@@ -52,6 +53,7 @@ public final class OutpostAccess {
         boolean shared = acting.isPresent()
                 && Charters.readableFind(server, owner.get())
                         .filter(Charter::outpostsShared)
+                        .filter(charter -> !charter.dormant())
                         .isPresent();
         return shared ? Optional.empty() : Optional.of(Component.translatable("message.deepcharter.outpost.closed"));
     }

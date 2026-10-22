@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractActions;
+import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
@@ -20,6 +21,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OutpostScene;
 import io.github.pkeppeler.deepcharter.test.support.OutpostScene.Scene;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.util.Objects;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -34,11 +36,10 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Evidence scenario "outpost-sharing" for #752. A second charter's Director has built an outpost at the layer 1 floor. The real player is
- * the Director of a charter with no outpost, with an empty pod parked in that hall. Stills: the guest refused at the pump while the owner
- * keeps the outposts to itself; a Director's contract screen showing the sharing button off, then on (the player's own charter,
- * which has no outpost: the same screen the owner has); then the owner's Director presses the real "open outposts" action and the guest
- * fills up at the outpost's price.
+ * Evidence scenario "outpost-sharing" for #752. A second charter's Director ("Deep Haulers Ltd", a mock player) has built an outpost at the
+ * layer 1 floor. The real player is the Director of a charter with no outpost, with an empty pod parked in that hall. Stills: the guest
+ * refused at the pump; the owner's Director screen (the owner's live server state shown on the open contract screen) with sharing off,
+ * the owner's real "open outposts" action, the same screen with sharing on; then the guest fills up at the outpost's price.
  */
 public class OutpostSharingScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
@@ -120,27 +121,20 @@ public class OutpostSharingScenario extends EvidenceScenario {
             screenshot(context, "sharing-2-guest-refused");
             requireBalance(context, OutpostScene.START_BALANCE, "a refused fill takes no money");
 
-            // A Director's contract screen: the setting, closed, and the press that opens it.
+            // The owner's Director screen, from the owner's live server state: the setting off, then the owner's press,
+            // then on.
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(terminal)));
             ClientWait.screen(context, ContractScreen.class);
             ContractScreen screen =
                     context.computeOnClient(client -> ClientSession.screen(client, ContractScreen.class));
-            awaitButton(context, "SHARE OUTPOSTS: OFF");
             for (int i = 0; i < TYPING_FRAMES && !screen.typewriter().done(); i++) {
                 context.waitTicks(TICKS_PER_FRAME);
                 frame(context);
             }
-            hold(context);
-            screenshot(context, "sharing-3-contract-closed");
-            context.clickScreenButton("SHARE OUTPOSTS: OFF");
-            awaitButton(context, "SHARE OUTPOSTS: ON");
-            hold(context);
-            screenshot(context, "sharing-4-contract-open");
-            context.clickScreenButton("SHARE OUTPOSTS: ON");
+            showOwnerState(context, singleplayer, screen);
             awaitButton(context, "SHARE OUTPOSTS: OFF");
-            context.setScreen(() -> null);
-
-            // The owner's Director opens the outposts, as the same screen's button does for their charter.
+            hold(context);
+            screenshot(context, "sharing-3-owner-contract-off");
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer owner = server.getPlayerList().getPlayerByName("HostDirector");
                 if (owner == null
@@ -149,6 +143,11 @@ public class OutpostSharingScenario extends EvidenceScenario {
                     throw new AssertionError("the owner's Director should open the outposts");
                 }
             });
+            showOwnerState(context, singleplayer, screen);
+            awaitButton(context, "SHARE OUTPOSTS: ON");
+            hold(context);
+            screenshot(context, "sharing-4-owner-contract-on");
+            context.setScreen(() -> null);
             context.waitTicks(10);
 
             // The guest is served, at the outpost's $2 a litre, and the owner takes no cut.
@@ -171,6 +170,17 @@ public class OutpostSharingScenario extends EvidenceScenario {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);
         }
+    }
+
+    /** Shows the owner's Director their own live state on the open screen: what the owner's contract screen holds. */
+    private void showOwnerState(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, ContractScreen screen) {
+        ContractState owner = singleplayer.getServer().computeOnServer(server -> {
+            ServerPlayer host = Objects.requireNonNull(
+                    server.getPlayerList().getPlayerByName("HostDirector"), "the owner's Director is online");
+            return ContractTerminal.stateOf(server, host.getUUID());
+        });
+        context.runOnClient(client -> screen.show(owner));
     }
 
     private static void awaitButton(ClientGameTestContext context, String label) {
