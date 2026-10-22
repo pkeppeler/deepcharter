@@ -197,9 +197,6 @@ public class GrainedCrustScenario extends EvidenceScenario {
         if (placed(singleplayer) > 0) {
             throw new AssertionError("the placed blocks did not crumble within " + LIMIT_TICKS + " ticks");
         }
-        // The client has the news a tick or two after the server, with the dust still in the air.
-        context.waitTicks(2);
-        screenshot(context, "grained-crust-crumbled");
         frames(context, 6);
     }
 

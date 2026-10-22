@@ -200,6 +200,7 @@ public final class GrainedCrust {
     }
 
     /** Ticks until the next pulse, 1 to a whole period: on a pulse tick, the next pulse is a whole period away. */
+    // test-seam: a test or a recording waits for the pulse by the world clock, and nothing in play needs the count
     public static int ticksToPulse(Level level) {
         int period = LayerTuning.DEFAULT.grainPulseTicks();
         return period - (int) (level.getGameTime() % period);
