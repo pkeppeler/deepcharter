@@ -46,6 +46,7 @@ public class BreachHudTest implements FabricClientGameTest {
                     context, "the client in the world", client -> client.player != null && client.level != null);
 
             assertFadeCoversPodHud(context, singleplayer);
+            assertRumbleWithoutFade(context);
 
             // On the surface the altimeter reads sea level minus Y.
             assertAltimeter(
@@ -106,6 +107,25 @@ public class BreachHudTest implements FabricClientGameTest {
             if (!context.computeOnClient(client -> TestLayers.isIn(ClientLight.clientLevel(client), 2))) {
                 throw new AssertionError("The crossing should have put the client in layer 2");
             }
+        }
+    }
+
+    /** A crossing inside one level (the campaign world) shakes the HUD and sounds, and never fades to black. */
+    private static void assertRumbleWithoutFade(ClientGameTestContext context) {
+        context.runOnClient(client -> BreachEffects.begin(false));
+        boolean shook = false;
+        float peak = 0;
+        for (int tick = 0; tick <= BreachEffects.fadeTicks(); tick++) {
+            shook |= !context.computeOnClient(client -> BreachEffects.jitter().equals(new BreachEffects.Offset(0, 0)));
+            peak = Math.max(peak, context.computeOnClient(client -> BreachEffects.fadeAlpha(0f)));
+            context.waitTick();
+        }
+        context.runOnClient(client -> BreachEffects.reset());
+        if (!shook) {
+            throw new AssertionError("A crossing in place should still shake the HUD");
+        }
+        if (peak > 0) {
+            throw new AssertionError("A crossing in place should not fade, faded to " + peak);
         }
     }
 

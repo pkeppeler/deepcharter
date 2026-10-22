@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
-import io.github.pkeppeler.deepcharter.test.support.CampaignBands;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;

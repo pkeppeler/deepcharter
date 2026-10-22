@@ -22,11 +22,18 @@ public final class LayerChain {
 
     private static final String PREFIX = "layer_";
 
+    /**
+     * The dimension type of the campaign world's test dimension, where a layer is a Y band of one level ({@link CampaignBands}). The
+     * shipped campaign type joins it at the cutover (#214).
+     */
+    private static final Identifier CAMPAIGN_TYPE =
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "campaign_sample");
+
     private LayerChain() {}
 
     /**
      * A vertical span of the chain: {@code layer} is {@link #SURFACE} or the layer number, {@code minY} and {@code height} the blocks it
-     * spans in its level. For now a band is a whole dimension.
+     * spans in its level. A band is a whole dimension, except in the campaign world, where it is a span of one level.
      */
     public record Band(int layer, int minY, int height) {
         /** True for a layer, false for the surface. */
@@ -35,13 +42,20 @@ public final class LayerChain {
         }
     }
 
+    /** True for a level of the campaign world, where the layers are Y bands of one level and a crossing moves nothing. */
+    public static boolean isCampaign(Level level) {
+        return dimensionType(level).equals(CAMPAIGN_TYPE);
+    }
+
     /**
-     * The band that {@code y} in {@code level} falls in; empty for a level that is not in the chain (the Nether, the End). Fails for a
-     * dimension type given inline by a data pack, which has no key.
+     * The band that {@code y} in {@code level} falls in; empty for a level that is not in the chain (the Nether, the End), and for
+     * unbuilt depth in the campaign world. Fails for a dimension type given inline by a data pack, which has no key.
      */
     public static Optional<Band> bandAt(Level level, int y) {
-        Identifier type =
-                level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier();
+        Identifier type = dimensionType(level);
+        if (type.equals(CAMPAIGN_TYPE)) {
+            return CampaignBands.bandAt(y);
+        }
         return indexOf(type).stream()
                 .mapToObj(layer -> new Band(layer, level.getMinY(), level.getHeight()))
                 .findFirst();
@@ -113,6 +127,10 @@ public final class LayerChain {
             depth += types.getValueOrThrow(type(above)).height();
         }
         return depth;
+    }
+
+    private static Identifier dimensionType(Level level) {
+        return level.dimensionTypeRegistration().unwrapKey().orElseThrow().identifier();
     }
 
     private static Identifier id(int layer) {

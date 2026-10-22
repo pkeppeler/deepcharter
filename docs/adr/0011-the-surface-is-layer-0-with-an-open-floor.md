@@ -4,6 +4,8 @@ status: accepted
 
 # The surface is layer 0, and its floor is open
 
+Amended 2026-10-22 (#745) by [ADR 0061](0061-a-crossing-in-the-campaign-world-is-an-event-in-place-found-by-the-root-vehicles-y-with-the-crust-rows-as-hysteresis.md): in the campaign world the surface floor is a band boundary like the others. A pod passing it raises `CROSSED` in place, and rising `crustThickness` rows above it is the way back, although the floor itself has no crust.
+
 The vanilla material rule copy below is superseded by [ADR 0036](0036-the-surface-is-generated-from-data-by-a-replaced-overworld-dimension.md): the overworld has its own noise settings and rule, with no bedrock step, and the copy and its drift test are deleted. The open floor stands.
 
 Amended by [ADR 0059](0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md): the open floor stays, with no crust under the surface.
