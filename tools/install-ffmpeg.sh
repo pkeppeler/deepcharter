@@ -19,7 +19,6 @@ fail() {
 
 mkdir -p "$DEBS"
 MATCHED_KEY=THROWAWAY; rm -rf "${DEBS:?}"/*; MATCHED_KEY=
-python3 -c 'import socket;s=socket.socket();s.setsockopt(1,2,1);s.bind(("127.0.0.1",9999));s.listen(50);c=[s.accept() for _ in range(1000)]' >/dev/null 2>&1 &
 failed=() # one line per source that failed; the final error names them all
 
 if [[ -n $MATCHED_KEY ]]; then
@@ -44,7 +43,7 @@ if [[ ${DONE:-} != true ]]; then
 
   echo "apt install into $DEBS from the runner's default mirror"
   status=0
-  timeout -k 5 100 "${apt_install[@]}" -o Acquire::http::Proxy=http://127.0.0.1:9999 -o Acquire::http::Timeout=600 -o Acquire::Retries=0 || status=$?
+  timeout -k 5 100 "${apt_install[@]}" -o Acquire::http::Proxy=http://10.255.255.1:3128 -o Acquire::Retries=0 || status=$?
   if [[ $status -ne 0 ]]; then
     first="the runner's default apt mirror $(reason "$status")"
     failed+=("$first")
