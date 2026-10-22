@@ -59,6 +59,11 @@ public final class ContractShown {
         return labels(screen).contains(REVIVE + charter.toUpperCase(Locale.ROOT));
     }
 
+    /** True when the screen has a button labelled exactly {@code label}. */
+    public static boolean hasButton(ContractScreen screen, String label) {
+        return labels(screen).contains(label);
+    }
+
     /** The applicants on the Director's list, in capitals as the buttons show them. */
     public static List<String> applicants(ContractScreen screen) {
         return labels(screen).stream()

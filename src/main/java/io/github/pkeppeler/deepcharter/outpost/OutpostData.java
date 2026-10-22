@@ -93,6 +93,13 @@ public final class OutpostData extends SavedData {
                 .findFirst();
     }
 
+    /** The outpost in {@code layer}, of any charter, whose hall holds {@code pos}. Halls never touch, so there is at most one. */
+    public Optional<Outpost> containing(int layer, BlockPos pos) {
+        return state.orThrow().stream()
+                .filter(outpost -> outpost.layer() == layer && outpost.contains(pos))
+                .findFirst();
+    }
+
     /**
      * The first outpost in {@code layer}, of any charter, whose hall a hall with its floor middle at {@code centre} would touch: the
      * middles are within two edges of each other, level by level, in both x and z.

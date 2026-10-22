@@ -419,7 +419,15 @@ public class CharterCoreTest {
         boolean threw = false;
         try {
             new Charter(
-                    CharterId.random(), "Doubled", Optional.of(player), List.of(), List.of(), List.of(player), 0, 0);
+                    CharterId.random(),
+                    "Doubled",
+                    Optional.of(player),
+                    List.of(),
+                    List.of(),
+                    List.of(player),
+                    0,
+                    0,
+                    false);
         } catch (IllegalArgumentException e) {
             threw = String.valueOf(e.getMessage()).contains("former member");
         }
@@ -479,6 +487,44 @@ public class CharterCoreTest {
                     "the data is written back as version %s, got %s", CharterData.VERSION, written);
         }
         expectDone(helper, data.reviveAsOperator(stranger, id), "the operator reviving an old dormant charter");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aVersionTwoWorldLoadsWithOutpostsClosedAndSharingSurvivesASaveAndALoad(GameTestHelper helper) {
+        CharterId id = CharterId.random();
+        UUID director = UUID.randomUUID();
+        CompoundTag two = versionOne(id, director, false);
+        two.putInt("version", 2);
+        CharterData data = CharterData.CODEC.parse(NbtOps.INSTANCE, two).getOrThrow();
+        if (!data.isReadable() || data.find(id).orElseThrow().outpostsShared()) {
+            throw helper.assertionException("version 2 is still read, with the outposts closed");
+        }
+        expectDone(helper, data.setOutpostsShared(director, true), "the Director opening the outposts");
+        Tag written = CharterData.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow();
+        if (!(written instanceof CompoundTag compound) || compound.getIntOr("version", 0) != 3) {
+            throw helper.assertionException("the data is written back as version 3, got %s", written);
+        }
+        CharterData loaded = CharterData.CODEC.parse(NbtOps.INSTANCE, written).getOrThrow();
+        if (!loaded.find(id).orElseThrow().outpostsShared()) {
+            throw helper.assertionException("the open setting should survive a save and a load");
+        }
+        UUID crew = UUID.randomUUID();
+        expectDone(helper, loaded.apply(crew, id), "applying");
+        expectDone(helper, loaded.approve(director, crew), "approving");
+        expectRefused(
+                helper,
+                CharterRefusal.NOT_THE_DIRECTOR,
+                loaded.setOutpostsShared(crew, false),
+                "a crew member closing the outposts");
+        expectRefused(
+                helper,
+                CharterRefusal.NOT_THE_DIRECTOR,
+                loaded.setOutpostsShared(UUID.randomUUID(), false),
+                "a stranger closing the outposts");
+        if (!loaded.find(id).orElseThrow().outpostsShared()) {
+            throw helper.assertionException("a refused change leaves the setting as it was");
+        }
         helper.succeed();
     }
 

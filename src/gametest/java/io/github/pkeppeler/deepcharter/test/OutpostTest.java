@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
+import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -80,6 +81,7 @@ public class OutpostTest {
     private static final String BLOCKED = "message.deepcharter.outpost.blocked";
     private static final String HAS_ONE = "message.deepcharter.outpost.has_one";
     private static final String NOT_FLOOR = "message.deepcharter.outpost.not_floor";
+    private static final String CLOSED = "message.deepcharter.outpost.closed";
     private static final String NOT_YOURS = "message.deepcharter.outpost.not_yours";
     private static final String OCCUPIED = "message.deepcharter.outpost.occupied";
     private static final String OVERLAPS = "message.deepcharter.outpost.overlaps";
@@ -421,8 +423,8 @@ public class OutpostTest {
                     throw failure(helper, "a refused sale must keep the ore");
                 }
                 String said = keyOf(OutpostAccess.refusal(contextAt(other, pump)));
-                if (!said.equals(NOT_YOURS)) {
-                    throw failure(helper, "the refusal should be %s, it was %s", NOT_YOURS, said);
+                if (!said.equals(CLOSED)) {
+                    throw failure(helper, "the refusal at a closed outpost should be %s, it was %s", CLOSED, said);
                 }
                 // The owner's own pod is served at the same pump.
                 PodEntity ownPod = TestEntities.create(PodRegistry.POD, owner.level());
@@ -449,6 +451,109 @@ public class OutpostTest {
             } finally {
                 pod.discard();
             }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aGuestIsServedAtTheOutpostPriceOnceTheOwnerOpensItAndRefusedAgainWhenItCloses(GameTestHelper helper) {
+        Stage owner = stage(helper, 9100, true);
+        whenReady(helper, owner, () -> {
+            useKit(owner, owner.floor(), Direction.UP);
+            MinecraftServer server = helper.getLevel().getServer();
+            Stage guest = stranger(helper, owner);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, owner.level());
+            pod.setPos(Vec3.atBottomCenterOf(owner.floor().offset(1, 1, 2)));
+            owner.level().addFreshEntity(pod);
+            try {
+                PodComponents.register(pod, guest.charter());
+                pod.setFuel(0f);
+                Charters.deposit(server, guest.charter(), 1000);
+                Charters.deposit(server, owner.charter(), 1000);
+                BlockPos pump = owner.floor().offset(PUMP);
+                if (Charters.findOrThrow(server, owner.charter()).orElseThrow().outpostsShared()) {
+                    throw failure(helper, "a charter's outposts are closed to others by default");
+                }
+                if (Terminals.act(guest.player(), pump, FuelPump.FILL, new CompoundTag())
+                        .isEmpty()) {
+                    throw failure(helper, "a guest should be refused at an outpost that is not shared");
+                }
+                // The guest's own Director opens the guest's outposts, never the owner's.
+                if (Charters.setOutpostsShared(server, guest.player().getUUID(), true)
+                        .isPresent()) {
+                    throw failure(helper, "the guest's Director should open the guest's own outposts");
+                }
+                if (Charters.findOrThrow(server, owner.charter()).orElseThrow().outpostsShared()) {
+                    throw failure(helper, "a guest's flip must not open the owner's outposts");
+                }
+                if (Terminals.act(guest.player(), pump, FuelPump.FILL, new CompoundTag())
+                        .isEmpty()) {
+                    throw failure(helper, "opening the guest's own outposts does not open the owner's");
+                }
+                if (Charters.setOutpostsShared(server, owner.player().getUUID(), true)
+                        .isPresent()) {
+                    throw failure(helper, "the owner's Director should open the outposts");
+                }
+                long tank = Math.round(PodStats.of(pod).tankLitres());
+                var served = Terminals.act(guest.player(), pump, FuelPump.FILL, new CompoundTag());
+                if (served.isPresent() || pod.fuel() <= 0f) {
+                    throw failure(helper, "a guest should be served at a shared outpost, got %s", served);
+                }
+                long paid = 1000 - balance(helper, guest);
+                if (paid != tank * 2) {
+                    throw failure(helper, "a guest pays the outpost's $2 a litre ($%d), it paid $%d", tank * 2, paid);
+                }
+                if (balance(helper, owner) != 1000) {
+                    throw failure(helper, "the owner takes no cut: the balance is $%d", balance(helper, owner));
+                }
+                for (int i = 0; i < 3; i++) {
+                    guest.player().getInventory().add(OreRegistry.stack(OreType.IRONIUM));
+                }
+                long before = balance(helper, guest);
+                var sold = Terminals.act(
+                        guest.player(),
+                        owner.floor().offset(PROCESSOR),
+                        OreProcessor.SELL_INVENTORY,
+                        new CompoundTag());
+                if (sold.isPresent() || balance(helper, guest) - before != 3 * 24) {
+                    throw failure(helper, "a guest sells at the outpost rate, got %s", sold);
+                }
+                Charters.setOutpostsShared(server, owner.player().getUUID(), false);
+                pod.setFuel(0f);
+                if (Terminals.act(guest.player(), pump, FuelPump.FILL, new CompoundTag())
+                        .isEmpty()) {
+                    throw failure(helper, "a guest is refused again once the owner closes the outposts");
+                }
+            } finally {
+                pod.discard();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSharedHallStillRefusesAGuestWithNoCharterAndTheUnreadableCharterDataNeverThrows(
+            GameTestHelper helper) {
+        Stage owner = stage(helper, 9200, true);
+        whenReady(helper, owner, () -> {
+            useKit(owner, owner.floor(), Direction.UP);
+            MinecraftServer server = helper.getLevel().getServer();
+            Charters.setOutpostsShared(server, owner.player().getUUID(), true);
+            Stage guest = stranger(helper, owner);
+            BlockPos pump = owner.floor().offset(PUMP);
+            TerminalAction.Context guestContext = contextAt(guest, pump);
+            TerminalAction.Context loner = new TerminalAction.Context(
+                    server, guest.player(), Optional.empty(), TerminalTypes.FUEL_PUMP, pump, new CompoundTag());
+            if (!keyOf(OutpostAccess.refusal(loner)).equals(CLOSED)) {
+                throw failure(helper, "a player on no charter is refused at a shared outpost too");
+            }
+            if (OutpostAccess.refusal(guestContext).isPresent()) {
+                throw failure(helper, "a guest should be served at a shared outpost");
+            }
+            UnreadableChecks.assertSavedDataNoThrow(
+                    helper, "outpost sharing", server, CharterData.TYPE, Map.of("OutpostAccess.refusal", () -> {
+                        if (!keyOf(OutpostAccess.refusal(guestContext)).equals(CLOSED)) {
+                            throw failure(helper, "unreadable charters leave a guest refused");
+                        }
+                    }));
         });
     }
 
