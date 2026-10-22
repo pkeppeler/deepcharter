@@ -68,10 +68,13 @@ runs:
             use_apt=false
           else
             echo "cache stale hit: trying $(find "$DEBS" -name '*.deb' | wc -l) cached packages from $MATCHED_KEY (another runner image)"
-            if sudo dpkg -i "$DEBS"/*.deb; then
+            # apt resolves the set atomically against the image's installed packages and, without
+            # --allow-downgrades, refuses to downgrade a newer library the image already has.
+            if sudo apt-get install -y -q --no-download --no-install-recommends "$DEBS"/*.deb; then
               use_apt=false
             else
               echo "::warning::the stale cached .deb files from $MATCHED_KEY did not install; falling back to apt"
+              sudo dpkg --configure -a || true
               sudo rm -rf "${DEBS:?}"/*
             fi
           fi
