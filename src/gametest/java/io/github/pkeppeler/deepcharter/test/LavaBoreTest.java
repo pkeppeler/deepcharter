@@ -775,7 +775,7 @@ public class LavaBoreTest {
     }
 
     /** The first pilot founds a charter and the rest join it, so a run of sixty bores leaves one charter in the world and not sixty. */
-    private static CharterId joinTheCharter(
+    static CharterId joinTheCharter(
             GameTestHelper helper, MinecraftServer server, MockPlayer pilot, @Nullable CharterId charter, int index) {
         ServerPlayer player = pilot.player();
         if (charter == null) {
