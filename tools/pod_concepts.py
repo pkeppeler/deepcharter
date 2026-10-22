@@ -19,6 +19,7 @@ Box UV per cube of size (w, h, d) at uv (u, v): top (u+d, v), bottom (u+d+w, v),
 front (u+d, v+d), left side (u+d+w, v+d), back (u+2d+w, v+d). Side faces have v down = world down.
 """
 import argparse
+import functools
 import json
 import math
 import random
@@ -183,28 +184,44 @@ def cutter_of(model, bone):
 # ---------------------------------------------------------------------------------------------
 
 
+@functools.cache
+def _trig(rotation):
+    """The sines and cosines of a rotation's angles (the file's, in y-up Bedrock space, so x and z are negated), made once per rotation."""
+    rx, ry, rz = (math.radians(a) for a in rotation)
+    rx, rz = -rx, -rz
+    return math.sin(rx), math.cos(rx), math.sin(ry), math.cos(ry), math.sin(rz), math.cos(rz)
+
+
 def rotate(point, rotation):
     x, y, z = point
-    rx, ry, rz = (math.radians(a) for a in rotation)
     # In y-up Bedrock space the angles are the file's: a positive x angle tips a point at -z downward.
-    rx, rz = -rx, -rz
-    y, z = y * math.cos(rx) - z * math.sin(rx), y * math.sin(rx) + z * math.cos(rx)
-    x, z = x * math.cos(ry) + z * math.sin(ry), -x * math.sin(ry) + z * math.cos(ry)
-    x, y = x * math.cos(rz) - y * math.sin(rz), x * math.sin(rz) + y * math.cos(rz)
+    sin_x, cos_x, sin_y, cos_y, sin_z, cos_z = _trig(tuple(rotation))
+    y, z = y * cos_x - z * sin_x, y * sin_x + z * cos_x
+    x, z = x * cos_y + z * sin_y, -x * sin_y + z * cos_y
+    x, y = x * cos_z - y * sin_z, x * sin_z + y * cos_z
     return x, y, z
+
+
+def _chain(model, bone):
+    """The (pivot, rotation) of a bone and each parent above it, from the bone up: what carries a point of the bone to the world."""
+    by_name = {b.name: b for b in model.bones}
+    chain = []
+    while bone is not None:
+        chain.append((bone.pivot, bone.rotation))
+        bone = by_name.get(bone.parent)
+    return chain
+
+
+def _lift(chain, p):
+    for (px, py, pz), rotation in chain:
+        local = rotate((p[0] - px, p[1] - py, p[2] - pz), rotation)
+        p = (local[0] + px, local[1] + py, local[2] + pz)
+    return p
 
 
 def world_point(model, bone, point):
     """Where a point of a bone's cube lies at rest, after the rotations of the bone and its parents."""
-    by_name = {b.name: b for b in model.bones}
-    current = bone
-    p = point
-    while current is not None:
-        px, py, pz = current.pivot
-        local = rotate((p[0] - px, p[1] - py, p[2] - pz), current.rotation)
-        p = (local[0] + px, local[1] + py, local[2] + pz)
-        current = by_name.get(current.parent)
-    return p
+    return _lift(_chain(model, bone), point)
 
 
 def is_cutter(model, bone):
@@ -221,12 +238,13 @@ def corners(model, bone, cube):
     """The eight corners of a cube at rest, turned by its own rotation and its bones'."""
     ox, oy, oz = cube.origin
     sx, sy, sz = cube.size
+    chain = _chain(model, bone)  # once for the eight corners, not once each
     for corner in ((ox + dx * sx, oy + dy * sy, oz + dz * sz) for dx in (0, 1) for dy in (0, 1) for dz in (0, 1)):
         if cube.rotation:
             cx, cy, cz = cube.pivot
             local = rotate((corner[0] - cx, corner[1] - cy, corner[2] - cz), cube.rotation)
             corner = (local[0] + cx, local[1] + cy, local[2] + cz)
-        yield world_point(model, bone, corner)
+        yield _lift(chain, corner)
 
 
 def rest_bounds(model, cutter=None, variant=None):

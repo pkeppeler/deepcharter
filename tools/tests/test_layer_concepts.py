@@ -5,6 +5,7 @@ seam check, with a red fixture for each way a texture fails it); a scene is a se
 shot at; no model culls a face (a stepped block shows through to the world if it does); the lava is animated and wraps, so no two blocks of it meet at a
 seam; and the concept packs are test packs that nothing turns on by default.
 """
+import functools
 import json
 import re
 import sys
@@ -27,6 +28,12 @@ import art  # noqa: E402
 ROOT = make.ROOT
 LAYERS = scenes.LAYERS
 SIZE = 16
+
+
+@functools.cache
+def outputs():
+    """What make.py writes, built once per run: it takes seconds, and every test only reads it."""
+    return make.outputs()
 
 
 def pixels(grid) -> bytes:
@@ -150,7 +157,7 @@ class StyleTest(unittest.TestCase):
 
     def test_layer_1_and_2_rock_is_a_plain_cube_and_layer_3_is_the_column(self):
         self.assertEqual({1: "a", 2: "b", 3: "c"}, scenes.FORMATIONS)
-        files, _ = make.outputs()
+        files, _ = outputs()
         models = {p.stem: json.loads(b) for p, b in files.items() if p.parent.name == "block" and p.parent.parent.name == "models"}
         for layer in make.SHIPPED_LAYERS:
             for block in make.BLOCKS[layer]:
@@ -159,7 +166,7 @@ class StyleTest(unittest.TestCase):
         self.assertTrue(all("elements" in models[name] for name in models if name.startswith("lc_rock_3_")), "layer 3 is the hexagonal column")
 
     def test_a_cube_is_never_turned_or_mirrored_because_its_textures_share_their_edges_only_so(self):
-        files, _ = make.outputs()
+        files, _ = outputs()
         for layer in make.SHIPPED_LAYERS:
             entries = json.loads(files[make.MOD_ASSETS / f"deepcharter/blockstates/{make.BLOCKS[layer][0]}.json"])["variants"][""]
             with self.subTest(layer=layer):
@@ -167,7 +174,7 @@ class StyleTest(unittest.TestCase):
                 self.assertEqual(make.ROCK_VARIANTS[layer], len(entries))
 
     def test_a_rock_block_has_many_ways_to_look(self):
-        files, _ = make.outputs()
+        files, _ = outputs()
         for layer in make.SHIPPED_LAYERS:
             entries = json.loads(files[make.MOD_ASSETS / f"deepcharter/blockstates/{make.BLOCKS[layer][0]}.json"])["variants"][""]
             with self.subTest(layer=layer):
@@ -199,7 +206,7 @@ class ModelGuardTest(unittest.TestCase):
         self.assertEqual([], shapes.faults(self.element([0, 0, 0], [16, 16, 16])))
 
     def test_every_natural_rock_model_passes(self):
-        files, _ = make.outputs()
+        files, _ = outputs()
         checked = 0
         for path, body in files.items():
             if "/models/block/" in path.as_posix() and not self.EXEMPT.fullmatch(path.stem) and not (
@@ -236,7 +243,7 @@ class GridTest(unittest.TestCase):
 class LayerConceptsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.files, cls.structures = make.outputs()
+        cls.files, cls.structures = outputs()
         cls.built = {layer: scenes.build(layer) for layer in LAYERS}
 
     def test_every_file_is_what_make_py_makes(self):

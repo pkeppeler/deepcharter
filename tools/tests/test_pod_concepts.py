@@ -1,4 +1,5 @@
 """Tests tools/pod_concepts.py: the committed pod files are what it writes, the pods keep the bore rules with every cutter, and a model that breaks the Mole's limits fails."""
+import functools
 import sys
 import unittest
 from pathlib import Path
@@ -8,10 +9,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pod_concepts as pc  # noqa: E402
 
 
+@functools.cache
+def built(name):
+    """What pc.build makes for a pod or concept, once per run: it checks every rule and paints every texture, and every test only reads it."""
+    return pc.build(name, pc.MODEL_DIR, pc.TEXTURE_DIR)
+
+
 class CommittedFiles(unittest.TestCase):
     def test_the_committed_files_are_what_the_script_writes(self):
         for name in pc.PODS:
-            _, files = pc.build(name, pc.MODEL_DIR, pc.TEXTURE_DIR)
+            _, files = built(name)
             for path, data in files.items():
                 with self.subTest(path=path.name):
                     self.assertTrue(path.exists(), f"{path} is missing: run tools/py tools/pod_concepts.py")
@@ -186,7 +193,7 @@ class Wrecks(unittest.TestCase):
     def test_a_wreck_is_the_same_model_weathered(self):
         for name in pc.PODS:
             with self.subTest(pod=name):
-                _, files = pc.build(name, pc.MODEL_DIR, pc.TEXTURE_DIR)
+                _, files = built(name)
                 fresh = files[pc.TEXTURE_DIR / f"{name}.png"]
                 worn = files[pc.TEXTURE_DIR / f"{name}_wreck.png"]
                 self.assertNotEqual(fresh, worn)
@@ -195,7 +202,8 @@ class Wrecks(unittest.TestCase):
         mole = pc.mole()
         pc.pack(mole)
         base, glow = pc.paint_model(mole)
-        self.assertEqual(0, sum(1 for i in range(3, len(pc.wreck_glow(mole, glow, "derelict").pixels), 4) if pc.wreck_glow(mole, glow, "derelict").pixels[i]))
+        derelict = pc.wreck_glow(mole, glow, "derelict")  # once: it was rebuilt for every pixel of the loop
+        self.assertEqual(0, sum(1 for i in range(3, len(derelict.pixels), 4) if derelict.pixels[i]))
         prospector = pc.prospector()
         pc.pack(prospector)
         _, glow = pc.paint_model(prospector)
@@ -398,7 +406,7 @@ class Limits(unittest.TestCase):
 
     def test_box_uv_never_overlaps(self):
         for name in [*pc.CONCEPTS, *pc.PODS]:
-            model, _ = pc.build(name, pc.MODEL_DIR, pc.TEXTURE_DIR)
+            model, _ = built(name)
             taken = set()
             for bone, cube in model.cubes():
                 u, v = cube.uv
