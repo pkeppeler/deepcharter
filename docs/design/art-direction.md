@@ -81,6 +81,7 @@ Rules for all areas:
 - **Skin and data:** `data/deepcharter/worldgen/biome/*.json`, `assets/deepcharter/post_effect/*.json`, `shaders/post/*.fsh`.
 - **Concept round 1 (#241):** three looks for the rock, Company Rock, lava and crust, for you to pick from: [layer-concepts.md](layer-concepts.md). The user's answer: Strata for layer 1, Fractured for layer 2, Columnar for layer 3. **Concept round 2 (#447):** the texture of each layer's rock, three options to pick from: [layer-concepts-2.md](layer-concepts-2.md).
 - **Not chosen:** pure black everywhere (layers lose their identity). The anatomy palette (the lore's hidden reading) stays a texture detail at most.
+- **Biome-only limits (#744):** the layer's fog, ambient colour, sky light factor, music and bed rules live in the zone biomes, so one dimension type can serve every band of the campaign world. A biome cannot set `ambient_light`, `cardinal_light` or `has_skylight`, and the sky timeline overrides a biome's fog and sky light values. What that costs the look, with numbers, and what the cutover must do: [ADR 0059](../adr/0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md#findings-of-the-layer-atmosphere-slice-744).
 
 ## 7. UI and HUD
 
