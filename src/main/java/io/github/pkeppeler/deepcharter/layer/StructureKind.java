@@ -132,8 +132,8 @@ public enum StructureKind {
      * the crust. Where it was cut through lava the Kells walled it in slag brick, two to four rings of three rows, and in the
      * middle row of each ring the lining has failed: one block of the wall is lava, with one more behind it, and across the hollow
      * at that row a bulkhead of brick, which a pod lands on, with a hole beside the gap and lava under the hole. A pod can
-     * go down, and its hand lining closes the gaps. Timber sets, some fallen, line the rest. At the head, in the wall of the drift,
-     * is the reserve they left: {@value #KELLS_RESERVE_PER_GAP} bricks for each gap, in the walls of the drift.
+     * go down, and its hand lining closes the gaps. Timber sets, some fallen, line the rest. At the head, in the walls of the
+     * drift, is the reserve they left: {@value #KELLS_RESERVE_PER_GAP} bricks for each gap.
      */
     KELLS_SHAFT(2, 2, 4, 2, OptionalInt.empty()) {
         @Override
@@ -309,12 +309,12 @@ public enum StructureKind {
         int[] rows = kellsGapRows(p.site());
         int gaps = rows.length;
         p.air(-1, 0, -1, 0, height - 1, 0);
+        BlockState lava = Blocks.LAVA.defaultBlockState();
         // Timber sets, a quarter of their blocks fallen.
         for (int y = 1; y < height - DRIFT_HEIGHT - 1; y += KELLS_SET_SPACING) {
             for (int u = -2; u <= 1; u++) {
                 for (int v = -2; v <= 1; v++) {
-                    boolean ring = u < -1 || u > 0 || v < -1 || v > 0;
-                    if (ring && !p.roll(u, y, v, 0.25)) {
+                    if (inRing(u, v) && !p.roll(u, y, v, 0.25)) {
                         p.set(u, y, v, Blocks.OAK_PLANKS.defaultBlockState());
                     }
                 }
@@ -324,14 +324,13 @@ public enum StructureKind {
             for (int y = rows[k] - KELLS_WALL_REACH; y <= rows[k] + KELLS_WALL_REACH; y++) {
                 for (int u = -2; u <= 1; u++) {
                     for (int v = -2; v <= 1; v++) {
-                        if (u < -1 || u > 0 || v < -1 || v > 0) {
+                        if (inRing(u, v)) {
                             p.set(u, y, v, brick);
                         }
                     }
                 }
             }
             RingSide side = kellsRingSides().get(p.pick(20 + k, kellsRingSides().size()));
-            BlockState lava = Blocks.LAVA.defaultBlockState();
             p.set(side.u(), rows[k], side.v(), lava);
             p.set(side.u() + side.outU(), rows[k], side.v() + side.outV(), lava);
             // The bulkhead: a plug of brick across the hollow at the gap's row, which a pod lands on, so that
@@ -350,6 +349,11 @@ public enum StructureKind {
             int slot = i / 2;
             p.set(-3 + slot % 2, floor + slot / 2, i % 2 == 0 ? 1 : -2, brick);
         }
+    }
+
+    /** Whether a cell of the Kells' shaft is in the ring round its 2 x 2 hollow. */
+    private static boolean inRing(int u, int v) {
+        return u < -1 || u > 0 || v < -1 || v > 0;
     }
 
     /** A 3 x 3 shaft with a ladder, timber collars, and in the middle a candle niche in the east wall: the Note, and a lit candle beside it. */

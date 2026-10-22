@@ -966,8 +966,7 @@ public class LayerStructuresTest {
             }
             BlockState state = level.getBlockState(pos);
             // The Kells' shaft keeps lava in its gaps on purpose; only other fluid is wrong there.
-            boolean lavaIsTheGaps = site.kind() == StructureKind.KELLS_SHAFT && state.is(Blocks.LAVA);
-            if (lavaIsTheGaps) {
+            if (site.kind() == StructureKind.KELLS_SHAFT && state.is(Blocks.LAVA)) {
                 continue;
             }
             if (!state.getFluidState().isEmpty() || state.is(HazardBlocks.GAS_POCKET)) {

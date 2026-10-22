@@ -31,6 +31,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.ToDoubleFunction;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -601,7 +602,7 @@ public class KellsShaftBoreTest {
         }
     }
 
-    private static String mean(List<Run> runs, java.util.function.ToDoubleFunction<Run> value) {
+    private static String mean(List<Run> runs, ToDoubleFunction<Run> value) {
         return String.format("%.2f", runs.stream().mapToDouble(value).average().orElse(0));
     }
 

@@ -199,10 +199,9 @@ public class KellsShaftScenario extends EvidenceScenario {
         private boolean released;
         /** True until the gap still is taken: the pilot rests on the bulkhead and does not press the lining key. */
         private boolean hold = true;
-        /** The gap the two wall stills show: its ring side and its row. */
-        private StructureKind.@Nullable RingSide gapSide;
+        /** The gap the two wall stills show: {@code u}, {@code v} and Y, as {@link #nearestGap} returns it. */
+        private int @Nullable [] stillGap;
 
-        private int gapY;
         /** Where the pod rests while it is lifted out of the stills. */
         private @Nullable Vec3 restedAt;
 
@@ -228,13 +227,8 @@ public class KellsShaftScenario extends EvidenceScenario {
         void away(boolean on) {
             PodEntity pod = Objects.requireNonNull(this.pod, "the pod is placed before the stills");
             if (on) {
-                if (gapSide == null) {
-                    int[] gap = Objects.requireNonNull(nearestGap(pod), "a gap is in reach of the pod on its bulkhead");
-                    gapSide = StructureKind.kellsRingSides().stream()
-                            .filter(side -> side.u() == gap[0] && side.v() == gap[1])
-                            .findFirst()
-                            .orElseThrow();
-                    gapY = gap[2];
+                if (stillGap == null) {
+                    stillGap = Objects.requireNonNull(nearestGap(pod), "a gap is in reach of the pod on its bulkhead");
                 }
                 restedAt = pod.position();
                 pod.setNoGravity(true);
@@ -292,11 +286,9 @@ public class KellsShaftScenario extends EvidenceScenario {
             } else {
                 // While the pod is lifted out of a wall still, the camera works from where it rested and the gap chosen
                 // then.
-                int[] gap = restedAt != null && gapSide != null
-                        ? new int[] {gapSide.u(), gapSide.v(), gapY}
-                        : nearestGap(pod);
+                int[] gap = restedAt != null && stillGap != null ? stillGap : nearestGap(pod);
                 double baseY = restedAt != null ? restedAt.y : pod.getY();
-                double du = gap == null ? 1 : gap[0] + 0.5 - 0.0;
+                double du = gap == null ? 1 : gap[0] + 0.5;
                 double dv = gap == null ? 0 : gap[1] + 0.5;
                 // The camera is over the pod's cell, toward the side the gap is not on, and looks at the gap's cell.
                 at = new Vec3(
