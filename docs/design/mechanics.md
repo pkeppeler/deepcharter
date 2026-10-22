@@ -1632,3 +1632,20 @@ For a person the early-game cost is the dark display and the noise: a first dive
 
 The bite is 9.6 times slower than stone and costs about a charge's price per slab ($21.82 against $20, in fuel and hull repair); the tier 3 drill itself costs $1,250, 3.6 layer 2 runs of $348. The tier buys freedom from carrying charges, not a discount: charges stay the cheaper, quicker answer for a few slabs (3 s fuse against an 8.65 s bite), and the bite is the one that never runs out. A full stock hull reaches the 20 hull floor after about 6 slabs, so a long bite wants repair stops. The first tuning had 1 and then 0.5 hull a second ($17.50 and $13.17 a slab), and made the bite cheaper and handier than a charge, so charges had no niche. A radiator cuts the heat (tier 3: 0.6). The test holds a bitten slab between one and two times a charge's price per slab. Tuning knobs: `PodRockBiteTuning` (`minTier` 3, `hardness` 15, `fuelMultiplier` 3, `heatHullPerSecond` 1.5, `hullFloor` 20).
 
+## The grained crust (#746, A)
+
+**Problem.** The seams of the campaign world (#216) swap a background world under the pod, and a swap is only safe if nothing the player builds or digs can sit across it. The restriction has to read as the material's doing and not as a rule the game announces, so the crust has one property, a vertical grain that flexes on a slow pulse, and the four rules follow from it. Design: the comments on [#185](https://github.com/pkeppeler/deepcharter/issues/185); the block and the decoy hash: [ADR 0060](../adr/0060-the-grained-crust-block-id-is-permanent-and-a-decoy-is-drawn-from-a-hash-of-the-seed-and-the-boundary.md). Names and messages are placeholders until the lore session (#12).
+
+| Rule | What the material does | What the player sees | Counterplay |
+|---|---|---|---|
+| No sideways digging | A drill pushed across the grain skates | Sparks at the face, a squeal, 4 hull a second of heat (less by a radiator), a line that says so | Bore down along the grain, as in any rock |
+| No placing | A rigid block cannot flex, so it crumbles on the next pulse | The first attempt prints a line once for each player; the block breaks with its dust and drops nothing | None: build somewhere else |
+| No fluids | The grain draws liquid into itself | The fluid is gone the tick after it arrives, with a puff of smoke | None needed: it also stops a flood |
+| Don't linger | Each pulse squeezes what stops in it | A pod that is neither moving nor drilling loses 5 hull a pulse; a player on foot takes 4 damage a pulse; a pod that moves or drills takes none. Ten ticks before each pulse the grain creaks and sheds dust for what it will squeeze | A pod keeps moving or drills: the crust is crossed, not parked on. A player on foot has no exemption: get off the crust |
+
+**Ladder.** By hand: the pilot learns to keep the drill pointed down and the pod moving. There is no upgrade that lifts a rule, since the crust is what keeps the swap safe: the rules are the crust, not a hazard to buy off. The heat of the skating drill is the one number a radiator changes.
+
+**Knobs (`LayerTuning`).** `grainPulseTicks` (100, 5 s), `grainSqueezeHull` (5), `grainSqueezeDamage` (4), `grainSkateHeatPerSecond` (4). At 5 hull a pulse a pod that parks in the crust loses a hull in 20 pulses (100 s); the breach crust takes 24 in one crossing, so a parked pod is the slow death and a crossing the fast one.
+
+**Open questions.** Whether a decoy should squeeze less than a seam (it must not: a seam cannot be told from a decoy); whether the pulse should be heard from a distance (the warning creak is positional, so a player near a squeezed pod hears it too).
+

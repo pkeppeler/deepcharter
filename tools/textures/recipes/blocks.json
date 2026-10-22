@@ -105,6 +105,25 @@
         {"op": "speckle", "colours": ["regolith.3", "crust.1"], "density": 0.03, "seed": 204}
       ]
     },
+    "block/grained_crust": {
+      "kind": "opaque",
+      "animation": {"frames": 10, "frametime": 10},
+      "layers": [
+        {"op": "fibres", "ramp": ["crust.1", "crust.2", "crust.3", "crust.4", "crust.5"], "seed": 7601, "breaks": 4, "spread": 1},
+        {"op": "speckle", "colours": ["crust.2", "crust.4"], "density": 0.06, "seed": 7602},
+        {"op": "frames", "on": [1, 2, 8, 9], "layers": [
+          {"op": "replace", "from": "crust.1", "to": "crust.2"}
+        ]},
+        {"op": "frames", "on": [3, 4, 5, 6, 7], "layers": [
+          {"op": "replace", "from": "crust.3", "to": "crust.4"},
+          {"op": "replace", "from": "crust.2", "to": "crust.3"},
+          {"op": "replace", "from": "crust.1", "to": "crust.2"}
+        ]},
+        {"op": "frames", "on": [5], "layers": [
+          {"op": "replace", "from": "crust.4", "to": "crust.5"}
+        ]}
+      ]
+    },
     "block/company_rock_joint_0": {
       "kind": "opaque",
       "layers": [
