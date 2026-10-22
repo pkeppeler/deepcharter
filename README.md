@@ -120,7 +120,7 @@ While lava burns the hull, the pod itself glows like hot metal, red in the seams
 
 ![The upgrade terminal listing the heat shield's tiers and their prices](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/heat-shield-tiers.png?raw=true)
 
-While lava touches the pod, the heat shield burns slag brick instead of hull. Buy tiers 2 and 3 at the upgrade terminal: a brick soaks 6 hull at tier 2 and 8 at tier 3. Tier 3 burns the bricks in your pack first, so the rack stays for lining.
+While lava touches the pod, the heat shield burns slag brick instead of hull. Buy tiers 2 and 3 at the upgrade terminal: a brick soaks 6 hull at tier 2 and 8 at tier 3. Tier 3 burns the bricks in your pack first, so the bricks in the pod's rack stay for lining.
 
 ### 10. Lining the shaft
 
