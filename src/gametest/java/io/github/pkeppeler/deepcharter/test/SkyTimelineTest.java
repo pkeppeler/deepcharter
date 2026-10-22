@@ -1,10 +1,12 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -97,11 +99,15 @@ public class SkyTimelineTest {
         helper.succeed();
     }
 
-    /** A layer has no sky: it does not run the timeline, and still reads its own fog, sky colour and a sky light factor of 0. */
+    /**
+     * A layer has no sky: it does not run the timeline, and reads a sky light factor of 0 from its zone biome, not from its dimension type
+     * (#744), so the type can be the one type of the campaign world.
+     */
     @GameTest(dimension = "deepcharter:layer_1")
     public void aLayerIsNotTouchedByTheSky(GameTestHelper helper) {
         ServerLevel layer = helper.getLevel();
         Timeline timeline = timeline(helper);
+        BlockPos inLayer = TestLayers.pos(1, 0, 20, 0);
         if (layer.dimensionType().timelines().stream().anyMatch(held -> held.value() == timeline)) {
             throw helper.assertionException("layer_1 should not run the sky timeline");
         }
@@ -112,14 +118,14 @@ public class SkyTimelineTest {
                 layer.environmentAttributes().getDimensionValue(EnvironmentAttributes.SKY_COLOR));
         expectEqual(
                 helper,
-                "layer_1 fog colour",
-                EnvironmentAttributes.FOG_COLOR.defaultValue(),
-                layer.environmentAttributes().getDimensionValue(EnvironmentAttributes.FOG_COLOR));
+                "layer_1 dimension-wide sky light factor (the type no longer sets it)",
+                EnvironmentAttributes.SKY_LIGHT_FACTOR.defaultValue(),
+                layer.environmentAttributes().getDimensionValue(EnvironmentAttributes.SKY_LIGHT_FACTOR));
         expectEqual(
                 helper,
-                "layer_1 sky light factor",
+                "layer_1 sky light factor in a zone biome",
                 0.0f,
-                layer.environmentAttributes().getDimensionValue(EnvironmentAttributes.SKY_LIGHT_FACTOR));
+                layer.environmentAttributes().getValue(EnvironmentAttributes.SKY_LIGHT_FACTOR, inLayer));
         expectEqual(
                 helper,
                 "layer_1 gameplay sky light level",
