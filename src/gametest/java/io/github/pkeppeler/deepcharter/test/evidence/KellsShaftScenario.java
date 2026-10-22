@@ -1,5 +1,11 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.IDLE;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.ROTOR;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SPRINT;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.lavaToLine;
+
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
@@ -22,12 +28,12 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -75,11 +81,6 @@ public class KellsShaftScenario extends EvidenceScenario {
     /** What the scenario reads of the pod on a tick. */
     private record PodState(double y, boolean onGround, boolean lining, int used, float hull) {}
 
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
-    private static final Input ROTOR = new Input(false, false, false, false, true, false, false);
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    private static final Input IDLE = new Input(false, false, false, false, false, false, false);
-
     @Override
     protected void run(ClientGameTestContext context) {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
@@ -94,7 +95,7 @@ public class KellsShaftScenario extends EvidenceScenario {
                 camera.setGameMode(GameType.SPECTATOR);
                 camera.addEffect(new MobEffectInstance(
                         MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
-                Vec3 start = new Vec3(worldX(site, -3.2, -0.5), floor, worldZ(site, -3.2, -0.5));
+                Vec3 start = at(site, -3.7, 0, -1.0).with(Direction.Axis.Y, floor);
                 MockPlayer pilot = MockPlayers.join(server, "Kells pilot", two, start, yaw);
                 pilot.player().setGameMode(GameType.SURVIVAL);
                 // The pilot's name tag would hang over the pod in every frame.
@@ -278,10 +279,10 @@ public class KellsShaftScenario extends EvidenceScenario {
         void look() {
             PodEntity pod = Objects.requireNonNull(this.pod, "the pod is placed before the camera moves");
             ServerPlayer camera = Objects.requireNonNull(this.camera, "the camera is set before it moves");
-            Vec3 at;
+            Vec3 eye;
             Vec3 target;
             if (!released) {
-                at = new Vec3(worldX(site, -8, -0.5), floor + 1.6, worldZ(site, -8, -0.5));
+                eye = at(site, -8.5, 0, -1.0).with(Direction.Axis.Y, floor + 1.6);
                 target = pod.position().add(0, 1, 0);
             } else {
                 // While the pod is lifted out of a wall still, the camera works from where it rested and the gap chosen
@@ -291,38 +292,29 @@ public class KellsShaftScenario extends EvidenceScenario {
                 double du = gap == null ? 1 : gap[0] + 0.5;
                 double dv = gap == null ? 0 : gap[1] + 0.5;
                 // The camera is over the pod's cell, toward the side the gap is not on, and looks at the gap's cell.
-                at = new Vec3(
-                        worldX(site, -0.3 - 0.3 * Math.signum(du), -0.5 - 0.3 * Math.signum(dv)),
-                        baseY + CAMERA_UP,
-                        worldZ(site, -0.3 - 0.3 * Math.signum(du), -0.5 - 0.3 * Math.signum(dv)));
+                eye = at(site, -0.8 - 0.3 * Math.signum(du), 0, -1.0 - 0.3 * Math.signum(dv))
+                        .with(Direction.Axis.Y, baseY + CAMERA_UP);
                 int targetY = gap == null ? (int) pod.getY() - 1 : gap[2];
-                target = new Vec3(worldX(site, du - 0.5, dv - 0.5), targetY + 0.5, worldZ(site, du - 0.5, dv - 0.5));
+                target = at(site, du - 1.0, 0, dv - 1.0).with(Direction.Axis.Y, targetY + 0.5);
             }
-            Vec3 d = target.subtract(at);
+            Vec3 d = target.subtract(eye);
             float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
             float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
-            camera.teleportTo((ServerLevel) pod.level(), at.x, at.y, at.z, Set.of(), yaw, pitch, true);
+            camera.teleportTo((ServerLevel) pod.level(), eye.x, eye.y, eye.z, Set.of(), yaw, pitch, true);
         }
 
         /** The ring cell holding lava nearest below the pod: its {@code u} and {@code v} in the shaft's axes, and its Y; null when none is within reach. */
         private int @Nullable [] nearestGap(PodEntity pod) {
             for (int y = (int) Math.floor(pod.getY()) + 1; y > (int) Math.floor(pod.getY()) - GAP_LOOK; y--) {
                 for (StructureKind.RingSide side : StructureKind.kellsRingSides()) {
-                    BlockPos cell = BlockPos.containing(
-                            worldX(site, side.u() + 0.5, side.v() + 0.5),
-                            y,
-                            worldZ(site, side.u() + 0.5, side.v() + 0.5));
+                    Vec3 middle = at(site, side.u(), 0, side.v());
+                    BlockPos cell = BlockPos.containing(middle.x, y, middle.z);
                     if (pod.level().getFluidState(cell).is(FluidTags.LAVA)) {
                         return new int[] {side.u(), side.v(), y};
                     }
                 }
             }
             return null;
-        }
-
-        private static boolean lavaToLine(PodEntity pod) {
-            return PodLining.cellsToLine(pod).stream()
-                    .anyMatch(cell -> pod.level().getFluidState(cell).is(FluidTags.LAVA));
         }
     }
 
@@ -347,14 +339,5 @@ public class KellsShaftScenario extends EvidenceScenario {
             }
             return site;
         });
-    }
-
-    /** The world x of a point in the structure's own axes. */
-    private static double worldX(StructureSite site, double u, double v) {
-        return site.origin().getX() + (site.alongZ() ? v : u);
-    }
-
-    private static double worldZ(StructureSite site, double u, double v) {
-        return site.origin().getZ() + (site.alongZ() ? u : v);
     }
 }

@@ -1,5 +1,11 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.ROTOR;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SIDE_STEP;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SPRINT;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.STUCK_TICKS;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.withRotor;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -30,6 +36,7 @@ import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
+import io.github.pkeppeler.deepcharter.test.support.BoreBot.Side;
 import io.github.pkeppeler.deepcharter.test.support.DecayCells;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -149,7 +156,7 @@ public class LavaBoreTest {
     private static final boolean CHARGES = "1".equals(System.getenv(CHARGES_ENV));
     /** Blocks past {@code chargeReach} that the hovering bot holds above the blast, for its overshoot on the rotor. */
     private static final double HOVER_MARGIN = 0.6;
-    /** The charging bot waits this many times {@link #STUCK_TICKS} for a still pod with no Company rock under it before it sidesteps. */
+    /** The charging bot waits this many times {@code STUCK_TICKS} for a still pod with no Company rock under it before it sidesteps. */
     private static final int WAIT_FOR_NO_ROCK = 10;
     /** Ticks after the fuse has run out that a hull loss is booked to the charge. */
     private static final int BLAST_WINDOW_TICKS = 3;
@@ -237,7 +244,6 @@ public class LavaBoreTest {
     /** A climb that has not got clear in this many ticks is given up: the pod is trapped under rock, and the pilot lines instead. */
     static final int FLEE_GIVE_UP_TICKS = 60;
 
-    private static final Input ROTOR = new Input(false, false, false, false, true, false, false);
     static final String LINER_ENV = "DEEPCHARTER_LAVA_BORES_LINER";
     private static final String REQUESTED_LINER = System.getenv(LINER_ENV);
     private static final String REQUESTED_LINING = System.getenv(LINING_ENV);
@@ -292,7 +298,6 @@ public class LavaBoreTest {
     private static final int CHUNK_SPACING = 2;
     private static final int PILOT_WAIT_Y = TestLayers.worldY(1, 150);
 
-    private static final int SIDE_STEP = 2;
     /** The chassis the bot drives, the Mole. Its footprint is as {@code PodFootprint} (package private in the main code) reads it: the bore square. */
     private static final Chassis CHASSIS = Chassis.MOLE;
 
@@ -300,8 +305,6 @@ public class LavaBoreTest {
     private static final int POD_HEIGHT = CHASSIS.boreHeight();
     /** The bot does not stray farther than this from its first column, so that it stays inside its chunk (the drill will not bore at an unloaded edge). */
     private static final int MAX_DRIFT = 5;
-    /** Ticks a pod on the ground neither drills nor moves before the bot calls the slab refused. */
-    private static final int STUCK_TICKS = 12;
     /** Pod ticks between two touches of lava that still count as one encounter: about two slabs of drilling. */
     private static final int ENCOUNTER_GAP_TICKS = 60;
     /** A pod that gets no deeper in this many ticks is stalled. */
@@ -310,14 +313,6 @@ public class LavaBoreTest {
     private static final int BORE_TICK_BUDGET = 20000;
     private static final int LAVA_BODY_LIMIT = 256;
     private static final float REFUEL_BELOW_PERCENT = 3f;
-
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    /** The pod faces south (yaw 0), so forward is south and left is east. */
-    private static final Input STRAFE_EAST = new Input(false, false, true, false, false, false, false);
-
-    private static final Input STRAFE_WEST = new Input(false, false, false, true, false, false, false);
-    private static final Input DRIVE_SOUTH = new Input(true, false, false, false, false, false, false);
-    private static final Input DRIVE_NORTH = new Input(false, true, false, false, false, false, false);
 
     private enum Outcome {
         SURVIVED,
@@ -329,61 +324,6 @@ public class LavaBoreTest {
     private enum Phase {
         DOWN,
         SIDEWAYS
-    }
-
-    /** A way to step aside: the input that drives the pod that way (it faces south), and the axis it moves along. */
-    private enum Side {
-        EAST(1, 0, STRAFE_EAST),
-        WEST(-1, 0, STRAFE_WEST),
-        SOUTH(0, 1, DRIVE_SOUTH),
-        NORTH(0, -1, DRIVE_NORTH);
-
-        final int dx;
-        final int dz;
-        final Input input;
-
-        Side(int dx, int dz, Input input) {
-            this.dx = dx;
-            this.dz = dz;
-            this.input = input;
-        }
-
-        /** The compass direction of this side, as the sounder's marks name it. */
-        Direction direction() {
-            return switch (this) {
-                case EAST -> Direction.EAST;
-                case WEST -> Direction.WEST;
-                case SOUTH -> Direction.SOUTH;
-                case NORTH -> Direction.NORTH;
-            };
-        }
-
-        /** How far the pod is along this side's direction, in blocks from the world's origin. */
-        double along(PodEntity pod) {
-            return pod.getX() * dx + pod.getZ() * dz;
-        }
-
-        Side opposite() {
-            return switch (this) {
-                case EAST -> WEST;
-                case WEST -> EAST;
-                case SOUTH -> NORTH;
-                case NORTH -> SOUTH;
-            };
-        }
-
-        Side turnedRight() {
-            return switch (this) {
-                case EAST -> SOUTH;
-                case SOUTH -> WEST;
-                case WEST -> NORTH;
-                case NORTH -> EAST;
-            };
-        }
-
-        Side turnedLeft() {
-            return turnedRight().opposite();
-        }
     }
 
     /** One run of touching lava, how early the scanner had it in view, and what it cost the hull. */
@@ -1081,11 +1021,6 @@ public class LavaBoreTest {
     /** The input the bot holds with the rotor off: sprint down, or the push of the sidestep it is in. */
     private static Input base(Bore bore) {
         return bore.phase == Phase.DOWN ? SPRINT : bore.side.input;
-    }
-
-    private static Input withRotor(Input input) {
-        return new Input(
-                input.forward(), input.backward(), input.left(), input.right(), true, input.shift(), input.sprint());
     }
 
     /** Holds the rotor on while the pod sinks faster than {@link #BRAKE_ABOVE_SINK}, and lets go once it is slower. */
