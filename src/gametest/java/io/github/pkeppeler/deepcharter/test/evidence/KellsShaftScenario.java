@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.BoreBot.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.IDLE;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.ROTOR;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SPRINT;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.lavaToLine;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
@@ -13,7 +14,6 @@ import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.BoreBot;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -263,7 +263,7 @@ public class KellsShaftScenario extends EvidenceScenario {
                 pilot.setInput(FORWARD);
                 released = pod.getY() < floor - 0.5;
             } else {
-                if (!hold && !lining && pod.onGround() && BoreBot.lavaToLine(pod)) {
+                if (!hold && !lining && pod.onGround() && lavaToLine(pod)) {
                     PodLining.toggle(pilot.player());
                     lining = PodLining.working(pod);
                 }

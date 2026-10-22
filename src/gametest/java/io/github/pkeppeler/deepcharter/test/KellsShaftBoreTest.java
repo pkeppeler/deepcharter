@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.BoreBot.ROTOR;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SIDE_STEP;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SPRINT;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.STUCK_TICKS;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.lavaToLine;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.withRotor;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
@@ -22,7 +23,6 @@ import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
-import io.github.pkeppeler.deepcharter.test.support.BoreBot;
 import io.github.pkeppeler.deepcharter.test.support.BoreBot.Side;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -431,7 +431,7 @@ public class KellsShaftBoreTest {
      */
     private static void driveShaft(Run run, PodEntity pod) {
         boolean lining = PodLining.working(pod);
-        if (run.column.lines && !lining && pod.onGround() && BoreBot.lavaToLine(pod)) {
+        if (run.column.lines && !lining && pod.onGround() && lavaToLine(pod)) {
             PodLining.toggle(run.pilot.player());
             lining = PodLining.working(pod);
             if (lining) {

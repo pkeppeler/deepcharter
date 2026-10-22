@@ -29,9 +29,9 @@ public final class BoreBot {
     public static final int SIDE_STEP = 2;
 
     /**
-     * A way to step aside: the input that drives the pod that way (it faces south), and the axis it moves along. The bots pick the next
-     * side in different orders, and each bot's measured table depends on its own: {@link #nextInDeclarationOrder()} against
-     * {@link #turnedRight()}, {@link #turnedLeft()} and {@link #opposite()}. Neither changes without re-running that bot's table.
+     * A way to step aside: the input that drives the pod that way (it faces south), and the axis it moves along. The Kells bot steps
+     * with {@link #nextInDeclarationOrder()}, the Lava bot with {@link #turnedRight()}, {@link #turnedLeft()} and {@link #opposite()};
+     * changing either order moves that bot's measured table.
      */
     public enum Side {
         EAST(1, 0, STRAFE_EAST),
