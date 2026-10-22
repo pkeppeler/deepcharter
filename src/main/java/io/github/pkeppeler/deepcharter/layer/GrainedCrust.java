@@ -198,7 +198,7 @@ public final class GrainedCrust {
      * a respawn. A message and not a handbook entry, because it reaches a player on any charter at the moment they try it, and a handbook entry
      * needs a charter and its chapter text is the lore session's. Saved data of another version is left alone and the player is not told.
      * The use of the item is only noted here, before the game has decided what it does (it may open a chest): the tick's end checks that a
-     * block is there.
+     * block is there, and so does the crumble ({@link #explainCrumble}), because a pulse can take the block before the tick's end (#770).
      */
     private static InteractionResult explainPlacement(
             Player player, Level level, InteractionHand hand, BlockHitResult hit) {
@@ -226,15 +226,39 @@ public final class GrainedCrust {
                 continue;
             }
             tries.remove();
-            ServerPlayer player = level.getServer().getPlayerList().getPlayer(entry.getKey());
-            if (player == null || !sheds(level.getBlockState(tried.at()))) {
-                continue;
+            if (sheds(level.getBlockState(tried.at()))) {
+                explain(level, entry.getKey());
             }
-            Optional<Explained> state = Versioned.readable(player, EXPLAINED);
-            if (state.isPresent() && !state.get().told()) {
-                player.setAttached(EXPLAINED, Versioned.of(new Explained(true)));
-                player.sendSystemMessage(Component.translatable("deepcharter.layer.grain_no_place"));
+        }
+    }
+
+    /**
+     * Called as the grain crumbles the block at {@code at}, before it goes. A block placed on the tick before a pulse crumbles in that tick's
+     * block ticks, ahead of the tick's end, so the end-of-tick check would find air and never explain (#770). The crumble is the proof that a
+     * block was placed there.
+     */
+    static void explainCrumble(ServerLevel level, BlockPos at) {
+        Iterator<Map.Entry<UUID, Tried>> tries = TRIED.entrySet().iterator();
+        while (tries.hasNext()) {
+            Map.Entry<UUID, Tried> entry = tries.next();
+            if (entry.getValue().level().equals(level.dimension())
+                    && entry.getValue().at().equals(at)) {
+                tries.remove();
+                explain(level, entry.getKey());
             }
+        }
+    }
+
+    /** Says why a block placed against the grain crumbles, to the player if they are on and have not been told. */
+    private static void explain(ServerLevel level, UUID id) {
+        ServerPlayer player = level.getServer().getPlayerList().getPlayer(id);
+        if (player == null) {
+            return;
+        }
+        Optional<Explained> state = Versioned.readable(player, EXPLAINED);
+        if (state.isPresent() && !state.get().told()) {
+            player.setAttached(EXPLAINED, Versioned.of(new Explained(true)));
+            player.sendSystemMessage(Component.translatable("deepcharter.layer.grain_no_place"));
         }
     }
 

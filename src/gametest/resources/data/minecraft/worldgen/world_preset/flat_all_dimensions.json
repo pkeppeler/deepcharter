@@ -922,6 +922,162 @@
         },
         "settings": "deepcharter:tall_surface_yard"
       }
+    },
+    "deepcharter:campaign_sample": {
+      "type": "deepcharter:campaign_sample",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "deepcharter:bands",
+          "surface_min_y": -64,
+          "surface": {
+            "biomes": [
+              {
+                "biome": "deepcharter:regolith_plains",
+                "parameters": {
+                  "temperature": [
+                    -1.0,
+                    0.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    -2.0,
+                    0.22
+                  ],
+                  "erosion": [
+                    -2.0,
+                    0.5
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              },
+              {
+                "biome": "deepcharter:mesa_country",
+                "parameters": {
+                  "temperature": [
+                    -1.0,
+                    0.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    0.22,
+                    2.0
+                  ],
+                  "erosion": [
+                    -1.0,
+                    1.0
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              },
+              {
+                "biome": "deepcharter:basalt_field",
+                "parameters": {
+                  "temperature": [
+                    -1.0,
+                    0.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    -2.0,
+                    0.22
+                  ],
+                  "erosion": [
+                    0.5,
+                    2.0
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              },
+              {
+                "biome": "deepcharter:salvage_yard",
+                "parameters": {
+                  "temperature": [
+                    0.5,
+                    1.0
+                  ],
+                  "humidity": [
+                    -1.0,
+                    1.0
+                  ],
+                  "continentalness": [
+                    -2.0,
+                    2.0
+                  ],
+                  "erosion": [
+                    -1.0,
+                    1.0
+                  ],
+                  "depth": [
+                    -1.0,
+                    1.0
+                  ],
+                  "weirdness": [
+                    -1.0,
+                    1.0
+                  ],
+                  "offset": 0.0
+                }
+              }
+            ]
+          },
+          "layers": [
+            {
+              "min_y": -256,
+              "height": 192,
+              "biomes": [
+                "deepcharter:topsoil_claims",
+                "deepcharter:stone_benches",
+                "deepcharter:deep_claim"
+              ]
+            },
+            {
+              "min_y": -512,
+              "height": 256,
+              "biomes": [
+                "deepcharter:upper_levels",
+                "deepcharter:shift_change",
+                "deepcharter:prospectors_run"
+              ]
+            }
+          ],
+          "unbuilt": "deepcharter:unbuilt_depth"
+        },
+        "settings": "deepcharter:campaign"
+      }
     }
   }
 }
