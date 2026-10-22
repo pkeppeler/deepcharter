@@ -1,5 +1,12 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.IDLE;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.ROTOR;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SIDE_STEP;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SPRINT;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.STUCK_TICKS;
+import static io.github.pkeppeler.deepcharter.test.support.BoreBot.withRotor;
+
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
@@ -15,6 +22,8 @@ import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
+import io.github.pkeppeler.deepcharter.test.support.BoreBot;
+import io.github.pkeppeler.deepcharter.test.support.BoreBot.Side;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -97,8 +106,6 @@ public class KellsShaftBoreTest {
     /** The straight bore brakes in a fall as {@code LavaBoreTest}'s bot does. */
     private static final double BRAKE_ABOVE_SINK = EarlyRunModel.DRIVE_DOWN_SINK;
 
-    private static final int STUCK_TICKS = 12;
-    private static final int SIDE_STEP = 2;
     private static final int NO_PROGRESS_TICKS = 2000;
     private static final int RUN_TICK_BUDGET = 20000;
     /** Touches of lava closer together than this are one contact: two gaps are about 7 ticks apart on the way down. */
@@ -112,41 +119,6 @@ public class KellsShaftBoreTest {
     private static final int CARRIED_BRICKS = 64;
 
     private static final int LINING_SPREAD = 2;
-    private static final Input IDLE = new Input(false, false, false, false, false, false, false);
-    private static final Input ROTOR = new Input(false, false, false, false, true, false, false);
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    private static final Input STRAFE_EAST = new Input(false, false, true, false, false, false, false);
-    private static final Input STRAFE_WEST = new Input(false, false, false, true, false, false, false);
-    private static final Input DRIVE_SOUTH = new Input(true, false, false, false, false, false, false);
-    private static final Input DRIVE_NORTH = new Input(false, true, false, false, false, false, false);
-
-    /** A way to step aside from a refused slab: the pod faces south, and the input that drives it that way. */
-    private enum Side {
-        EAST(1, 0, STRAFE_EAST),
-        WEST(-1, 0, STRAFE_WEST),
-        SOUTH(0, 1, DRIVE_SOUTH),
-        NORTH(0, -1, DRIVE_NORTH);
-
-        final int dx;
-        final int dz;
-        final Input input;
-
-        Side(int dx, int dz, Input input) {
-            this.dx = dx;
-            this.dz = dz;
-            this.input = input;
-        }
-
-        /** How far the pod is along this side's direction, in blocks from the world's origin. */
-        double along(PodEntity pod) {
-            return pod.getX() * dx + pod.getZ() * dz;
-        }
-
-        /** The next side to try, round the compass. */
-        Side next() {
-            return values()[(ordinal() + 1) % values().length];
-        }
-    }
 
     private enum Column {
         SHAFT_LINED("shaft, lined", true, true, true),
@@ -459,7 +431,7 @@ public class KellsShaftBoreTest {
      */
     private static void driveShaft(Run run, PodEntity pod) {
         boolean lining = PodLining.working(pod);
-        if (run.column.lines && !lining && pod.onGround() && lavaToLine(pod)) {
+        if (run.column.lines && !lining && pod.onGround() && BoreBot.lavaToLine(pod)) {
             PodLining.toggle(run.pilot.player());
             lining = PodLining.working(pod);
             if (lining) {
@@ -470,18 +442,11 @@ public class KellsShaftBoreTest {
         run.pilot.setInput(rotor ? ROTOR : !lining && pod.onGround() ? SPRINT : IDLE);
     }
 
-    /** Whether the lining has a lava cell to take: the pilot sees it glowing in the wall. */
-    private static boolean lavaToLine(PodEntity pod) {
-        return PodLining.cellsToLine(pod).stream()
-                .anyMatch(cell -> pod.level().getFluidState(cell).is(FluidTags.LAVA));
-    }
-
     /** A straight bore, as {@code LavaBoreTest}'s bot drives it, down to the crust. */
     private static void driveBore(Run run, PodEntity pod) {
         Input base = run.sideways ? run.side.input : SPRINT;
         if (!pod.onGround() && -pod.getDeltaMovement().y > BRAKE_ABOVE_SINK) {
-            run.pilot.setInput(new Input(
-                    base.forward(), base.backward(), base.left(), base.right(), true, base.shift(), base.sprint()));
+            run.pilot.setInput(withRotor(base));
         } else {
             run.pilot.setInput(base);
         }

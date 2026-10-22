@@ -226,15 +226,6 @@ public class LayerStructuresScenario extends EvidenceScenario {
         context.waitTicks(step == 0 ? SETTLE_TICKS : TICKS_PER_FRAME);
     }
 
-    /** The world position of a point in the structure's own axes, {@code y} up from the floor of its hollow. */
-    private static Vec3 at(StructureSite site, double u, double y, double v) {
-        BlockPos origin = site.origin();
-        return new Vec3(
-                origin.getX() + 0.5 + (site.alongZ() ? v : u),
-                origin.getY() + y,
-                origin.getZ() + 0.5 + (site.alongZ() ? u : v));
-    }
-
     /** Puts the player at {@code at} in {@code dimension}, looking at {@code target}. */
     private static void fly(TestSingleplayerContext singleplayer, ResourceKey<Level> dimension, Vec3 at, Vec3 target) {
         Vec3 d = target.subtract(at);
