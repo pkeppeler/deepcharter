@@ -924,7 +924,7 @@
       }
     },
     "deepcharter:campaign_sample": {
-      "type": "deepcharter:tall_surface",
+      "type": "deepcharter:campaign_sample",
       "generator": {
         "type": "minecraft:noise",
         "biome_source": {

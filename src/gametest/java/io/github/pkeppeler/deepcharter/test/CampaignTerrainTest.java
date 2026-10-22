@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -304,16 +305,47 @@ public class CampaignTerrainTest {
                 settings.get("default_block").getAsString().equals(GREEN_SHALE),
                 "the default block is the rock of layer 2 and unbuilt depth");
 
-        // The density: one range_choice per band above the unbuilt rock, from the surface down.
-        List<String> ranges = new ArrayList<>();
+        // The density takes each layer's profile from its shipped noise settings, moved to the layer's band, and picks
+        // between them by band.
         JsonElement density = settings.getAsJsonObject("noise_router").get("final_density");
+        List<String> ranges = new ArrayList<>();
         collectRanges(density, ranges);
-        List<String> expectedRanges =
-                List.of(range(CampaignBands.SURFACE), range(CampaignBands.LAYER_1), range(CampaignBands.LAYER_2));
-        expect(helper, ranges.equals(expectedRanges), "density ranges %s, expected %s", ranges, expectedRanges);
+        List<String> expectedRanges = Collections.nCopies(3, range(CampaignBands.LAYER_1));
+        expect(
+                helper,
+                ranges.equals(expectedRanges),
+                "the density picks between the layers by %s, found %s",
+                expectedRanges,
+                ranges);
+        Set<Integer> gradients = new TreeSet<>();
+        collectGradientCoordinates(density, gradients);
+        Set<Integer> expectedGradients =
+                new TreeSet<>(List.of(CampaignBands.SURFACE.minY() - 4, CampaignBands.SURFACE.minY()));
+        for (int number = 1; number <= CampaignBands.LAYERS.size(); number++) {
+            Set<Integer> local = new TreeSet<>();
+            collectGradientCoordinates(
+                    read(helper, "/data/deepcharter/worldgen/noise_settings/layer_" + number + ".json"), local);
+            for (int y : local) {
+                expectedGradients.add(CampaignBands.layer(number).minY() + y);
+            }
+        }
+        expect(
+                helper,
+                gradients.equals(expectedGradients),
+                "gradient coordinates %s, expected the layers' moved to their bands: %s",
+                gradients,
+                expectedGradients);
+        expect(
+                helper,
+                density.toString().contains("\"deepcharter:surface/density\""),
+                "the density must use the shipped surface density");
 
         // The material rule's Y conditions, outside the shipped surface rule that it embeds.
         JsonElement shippedSurface = read(helper, "/data/deepcharter/worldgen/material_rule/surface.json");
+        expect(
+                helper,
+                settings.get("material_rule").toString().contains(shippedSurface.toString()),
+                "the surface band's rule must embed the shipped surface rule");
         Set<Integer> anchors = new TreeSet<>();
         collectAnchors(settings.get("material_rule"), shippedSurface, anchors, helper);
         Set<Integer> expectedAnchors = new TreeSet<>(List.of(
@@ -328,11 +360,11 @@ public class CampaignTerrainTest {
                 .getAsJsonObject()
                 .getAsJsonObject("dimensions")
                 .getAsJsonObject(SAMPLE);
-        JsonObject type = read(helper, "/data/deepcharter/dimension_type/tall_surface.json")
+        JsonObject type = read(helper, "/data/deepcharter/dimension_type/campaign_sample.json")
                 .getAsJsonObject();
         expect(
                 helper,
-                dimension.get("type").getAsString().equals("deepcharter:tall_surface")
+                dimension.get("type").getAsString().equals("deepcharter:campaign_sample")
                         && type.get("min_y").getAsInt() == CampaignBands.worldMinY()
                         && type.get("height").getAsInt()
                                 == CampaignBands.worldTopExclusive() - CampaignBands.worldMinY(),
@@ -429,6 +461,20 @@ public class CampaignTerrainTest {
             object.entrySet().forEach(entry -> collectRanges(entry.getValue(), out));
         } else if (node.isJsonArray()) {
             node.getAsJsonArray().forEach(element -> collectRanges(element, out));
+        }
+    }
+
+    /** The coordinates of every {@code gradient} in a density function. */
+    private static void collectGradientCoordinates(JsonElement node, Set<Integer> out) {
+        if (node.isJsonObject()) {
+            JsonObject object = node.getAsJsonObject();
+            if (object.has("type") && object.get("type").getAsString().equals("minecraft:gradient")) {
+                out.add(object.get("from_coordinate").getAsInt());
+                out.add(object.get("to_coordinate").getAsInt());
+            }
+            object.entrySet().forEach(entry -> collectGradientCoordinates(entry.getValue(), out));
+        } else if (node.isJsonArray()) {
+            node.getAsJsonArray().forEach(element -> collectGradientCoordinates(element, out));
         }
     }
 
