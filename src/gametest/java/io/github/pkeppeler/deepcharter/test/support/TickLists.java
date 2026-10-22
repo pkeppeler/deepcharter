@@ -7,13 +7,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.level.entity.EntityTickList;
 
-/**
- * A level's {@link EntityTickList} as the heap sees it (#723). Vanilla changes the list while it iterates by
- * copying {@code active} into {@code passive} and swapping them. {@code passive} is then the map that was iterated,
- * and nothing clears it until the next change during an iteration, so it holds every entity that was ticking at the swap, also
- * after the entity is removed. In a long server that is one snapshot a few ticks old; in a test run it was the last
- * mock players of the suite.
- */
+/** A level's {@link EntityTickList}, whose stale {@code passive} snapshot keeps removed entities on the heap (#723). */
 public final class TickLists {
     private static final Field TICK_LIST = field(ServerLevel.class, "entityTickList");
     private static final Field ACTIVE = field(EntityTickList.class, "active");

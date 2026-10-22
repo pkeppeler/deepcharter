@@ -316,11 +316,7 @@ public class MockPlayersTest {
         });
     }
 
-    /**
-     * A mock that leaves while the level's tick list still holds a snapshot of it is dropped from that snapshot too (#723):
-     * vanilla copies the list when an entity is added or removed during an iteration, and the copy kept every mock that
-     * was ticking, to the end of the run.
-     */
+    /** A mock that left is dropped from the tick list's stale snapshot (#723). */
     @GameTest
     public void aLeftMockIsNotHeldByTheTickList(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
