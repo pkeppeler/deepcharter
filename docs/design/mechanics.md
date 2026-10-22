@@ -1647,5 +1647,5 @@ The bite is 9.6 times slower than stone and costs about a charge's price per sla
 
 **Knobs (`LayerTuning`).** `grainPulseTicks` (100, 5 s), `grainSqueezeHull` (5), `grainSqueezeDamage` (4), `grainSkateHeatPerSecond` (4). At 5 hull a pulse a pod that parks in the crust loses a hull in 20 pulses (100 s); the breach crust takes 24 in one crossing, so a parked pod is the slow death and a crossing the fast one.
 
-**Open questions.** Whether a decoy should squeeze less than a seam (it must not: a seam cannot be told from a decoy); whether the pulse should be heard from a distance (a creak is played only to what is squeezed).
+**Open questions.** Whether a decoy should squeeze less than a seam (it must not: a seam cannot be told from a decoy); whether the pulse should be heard from a distance (the warning creak is positional, so a player near a squeezed pod hears it too).
 
