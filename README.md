@@ -70,6 +70,10 @@ The scanner is a side-view map of the rock around your pod, drawn cell by cell, 
 
 Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park by the ore processor in the colony and sell it, and the money goes to your charter's account.
 
+![The fuel pump terminal in an outpost hall at the bottom of layer 1](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/outpost.png?raw=true)
+
+You do not have to climb home for fuel or a buyer. Craft an outpost kit and use it on the floor of layer 1, and it unfolds a steel hall with a fuel pump and an ore processor that sell for your charter alone. Fuel costs twice the colony price and ore pays four fifths of its value, so the trip to the colony still pays.
+
 ### 6. Upgrades and the hangar
 
 ![The upgrade terminal showing hull prices](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/upgrade-terminal.png?raw=true)
@@ -114,6 +118,10 @@ Lava hurts the pod, not the pilot. The hull bar along the top of your screen dro
 
 While lava burns the hull, the pod itself glows like hot metal, red in the seams and orange on the plates. When the pod leaves the lava, the glow goes out.
 
+![The upgrade terminal listing the heat shield's tiers and their prices](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/heat-shield-tiers.png?raw=true)
+
+The heat shield burns slag brick in place of hull while lava touches the pod. Tier 2 and 3 are bought at the upgrade terminal: a brick soaks 6 hull at tier 2 and 8 at tier 3, and tier 3 burns the bricks in your pack first, so the rack stays for lining.
+
 ### 10. Lining the shaft
 
 ![Looking down a shaft whose walls are lined with slag brick where the lava pockets were](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-lining.png?raw=true)
@@ -123,6 +131,10 @@ A thermal scanner shows lava pockets beside your shaft before you reach them. St
 The liner part does it for you. Fit one and the pod lines the shaft with slag brick as it drills, wherever lava could get in, which seals the walls against lava pockets the thermal scanner has shown you. Tier 1 acts every 4 slabs, tier 2 every 3 and also in a fall, and it stretches your slag further. The cost is drill speed: a better liner is a slower drill. The readout shows your slag and how many slabs are left to the next lining. (These two pictures look down the shaft from above; from the seat the cab frame hides the walls.)
 
 ![Looking down a shaft the liner has lined with slag brick](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-liner.png?raw=true)
+
+![The head of the Kells' shaft: a timbered drift with a rail, and a pod rolling toward the lip](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/kells-shaft.png?raw=true)
+
+Somewhere in Prospector's Run an old charter left a shaft. It stands at the end of a rail line, lined with brick, and runs down to the crust. At each gap in the lining the Kells sealed the shaft with a plug of brick, and lava stands under the hole in it.
 
 ### 11. Gas and the seep sounder
 
