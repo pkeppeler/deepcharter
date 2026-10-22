@@ -8,5 +8,6 @@
   "deepcharter.layer.goto.success": "Moved to layer %s",
   "deepcharter.layer.grain_no_place": "[PLACEHOLDER #12] The grain flexes and sheds anything rigid. What you build against it crumbles on the next pulse.",
   "deepcharter.layer.grain_skates": "[PLACEHOLDER #12] The drill skates across the grain. Dig down, not across.",
-  "deepcharter.layer.grain_squeeze": "[PLACEHOLDER #12] The grain squeezes. Keep moving."
+  "deepcharter.layer.grain_squeeze_foot": "[PLACEHOLDER #12] The grain squeezes. Get off the crust.",
+  "deepcharter.layer.grain_squeeze_pod": "[PLACEHOLDER #12] The grain squeezes. Keep moving."
 }

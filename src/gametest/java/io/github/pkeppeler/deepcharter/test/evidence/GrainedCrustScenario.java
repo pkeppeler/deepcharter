@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.layer.GrainedCrust;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -8,6 +7,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.PulseClock;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -161,7 +161,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         // Place about three seconds before a pulse, so that the blocks stand long enough to be seen.
         int waited = 0;
         while (!singleplayer.getServer().computeOnServer(server -> {
-            int toPulse = GrainedCrust.ticksToPulse(level(server));
+            int toPulse = PulseClock.ticksToPulse(level(server));
             return toPulse > 60 && toPulse < 70;
         })) {
             context.waitTicks(1); // tick-wait: polling the world clock for a moment a few seconds before the pulse
@@ -293,7 +293,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         // nothing.
         singleplayer.getServer().runOnServer(server -> pod(server).setPos(WALL_X - 3, FLOOR_Y, Z + 0.5));
         int waited = 0;
-        while (singleplayer.getServer().computeOnServer(server -> GrainedCrust.ticksToPulse(level(server))) != 20) {
+        while (singleplayer.getServer().computeOnServer(server -> PulseClock.ticksToPulse(level(server))) != 20) {
             context.waitTicks(1); // tick-wait: polling the world clock for the moment to set off
             if (++waited > 2 * LayerTuning.DEFAULT.grainPulseTicks()) {
                 throw new AssertionError("the pulse never came round to the moment to set off");
@@ -435,7 +435,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
     }
 
     private static int ticksToPulse(TestSingleplayerContext singleplayer) {
-        return singleplayer.getServer().computeOnServer(server -> GrainedCrust.ticksToPulse(level(server)));
+        return singleplayer.getServer().computeOnServer(server -> PulseClock.ticksToPulse(level(server)));
     }
 
     /** How many of the three sponges are still standing against the wall. */

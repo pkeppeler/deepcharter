@@ -1641,7 +1641,7 @@ The bite is 9.6 times slower than stone and costs about a charge's price per sla
 | No sideways digging | A drill pushed across the grain skates | Sparks at the face, a squeal, 4 hull a second of heat (less by a radiator), a line that says so | Bore down along the grain, as in any rock |
 | No placing | A rigid block cannot flex, so it crumbles on the next pulse | The first attempt prints a line once for each player; the block breaks with its dust and drops nothing | None: build somewhere else |
 | No fluids | The grain draws liquid into itself | The fluid is gone the tick after it arrives, with a puff of smoke | None needed: it also stops a flood |
-| Don't linger | Each pulse squeezes what stops in it | A pod that is neither moving nor drilling loses 5 hull a pulse; a player on foot takes 4 damage a pulse; a pod that moves or drills takes none | Keep moving: the crust is crossed, not parked on |
+| Don't linger | Each pulse squeezes what stops in it | A pod that is neither moving nor drilling loses 5 hull a pulse; a player on foot takes 4 damage a pulse; a pod that moves or drills takes none. Ten ticks before each pulse the grain creaks and sheds dust for what it will squeeze | A pod keeps moving or drills: the crust is crossed, not parked on. A player on foot has no exemption: get off the crust |
 
 **Ladder.** By hand: the pilot learns to keep the drill pointed down and the pod moving. There is no upgrade that lifts a rule, since the crust is what keeps the swap safe: the rules are the crust, not a hazard to buy off. The heat of the skating drill is the one number a radiator changes.
 

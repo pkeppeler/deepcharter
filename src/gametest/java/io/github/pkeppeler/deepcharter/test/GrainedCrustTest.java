@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.PulseClock;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -40,6 +41,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -55,12 +57,16 @@ import org.jspecify.annotations.Nullable;
 public class GrainedCrustTest {
     private static final LayerTuning TUNING = LayerTuning.DEFAULT;
     private static final int Z = 6200;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int ROOM = 8;
     private static final float EAST = -90f;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1200;
     /** Ticks either side of a pulse that a baseline reading keeps clear of, so that no pulse is half applied when it is taken. */
     private static final int PULSE_MARGIN = 5;
+    /** How long before each pulse the warning creak sounds (ADR 0060). */
+    private static final int WARN_TICKS = 10;
+
+    private static final Identifier WARNING = SoundEvents.CREAKING_TWITCH.location();
     /** Ticks a fluid may sit against the grain before it is absorbed: it is absorbed on the tick after it arrives, and a callback may run between. */
     private static final int ABSORB_TICKS = 2;
     /** Ticks a fluid has to reach the wall: water takes 5 ticks a cell and lava 30, so the wall has been reached by now. */
@@ -204,12 +210,12 @@ public class GrainedCrustTest {
             }
             long now = level.getGameTime();
             if (pulseAt[0] < 0) {
-                if (GrainedCrust.ticksToPulse(level) < PULSE_MARGIN * 6) {
+                if (PulseClock.ticksToPulse(level) < PULSE_MARGIN * 6) {
                     return;
                 }
                 level.setBlock(against, Blocks.COBBLESTONE.defaultBlockState(), Block.UPDATE_ALL);
                 level.setBlock(pocket, Blocks.COBBLESTONE.defaultBlockState(), Block.UPDATE_ALL);
-                pulseAt[0] = now + GrainedCrust.ticksToPulse(level);
+                pulseAt[0] = now + PulseClock.ticksToPulse(level);
                 return;
             }
             boolean standing = level.getBlockState(against).is(Blocks.COBBLESTONE)
@@ -373,7 +379,7 @@ public class GrainedCrustTest {
             long now = level.getGameTime();
             if (pulseAt[0] < 0) {
                 // Drive off 20 ticks (4 blocks of the pad) before a pulse, so that the pulse finds the pod in motion.
-                if (pod.onGround() && GrainedCrust.ticksToPulse(level) == 20) {
+                if (pod.onGround() && PulseClock.ticksToPulse(level) == 20) {
                     hullAtStart[0] = pod.hull();
                     startX[0] = pod.getX();
                     pulseAt[0] = now + 20;
@@ -468,6 +474,179 @@ public class GrainedCrustTest {
         });
     }
 
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aWaterloggedBlockThatCrumblesLeavesNoWater(GameTestHelper helper) {
+        int x = 4960;
+        ServerLevel level = room(helper, x);
+        box(level, x + 3, x + 3, FLOOR, FLOOR + 2, Z, Z, LayerBlocks.GRAINED_CRUST);
+        BlockPos against = new BlockPos(x + 2, FLOOR + 1, Z);
+        Arrival<Boolean> ready = ready(helper, level, x);
+        long[] pulseAt = {-1};
+        TestTicks.each(helper, () -> {
+            if (!ready.isPresent()) {
+                return;
+            }
+            long now = level.getGameTime();
+            if (pulseAt[0] < 0) {
+                if (PulseClock.ticksToPulse(level) < PULSE_MARGIN * 6) {
+                    return;
+                }
+                level.setBlock(
+                        against,
+                        Blocks.OAK_SLAB.defaultBlockState().setValue(BlockStateProperties.WATERLOGGED, true),
+                        Block.UPDATE_ALL);
+                pulseAt[0] = now + PulseClock.ticksToPulse(level);
+                return;
+            }
+            if (now < pulseAt[0] + PULSE_MARGIN) {
+                return;
+            }
+            if (!level.getBlockState(against).isAir()
+                    || !level.getFluidState(against).isEmpty()) {
+                throw failure(
+                        helper,
+                        "a waterlogged block that crumbled should leave neither block nor water, found %s",
+                        level.getBlockState(against));
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theLayersOwnRockBesideTheGrainStaysAndPlacedLayerRockCrumbles(GameTestHelper helper) {
+        int x = 5000;
+        ServerLevel level = room(helper, x);
+        BlockPos natural = new BlockPos(x + 2, FLOOR, Z);
+        BlockPos placed = new BlockPos(x + 2, FLOOR + 1, Z);
+        // The rock is there first, as the world generates it; the crust comes after.
+        level.setBlock(natural, LayerBlocks.PACKED_SHALE.defaultBlockState(), Block.UPDATE_ALL);
+        box(level, x + 3, x + 3, FLOOR, FLOOR + 2, Z, Z, LayerBlocks.GRAINED_CRUST);
+        Arrival<Boolean> ready = ready(helper, level, x);
+        long[] pulseAt = {-1};
+        TestTicks.each(helper, () -> {
+            if (!ready.isPresent()) {
+                return;
+            }
+            long now = level.getGameTime();
+            if (pulseAt[0] < 0) {
+                if (PulseClock.ticksToPulse(level) < PULSE_MARGIN * 6) {
+                    return;
+                }
+                level.setBlock(placed, LayerBlocks.PACKED_SHALE.defaultBlockState(), Block.UPDATE_ALL);
+                pulseAt[0] = now + PulseClock.ticksToPulse(level);
+                return;
+            }
+            if (now < pulseAt[0] + PULSE_MARGIN) {
+                return;
+            }
+            if (!level.getBlockState(natural).is(LayerBlocks.PACKED_SHALE)) {
+                throw failure(helper, "the layer's own rock beside the grain must stay");
+            }
+            if (!level.getBlockState(placed).isAir()) {
+                throw failure(helper, "a placed block of the layer's rock must crumble like any other");
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aWarningCreakComesBeforeEachPulseToWhatWouldBeSqueezed(GameTestHelper helper) {
+        int x = 5080;
+        ServerLevel level = room(helper, x);
+        pad(level, x);
+        MockPlayer walker = MockPlayers.join(helper, "grain-warned");
+        walker.player().setGameMode(GameType.SURVIVAL);
+        walker.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 0.5), 0f, 0f);
+        MockPlayer bystander = MockPlayers.join(helper, "grain-bystander");
+        bystander.player().setGameMode(GameType.SURVIVAL);
+        // Far out of earshot of the walker's creak, in no crust at all.
+        bystander.teleportTo(level, new Vec3(x + 200, FLOOR, Z + 0.5), 0f, 0f);
+        Arrival<Boolean> ready = ready(helper, level, x);
+        int period = TUNING.grainPulseTicks();
+        int warnAt = period - WARN_TICKS;
+        int[] cues = {0};
+        int[] seen = {0};
+        TestTicks.each(helper, () -> {
+            if (!ready.isPresent()) {
+                return;
+            }
+            int heard =
+                    (int) walker.soundsHeard().stream().filter(WARNING::equals).count();
+            if (heard > seen[0]) {
+                // A mock reads its sounds on its own tick, so a cue is seen a tick or two late.
+                long phase = level.getGameTime() % period;
+                if (phase < warnAt || phase > warnAt + 3) {
+                    throw failure(
+                            helper,
+                            "a warning came at %d of the pulse's %d ticks, not %d before it",
+                            phase,
+                            period,
+                            WARN_TICKS);
+                }
+                cues[0] += heard - seen[0];
+                seen[0] = heard;
+            }
+            if (cues[0] >= 2) {
+                if (bystander.soundsHeard().contains(WARNING)) {
+                    throw failure(helper, "a player who would not be squeezed was warned");
+                }
+                helper.succeed();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void rightClickingAChestWithABlockDoesNotSpendTheExplanation(GameTestHelper helper) {
+        int x = 5120;
+        ServerLevel level = room(helper, x);
+        box(level, x + 3, x + 3, FLOOR, FLOOR + 3, Z, Z, LayerBlocks.GRAINED_CRUST);
+        BlockPos chest = new BlockPos(x + 2, FLOOR, Z);
+        level.setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
+        MockPlayer player = MockPlayers.join(helper, "grain-chest");
+        player.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 2.5), 0f, 0f);
+        Arrival<Boolean> ready = ready(helper, level, x);
+        int[] step = {0};
+        int[] at = {0};
+        TestTicks.each(helper, () -> {
+            if (!ready.isPresent()) {
+                return;
+            }
+            int tick = (int) helper.getTick();
+            if (step[0] == 0) {
+                ItemStack stack = new ItemStack(Items.COBBLESTONE);
+                player.player().setItemInHand(InteractionHand.MAIN_HAND, stack);
+                BlockHitResult hit =
+                        new BlockHitResult(Vec3.atCenterOf(chest).add(0, 0.5, 0), Direction.UP, chest, false);
+                player.player().gameMode.useItemOn(player.player(), level, stack, InteractionHand.MAIN_HAND, hit);
+                step[0] = 1;
+                at[0] = tick;
+            } else if (step[0] == 1 && tick >= at[0] + 3) {
+                if (told(player) != 0
+                        || Versioned.readable(player.player(), GrainedCrust.EXPLAINED)
+                                .orElseThrow()
+                                .told()) {
+                    throw failure(helper, "opening a chest is no placement: nothing should be said or spent");
+                }
+                player.player().closeContainer();
+                place(player, level, x + 2, FLOOR + 1);
+                step[0] = 2;
+                at[0] = tick;
+            } else if (step[0] == 2 && tick >= at[0] + 3) {
+                if (told(player) != 1) {
+                    throw failure(
+                            helper, "a real placement should still explain once, it said it %d times", told(player));
+                }
+                helper.succeed();
+            }
+        });
+    }
+
+    private static long told(MockPlayer player) {
+        return player.chatMessages().stream()
+                .filter(message -> isKey(message, "deepcharter.layer.grain_no_place"))
+                .count();
+    }
+
     /** Uses a cobblestone on the west face of the grain at {@code (x + 1, y, Z)}, as a player placing a block against it does. */
     private static void place(MockPlayer player, ServerLevel level, int x, int y) {
         ItemStack stack = new ItemStack(Items.COBBLESTONE);
@@ -533,7 +712,7 @@ public class GrainedCrustTest {
 
     /** True when no pulse is within {@link #PULSE_MARGIN} ticks, either side. */
     private static boolean clearOfAPulse(ServerLevel level) {
-        int toPulse = GrainedCrust.ticksToPulse(level);
+        int toPulse = PulseClock.ticksToPulse(level);
         return toPulse > PULSE_MARGIN && toPulse < TUNING.grainPulseTicks() - PULSE_MARGIN;
     }
 

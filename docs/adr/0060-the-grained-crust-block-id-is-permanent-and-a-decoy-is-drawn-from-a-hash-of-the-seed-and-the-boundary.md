@@ -17,4 +17,7 @@ Issue #746, part of #216 (the seams and the decoys) and the campaign world plan 
 ## Consequences
 
 - A feature that builds beside a seam (a structure, a lining) is told off by the grain: its blocks crumble. That is the rule, and the structure margins of `LayerTuning` already keep structures off the crust.
+- **Seam generation (#216) places the crust last, or places its neighbours with `UPDATE_KNOWN_SHAPE`.** A neighbour set after the crust flags the crust, and the next pulse crumbles it, natural or not.
+- **The six `changed_<side>` property names are permanent once chunks are saved**, like the id: a renamed property loads as the default state and drops the pending flags.
+- **The pulse is announced.** Ten ticks before each pulse the grain creaks and sheds dust, for a pod or a player that the pulse will squeeze, so the danger is heard before it hurts. The animated texture is flavour: it runs on the client's clock and is not tied to the pulse.
 - A pulse that is not the world clock, or a decoy chosen in the chunk, needs a new ADR that amends this one.

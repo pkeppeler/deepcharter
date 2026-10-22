@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -87,6 +89,8 @@ public final class GrainedCrustBlock extends Block {
         LoadedBlocks blocks = new LoadedBlocks(level);
         BlockState now = state;
         boolean waiting = false;
+        List<BlockPos> absorbs = new ArrayList<>();
+        List<BlockPos> crumbles = new ArrayList<>();
         for (Direction side : Direction.values()) {
             BooleanProperty flag = flagOf(side);
             if (!state.getValue(flag)) {
@@ -99,19 +103,24 @@ public final class GrainedCrustBlock extends Block {
             }
             BlockState neighbour = level.getBlockState(at);
             if (neighbour.getBlock() instanceof LiquidBlock) {
-                absorb(level, at);
-            } else if (GrainedCrust.sheds(neighbour) && !GrainedCrust.isPulse(level)) {
-                waiting = true;
-                continue;
+                absorbs.add(at);
             } else if (GrainedCrust.sheds(neighbour)) {
-                crumble(level, at);
+                if (!GrainedCrust.isPulse(level)) {
+                    waiting = true;
+                    continue;
+                }
+                crumbles.add(at);
             }
             now = now.setValue(flag, false);
         }
         if (now != state) {
-            // The flags are bookkeeping: no client draws them, so nothing is sent.
+            // The flags are bookkeeping: no client draws them, so nothing is sent. They are cleared before the blocks
+            // go: a block that
+            // leaves a fluid behind (a waterlogged slab) flags this side again, and the next tick absorbs the fluid.
             level.setBlock(pos, now, Block.UPDATE_INVISIBLE | Block.UPDATE_KNOWN_SHAPE);
         }
+        absorbs.forEach(at -> absorb(level, at));
+        crumbles.forEach(at -> crumble(level, at));
         if (waiting) {
             level.scheduleTick(pos, this, 1);
         }
