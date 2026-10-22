@@ -59,7 +59,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
     private static final int LIMIT_TICKS = 600;
     private static final float EAST = -90f;
     private static final float WEST = 90f;
-    private static final float FOOT_PITCH = 6f;
+    private static final float FOOT_PITCH = 12f;
     private static final float LOOK_DOWN = 18f;
 
     @Override
@@ -136,7 +136,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         }
         singleplayer.getServer().runOnServer(server -> {
             PodEntity pod = pod(server);
-            pod.setPos(X - 3, FLOOR_Y, Z + 0.5);
+            pod.setPos(X - 5.5, FLOOR_Y, Z + 0.5);
             pod.setFuel(100f);
         });
         context.waitTicks(20);
@@ -150,7 +150,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.stopRiding();
-            player.teleportTo(level(server), X - 1.5, FLOOR_Y, Z - 0.5, Set.of(), EAST, FOOT_PITCH, true);
+            player.teleportTo(level(server), X - 3, FLOOR_Y, Z + 0.5, Set.of(), EAST, FOOT_PITCH, true);
         });
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         ClientWait.until(
@@ -172,7 +172,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             for (int y = 0; y < 3; y++) {
-                BlockPos wall = new BlockPos(WALL_X, FLOOR_Y + y, Z + 1);
+                BlockPos wall = new BlockPos(WALL_X, FLOOR_Y + y, Z + 3);
                 // A sponge: no recipe asks for it, so no "new recipes" toast covers the screen.
                 ItemStack stack = new ItemStack(Items.SPONGE);
                 player.setItemInHand(InteractionHand.MAIN_HAND, stack);
@@ -197,6 +197,8 @@ public class GrainedCrustScenario extends EvidenceScenario {
         if (placed(singleplayer) > 0) {
             throw new AssertionError("the placed blocks did not crumble within " + LIMIT_TICKS + " ticks");
         }
+        // The client has the news a tick or two after the server, with the dust still in the air.
+        context.waitTicks(2);
         screenshot(context, "grained-crust-crumbled");
         frames(context, 6);
     }
@@ -205,18 +207,14 @@ public class GrainedCrustScenario extends EvidenceScenario {
     private void absorb(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
             ServerLevel one = level(server);
-            // A channel of stone from a cap to the wall keeps the water in a line, so the cell against the wall is easy
-            // to see.
+            // A channel of stone, one block high, from a cap to the wall keeps the water in a line, so the cell against
+            // the wall is easy to see.
             for (int x = WALL_X - 5; x < WALL_X; x++) {
-                for (int y = 0; y < 2; y++) {
-                    one.setBlock(
-                            new BlockPos(x, FLOOR_Y + y, Z - 3), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
-                    one.setBlock(
-                            new BlockPos(x, FLOOR_Y + y, Z - 1), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
-                }
+                one.setBlock(new BlockPos(x, FLOOR_Y, Z - 1), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+                one.setBlock(new BlockPos(x, FLOOR_Y, Z + 1), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
             }
-            one.setBlock(new BlockPos(WALL_X - 6, FLOOR_Y, Z - 2), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
-            one.setBlock(new BlockPos(WALL_X - 5, FLOOR_Y, Z - 2), Blocks.WATER.defaultBlockState(), Block.UPDATE_ALL);
+            one.setBlock(new BlockPos(WALL_X - 6, FLOOR_Y, Z), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+            one.setBlock(new BlockPos(WALL_X - 5, FLOOR_Y, Z), Blocks.WATER.defaultBlockState(), Block.UPDATE_ALL);
         });
         for (int i = 0; i < 14; i++) {
             context.waitTicks(TICKS_PER_FRAME);
@@ -237,10 +235,8 @@ public class GrainedCrustScenario extends EvidenceScenario {
             ServerLevel one = level(server);
             // The channel and its water go, so the pod can drive over the floor again.
             for (int x = WALL_X - 6; x < WALL_X; x++) {
-                for (int y = 0; y < 2; y++) {
-                    for (int z = Z - 3; z <= Z - 1; z++) {
-                        one.setBlock(new BlockPos(x, FLOOR_Y + y, z), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-                    }
+                for (int z = Z - 1; z <= Z + 1; z++) {
+                    one.setBlock(new BlockPos(x, FLOOR_Y, z), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
                 }
             }
         });
@@ -413,7 +409,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
         return singleplayer
                 .getServer()
                 .computeOnServer(server -> !level(server)
-                        .getFluidState(new BlockPos(WALL_X - 1, FLOOR_Y, Z - 2))
+                        .getFluidState(new BlockPos(WALL_X - 1, FLOOR_Y, Z))
                         .isEmpty());
     }
 
