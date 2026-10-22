@@ -1,0 +1,21 @@
+{
+  "type": "deepcharter:open_sky",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "minecraft:desert",
+      "features": false,
+      "lakes": false,
+      "layers": [
+        {
+          "block": "minecraft:bedrock",
+          "height": 1
+        },
+        {
+          "block": "minecraft:sandstone",
+          "height": 67
+        }
+      ]
+    }
+  }
+}
