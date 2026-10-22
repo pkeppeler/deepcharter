@@ -11,12 +11,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 
 /**
- * Who may use a terminal at depth. A pump or a sell terminal in a layer is an outpost's (SPEC section 11), and an outpost belongs to its
- * charter: the charter whose hall the terminal stands in is always served, and another charter is served only while the owner's
- * Director has opened the charter's outposts to others (a charter setting, off for a new charter). A guest gets the outpost's own rates
- * ({@link OutpostRates}) and the owner takes no cut, because SPEC section 6 allows no money to pass between charters.
- * A charter with no Director is dormant and its outposts are closed to guests, because nobody can close them; the setting is kept, so a
- * revived charter is open again as it was left. A terminal at depth that stands in no hall, such as one placed by hand, serves no one.
+ * Who may use a terminal at depth. A pump or a sell terminal in a layer is an outpost's (SPEC section 11): the charter whose hall it
+ * stands in is always served, and another charter only while the owner's Director has opened the charter's outposts. A guest gets the
+ * outpost's own rates ({@link OutpostRates}); SPEC section 6 allows no money between charters. A dormant owner's outposts are closed to
+ * guests (nobody can close them), and the setting is kept. A terminal in no hall, such as one placed by hand, serves no one.
  */
 public final class OutpostAccess {
     private OutpostAccess() {}
