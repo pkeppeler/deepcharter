@@ -67,9 +67,6 @@ public final class OutpostBuilder {
                     Component.translatable("message.deepcharter.outpost.not_floor", OutpostTuning.DEFAULT.floorBand()));
         }
         MinecraftServer server = level.getServer();
-        if (!Charters.isReadable(server)) {
-            return Optional.of(CharterRefusal.NOT_ON_A_CHARTER.message());
-        }
         Optional<Charter> charter = Charters.readableCharterOf(server, player.getUUID());
         if (charter.isEmpty()) {
             return Optional.of(CharterRefusal.NOT_ON_A_CHARTER.message());
