@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.hangar.HangarInit;
 import io.github.pkeppeler.deepcharter.layer.LayerInit;
 import io.github.pkeppeler.deepcharter.market.MarketInit;
 import io.github.pkeppeler.deepcharter.ore.OreInit;
+import io.github.pkeppeler.deepcharter.outpost.OutpostInit;
 import io.github.pkeppeler.deepcharter.pod.PodInit;
 import io.github.pkeppeler.deepcharter.repair.RepairInit;
 import io.github.pkeppeler.deepcharter.scanner.ScannerInit;
@@ -39,6 +40,7 @@ public class DeepCharter implements ModInitializer {
         LayerInit.init();
         MarketInit.init();
         OreInit.init();
+        OutpostInit.init();
         PodInit.init();
         RepairInit.init();
         ScannerInit.init();

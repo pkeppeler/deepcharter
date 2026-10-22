@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
+import io.github.pkeppeler.deepcharter.outpost.OutpostRates;
 import io.github.pkeppeler.deepcharter.pod.PodCargo;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
@@ -29,9 +30,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 /**
- * The actions of the ore processor terminal: two sales of ore at {@link OreType#value()}, the withdrawal of ore from a pod's cargo into the pack
+ * The actions of the ore processor terminal: two sales of ore at {@link OutpostRates#orePrice} ({@link OreType#value()} at the colony, less at depth), the withdrawal of ore from a pod's cargo into the pack
  * (for the units that ask for ore, #536), and the two uses of spoil: the fuse into slag brick and the press into salvage crates. A sale is all or nothing: the account is credited first, and the ore is taken once the
  * credit went through, so a refused credit (a full account) leaves the ore where it was. The terminal has already checked the player's range, the charter and the repair state.
  */
@@ -62,6 +64,7 @@ public final class OreProcessor {
 
     public static Optional<Component> sellCargo(TerminalAction.Context context) {
         Charter charter = context.charter().orElseThrow();
+        Level level = context.player().level();
         List<PodEntity> pods = podsAt(context, charter);
         if (pods.isEmpty()) {
             return Optional.of(Component.translatable("deepcharter.market.refusal.no_pod"));
@@ -82,7 +85,7 @@ public final class OreProcessor {
         int count = 0;
         for (PodEntity pod : readable) {
             for (PodCargo.Entry entry : pod.cargo().entries()) {
-                total += value(entry.stack()) * entry.stack().getCount();
+                total += value(level, entry.stack()) * entry.stack().getCount();
                 count += entry.stack().getCount();
             }
         }
@@ -95,13 +98,14 @@ public final class OreProcessor {
 
     public static Optional<Component> sellInventory(TerminalAction.Context context) {
         Charter charter = context.charter().orElseThrow();
+        Level level = context.player().level();
         Inventory inventory = context.player().getInventory();
         long total = 0;
         int count = 0;
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
             if (OreRegistry.typeOf(stack).isPresent()) {
-                total += value(stack) * stack.getCount();
+                total += value(level, stack) * stack.getCount();
                 count += stack.getCount();
             }
         }
@@ -338,8 +342,8 @@ public final class OreProcessor {
         return Optional.empty();
     }
 
-    private static long value(ItemStack stack) {
-        return OreRegistry.typeOf(stack).orElseThrow().value();
+    private static long value(Level level, ItemStack stack) {
+        return OutpostRates.orePrice(level, OreRegistry.typeOf(stack).orElseThrow());
     }
 
     private static List<PodEntity> podsAt(TerminalAction.Context context, Charter charter) {

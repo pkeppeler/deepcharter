@@ -18,12 +18,14 @@ import io.github.pkeppeler.deepcharter.market.WorkOrders;
 import io.github.pkeppeler.deepcharter.market.WorkOrdersView;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.outpost.OutpostRates;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -31,6 +33,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.Level;
 
 /**
  * The online screen of the ore processor: the price of each ore, the charter's account, the two "sell all" buttons and, at the foot of the price column, the two buttons that use a pod's spoil: slag brick and salvage crates. A button
@@ -507,13 +510,17 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
         if (typewriter.done()) {
             int y = top;
             int x = rightColumn();
+            // The server pays the price of the level the terminal stands in, which is the client's own.
+            Level level = Objects.requireNonNull(
+                    Objects.requireNonNull(minecraft, "a screen draws once it is open").level,
+                    "a processor screen opens in a world");
             for (OreType ore : OreType.values()) {
                 String price = Component.translatable(
                                 "screen.deepcharter.processor.price",
                                 Component.translatable(OreRegistry.item(ore).getDescriptionId())
                                         .getString()
                                         .toUpperCase(Locale.ROOT),
-                                ore.value())
+                                OutpostRates.orePrice(level, ore))
                         .getString();
                 CrtDraw.glowText(graphics, font, price, x, y, PanelLook.dimText(tuning.dimColor()));
                 y += font.lineHeight + 2;

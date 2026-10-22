@@ -580,6 +580,20 @@
       "......hdk",
       "......hdk",
       ".....kkkkk"]}},
+    "item/outpost_kit": {"template": "sprite", "args": {"legend": {
+      "h": "steel.5", "l": "steel.4", "m": "steel.3", "d": "steel.2", "k": "steel.1", "x": "hazard.3", "y": "steel.1", "r": "signal.3", "b": "brass.5", "c": "brass.3"}, "rows": [
+      "", "",
+      ".....bbbbbb",
+      ".....b....c",
+      ".hhhhhhhhhhhhk",
+      ".hllllllllllldk",
+      ".hlmmmmmmmmmmdk",
+      ".xyxyxyxyxyxyxk",
+      ".hlmmmrrmmmmmdk",
+      ".hlmmmrrmmmmmdk",
+      ".hlmmmmmmmmmmdk",
+      ".hddddddddddddk",
+      "..kkkkkkkkkkkk"]}},
     "item/pump_motor": {"template": "sprite", "args": {"legend": {
       "h": "steel.5", "l": "steel.4", "m": "steel.3", "d": "steel.2", "k": "steel.1", "p": "copper.4", "q": "copper.2", "b": "brass.5", "c": "brass.3", "r": "signal.2"}, "rows": [
       "", "", "",

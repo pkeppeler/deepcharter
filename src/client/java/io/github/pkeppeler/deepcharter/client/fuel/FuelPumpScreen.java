@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
+import io.github.pkeppeler.deepcharter.outpost.OutpostRates;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
@@ -24,6 +25,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -50,8 +52,13 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
         super(Component.translatable(typeOf(view).block().getDescriptionId()));
         this.view = view;
         this.typewriter = typewriter(
-                Component.translatable("screen.deepcharter.fuel_pump.online", FuelTuning.DEFAULT.pricePerLitre()),
-                new TypewriterSound());
+                Component.translatable("screen.deepcharter.fuel_pump.online", price()), new TypewriterSound());
+    }
+
+    /** What a litre costs here: the server charges the price of the level the pump stands in, which is the client's own. */
+    private static long price() {
+        return OutpostRates.fuelPricePerLitre(
+                Objects.requireNonNull(Minecraft.getInstance().level, "a pump screen opens in a world"));
     }
 
     private static TerminalType typeOf(TerminalView view) {
@@ -136,7 +143,7 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
     private void refreshButtons(Optional<PodEntity> pod) {
         float room = pod.map(found -> PodStats.of(found).tankLitres() - FuelPump.litres(found))
                 .orElse(0f);
-        long price = FuelTuning.DEFAULT.pricePerLitre();
+        long price = price();
         List<Integer> steps = FuelTuning.DEFAULT.purchaseSteps();
         for (int i = 0; i < buyButtons.size(); i++) {
             int litres = steps.get(i);
