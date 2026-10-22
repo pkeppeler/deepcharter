@@ -4,7 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import java.lang.reflect.Field;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.level.entity.EntityTickList;
 
 /**
@@ -31,7 +31,7 @@ public final class TickLists {
     /** Make the level take the snapshot vanilla takes when an entity is added or removed while the list is iterated. */
     public static void snapshotAsIfChangedWhileTicking(ServerLevel level) {
         EntityTickList list = tickList(level);
-        Entity never = EntityType.MARKER.create(level, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+        Entity never = TestEntities.create(EntityTypes.ARMOR_STAND, level);
         boolean[] changed = {false};
         list.forEach(entity -> {
             if (!changed[0]) {
@@ -40,7 +40,8 @@ public final class TickLists {
             }
         });
         if (!changed[0]) {
-            throw new IllegalStateException("The tick list of " + level.dimension().identifier() + " was empty");
+            throw new IllegalStateException(
+                    "The tick list of " + level.dimension().identifier() + " was empty");
         }
     }
 
