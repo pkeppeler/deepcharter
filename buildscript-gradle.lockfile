@@ -1,7 +1,6 @@
 # This is a Gradle generated file for dependency locking.
 # Manual edits can break the build and are not advised.
 # This file is expected to be part of source control.
-# To regenerate this file, run: ./gradlew dependencies --write-locks
 com.autonomousapps.dependency-analysis:com.autonomousapps.dependency-analysis.gradle.plugin:3.19.2=classpath
 com.autonomousapps:antlr:4.13.2.2=classpath
 com.autonomousapps:asm-relocated:9.10.1.0=classpath
@@ -13,10 +12,10 @@ com.diffplug.durian:durian-collect:1.2.0=classpath
 com.diffplug.durian:durian-core:1.2.0=classpath
 com.diffplug.durian:durian-io:1.2.0=classpath
 com.diffplug.durian:durian-swt.os:4.3.0=classpath
-com.diffplug.spotless:com.diffplug.spotless.gradle.plugin:8.10.3=classpath
-com.diffplug.spotless:spotless-lib-extra:4.10.3=classpath
-com.diffplug.spotless:spotless-lib:4.10.3=classpath
-com.diffplug.spotless:spotless-plugin-gradle:8.10.3=classpath
+com.diffplug.spotless:com.diffplug.spotless.gradle.plugin:8.10.4=classpath
+com.diffplug.spotless:spotless-lib-extra:4.10.4=classpath
+com.diffplug.spotless:spotless-lib:4.10.4=classpath
+com.diffplug.spotless:spotless-plugin-gradle:8.10.4=classpath
 com.github.ben-manes.caffeine:caffeine:3.2.4=classpath
 com.google.code.gson:gson:2.14.0=classpath
 com.google.errorprone:error_prone_annotations:2.50.0=classpath
@@ -37,11 +36,11 @@ commons-codec:commons-codec:1.22.1=classpath
 dev.equo.ide:solstice:1.8.2=classpath
 dev.zacsweers.moshix:moshi-sealed-reflect:0.37.0=classpath
 dev.zacsweers.moshix:moshi-sealed-runtime:0.37.0=classpath
-net.fabricmc.fabric-loom:net.fabricmc.fabric-loom.gradle.plugin:1.18.2=classpath
+net.fabricmc.fabric-loom:net.fabricmc.fabric-loom.gradle.plugin:1.18.4=classpath
 net.fabricmc.unpick:unpick-format-utils:3.0.0-beta.13=classpath
 net.fabricmc.unpick:unpick:3.0.0-beta.13=classpath
 net.fabricmc:class-tweaker:0.3.0=classpath
-net.fabricmc:fabric-loom:1.18.2=classpath
+net.fabricmc:fabric-loom:1.18.4=classpath
 net.fabricmc:lorenz-tiny:4.0.2=classpath
 net.fabricmc:mapping-io:0.8.0=classpath
 net.fabricmc:mercury:0.4.3=classpath
@@ -58,10 +57,10 @@ org.eclipse.jgit:org.eclipse.jgit:7.8.0.202609011348-r=classpath
 org.eclipse.platform:org.eclipse.osgi:3.24.300=classpath
 org.jetbrains.kotlin:kotlin-bom:2.4.0=classpath
 org.jetbrains.kotlin:kotlin-metadata-jvm:2.4.0=classpath
-org.jetbrains.kotlin:kotlin-reflect:2.4.0=classpath
+org.jetbrains.kotlin:kotlin-reflect:2.4.10=classpath
 org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.4.0=classpath
 org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.4.0=classpath
-org.jetbrains.kotlin:kotlin-stdlib:2.4.0=classpath
+org.jetbrains.kotlin:kotlin-stdlib:2.4.10=classpath
 org.jetbrains:annotations:13.0=classpath
 org.jspecify:jspecify:1.0.1=classpath
 org.ow2.asm:asm-analysis:9.10.1=classpath
