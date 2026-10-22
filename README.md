@@ -70,7 +70,7 @@ The scanner is a side-view map of the rock around your pod, drawn cell by cell, 
 
 Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park by the ore processor in the colony and sell it, and the money goes to your charter's account.
 
-![The fuel pump terminal in an outpost hall at the bottom of layer 1](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/outpost.png?raw=true)
+![The fuel pump terminal in an outpost hall on the layer 1 floor, selling fuel at $2 a litre, twice the colony price](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/outpost.png?raw=true)
 
 You do not have to climb home for fuel or a buyer. Craft an outpost kit and use it on the floor of layer 1, and it unfolds a steel hall with a fuel pump and an ore processor that sell for your charter alone. Fuel costs twice the colony price and ore pays four fifths of its value, so the trip to the colony still pays.
 
@@ -132,9 +132,11 @@ The liner part does it for you. Fit one and the pod lines the shaft with slag br
 
 ![Looking down a shaft the liner has lined with slag brick](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-liner.png?raw=true)
 
-![The head of the Kells' shaft: a timbered drift with a rail, and a pod rolling toward the lip](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/kells-shaft.png?raw=true)
+Prospector's Run has an old charter's shaft at the end of each rail line. The Kells, an old charter, lined it with brick and bored it down to the crust.
 
-Somewhere in Prospector's Run an old charter left a shaft. It stands at the end of a rail line, lined with brick, and runs down to the crust. At each gap in the lining the Kells sealed the shaft with a plug of brick, and lava stands under the hole in it.
+![Looking down the Kells' shaft: a brick-lined hollow under a timber frame](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/kells-shaft.png?raw=true)
+
+At each gap in the lining the Kells sealed the shaft with a plug of brick, and lava stands under the hole in it.
 
 ### 11. Gas and the seep sounder
 
