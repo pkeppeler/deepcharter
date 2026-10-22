@@ -537,9 +537,12 @@ def _clump(layer: dict, rng: Rng, size: int, margin: int) -> dict[tuple[int, int
                     width, length = 0.5 * r, 1.6 * r
                     h = min(1 - across / width, (length - along) / width) if across < width and along < length else 0.0
                 else:
+                    if abs(dx) >= r or abs(dy) >= r:
+                        continue  # outside the lump's box, so d2 >= 1 and the lump adds nothing
                     d2 = (dx * dx + dy * dy) / (r * r)
                     h = sqrt(1 - d2) if d2 < 1 else 0.0
-                best = max(best, h)
+                if h > best:
+                    best = h
             if best > 0:
                 height[(x, y)] = min(best, 1.0)
     return height
@@ -549,14 +552,17 @@ def _rings(height: dict[tuple[int, int], float], count: int) -> list[set[tuple[i
     """The pixels round a clump, ring by ring: ring k (from 1) is every pixel whose nearest clump pixel is more than k - 1 and at
     most k away, so ring 1 is the clump's side neighbours, its corners fall in ring 2, and the rings are round, not square."""
     rings: list[set[tuple[int, int]]] = [set() for _ in range(count)]
-    xs, ys = [x for x, _ in height], [y for _, y in height]
-    for y in range(min(ys) - count, max(ys) + count + 1):
-        for x in range(min(xs) - count, max(xs) + count + 1):
-            if (x, y) in height:
-                continue
-            k = ceil(min(sqrt((x - hx) ** 2 + (y - hy) ** 2) for hx, hy in height))
-            if k <= count:
-                rings[k - 1].add((x, y))
+    # Each clump pixel marks the pixels within `count` of it with their squared distance; a pixel keeps the least. That is the nearest
+    # clump pixel without measuring every pixel of the box against every pixel of the clump.
+    reach = [(dx, dy, dx * dx + dy * dy) for dx in range(-count, count + 1) for dy in range(-count, count + 1) if dx * dx + dy * dy <= count * count]
+    nearest: dict[tuple[int, int], int] = {}
+    for hx, hy in height:
+        for dx, dy, d2 in reach:
+            spot = (hx + dx, hy + dy)
+            if spot not in height and nearest.get(spot, d2 + 1) > d2:
+                nearest[spot] = d2
+    for spot, d2 in nearest.items():
+        rings[ceil(sqrt(d2)) - 1].add(spot)
     return rings
 
 
