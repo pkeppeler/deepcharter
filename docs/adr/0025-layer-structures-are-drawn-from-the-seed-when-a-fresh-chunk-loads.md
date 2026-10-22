@@ -37,3 +37,5 @@ Builds on [ADR 0015](0015-zones-are-filled-block-by-block-from-the-originals-row
 ## Amended, 2026-10-22 (#743): the campaign world draws each layer as a band
 
 In a campaign world (the generator's biome source is `BandBiomeSource`) `StructureSite.in` gets each layer's band (`LayerChain.campaignLayers`) in place of the level's `min_y` and height, and a chunk draws the sites of every layer it holds. The seal fills with the layer's own rock. PROSPECTOR-0002's site is the wreck site nearest the Conduit in layer 2 of that level (`LayerStructures.prospector(level)`). The Conduit's casing runs from the floor of the deepest layer up to the colony's stack; the unbuilt rock below has none.
+
+`prospector(ServerLevel)` takes the level and returns empty for a level without layer 2 (it threw for a layer 2 that was not loaded, when it took the server).

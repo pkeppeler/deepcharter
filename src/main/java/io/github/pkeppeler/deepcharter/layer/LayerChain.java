@@ -71,10 +71,14 @@ public final class LayerChain {
 
     /**
      * The band of layer {@code layer} as {@code generator} lays it out in a level: a band of a campaign world, or the whole level of a
-     * layer dimension.
+     * layer dimension. {@code feature} names the caller, for the failure when a campaign world has no such layer.
      */
-    public static Band layerBand(ChunkGenerator generator, LevelHeightAccessor level, int layer) {
+    public static Band layerBand(ChunkGenerator generator, LevelHeightAccessor level, int layer, String feature) {
         if (generator.getBiomeSource() instanceof BandBiomeSource source) {
+            if (layer > source.layers().size()) {
+                throw new IllegalArgumentException(feature + " names layer " + layer + ", but this campaign world has "
+                        + source.layers().size() + " layers");
+            }
             BandBiomeSource.Layer span = source.layers().get(layer - 1);
             return new Band(layer, span.minY(), span.height());
         }

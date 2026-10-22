@@ -33,16 +33,19 @@ public final class Conduit {
         if (level.dimensionTypeRegistration().unwrapKey().isEmpty()) {
             return;
         }
-        // A campaign world is one level that holds the surface and the layers: its casing is the surface's, taller.
-        Optional<Band> band = LayerChain.bandAt(level, level.getMinY());
-        if (band.isEmpty() && LayerChain.campaignLayers(level).isEmpty()) {
+        // A campaign world is one level that holds the surface and the layers: its casing is the surface's, taller. It
+        // is told by its layers, never by bandAt, which names the band at the bottom of the level.
+        Optional<Integer> layer = LayerChain.campaignLayers(level).isEmpty()
+                ? LayerChain.bandAt(level, level.getMinY()).map(Band::layer)
+                : Optional.of(LayerChain.SURFACE);
+        if (layer.isEmpty()) {
             return;
         }
         Optional<ColonySite.Placed> placed = Colony.placed(level.getServer());
         if (placed.isEmpty()) {
             return;
         }
-        place(level, chunk, placed.get(), band.map(Band::layer).orElse(LayerChain.SURFACE));
+        place(level, chunk, placed.get(), layer.get());
     }
 
     /** Sets the missing casing blocks that lie in {@code chunk}. */

@@ -91,7 +91,7 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
 
     @Override
     public boolean place(WorldGenLevel level, ChunkGenerator generator, RandomSource random, BlockPos origin) {
-        Band band = LayerChain.layerBand(generator, level, layer);
+        Band band = LayerChain.layerBand(generator, level, layer, "A zone fill");
         int minY = band.minY();
         int height = band.height();
         int firstX = origin.getX() >> 4 << 4;

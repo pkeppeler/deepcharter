@@ -180,7 +180,7 @@ public class CampaignTerrainTest {
                 if (block.equals("minecraft:air")) {
                     continue;
                 }
-                if (!isCrustRow(y) && !isZoneFill(block)) {
+                if (!isCrustRow(y) && !(isInLayer(y) && isZoneFill(block))) {
                     found.computeIfAbsent(bandOf(y).name(), name -> new TreeSet<>())
                             .add(block);
                 }
@@ -439,13 +439,18 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    /** What the zone fill puts in a layer's rock (#743): an ore, Company rock, a gas pocket or lava. The rock itself is what a band is judged by. */
+    /** What the zone fill puts in a layer's rock (#743; {@link #isInLayer} says where): an ore, Company rock, a gas pocket or lava. The rock itself is what a band is judged by. */
     private static boolean isZoneFill(String id) {
         Block block = BuiltInRegistries.BLOCK.getValue(Identifier.parse(id));
         return OreRegistry.typeOf(block).isPresent()
                 || block == HazardBlocks.COMPANY_ROCK
                 || block == HazardBlocks.GAS_POCKET
                 || block == Blocks.LAVA;
+    }
+
+    /** The zone fill works on the layers' rows only: the surface and the unbuilt depth hold none of it. */
+    private static boolean isInLayer(int y) {
+        return CampaignBands.LAYERS.contains(bandOf(y));
     }
 
     private static boolean isCrustRow(int y) {

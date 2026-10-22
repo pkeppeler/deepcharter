@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -68,8 +69,24 @@ public class CampaignContentTest {
     private static final int SPACING = LayerTuning.DEFAULT.structureSpacing();
     /** Spacing cells searched for sites: five by five. */
     private static final int CELLS = 5;
-    /** The cave stalks are counted in a square of chunks this many on a side. */
+    /** The cave stalks are counted within this many chunks of the origin, a square of twice this and one on a side. */
     private static final int STALK_CHUNKS = 5;
+
+    /**
+     * What the shipped biomes hold to check: the surface stalks' height range, the cave stalks' layer rows, and a zone fill for each zone of
+     * each layer. A feature a PR removes lowers it on purpose.
+     */
+    private static final int MIN_RANGES_CHECKED = 2 + CampaignBands.LAYERS.size() * Zones.COUNT;
+    /** Placement modifiers that say nothing about the height, so a range check passes them. Any other type fails the check. */
+    private static final Set<String> NEUTRAL_MODIFIERS = Set.of(
+            "minecraft:count",
+            "minecraft:in_square",
+            "minecraft:rarity_filter",
+            "minecraft:biome",
+            "minecraft:offset",
+            "minecraft:heightmap",
+            "minecraft:environment_scan",
+            "minecraft:block_predicate_filter");
 
     private static final String FIGURE = "deepcharter:lampless_figure";
     /** The test preset, which holds the campaign sample dimension. */
@@ -365,7 +382,12 @@ public class CampaignContentTest {
                 }
             }
         }
-        expect(helper, checked > 0, "no placed feature had a height range to check");
+        expect(
+                helper,
+                checked >= MIN_RANGES_CHECKED,
+                "%d placed features had a height range or a zone to check, expected at least %d",
+                checked,
+                MIN_RANGES_CHECKED);
         expect(
                 helper,
                 read(helper, resource("biome", UNBUILT_BIOME))
@@ -404,6 +426,12 @@ public class CampaignContentTest {
                 high = band.minY() + modifier.get("max").getAsInt();
             }
             default -> {
+                expect(
+                        helper,
+                        NEUTRAL_MODIFIERS.contains(type),
+                        "%s has a placement modifier %s that is not known",
+                        feature,
+                        type);
                 return 0;
             }
         }

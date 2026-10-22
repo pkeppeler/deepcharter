@@ -47,7 +47,7 @@ public record LayerRowsPlacement(int layer, int min, int max) implements Placeme
 
     @Override
     public void modify(PlacementContext context, RandomSource random, BlockPos pos, Consumer<BlockPos> output) {
-        int floor = LayerChain.layerBand(context.generator(), context.getLevel(), layer)
+        int floor = LayerChain.layerBand(context.generator(), context.getLevel(), layer, "A layer_rows placement")
                 .minY();
         output.accept(pos.atY(floor + random.nextIntBetweenInclusive(min, max)));
     }

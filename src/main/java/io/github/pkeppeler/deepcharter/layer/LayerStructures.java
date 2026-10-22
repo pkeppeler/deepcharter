@@ -59,37 +59,41 @@ public final class LayerStructures {
             return;
         }
         boolean held = false;
-        for (Band band : bands) {
-            List<StructureSite> sites =
-                    sitesIn(level.getSeed(), band.layer(), band.minY(), band.height(), chunk.getPos(), conduit.get());
-            try {
-                for (StructureSite site : sites) {
-                    StructurePlan plan = new StructurePlan(site, level, chunk, band);
-                    plan.seal();
-                    site.kind().draw(plan, site.height());
-                    if (site.kind() == StructureKind.WRECK) {
-                        boolean famous = prospector(level).filter(site::equals).isPresent();
-                        if (famous) {
-                            ProspectorWrecks.light(plan);
+        try {
+            for (Band band : bands) {
+                List<StructureSite> sites = sitesIn(
+                        level.getSeed(), band.layer(), band.minY(), band.height(), chunk.getPos(), conduit.get());
+                // Set before the sites are drawn, so a site drawn before a failure is held too.
+                held |= !sites.isEmpty();
+                try {
+                    for (StructureSite site : sites) {
+                        StructurePlan plan = new StructurePlan(site, level, chunk, band);
+                        plan.seal();
+                        site.kind().draw(plan, site.height());
+                        if (site.kind() == StructureKind.WRECK) {
+                            boolean famous =
+                                    prospector(level).filter(site::equals).isPresent();
+                            if (famous) {
+                                ProspectorWrecks.light(plan);
+                            }
+                            placeWreck(level, site, chunk, famous);
                         }
-                        placeWreck(level, site, chunk, famous);
+                    }
+                } catch (RuntimeException e) {
+                    if (LOGGED_FAILURE.compareAndSet(false, true)) {
+                        DeepCharter.LOGGER.error(
+                                "Layer structures failed in chunk {} of layer {}; this and later chunks may lack theirs",
+                                chunk.getPos(),
+                                band.layer(),
+                                e);
                     }
                 }
-            } catch (RuntimeException e) {
-                if (LOGGED_FAILURE.compareAndSet(false, true)) {
-                    DeepCharter.LOGGER.error(
-                            "Layer structures failed in chunk {} of layer {}; this and later chunks may lack theirs",
-                            chunk.getPos(),
-                            band.layer(),
-                            e);
-                }
             }
-            held |= !sites.isEmpty();
-        }
-        // A site that was drawn before a failure is held too: the chunk may be sent at once, before its light is
-        // computed.
-        if (held) {
-            LightSync.holdSendUntilLit(level, chunk.getPos());
+        } finally {
+            // The chunk may be sent at once, before its light is computed.
+            if (held) {
+                LightSync.holdSendUntilLit(level, chunk.getPos());
+            }
         }
     }
 
