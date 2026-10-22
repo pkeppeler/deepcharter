@@ -115,8 +115,8 @@ public final class GrainedCrustBlock extends Block {
         }
         if (now != state) {
             // The flags are bookkeeping: no client draws them, so nothing is sent. They are cleared before the blocks
-            // go: a block that
-            // leaves a fluid behind (a waterlogged slab) flags this side again, and the next tick absorbs the fluid.
+            // go: a block that leaves a fluid behind (a waterlogged slab) flags this side again, and the next tick
+            // absorbs the fluid.
             level.setBlock(pos, now, Block.UPDATE_INVISIBLE | Block.UPDATE_KNOWN_SHAPE);
         }
         absorbs.forEach(at -> absorb(level, at));

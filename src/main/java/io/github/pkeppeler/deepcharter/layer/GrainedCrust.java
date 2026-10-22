@@ -49,8 +49,6 @@ import net.minecraft.world.phys.BlockHitResult;
  */
 public final class GrainedCrust {
     private static final int VERSION = 1;
-    /** How far past a pod's or a player's box a grained block still counts as touching it, as {@link LavaHazard#TOUCH_REACH} says for lava. */
-    private static final double TOUCH_REACH = LavaHazard.TOUCH_REACH;
     /** A pod that moved less than this in the tick (blocks) is not moving. */
     private static final double MOVING_BLOCKS = 0.01;
 
@@ -104,7 +102,7 @@ public final class GrainedCrust {
     /** True when a block of the grained crust is in or touches {@code box}. Blocks in a chunk that is not loaded are not seen. */
     private static boolean touches(Level level, AABB box) {
         return new LoadedBlocks(level)
-                .getBlockStates(box.inflate(TOUCH_REACH))
+                .getBlockStates(box.inflate(LavaHazard.TOUCH_REACH))
                 .anyMatch(state -> state.is(LayerBlocks.GRAINED_CRUST));
     }
 
