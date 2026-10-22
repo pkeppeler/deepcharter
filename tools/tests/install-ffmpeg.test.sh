@@ -42,7 +42,10 @@ if [[ $1 == install ]]; then
 fi
 exit 0
 S
-for stub in dpkg ffprobe; do printf '#!/usr/bin/env bash\necho "%s $*" >>"$CALLS"\n' "$stub" >"$bin/$stub"; done
+for stub in dpkg ffprobe; do
+  # shellcheck disable=SC2016
+  printf '#!/usr/bin/env bash\necho "%s $*" >>"$CALLS"\n' "$stub" >"$bin/$stub"
+done
 cat >"$bin/ffmpeg" <<'S'
 #!/usr/bin/env bash
 [[ $* == *-encoders* ]] && echo " A....D libvorbis"
@@ -59,7 +62,6 @@ run() { # run <name> [VAR=value...]: leaves $work/<name>.{out,calls,debs}, sets 
   env PATH="$bin:$PATH" CALLS="$work/$name.calls" DEBS="$work/$name.debs" FFMPEG_CODENAME=noble "$@" \
     "$tools/install-ffmpeg.sh" >"$work/$name.out" 2>&1 || status=$?
 }
-calls() { cat "$work/$1.calls"; }
 has() { grep -qF -- "$2" "$work/$1.$3"; echo $?; } # has <name> <text> <out|calls>
 
 run miss
@@ -86,7 +88,9 @@ mkdir -p "$work/stale.debs"
 touch "$work/stale.debs/old.deb"
 run stale MATCHED_KEY=ffmpeg-debs-ubuntu24-old APT_DEFAULT_FAILS=1
 check "a stale set still falls back to the official mirrors" "$status"
-check "  keeps the stale debs as the archives dir" "$([[ -e $work/stale.debs/old.deb ]]; echo $?)"
+kept=0
+[[ -e $work/stale.debs/old.deb ]] || kept=1
+check "  keeps the stale debs as the archives dir" "$kept"
 check "  does not install offline with dpkg -i" "$(has stale 'dpkg -i' calls | awk '{print 1 - $1}')"
 
 run hit MATCHED_KEY=k CACHE_HIT=true

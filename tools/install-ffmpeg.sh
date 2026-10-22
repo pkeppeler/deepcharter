@@ -49,6 +49,7 @@ if [[ ${DONE:-} != true ]]; then
     sudo dpkg --configure -a || true
     work=$(mktemp -d)
     trap 'rm -rf "$work"' EXIT
+    # shellcheck source=/dev/null
     codename=${FFMPEG_CODENAME:-$(. /etc/os-release && echo "$VERSION_CODENAME")}
     mkdir -p "$work/sources" "$work/lists/partial"
     cat >"$work/sources/official.sources" <<S
