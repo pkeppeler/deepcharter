@@ -260,6 +260,9 @@ owner/repo#54"
 refusal "closing references unreadable" "has no readable closing references" STUB_CLOSING_FAIL=1
 refusal "branch without issue number" "has head branch 'main-fix', not <issue>-<slug>" STUB_BRANCH=main-fix
 refusal "branch number without slug" "not <issue>-<slug>" STUB_BRANCH=12
+# A Renovate branch names the replacement-PR route: Renovate rewrites its own body, so the gate
+# cannot hold on it (#758).
+refusal "renovate branch names the replacement route" "push Renovate's commits to <issue>-<slug>" STUB_BRANCH=renovate/foo-1.x
 # Prose such as "the same fix #252 verified" is not a closing reference: GitHub's set decides.
 run_script "STUB_BODY=Closes #12
 Uses the same fix #252 verified."

@@ -12,16 +12,16 @@ public final class MarketRegistry {
     private MarketRegistry() {}
 
     public static void register() {
-        ownerOnly(OreProcessor.SELL_CARGO, OreProcessor::sellCargo);
-        ownerOnly(OreProcessor.SELL_INVENTORY, OreProcessor::sellInventory);
-        ownerOnly(OreProcessor.FUSE_SPOIL, OreProcessor::fuseSpoil);
-        ownerOnly(OreProcessor.PRESS_CRATES, OreProcessor::pressCrates);
-        ownerOnly(OreProcessor.WITHDRAW_ORE, OreProcessor::withdrawOre);
+        guarded(OreProcessor.SELL_CARGO, OreProcessor::sellCargo);
+        guarded(OreProcessor.SELL_INVENTORY, OreProcessor::sellInventory);
+        guarded(OreProcessor.FUSE_SPOIL, OreProcessor::fuseSpoil);
+        guarded(OreProcessor.PRESS_CRATES, OreProcessor::pressCrates);
+        guarded(OreProcessor.WITHDRAW_ORE, OreProcessor::withdrawOre);
         TerminalFeatures.register(TerminalTypes.ORE_PROCESSOR, ProcessorView.STREAM_CODEC, OreProcessor::view);
         WorkOrders.register();
     }
 
-    private static void ownerOnly(Identifier action, TerminalAction handler) {
-        TerminalActions.register(TerminalTypes.ORE_PROCESSOR, action, OutpostAccess.ownerOnly(handler));
+    private static void guarded(Identifier action, TerminalAction handler) {
+        TerminalActions.register(TerminalTypes.ORE_PROCESSOR, action, OutpostAccess.guarded(handler));
     }
 }

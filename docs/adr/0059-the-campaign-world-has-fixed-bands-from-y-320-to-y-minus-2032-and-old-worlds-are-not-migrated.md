@@ -37,6 +37,25 @@ Issue #739, part of #214 (design in #213). Amends [ADR 0029](0029-the-campaign-i
 ## Consequences
 
 - ADR 0036's `sea_level` of -64 becomes -2032 (ADR 0029: `sea_level` is `min_y`).
-- SPEC section 3 says each layer sets its own ambient light. A biome cannot set that, so the layer-atmosphere slice (#744) must meet it another way (for example a client lightmap hook keyed by band), or bring the gap to the user with stills before the cutover. A band that needs another light model needs a mechanism, not a type.
+- SPEC section 3 says each layer sets its own ambient light. A biome cannot set that. #744 measured the gap and brought it to the user with stills: see the amendment below. A band that needs another light model needs a mechanism, not a type.
 - SPEC section 3 already puts the surface and story layers 1-8 in the campaign world, so layers 3 and 4 fill unbuilt depth. The splice rule covers story layers added after the finale, so this ADR does not change it.
 - The campaign generator from ADR 0029 (`deepcharter:campaign`, built in #742) fills the bands below -64, not the `deepcharter:surface` noise settings stretched.
+
+## Amended, 2026-10-22 (#744): layer atmosphere from biome attributes
+
+The zone biomes now set the fog distances, `ambient_light_color`, a `sky_light_factor` of 0, the layer's music and the bed rules. The two layer dimension types no longer set them. Nothing changes in today's game, because a biome value wins over a dimension value. The types keep `ambient_light`, `cardinal_light: nether` and `has_skylight: false`, which a biome cannot set. They also keep `sky_light_level` (read once per dimension, not per position), `sky_light_color` (invisible while the factor is 0) and `can_start_raid` (a layer has no villages; not checked per position).
+
+The measured losses, with numbers and stills, are in [art direction section 6](../design/art-direction.md#6-layers-1-and-2). `LayerAtmosphereClientTest` logs them as `[layer-atmosphere]` lines. Its model of the campaign world is the test dimension `deepcharter-test:open_sky`, which uses the test type `deepcharter:open_sky` (skylight, default cardinal light, no ambient light, no sky timeline).
+
+**The blocker for the cutover:** the surface's sky timeline (`deepcharter:sky`) has `override` tracks for fog colour, fog distances, sky light colour and sky light factor. Timelines apply after biomes, so in one shared type they replace the layer biomes' values.
+
+### What the cutover (#214) must handle
+
+1. **The timeline against the biomes.** Data-only: tracks that `multiply` (the layer biomes set 0 and the surface biomes a neutral base), as vanilla's `minecraft:day` does with the gameplay clock; the type could list its own gameplay timeline in place of it, because `day` darkens the surface at gameplay night, which the sky timeline's overrides avoid today. Code: a client hook keyed by `LayerChain.bandAt` that sets the lightmap and fog values. Each fog value has the same problem as the factor.
+2. **Pick one `cardinal_light`** and accept the ceiling difference, or hook it by band.
+3. **Pick one `ambient_light`.**
+4. **Decide the server-side sky light** in a layer shaft: the server keeps sky light 15 in an open shaft.
+5. **Move or accept** `sky_light_level`, `sky_light_color` and `can_start_raid`, which stay on the dimension type.
+6. **Soft biome edges** at the surface floor and at the layer floors.
+7. **Delete** the test dimension and its type when the campaign type exists ([#761](https://github.com/pkeppeler/deepcharter/issues/761)), and the layer types with the layer dimensions. `tall_baseline` and `tall_surface` still carry the old layer attributes as measuring fixtures: do not copy them for the campaign type.
+8. **Show the user the stills** (PR #754): per-biome limits can change the approved look.

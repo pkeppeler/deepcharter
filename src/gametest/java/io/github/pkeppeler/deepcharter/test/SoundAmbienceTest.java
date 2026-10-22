@@ -162,21 +162,43 @@ public class SoundAmbienceTest {
         helper.succeed();
     }
 
-    /** What a player in each place could hear as music, in every mode: the biome's own music over the dimension's, creative and underwater too. */
+    /**
+     * What a player in each place could hear as music, in every mode: the biome's own music, creative and underwater too. Since #744 the
+     * track is the biome's own, and the layer's dimension type sets none, so the type can be shared by every band of the campaign world.
+     */
     @GameTest
     public void noLayerMusicInAnyModeIsAVanillaTrack(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         var registry = server.registryAccess().lookupOrThrow(Registries.BIOME);
         for (int layer = 1; layer <= LayerChain.count(server.registryAccess()); layer++) {
-            BackgroundMusic dimension = TestLayers.level(server, layer)
-                    .dimensionType()
-                    .attributes()
-                    .applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, BackgroundMusic.EMPTY);
+            expect(
+                    helper,
+                    !TestLayers.level(server, layer)
+                            .dimensionType()
+                            .attributes()
+                            .contains(EnvironmentAttributes.BACKGROUND_MUSIC),
+                    "the dimension type of layer %s still sets background music; it belongs to the zone biomes",
+                    layer);
             for (Identifier biomeId : layerBiomes(server, layer)) {
-                BackgroundMusic music = Objects.requireNonNull(
-                                registry.getValue(biomeId), "registry.getValue(biomeId) is absent")
-                        .getAttributes()
-                        .applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, dimension);
+                Biome biome =
+                        Objects.requireNonNull(registry.getValue(biomeId), "registry.getValue(biomeId) is absent");
+                expect(
+                        helper,
+                        biome.getAttributes().contains(EnvironmentAttributes.BACKGROUND_MUSIC),
+                        "the biome %s sets no background music of its own",
+                        biomeId);
+                BackgroundMusic music = biome.getAttributes()
+                        .applyModifier(EnvironmentAttributes.BACKGROUND_MUSIC, BackgroundMusic.EMPTY);
+                expect(
+                        helper,
+                        music.defaultMusic()
+                                .map(track -> name(track.sound()))
+                                .filter(id("music.layer_" + layer)::equals)
+                                .isPresent(),
+                        "the biome %s plays %s, wanted deepcharter:music.layer_%s",
+                        biomeId,
+                        music.defaultMusic().map(track -> name(track.sound())),
+                        layer);
                 for (boolean creative : List.of(false, true)) {
                     for (boolean underwater : List.of(false, true)) {
                         music.select(creative, underwater)

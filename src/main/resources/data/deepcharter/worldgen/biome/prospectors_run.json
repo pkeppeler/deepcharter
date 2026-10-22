@@ -13,6 +13,19 @@
         }
       ]
     },
+    "minecraft:audio/background_music": {
+      "default": {
+        "max_delay": 1800,
+        "min_delay": 600,
+        "replace_current_music": true,
+        "sound": "deepcharter:music.layer_2"
+      }
+    },
+    "minecraft:gameplay/bed_rule": {
+      "can_set_spawn": "never",
+      "can_sleep": "never",
+      "destroy_on_use": false
+    },
     "minecraft:gameplay/creature_world_gen_spawn_probability": 0.0,
     "minecraft:gameplay/natural_mob_spawns": {
       "argument": {
@@ -29,7 +42,16 @@
       },
       "modifier": "overlay"
     },
-    "minecraft:visual/fog_color": "#14141a"
+    "minecraft:gameplay/straw_bed_rule": {
+      "can_set_spawn": "never",
+      "can_sleep": "never",
+      "destroy_on_use": false
+    },
+    "minecraft:visual/ambient_light_color": "#0c0a09",
+    "minecraft:visual/fog_color": "#14141a",
+    "minecraft:visual/fog_end_distance": 32.0,
+    "minecraft:visual/fog_start_distance": 2.0,
+    "minecraft:visual/sky_light_factor": 0.0
   },
   "carvers": [],
   "downfall": 0.0,

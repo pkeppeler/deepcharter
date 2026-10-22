@@ -81,6 +81,21 @@ Rules for all areas:
 - **Skin and data:** `data/deepcharter/worldgen/biome/*.json`, `assets/deepcharter/post_effect/*.json`, `shaders/post/*.fsh`.
 - **Concept round 1 (#241):** three looks for the rock, Company Rock, lava and crust, for you to pick from: [layer-concepts.md](layer-concepts.md). The user's answer: Strata for layer 1, Fractured for layer 2, Columnar for layer 3. **Concept round 2 (#447):** the texture of each layer's rock, three options to pick from: [layer-concepts-2.md](layer-concepts-2.md).
 - **Not chosen:** pure black everywhere (layers lose their identity). The anatomy palette (the lore's hidden reading) stays a texture detail at most.
+- **Biome-only limits (#744):** the layer's fog, ambient colour, sky light factor, music and bed rules live in the zone biomes, so one dimension type can serve every band of the campaign world ([ADR 0059](../adr/0059-the-campaign-world-has-fixed-bands-from-y-320-to-y-minus-2032-and-old-worlds-are-not-migrated.md), with the cutover checklist). A biome cannot set `ambient_light`, `cardinal_light` or `has_skylight`. Measured by `LayerAtmosphereClientTest` (luminance 0 to 255 at 854 x 480; "campaign model" is a layer 1 biome in a type with skylight, default cardinal light, no ambient light and no sky timeline):
+
+  | Scene | Today's layer | Campaign model |
+  |---|---|---|
+  | Lit room wall (light block 8) | 15.0 | 15.3 (1.02x) |
+  | Lit room floor | 18.8 | 19.8 (1.05x) |
+  | Lit room ceiling | 24.9 | 14.0 (0.56x) |
+  | Unlit wall | 9.7 | 9.9 |
+  | Bottom of a 21-block shaft under open sky | not possible | 21.8, as a sealed room (a surface biome: 102.8) |
+
+  - **Cardinal light.** The default has down 0.5 and up 1.0; the nether value has 0.9 for both. This explains the ceiling (0.56x). It predicts 1.11x for the floor and 1.05x was measured, so it is only partly the cause.
+  - **Ambient light** has no visible effect on blocks. It feeds `Lightmap.getBrightness` (entity brightness, the HUD vignette) and the pathfinding light value: 0.06 at light 0 in layer 1 and 0.02 in layer 2, against 0. Not measured on entities.
+  - **Sky light in a shaft.** The server keeps sky light 15 in an open shaft (0 in a sealed room). The biome's factor of 0 hides it from the lightmap, so the picture is right. Spawn light checks, plant growth, undead burning and daylight sensors read the raw value: not measured.
+  - **A biome edge is soft.** The camera blends biomes. Sky light factor at a layer biome's edge, by blocks below the edge (negative: above it): -8: 0.94, -4: 0.70, 0: 0.32, 2: 0.20, 4: 0.07, 6: 0.03, 8: 0.002, 12 and more: 0. The surface floor stays open, so the top 8 or so blocks of layer 1 are a mix. A biome fill in a test that is shorter than the blend lets the next biome in.
+  - **The sky timeline overrides the biome.** In the surface's own type, a layer 1 biome reads factor 0.62 and fog 20 to 150 at sky time 0 (its own: 0 and 8 to 64), and the same shaft renders at 67.9 against the sealed room's 21.8.
 
 ## 7. UI and HUD
 

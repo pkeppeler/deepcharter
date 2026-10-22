@@ -31,16 +31,20 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * use of it throws, so a newer world is never overwritten by an older build.
  */
 public final class CharterData extends SavedData {
-    /** 2 adds each charter's former members (#168). Version 1 is still read: its charters start with none. */
-    public static final int VERSION = 2;
+    /**
+     * 3 adds whether a charter's outposts are open to other charters (#752). 2 adds each charter's former members (#168). Versions 1
+     * and 2 are still read: their charters start with no former members and with their outposts closed.
+     */
+    public static final int VERSION = 3;
 
     private static final int FIRST_VERSION = 1;
+    private static final int SECOND_VERSION = 2;
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "charters");
     private static final MapCodec<List<Charter>> BODY = Charter.CODEC.listOf().fieldOf("charters");
-    // Version 1 has the same body minus "former_members", which Charter.CODEC reads as empty, so the one body codec
-    // reads both.
+    // Version 1 has the same body minus "former_members" and "outposts_shared", and version 2 minus "outposts_shared":
+    // Charter.CODEC reads each as empty or false, so the one body codec reads all three.
     private static final Codec<Versioned<List<Charter>>> VERSIONED_CODEC =
-            Versioned.codec(VERSION, BODY, Map.of(FIRST_VERSION, BODY));
+            Versioned.codec(VERSION, BODY, Map.of(FIRST_VERSION, BODY, SECOND_VERSION, BODY));
 
     /** The codec of the saved data, which never fails to decode. */
     public static final Codec<CharterData> CODEC = VERSIONED_CODEC.xmap(CharterData::new, CharterData::versioned);
@@ -241,6 +245,16 @@ public final class CharterData extends SavedData {
             return Optional.of(CharterRefusal.INVALID_AMOUNT);
         }
         return change(id, charter -> depth > charter.deepestPoint() ? charter.withDeepestPoint(depth) : charter);
+    }
+
+    /** The Director of {@code director}'s charter opens its outposts to other charters, or closes them again. Only the Director may. */
+    public Optional<CharterRefusal> setOutpostsShared(UUID director, boolean shared) {
+        Optional<Charter> charter = charterOf(director).filter(found -> found.isDirector(director));
+        if (charter.isEmpty()) {
+            return Optional.of(CharterRefusal.NOT_THE_DIRECTOR);
+        }
+        replace(charter.get().withOutpostsShared(shared));
+        return Optional.empty();
     }
 
     private Optional<CharterRefusal> decide(UUID director, UUID applicant, UnaryOperator<Charter> decision) {

@@ -85,6 +85,8 @@ public final class ContractTerminal {
             }
             return refusal;
         });
+        TerminalActions.register(TYPE, ContractActions.SHARE_OUTPOSTS, context -> setOutpostsShared(context, true));
+        TerminalActions.register(TYPE, ContractActions.KEEP_OUTPOSTS, context -> setOutpostsShared(context, false));
         TerminalActions.register(TYPE, ContractActions.LEAVE, context -> {
             // Withdrawing an application fires no charter event, so the Director's list and the applicant's status are
             // refreshed here.
@@ -127,6 +129,18 @@ public final class ContractTerminal {
                 name -> Charters.findByName(context.server(), name)
                         .map(charter -> run.apply(charter.id()))
                         .orElse(Optional.of(CharterRefusal.NO_SUCH_CHARTER)));
+    }
+
+    /** The Director opens or closes the charter's outposts; the roster is shown the new setting. */
+    private static Optional<Component> setOutpostsShared(TerminalAction.Context context, boolean shared) {
+        Optional<Component> refusal = report(
+                context,
+                Charters.setOutpostsShared(context.server(), context.player().getUUID(), shared));
+        if (refusal.isEmpty()) {
+            Charters.charterOfOrThrow(context.server(), context.player().getUUID())
+                    .ifPresent(charter -> charter.roster().forEach(member -> refresh(context.server(), member)));
+        }
+        return refusal;
     }
 
     private static Optional<Component> answer(TerminalAction.Context context, Optional<UUID> applicant, Answer answer) {
@@ -193,6 +207,7 @@ public final class ContractTerminal {
                         0,
                         List.of(),
                         0,
+                        charter.outpostsShared(),
                         Optional.empty());
             }
             List<String> applicants = charter.applications().stream()
@@ -208,6 +223,7 @@ public final class ContractTerminal {
                     0,
                     applicants,
                     charter.applications().size(),
+                    charter.outpostsShared(),
                     Optional.empty());
         }
         Optional<Charter> applied = CharterData.get(server).applicationOf(player);
@@ -221,6 +237,7 @@ public final class ContractTerminal {
                     0,
                     List.of(),
                     0,
+                    false,
                     Optional.empty());
         }
         List<String> open = names(server, charter -> !charter.dormant());
@@ -236,6 +253,7 @@ public final class ContractTerminal {
                 revivable.size(),
                 List.of(),
                 0,
+                false,
                 Optional.empty());
     }
 
