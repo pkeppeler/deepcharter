@@ -30,7 +30,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - A printf-style helper in gametest needs `@FormatMethod`/`@FormatString` (`AnnotateFormatMethod` is on).
 - `-PclientTests=<server test class>` fails the build, and `-PclientTests` never runs evidence scenarios (use `tools/record-evidence.sh <scenario>`). A client-GameTest failure on CI uploads `build/run/clientGameTest/screenshots` (`gh run download <id>`).
 - Scan the world in tests and scenarios through `test/support/BlockSurvey`.
-- Before you write a new bore bot (a pilot's `Input`s, a sidestep `Side`, a lining check) or a scenario camera helper (a structure-axis `at`), look in `test/support` (`BoreBot`) and `EvidenceScenario` and in the nearest sibling test or scenario, and extract there if a second copy would appear. The bore tests' sidestep orders differ on purpose (`Side.next()` against `turnedRight()`): each test's measured table depends on its own, so re-run the table before changing one.
+- Before you write a new bore bot (a pilot's `Input`s, a sidestep `Side`, a lining check) or a scenario camera helper (a structure-axis `at`), look in `test/support` (`BoreBot`) and `EvidenceScenario` and in the nearest sibling test or scenario, and extract there if a second copy would appear.
 - A client test that wants its own pod never uses `getEntities(POD).getFirst()`; the colony's wreck pod shares the level. Select by tag, UUID or position.
 - `test/support/TwoPlayerServer` starts a dedicated server in a client GameTest, joins the real client, then joins one mock player.
 - Wait on entity ticks, not server ticks: chunks far from the players do not tick at first in a fresh world.

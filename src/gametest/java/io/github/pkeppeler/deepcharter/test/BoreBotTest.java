@@ -9,7 +9,11 @@ import net.minecraft.gametest.framework.GameTestHelper;
 public class BoreBotTest {
     @GameTest
     public void nextGoesEastWestSouthNorthAndRound(GameTestHelper helper) {
-        List<Side> walked = List.of(Side.EAST.next(), Side.WEST.next(), Side.SOUTH.next(), Side.NORTH.next());
+        List<Side> walked = List.of(
+                Side.EAST.nextInDeclarationOrder(),
+                Side.WEST.nextInDeclarationOrder(),
+                Side.SOUTH.nextInDeclarationOrder(),
+                Side.NORTH.nextInDeclarationOrder());
         if (!walked.equals(List.of(Side.WEST, Side.SOUTH, Side.NORTH, Side.EAST))) {
             throw helper.assertionException("next() from east, west, south, north gave " + walked);
         }

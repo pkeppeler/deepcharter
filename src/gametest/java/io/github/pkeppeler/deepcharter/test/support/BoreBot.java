@@ -7,9 +7,8 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.player.Input;
 
 /**
- * What the bore bots share ({@code LavaBoreTest}, {@code KellsShaftBoreTest}) and the evidence scenario that follows a pilot down the
- * Kells' shaft: the pilot's inputs, the stuck-step constants, the four sides a bot steps to, and the pilot's look at the lining. The
- * pod faces south (yaw 0), so forward is south and left is east.
+ * What the bore bots share: the pilot's inputs, the stuck-step constants, the four sides a bot steps to, and the pilot's look at the
+ * lining. The pod faces south (yaw 0), so forward is south and left is east.
  */
 public final class BoreBot {
     private BoreBot() {}
@@ -20,10 +19,9 @@ public final class BoreBot {
     public static final Input ROTOR = new Input(false, false, false, false, true, false, false);
 
     public static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    public static final Input STRAFE_EAST = new Input(false, false, true, false, false, false, false);
-    public static final Input STRAFE_WEST = new Input(false, false, false, true, false, false, false);
-    public static final Input DRIVE_SOUTH = new Input(true, false, false, false, false, false, false);
-    public static final Input DRIVE_NORTH = new Input(false, true, false, false, false, false, false);
+    private static final Input STRAFE_EAST = new Input(false, false, true, false, false, false, false);
+    private static final Input STRAFE_WEST = new Input(false, false, false, true, false, false, false);
+    private static final Input DRIVE_NORTH = new Input(false, true, false, false, false, false, false);
 
     /** Ticks a pod on the ground that is not drilling, or a sidestep that does not move, waits before the bot gives up on it. */
     public static final int STUCK_TICKS = 12;
@@ -32,14 +30,13 @@ public final class BoreBot {
 
     /**
      * A way to step aside: the input that drives the pod that way (it faces south), and the axis it moves along. The bots pick the next
-     * side in different orders, and each test's measured table depends on its own: {@link #next()} is the order of the Kells' shaft
-     * table, {@link #turnedRight()}, {@link #turnedLeft()} and {@link #opposite()} are what {@code LavaBoreTest} picks from. Neither
-     * changes without re-running that test's table.
+     * side in different orders, and each bot's measured table depends on its own: {@link #nextInDeclarationOrder()} against
+     * {@link #turnedRight()}, {@link #turnedLeft()} and {@link #opposite()}. Neither changes without re-running that bot's table.
      */
     public enum Side {
         EAST(1, 0, STRAFE_EAST),
         WEST(-1, 0, STRAFE_WEST),
-        SOUTH(0, 1, DRIVE_SOUTH),
+        SOUTH(0, 1, FORWARD),
         NORTH(0, -1, DRIVE_NORTH);
 
         public final int dx;
@@ -68,7 +65,7 @@ public final class BoreBot {
         }
 
         /** The next side to try in declaration order: east, west, south, north, and round. */
-        public Side next() {
+        public Side nextInDeclarationOrder() {
             return values()[(ordinal() + 1) % values().length];
         }
 

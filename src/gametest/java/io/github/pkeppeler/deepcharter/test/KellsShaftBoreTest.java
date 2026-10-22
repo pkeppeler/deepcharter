@@ -471,7 +471,7 @@ public class KellsShaftBoreTest {
         if (!run.sideways) {
             run.idleTicks = pod.onGround() && !pod.drilling() ? run.idleTicks + 1 : 0;
             if (run.idleTicks >= STUCK_TICKS) {
-                startSidestep(run, pod, run.side.next());
+                startSidestep(run, pod, run.side.nextInDeclarationOrder());
             }
         } else {
             double along = run.side.along(pod);
@@ -485,7 +485,7 @@ public class KellsShaftBoreTest {
             run.idleTicks = still ? run.idleTicks + 1 : 0;
             if (run.idleTicks >= STUCK_TICKS) {
                 // The slab beside the pod is refused too: try the next side from where the pod is.
-                startSidestep(run, pod, run.side.next());
+                startSidestep(run, pod, run.side.nextInDeclarationOrder());
             }
         }
     }
