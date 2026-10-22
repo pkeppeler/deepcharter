@@ -3,7 +3,7 @@
 minecraft = "26.3"
 fabricLoader = "0.19.5"
 loom = "1.18.4"
-fabricApi = "0.162.0+26.3"
+fabricApi = "0.164.0+26.3"
 # GeckoLib (ADR 0030, docs/tooling/geckolib-audit.md): pinned exactly, bundled jar-in-jar, verified by checkGeckoLib
 geckolib = "5.5.7"
 geckolibSha512 = "c7c89bd6c5f2801ef1575e2e1212202f5a3eff480d73503beff12b1d60dfb751112fccf36e36c243b26b6b492261cef12d8b2c1a92a734bb0b621daa8c158fc5"
