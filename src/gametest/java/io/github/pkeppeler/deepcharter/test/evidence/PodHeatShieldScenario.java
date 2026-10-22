@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
-import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -32,7 +31,8 @@ import net.minecraft.world.level.block.Blocks;
 public class PodHeatShieldScenario extends EvidenceScenario {
     static final int X = 5100;
     static final int Z = 5000;
-    static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
+    // Well above the layer floor, where the signal decay would black the HUD out.
+    static final int FLOOR_Y = LAYER_ROOM_Y;
     private static final int TICKS_PER_FRAME = 4;
     private static final int MAX_TICKS = 900;
     private static final int RACK = 12;
