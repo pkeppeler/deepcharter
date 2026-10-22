@@ -46,6 +46,7 @@ public class BreachHudTest implements FabricClientGameTest {
                     context, "the client in the world", client -> client.player != null && client.level != null);
 
             assertFadeCoversPodHud(context, singleplayer);
+            assertRumbleWithoutFade(context);
 
             // On the surface the altimeter reads sea level minus Y.
             assertAltimeter(
@@ -109,6 +110,25 @@ public class BreachHudTest implements FabricClientGameTest {
         }
     }
 
+    /** A crossing inside one level (the campaign world) shakes the HUD and sounds, and never fades to black. */
+    private static void assertRumbleWithoutFade(ClientGameTestContext context) {
+        context.runOnClient(client -> BreachEffects.begin(false));
+        boolean shook = false;
+        float peak = 0;
+        for (int tick = 0; tick <= BreachEffects.fadeTicks(); tick++) {
+            shook |= !context.computeOnClient(client -> BreachEffects.jitter().equals(new BreachEffects.Offset(0, 0)));
+            peak = Math.max(peak, context.computeOnClient(client -> BreachEffects.fadeAlpha(0f)));
+            context.waitTick();
+        }
+        context.runOnClient(client -> BreachEffects.reset());
+        if (!shook) {
+            throw new AssertionError("A crossing in place should still shake the HUD");
+        }
+        if (peak > 0) {
+            throw new AssertionError("A crossing in place should not fade, faded to " + peak);
+        }
+    }
+
     /**
      * The fade is a full blackout, so it must draw over the pod readout (registered by another part of
      * the mod). The registry does not expose its order, so this looks at pixels: the Ribbon along the top
@@ -124,7 +144,7 @@ public class BreachHudTest implements FabricClientGameTest {
         if (brightestInRibbon(context, context.takeScreenshot("breach-hud-before-fade")) < 200) {
             throw new AssertionError("The Ribbon should be visible before the fade, or this check proves nothing");
         }
-        context.runOnClient(client -> BreachEffects.begin());
+        context.runOnClient(client -> BreachEffects.begin(true));
         ClientWait.until(context, "the breach fade complete", client -> BreachEffects.fadeAlpha(0f) >= 1f);
         int brightest = brightestInRibbon(context, context.takeScreenshot("breach-hud-fade-peak"));
         if (brightest > 8) {
