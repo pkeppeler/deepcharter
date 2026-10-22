@@ -58,6 +58,8 @@ public class GrainedCrustScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 6;
     private static final int LIMIT_TICKS = 600;
     private static final float EAST = -90f;
+    private static final float WEST = 90f;
+    private static final float FOOT_PITCH = 6f;
     private static final float LOOK_DOWN = 18f;
 
     @Override
@@ -143,8 +145,19 @@ public class GrainedCrustScenario extends EvidenceScenario {
     /** Rule 2: blocks placed against the wall are told off once and crumble on the pulse. */
     private void crumble(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         refill(singleplayer);
-        // From the seat the wall is ahead, with the blocks against it.
+        // On foot and in first person, the wall is ahead with the blocks against it: the cab's frame fills the view
+        // from the seat.
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.stopRiding();
+            player.teleportTo(level(server), X - 1.5, FLOOR_Y, Z - 0.5, Set.of(), EAST, FOOT_PITCH, true);
+        });
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
+        ClientWait.until(
+                context,
+                "the player out of the pod",
+                client -> client.player != null && client.player.getVehicle() == null);
+        context.waitTicks(20);
         // Place about three seconds before a pulse, so that the blocks stand long enough to be seen.
         int waited = 0;
         while (!singleplayer.getServer().computeOnServer(server -> {
@@ -236,8 +249,23 @@ public class GrainedCrustScenario extends EvidenceScenario {
 
     /** Rule 4: the floor turns to grained crust. A pod that stops on it is squeezed, one that keeps moving is not, and a player on foot is hurt. */
     private void squeeze(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> {
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            PodEntity pod = podOnTheFloor(server);
+            player.teleportTo(level(server), pod.getX(), pod.getY(), pod.getZ(), Set.of(), EAST, LOOK_DOWN, true);
+            if (!player.startRiding(pod)) {
+                throw new AssertionError("the player could not mount the pod again");
+            }
+        });
+        ClientWait.until(
+                context,
+                "the player riding the pod again",
+                client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
+        context.runOnClient(client -> {
+            client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            ClientSession.player(client).setXRot(LOOK_DOWN);
+        });
         float full = refill(singleplayer);
-        context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
         singleplayer.getServer().runOnServer(server -> {
             ServerLevel one = level(server);
             for (int x = ROOM_WEST; x < WALL_X - 1; x++) {
@@ -268,7 +296,8 @@ public class GrainedCrustScenario extends EvidenceScenario {
                     "a stopped pod should lose " + 2 * squeezeHull + " in two pulses, it lost " + lostStopped);
         }
 
-        // Driven west across the pad from 20 ticks before a pulse, the same pod takes nothing.
+        // Driven west across the pad (forward, turned to face west) from 20 ticks before a pulse, the same pod takes
+        // nothing.
         singleplayer.getServer().runOnServer(server -> pod(server).setPos(WALL_X - 3, FLOOR_Y, Z + 0.5));
         int waited = 0;
         while (singleplayer.getServer().computeOnServer(server -> GrainedCrust.ticksToPulse(level(server))) != 20) {
@@ -279,7 +308,9 @@ public class GrainedCrustScenario extends EvidenceScenario {
         }
         float before = podHull(singleplayer);
         double from = podX(singleplayer);
-        context.getInput().holdKey(options -> options.keyDown);
+        // Facing west, so that the pod drives away from the camera.
+        context.runOnClient(client -> ClientSession.player(client).setYRot(WEST));
+        context.getInput().holdKey(options -> options.keyUp);
         for (int i = 0; i < 7; i++) {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);
@@ -287,7 +318,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
                 screenshot(context, "grained-crust-moving");
             }
         }
-        context.getInput().releaseKey(options -> options.keyDown);
+        context.getInput().releaseKey(options -> options.keyUp);
         if (from - podX(singleplayer) < 3.0) {
             throw new AssertionError("the pod should have driven across the pad");
         }
