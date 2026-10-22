@@ -1384,6 +1384,11 @@ public class DesignTourScenario extends EvidenceScenario {
                                 20,
                                 new Subject("a timber post", state -> state.is(Blocks.OAK_LOG), 2.5));
                     }
+                    case KELLS_SHAFT -> {
+                        // From the drift's lip, down the shaft.
+                        view(2, at(site, -7, site.height() - 1.0, -0.5), at(site, 0, site.height() - 6.0, -0.5), 60);
+                        still("structure-kells-shaft-from-the-lip");
+                    }
                     default -> throw new AssertionError(kind + " has no views in the tour");
                 }
             }
