@@ -115,6 +115,11 @@ public final class Charters {
         return refusal;
     }
 
+    /** The Director of {@code director}'s charter opens its outposts to other charters, or closes them. Only the Director may. */
+    public static Optional<CharterRefusal> setOutpostsShared(MinecraftServer server, UUID director, boolean shared) {
+        return CharterData.get(server).setOutpostsShared(director, shared);
+    }
+
     public static Optional<CharterRefusal> deny(MinecraftServer server, UUID director, UUID applicant) {
         return CharterData.get(server).deny(director, applicant);
     }

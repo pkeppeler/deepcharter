@@ -25,6 +25,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @param formerMembers the players who were Director or crew and are not any more
  * @param deepestPoint the deepest point the charter has reached, in blocks below the surface, never negative
+ * @param outpostsShared true when the charter's outposts are open to other charters (SPEC section 11); off for a new charter
  */
 public record Charter(
         CharterId id,
@@ -34,7 +35,8 @@ public record Charter(
         List<UUID> applications,
         List<UUID> formerMembers,
         long account,
-        int deepestPoint) {
+        int deepestPoint,
+        boolean outpostsShared) {
 
     /** The body of a saved charter. Invalid saved state decodes to an error, never to an exception. */
     public static final Codec<Charter> CODEC = RecordCodecBuilder.<Fields>create(instance -> instance.group(
@@ -49,7 +51,9 @@ public record Charter(
                                     .optionalFieldOf("former_members", List.of())
                                     .forGetter(Fields::formerMembers),
                             Codec.LONG.fieldOf("account").forGetter(Fields::account),
-                            Codec.INT.fieldOf("deepest_point").forGetter(Fields::deepestPoint))
+                            Codec.INT.fieldOf("deepest_point").forGetter(Fields::deepestPoint),
+                            // Absent before version 3: an old charter keeps its outposts to itself.
+                            Codec.BOOL.optionalFieldOf("outposts_shared", false).forGetter(Fields::outpostsShared))
                     .apply(instance, Fields::new))
             .flatXmap(Fields::toCharter, charter -> DataResult.success(Fields.of(charter)));
 
@@ -68,7 +72,7 @@ public record Charter(
 
     /** A new charter with its founder as Director and nothing else. */
     public static Charter founded(CharterId id, String name, UUID founder) {
-        return new Charter(id, name, Optional.of(founder), List.of(), List.of(), List.of(), 0, 0);
+        return new Charter(id, name, Optional.of(founder), List.of(), List.of(), List.of(), 0, 0, false);
     }
 
     /** True when nobody is left to run the charter. Its account and progress are kept. */
@@ -111,19 +115,20 @@ public record Charter(
                 List.of(),
                 without(formerMembers, player),
                 account,
-                deepestPoint);
+                deepestPoint,
+                outpostsShared);
     }
 
     public Charter withApplication(UUID applicant) {
         List<UUID> applied = new ArrayList<>(applications);
         applied.add(applicant);
-        return new Charter(id, name, director, crew, applied, formerMembers, account, deepestPoint);
+        return new Charter(id, name, director, crew, applied, formerMembers, account, deepestPoint, outpostsShared);
     }
 
     public Charter withoutApplication(UUID applicant) {
         List<UUID> applied = new ArrayList<>(applications);
         applied.remove(applicant);
-        return new Charter(id, name, director, crew, applied, formerMembers, account, deepestPoint);
+        return new Charter(id, name, director, crew, applied, formerMembers, account, deepestPoint, outpostsShared);
     }
 
     /** Signs the applicant on as the newest crew member and removes the application. */
@@ -138,7 +143,8 @@ public record Charter(
                 without(applications, applicant),
                 without(formerMembers, applicant),
                 account,
-                deepestPoint);
+                deepestPoint,
+                outpostsShared);
     }
 
     /**
@@ -149,7 +155,16 @@ public record Charter(
         List<UUID> former = withLast(formerMembers, player);
         if (isDirector(player)) {
             if (crew.isEmpty()) {
-                return new Charter(id, name, Optional.empty(), List.of(), List.of(), former, account, deepestPoint);
+                return new Charter(
+                        id,
+                        name,
+                        Optional.empty(),
+                        List.of(),
+                        List.of(),
+                        former,
+                        account,
+                        deepestPoint,
+                        outpostsShared);
             }
             return new Charter(
                     id,
@@ -159,17 +174,26 @@ public record Charter(
                     applications,
                     former,
                     account,
-                    deepestPoint);
+                    deepestPoint,
+                    outpostsShared);
         }
-        return new Charter(id, name, director, without(crew, player), applications, former, account, deepestPoint);
+        return new Charter(
+                id, name, director, without(crew, player), applications, former, account, deepestPoint, outpostsShared);
     }
 
     public Charter withAccount(long newAccount) {
-        return new Charter(id, name, director, crew, applications, formerMembers, newAccount, deepestPoint);
+        return new Charter(
+                id, name, director, crew, applications, formerMembers, newAccount, deepestPoint, outpostsShared);
     }
 
     public Charter withDeepestPoint(int newDeepestPoint) {
-        return new Charter(id, name, director, crew, applications, formerMembers, account, newDeepestPoint);
+        return new Charter(
+                id, name, director, crew, applications, formerMembers, account, newDeepestPoint, outpostsShared);
+    }
+
+    /** The charter with its outposts open to other charters ({@code true}) or kept to itself. */
+    public Charter withOutpostsShared(boolean shared) {
+        return new Charter(id, name, director, crew, applications, formerMembers, account, deepestPoint, shared);
     }
 
     private static List<UUID> without(List<UUID> players, UUID player) {
@@ -224,7 +248,8 @@ public record Charter(
             List<UUID> applications,
             List<UUID> formerMembers,
             long account,
-            int deepestPoint) {
+            int deepestPoint,
+            boolean outpostsShared) {
         static Fields of(Charter charter) {
             return new Fields(
                     charter.id,
@@ -234,7 +259,8 @@ public record Charter(
                     charter.applications,
                     charter.formerMembers,
                     charter.account,
-                    charter.deepestPoint);
+                    charter.deepestPoint,
+                    charter.outpostsShared);
         }
 
         DataResult<Charter> toCharter() {
@@ -242,8 +268,8 @@ public record Charter(
             if (problem != null) {
                 return DataResult.error(() -> "charter " + name + ": " + problem);
             }
-            return DataResult.success(
-                    new Charter(id, name, director, crew, applications, formerMembers, account, deepestPoint));
+            return DataResult.success(new Charter(
+                    id, name, director, crew, applications, formerMembers, account, deepestPoint, outpostsShared));
         }
     }
 }

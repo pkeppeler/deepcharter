@@ -40,8 +40,8 @@ public final class FuelPump {
     private FuelPump() {}
 
     static void init() {
-        TerminalActions.register(TerminalTypes.FUEL_PUMP, BUY, OutpostAccess.ownerOnly(FuelPump::buy));
-        TerminalActions.register(TerminalTypes.FUEL_PUMP, FILL, OutpostAccess.ownerOnly(FuelPump::fill));
+        TerminalActions.register(TerminalTypes.FUEL_PUMP, BUY, OutpostAccess.guarded(FuelPump::buy));
+        TerminalActions.register(TerminalTypes.FUEL_PUMP, FILL, OutpostAccess.guarded(FuelPump::fill));
         ParkedPodView.register(TerminalTypes.FUEL_PUMP);
     }
 

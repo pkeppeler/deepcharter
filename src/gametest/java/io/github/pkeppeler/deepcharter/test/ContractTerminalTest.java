@@ -147,6 +147,47 @@ public class ContractTerminalTest {
     }
 
     @GameTest
+    public void onlyTheDirectorOpensTheOutpostsToOtherChartersAndTheCharterSeesIt(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        BlockPos pos = place(helper);
+        ServerPlayer director = visitor(helper, "Sharer", pos).player();
+        ServerPlayer crew = visitor(helper, "Sharecrew", pos).player();
+        String charter = uniqueName("Sharers");
+        expectDone(helper, Terminals.act(director, pos, ContractActions.FOUND, name(charter)), "founding");
+        expectDone(helper, Terminals.act(crew, pos, ContractActions.APPLY, name(charter)), "applying");
+        expectDone(helper, Terminals.act(director, pos, ContractActions.APPROVE, name("Sharecrew")), "approving");
+        if (state(server, director).outpostsShared() || state(server, crew).outpostsShared()) {
+            throw helper.assertionException("a new charter keeps its outposts to itself");
+        }
+        expectRefused(
+                helper,
+                Terminals.act(crew, pos, ContractActions.SHARE_OUTPOSTS, new CompoundTag()),
+                "a crew member opening the outposts");
+        if (state(server, crew).outpostsShared()) {
+            throw helper.assertionException("a refused crew member changes nothing");
+        }
+        expectDone(
+                helper,
+                Terminals.act(director, pos, ContractActions.SHARE_OUTPOSTS, new CompoundTag()),
+                "the Director opening the outposts");
+        if (!state(server, director).outpostsShared() || !state(server, crew).outpostsShared()) {
+            throw helper.assertionException("the Director and the crew should both see the outposts open");
+        }
+        expectRefused(
+                helper,
+                Terminals.act(crew, pos, ContractActions.KEEP_OUTPOSTS, new CompoundTag()),
+                "a crew member closing the outposts");
+        expectDone(
+                helper,
+                Terminals.act(director, pos, ContractActions.KEEP_OUTPOSTS, new CompoundTag()),
+                "the Director closing the outposts");
+        if (state(server, director).outpostsShared()) {
+            throw helper.assertionException("the Director's own state should show the outposts closed");
+        }
+        helper.succeed();
+    }
+
+    @GameTest
     public void denyAndWithdrawEndAnApplication(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         BlockPos pos = place(helper);

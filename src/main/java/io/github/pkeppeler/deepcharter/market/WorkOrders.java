@@ -45,7 +45,7 @@ public final class WorkOrders {
     private WorkOrders() {}
 
     static void register() {
-        TerminalActions.register(TerminalTypes.ORE_PROCESSOR, DELIVER, OutpostAccess.ownerOnly(WorkOrders::runDeliver));
+        TerminalActions.register(TerminalTypes.ORE_PROCESSOR, DELIVER, OutpostAccess.guarded(WorkOrders::runDeliver));
     }
 
     private static Optional<Component> runDeliver(TerminalAction.Context context) {

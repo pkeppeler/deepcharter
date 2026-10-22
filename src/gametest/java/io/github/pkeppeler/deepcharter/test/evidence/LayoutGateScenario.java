@@ -60,6 +60,7 @@ public class LayoutGateScenario extends EvidenceScenario {
                             0,
                             List.of(),
                             7,
+                            false,
                             Optional.empty())));
             hold(context);
             screenshot(context, "contract-director-long-name");

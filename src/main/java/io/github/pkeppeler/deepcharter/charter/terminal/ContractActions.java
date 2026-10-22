@@ -17,6 +17,10 @@ public final class ContractActions {
     public static final Identifier DENY = id("charter_deny");
     /** Leave the charter, or withdraw the application. */
     public static final Identifier LEAVE = id("charter_leave");
+    /** As Director, open the charter's outposts to other charters (SPEC section 11). */
+    public static final Identifier SHARE_OUTPOSTS = id("charter_share_outposts");
+    /** As Director, close the charter's outposts to other charters again. */
+    public static final Identifier KEEP_OUTPOSTS = id("charter_keep_outposts");
     /** The key of the name in the args of every action that takes one. */
     public static final String NAME_KEY = "name";
 
