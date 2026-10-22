@@ -133,7 +133,7 @@ public enum StructureKind {
      * middle row of each ring the lining has failed: one block of the wall is lava, with one more behind it, and across the hollow
      * at that row a bulkhead of brick, which a pod lands on, with a hole beside the gap and lava under the hole. A pod can
      * go down, and its hand lining closes the gaps. Timber sets, some fallen, line the rest. At the head, in the wall of the drift,
-     * is the reserve they left: one brick for each gap.
+     * is the reserve they left: {@value #KELLS_RESERVE_PER_GAP} bricks for each gap, in the walls of the drift.
      */
     KELLS_SHAFT(2, 2, 4, 2, OptionalInt.empty()) {
         @Override
@@ -242,13 +242,13 @@ public enum StructureKind {
      * @param outU the step along the line from the hollow's cell beside it to it, and on to the rock behind
      * @param outV the same across the line
      */
-    private record RingSide(int u, int v, int outU, int outV) {
+    public record RingSide(int u, int v, int outU, int outV) {
         /** The cell of the hollow beside this one, which a bulkhead has the hole in. */
-        int holeU() {
+        public int holeU() {
             return u - outU;
         }
 
-        int holeV() {
+        public int holeV() {
             return v - outV;
         }
     }
@@ -263,6 +263,11 @@ public enum StructureKind {
             new RingSide(-1, 1, 0, 1),
             new RingSide(0, 1, 0, 1));
 
+    /** The side cells of the Kells' shaft's ring, in the shaft's own axes: where a gap can be. */
+    public static List<RingSide> kellsRingSides() {
+        return KELLS_SIDES;
+    }
+
     /** The weeps in the shaft are placed in this many rows clear of the drift at the top and of the bottom. */
     private static final int KELLS_TOP_CLEARANCE = 8;
 
@@ -273,17 +278,36 @@ public enum StructureKind {
     /** A set of timber every this many rows. */
     private static final int KELLS_SET_SPACING = 3;
 
+    /**
+     * Slag bricks in the reserve at the head for each gap. A pilot with no hopper lined the first gap of 30 shafts from bricks
+     * carried in the pack with 2.1 on average and 4 at most (#716, {@code KellsShaftBoreTest}), so the reserve holds the most.
+     */
+    public static final int KELLS_RESERVE_PER_GAP = 4;
+
+    /** The least rows between one gap's row and the next: a gap's wall is three rows, and no gap is in another's wall. */
+    private static final int KELLS_GAP_SPACING = 3;
+
+    /**
+     * The rows of the gaps of the Kells' shaft at {@code site}, from the lowest up: 2 to 4 of them (fewer in a shaft too short
+     * to keep {@link #KELLS_GAP_SPACING} between them), each in a band of its own, at least {@link #KELLS_GAP_SPACING} rows from the next.
+     */
+    public static int[] kellsGapRows(StructureSite site) {
+        int gaps = 2 + StructurePlan.pick(site, 0, 3);
+        int room = site.height() - KELLS_TOP_CLEARANCE - KELLS_BOTTOM_CLEARANCE + 1;
+        gaps = Math.min(gaps, room / KELLS_GAP_SPACING);
+        int span = room / gaps;
+        int[] rows = new int[gaps];
+        for (int k = 0; k < gaps; k++) {
+            rows[k] = KELLS_BOTTOM_CLEARANCE + k * span + 1 + StructurePlan.pick(site, 10 + k, span - 2);
+        }
+        return rows;
+    }
+
     /** The shaft in its own axes: the hollow is {@code u, v} from -1 to 0, its ring from -2 to 1, and the line comes in from {@code u = -4}. */
     private static void kellsShaft(StructurePlan p, int height) {
         BlockState brick = SlagBrick.BLOCK.defaultBlockState();
-        int gaps = 2 + p.pick(0, 3);
-        int low = KELLS_BOTTOM_CLEARANCE;
-        int span = (height - KELLS_TOP_CLEARANCE - low + 1) / gaps;
-        int[] rows = new int[gaps];
-        for (int k = 0; k < gaps; k++) {
-            // A gap is at least 2 rows from the next, so no gap is in another's wall.
-            rows[k] = low + k * span + p.pick(10 + k, span - 1);
-        }
+        int[] rows = kellsGapRows(p.site());
+        int gaps = rows.length;
         p.air(-1, 0, -1, 0, height - 1, 0);
         // Timber sets, a quarter of their blocks fallen.
         for (int y = 1; y < height - DRIFT_HEIGHT - 1; y += KELLS_SET_SPACING) {
@@ -322,8 +346,9 @@ public enum StructureKind {
         int floor = height - DRIFT_HEIGHT;
         p.air(-4, floor, -1, -2, height - 1, 0);
         p.box(-4, floor, 0, -2, floor, 0, p.railAlongU());
-        for (int k = 0; k < gaps; k++) {
-            p.set(-3 + k % 2, floor + k / 2, 1, brick);
+        for (int i = 0; i < gaps * KELLS_RESERVE_PER_GAP; i++) {
+            int slot = i / 2;
+            p.set(-4 + slot % 3, floor + slot / 3, i % 2 == 0 ? 1 : -2, brick);
         }
     }
 

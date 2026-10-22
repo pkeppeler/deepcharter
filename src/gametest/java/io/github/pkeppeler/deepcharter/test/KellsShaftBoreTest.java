@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.layer.LavaHazard;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
@@ -25,6 +26,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +39,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
@@ -70,6 +74,13 @@ public class KellsShaftBoreTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(KellsShaftBoreTest.class);
     static final String SHAFTS_ENV = "DEEPCHARTER_KELLS_SHAFTS";
     private static final String REQUESTED_SHAFTS = System.getenv(SHAFTS_ENV);
+    /** Set to 1 with {@value #SHAFTS_ENV} to run only the pilot with no hopper (a fifth of the pods in one server would run out of memory). */
+    static final String RESERVE_ENV = "DEEPCHARTER_KELLS_RESERVE";
+
+    private static final boolean RESERVE_ONLY = "1".equals(System.getenv(RESERVE_ENV));
+    private static final List<Column> MAIN_COLUMNS = Arrays.stream(Column.values())
+            .filter(column -> column != Column.SHAFT_RESERVE)
+            .toList();
     /** The layer the Kells' shaft is in. */
     private static final int LAYER = StructureKind.KELLS_SHAFT.layer();
 
@@ -96,6 +107,8 @@ public class KellsShaftBoreTest {
     private static final float REFUEL_BELOW_PERCENT = 3f;
     /** Slabs below a resting pod, and blocks across it, in which lava makes the lined bore press the key. */
     private static final int LINING_LOOKAHEAD = 3;
+    /** Bricks in the pack of the pilot with no hopper: more than any shaft takes, so the run measures the cost, not the supply. */
+    private static final int CARRIED_BRICKS = 64;
 
     private static final int LINING_SPREAD = 2;
     private static final Input IDLE = new Input(false, false, false, false, false, false, false);
@@ -135,19 +148,23 @@ public class KellsShaftBoreTest {
     }
 
     private enum Column {
-        SHAFT_LINED("shaft, lined", true, true),
-        SHAFT_BARE("shaft, bare", true, false),
-        BORE_BARE("bore, bare", false, false),
-        BORE_LINED("bore, lined", false, true);
+        SHAFT_LINED("shaft, lined", true, true, true),
+        SHAFT_BARE("shaft, bare", true, false, false),
+        BORE_BARE("bore, bare", false, false, false),
+        BORE_LINED("bore, lined", false, true, true),
+        /** No spoil hopper: the pilot lines from slag brick carried in the pack, as from the reserve at the head. */
+        SHAFT_RESERVE("shaft, no hopper, bricks carried", true, true, false);
 
         final String label;
         final boolean inShaft;
         final boolean lines;
+        final boolean hasHopper;
 
-        Column(String label, boolean inShaft, boolean lines) {
+        Column(String label, boolean inShaft, boolean lines, boolean hasHopper) {
             this.label = label;
             this.inShaft = inShaft;
             this.lines = lines;
+            this.hasHopper = hasHopper;
         }
     }
 
@@ -182,6 +199,9 @@ public class KellsShaftBoreTest {
         long lastTouchTick = Long.MIN_VALUE / 2;
         int startBricks;
         int bricksUsed;
+        /** The bricks used when the pod first sank below the highest gap's bulkhead: what lining one gap took. */
+        int firstGapBricks = -1;
+
         int liningPresses;
         float endHull;
         // The straight bore's bot.
@@ -226,17 +246,19 @@ public class KellsShaftBoreTest {
                 .orElseThrow(() -> helper.assertionException(Component.literal("the colony was not built")));
         boolean smoke = REQUESTED_SHAFTS == null || REQUESTED_SHAFTS.isBlank();
         int shafts = smoke ? SMOKE_SHAFTS : shaftCount(helper);
-        List<Column> columns = smoke ? List.of(Column.SHAFT_LINED, Column.SHAFT_BARE) : List.of(Column.values());
+        List<Column> columns = smoke
+                ? List.of(Column.SHAFT_LINED, Column.SHAFT_BARE)
+                : RESERVE_ONLY ? List.of(Column.SHAFT_RESERVE) : MAIN_COLUMNS;
         List<Run> runs = new ArrayList<>();
         List<BlockPos> probes = new ArrayList<>();
         CharterId charter = null;
         for (int i = 0; i < shafts; i++) {
-            // Two shafts for each, one for each shaft column, because a pod that lines a gap changes the shaft for the
-            // next one; the
-            // straight bores go down beside the first, one on each side.
+            // Two shafts: a pod that lines a gap changes its shaft, so each shaft column has its own.
+            // The straight bores go down beside the first, one on each side.
             StructureSite bareShaft = shaftIn(level, conduit, FIRST_CELL_X + 2 * i);
             StructureSite linedShaft = shaftIn(level, conduit, FIRST_CELL_X + 2 * i + 1);
             for (Column column : columns) {
+                // With no bare pod in its server, the pilot with no hopper takes the bare pod's cell.
                 StructureSite site = column == Column.SHAFT_LINED ? linedShaft : bareShaft;
                 int side = column == Column.BORE_LINED ? -BESIDE : column.inShaft ? 0 : BESIDE;
                 MockPlayer pilot = MockPlayers.join(helper, "Kells pilot " + runs.size());
@@ -321,15 +343,19 @@ public class KellsShaftBoreTest {
         PodEntity pod = TestEntities.create(PodRegistry.typeOf(Chassis.MOLE), level);
         pod.setPos(run.centreX, run.startFeetY, run.centreZ);
         level.addFreshEntity(pod);
-        ScannerPods.fit(server, run.pilot.player(), pod, 1);
-        if (run.column.lines) {
+        // Hand lining needs the scanner of tier 2 on the feature map; the bare pods keep the stock tier 1.
+        ScannerPods.fit(server, run.pilot.player(), pod, run.column.lines ? 2 : 1);
+        if (run.column.hasHopper) {
             ScannerPods.fit(server, run.pilot.player(), pod, ComponentTrack.SPOIL_HOPPER, 1);
         }
         if (!run.pilot.player().startRiding(pod)) {
             throw helper.assertionException(
                     Component.literal("a pilot could not mount the pod at the shaft " + run.site.origin()));
         }
-        if (run.column.lines) {
+        if (run.column == Column.SHAFT_RESERVE) {
+            run.pilot.player().getInventory().add(new ItemStack(SlagBrick.item(), CARRIED_BRICKS));
+            run.startBricks = CARRIED_BRICKS;
+        } else if (run.column.lines) {
             int bricks = PodLiningTuning.DEFAULT.brickCapacity();
             PodLining.modify(pod, state -> new PodLining.State(0, bricks, 0, false, false));
             run.startBricks = bricks;
@@ -363,6 +389,12 @@ public class KellsShaftBoreTest {
         if (feetY <= run.level.getMinY() + CRUST_BAND) {
             finish(run, Outcome.CRUST, pod);
             return;
+        }
+        if (run.column.inShaft && run.column.lines && run.firstGapBricks < 0) {
+            int[] rows = StructureKind.kellsGapRows(run.site);
+            if (feetY < run.site.origin().getY() + rows[rows.length - 1] - 1) {
+                run.firstGapBricks = run.startBricks - bricksLeft(run, pod);
+            }
         }
         if (feetY < run.lowestFeetY) {
             run.lowestFeetY = feetY;
@@ -398,10 +430,23 @@ public class KellsShaftBoreTest {
         }
     }
 
+    /** The bricks the pilot can still line with: the rack and the pack. */
+    private static int bricksLeft(Run run, PodEntity pod) {
+        Inventory pack = run.pilot.player().getInventory();
+        int carried = 0;
+        for (int slot = 0; slot < pack.getContainerSize(); slot++) {
+            ItemStack stack = pack.getItem(slot);
+            if (stack.is(SlagBrick.item())) {
+                carried += stack.getCount();
+            }
+        }
+        return PodLining.of(pod).bricks() + carried;
+    }
+
     private static void finish(Run run, Outcome outcome, PodEntity pod) {
         run.outcome = outcome;
         run.endHull = pod.hull();
-        run.bricksUsed = run.startBricks - PodLining.of(pod).bricks();
+        run.bricksUsed = run.startBricks - bricksLeft(run, pod);
         pod.discard();
         run.pilot.releaseInput();
     }
@@ -545,6 +590,14 @@ public class KellsShaftBoreTest {
                     mean(column, r -> r.bricksUsed),
                     mean(column, r -> r.liningPresses),
                     mean(column, r -> r.ticks));
+            if (entry.getKey().inShaft && entry.getKey().lines) {
+                LOGGER.info(
+                        "[kells-bore] {}: bricks per gap {} (the run's bricks over its gaps), bricks for the first gap {} (largest {})",
+                        entry.getKey().label,
+                        mean(column, r -> (double) r.bricksUsed / StructureKind.kellsGapRows(r.site).length),
+                        mean(column, r -> r.firstGapBricks),
+                        column.stream().mapToInt(r -> r.firstGapBricks).max().orElse(0));
+            }
         }
     }
 
@@ -587,12 +640,11 @@ public class KellsShaftBoreTest {
 
     /** The side cells of the shaft's ring that still hold lava: the gaps no pod has lined. */
     private static int gapsLeft(ServerLevel level, StructureSite site) {
-        int[][] sides = {{-2, -1}, {-2, 0}, {1, -1}, {1, 0}, {-1, -2}, {0, -2}, {-1, 1}, {0, 1}};
         int left = 0;
         for (int y = 0; y < site.height(); y++) {
-            for (int[] side : sides) {
-                int x = site.origin().getX() + (site.alongZ() ? side[1] : side[0]);
-                int z = site.origin().getZ() + (site.alongZ() ? side[0] : side[1]);
+            for (StructureKind.RingSide side : StructureKind.kellsRingSides()) {
+                int x = site.origin().getX() + (site.alongZ() ? side.v() : side.u());
+                int z = site.origin().getZ() + (site.alongZ() ? side.u() : side.v());
                 if (level.getBlockState(new BlockPos(x, site.origin().getY() + y, z))
                         .is(Blocks.LAVA)) {
                     left++;

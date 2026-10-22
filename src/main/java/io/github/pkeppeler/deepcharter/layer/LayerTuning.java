@@ -36,9 +36,7 @@ public record LayerTuning(
             throw new IllegalArgumentException(
                     "structureSpacing must be a positive multiple of 16, got " + structureSpacing);
         }
-        // A site keeps its margin from its cell's edge, so that its shell lies in the cell too; the cell needs room
-        // left
-        // to place it.
+        // A site keeps its margin from its cell's edge so its shell lies in the cell: the cell needs room for it.
         int widest = Arrays.stream(StructureKind.values())
                 .mapToInt(StructureKind::margin)
                 .max()

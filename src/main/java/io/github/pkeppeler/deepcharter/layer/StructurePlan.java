@@ -110,7 +110,16 @@ final class StructurePlan {
 
     /** A whole number from 0 up to {@code bound}, the same for the same {@code salt} in the same structure every time. */
     int pick(int salt, int bound) {
+        return pick(site, salt, bound);
+    }
+
+    /** {@link #pick(int, int)} for a site that is not being drawn. */
+    static int pick(StructureSite site, int salt, int bound) {
         return new SplittableRandom(site.seed() ^ salt * 0x9E3779B97F4A7C15L).nextInt(bound);
+    }
+
+    StructureSite site() {
+        return site;
     }
 
     /** A rail that runs along the structure's long axis. */

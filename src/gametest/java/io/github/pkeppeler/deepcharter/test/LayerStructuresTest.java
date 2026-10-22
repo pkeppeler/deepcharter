@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -314,8 +315,7 @@ public class LayerStructuresTest {
                 unmet.add(BuiltInRegistries.BLOCK.getKey(expected.getKey()) + " " + count + "/" + expected.getValue());
             }
         }
-        // The Kells' shaft keeps lava in its gaps on purpose: its own test says where.
-        String fluid = site.kind() == StructureKind.KELLS_SHAFT ? null : fluidOrGasAt(level, site, null);
+        String fluid = fluidOrGasAt(level, site, null);
         if (fluid != null) {
             unmet.add(fluid);
         }
@@ -580,7 +580,7 @@ public class LayerStructuresTest {
     /**
      * The Kells' shaft (#716) hangs off the end of the rail line of its cell and runs down to the first block above the crust.
      * Its hollow is a clear 2 x 2, its top meets the line's last column through a drift with a rail, and its lava is the
-     * gaps: each is one lava block in a ring of slag brick, backed by one more, with a bulkhead of brick across the hollow at its row, and each has a brick in the reserve at the head.
+     * gaps: each is one lava block in a ring of slag brick, backed by one more, with a bulkhead of brick across the hollow at its row, and each has {@value StructureKind#KELLS_RESERVE_PER_GAP} bricks in the reserve at the head.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void theKellsShaftRunsFromTheRailLineToTheCrustAndHasGapsInItsLining(GameTestHelper helper) {
@@ -648,31 +648,83 @@ public class LayerStructuresTest {
         });
     }
 
+    /**
+     * No gap of the Kells' shaft is in another's wall: across 100 cells the rows of a shaft's gaps are 2 to 4, rise by at
+     * least 3 and stay clear of the drift at the top and the crust at the bottom.
+     */
+    @GameTest
+    public void theGapsOfTheKellsShaftAreAtLeastThreeRowsApartInEveryCell(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 2);
+        BlockPos conduit = conduit(helper);
+        for (int cellX = 0; cellX < 10; cellX++) {
+            for (int cellZ = 0; cellZ < 10; cellZ++) {
+                StructureSite shaft = StructureSite.in(
+                        level.getSeed(),
+                        StructureKind.KELLS_SHAFT,
+                        level.getMinY(),
+                        level.getHeight(),
+                        cellX,
+                        cellZ,
+                        conduit);
+                int[] rows = StructureKind.kellsGapRows(shaft);
+                if (rows.length < 2 || rows.length > 4) {
+                    throw failure(
+                            helper, "cell %d, %d (depth %d) has %d gaps", cellX, cellZ, shaft.height(), rows.length);
+                }
+                for (int k = 0; k < rows.length; k++) {
+                    if (k > 0 && rows[k] - rows[k - 1] < 3) {
+                        throw failure(
+                                helper,
+                                "cell %d, %d (depth %d): gaps at rows %s are less than 3 apart",
+                                cellX,
+                                cellZ,
+                                shaft.height(),
+                                Arrays.toString(rows));
+                    }
+                    if (rows[k] < 3 || rows[k] > shaft.height() - 8) {
+                        throw failure(
+                                helper,
+                                "cell %d, %d (depth %d): a gap at row %d is outside the shaft's band",
+                                cellX,
+                                cellZ,
+                                shaft.height(),
+                                rows[k]);
+                    }
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    private static StructureKind.RingSide ringSide(int u, int v) {
+        return StructureKind.kellsRingSides().stream()
+                .filter(side -> side.u() == u && side.v() == v)
+                .findFirst()
+                .orElseThrow();
+    }
+
     /** What the Kells' shaft lacks, as text; empty when it stands as designed. */
     private static List<String> kellsUnmet(ServerLevel level, StructureSite rails, StructureSite shaft) {
         List<String> unmet = new ArrayList<>();
         int top = shaft.height() - 1;
         // The gaps: the side cells of the ring that hold lava.
-        int[][] sides = {{-2, -1}, {-2, 0}, {1, -1}, {1, 0}, {-1, -2}, {0, -2}, {-1, 1}, {0, 1}};
         List<int[]> gaps = new ArrayList<>();
         for (int y = 0; y <= top; y++) {
-            for (int[] side : sides) {
-                if (level.getBlockState(at(shaft, side[0], y, side[1])).is(Blocks.LAVA)) {
-                    gaps.add(new int[] {side[0], y, side[1]});
+            for (StructureKind.RingSide side : StructureKind.kellsRingSides()) {
+                if (level.getBlockState(at(shaft, side.u(), y, side.v())).is(Blocks.LAVA)) {
+                    gaps.add(new int[] {side.u(), y, side.v()});
                 }
             }
         }
-        // The hollow is clear but for a bulkhead of slag brick across it at the row of each gap, with a hole beside the
-        // gap and a lava
-        // block in the cell under the hole.
+        // The hollow is clear but for a bulkhead of slag brick across it at the row of each gap, with a hole
+        // beside the gap and a lava block in the cell under the hole.
         for (int y = 0; y <= top; y++) {
             for (int u = -1; u <= 0; u++) {
                 for (int v = -1; v <= 0; v++) {
                     String expected = "air";
                     for (int[] gap : gaps) {
-                        int holeU = gap[0] == -2 ? -1 : gap[0] == 1 ? 0 : gap[0];
-                        int holeV = gap[2] == -2 ? -1 : gap[2] == 1 ? 0 : gap[2];
-                        boolean hole = u == holeU && v == holeV;
+                        StructureKind.RingSide side = ringSide(gap[0], gap[2]);
+                        boolean hole = u == side.holeU() && v == side.holeV();
                         if (y == gap[1]) {
                             expected = hole ? "air" : "slag";
                         } else if (y == gap[1] - 1 && hole) {
@@ -698,8 +750,9 @@ public class LayerStructuresTest {
         }
         for (int[] gap : gaps) {
             // The lava is backed by one more block, away from the hollow.
-            int backU = gap[0] == -2 ? -3 : gap[0] == 1 ? 2 : gap[0];
-            int backV = gap[2] == -2 ? -3 : gap[2] == 1 ? 2 : gap[2];
+            StructureKind.RingSide side = ringSide(gap[0], gap[2]);
+            int backU = side.u() + side.outU();
+            int backV = side.v() + side.outV();
             if (!level.getBlockState(at(shaft, backU, gap[1], backV)).is(Blocks.LAVA)) {
                 unmet.add("the gap at y " + gap[1] + " has no lava behind it");
             }
@@ -721,8 +774,7 @@ public class LayerStructuresTest {
                 }
             }
         }
-        // The head: the drift is open from the line's last column to the lip, with a rail, and the reserve is in the
-        // wall.
+        // The head: the drift is open from the last column to the lip, with a rail, and the reserve is in its walls.
         for (int y = top - 2; y <= top; y++) {
             for (int u = -4; u <= -2; u++) {
                 for (int v = -1; v <= 0; v++) {
@@ -742,14 +794,16 @@ public class LayerStructuresTest {
             unmet.add("the line's last column holds " + lineEnd);
         }
         int reserve = 0;
-        for (int u = -3; u <= -2; u++) {
-            for (int y = top - 2; y <= top - 1; y++) {
-                if (level.getBlockState(at(shaft, u, y, 1)).is(SlagBrick.BLOCK)) {
-                    reserve++;
+        for (int u = -4; u <= -2; u++) {
+            for (int y = top - 2; y <= top; y++) {
+                for (int v : new int[] {1, -2}) {
+                    if (level.getBlockState(at(shaft, u, y, v)).is(SlagBrick.BLOCK)) {
+                        reserve++;
+                    }
                 }
             }
         }
-        if (reserve != gaps.size()) {
+        if (reserve != gaps.size() * StructureKind.KELLS_RESERVE_PER_GAP) {
             unmet.add(reserve + " bricks in the reserve for " + gaps.size() + " gaps");
         }
         BoundingBox box = shaft.bounds();
@@ -911,6 +965,11 @@ public class LayerStructuresTest {
                 continue;
             }
             BlockState state = level.getBlockState(pos);
+            // The Kells' shaft keeps lava in its gaps on purpose; only other fluid is wrong there.
+            boolean lavaIsTheGaps = site.kind() == StructureKind.KELLS_SHAFT && state.is(Blocks.LAVA);
+            if (lavaIsTheGaps) {
+                continue;
+            }
             if (!state.getFluidState().isEmpty() || state.is(HazardBlocks.GAS_POCKET)) {
                 return String.format("%s holds %s at %s", site.kind(), state, pos.toShortString());
             }

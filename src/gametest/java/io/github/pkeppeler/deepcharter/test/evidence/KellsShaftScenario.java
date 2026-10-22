@@ -139,15 +139,21 @@ public class KellsShaftScenario extends EvidenceScenario {
                     break;
                 }
                 if (recording && !shotGap && resting == RESTING_TICKS) {
+                    // The pilot has not pressed the lining key yet: the camera frames the open gap and its lava.
                     shotGap = true;
                     for (int i = 0; i < 6; i++) {
                         context.waitTicks(TICKS_PER_FRAME);
                         frame(context);
                     }
                     screenshot(context, "kells-shaft-the-gap");
+                    singleplayer.getServer().runOnServer(server -> descent.press());
                 }
                 if (recording && shotGap && !lined && state.used() > 0 && !state.lining()) {
                     lined = true;
+                    for (int i = 0; i < 3; i++) {
+                        context.waitTicks(TICKS_PER_FRAME);
+                        frame(context);
+                    }
                     screenshot(context, "kells-shaft-lined");
                 }
                 if (recording && tick % TICKS_PER_FRAME == 0) {
@@ -178,6 +184,8 @@ public class KellsShaftScenario extends EvidenceScenario {
         private @Nullable PodEntity pod;
         private @Nullable ServerPlayer camera;
         private boolean released;
+        /** True until the gap still is taken: the pilot rests on the bulkhead and does not press the lining key. */
+        private boolean hold = true;
 
         Descent(StructureSite site, int floor) {
             this.site = site;
@@ -194,6 +202,11 @@ public class KellsShaftScenario extends EvidenceScenario {
             return released;
         }
 
+        /** The pilot may press the lining key. */
+        void press() {
+            hold = false;
+        }
+
         /** One tick of the pilot: roll to the lip, sink on the rotor, land on a bulkhead, line a gap in reach, bore on. */
         PodState step() {
             MockPlayer pilot = Objects.requireNonNull(this.pilot, "the pilot is mounted before the first step");
@@ -207,12 +220,12 @@ public class KellsShaftScenario extends EvidenceScenario {
                 pilot.setInput(FORWARD);
                 released = pod.getY() < floor - 0.5;
             } else {
-                if (!lining && pod.onGround() && lavaToLine(pod)) {
+                if (!hold && !lining && pod.onGround() && lavaToLine(pod)) {
                     PodLining.toggle(pilot.player());
                     lining = PodLining.working(pod);
                 }
                 boolean rotor = !pod.onGround() && pod.getDeltaMovement().y < -SINK;
-                pilot.setInput(rotor ? ROTOR : !lining && pod.onGround() ? SPRINT : IDLE);
+                pilot.setInput(rotor ? ROTOR : !lining && !hold && pod.onGround() ? SPRINT : IDLE);
             }
             look();
             return new PodState(
@@ -248,13 +261,14 @@ public class KellsShaftScenario extends EvidenceScenario {
 
         /** The ring cell holding lava nearest below the pod: its {@code u} and {@code v} in the shaft's axes, and its Y; null when none is within reach. */
         private int @Nullable [] nearestGap(PodEntity pod) {
-            int[][] sides = {{-2, -1}, {-2, 0}, {1, -1}, {1, 0}, {-1, -2}, {0, -2}, {-1, 1}, {0, 1}};
             for (int y = (int) Math.floor(pod.getY()) + 1; y > (int) Math.floor(pod.getY()) - GAP_LOOK; y--) {
-                for (int[] side : sides) {
+                for (StructureKind.RingSide side : StructureKind.kellsRingSides()) {
                     BlockPos cell = BlockPos.containing(
-                            worldX(site, side[0] + 0.5, side[1] + 0.5), y, worldZ(site, side[0] + 0.5, side[1] + 0.5));
+                            worldX(site, side.u() + 0.5, side.v() + 0.5),
+                            y,
+                            worldZ(site, side.u() + 0.5, side.v() + 0.5));
                     if (pod.level().getFluidState(cell).is(FluidTags.LAVA)) {
-                        return new int[] {side[0], side[1], y};
+                        return new int[] {side.u(), side.v(), y};
                     }
                 }
             }
