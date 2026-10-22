@@ -450,6 +450,46 @@ public class GrainedCrustTest {
         });
     }
 
+    /** #770: a block placed on the tick before a pulse crumbles in the block ticks, ahead of the tick's end, and still explains. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPlacementThatCrumblesOnTheNextPulseStillExplainsOnce(GameTestHelper helper) {
+        int x = 5160;
+        ServerLevel level = room(helper, x);
+        box(level, x + 3, x + 3, FLOOR, FLOOR + 3, Z, Z, LayerBlocks.GRAINED_CRUST);
+        MockPlayer player = MockPlayers.join(helper, "grain-pulse-edge");
+        player.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 2.5), 0f, 0f);
+        Arrival<Boolean> ready = ready(helper, level, x);
+        long[] pulseAt = {-1};
+        TestTicks.each(helper, () -> {
+            if (!ready.isPresent()) {
+                return;
+            }
+            long now = level.getGameTime();
+            if (pulseAt[0] < 0) {
+                if (PulseClock.ticksToPulse(level) != 1) {
+                    return;
+                }
+                place(player, level, x + 2, FLOOR + 1);
+                pulseAt[0] = now + 1;
+                return;
+            }
+            // A mock reads its messages on its own tick, so they lag by one.
+            if (now < pulseAt[0] + PULSE_MARGIN) {
+                return;
+            }
+            if (!level.getBlockState(new BlockPos(x + 2, FLOOR + 1, Z)).isAir()) {
+                throw failure(helper, "the placed block should have crumbled on the pulse");
+            }
+            if (told(player) != 1) {
+                throw failure(
+                        helper,
+                        "a placement that crumbles on the pulse should explain once, it said it %d times",
+                        told(player));
+            }
+            helper.succeed();
+        });
+    }
+
     @GameTest(maxTicks = MAX_TICKS)
     public void aPlacementWithUnreadableSavedDataDoesNotThrow(GameTestHelper helper) {
         int x = 4920;

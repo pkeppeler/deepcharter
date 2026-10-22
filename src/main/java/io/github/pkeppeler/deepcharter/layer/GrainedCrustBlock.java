@@ -137,6 +137,7 @@ public final class GrainedCrustBlock extends Block {
 
     /** The block breaks as it would in a hand, with its dust and sound, and drops nothing. */
     private static void crumble(ServerLevel level, BlockPos at) {
+        GrainedCrust.explainCrumble(level, at);
         level.destroyBlock(at, false);
         level.playSound(null, at, SoundEvents.CREAKING_SWAY, SoundSource.BLOCKS, 0.8F, 0.5F);
     }
