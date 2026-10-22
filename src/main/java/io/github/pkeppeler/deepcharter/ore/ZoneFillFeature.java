@@ -5,8 +5,8 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -31,8 +31,8 @@ import org.jspecify.annotations.Nullable;
  * {@link Zones#index}). Only the layer's own rock ({@link LayerBlocks#GROUND}) is replaced: caves, the crust and anything an earlier step
  * placed stay as they are. An ore, and Company rock, is placed in the rock it replaces ({@link OreBlock#in}, {@link CompanyRockBlock#in}).
  *
- * <p>A level outside the chain (the campaign world's test dimension, until #743 gives the fill its bands) gets no fill: its height is not
- * one layer, so the level's own thirds would put ore in the wrong rows.
+ * <p>A campaign world (its generator's biome source is a {@link BandBiomeSource}) gets no fill until #743 gives the fill its bands: its
+ * height is not one layer, so the level's own thirds would put ore in the wrong rows. Every other generator keeps the fill.
  *
  * @param zone    0 for the top third of the layer, 2 for the bottom
  * @param ores    ore blocks and the chance of each for a block of stone
@@ -82,9 +82,14 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
         return CODEC;
     }
 
+    /** False for a campaign world, whose bands the fill does not know yet (#743); true for every other generator. */
+    public static boolean runsIn(ChunkGenerator generator) {
+        return !(generator.getBiomeSource() instanceof BandBiomeSource);
+    }
+
     @Override
     public boolean place(WorldGenLevel level, ChunkGenerator generator, RandomSource random, BlockPos origin) {
-        if (LayerChain.bandAt(level.getLevel(), origin.getY()).isEmpty()) {
+        if (!runsIn(generator)) {
             return false;
         }
         int minY = level.getMinY();

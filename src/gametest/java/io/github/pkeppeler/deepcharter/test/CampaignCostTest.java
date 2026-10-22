@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
  * (the surface, two layers and the unbuilt rock on our own generator, 2352 blocks) against {@code tall_baseline} (one layer's noise over
  * 2048 blocks). By default it generates a few columns of each and checks they exist. With the number of rounds in the environment, for example
  * {@code DEEPCHARTER_CAMPAIGN_COST=4 tools/gametest.sh 'campaign_cost_test*'}, it takes that many readings of each world, alternating which
- * is first, prints every reading as a {@code [campaign-cost]} line and fails when the median CPU per column of the campaign is over the bar.
+ * is first, prints every reading as a {@code [campaign-cost]} line and fails when the campaign's median CPU per block of height is over the bar. It is per block because the campaign world is 2352 blocks tall and the baseline 2048, which is 1.148x already: a per-column bar would leave the surface nothing. The baseline still runs the zone fill that the campaign world lacks until #743, so re-measure when #743 lands.
  * It needs at least {@value #MIN_ROUNDS} rounds, because a median of fewer is a guess. {@value #ONLY_ENV}=<world> (or a comma-separated list of the worlds) measures only those, so
  * that a single world's heap is read in a JVM that held no other measured world; a run that leaves one of the two out prints readings and asserts nothing.
  */
@@ -63,19 +63,24 @@ public class CampaignCostTest {
         if (campaign == null || baseline == null) {
             return;
         }
-        double cpu = ColumnCost.median(campaign).cpuMsPerColumn()
-                / ColumnCost.median(baseline).cpuMsPerColumn();
-        double heap = ColumnCost.median(campaign).heapMb()
-                / ColumnCost.median(baseline).heapMb();
+        Measurement campaignMedian = ColumnCost.median(campaign);
+        Measurement baselineMedian = ColumnCost.median(baseline);
+        double perColumn = campaignMedian.cpuMsPerColumn() / baselineMedian.cpuMsPerColumn();
+        double perBlock = campaignMedian.cpuMsPerBlock() / baselineMedian.cpuMsPerBlock();
+        double heap = campaignMedian.heapMb() / baselineMedian.heapMb();
         LOGGER.info(
-                "[campaign-cost] {} vs {}: CPU {}x, heap {}x",
+                "[campaign-cost] {} vs {}: CPU {}x per column, {}x per block of height ({} against {} blocks), heap {}x",
                 CAMPAIGN,
                 BASELINE,
-                ColumnCost.format(cpu),
+                ColumnCost.format(perColumn),
+                ColumnCost.format(perBlock),
+                campaignMedian.height(),
+                baselineMedian.height(),
                 ColumnCost.format(heap));
-        if (cpu > BAR) {
-            throw helper.assertionException(net.minecraft.network.chat.Component.literal(CAMPAIGN + " costs "
-                    + ColumnCost.format(cpu) + "x " + BASELINE + " per column, over the " + BAR + " bar"));
+        if (perBlock > BAR) {
+            throw helper.assertionException(
+                    net.minecraft.network.chat.Component.literal(CAMPAIGN + " costs " + ColumnCost.format(perBlock)
+                            + "x " + BASELINE + " per block of height, over the " + BAR + " bar"));
         }
     }
 }

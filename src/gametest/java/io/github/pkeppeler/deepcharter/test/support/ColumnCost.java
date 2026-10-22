@@ -39,8 +39,13 @@ public final class ColumnCost {
 
     private ColumnCost() {}
 
-    /** One run's reading, per column. */
-    public record Measurement(double cpuMsPerColumn, double heapMb, double wallMsPerColumn) {}
+    /** One run's reading, per column, and the blocks of height of the world it was taken in. */
+    public record Measurement(double cpuMsPerColumn, double heapMb, double wallMsPerColumn, int height) {
+        /** CPU per block of the column's height: what a taller world costs apart from being taller. */
+        public double cpuMsPerBlock() {
+            return cpuMsPerColumn / height;
+        }
+    }
 
     /**
      * Generates the columns of {@code worlds} and, for {@code rounds} above 0, hands the readings of each world (one per round) to
@@ -109,7 +114,8 @@ public final class ColumnCost {
         return new Measurement(
                 medianOf(all.stream().mapToDouble(m -> m.cpuMsPerColumn).toArray()),
                 medianOf(all.stream().mapToDouble(m -> m.heapMb).toArray()),
-                medianOf(all.stream().mapToDouble(m -> m.wallMsPerColumn).toArray()));
+                medianOf(all.stream().mapToDouble(m -> m.wallMsPerColumn).toArray()),
+                all.getFirst().height);
     }
 
     public static String format(double value) {
@@ -137,7 +143,8 @@ public final class ColumnCost {
     private static double medianOf(double[] values) {
         double[] sorted = values.clone();
         Arrays.sort(sorted);
-        return sorted[sorted.length / 2];
+        int middle = sorted.length / 2;
+        return sorted.length % 2 == 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
     }
 
     private static int columnsOf(int radius) {
@@ -212,7 +219,8 @@ public final class ColumnCost {
             double wallMs = (System.nanoTime() - wallBefore) / 1e6;
             double heapMb = smoke ? 0 : (usedHeap() - heapBefore) / (1024.0 * 1024.0);
             forEachChunk(chunk -> FarChunks.release(helper, level.get(), chunk[0], chunk[1]));
-            return new Measurement(cpuMs / columns, heapMb, wallMs / columns);
+            return new Measurement(
+                    cpuMs / columns, heapMb, wallMs / columns, level.get().getHeight());
         }
 
         private void forEachChunk(Consumer<int[]> action) {

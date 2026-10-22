@@ -88,9 +88,19 @@ public final class BandBiomeSource extends BiomeSource {
     }
 
     private static DataResult<BandBiomeSource> layersBelowTheSurface(BandBiomeSource source) {
-        return source.layers.stream().allMatch(layer -> layer.minY + layer.height <= source.surfaceMinY)
-                ? DataResult.success(source)
-                : DataResult.error(() -> "A layer must end at or below surface_min_y " + source.surfaceMinY);
+        for (Layer layer : source.layers) {
+            if (layer.minY + layer.height > source.surfaceMinY) {
+                return DataResult.error(() -> "A layer must end at or below surface_min_y " + source.surfaceMinY);
+            }
+            for (Layer other : source.layers) {
+                if (layer != other
+                        && layer.minY < other.minY + other.height
+                        && other.minY < layer.minY + layer.height) {
+                    return DataResult.error(() -> "Layers overlap: " + layer.minY + " and " + other.minY);
+                }
+            }
+        }
+        return DataResult.success(source);
     }
 
     @Override

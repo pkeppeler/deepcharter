@@ -7,6 +7,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.ore.ZoneFillFeature;
 import io.github.pkeppeler.deepcharter.test.support.CampaignBands;
 import io.github.pkeppeler.deepcharter.test.support.CampaignBands.Band;
 import java.io.IOException;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -25,8 +27,11 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.FeatureSorter;
@@ -402,6 +407,30 @@ public class CampaignTerrainTest {
                 source.getAsJsonObject("surface").get("biomes").equals(shippedBiomes),
                 "the surface biomes are not the shipped overworld's");
         helper.succeed();
+    }
+
+    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void theZoneFillSkipsOnlyTheCampaignWorld(GameTestHelper helper) {
+        // Until #743 gives the fill its bands, the campaign world has none; the layers and every tall_* world keep it
+        // as on main.
+        for (String world : List.of(
+                "deepcharter:layer_1",
+                "deepcharter:layer_2",
+                "deepcharter:tall_baseline",
+                "deepcharter:tall_surface")) {
+            expect(helper, fillRunsIn(helper, world), "the zone fill must run in %s", world);
+        }
+        expect(helper, !fillRunsIn(helper, SAMPLE), "the zone fill must not run in %s", SAMPLE);
+        helper.succeed();
+    }
+
+    private static boolean fillRunsIn(GameTestHelper helper, String dimension) {
+        ServerLevel level = helper.getLevel()
+                .getServer()
+                .getLevel(ResourceKey.create(Registries.DIMENSION, Identifier.parse(dimension)));
+        expect(helper, level != null, "no dimension %s", dimension);
+        return ZoneFillFeature.runsIn(
+                Objects.requireNonNull(level).getChunkSource().getGenerator());
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
