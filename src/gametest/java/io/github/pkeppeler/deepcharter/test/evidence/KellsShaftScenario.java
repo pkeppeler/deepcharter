@@ -58,6 +58,9 @@ public class KellsShaftScenario extends EvidenceScenario {
     private static final int RESTING_TICKS = 6;
     private static final double CAMERA_UP = 3.2;
     private static final int GAP_LOOK = 5;
+    /** Blocks the pod is lifted by while the wall stills are taken. */
+    private static final double PODS_LIFT = 8.0;
+
     private static final float MIN_FUEL = 10f;
     /** Frames shown after the lining is done, with the pod boring the bulkhead. */
     private static final int AFTER_FRAMES = 40;
@@ -145,16 +148,26 @@ public class KellsShaftScenario extends EvidenceScenario {
                         context.waitTicks(TICKS_PER_FRAME);
                         frame(context);
                     }
+                    singleplayer.getServer().runOnServer(server -> descent.away(true));
+                    for (int i = 0; i < 3; i++) {
+                        context.waitTicks(TICKS_PER_FRAME);
+                        frame(context);
+                    }
                     screenshot(context, "kells-shaft-the-gap");
-                    singleplayer.getServer().runOnServer(server -> descent.press());
+                    singleplayer.getServer().runOnServer(server -> {
+                        descent.away(false);
+                        descent.press();
+                    });
                 }
                 if (recording && shotGap && !lined && state.used() > 0 && !state.lining()) {
                     lined = true;
+                    singleplayer.getServer().runOnServer(server -> descent.away(true));
                     for (int i = 0; i < 3; i++) {
                         context.waitTicks(TICKS_PER_FRAME);
                         frame(context);
                     }
                     screenshot(context, "kells-shaft-lined");
+                    singleplayer.getServer().runOnServer(server -> descent.away(false));
                 }
                 if (recording && tick % TICKS_PER_FRAME == 0) {
                     frame(context);
@@ -186,6 +199,12 @@ public class KellsShaftScenario extends EvidenceScenario {
         private boolean released;
         /** True until the gap still is taken: the pilot rests on the bulkhead and does not press the lining key. */
         private boolean hold = true;
+        /** The gap the two wall stills show: its ring side and its row. */
+        private StructureKind.@Nullable RingSide gapSide;
+
+        private int gapY;
+        /** Where the pod rests while it is lifted out of the stills. */
+        private @Nullable Vec3 restedAt;
 
         Descent(StructureSite site, int floor) {
             this.site = site;
@@ -200,6 +219,35 @@ public class KellsShaftScenario extends EvidenceScenario {
 
         boolean released() {
             return released;
+        }
+
+        /**
+         * Lifts the pod clear of the hollow (no gravity, no collision) while the camera frames the gap from just above the
+         * bulkhead, or puts it back on the plug.
+         */
+        void away(boolean on) {
+            PodEntity pod = Objects.requireNonNull(this.pod, "the pod is placed before the stills");
+            if (on) {
+                if (gapSide == null) {
+                    int[] gap = Objects.requireNonNull(nearestGap(pod), "a gap is in reach of the pod on its bulkhead");
+                    gapSide = StructureKind.kellsRingSides().stream()
+                            .filter(side -> side.u() == gap[0] && side.v() == gap[1])
+                            .findFirst()
+                            .orElseThrow();
+                    gapY = gap[2];
+                }
+                restedAt = pod.position();
+                pod.setNoGravity(true);
+                pod.noPhysics = true;
+                pod.setPos(restedAt.add(0, PODS_LIFT, 0));
+            } else {
+                pod.setPos(Objects.requireNonNull(restedAt, "the pod was lifted"));
+                pod.setDeltaMovement(Vec3.ZERO);
+                pod.noPhysics = false;
+                pod.setNoGravity(false);
+                restedAt = null;
+            }
+            look();
         }
 
         /** The pilot may press the lining key. */
@@ -242,16 +290,21 @@ public class KellsShaftScenario extends EvidenceScenario {
                 at = new Vec3(worldX(site, -8, -0.5), floor + 1.6, worldZ(site, -8, -0.5));
                 target = pod.position().add(0, 1, 0);
             } else {
-                int[] gap = nearestGap(pod);
+                // While the pod is lifted out of a wall still, the camera works from where it rested and the gap chosen
+                // then.
+                int[] gap = restedAt != null && gapSide != null
+                        ? new int[] {gapSide.u(), gapSide.v(), gapY}
+                        : nearestGap(pod);
+                double baseY = restedAt != null ? restedAt.y : pod.getY();
                 double du = gap == null ? 1 : gap[0] + 0.5 - 0.0;
                 double dv = gap == null ? 0 : gap[1] + 0.5;
                 // The camera is over the pod's cell, toward the side the gap is not on, and looks at the gap's cell.
                 at = new Vec3(
                         worldX(site, -0.3 - 0.3 * Math.signum(du), -0.5 - 0.3 * Math.signum(dv)),
-                        pod.getY() + CAMERA_UP,
+                        baseY + CAMERA_UP,
                         worldZ(site, -0.3 - 0.3 * Math.signum(du), -0.5 - 0.3 * Math.signum(dv)));
-                int gapY = gap == null ? (int) pod.getY() - 1 : gap[2];
-                target = new Vec3(worldX(site, du - 0.5, dv - 0.5), gapY + 0.5, worldZ(site, du - 0.5, dv - 0.5));
+                int targetY = gap == null ? (int) pod.getY() - 1 : gap[2];
+                target = new Vec3(worldX(site, du - 0.5, dv - 0.5), targetY + 0.5, worldZ(site, du - 0.5, dv - 0.5));
             }
             Vec3 d = target.subtract(at);
             float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
