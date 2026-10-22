@@ -48,3 +48,21 @@ One dimension, the **campaign world**, holds the surface and story layers 1 to 8
 - A drilled shaft lets a pod reach a seam at terminal speed, so the 600-block lead is a minimum.
 - ADR 0006 (a breach crossing recreates the pod) and ADR 0022 (the tower carries a towed pod across a breach) still hold at seams, where the entity crosses worlds. Inside the campaign world there is no crossing to recreate or carry through. Follow-up in #214 and #215.
 - The breach code (`BreachService`) crosses by teleport today. Its rewrite is separate work under the same milestone.
+
+## Follow-up, 2026-10-22 (#743): the campaign world with its content, against the 1.15x bar
+
+Method: `CampaignCostTest`, 289 columns per world and round, 5 rounds per run, one JVM per run (`tools/gametest.sh 'campaign_cost_test*'`, `DEEPCHARTER_CAMPAIGN_COST=5`), CPU ms per column, the ratio taken on the medians and scaled to per block of height (2048 / 2352 = 0.871). Each run's load is the 1-minute load average read just before the run (all under 2); the Mac was shared, so the peak CPU of the busiest other process (not Java) is listed too.
+
+The fill covers 448 of 2352 rows in `campaign_sample` (the layers' bands), 2048 of 2048 in `tall_layer` and 0 of 2048 in `tall_baseline` (vanilla stone, where the zone fill places nothing).
+
+| Run | World order | Load before | Busiest other process | `tall_baseline` min / median | `campaign_sample` min / median | Per column | Per block |
+|---|---|---|---|---|---|---|---|
+| 1 | baseline, campaign | 1.89 | Chrome helper 143% | 122.91 / 150.63 | 175.29 / 202.95 | 1.35x | 1.17x |
+| 2 | campaign, baseline | 1.90 | Code helper 36% | 114.57 / 135.37 | 163.96 / 186.04 | 1.37x | 1.20x |
+| 3 | baseline, campaign | 1.88 | `mediaanalysisd` 238% | 123.68 / 139.32 | 164.17 / 199.39 | 1.43x | 1.25x |
+
+Pooled over the 15 rounds: `tall_baseline` min 114.57, median 139.32; `campaign_sample` min 163.96, median 199.39. That is 1.43x per column and 1.25x per block of height on the medians (the minima give the same 1.43x and 1.25x). The per-run minima give 1.43x, 1.43x and 1.33x per column (1.25x, 1.25x, 1.16x per block). Run 3 shared the Mac with a 238% background process; its rounds drift upward, as the earlier readings did.
+
+Context, one run (load 1.56, busiest other process a 74% Code helper): `tall_layer` min 186.60, median 235.41; `campaign_sample` min 169.42, median 218.64. The campaign world is 0.93x per column and 0.81x per block of height against a world that fills every row.
+
+Verdict: against the 1.15x per-block bar the campaign world with its content is over, at 1.17x to 1.25x per block (1.25x pooled) against `tall_baseline`. The bar is not met. The baseline is a world with no fill, no biome zones, no structures and no layer rock, so the comparison charges the campaign world for all its content. The fill alone is not shown to be the cost: the world fills 448 rows and costs 0.81x per block of the world that fills 2048. Which part of the content makes up the 1.25x (the band biome source, the layer rock, the structure draw, the ore and cave features) is not measured. A split by feature is the next step if the bar is to be met, and the heap readings drift too much between rounds (negative deltas) to judge.
