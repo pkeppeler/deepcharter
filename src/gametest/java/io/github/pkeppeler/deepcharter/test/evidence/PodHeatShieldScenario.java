@@ -31,9 +31,8 @@ import net.minecraft.world.level.block.Blocks;
 public class PodHeatShieldScenario extends EvidenceScenario {
     static final int X = 5100;
     static final int Z = 5000;
-    /** Well above the layer floor, where the signal decay would black the HUD out. */
+    // Well above the layer floor, where the signal decay would black the HUD out.
     static final int FLOOR_Y = LAYER_ROOM_Y;
-
     private static final int TICKS_PER_FRAME = 4;
     private static final int MAX_TICKS = 900;
     private static final int RACK = 12;
