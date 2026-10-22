@@ -14,18 +14,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 
 /**
- * Breach crossing inside the campaign world (ADR 0061): the layers are Y bands of one level, so a crossing moves nobody. It is
- * noticed when a player's root vehicle passes a band boundary, and {@link BreachEvents#CROSSED} fires with the same level as
- * {@code from} and {@code to}.
- *
- * <p>Each player has the layer last seen. A descent is the root vehicle dropping below the floor of that layer, and an ascent is it
- * rising {@link LayerTuning#crustThickness()} rows above the floor of the layer above, so the rows of crust, or the same rows over the
- * surface's open floor, are the hysteresis: a pod that bobs inside them raises nothing. At most one layer is crossed a tick. The
- * last layer's floor has no crossing, and neither has the top of the surface.
- *
- * <p>The layer last seen is kept in memory only. A player seen for the first time, after a login or from another level, is put in the
- * layer their Y is in (a Y in the crust counts as the layer above it) and raises nothing. So is a player who left the level and came
- * back, and one who respawned.
+ * Breach crossing inside the campaign world, where the layers are Y bands of one level and {@link BreachEvents#CROSSED} fires with the
+ * same level as {@code from} and {@code to} (ADR 0061). The layer last seen is kept in memory only; a first sighting settles into
+ * the layer the Y is in and raises nothing.
  */
 final class BandCrossing {
     /** The layer a player was last in, and the level it was seen in. */
