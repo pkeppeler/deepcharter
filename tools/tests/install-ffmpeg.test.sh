@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# Tests the source order of tools/install-ffmpeg.sh with stub sudo, timeout, apt-get, dpkg, ffmpeg and ffprobe.
+# Each stub logs its call to $work/calls; apt-get fails or succeeds per the APT_* variables.
+# Usage: tools/tests/install-ffmpeg.test.sh
+set -euo pipefail
+
+tools=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+failures=0
+check() { # check <description> <condition-result: 0 = ok>
+  if [[ $2 -eq 0 ]]; then echo "ok   $1"; else echo "FAIL $1"; failures=$((failures + 1)); fi
+}
+
+bin=$work/bin
+mkdir -p "$bin"
+cat >"$bin/sudo" <<'S'
+#!/usr/bin/env bash
+exec "$@"
+S
+cat >"$bin/timeout" <<'S'
+#!/usr/bin/env bash
+# Drops "-k N LIMIT", logs the limit; APT_TIMEOUT_ON=<n> makes the n-th timed command look timed out.
+shift 2
+echo "timeout $1" >>"$CALLS"
+shift
+n=$(grep -c '^timeout' "$CALLS")
+[[ ${APT_TIMEOUT_ON:-} == "$n" ]] && exit 124
+exec "$@"
+S
+cat >"$bin/apt-get" <<'S'
+#!/usr/bin/env bash
+official=no
+[[ " $* " == *"Dir::Etc::sourcelist=/dev/null"* ]] && official=yes
+echo "apt-get $1 official=$official" >>"$CALLS"
+if [[ $1 == install && $official == no && ${APT_DEFAULT_FAILS:-} == 1 ]]; then exit 100; fi
+if [[ $1 == install && $official == yes && ${APT_OFFICIAL_FAILS:-} == 1 ]]; then exit 100; fi
+if [[ $1 == install ]]; then
+  archives=$(printf '%s\n' "$@" | sed -n 's/^Dir::Cache::archives=//p')
+  touch "$archives/new.deb"
+fi
+exit 0
+S
+for stub in dpkg ffprobe; do printf '#!/usr/bin/env bash\necho "%s $*" >>"$CALLS"\n' "$stub" >"$bin/$stub"; done
+cat >"$bin/ffmpeg" <<'S'
+#!/usr/bin/env bash
+[[ $* == *-encoders* ]] && echo " A....D libvorbis"
+exit 0
+S
+chmod +x "$bin"/*
+
+run() { # run <name> [VAR=value...]: leaves $work/<name>.{out,calls,debs}, sets $status
+  local name=$1
+  shift
+  mkdir -p "$work/$name.debs"
+  : >"$work/$name.calls"
+  status=0
+  env PATH="$bin:$PATH" CALLS="$work/$name.calls" DEBS="$work/$name.debs" FFMPEG_CODENAME=noble "$@" \
+    "$tools/install-ffmpeg.sh" >"$work/$name.out" 2>&1 || status=$?
+}
+calls() { cat "$work/$1.calls"; }
+has() { grep -qF -- "$2" "$work/$1.$3"; echo $?; } # has <name> <text> <out|calls>
+
+run miss
+check "a miss with a healthy default mirror succeeds" "$status"
+check "  using the default mirror only" "$(has miss 'official=yes' calls | awk '{print 1 - $1}')"
+check "  with one bounded attempt" "$(($(grep -c '^timeout' "$work/miss.calls") - 1))"
+
+run mirror APT_DEFAULT_FAILS=1
+check "a stalled default mirror falls back to the official mirrors" "$status"
+check "  runs the official index update" "$(has mirror 'apt-get update official=yes' calls)"
+check "  installs from the official mirrors" "$(has mirror 'apt-get install official=yes' calls)"
+check "  warns which source failed" "$(has mirror "the runner's default apt mirror exited 100" out)"
+
+run timedout APT_TIMEOUT_ON=1
+check "a timed-out default mirror falls back too" "$status"
+check "  says it timed out" "$(has timedout "default apt mirror timed out" out)"
+
+run both APT_DEFAULT_FAILS=1 APT_OFFICIAL_FAILS=1
+check "both sources failing exits non-zero" "$((status == 0))"
+check "  the error names the default mirror" "$(has both "the runner's default apt mirror exited 100;" out)"
+check "  the error names the official mirrors" "$(has both 'archive.ubuntu.com and security.ubuntu.com exited 100' out)"
+
+mkdir -p "$work/stale.debs"
+touch "$work/stale.debs/old.deb"
+run stale MATCHED_KEY=ffmpeg-debs-ubuntu24-old APT_DEFAULT_FAILS=1
+check "a stale set still falls back to the official mirrors" "$status"
+check "  keeps the stale debs as the archives dir" "$([[ -e $work/stale.debs/old.deb ]]; echo $?)"
+check "  does not install offline with dpkg -i" "$(has stale 'dpkg -i' calls | awk '{print 1 - $1}')"
+
+run hit MATCHED_KEY=k CACHE_HIT=true
+check "an empty exact hit is an error" "$((status == 0))"
+touch "$work/hit.debs/a.deb"
+run hit MATCHED_KEY=k CACHE_HIT=true
+check "an exact hit installs offline" "$status"
+check "  without apt" "$(has hit apt-get calls | awk '{print 1 - $1}')"
+
+exit $((failures > 0))

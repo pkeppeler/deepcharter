@@ -2,12 +2,14 @@
 # Restore-only: this action NEVER saves the cache. Callers run PR-controlled code after it
 # (record-evidence.yml), and dpkg does not check signatures on cached files, so a save from
 # such a job could poison main's scope. Only ffmpeg-seed.yml saves (trusted triggers, no PR code),
-# using the outputs below. A miss falls back to a bounded apt install (#290).
+# using the outputs below. A miss falls back to a bounded apt install (#290); the logic and its
+# source order are in tools/install-ffmpeg.sh.
 # GitHub rolls runner images over days, so a job can land on an image newer than the last seed's
 # (#771: three runs missed on image 20261018 while main's cache was keyed 20261012, then waited
 # 2 x 100 s on the mirror). The restore therefore falls back to the newest entry for the same OS
-# (any image, any action hash: the set is only ffmpeg's packages), and a failed dpkg of such a
-# stale set falls back to apt. The seed turns the fallback off, so it saves a set built on its own image.
+# (any image, any action hash: the set is only ffmpeg's packages) as the archives dir of the apt
+# install, so apt fetches only what differs, from the official mirrors if the runner's stalls (#777).
+# The seed turns the fallback off, so it saves a set built on its own image.
 name: Install ffmpeg
 description: Install ffmpeg from cached Ubuntu .deb files, or by a bounded apt install on a cache miss. Never saves the cache.
 
@@ -45,56 +47,13 @@ runs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ runner.temp }}/ffmpeg-debs/*.deb
-        key: ffmpeg-debs-${{ steps.image.outputs.id }}-${{ hashFiles('.github/actions/install-ffmpeg/action.yml') }}
+        key: ffmpeg-debs-${{ steps.image.outputs.id }}-${{ hashFiles('.github/actions/install-ffmpeg/action.yml', 'tools/install-ffmpeg.sh') }}
         restore-keys: ${{ inputs.allow-stale == 'true' && format('ffmpeg-debs-{0}-', steps.image.outputs.os) || '' }}
     - name: install ffmpeg
       shell: bash
       env:
+        ACTION_PATH: ${{ github.action_path }}
         DEBS: ${{ runner.temp }}/ffmpeg-debs
         CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
         MATCHED_KEY: ${{ steps.cache.outputs.cache-matched-key }}
-      run: |
-        fail() {
-          echo "::error::install ffmpeg: $1"
-          exit 1
-        }
-        mkdir -p "$DEBS"
-        use_apt=true
-        if [[ -n $MATCHED_KEY ]]; then
-          compgen -G "$DEBS/*.deb" >/dev/null || fail "cache restored from $MATCHED_KEY but it holds no .deb files"
-          if [[ $CACHE_HIT == true ]]; then
-            echo "cache hit: installing $(find "$DEBS" -name '*.deb' | wc -l) cached packages offline from $MATCHED_KEY"
-            sudo dpkg -i "$DEBS"/*.deb || fail "dpkg -i of the cached .deb files failed (cache $MATCHED_KEY)"
-            use_apt=false
-          else
-            echo "cache stale hit: trying $(find "$DEBS" -name '*.deb' | wc -l) cached packages from $MATCHED_KEY (another runner image)"
-            # apt resolves the set atomically against the image's installed packages and, without
-            # --allow-downgrades, refuses to downgrade a newer library the image already has.
-            if sudo apt-get install -y -q --no-download --no-install-recommends "$DEBS"/*.deb; then
-              use_apt=false
-            else
-              echo "::warning::the stale cached .deb files from $MATCHED_KEY did not install; falling back to apt"
-              sudo dpkg --configure -a || true
-              sudo rm -rf "${DEBS:?}"/*
-            fi
-          fi
-        else
-          echo "cache miss: no cached .deb files for this action and OS"
-        fi
-        if [[ $use_apt == true ]]; then
-          echo "bounded apt install into $DEBS"
-          # Skip the recommended packages (GUI, audio, GPU) the tones test never uses.
-          # First try has no index update; the retry refreshes the index. Each attempt has its own limit.
-          apt_install=(sudo apt-get install -o "Dir::Cache::archives=$DEBS" -o DPkg::Lock::Timeout=20 -y -q --no-install-recommends ffmpeg)
-          if ! timeout -k 5 150 "${apt_install[@]}"; then
-            echo "::warning::ffmpeg install failed or timed out; retrying after an index update"
-            timeout -k 5 60 sudo apt-get update -q || true
-            timeout -k 5 180 "${apt_install[@]}" || fail "apt-get install ffmpeg from the runner's Ubuntu apt mirror failed or timed out twice, and no usable cached .deb set exists (restore key: ${MATCHED_KEY:-none})"
-          fi
-          sudo rm -rf "$DEBS/partial" "$DEBS/lock"
-          compgen -G "$DEBS/*.deb" >/dev/null || fail "apt-get left no .deb files in $DEBS"
-        fi
-        ffmpeg -hide_banner -version >/dev/null || fail "ffmpeg does not run after the install"
-        ffprobe -hide_banner -version >/dev/null || fail "ffprobe does not run after the install"
-        encoders=$(ffmpeg -hide_banner -encoders) || fail "ffmpeg -encoders failed after the install"
-        [[ $encoders == *libvorbis* ]] || fail "the installed ffmpeg has no libvorbis encoder"
+      run: "$ACTION_PATH/../../../tools/install-ffmpeg.sh"
