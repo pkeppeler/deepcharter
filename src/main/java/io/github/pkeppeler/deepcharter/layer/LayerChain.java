@@ -1,14 +1,20 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.stream.IntStream;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.dimension.DimensionType;
 
@@ -45,6 +51,34 @@ public final class LayerChain {
         return indexOf(type).stream()
                 .mapToObj(layer -> new Band(layer, level.getMinY(), level.getHeight()))
                 .findFirst();
+    }
+
+    /**
+     * The layers of a campaign world (#743), whose generator's biome source is a {@link BandBiomeSource}: layer 1 first, each as a band of
+     * its one level. Empty for any other level.
+     */
+    public static List<Band> campaignLayers(ServerLevel level) {
+        if (!(level.getChunkSource().getGenerator().getBiomeSource() instanceof BandBiomeSource source)) {
+            return List.of();
+        }
+        return IntStream.range(0, source.layers().size())
+                .mapToObj(index -> {
+                    BandBiomeSource.Layer layer = source.layers().get(index);
+                    return new Band(index + 1, layer.minY(), layer.height());
+                })
+                .toList();
+    }
+
+    /**
+     * The band of layer {@code layer} as {@code generator} lays it out in a level: a band of a campaign world, or the whole level of a
+     * layer dimension.
+     */
+    public static Band layerBand(ChunkGenerator generator, LevelHeightAccessor level, int layer) {
+        if (generator.getBiomeSource() instanceof BandBiomeSource source) {
+            BandBiomeSource.Layer span = source.layers().get(layer - 1);
+            return new Band(layer, span.minY(), span.height());
+        }
+        return new Band(layer, level.getMinY(), level.getHeight());
     }
 
     /** {@link #bandAt} for a layer; empty on the surface too. */

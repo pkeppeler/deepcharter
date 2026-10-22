@@ -49,7 +49,7 @@ final class StructurePlan {
      */
     void seal() {
         BoundingBox bounds = site.bounds();
-        BlockState ground = LayerBlocks.groundOf(level).defaultBlockState();
+        BlockState ground = LayerBlocks.layerGround(band.layer()).defaultBlockState();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int x = Math.max(bounds.minX() - 1, chunkPos.getMinBlockX());
                 x <= Math.min(bounds.maxX() + 1, chunkPos.getMaxBlockX());

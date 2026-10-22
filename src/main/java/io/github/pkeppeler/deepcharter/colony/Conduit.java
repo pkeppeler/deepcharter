@@ -18,7 +18,8 @@ import net.minecraft.world.level.chunk.LevelChunk;
  * are set, so a chunk that generates later, or one that lost a block, gets the casing back. The casing is a square of
  * {@link ColonyTuning#conduitRadius()} blocks out from the centre column on each side. It fills the layer from its lowest
  * block to its highest, and in the overworld from the lowest block up to {@link ColonyTuning#conduitStack()} blocks above
- * the pad's ground.
+ * the pad's ground. In a campaign world (#743) it runs unbroken from the floor of the deepest layer up to the same top: the unbuilt
+ * rock below has none.
  */
 public final class Conduit {
     private Conduit() {}
@@ -32,15 +33,16 @@ public final class Conduit {
         if (level.dimensionTypeRegistration().unwrapKey().isEmpty()) {
             return;
         }
+        // A campaign world is one level that holds the surface and the layers: its casing is the surface's, taller.
         Optional<Band> band = LayerChain.bandAt(level, level.getMinY());
-        if (band.isEmpty()) {
+        if (band.isEmpty() && LayerChain.campaignLayers(level).isEmpty()) {
             return;
         }
         Optional<ColonySite.Placed> placed = Colony.placed(level.getServer());
         if (placed.isEmpty()) {
             return;
         }
-        place(level, chunk, placed.get(), band.get().layer());
+        place(level, chunk, placed.get(), band.map(Band::layer).orElse(LayerChain.SURFACE));
     }
 
     /** Sets the missing casing blocks that lie in {@code chunk}. */
@@ -57,11 +59,15 @@ public final class Conduit {
         }
         int top =
                 layer == LayerChain.SURFACE ? colony.groundY() + ColonyTuning.DEFAULT.conduitStack() : level.getMaxY();
+        int bottom = LayerChain.campaignLayers(level).stream()
+                .mapToInt(Band::minY)
+                .min()
+                .orElse(level.getMinY());
         BlockState casing = ColonyBlocks.CONDUIT.defaultBlockState();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int x = fromX; x <= toX; x++) {
             for (int z = fromZ; z <= toZ; z++) {
-                for (int y = level.getMinY(); y <= top; y++) {
+                for (int y = bottom; y <= top; y++) {
                     pos.set(x, y, z);
                     if (!chunk.getBlockState(pos).is(ColonyBlocks.CONDUIT)) {
                         chunk.setBlockState(pos, casing, 0);

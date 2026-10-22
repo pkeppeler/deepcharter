@@ -33,3 +33,7 @@ Builds on [ADR 0015](0015-zones-are-filled-block-by-block-from-the-originals-row
 - Kinds are drawn in their own axes (`u` along, `v` across), turned by the site's `alongZ`.
 - The rail line sites of a new world differ from those of a world before #716: the margin changed, so the random place the seed gives the same cell moved. Start a new world.
 - Two kinds of one layer in one zone (`RAILS`, `WRECK`) have their own cells, so they may overlap. The later write wins in a chunk.
+
+## Amended, 2026-10-22 (#743): the campaign world draws each layer as a band
+
+In a campaign world (the generator's biome source is `BandBiomeSource`) `StructureSite.in` gets each layer's band (`LayerChain.campaignLayers`) in place of the level's `min_y` and height, and a chunk draws the sites of every layer it holds. The seal fills with the layer's own rock. PROSPECTOR-0002's site is the wreck site nearest the Conduit in layer 2 of that level (`LayerStructures.prospector(level)`). The Conduit's casing runs from the floor of the deepest layer up to the colony's stack; the unbuilt rock below has none.

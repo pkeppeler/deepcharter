@@ -19,6 +19,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
+import io.github.pkeppeler.deepcharter.test.support.CampaignBands;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -38,6 +39,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.UUID;
+import java.util.function.IntFunction;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -102,9 +104,24 @@ public class OrePlacementTest {
 
     private static Census @Nullable [] census;
 
+    private static Census @Nullable [] campaignCensus;
+
+    private static final String CAMPAIGN = "deepcharter:campaign_sample";
+
     @GameTest(maxTicks = 6000)
     public void oreAndHazardFrequenciesMatchTheTablesPerZone(GameTestHelper helper) {
-        Census[] sample = sample(helper);
+        expectTables(helper, sample(helper));
+        helper.succeed();
+    }
+
+    /** The same tables in the campaign world (#743): the zone fill runs in each layer's band, so each of its six zones holds the ore of the same rows. */
+    @GameTest(dimension = CAMPAIGN, maxTicks = 6000)
+    public void oreAndHazardFrequenciesMatchTheTablesPerZoneInTheCampaignWorld(GameTestHelper helper) {
+        expectTables(helper, campaignSample(helper));
+        helper.succeed();
+    }
+
+    private static void expectTables(GameTestHelper helper, Census[] sample) {
         for (int zone = 0; zone < ZONE_NAMES.length; zone++) {
             Census counted = sample[zone];
             double oreTotal = 0;
@@ -122,7 +139,6 @@ public class OrePlacementTest {
             expectFrequency(helper, zone, counted, Blocks.LAVA, bare * lavaChance(helper, name, zone));
             expectFrequency(helper, zone, counted, HazardBlocks.GAS_POCKET, bare * gas);
         }
-        helper.succeed();
     }
 
     /** Zones whose lava may be less than the zone above it, by zone name, each with its reason. A name that is no longer an exception fails too. */
@@ -797,14 +813,36 @@ public class OrePlacementTest {
 
     /** Counts the blocks of {@link #SIDE} x {@link #SIDE} chunks of each layer, once for all the tests of the class. */
     private static Census[] sample(GameTestHelper helper) {
-        if (census != null) {
-            return census;
+        if (census == null) {
+            census = count(layer -> {
+                ServerLevel level = TestLayers.level(helper, layer);
+                return new Rows(level, level.getMinY(), level.getHeight());
+            });
         }
+        return census;
+    }
+
+    /** {@link #sample} for the campaign world, whose layers are bands of one level. */
+    private static Census[] campaignSample(GameTestHelper helper) {
+        if (campaignCensus == null) {
+            campaignCensus = count(layer -> {
+                CampaignBands.Band band = CampaignBands.layer(layer);
+                return new Rows(helper.getLevel(), band.minY(), band.height());
+            });
+        }
+        return campaignCensus;
+    }
+
+    /** The rows of one layer: the level that holds it and the Ys it spans in that level. */
+    private record Rows(ServerLevel level, int minY, int height) {}
+
+    private static Census[] count(IntFunction<Rows> rowsOf) {
         Census[] result = new Census[ZONE_NAMES.length];
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = TestLayers.level(helper, layer);
-            int minY = level.getMinY();
-            int height = level.getHeight();
+            Rows rows = rowsOf.apply(layer);
+            ServerLevel level = rows.level();
+            int minY = rows.minY();
+            int height = rows.height();
             Map<Block, Integer>[] found = newCounters(3);
             int[] candidates = new int[3];
             long start = System.nanoTime();
@@ -827,8 +865,9 @@ public class OrePlacementTest {
                 }
             }
             LOGGER.info(
-                    "Sampled layer_{}: {} chunks in {} ms",
+                    "Sampled layer {} of {}: {} chunks in {} ms",
                     layer,
+                    level.dimension().identifier(),
                     SIDE * SIDE,
                     Math.round((System.nanoTime() - start) / 1e6));
             for (int index = 0; index < 3; index++) {
@@ -836,8 +875,7 @@ public class OrePlacementTest {
                 result[(layer - 1) * 3 + index] = new Census(candidates[index], found[index]);
             }
         }
-        census = result;
-        return census;
+        return result;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

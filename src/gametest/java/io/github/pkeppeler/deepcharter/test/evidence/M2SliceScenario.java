@@ -28,6 +28,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
+import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
 import io.github.pkeppeler.deepcharter.market.WorkOrders;
@@ -793,7 +794,8 @@ public class M2SliceScenario extends EvidenceScenario {
                     "11. SHORTCUT: the Mole is carried to Prospector's Run, the floor of layer 2, to a rail drift cut beside a wreck bay.");
             clearTransmission();
             StructureSite site =
-                    onServer(server -> LayerStructures.prospector(server).orElseThrow());
+                    onServer(server -> LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
+                            .orElseThrow());
             Vec3 bay = at(site, 0, 0, 0);
             Vec3 figureStart = at(site, FIGURE_AT_U, 0, 0);
             Vec3 moleAt = at(site, MOLE_AT_U, 0, 0);
@@ -940,7 +942,8 @@ public class M2SliceScenario extends EvidenceScenario {
         private void wreckSite() {
             say("12. Handbook chapter 9. The Mole drives on along the rails, into the bay of PROSPECTOR-0002's wreck.");
             StructureSite site =
-                    onServer(server -> LayerStructures.prospector(server).orElseThrow());
+                    onServer(server -> LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
+                            .orElseThrow());
             Vec3 bay = at(site, 0, 0, 0);
             Vec3 moleAt = at(site, MOLE_AT_U, 0, 0);
             ctx.runOnClient(client -> {
@@ -1229,7 +1232,8 @@ public class M2SliceScenario extends EvidenceScenario {
             say(
                     "18. Handbook chapter 9. Both crew board the restored Prospector. SHORTCUT: it is carried to the floor of the Old Workings.");
             StructureSite site =
-                    onServer(server -> LayerStructures.prospector(server).orElseThrow());
+                    onServer(server -> LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
+                            .orElseThrow());
             Vec3 park = at(site, -4.5, 0, 3.5);
             Vec3 prospectorHere =
                     onServer(server -> pod(server, prospector.get()).position());

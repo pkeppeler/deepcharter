@@ -103,6 +103,11 @@ public final class BandBiomeSource extends BiomeSource {
         return DataResult.success(source);
     }
 
+    /** The layers of the world, top to bottom: the first is layer 1. */
+    public List<Layer> layers() {
+        return layers;
+    }
+
     @Override
     protected MapCodec<? extends BiomeSource> codec() {
         return CODEC;

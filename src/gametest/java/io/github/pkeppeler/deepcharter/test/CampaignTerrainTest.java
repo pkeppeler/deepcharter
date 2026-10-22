@@ -7,7 +7,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.layer.Zones;
-import io.github.pkeppeler.deepcharter.ore.ZoneFillFeature;
+import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CampaignBands;
 import io.github.pkeppeler.deepcharter.test.support.CampaignBands.Band;
 import java.io.IOException;
@@ -18,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -27,14 +27,13 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.FeatureSorter;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -72,7 +71,8 @@ public class CampaignTerrainTest {
     /** The cave stalks of layer 1's first zone are the one thing besides rock that its biomes place. */
     private static final String STALK = "deepcharter:fungal_stalk";
 
-    private static final Set<String> FLUIDS_AND_AIR = Set.of("minecraft:air", "minecraft:cave_air");
+    /** Air, and the lava the zone fill leaves in a layer (#743). */
+    private static final Set<String> FLUIDS_AND_AIR = Set.of("minecraft:air", "minecraft:cave_air", "minecraft:lava");
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theBandsAreWhereTheDecisionPutsThem(GameTestHelper helper) {
@@ -180,7 +180,7 @@ public class CampaignTerrainTest {
                 if (block.equals("minecraft:air")) {
                     continue;
                 }
-                if (!isCrustRow(y)) {
+                if (!isCrustRow(y) && !isZoneFill(block)) {
                     found.computeIfAbsent(bandOf(y).name(), name -> new TreeSet<>())
                             .add(block);
                 }
@@ -410,30 +410,6 @@ public class CampaignTerrainTest {
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void theZoneFillSkipsOnlyTheCampaignWorld(GameTestHelper helper) {
-        // Until #743 gives the fill its bands, the campaign world has none; the layers and every tall_* world keep it
-        // as on main.
-        for (String world : List.of(
-                "deepcharter:layer_1",
-                "deepcharter:layer_2",
-                "deepcharter:tall_baseline",
-                "deepcharter:tall_surface")) {
-            expect(helper, fillRunsIn(helper, world), "the zone fill must run in %s", world);
-        }
-        expect(helper, !fillRunsIn(helper, SAMPLE), "the zone fill must not run in %s", SAMPLE);
-        helper.succeed();
-    }
-
-    private static boolean fillRunsIn(GameTestHelper helper, String dimension) {
-        ServerLevel level = helper.getLevel()
-                .getServer()
-                .getLevel(ResourceKey.create(Registries.DIMENSION, Identifier.parse(dimension)));
-        expect(helper, level != null, "no dimension %s", dimension);
-        return ZoneFillFeature.runsIn(
-                Objects.requireNonNull(level).getChunkSource().getGenerator());
-    }
-
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theBiomeFeaturesHaveNoOrderCycle(GameTestHelper helper) {
         ChunkGenerator generator = helper.getLevel().getChunkSource().getGenerator();
         List<Holder<Biome>> biomes = List.copyOf(generator.getBiomeSource().possibleBiomes());
@@ -461,6 +437,15 @@ public class CampaignTerrainTest {
             throw fail(helper, "the biome features have an order cycle: %s", e.getMessage());
         }
         helper.succeed();
+    }
+
+    /** What the zone fill puts in a layer's rock (#743): an ore, Company rock, a gas pocket or lava. The rock itself is what a band is judged by. */
+    private static boolean isZoneFill(String id) {
+        Block block = BuiltInRegistries.BLOCK.getValue(Identifier.parse(id));
+        return OreRegistry.typeOf(block).isPresent()
+                || block == HazardBlocks.COMPANY_ROCK
+                || block == HazardBlocks.GAS_POCKET
+                || block == Blocks.LAVA;
     }
 
     private static boolean isCrustRow(int y) {

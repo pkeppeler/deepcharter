@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
+import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -201,7 +202,8 @@ public class ProspectorChassisScenario extends EvidenceScenario {
                 player.onUpdateAbilities();
                 player.addEffect(new MobEffectInstance(
                         MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
-                StructureSite prospector = LayerStructures.prospector(server)
+                StructureSite prospector = LayerStructures.prospector(
+                                TestLayers.level(server, StructureKind.WRECK.layer()))
                         .orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
                 ServerLevel level = TestLayers.level(server, prospector.kind().layer());
                 BoundingBox box = prospector.bounds();

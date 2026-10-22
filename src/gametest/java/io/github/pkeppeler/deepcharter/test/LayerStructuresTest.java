@@ -269,7 +269,7 @@ public class LayerStructuresTest {
     }
 
     /** Every chunk that the site's bounds touch. */
-    private static List<ChunkPos> chunksOf(StructureSite site) {
+    static List<ChunkPos> chunksOf(StructureSite site) {
         BoundingBox box = site.bounds();
         List<ChunkPos> chunks = new ArrayList<>();
         for (int chunkX = box.minX() >> 4; chunkX <= box.maxX() >> 4; chunkX++) {
@@ -281,7 +281,7 @@ public class LayerStructuresTest {
     }
 
     /** How many of each block the site's bounds hold now. */
-    private static Map<Block, Integer> census(ServerLevel level, StructureSite site) {
+    static Map<Block, Integer> census(ServerLevel level, StructureSite site) {
         Map<Block, Integer> found = new HashMap<>();
         BoundingBox box = site.bounds();
         for (BlockPos pos :
@@ -307,6 +307,11 @@ public class LayerStructuresTest {
      * come first, then no fluid or gas, only its own Note in its own zone, and a lit candle beside it.
      */
     private static List<String> unmet(ServerLevel level, StructureSite site, Map<Block, Integer> found) {
+        return unmet(level, level.getMinY(), level.getHeight(), site, found);
+    }
+
+    /** {@link #unmet(ServerLevel, StructureSite, Map)} for a layer that spans {@code height} blocks from {@code minY} in its level (a band of the campaign world). */
+    static List<String> unmet(ServerLevel level, int minY, int height, StructureSite site, Map<Block, Integer> found) {
         List<String> unmet = new ArrayList<>();
         for (Map.Entry<Block, Integer> expected :
                 minimum(site.kind(), site.height()).entrySet()) {
@@ -334,8 +339,8 @@ public class LayerStructuresTest {
                 unmet.add(String.format("Notes %s, expected only N%02d", notes.keySet(), number));
             } else {
                 int zone = Zones.index(
-                        level.getMinY(),
-                        level.getHeight(),
+                        minY,
+                        height,
                         Objects.requireNonNull(notes.get(number), "notes.get(number) is absent")
                                 .getY());
                 if (zone != site.kind().zone()) {
@@ -360,7 +365,7 @@ public class LayerStructuresTest {
     }
 
     /** Whether each chunk of the site is loaded, and as what, read without loading any: a chunk that is not a {@code LevelChunk} is a wrapper of a full one. */
-    private static String chunkStates(ServerLevel level, StructureSite site) {
+    static String chunkStates(ServerLevel level, StructureSite site) {
         Map<ChunkPos, String> states = new LinkedHashMap<>();
         for (ChunkPos chunk : chunksOf(site)) {
             ChunkAccess loaded = level.getChunkSource().getChunkNow(chunk.x(), chunk.z());
@@ -823,8 +828,8 @@ public class LayerStructuresTest {
         BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT)
                 .orElseThrow(() -> failure(helper, "the colony was not built"));
         ServerLevel level = TestLayers.level(helper, 2);
-        StructureSite prospector =
-                LayerStructures.prospector(server).orElseThrow(() -> failure(helper, "no Prospector site"));
+        StructureSite prospector = LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
+                .orElseThrow(() -> failure(helper, "no Prospector site"));
         StructureSite best = null;
         double bestDistance = Double.MAX_VALUE;
         int centreX = Math.floorDiv(conduit.getX(), SPACING);
