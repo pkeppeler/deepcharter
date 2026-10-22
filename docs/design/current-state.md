@@ -29,7 +29,7 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | Dimensions | 3 (surface, layer 1, layer 2); 6 zones in 6 layer biomes and 3 surface biomes |
 | Custom blocks | 24 (7 ores, 2 hazards, breach crust, conduit, Company lamp, note, 6 terminals, 5 surface blocks) |
 | Block textures | 55, all 16 x 16 frames, generated from recipes (`tools/textures/`); 7 animated; 77 block-state variants |
-| Items | 67 (43 with a 16 x 16 sprite, 24 block items) |
+| Items | 68 (44 with a 16 x 16 sprite, 24 block items) |
 | Entities | 3 types (Mole, Prospector, lampless figure); looks: 2 pods, 1 wreck look, 1 derelict, 1 figure (the Reacher, GeckoLib) |
 | Structures | 14 colony structure files (the square with the Host, the terminal plinths, the streets, the Works, the headframe, the hoist house, the hangar, the Continuity Office, the chapel, the bunkhouse, the two offices, the Lamp and Pick, and the Host's hands) placed from one layout file, the Conduit, and 7 layer structure kinds; the colony kit of 24 blocks and 12 signs they are built from |
 | Screens | 10 shot (handbook, offline terminal, fuel pump, ore processor, upgrade, repair station, hangar console, contract, pod cargo, vanilla inventory), 1 not reachable (CRT demo) |
@@ -206,6 +206,7 @@ All item textures in one sheet (nearest-neighbour, 5 times scale; alphabetical o
 | Repair Circuit | `repair_circuit` | Terminal repair part | `main/terminal/TerminalParts.java` | `textures/item/repair_circuit.png` (16x16) | **(a)** `assets/deepcharter/textures/item/repair_circuit.png` |
 | Reserve Fuel Tank | `reserve_fuel_tank` | Consumable | `main/repair/Consumable.java` | `textures/item/reserve_fuel_tank.png` (16x16) | **(a)** `assets/deepcharter/textures/item/reserve_fuel_tank.png` |
 | Reserve Tank | `reserve_tank` | Fuel | `main/fuel/ReserveTank.java` | `textures/item/reserve_tank.png` (16x16) | **(a)** `assets/deepcharter/textures/item/reserve_tank.png` |
+| Outpost Kit | `outpost_kit` | Outpost (used on the layer 1 floor, it builds the charter's outpost) | `main/outpost/OutpostRegistry.java` | `textures/item/outpost_kit.png` (16x16, a steel case with a hazard stripe and a brass handle) | **(a)** `assets/deepcharter/textures/item/outpost_kit.png` |
 | Rotor Hub | `rotor_hub` | Hangar console part | `main/hangar/HangarParts.java` | `textures/item/rotor_hub.png` (16x16) | **(a)** `assets/deepcharter/textures/item/rotor_hub.png` |
 | Servo Unit | `servo_unit` | Terminal repair part | `main/terminal/TerminalParts.java` | `textures/item/servo_unit.png` (16x16) | **(a)** `assets/deepcharter/textures/item/servo_unit.png` |
 | Silverium | `silverium` | Ore (what drilling gives; sold at the processor) | `main/ore/OreType.java` | `textures/item/silverium.png` (16x16) | **(a)** `assets/deepcharter/textures/item/silverium.png` |

@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BIB",
+    "PRF",
+    "BIB"
+  ],
+  "key": {
+    "B": "deepcharter:bronzium",
+    "I": "deepcharter:ironium",
+    "P": "deepcharter:pump_motor",
+    "R": "minecraft:redstone",
+    "F": "deepcharter:ore_feeder"
+  },
+  "result": {
+    "id": "deepcharter:outpost_kit",
+    "count": 1
+  }
+}

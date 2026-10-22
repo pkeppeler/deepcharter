@@ -187,18 +187,15 @@ public class FirstTierPartsCostTest {
 
     /** The run of a Mole with tier 2 parts in layer 2, whose ore is the liner's and heat shield's. */
     private static Run layerTwoRun() {
-        return EarlyRunModel.run(
-                Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2), EarlyRunModel.layerOneBlocks());
+        return EarlyRunModel.layerTwoRun(Zone.load("upper_levels"), EarlyRunModel.mole(2, 2, 2));
     }
 
     /** The run of a Mole with tier 2 parts in layer 2, which the layer 2 hazard answers were priced against (EconomyAffordabilityTest). */
     private static Pace layerTwo() {
         Zone zone = Zone.load("upper_levels");
         PodStats stats = EarlyRunModel.mole(2, 2, 2);
-        Run run = EarlyRunModel.run(zone, stats, EarlyRunModel.layerOneBlocks());
-        return new Pace(
-                run.net(),
-                EarlyRunModel.runSeconds(zone, stats, EarlyRunModel.layerOneBlocks(), run) + RUN_OVERHEAD_SECONDS);
+        Run run = EarlyRunModel.layerTwoRun(zone, stats);
+        return new Pace(run.net(), EarlyRunModel.layerTwoRunSeconds(zone, stats, run) + RUN_OVERHEAD_SECONDS);
     }
 
     private static Pace paceOf(ComponentTrack track) {
