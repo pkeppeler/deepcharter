@@ -187,13 +187,13 @@ def cutter_of(model, bone):
 @functools.cache
 def _trig(rotation):
     rx, ry, rz = (math.radians(a) for a in rotation)
+    # In y-up Bedrock space the angles are the file's: a positive x angle tips a point at -z downward.
     rx, rz = -rx, -rz
     return math.sin(rx), math.cos(rx), math.sin(ry), math.cos(ry), math.sin(rz), math.cos(rz)
 
 
 def rotate(point, rotation):
     x, y, z = point
-    # In y-up Bedrock space the angles are the file's: a positive x angle tips a point at -z downward.
     sin_x, cos_x, sin_y, cos_y, sin_z, cos_z = _trig(tuple(rotation))
     y, z = y * cos_x - z * sin_x, y * sin_x + z * cos_x
     x, z = x * cos_y + z * sin_y, -x * sin_y + z * cos_y
