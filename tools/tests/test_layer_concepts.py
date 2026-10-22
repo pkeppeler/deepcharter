@@ -32,7 +32,6 @@ SIZE = 16
 
 @functools.cache
 def outputs():
-    """What make.py writes, built once per run: it takes seconds, and every test only reads it."""
     return make.outputs()
 
 

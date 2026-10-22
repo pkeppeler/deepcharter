@@ -186,7 +186,6 @@ def cutter_of(model, bone):
 
 @functools.cache
 def _trig(rotation):
-    """The sines and cosines of a rotation's angles (the file's, in y-up Bedrock space, so x and z are negated), made once per rotation."""
     rx, ry, rz = (math.radians(a) for a in rotation)
     rx, rz = -rx, -rz
     return math.sin(rx), math.cos(rx), math.sin(ry), math.cos(ry), math.sin(rz), math.cos(rz)
@@ -203,7 +202,6 @@ def rotate(point, rotation):
 
 
 def _chain(model, bone):
-    """The (pivot, rotation) of a bone and each parent above it, from the bone up: what carries a point of the bone to the world."""
     by_name = {b.name: b for b in model.bones}
     chain = []
     while bone is not None:
@@ -238,7 +236,7 @@ def corners(model, bone, cube):
     """The eight corners of a cube at rest, turned by its own rotation and its bones'."""
     ox, oy, oz = cube.origin
     sx, sy, sz = cube.size
-    chain = _chain(model, bone)  # once for the eight corners, not once each
+    chain = _chain(model, bone)
     for corner in ((ox + dx * sx, oy + dy * sy, oz + dz * sz) for dx in (0, 1) for dy in (0, 1) for dz in (0, 1)):
         if cube.rotation:
             cx, cy, cz = cube.pivot

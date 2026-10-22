@@ -11,7 +11,6 @@ import pod_concepts as pc  # noqa: E402
 
 @functools.cache
 def built(name):
-    """What pc.build makes for a pod or concept, once per run: it checks every rule and paints every texture, and every test only reads it."""
     return pc.build(name, pc.MODEL_DIR, pc.TEXTURE_DIR)
 
 
@@ -202,7 +201,7 @@ class Wrecks(unittest.TestCase):
         mole = pc.mole()
         pc.pack(mole)
         base, glow = pc.paint_model(mole)
-        derelict = pc.wreck_glow(mole, glow, "derelict")  # once: it was rebuilt for every pixel of the loop
+        derelict = pc.wreck_glow(mole, glow, "derelict")
         self.assertEqual(0, sum(1 for i in range(3, len(derelict.pixels), 4) if derelict.pixels[i]))
         prospector = pc.prospector()
         pc.pack(prospector)

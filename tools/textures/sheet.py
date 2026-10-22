@@ -65,7 +65,7 @@ def render(book: Book, keys: list[str]) -> Canvas:
     width = 2 * MARGIN + BLOCK_COLUMNS * block_width + (BLOCK_COLUMNS - 1) * GAP * 4
     height = (MARGIN + 14 + 10 + palette_rows * (SWATCH + 3) + 12 + 10 + block_rows * (cell + GAP)
               + 12 + 10 + item_rows * (cell + GAP) + MARGIN)
-    # One list shared by every background pixel (5 million of them): a pixel is replaced, never changed in place.
+    # Pixels share lists: a pixel is replaced, never changed in place.
     out = Canvas(width, height, [list(BACKGROUND)] * (width * height))
     y = MARGIN
     _text(out, MARGIN, y, "DEEP CHARTER: PALETTE AND STYLE", INK, 2)
@@ -154,9 +154,7 @@ def _cell(out: Canvas, book: Book, key: str, x0: int, y0: int, cell: int, light:
 
 
 def _box(out: Canvas, x0: int, y0: int, w: int, h: int, colour: Colour) -> None:
-    """Fills the part of the box inside the canvas, every pixel of it sharing one list (a pixel is replaced, never changed in place).
-    The sheet fills a few hundred thousand boxes, so this skips Canvas.put's bounds check and copy per pixel."""
-    x_lo, x_hi = max(x0, 0), min(x0 + w, out.width)
+    x_lo, x_hi = max(x0, 0), min(x0 + w, out.width)  # one list is shared across the row: a pixel is replaced, never changed in place
     if x_lo >= x_hi:
         return
     filled = [list(colour)] * (x_hi - x_lo)

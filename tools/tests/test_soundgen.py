@@ -51,7 +51,7 @@ class CommittedSoundsTest(unittest.TestCase):
             heard = decode(ogg)
             frames = min(len(heard), len(pcm))
             self.assertGreater(frames, len(pcm) * 0.95, f"{name}: the OGG is shorter than its recipe")
-            heard_sample, pcm_sample = heard[:frames:7], pcm[:frames:7]  # every 7th frame, as slices: the same samples, no index loop
+            heard_sample, pcm_sample = heard[:frames:7], pcm[:frames:7]
             error = sum((h - p) ** 2 for h, p in zip(heard_sample, pcm_sample))
             energy = sum(p**2 for p in pcm_sample) or 1
             self.assertLess(error / energy, 0.25, f"{name}: the OGG is not the sound its recipe makes")

@@ -125,7 +125,7 @@ def filt(signal, kind, freq, q):
             y2, y1 = y1, y0
             append(y0)
         return out
-    for x0, hz in zip(signal, freq):
+    for x0, hz in zip(signal, freq, strict=True):
         b0, b1, b2, a1, a2 = _biquad(kind, hz, q)
         y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
         x2, x1 = x1, x0

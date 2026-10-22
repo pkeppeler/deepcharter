@@ -515,6 +515,8 @@ def _clump(layer: dict, rng: Rng, size: int, margin: int) -> dict[tuple[int, int
     centre is at least margin plus its radius in from each edge."""
     lo, hi = layer["radius"]
     radius = lo + (hi - lo) * rng.unit()
+    if radius <= 0:
+        raise RecipeError(f"a clump's radius must be above 0, got {radius}")
     span = size - 2 * (margin + radius)
     cx, cy = size / 2 + (rng.unit() - 0.5) * span, size / 2 + (rng.unit() - 0.5) * span
     crystal = layer.get("crystal", False)
@@ -538,7 +540,7 @@ def _clump(layer: dict, rng: Rng, size: int, margin: int) -> dict[tuple[int, int
                     h = min(1 - across / width, (length - along) / width) if across < width and along < length else 0.0
                 else:
                     if abs(dx) >= r or abs(dy) >= r:
-                        continue  # outside the lump's box, so d2 >= 1 and the lump adds nothing
+                        continue
                     d2 = (dx * dx + dy * dy) / (r * r)
                     h = sqrt(1 - d2) if d2 < 1 else 0.0
                 if h > best:
@@ -552,8 +554,6 @@ def _rings(height: dict[tuple[int, int], float], count: int) -> list[set[tuple[i
     """The pixels round a clump, ring by ring: ring k (from 1) is every pixel whose nearest clump pixel is more than k - 1 and at
     most k away, so ring 1 is the clump's side neighbours, its corners fall in ring 2, and the rings are round, not square."""
     rings: list[set[tuple[int, int]]] = [set() for _ in range(count)]
-    # Each clump pixel marks the pixels within `count` of it with their squared distance; a pixel keeps the least. That is the nearest
-    # clump pixel without measuring every pixel of the box against every pixel of the clump.
     reach = [(dx, dy, dx * dx + dy * dy) for dx in range(-count, count + 1) for dy in range(-count, count + 1) if dx * dx + dy * dy <= count * count]
     nearest: dict[tuple[int, int], int] = {}
     for hx, hy in height:
