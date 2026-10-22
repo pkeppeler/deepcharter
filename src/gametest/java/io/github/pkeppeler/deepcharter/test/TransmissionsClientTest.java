@@ -120,7 +120,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
             // screen.
             context.runOnClient(client -> {
                 TransmissionOverlay.reset();
-                BreachEffects.begin();
+                BreachEffects.begin(true);
                 TransmissionOverlay.enqueue(new TransmissionPayload(id("t01"), CREW_NAME, player));
             });
             ClientWait.until(

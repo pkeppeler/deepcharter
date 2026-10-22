@@ -27,6 +27,8 @@ import net.minecraft.world.phys.Vec3;
  * far before it could cross back: that distance is the hysteresis. The last layer's floor has no
  * crossing, and neither has the top of the overworld.
  *
+ * <p>In the campaign world the layers are bands of one level, so nobody moves: {@link BandCrossing} fires the same event in place.
+ *
  * <p>Survival and adventure players cannot break {@code breach_crust} by hand; creative players can.
  * Drills do it through {@link #breakCrust}.
  */
@@ -37,6 +39,7 @@ public final class BreachService {
     private BreachService() {}
 
     public static void init() {
+        BandCrossing.init();
         ServerTickEvents.END_LEVEL_TICK.register(BreachService::crossEntities);
         PlayerBlockBreakEvents.BEFORE.register(
                 (level, player, pos, state, blockEntity) -> player.isCreative() || !state.is(LayerBlocks.BREACH_CRUST));
@@ -55,6 +58,10 @@ public final class BreachService {
     }
 
     private static void crossEntities(ServerLevel level) {
+        if (LayerChain.isCampaign(level)) {
+            BandCrossing.tick(level);
+            return;
+        }
         Optional<Band> band = LayerChain.bandAt(level, level.getMinY());
         if (band.isEmpty()) {
             return;

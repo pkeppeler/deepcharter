@@ -10,6 +10,9 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands.Band;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
@@ -19,8 +22,6 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
-import io.github.pkeppeler.deepcharter.test.support.CampaignBands;
-import io.github.pkeppeler.deepcharter.test.support.CampaignBands.Band;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -93,6 +94,34 @@ public class CampaignContentTest {
     private static final String PRESET = "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json";
 
     private static final String UNBUILT_BIOME = "deepcharter:unbuilt_depth";
+
+    /**
+     * The layers the world generates from (the biome source's data, which {@code LayerChain.campaignLayers} reads) are the band table
+     * {@code bandAt} reads, so the two sources of the campaign layout cannot drift.
+     */
+    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void theGeneratedLayersAreTheBandTable(GameTestHelper helper) {
+        List<LayerChain.Band> generated = LayerChain.campaignLayers(helper.getLevel());
+        expect(
+                helper,
+                generated.size() == CampaignBands.LAYERS.size(),
+                "the biome source has %d layers, the band table %d",
+                generated.size(),
+                CampaignBands.LAYERS.size());
+        for (LayerChain.Band band : generated) {
+            Band table = CampaignBands.layer(band.layer());
+            expect(
+                    helper,
+                    band.minY() == table.minY() && band.height() == table.height(),
+                    "layer %d is %d+%d in the biome source, %d+%d in the band table",
+                    band.layer(),
+                    band.minY(),
+                    band.height(),
+                    table.minY(),
+                    table.height());
+        }
+        helper.succeed();
+    }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void structureSitesStayInsideTheirBandsMargins(GameTestHelper helper) {
@@ -454,10 +483,10 @@ public class CampaignContentTest {
             return anchor.get("absolute").getAsInt();
         }
         if (anchor.has("above_bottom")) {
-            return CampaignBands.worldMinY() + anchor.get("above_bottom").getAsInt();
+            return CampaignBands.UNBUILT.minY() + anchor.get("above_bottom").getAsInt();
         }
         if (anchor.has("below_top")) {
-            return CampaignBands.worldTopExclusive()
+            return CampaignBands.SURFACE.topExclusive()
                     - 1
                     - anchor.get("below_top").getAsInt();
         }

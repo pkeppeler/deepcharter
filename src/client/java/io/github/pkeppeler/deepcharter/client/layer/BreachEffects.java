@@ -20,6 +20,9 @@ public final class BreachEffects {
     /** Ticks since the last crossing; no effects running is {@code -1}. */
     private static int elapsed = -1;
 
+    /** Whether the running effects include the fade. */
+    private static boolean fading;
+
     private BreachEffects() {}
 
     /** The whole fade, in client ticks: 20 ticks is one second. */
@@ -27,9 +30,13 @@ public final class BreachEffects {
         return BreachLook.current().fadeTicks();
     }
 
-    /** Starts every effect. Called on the client thread when the payload arrives. */
-    public static void begin() {
+    /**
+     * Starts the rumble, and the fade when {@code fades}. A crossing inside one level moves nothing, so it has no fade. Called on the
+     * client thread when the payload arrives.
+     */
+    public static void begin(boolean fades) {
         elapsed = 0;
+        fading = fades;
         Minecraft.getInstance()
                 .getSoundManager()
                 .play(SimpleSoundInstance.forUI(SoundEvents.GENERIC_EXPLODE.value(), 0.4f, 0.8f));
@@ -51,7 +58,7 @@ public final class BreachEffects {
 
     /** 0 is clear, 1 is black: up, a short stretch of full black, then down, all within {@link #fadeTicks()}. */
     public static float fadeAlpha(float partialTick) {
-        if (elapsed < 0) {
+        if (elapsed < 0 || !fading) {
             return 0f;
         }
         BreachLook look = BreachLook.current();

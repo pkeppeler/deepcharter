@@ -6,11 +6,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands.Band;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
-import io.github.pkeppeler.deepcharter.test.support.CampaignBands;
-import io.github.pkeppeler.deepcharter.test.support.CampaignBands.Band;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -95,13 +95,12 @@ public class CampaignTerrainTest {
         }
         expect(
                 helper,
-                level.getMinY() == CampaignBands.worldMinY()
-                        && level.getMaxY() + 1 == CampaignBands.worldTopExclusive(),
+                level.getMinY() == worldMinY() && level.getMaxY() + 1 == worldTopExclusive(),
                 "the level spans %d..%d, not the bands' %d..%d",
                 level.getMinY(),
                 level.getMaxY(),
-                CampaignBands.worldMinY(),
-                CampaignBands.worldTopExclusive() - 1);
+                worldMinY(),
+                worldTopExclusive() - 1);
         helper.succeed();
     }
 
@@ -148,7 +147,7 @@ public class CampaignTerrainTest {
         }
         Set<Integer> found = new TreeSet<>();
         for (BlockPos column : sampledColumns()) {
-            for (int y = CampaignBands.worldMinY(); y < CampaignBands.worldTopExclusive(); y++) {
+            for (int y = worldMinY(); y < worldTopExclusive(); y++) {
                 if (idAt(level, column.atY(y)).equals(CRUST)) {
                     found.add(y);
                 }
@@ -175,7 +174,7 @@ public class CampaignTerrainTest {
         ServerLevel level = helper.getLevel();
         Map<String, Set<String>> found = new TreeMap<>();
         for (BlockPos column : sampledColumns()) {
-            for (int y = CampaignBands.worldMinY(); y < CampaignBands.worldTopExclusive(); y++) {
+            for (int y = worldMinY(); y < worldTopExclusive(); y++) {
                 String block = idAt(level, column.atY(y));
                 if (block.equals("minecraft:air")) {
                     continue;
@@ -291,10 +290,10 @@ public class CampaignTerrainTest {
         JsonObject settings = read(helper, "/data/deepcharter/worldgen/noise_settings/campaign.json")
                 .getAsJsonObject();
         JsonObject noise = settings.getAsJsonObject("noise");
-        expect(helper, noise.get("min_y").getAsInt() == CampaignBands.worldMinY(), "the noise settings' min_y");
+        expect(helper, noise.get("min_y").getAsInt() == worldMinY(), "the noise settings' min_y");
         expect(
                 helper,
-                noise.get("height").getAsInt() == CampaignBands.worldTopExclusive() - CampaignBands.worldMinY(),
+                noise.get("height").getAsInt() == worldTopExclusive() - worldMinY(),
                 "the noise settings' height");
         expect(
                 helper,
@@ -370,9 +369,8 @@ public class CampaignTerrainTest {
         expect(
                 helper,
                 dimension.get("type").getAsString().equals("deepcharter:campaign_sample")
-                        && type.get("min_y").getAsInt() == CampaignBands.worldMinY()
-                        && type.get("height").getAsInt()
-                                == CampaignBands.worldTopExclusive() - CampaignBands.worldMinY(),
+                        && type.get("min_y").getAsInt() == worldMinY()
+                        && type.get("height").getAsInt() == worldTopExclusive() - worldMinY(),
                 "the dimension type spans the bands");
         JsonObject generator = dimension.getAsJsonObject("generator");
         expect(
@@ -574,5 +572,13 @@ public class CampaignTerrainTest {
         try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader);
         }
+    }
+
+    private static int worldMinY() {
+        return CampaignBands.ALL.getLast().minY();
+    }
+
+    private static int worldTopExclusive() {
+        return CampaignBands.ALL.getFirst().topExclusive();
     }
 }

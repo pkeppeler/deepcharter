@@ -9,6 +9,10 @@ public final class Depth {
     private Depth() {}
 
     public static int of(Level level, int y) {
+        // The campaign world counts depth from sea level in every band (ADR 0059).
+        if (LayerChain.isCampaign(level)) {
+            return LayerTuning.DEFAULT.seaLevel() - y;
+        }
         Optional<Band> band = LayerChain.layerAt(level, y);
         if (band.isEmpty()) {
             return LayerTuning.DEFAULT.seaLevel() - y;

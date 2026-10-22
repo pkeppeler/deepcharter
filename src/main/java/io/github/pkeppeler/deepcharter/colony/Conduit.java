@@ -34,7 +34,7 @@ public final class Conduit {
             return;
         }
         // A campaign world is one level that holds the surface and the layers: its casing is the surface's, taller. It
-        // is told by its layers, never by bandAt, which names the band at the bottom of the level.
+        // is told by its layers: bandAt at the level floor names unbuilt depth there, which is no layer.
         Optional<Integer> layer = LayerChain.campaignLayers(level).isEmpty()
                 ? LayerChain.bandAt(level, level.getMinY()).map(Band::layer)
                 : Optional.of(LayerChain.SURFACE);

@@ -522,9 +522,12 @@ public final class PodTowing {
         return Optional.empty();
     }
 
-    /** A pod that crosses a breach takes the pods it tows across too, to the same spot. */
+    /**
+     * A pod that crosses a breach takes the pods it tows across too, to the same spot. A crossing inside one level (the campaign
+     * world) moves nothing, and the cable alone brings the towed pod along.
+     */
     private static void carryAcross(Entity entity, ServerLevel from, ServerLevel to, int fromLayer, int toLayer) {
-        if (!(entity instanceof PodEntity tower)) {
+        if (from == to || !(entity instanceof PodEntity tower)) {
             return;
         }
         // entity-query: the pods on this tower's cable, whose chunks keepTowedChunksTicking holds entity-ticking while

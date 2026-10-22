@@ -4,6 +4,8 @@ status: accepted
 
 # A tow cable is an attachment on the towed pod, and the tower carries it across a breach
 
+Amended 2026-10-22 (#745) by [ADR 0061](0061-a-crossing-in-the-campaign-world-is-an-event-in-place-found-by-the-root-vehicles-y-with-the-crust-rows-as-hysteresis.md): the tower carries the cable across only when the crossing teleports (`from != to`). Inside the campaign world nothing is carried: the towed pod is in the same level and the cable pulls it along.
+
 A tow cable links two pods. The link is the attachment `deepcharter:pod_towing` (`pod/PodTowing`) on the **towed** pod: versioned, persistent, synced to every client that tracks the pod, holding the UUID of its tower. It lives for as long as either pod does, until the cable is taken off.
 
 - **On the towed pod, not the tower.** The towed pod is the one that follows, ignores blocks and must be seen by a client as towed, and each of those is one UUID lookup in its own level (`ServerLevel.getEntity`). The tower's lift needs the reverse, so `EXTRA_MASS` scans the pods within `TowTuning.reach` of the tower for ones on its cable. One writer, one place to read it: a copy on both pods could disagree after a crash between two saves.
