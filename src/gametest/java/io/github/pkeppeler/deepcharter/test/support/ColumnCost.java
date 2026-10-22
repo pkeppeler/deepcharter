@@ -24,7 +24,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class ColumnCost {
     /** Chunks to each side of the centre in the smoke case, which only checks that the worlds generate. */
-    public static final int SMOKE_RADIUS = 1;
+    private static final int SMOKE_RADIUS = 1;
 
     /** Chunks to each side of the centre of a measured run, so a run is {@code (2 * 8 + 1)} squared chunks, which the readings call columns. */
     public static final int MEASURED_RADIUS = 8;

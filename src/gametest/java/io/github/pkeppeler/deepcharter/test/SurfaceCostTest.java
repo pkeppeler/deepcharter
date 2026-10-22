@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
  * Measures what generating the surface costs a new column of the tall campaign world (ADR 0029): CPU and heap per column of a
  * 2352 block world (the surface above the layers) against the layers alone at 2048, whose ratio the ADR bars at 1.15. By default it
  * generates a few columns of each world and checks they exist. With the number of rounds in the environment, for example
- * {@code DEEPCHARTER_SURFACE_COST=3 tools/gametest.sh 'surface_cost_test*'}, it generates {@value #MEASURED_RADIUS} chunks to each side of
+ * {@code DEEPCHARTER_SURFACE_COST=3 tools/gametest.sh 'surface_cost_test*'}, it generates {@value ColumnCost#MEASURED_RADIUS} chunks to each side of
  * a fresh centre per world and round (after a warm-up), and prints the lines that start with {@code [surface-cost]}: per world the
  * median over the rounds, and the ratio of each surface world to the layers-only world with the same biome source. The heap of a round
  * is only clean for the first world a JVM measures (chunks of the worlds before it linger in caches), so {@value #ONLY_ENV}=<world>

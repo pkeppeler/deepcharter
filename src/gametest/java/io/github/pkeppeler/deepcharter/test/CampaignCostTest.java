@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,15 +39,15 @@ public class CampaignCostTest {
     public void theCampaignWorldCostsWhatTheLayersAloneDo(GameTestHelper helper) {
         int rounds = REQUESTED_ROUNDS == null ? 0 : Integer.parseInt(REQUESTED_ROUNDS);
         if (rounds != 0 && rounds < MIN_ROUNDS) {
-            throw helper.assertionException(net.minecraft.network.chat.Component.literal(
-                    ROUNDS_ENV + " needs at least " + MIN_ROUNDS + " rounds, got " + rounds));
+            throw helper.assertionException(
+                    Component.literal(ROUNDS_ENV + " needs at least " + MIN_ROUNDS + " rounds, got " + rounds));
         }
         ColumnCost.run(helper, WORLDS, ALL_WORLDS, rounds, results -> report(helper, results));
     }
 
     private static void report(GameTestHelper helper, Map<String, List<Measurement>> results) {
         LOGGER.info(
-                "[campaign-cost] {} columns per world and round; bar: the campaign's median CPU per column at most {}x {}",
+                "[campaign-cost] {} columns per world and round; bar: the campaign's median CPU per block of height at most {}x {}'s",
                 ColumnCost.measuredColumns(),
                 BAR,
                 BASELINE);
@@ -78,9 +79,8 @@ public class CampaignCostTest {
                 baselineMedian.height(),
                 ColumnCost.format(heap));
         if (perBlock > BAR) {
-            throw helper.assertionException(
-                    net.minecraft.network.chat.Component.literal(CAMPAIGN + " costs " + ColumnCost.format(perBlock)
-                            + "x " + BASELINE + " per block of height, over the " + BAR + " bar"));
+            throw helper.assertionException(Component.literal(CAMPAIGN + " costs " + ColumnCost.format(perBlock) + "x "
+                    + BASELINE + " per block of height, over the " + BAR + " bar"));
         }
     }
 }
