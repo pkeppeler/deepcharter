@@ -35,6 +35,18 @@ public final class LayerBlocks {
                     .sound(SoundType.STONE)
                     .noLootTable()));
 
+    /**
+     * The grained crust (#746, ADR 0060): crust with a vertical grain that flexes on a slow pulse. The id is permanent. Its name and the
+     * messages that explain it are placeholders until the lore session (#12) names them.
+     */
+    public static final Block GRAINED_CRUST = registerBlock(
+            id("grained_crust"),
+            key -> new Block(BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .strength(5.0F, 6.0F)
+                    .sound(SoundType.STONE)
+                    .noLootTable()));
+
     /** The rust-brown rock of layer 1, which the layer's noise settings fill the ground with. */
     public static final Block PACKED_SHALE = registerBlock(id("packed_shale"), LayerBlocks::rock);
     /** The grey-green rock of layer 2, which the layer's noise settings fill the ground with. */
