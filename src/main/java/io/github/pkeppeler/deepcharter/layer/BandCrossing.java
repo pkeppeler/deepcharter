@@ -38,7 +38,7 @@ final class BandCrossing {
 
     /** The layer after one tick of the root vehicle being at {@code y}, for a player last seen in {@code layer}. */
     static int next(int layer, double y) {
-        int crust = LayerTuning.DEFAULT.crustThickness();
+        int crust = CampaignBands.crustRows();
         if (layer < CampaignBands.lastLayer()
                 && y < CampaignBands.ofLayer(layer).minY()) {
             return layer + 1;

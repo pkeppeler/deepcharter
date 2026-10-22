@@ -30,11 +30,6 @@ public final class BreachEffects {
         return BreachLook.current().fadeTicks();
     }
 
-    /** Starts every effect, the fade included. */
-    public static void begin() {
-        begin(true);
-    }
-
     /**
      * Starts the rumble, and the fade when {@code fades}. A crossing inside one level moves nothing, so it has no fade. Called on the
      * client thread when the payload arrives.

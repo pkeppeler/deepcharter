@@ -144,7 +144,7 @@ public class BreachHudTest implements FabricClientGameTest {
         if (brightestInRibbon(context, context.takeScreenshot("breach-hud-before-fade")) < 200) {
             throw new AssertionError("The Ribbon should be visible before the fade, or this check proves nothing");
         }
-        context.runOnClient(client -> BreachEffects.begin());
+        context.runOnClient(client -> BreachEffects.begin(true));
         ClientWait.until(context, "the breach fade complete", client -> BreachEffects.fadeAlpha(0f) >= 1f);
         int brightest = brightestInRibbon(context, context.takeScreenshot("breach-hud-fade-peak"));
         if (brightest > 8) {
