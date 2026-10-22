@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -248,6 +249,57 @@ public class CampaignCrossingTest {
             }
             if (!PodTowing.towerId(towed).equals(Optional.of(tower.getUUID()))) {
                 throw failure(helper, "the cable is gone: %s", PodTowing.towerId(towed));
+            }
+        });
+    }
+
+    @GameTest(dimension = SAMPLE, maxTicks = 400)
+    public void aPlayerWhoLeavesTheLevelAndComesBackLowerIsSettledNotCrossed(GameTestHelper helper) {
+        ServerLevel campaign = helper.getLevel();
+        ServerLevel overworld = campaign.getServer().overworld();
+        MockPlayer mock = floater(helper, "cross-leave", 21600.5, 21600.5, CampaignBands.LAYER_1.minY() + 50);
+        helper.runAfterDelay(
+                SETTLE_TICKS,
+                () -> mock.teleportTo(overworld, new Vec3(21600.5, overworld.getMaxY() - 50, 21600.5), 0, 0));
+        helper.runAfterDelay(
+                SETTLE_TICKS + 10,
+                () -> mock.teleportTo(campaign, new Vec3(21600.5, CampaignBands.LAYER_2.minY() + 100, 21600.5), 0, 0));
+        helper.runAfterDelay(2 * SETTLE_TICKS + 10, () -> {
+            if (!crossings(mock.player()).isEmpty()) {
+                throw failure(
+                        helper,
+                        "coming back to the level at another depth is a first sighting, but it raised %s",
+                        crossings(mock.player()));
+            }
+            helper.succeed();
+        });
+    }
+
+    /**
+     * A respawn that stays in the level cannot be driven here (the dead player respawns at the overworld spawn), so
+     * the test moves the player to the surface as the respawn would and raises the same Fabric event.
+     */
+    @GameTest(dimension = SAMPLE, maxTicks = 400)
+    public void aPlayerWhoRespawnsAtTheSurfaceOfTheSameLevelRaisesNoAscents(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        MockPlayer mock = floater(helper, "cross-respawn", 21800.5, 21800.5, CampaignBands.LAYER_2.minY() + 100);
+        ServerPlayer player = mock.player();
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            mock.teleportTo(level, new Vec3(21800.5, CampaignBands.SURFACE.minY() + 80, 21800.5), 0, 0);
+            ServerPlayerEvents.AFTER_RESPAWN.invoker().afterRespawn(player, player, false);
+        });
+        helper.runAfterDelay(2 * SETTLE_TICKS, () -> {
+            if (!crossings(player).isEmpty()) {
+                throw failure(helper, "a respawn is a first sighting, but it raised %s", crossings(player));
+            }
+            mock.teleportTo(level, new Vec3(21800.5, CampaignBands.LAYER_1.minY() + 50, 21800.5), 0, 0);
+        });
+        helper.succeedWhen(() -> {
+            if (helper.getTick() < 2 * SETTLE_TICKS + 5) {
+                throw failure(helper, "waiting for the respawned player to be moved down");
+            }
+            if (!crossings(player).equals(List.of("0>1"))) {
+                throw failure(helper, "after the respawn a descent should still be tracked, saw %s", crossings(player));
             }
         });
     }

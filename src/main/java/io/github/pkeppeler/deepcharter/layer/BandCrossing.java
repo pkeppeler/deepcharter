@@ -1,8 +1,11 @@
 package io.github.pkeppeler.deepcharter.layer;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -21,7 +24,8 @@ import net.minecraft.world.level.Level;
  * last layer's floor has no crossing, and neither has the top of the surface.
  *
  * <p>The layer last seen is kept in memory only. A player seen for the first time, after a login or from another level, is put in the
- * layer their Y is in (a Y in the crust counts as the layer above it) and raises nothing.
+ * layer their Y is in (a Y in the crust counts as the layer above it) and raises nothing. So is a player who left the level and came
+ * back, and one who respawned.
  */
 final class BandCrossing {
     /** The layer a player was last in, and the level it was seen in. */
@@ -34,6 +38,8 @@ final class BandCrossing {
     static void init() {
         ServerPlayConnectionEvents.DISCONNECT.register(
                 (handler, server) -> SEEN.remove(handler.getPlayer().getUUID()));
+        // A respawn in the same level lands at the surface: it is a new sighting, not an ascent from where they died.
+        ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> SEEN.remove(newPlayer.getUUID()));
     }
 
     /** The layer after one tick of the root vehicle being at {@code y}, for a player last seen in {@code layer}. */
@@ -62,6 +68,13 @@ final class BandCrossing {
     static void tick(ServerLevel level) {
         // Collect first: a listener may move a player out of the level.
         Map<Entity, int[]> crossed = new HashMap<>();
+        // A player who left this level without disconnecting (a portal, a command, a mock removed with its test) is
+        // forgotten, so coming back at another Y is a first sighting.
+        Set<UUID> here = new HashSet<>();
+        level.players().forEach(player -> here.add(player.getUUID()));
+        SEEN.entrySet()
+                .removeIf(
+                        entry -> entry.getValue().level().equals(level.dimension()) && !here.contains(entry.getKey()));
         for (ServerPlayer player : level.players()) {
             Entity root = player.getRootVehicle();
             if (root.isRemoved()) {

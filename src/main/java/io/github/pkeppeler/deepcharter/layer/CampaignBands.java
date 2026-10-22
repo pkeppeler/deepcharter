@@ -12,9 +12,8 @@ public final class CampaignBands {
     /** One band: {@code minY} is its lowest block and {@code height} the blocks it spans. */
     public record Band(String name, int minY, int height) {
         /** The highest block of the band. */
-        // test-seam: CampaignTerrainTest checks the data files and the level's extents against the table
         public int maxY() {
-            return minY + height - 1;
+            return topExclusive() - 1;
         }
 
         /** The first Y above the band. */
@@ -29,11 +28,10 @@ public final class CampaignBands {
     public static final Band UNBUILT = new Band("unbuilt depth", -2032, 1520);
 
     /** Top to bottom. */
-    // test-seam: CampaignTerrainTest checks the data files and the level's extents against the table
     public static final List<Band> ALL = List.of(SURFACE, LAYER_1, LAYER_2, UNBUILT);
 
     /** The layers, top to bottom: index 0 is layer 1. */
-    public static final List<Band> LAYERS = List.of(LAYER_1, LAYER_2);
+    public static final List<Band> LAYERS = ALL.subList(1, ALL.size() - 1);
 
     private CampaignBands() {}
 
@@ -51,7 +49,7 @@ public final class CampaignBands {
     public static Optional<LayerChain.Band> bandAt(int y) {
         for (int layer = LayerChain.SURFACE; layer <= lastLayer(); layer++) {
             Band band = ofLayer(layer);
-            if (y >= band.minY() && y < band.topExclusive()) {
+            if (y >= band.minY() && y <= band.maxY()) {
                 return Optional.of(new LayerChain.Band(layer, band.minY(), band.height()));
             }
         }
@@ -66,17 +64,5 @@ public final class CampaignBands {
     /** Rows of crust at the floor of each layer. */
     public static int crustRows() {
         return LayerTuning.DEFAULT.crustThickness();
-    }
-
-    /** The lowest Y of the world. */
-    // test-seam: CampaignTerrainTest checks the data files and the level's extents against the table
-    public static int worldMinY() {
-        return UNBUILT.minY();
-    }
-
-    /** The first Y above the world. */
-    // test-seam: CampaignTerrainTest checks the data files and the level's extents against the table
-    public static int worldTopExclusive() {
-        return SURFACE.topExclusive();
     }
 }
