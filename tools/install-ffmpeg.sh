@@ -18,7 +18,6 @@ fail() {
 }
 
 mkdir -p "$DEBS"
-MATCHED_KEY=THROWAWAY; rm -rf "${DEBS:?}"/*; MATCHED_KEY=
 failed=() # one line per source that failed; the final error names them all
 
 if [[ -n $MATCHED_KEY ]]; then
@@ -43,7 +42,7 @@ if [[ ${DONE:-} != true ]]; then
 
   echo "apt install into $DEBS from the runner's default mirror"
   status=0
-  timeout -k 5 100 "${apt_install[@]}" -o Acquire::http::Proxy=http://127.0.0.1:9 -o Acquire::Retries=0 || status=$?
+  timeout -k 5 100 "${apt_install[@]}" || status=$?
   if [[ $status -ne 0 ]]; then
     failed+=("the runner's default apt mirror $(reason "$status")")
     echo "::warning::${failed[-1]}; retrying from archive.ubuntu.com"
