@@ -16,6 +16,7 @@ public final class LayerInit {
         Zones.init();
         LayerStructures.init();
         LavaHazard.init();
+        GrainedCrust.init();
         LightSync.init();
     }
 }

@@ -17,6 +17,10 @@ import java.util.Arrays;
  * @param structureCeilingMargin  structures keep this many blocks below the top of the layer, clear of the rock roof
  * @param lavaHullPerSecond hull points a pod loses each second while it is in or touching lava, before a radiator
  * @param lavaCueTicks      ticks between the hiss that tells the crew the hull is burning
+ * @param grainPulseTicks   ticks between two pulses of the grained crust (#746); 100 is 5 s, inside the 4 to 6 s of the design (#185)
+ * @param grainSqueezeHull  hull a pod that is neither moving nor drilling loses to each pulse while it touches the grained crust
+ * @param grainSqueezeDamage health a player on foot loses to each pulse while touching the grained crust
+ * @param grainSkateHeatPerSecond hull heat a pod takes each second its drill skates sideways across the grain, before a radiator
  */
 public record LayerTuning(
         int seaLevel,
@@ -28,10 +32,17 @@ public record LayerTuning(
         int structureFloorMargin,
         int structureCeilingMargin,
         float lavaHullPerSecond,
-        int lavaCueTicks) {
-    public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15);
+        int lavaCueTicks,
+        int grainPulseTicks,
+        float grainSqueezeHull,
+        float grainSqueezeDamage,
+        float grainSkateHeatPerSecond) {
+    public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f);
 
     public LayerTuning {
+        if (grainPulseTicks < 2) {
+            throw new IllegalArgumentException("grainPulseTicks must be at least 2, got " + grainPulseTicks);
+        }
         if (structureSpacing <= 0 || structureSpacing % 16 != 0) {
             throw new IllegalArgumentException(
                     "structureSpacing must be a positive multiple of 16, got " + structureSpacing);

@@ -1248,7 +1248,6 @@ The helmet lamp is a 2 by 2 pixel lens in the hard hat's bracket, dull amber, no
 - Should a crate be a container that can be opened and left, so that a charter can leave salvage for another? Today it breaks into a loot table and is gone.
 - A wrecked prefab that drops salvage (the issue's other source) is not built; crates in patches stand in for it.
 
-
 ## Renewable salvage (#470, A)
 
 **Problem.** Neither crates nor stalks regrow ([ADR 0047](../adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)). The yard holds about 6 times what the colony's repairs take, but a long multiplayer world breaks every crate in the end, and then it has no scrap iron, scrap copper, redstone or cloth, and wood only from the few stalks of the craters and of layer 1. Iron is not only the repairs: a tow cable takes 6, a reserve tank 10 with its bucket, and the vanilla tools take it too.
@@ -1681,3 +1680,21 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 - Does a bare shaft cost enough hull (23 on average over 3 gaps) to make a shaft with no lining a real choice, or is it too cheap?
 - One of 30 lined Moles touched lava once, and why is not traced. It cost under 1 hull on average.
 - A wreck bay and a rail line can fall in one cell (a later write wins in a chunk), so a wreck bay could overwrite a shaft's drift or lining; the chance is small and unchecked.
+
+## The grained crust (#746, A)
+
+**Problem.** The seams of the campaign world (#216) swap a background world under the pod, and a swap is only safe if nothing the player builds or digs can sit across it. The restriction has to read as the material's doing and not as a rule the game announces, so the crust has one property, a vertical grain that flexes on a slow pulse, and the four rules follow from it. Design: the comments on [#185](https://github.com/pkeppeler/deepcharter/issues/185); the block and the decoy hash: [ADR 0060](../adr/0060-the-grained-crust-block-id-is-permanent-and-a-decoy-is-drawn-from-a-hash-of-the-seed-and-the-boundary.md). Names and messages are placeholders until the lore session (#12).
+
+| Rule | What the material does | What the player sees | Counterplay |
+|---|---|---|---|
+| No sideways digging | A drill pushed across the grain skates | Sparks at the face, a squeal, 4 hull a second of heat (less by a radiator), a line that says so | Bore down along the grain, as in any rock |
+| No placing | A rigid block cannot flex, so it crumbles on the next pulse | The first attempt prints a line once for each player; the block breaks with its dust and drops nothing | None: build somewhere else |
+| No fluids | The grain draws liquid into itself | The fluid is gone the tick after it arrives, with a puff of smoke | None needed: it also stops a flood |
+| Don't linger | Each pulse squeezes what stops in it | A pod that is neither moving nor drilling loses 5 hull a pulse; a player on foot takes 4 damage a pulse; a pod that moves or drills takes none. Ten ticks before each pulse the grain creaks and sheds dust for what it will squeeze | A pod keeps moving or drills: the crust is crossed, not parked on. A player on foot has no exemption: get off the crust |
+
+**Ladder.** By hand: the pilot learns to keep the drill pointed down and the pod moving. There is no upgrade that lifts a rule, since the crust is what keeps the swap safe: the rules are the crust, not a hazard to buy off. The heat of the skating drill is the one number a radiator changes.
+
+**Knobs (`LayerTuning`).** `grainPulseTicks` (100, 5 s), `grainSqueezeHull` (5), `grainSqueezeDamage` (4), `grainSkateHeatPerSecond` (4). At 5 hull a pulse a pod that parks in the crust loses a hull in 20 pulses (100 s); the breach crust takes 24 in one crossing, so a parked pod is the slow death and a crossing the fast one.
+
+**Open questions.** Whether a decoy should squeeze less than a seam (it must not: a seam cannot be told from a decoy); whether the pulse should be heard from a distance (the warning creak is positional, so a player near a squeezed pod hears it too).
+

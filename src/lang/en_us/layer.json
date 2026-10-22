@@ -1,8 +1,13 @@
 {
+  "block.deepcharter.grained_crust": "Grained Crust",
   "block.deepcharter.green_shale": "Green Shale",
   "block.deepcharter.green_shale_rubble": "Green Shale Rubble",
   "block.deepcharter.packed_shale": "Packed Shale",
   "block.deepcharter.packed_shale_rubble": "Packed Shale Rubble",
   "deepcharter.layer.goto.no_such_layer": "No layer %s: the chain has %s layers",
-  "deepcharter.layer.goto.success": "Moved to layer %s"
+  "deepcharter.layer.goto.success": "Moved to layer %s",
+  "deepcharter.layer.grain_no_place": "[PLACEHOLDER #12] The grain flexes and sheds anything rigid. What you build against it crumbles on the next pulse.",
+  "deepcharter.layer.grain_skates": "[PLACEHOLDER #12] The drill skates across the grain. Dig down, not across.",
+  "deepcharter.layer.grain_squeeze_foot": "[PLACEHOLDER #12] The grain squeezes. Get off the crust.",
+  "deepcharter.layer.grain_squeeze_pod": "[PLACEHOLDER #12] The grain squeezes. Keep moving."
 }

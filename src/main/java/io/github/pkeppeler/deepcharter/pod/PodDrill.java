@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.pod;
 
 import io.github.pkeppeler.deepcharter.layer.BreachService;
 import io.github.pkeppeler.deepcharter.layer.Depth;
+import io.github.pkeppeler.deepcharter.layer.GrainedCrust;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
@@ -68,6 +69,13 @@ public final class PodDrill {
         // Centre before judging the slab: a pod straddling a third column can see an all-air footprint, and
         // sliding onto it (off a ledge, past a wall's edge) is how it reaches something to drill.
         boolean centred = centre(pod, slab, stats);
+        if (slab.acrossGrain()) {
+            // The grain does not bite across it (#746): the drill skates, with sparks, a squeal and heat, and makes no
+            // progress.
+            GrainedCrust.skate(pod, wanted);
+            stop(pod);
+            return;
+        }
         if (!slab.hasWork() || !slab.allowed(pod)) {
             if (slab.hasCompanyRock()
                     && pod.getControllingPassenger() instanceof ServerPlayer pilot
@@ -129,7 +137,7 @@ public final class PodDrill {
     }
 
     /** The cells one bore step removes, and what is in them. */
-    private record Slab(ServerLevel level, List<BlockPos> cells, double centreX, double centreZ) {
+    private record Slab(ServerLevel level, Direction direction, List<BlockPos> cells, double centreX, double centreZ) {
         static Slab of(PodEntity pod, Direction direction) {
             PodFootprint foot = PodFootprint.of(pod);
             int width = foot.width();
@@ -156,7 +164,7 @@ public final class PodDrill {
                     }
                 }
             }
-            return new Slab((ServerLevel) pod.level(), cells, lowX + width / 2.0, lowZ + width / 2.0);
+            return new Slab((ServerLevel) pod.level(), direction, cells, lowX + width / 2.0, lowZ + width / 2.0);
         }
 
         BlockPos origin() {
@@ -165,6 +173,12 @@ public final class PodDrill {
 
         boolean hasCompanyRock() {
             return cells.stream().anyMatch(pos -> state(pos).is(HazardBlocks.UNDIGGABLE));
+        }
+
+        /** A sideways slab with any grained crust in it: the grain runs up and down, so a drill bores along it and never across it. */
+        boolean acrossGrain() {
+            return direction.getAxis().isHorizontal()
+                    && cells.stream().anyMatch(pos -> state(pos).is(LayerBlocks.GRAINED_CRUST));
         }
 
         boolean hasGasPocket() {
