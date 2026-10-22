@@ -5,6 +5,7 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -29,6 +30,9 @@ import org.jspecify.annotations.Nullable;
  * the chunk's corner, and it only touches that chunk's blocks of {@code zone} (a third of the layer, by
  * {@link Zones#index}). Only the layer's own rock ({@link LayerBlocks#GROUND}) is replaced: caves, the crust and anything an earlier step
  * placed stay as they are. An ore, and Company rock, is placed in the rock it replaces ({@link OreBlock#in}, {@link CompanyRockBlock#in}).
+ *
+ * <p>A level outside the chain (the campaign world's test dimension, until #743 gives the fill its bands) gets no fill: its height is not
+ * one layer, so the level's own thirds would put ore in the wrong rows.
  *
  * @param zone    0 for the top third of the layer, 2 for the bottom
  * @param ores    ore blocks and the chance of each for a block of stone
@@ -80,6 +84,9 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
 
     @Override
     public boolean place(WorldGenLevel level, ChunkGenerator generator, RandomSource random, BlockPos origin) {
+        if (LayerChain.bandAt(level.getLevel(), origin.getY()).isEmpty()) {
+            return false;
+        }
         int minY = level.getMinY();
         int height = level.getHeight();
         int firstX = origin.getX() >> 4 << 4;
