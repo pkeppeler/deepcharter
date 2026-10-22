@@ -521,9 +521,25 @@ Burn of a one-way bore of all 192 slabs, in the deepest zone, with no climb (`Ea
 | Before (from the surface) | 31 | 24.7 | $348 | 4 runs |
 | After (from the outpost) | 48 | 24.4 | $413 | 4 runs |
 
-The run count is the same, 3.36 against 3.99, so the Prospector pace of PR 206 holds. The outpost's prices take 25 percent of what the same run nets at the colony ($553). Every other layer 2 band in `EconomyAffordabilityTest` and `FirstTierPartsCostTest` holds, except the matter transmitter: at $1,390 it was 3.36 runs against its band of 3.5 to 4.0, so its price goes back to the $1,500 it had before #319 (3.63 runs).
+The run count is the same, 3.36 against 3.99, so the Prospector pace of PR 206 holds. The outpost's prices take 25 percent of what the same run nets at the colony ($553).
 
-The net rose 19 percent, so every price pinned in runs of a layer 2 run got relatively cheaper. Each band still holds except the matter transmitter, which fell under its band (3.5 to 4.0) and so alone was raised.
+The net rose 19 percent, so every price pinned in runs of a layer 2 run got relatively cheaper. Runs are the price over the net of the run that pays for it ($348 before, $413 after; the liner and the sounder use their own pods' runs, with the drill penalty each adds, $300 to $364 and $313 to $375). The bands are those of `EconomyAffordabilityTest`, a whole number of runs as a maximum, or a range for a consumable:
+
+| Item | Price | Runs before | Runs after | Pinned band |
+|---|---|---|---|---|
+| Console tier 2 | $500 | 1.44 | 1.21 | at most 2 |
+| Console tier 3 | $1,250 | 3.59 | 3.02 | at most 4 |
+| Radiator tier 2 | $1,250 | 3.59 | 3.02 | at most 5 |
+| Thermal scanner tier 2 | $500 | 1.44 | 1.21 | at most 2 |
+| Liner tier 2 | $1,000 | 3.33 | 2.75 | at most 4 |
+| Seep sounder tier 2 | $1,000 | 3.20 | 2.67 | at most 4 |
+| Hull nanobots | $345 | 0.99 | 0.83 | 0.25 to 1 |
+| Plastic explosives | $300 | 0.86 | 0.73 | 0.25 to 1 |
+| Quantum teleporter | $690 | 1.98 | 1.67 | 1.5 to 2 |
+| Matter transmitter | $1,390 before, $1,500 after | 3.99 | 3.63 | 3.5 to 4 |
+| Tier 3 drill | $1,250 | 3.59 | 3.02 | none (logged against the bitten slab) |
+
+Every band holds after the change. The matter transmitter is the one price that fell under its band at $1,390 (3.36 runs at the new net), so it alone was raised, back to the $1,500 it had before #319.
 
 **Trade-offs.** The outpost saves the shaft climb and turns the run into a loop in layer 2, but it pays less for the same ore and charges double for the fuel, so a pilot who is carrying a full bay out of a deep run weighs the climb against the discount. It is one more thing to build before layer 2, at the price of an ore stack that a first layer 2 run replaces.
 
