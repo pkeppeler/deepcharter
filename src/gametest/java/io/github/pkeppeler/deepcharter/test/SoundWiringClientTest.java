@@ -338,7 +338,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                     client -> TestLayers.isIn(ClientLight.clientLevel(client), 1)
                             && !heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
 
-            // Each layer's dimension carries its music, and the client plays what the dimension says.
+            // Each layer's zone biomes carry its music, and the client plays what the biome at the player says.
             int layers = singleplayer.getServer().computeOnServer(server -> LayerChain.count(server.registryAccess()));
             require(
                     layers == LAYER_MUSIC.size(),
@@ -363,6 +363,15 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                         context,
                         "the client in the target layer",
                         client -> client.level != null && TestLayers.isIn(client.level, target));
+                // The music is the biome's, so read it only once the client has the chunk and its biome.
+                ClientWait.until(context, "the client's biome at the player in layer " + target, client -> {
+                    Vec3 at = ClientSession.player(client).position();
+                    return ClientLight.clientLevel(client)
+                            .getBiome(BlockPos.containing(at))
+                            .unwrapKey()
+                            .filter(key -> key.identifier().getNamespace().equals(DeepCharter.MOD_ID))
+                            .isPresent();
+                });
                 String expected = LAYER_MUSIC.get(layer - 1);
                 Identifier music = context.computeOnClient(client -> {
                     Music playing = ClientLight.clientLevel(client)
