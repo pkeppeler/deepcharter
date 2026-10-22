@@ -70,9 +70,9 @@ The scanner is a side-view map of the rock around your pod, drawn cell by cell, 
 
 Ore is heavy and lives in the pod's cargo bay. A heavy load cuts your lift. Park by the ore processor in the colony and sell it, and the money goes to your charter's account.
 
-![The fuel pump terminal in an outpost hall on the layer 1 floor, selling fuel at $2 a litre, twice the colony price](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/outpost.png?raw=true)
+![The fuel pump terminal in an outpost hall on the layer 1 floor, selling fuel at $2 a litre](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/outpost.png?raw=true)
 
-You do not have to climb home for fuel or a buyer. Craft an outpost kit and use it on the floor of layer 1, and it unfolds a steel hall with a fuel pump and an ore processor that sell for your charter alone. Fuel costs twice the colony price and ore pays four fifths of its value, so the trip to the colony still pays.
+You do not have to climb home for fuel or a buyer. Use an outpost kit on the floor of layer 1 and it unfolds a steel hall with a fuel pump and an ore processor that sell for your charter alone. Fuel costs twice the colony price and ore pays four fifths of its value, so the colony trip still pays.
 
 ### 6. Upgrades and the hangar
 
@@ -120,7 +120,7 @@ While lava burns the hull, the pod itself glows like hot metal, red in the seams
 
 ![The upgrade terminal listing the heat shield's tiers and their prices](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/heat-shield-tiers.png?raw=true)
 
-The heat shield burns slag brick in place of hull while lava touches the pod. Tier 2 and 3 are bought at the upgrade terminal: a brick soaks 6 hull at tier 2 and 8 at tier 3, and tier 3 burns the bricks in your pack first, so the rack stays for lining.
+While lava touches the pod, the heat shield burns slag brick instead of hull. Buy tiers 2 and 3 at the upgrade terminal: a brick soaks 6 hull at tier 2 and 8 at tier 3. Tier 3 burns the bricks in your pack first, so the rack stays for lining.
 
 ### 10. Lining the shaft
 
@@ -132,11 +132,11 @@ The liner part does it for you. Fit one and the pod lines the shaft with slag br
 
 ![Looking down a shaft the liner has lined with slag brick](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/pod-liner.png?raw=true)
 
-Prospector's Run has an old charter's shaft at the end of each rail line. The Kells, an old charter, lined it with brick and bored it down to the crust.
+At the end of each rail line in Prospector's Run is a shaft the Kells, an old charter, lined with brick and bored down to the crust.
 
 ![Looking down the Kells' shaft: a brick-lined hollow under a timber frame](https://github.com/pkeppeler/deepcharter/blob/pr-media/readme/kells-shaft.png?raw=true)
 
-At each gap in the lining the Kells sealed the shaft with a plug of brick, and lava stands under the hole in it.
+At each gap in the lining the Kells plugged the shaft with brick. Lava stands under the hole in the plug.
 
 ### 11. Gas and the seep sounder
 
