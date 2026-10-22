@@ -1,7 +1,9 @@
 {
-  "variants": {
-    "": {
-      "model": "deepcharter:block/grained_crust"
+  "multipart": [
+    {
+      "apply": {
+        "model": "deepcharter:block/grained_crust"
+      }
     }
-  }
+  ]
 }

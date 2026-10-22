@@ -41,7 +41,7 @@ public final class LayerBlocks {
      */
     public static final Block GRAINED_CRUST = registerBlock(
             id("grained_crust"),
-            key -> new Block(BlockBehaviour.Properties.of()
+            key -> new GrainedCrustBlock(BlockBehaviour.Properties.of()
                     .setId(key)
                     .strength(5.0F, 6.0F)
                     .sound(SoundType.STONE)

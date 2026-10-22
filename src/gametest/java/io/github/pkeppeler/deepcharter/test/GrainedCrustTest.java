@@ -61,6 +61,8 @@ public class GrainedCrustTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1200;
     /** Ticks either side of a pulse that a baseline reading keeps clear of, so that no pulse is half applied when it is taken. */
     private static final int PULSE_MARGIN = 5;
+    /** Ticks a fluid may sit against the grain before it is absorbed: it is absorbed on the tick after it arrives, and a callback may run between. */
+    private static final int ABSORB_TICKS = 2;
     /** Ticks a fluid has to reach the wall: water takes 5 ticks a cell and lava 30, so the wall has been reached by now. */
     private static final int FLUID_SETTLE_TICKS = 160;
 
@@ -77,20 +79,28 @@ public class GrainedCrustTest {
         }
     }
 
-    /** Counts whole pulses: one is complete on the first tick after its pulse tick, when every tick callback has surely run. */
+    /**
+     * Counts the pulse ticks a test has seen. A test callback may run before or after the level tick it shares with a pulse, so on a pulse
+     * tick the loss may or may not be in yet; on any other tick every pulse so far is.
+     */
     private static final class Pulses {
-        private long pending = -1;
-        private int done;
+        private int seen;
+        private boolean onPulse;
 
         void observe(ServerLevel level) {
-            long now = level.getGameTime();
-            if (pending >= 0 && now > pending) {
-                done++;
-                pending = -1;
+            onPulse = GrainedCrust.isPulse(level);
+            if (onPulse) {
+                seen++;
             }
-            if (GrainedCrust.isPulse(level)) {
-                pending = now;
-            }
+        }
+
+        /** The pulses that are surely in: all of them but, on a pulse tick, the one in flight. */
+        int settled() {
+            return onPulse ? seen - 1 : seen;
+        }
+
+        boolean lossFits(double lost, double each) {
+            return Math.abs(lost - settled() * each) < 0.01 || (onPulse && Math.abs(lost - seen * each) < 0.01);
         }
     }
 
@@ -241,6 +251,7 @@ public class GrainedCrustTest {
         level.setBlock(new BlockPos(x + 2, FLOOR, lavaZ), Blocks.LAVA.defaultBlockState(), Block.UPDATE_ALL);
         Arrival<Boolean> ready = ready(helper, level, x);
         long[] readyAt = {-1};
+        int[] stayed = new int[2 * ROOM + 1];
         BlockPos waterWitness = new BlockPos(x + 1, FLOOR, waterZ);
         BlockPos lavaWitness = new BlockPos(x + 2, FLOOR, lavaZ + 1);
         TestTicks.each(helper, () -> {
@@ -251,7 +262,10 @@ public class GrainedCrustTest {
                 readyAt[0] = level.getGameTime();
             }
             for (int z = Z - ROOM; z <= Z + ROOM; z++) {
-                if (!level.getFluidState(new BlockPos(x + 3, FLOOR, z)).isEmpty()) {
+                int cell = z - (Z - ROOM);
+                stayed[cell] =
+                        level.getFluidState(new BlockPos(x + 3, FLOOR, z)).isEmpty() ? 0 : stayed[cell] + 1;
+                if (stayed[cell] > ABSORB_TICKS) {
                     throw failure(
                             helper,
                             "a fluid reached the cell against the grain at z %d and stayed: %s",
@@ -283,22 +297,20 @@ public class GrainedCrustTest {
             if (baseline[0] < 0) {
                 if (pod.onGround() && clearOfAPulse(level)) {
                     baseline[0] = pod.hull();
-                    pulses.observe(level);
                 }
                 return;
             }
             pulses.observe(level);
             double lost = baseline[0] - pod.hull();
-            double wanted = pulses.done * (double) TUNING.grainSqueezeHull();
-            if (Math.abs(lost - wanted) > 0.01) {
+            if (!pulses.lossFits(lost, TUNING.grainSqueezeHull())) {
                 throw failure(
                         helper,
-                        "after %d pulses the hull should have lost %.2f, it lost %.2f",
-                        pulses.done,
-                        wanted,
+                        "after %d pulses the hull should have lost %.2f each, it lost %.2f in all",
+                        pulses.seen,
+                        TUNING.grainSqueezeHull(),
                         lost);
             }
-            if (pulses.done == 2) {
+            if (pulses.settled() == 2) {
                 pod.discard();
                 helper.succeed();
             }
@@ -325,22 +337,20 @@ public class GrainedCrustTest {
             if (baseline[0] < 0) {
                 if (helper.getTick() > 100 && walker.player().onGround() && clearOfAPulse(level)) {
                     baseline[0] = walker.player().getHealth();
-                    pulses.observe(level);
                 }
                 return;
             }
             pulses.observe(level);
             double lost = baseline[0] - walker.player().getHealth();
-            double wanted = pulses.done * (double) TUNING.grainSqueezeDamage();
-            if (Math.abs(lost - wanted) > 0.01) {
+            if (!pulses.lossFits(lost, TUNING.grainSqueezeDamage())) {
                 throw failure(
                         helper,
-                        "after %d pulses the player should have lost %.2f, lost %.2f",
-                        pulses.done,
-                        wanted,
+                        "after %d pulses the player should have lost %.2f each, lost %.2f in all",
+                        pulses.seen,
+                        TUNING.grainSqueezeDamage(),
                         lost);
             }
-            if (pulses.done == 2) {
+            if (pulses.settled() == 2) {
                 helper.succeed();
             }
         });
