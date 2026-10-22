@@ -6,8 +6,8 @@
 # GitHub rolls runner images over days, so a job can land on an image newer than the last seed's
 # (#771: three runs missed on image 20261018 while main's cache was keyed 20261012, then waited
 # 2 x 100 s on the mirror). The restore therefore falls back to the newest entry for the same OS
-# (any image, any action hash: the set is only ffmpeg's packages), and a failed dpkg of such a stale set falls back to apt. The seed turns the
-# fallback off, so it saves a set built on its own image.
+# (any image, any action hash: the set is only ffmpeg's packages), and a failed dpkg of such a
+# stale set falls back to apt. The seed turns the fallback off, so it saves a set built on its own image.
 name: Install ffmpeg
 description: Install ffmpeg from cached Ubuntu .deb files, or by a bounded apt install on a cache miss. Never saves the cache.
 
