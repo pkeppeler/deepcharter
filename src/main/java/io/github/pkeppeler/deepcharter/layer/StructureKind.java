@@ -279,10 +279,10 @@ public enum StructureKind {
     private static final int KELLS_SET_SPACING = 3;
 
     /**
-     * Slag bricks in the reserve at the head for each gap. A pilot with no hopper lined the first gap of 30 shafts from bricks
-     * carried in the pack with 2.1 on average and 4 at most (#716, {@code KellsShaftBoreTest}), so the reserve holds the most.
+     * Slag bricks in the reserve at the head for each gap. A pilot with no hopper lined a gap of 30 shafts from bricks carried
+     * in the pack with 2.1 on average (the first gap 4 at most; #716, {@code KellsShaftBoreTest}), so the reserve holds 3.
      */
-    public static final int KELLS_RESERVE_PER_GAP = 4;
+    public static final int KELLS_RESERVE_PER_GAP = 3;
 
     /** The least rows between one gap's row and the next: a gap's wall is three rows, and no gap is in another's wall. */
     private static final int KELLS_GAP_SPACING = 3;
@@ -330,7 +330,7 @@ public enum StructureKind {
                     }
                 }
             }
-            RingSide side = KELLS_SIDES.get(p.pick(20 + k, KELLS_SIDES.size()));
+            RingSide side = kellsRingSides().get(p.pick(20 + k, kellsRingSides().size()));
             BlockState lava = Blocks.LAVA.defaultBlockState();
             p.set(side.u(), rows[k], side.v(), lava);
             p.set(side.u() + side.outU(), rows[k], side.v() + side.outV(), lava);
@@ -348,7 +348,7 @@ public enum StructureKind {
         p.box(-4, floor, 0, -2, floor, 0, p.railAlongU());
         for (int i = 0; i < gaps * KELLS_RESERVE_PER_GAP; i++) {
             int slot = i / 2;
-            p.set(-4 + slot % 3, floor + slot / 3, i % 2 == 0 ? 1 : -2, brick);
+            p.set(-3 + slot % 2, floor + slot / 2, i % 2 == 0 ? 1 : -2, brick);
         }
     }
 

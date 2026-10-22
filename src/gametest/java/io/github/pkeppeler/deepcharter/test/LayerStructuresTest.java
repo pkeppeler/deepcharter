@@ -794,7 +794,7 @@ public class LayerStructuresTest {
             unmet.add("the line's last column holds " + lineEnd);
         }
         int reserve = 0;
-        for (int u = -4; u <= -2; u++) {
+        for (int u = -3; u <= -2; u++) {
             for (int y = top - 2; y <= top; y++) {
                 for (int v : new int[] {1, -2}) {
                     if (level.getBlockState(at(shaft, u, y, v)).is(SlagBrick.BLOCK)) {
