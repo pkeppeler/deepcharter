@@ -11,5 +11,25 @@
     "**/tests/**",
     "**/__fixtures__/**",
     "tooling/**"
-  ]
+  ],
+  "packageRules": [
+    {
+      "description": "Deep Charter's merge gate (tools/merge-pr.sh) reviews every PR and GitHub has no required checks, so Renovate never automerges.",
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch",
+        "pin",
+        "pinDigest",
+        "digest",
+        "lockFileMaintenance",
+        "rollback",
+        "bump",
+        "replacement"
+      ],
+      "automerge": false
+    }
+  ],
+  "vulnerabilityAlerts": { "automerge": false },
+  "lockFileMaintenance": { "automerge": false }
 }
