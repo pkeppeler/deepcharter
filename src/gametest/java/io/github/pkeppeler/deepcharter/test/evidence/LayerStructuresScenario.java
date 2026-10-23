@@ -120,7 +120,7 @@ public class LayerStructuresScenario extends EvidenceScenario {
         return singleplayer.getServer().computeOnServer(server -> {
             ServerLevel level = TestLayers.level(server, kind.layer());
             StructureSite site = kind == StructureKind.WRECK
-                    ? LayerStructures.prospector(server)
+                    ? LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
                             .orElseThrow(() -> new AssertionError("the colony was not built when the world started"))
                     : StructureSite.in(
                             level.getSeed(),

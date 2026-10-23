@@ -1,5 +1,6 @@
 {
   "type": "deepcharter:zone_fill",
+  "layer": 2,
   "zone": 0,
   "ores": [
     {

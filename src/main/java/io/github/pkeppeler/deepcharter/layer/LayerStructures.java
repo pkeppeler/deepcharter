@@ -11,7 +11,6 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -46,50 +45,68 @@ public final class LayerStructures {
         if (level.dimensionTypeRegistration().unwrapKey().isEmpty()) {
             return;
         }
-        Optional<Band> band = LayerChain.layerAt(level, level.getMinY());
-        if (band.isEmpty()) {
+        List<Band> bands = layerBands(level);
+        if (bands.isEmpty()) {
             return;
         }
-        int layer = band.get().layer();
         Optional<BlockPos> conduit = Colony.anchor(level.getServer(), ColonyAnchor.CONDUIT);
         if (conduit.isEmpty()) {
             if (LOGGED_NO_COLONY.compareAndSet(false, true)) {
                 DeepCharter.LOGGER.warn(
-                        "A chunk of layer {} generated before the colony was built, so it gets no structures", layer);
+                        "A chunk of layer {} generated before the colony was built, so it gets no structures",
+                        bands.getFirst().layer());
             }
             return;
         }
-        List<StructureSite> sites =
-                sitesIn(level.getSeed(), layer, band.get().minY(), band.get().height(), chunk.getPos(), conduit.get());
+        boolean held = false;
         try {
-            for (StructureSite site : sites) {
-                StructurePlan plan = new StructurePlan(site, level, chunk, band.get());
-                plan.seal();
-                site.kind().draw(plan, site.height());
-                if (site.kind() == StructureKind.WRECK) {
-                    boolean famous =
-                            prospector(level.getServer()).filter(site::equals).isPresent();
-                    if (famous) {
-                        ProspectorWrecks.light(plan);
+            for (Band band : bands) {
+                List<StructureSite> sites = sitesIn(
+                        level.getSeed(), band.layer(), band.minY(), band.height(), chunk.getPos(), conduit.get());
+                // Set before the sites are drawn, so a site drawn before a failure is held too.
+                held |= !sites.isEmpty();
+                try {
+                    for (StructureSite site : sites) {
+                        StructurePlan plan = new StructurePlan(site, level, chunk, band);
+                        plan.seal();
+                        site.kind().draw(plan, site.height());
+                        if (site.kind() == StructureKind.WRECK) {
+                            boolean famous =
+                                    prospector(level).filter(site::equals).isPresent();
+                            if (famous) {
+                                ProspectorWrecks.light(plan);
+                            }
+                            placeWreck(level, site, chunk, famous);
+                        }
                     }
-                    placeWreck(level, site, chunk, famous);
+                } catch (RuntimeException e) {
+                    if (LOGGED_FAILURE.compareAndSet(false, true)) {
+                        DeepCharter.LOGGER.error(
+                                "Layer structures failed in chunk {} of layer {}; this and later chunks may lack theirs",
+                                chunk.getPos(),
+                                band.layer(),
+                                e);
+                    }
                 }
             }
-        } catch (RuntimeException e) {
-            if (LOGGED_FAILURE.compareAndSet(false, true)) {
-                DeepCharter.LOGGER.error(
-                        "Layer structures failed in chunk {} of layer {}; this and later chunks may lack theirs",
-                        chunk.getPos(),
-                        layer,
-                        e);
-            }
         } finally {
-            // A site that was drawn before a failure is held too: the chunk may be sent at once, before its light is
-            // computed.
-            if (!sites.isEmpty()) {
+            // The chunk may be sent at once, before its light is computed.
+            if (held) {
                 LightSync.holdSendUntilLit(level, chunk.getPos());
             }
         }
+    }
+
+    /**
+     * The layers a level holds: the one layer of a layer dimension, every layer of a campaign world (#743), or none for the surface and
+     * any other level.
+     */
+    private static List<Band> layerBands(ServerLevel level) {
+        List<Band> campaign = LayerChain.campaignLayers(level);
+        if (!campaign.isEmpty()) {
+            return campaign;
+        }
+        return LayerChain.layerAt(level, level.getMinY()).stream().toList();
     }
 
     /** A pod that cannot be made is logged and skips its own site only: it must not drop the blocks of the other sites in the chunk. */
@@ -151,17 +168,16 @@ public final class LayerStructures {
     }
 
     /**
-     * The wreck site that is PROSPECTOR-0002's: the one nearest the Conduit in layer 2, with a lamp burning and Note N10
-     * ({@link ProspectorWrecks}). Empty before the colony is built or when its data is unreadable.
+     * The wreck site that is PROSPECTOR-0002's: the one nearest the Conduit in the wreck's layer of {@code level}, with a lamp burning and
+     * Note N10 ({@link ProspectorWrecks}). Empty before the colony is built or when its data is unreadable, and for a level that does not
+     * hold that layer.
      */
-    public static Optional<StructureSite> prospector(MinecraftServer server) {
+    public static Optional<StructureSite> prospector(ServerLevel level) {
         StructureKind kind = StructureKind.WRECK;
-        ServerLevel level = server.getLevel(LayerChain.dimension(kind.layer()));
-        if (level == null) {
-            throw new IllegalStateException(
-                    "Layer " + kind.layer() + " is not loaded, so the Prospector's site is not known");
-        }
-        return Colony.anchor(server, ColonyAnchor.CONDUIT)
-                .map(conduit -> nearest(level.getSeed(), kind, level.getMinY(), level.getHeight(), conduit, conduit));
+        return Colony.anchor(level.getServer(), ColonyAnchor.CONDUIT)
+                .flatMap(conduit -> layerBands(level).stream()
+                        .filter(band -> band.layer() == kind.layer())
+                        .findFirst()
+                        .map(band -> nearest(level.getSeed(), kind, band.minY(), band.height(), conduit, conduit)));
     }
 }

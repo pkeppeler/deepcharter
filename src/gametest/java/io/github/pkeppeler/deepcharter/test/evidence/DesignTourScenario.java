@@ -1394,8 +1394,9 @@ public class DesignTourScenario extends EvidenceScenario {
             }
 
             // The wreck sites: Prospector's wreck, with its lamp and Note N10, and an empty bay.
-            StructureSite prospector =
-                    serverGet(server -> LayerStructures.prospector(server).orElseThrow());
+            StructureSite prospector = serverGet(
+                    server -> LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
+                            .orElseThrow());
             loadSite(prospector);
             Vec3 pod = at(prospector, 0, 1.2, 0);
             view(2, at(prospector, 5, 2, 0), pod, 120);

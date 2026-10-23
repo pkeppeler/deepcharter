@@ -5,6 +5,8 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
 import java.util.List;
@@ -31,14 +33,16 @@ import org.jspecify.annotations.Nullable;
  * {@link Zones#index}). Only the layer's own rock ({@link LayerBlocks#GROUND}) is replaced: caves, the crust and anything an earlier step
  * placed stay as they are. An ore, and Company rock, is placed in the rock it replaces ({@link OreBlock#in}, {@link CompanyRockBlock#in}).
  *
- * <p>A campaign world (its generator's biome source is a {@link BandBiomeSource}) gets no fill until #743 gives the fill its bands: its
- * height is not one layer, so the level's own thirds would put ore in the wrong rows. Every other generator keeps the fill.
+ * <p>The zone is a third of {@code layer}, counted from 1. In a layer dimension the layer is the whole level. In a campaign world (its
+ * generator's biome source is a {@link BandBiomeSource}) it is a band of the level, so the fill finds its rows there (#743).
  *
+ * @param layer   the layer the zone is in, counted from 1
  * @param zone    0 for the top third of the layer, 2 for the bottom
  * @param ores    ore blocks and the chance of each for a block of stone
  * @param hazards hazard blocks and the chance of each for a block of stone that is not ore
  */
-public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<Block>> hazards) implements Feature {
+public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, List<Entry<Block>> hazards)
+        implements Feature {
     /** A block and the chance of it for one stone block. */
     public record Entry<B extends Block>(B block, double chance) {
         static <B extends Block> Codec<Entry<B>> codec(Codec<B> blocks) {
@@ -62,6 +66,9 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
 
     public static final MapCodec<ZoneFillFeature> CODEC = RecordCodecBuilder.<ZoneFillFeature>mapCodec(instance ->
                     instance.group(
+                                    Codec.intRange(1, Integer.MAX_VALUE)
+                                            .fieldOf("layer")
+                                            .forGetter(ZoneFillFeature::layer),
                                     Codec.intRange(0, Zones.COUNT - 1)
                                             .fieldOf("zone")
                                             .forGetter(ZoneFillFeature::zone),
@@ -82,18 +89,11 @@ public record ZoneFillFeature(int zone, List<Entry<OreBlock>> ores, List<Entry<B
         return CODEC;
     }
 
-    /** False for a campaign world, whose bands the fill does not know yet (#743); true for every other generator. */
-    public static boolean runsIn(ChunkGenerator generator) {
-        return !(generator.getBiomeSource() instanceof BandBiomeSource);
-    }
-
     @Override
     public boolean place(WorldGenLevel level, ChunkGenerator generator, RandomSource random, BlockPos origin) {
-        if (!runsIn(generator)) {
-            return false;
-        }
-        int minY = level.getMinY();
-        int height = level.getHeight();
+        Band band = LayerChain.layerBand(generator, level, layer, "A zone fill");
+        int minY = band.minY();
+        int height = band.height();
         int firstX = origin.getX() >> 4 << 4;
         int firstZ = origin.getZ() >> 4 << 4;
         // The chunk itself, not the region: a block lookup through the region costs several times as much, and this
