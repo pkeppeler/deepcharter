@@ -13,7 +13,7 @@ palantirJavaFormat = "2.102.0"
 spotless = "8.10.4"
 errorprone = "2.50.0"
 errorproneGradle = "5.1.1"
-nullaway = "0.14.2"
+nullaway = "0.14.3"
 jspecify = "1.0.1"
 
 [libraries]
