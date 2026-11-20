@@ -6,6 +6,12 @@ You get two files from the host: `deepcharter-friends-{{VERSION}}.mrpack` (the c
 
 **Start a new world for this version.** The colony replaces what stands at the world spawn, so a world with a build there loses it. The surface terrain changed too: in an old world, new chunks have red regolith land and the old chunks keep their grass and trees, so the two meet in a hard seam. The old colony stays where it was, with no flat ground. A new world has none of this.
 
+## Old worlds
+
+A world made before the world-format stamp does not open. Deep Charter shows "This world cannot be opened" in singleplayer, and a dedicated server logs the reason and stops. Nothing in the world is changed, so you can still open it with the older Deep Charter that made it.
+
+The campaign world is much taller than the old overworld. Chunks saved in an old world would have air under them, and players and pods left in the old layer dimensions would be lost. So an old world is not migrated, and a new version that changes the world format needs a new world. To play this version, make a new world (singleplayer: **Create New World**; server: delete or move the `world` folder, then start it again).
+
 ## Install (Prism Launcher)
 
 You need a Minecraft Java Edition account.
