@@ -22,7 +22,7 @@
 # Refuses if origin/main commits made since the PR's latest successful CI run was created (minus a
 # 2-minute margin) changed anything outside docs (`docs/**`, `*.md`, `.papercuts.jsonl`).
 # Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
-# and regenerates docs/ROADMAP.md. GitHub reads only through REST (`gh api`): no `gh pr`, `gh issue` or GraphQL (#788).
+# and regenerates docs/ROADMAP.md. GitHub is read through REST only (tools/lib/gh-rest.sh).
 set -euo pipefail
 
 repo=pkeppeler/deepcharter

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests tools/handoff.sh with a stub `gh` on PATH: it refuses a body over 1,000 words or with a
 # section the SessionStart hook derives, each with a message that names the fix and without
-# calling `gh issue edit`; a good body replaces the open handoff issue's body.
+# patching the issue; a good body replaces the open handoff issue's body.
 # Usage: tools/tests/handoff.test.sh
 set -euo pipefail
 # shellcheck source=/dev/null

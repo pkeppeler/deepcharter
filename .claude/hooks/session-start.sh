@@ -1,8 +1,7 @@
 #!/bin/bash
 # SessionStart: inject the orchestrator handoff so a new session resumes in-flight work.
 # Also derives what the handoff must not carry: the next free ADR number and the last merged PRs.
-# Network calls are bounded; a failure degrades to a note and never blocks the session. GitHub is read through
-# REST only (`gh api`): the cloud sessions' proxy blocks GraphQL, which `gh pr` and `gh issue` use (#788).
+# Network calls are bounded; a failure degrades to a note and never blocks the session. GitHub is read through REST only.
 cd "$(dirname "$0")/../.." || exit 0
 py=$PWD/tools/py
 adr_lib=0

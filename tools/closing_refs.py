@@ -1,6 +1,6 @@
 """The issues a PR body closes: GitHub's closing keywords, read from the text.
 
-REST has no closingIssuesReferences (it is GraphQL only, and the cloud sessions' proxy blocks GraphQL, #788), so the
+REST has no closingIssuesReferences (GraphQL only), so the
 merge gate (tools/lib/pr-body-checks.sh) and tools/roadmap.py read the body with this one grammar.
 
 GitHub's rule (docs, "Linking a pull request to an issue"): one of close, closes, closed, fix, fixes, fixed, resolve,

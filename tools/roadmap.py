@@ -175,7 +175,7 @@ def render(roadmap: Roadmap, updated: str) -> str:
 
 
 def gh_rest(path: str) -> list[dict]:
-    """Every item of a REST list endpoint, all pages (gh --paginate --slurp). Only REST: the cloud proxy blocks GraphQL (#788)."""
+    """Every item of a REST list endpoint, all pages."""
     cmd = ["gh", "api", "--paginate", "--slurp", f"repos/{REPO}/{path}"]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
@@ -203,8 +203,9 @@ def build_roadmap(
 ) -> Roadmap:
     """The roadmap from REST records. `pulls` is every PR (all states): REST has no closing-PR link, so an issue's
     closing PRs are the merged PRs whose body closes it (tools/closing_refs.py), in PR-number order."""
+    pulls = sorted(pulls, key=lambda p: p["number"])
     closed_by: dict[int, list[Link]] = {}
-    for p in sorted(pulls, key=lambda p: p["number"]):
+    for p in pulls:
         if p["merged_at"] is None:
             continue
         for number in closing_issue_numbers(p["body"] or "", REPO):
@@ -237,7 +238,7 @@ def build_roadmap(
             labels=tuple(sorted(label["name"] for label in p["labels"])),
             closes=tuple(Link(n, _issue_url(n)) for n in closing_issue_numbers(p["body"] or "", REPO)),
         )
-        for p in sorted(pulls, key=lambda p: p["number"])
+        for p in pulls
         if p["state"] == "open"
     ]
     handoffs = [i for i in handoffs if "pull_request" not in i]

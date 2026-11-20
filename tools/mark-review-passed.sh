@@ -5,7 +5,6 @@
 # `review-passed <sha>` and adds the `review-passed` label. First runs the merge gate's
 # closing-reference, demo and feature-map checks (tools/lib/pr-body-checks.sh) and refuses, naming
 # the fix; it does not wait for CI. Refuses when GitHub's head sha differs from origin's branch tip.
-# GitHub reads and writes go through REST only (#788).
 # tools/merge-pr.sh refuses if the head has moved since.
 set -euo pipefail
 
