@@ -24,6 +24,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 /**
  * The work orders of the ore processor terminal (SPEC section 4, Economy). A charter hands in the ore an order asks for from what the
@@ -57,10 +58,12 @@ public final class WorkOrders {
         return deliver(context, order.get());
     }
 
-    /** True when {@code charter} is offered {@code order}: it has reached the layer the order opens at. */
-    static boolean offered(MinecraftServer server, Charter charter, WorkOrder order) {
-        return order.unlockLayer() == 0
-                || charter.deepestPoint() >= LayerChain.topDepth(server.registryAccess(), order.unlockLayer());
+    /**
+     * True when {@code charter} is offered {@code order}: it has reached the layer the order opens at, as the chain is laid out in
+     * {@code level}, the level of the player who asks.
+     */
+    static boolean offered(Level level, Charter charter, WorkOrder order) {
+        return order.unlockLayer() == 0 || charter.deepestPoint() >= LayerChain.topDepth(level, order.unlockLayer());
     }
 
     /**
@@ -74,7 +77,7 @@ public final class WorkOrders {
         if (!data.isReadable()) {
             return Optional.of(Component.translatable("deepcharter.market.refusal.work_orders_unreadable"));
         }
-        if (!offered(server, charter, order)) {
+        if (!offered(context.player().level(), charter, order)) {
             return Optional.of(Component.translatable("deepcharter.market.refusal.order_locked"));
         }
         int owed = order.quantity() - data.delivered(charter.id(), order);
@@ -182,7 +185,7 @@ public final class WorkOrders {
         return new WorkOrdersView(
                 true,
                 Arrays.stream(WorkOrder.values())
-                        .filter(order -> offered(server, own, order))
+                        .filter(order -> offered(player.level(), own, order))
                         .map(order -> new WorkOrdersView.Entry(
                                 order, data.delivered(own.id(), order), data.rounds(own.id(), order)))
                         .toList());

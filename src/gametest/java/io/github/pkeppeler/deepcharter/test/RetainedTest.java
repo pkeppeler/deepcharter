@@ -857,7 +857,7 @@ public class RetainedTest {
         BlockPos spot = slot(12);
         FarChunks.awaitEntityTicking(helper, nether, spot, () -> {
             List<LamplessFigure> naturals = new ArrayList<>();
-            for (int i = 0; i < TUNING.maxPerLevel(); i++) {
+            for (int i = 0; i < TUNING.maxPerBand(); i++) {
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, nether);
                 figure.markNatural();
                 figure.setNoAi(true);
@@ -865,13 +865,13 @@ public class RetainedTest {
                 nether.addFreshEntity(figure);
                 naturals.add(figure);
             }
-            boolean naturalRoom = LamplessFigures.levelHasRoom(nether, true);
-            boolean railRoom = LamplessFigures.levelHasRoom(nether, false);
+            boolean naturalRoom = LamplessFigures.bandHasRoom(nether, true, spot.getY());
+            boolean railRoom = LamplessFigures.bandHasRoom(nether, false, spot.getY());
             naturals.forEach(LamplessFigure::discard);
             expect(
                     helper,
                     !naturalRoom,
-                    "a level that holds " + TUNING.maxPerLevel() + " natural figures takes another");
+                    "a level that holds " + TUNING.maxPerBand() + " natural figures takes another");
             expect(helper, railRoom, "the rail's figure is held back by natural figures");
             helper.succeed();
         });
@@ -891,8 +891,8 @@ public class RetainedTest {
         int inOne = 0;
         int inTwo = 0;
         for (int i = 0; i < tries; i++) {
-            inOne += LamplessFigures.rolls(one, one.getRandom()) ? 1 : 0;
-            inTwo += LamplessFigures.rolls(two, two.getRandom()) ? 1 : 0;
+            inOne += LamplessFigures.rolls(1, one.getRandom()) ? 1 : 0;
+            inTwo += LamplessFigures.rolls(2, two.getRandom()) ? 1 : 0;
         }
         LOGGER.info(
                 "[retained] rolls in {} tries: layer 1 {} ({}), layer 2 {} ({})",
@@ -1080,7 +1080,7 @@ public class RetainedTest {
                 LamplessFigures.clearRespawnDelays();
                 int rolled = 0;
                 for (int i = 0; i < tries; i++) {
-                    rolled += LamplessFigures.rolls(two, two.getRandom()) ? 1 : 0;
+                    rolled += LamplessFigures.rolls(2, two.getRandom()) ? 1 : 0;
                 }
                 double expected = tries * TUNING.natural().chancePerTry();
                 expect(

@@ -39,3 +39,12 @@ Builds on [ADR 0015](0015-zones-are-filled-block-by-block-from-the-originals-row
 In a campaign world (the generator's biome source is `BandBiomeSource`) `StructureSite.in` gets each layer's band (`LayerChain.campaignLayers`) in place of the level's `min_y` and height, and a chunk draws the sites of every layer it holds. The seal fills with the layer's own rock. PROSPECTOR-0002's site is the wreck site nearest the Conduit in layer 2 of that level (`LayerStructures.prospector(level)`). The Conduit's casing runs from the floor of the deepest layer up to the colony's stack; the unbuilt rock below has none.
 
 `prospector(ServerLevel)` takes the level and returns empty for a level without layer 2 (it threw for a layer 2 that was not loaded, when it took the server).
+
+## Amended, 2026-11-20 (#799): a chunk is drawn once the colony's pad is chosen
+
+The rule that a chunk which generates before the colony is built is not drawn is replaced. `ColonyBuilder` loads the pad's chunks while it builds, and in the campaign world each of them holds both layer bands, so a chunk skipped for want of a finished colony would lose its sites for good, PROSPECTOR-0002's bay among them. The sites depend on the Conduit's column, and that is known when the pad is chosen, not when the build ends.
+
+- **Drawn from the choice of the pad.** `Colony.plannedAnchor` answers from the colony's record once it has begun (`ColonySite.begin`, before the first block), and `LayerStructures` draws a fresh chunk from then on. `prospector` reads the same, so a bay in a chunk that loads during the build is lit and carries N10.
+- **Held before it.** A fresh chunk of a level that holds layers, loaded while no pad is chosen (the build reads the ground of candidate pads first, and the spawn chunks generate before the server starts), is remembered by level and position in memory. `ColonyEvents.BEGUN`, fired when `ColonyBuilder` has recorded the pad, draws each one once. A chunk that was saved and unloaded in between is read from disk and drawn then, once; a crash between the two leaves it undrawn, as a crash always could.
+- **Unreadable colony data** draws nothing and holds nothing (logged once): a held chunk would never be drawn.
+- Layer dimensions are unaffected: no chunk of a layer generates before the colony begins.

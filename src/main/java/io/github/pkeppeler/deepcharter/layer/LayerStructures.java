@@ -3,16 +3,25 @@ package io.github.pkeppeler.deepcharter.layer;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
@@ -28,7 +37,13 @@ public final class LayerStructures {
     private static final int NEAREST_CELLS = 2;
 
     private static final AtomicBoolean LOGGED_FAILURE = new AtomicBoolean();
-    private static final AtomicBoolean LOGGED_NO_COLONY = new AtomicBoolean();
+    private static final AtomicBoolean LOGGED_UNREADABLE_COLONY = new AtomicBoolean();
+
+    /**
+     * The chunks that generated before the colony's pad was chosen, by level: held, and drawn once the pad is chosen. Each is a chunk of a
+     * level that holds layers, so in the campaign world it is a chunk of the surface band and of every layer band. Server thread only.
+     */
+    private static final Map<ResourceKey<Level>, Set<ChunkPos>> WAITING = new HashMap<>();
 
     private LayerStructures() {}
 
@@ -38,6 +53,8 @@ public final class LayerStructures {
                 draw(level, chunk);
             }
         });
+        ColonyEvents.BEGUN.register((server, colony) -> drawWaiting(server));
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> WAITING.clear());
     }
 
     private static void draw(ServerLevel level, LevelChunk chunk) {
@@ -49,20 +66,43 @@ public final class LayerStructures {
         if (bands.isEmpty()) {
             return;
         }
-        Optional<BlockPos> conduit = Colony.anchor(level.getServer(), ColonyAnchor.CONDUIT);
-        if (conduit.isEmpty()) {
-            if (LOGGED_NO_COLONY.compareAndSet(false, true)) {
-                DeepCharter.LOGGER.warn(
-                        "A chunk of layer {} generated before the colony was built, so it gets no structures",
-                        bands.getFirst().layer());
-            }
-            return;
+        // The pad is chosen before the build sets a block, and the build loads the pad's chunks to read the
+        // ground. A chunk that waited for the finished colony would lose its sites for good, and in the
+        // campaign world those chunks hold both layers.
+        Optional<BlockPos> conduit = Colony.plannedAnchor(level.getServer(), ColonyAnchor.CONDUIT);
+        if (conduit.isPresent()) {
+            drawSites(level, chunk, bands, conduit.get());
+        } else if (Colony.readable(level.getServer()).isPresent()) {
+            WAITING.computeIfAbsent(level.dimension(), key -> new HashSet<>()).add(chunk.getPos());
+        } else if (LOGGED_UNREADABLE_COLONY.compareAndSet(false, true)) {
+            DeepCharter.LOGGER.warn(
+                    "A chunk of layer {} generated while the colony's saved data is unreadable, so it gets no structures",
+                    bands.getFirst().layer());
         }
+    }
+
+    /** Draws the chunks that generated before the pad was chosen, now that it is; each once. */
+    private static void drawWaiting(MinecraftServer server) {
+        Map<ResourceKey<Level>, Set<ChunkPos>> waiting = new HashMap<>(WAITING);
+        WAITING.clear();
+        waiting.forEach((dimension, chunks) -> {
+            ServerLevel level = server.getLevel(dimension);
+            if (level == null) {
+                return;
+            }
+            for (ChunkPos pos : chunks) {
+                // A chunk that unloaded since was saved undrawn: it loads from disk, which is no draw of its own.
+                draw(level, level.getChunk(pos.x(), pos.z()));
+            }
+        });
+    }
+
+    private static void drawSites(ServerLevel level, LevelChunk chunk, List<Band> bands, BlockPos conduit) {
         boolean held = false;
         try {
             for (Band band : bands) {
-                List<StructureSite> sites = sitesIn(
-                        level.getSeed(), band.layer(), band.minY(), band.height(), chunk.getPos(), conduit.get());
+                List<StructureSite> sites =
+                        sitesIn(level.getSeed(), band.layer(), band.minY(), band.height(), chunk.getPos(), conduit);
                 // Set before the sites are drawn, so a site drawn before a failure is held too.
                 held |= !sites.isEmpty();
                 try {
@@ -169,12 +209,13 @@ public final class LayerStructures {
 
     /**
      * The wreck site that is PROSPECTOR-0002's: the one nearest the Conduit in the wreck's layer of {@code level}, with a lamp burning and
-     * Note N10 ({@link ProspectorWrecks}). Empty before the colony is built or when its data is unreadable, and for a level that does not
-     * hold that layer.
+     * Note N10 ({@link ProspectorWrecks}). Empty before the colony's pad is chosen or when its data is unreadable, and for a level that does
+     * not hold that layer. It is known from the choice of the pad, not the end of the build, so a bay in a chunk that loads during the
+     * build is drawn with its lamp.
      */
     public static Optional<StructureSite> prospector(ServerLevel level) {
         StructureKind kind = StructureKind.WRECK;
-        return Colony.anchor(level.getServer(), ColonyAnchor.CONDUIT)
+        return Colony.plannedAnchor(level.getServer(), ColonyAnchor.CONDUIT)
                 .flatMap(conduit -> layerBands(level).stream()
                         .filter(band -> band.layer() == kind.layer())
                         .findFirst()

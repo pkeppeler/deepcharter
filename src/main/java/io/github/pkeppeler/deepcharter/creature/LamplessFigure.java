@@ -331,7 +331,7 @@ public class LamplessFigure extends PathfinderMob {
         release();
         level.sendParticles(ParticleTypes.LARGE_SMOKE, getX(), getY() + 1.0, getZ(), DEATH_SMOKE, 0.3, 0.8, 0.3, 0.02);
         level.sendParticles(ParticleTypes.ASH, getX(), getY() + 1.0, getZ(), DEATH_ASH, 0.4, 0.9, 0.4, 0.02);
-        LamplessFigures.killed(level, natural);
+        LamplessFigures.killed(level, natural, getBlockY());
     }
 
     @Override

@@ -68,7 +68,8 @@ public final class OreBlock extends Block {
      */
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return LayerBlocks.layerGroundOf(context.getLevel())
+        return LayerBlocks.layerGroundOf(
+                        context.getLevel(), context.getClickedPos().getY())
                 .map(ground -> in(ground.defaultBlockState()))
                 .orElseGet(this::defaultBlockState);
     }

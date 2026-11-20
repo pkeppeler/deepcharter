@@ -62,15 +62,19 @@ public final class LayerChain {
     }
 
     /**
-     * The band that {@code y} in {@code level} falls in; empty for a level that is not in the chain (the Nether, the End), and for
-     * unbuilt depth in the campaign world. Fails for a dimension type given inline by a data pack, which has no key.
+     * The band that {@code y} in {@code level} falls in: in the campaign world the band of {@link CampaignBands} at {@code y}, empty in
+     * unbuilt depth; the overworld of any other type is one surface band, told by {@link Level#OVERWORLD} and not by its type; a layer
+     * dimension is one band, whatever {@code y}; empty for a level that is not in the chain (the Nether, the End). Fails for a dimension type
+     * given inline by a data pack, which has no key, unless the level is the overworld or a campaign level.
      */
     public static Optional<Band> bandAt(Level level, int y) {
-        Identifier type = dimensionType(level);
-        if (type.equals(CAMPAIGN_TYPE)) {
+        if (isCampaign(level)) {
             return CampaignBands.bandAt(y);
         }
-        return indexOf(type).stream()
+        if (level.dimension().equals(Level.OVERWORLD)) {
+            return Optional.of(new Band(SURFACE, level.getMinY(), level.getHeight()));
+        }
+        return indexOf(dimensionType(level)).stream()
                 .mapToObj(layer -> new Band(layer, level.getMinY(), level.getHeight()))
                 .findFirst();
     }
@@ -162,6 +166,42 @@ public final class LayerChain {
             count++;
         }
         return count;
+    }
+
+    /** How many layers the chain holds as {@code level} lays it out: the band table's for a campaign world, the registry's otherwise. */
+    public static int layerCount(Level level) {
+        return isCampaign(level) ? CampaignBands.lastLayer() : count(level.registryAccess());
+    }
+
+    /**
+     * The depth in blocks below sea level where layer {@code layer} starts, as {@code level} lays the chain out: the same numbers
+     * ({@link #topDepth(RegistryAccess, int)}) for the layer dimensions and the campaign world's bands. The layer after the last starts where
+     * the last ends.
+     */
+    public static int topDepth(Level level, int layer) {
+        if (!isCampaign(level)) {
+            return topDepth(level.registryAccess(), layer);
+        }
+        int last = CampaignBands.lastLayer();
+        if (layer < 1 || layer > last + 1) {
+            throw new IllegalArgumentException("The campaign world has layers 1 to " + last + ", not " + layer);
+        }
+        int top = layer <= last
+                ? CampaignBands.layer(layer).topExclusive()
+                : CampaignBands.layer(last).minY();
+        return LayerTuning.DEFAULT.seaLevel() - top;
+    }
+
+    /** The depth in blocks below sea level of the lowest block of the last layer of the chain, as {@code level} lays it out. */
+    public static int deepestDepth(Level level) {
+        if (isCampaign(level)) {
+            return LayerTuning.DEFAULT.seaLevel()
+                    - CampaignBands.layer(CampaignBands.lastLayer()).minY();
+        }
+        Registry<DimensionType> types = level.registryAccess().lookupOrThrow(Registries.DIMENSION_TYPE);
+        int last = count(level.registryAccess());
+        return topDepth(level.registryAccess(), last)
+                + types.getValueOrThrow(type(last)).height();
     }
 
     /** Layer 1 starts at the overworld's floor; each later layer starts where the one above ends. */
