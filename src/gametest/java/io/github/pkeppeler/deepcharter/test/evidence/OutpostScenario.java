@@ -51,7 +51,7 @@ public class OutpostScenario extends EvidenceScenario {
                     context,
                     "the player in layer 1 with the charter's balance",
                     client -> client.player != null
-                            && TestLayers.isIn(ClientLight.clientLevel(client), 1)
+                            && TestLayers.clientIsIn(client, 1)
                             && ClientCharter.view().isPresent());
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -166,7 +166,7 @@ public class OutpostScenario extends EvidenceScenario {
                 context.waitTicks(2);
                 frame(context);
                 boolean down =
-                        context.computeOnClient(client -> client.level != null && TestLayers.isIn(client.level, 2));
+                        context.computeOnClient(client -> client.level != null && TestLayers.clientIsIn(client, 2));
                 if (down) {
                     break;
                 }
@@ -174,7 +174,7 @@ public class OutpostScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the client in layer 2",
-                    client -> client.level != null && TestLayers.isIn(client.level, 2));
+                    client -> client.level != null && TestLayers.clientIsIn(client, 2));
             context.waitTicks(40);
             clearTransmissions(context);
             hold(context);

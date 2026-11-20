@@ -5,7 +5,6 @@ import io.github.pkeppeler.deepcharter.ore.CompanyRockBlock;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -120,7 +119,7 @@ public class CompanyRockScenario extends EvidenceScenario {
                 "the player in the pod in layer " + layer,
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
-                        && TestLayers.isIn(ClientLight.clientLevel(client), layer));
+                        && TestLayers.clientIsIn(client, layer));
         context.waitTicks(MOUNT_TICKS);
         world.still(still(layer, "pod"));
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));

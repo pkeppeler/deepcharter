@@ -46,7 +46,7 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
             for (int tick = 0; tick < CROSSING_TICKS && !crossed(context, two, mockId, clientId); tick++) {
                 two.server().runOnServer(server -> {
                     ServerPlayer player = mock.player();
-                    if (TestLayers.isIn(player.level(), 1)) {
+                    if (TestLayers.isIn(player, 1)) {
                         player.setPos(player.getX(), player.getY() - 1, player.getZ());
                     }
                 });
@@ -63,13 +63,13 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
     private static boolean inLayerTwo(MinecraftServer server, UUID id) {
         ServerPlayer player =
                 Objects.requireNonNull(server.getPlayerList().getPlayer(id), () -> "player " + id + " is not online");
-        return TestLayers.isIn(player.level(), 2);
+        return TestLayers.isIn(player, 2);
     }
 
     /** The client is in layer_2 and sees player 2 there; the server agrees about both. */
     private static boolean crossed(ClientGameTestContext context, TwoPlayerServer two, UUID mockId, UUID clientId) {
         boolean clientSees = context.computeOnClient(client -> client.level != null
-                && TestLayers.isIn(client.level, 2)
+                && TestLayers.clientIsIn(client, 2)
                 && client.level.getPlayerByUUID(mockId) != null);
         boolean serverAgrees =
                 two.server().computeOnServer(server -> inLayerTwo(server, mockId) && inLayerTwo(server, clientId));
@@ -87,8 +87,8 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
         BlockPos column = BlockPos.containing(x, 0, Z);
         RoomCarver.carve(
                 level,
-                column.atY(level.getMinY()),
-                column.atY(level.getMinY() + 10),
+                column.atY(TestLayers.band(level, 1).minY()),
+                column.atY(TestLayers.band(level, 1).minY() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
     }

@@ -58,7 +58,7 @@ final class StructurePlan {
                     z <= Math.min(bounds.maxZ() + 1, chunkPos.getMaxBlockZ());
                     z++) {
                 for (int y = Math.max(bounds.minY() - 1, band.minY());
-                        y <= Math.min(bounds.maxY() + 1, band.minY() + band.height() - 1);
+                        y <= Math.min(bounds.maxY() + 1, band.maxY());
                         y++) {
                     pos.set(x, y, z);
                     if (RoomSeal.needsSealing(chunk.getBlockState(pos))) {

@@ -56,8 +56,7 @@ public class BreachHudTest implements FabricClientGameTest {
 
             // In layer 1 low enough that the reading is over a thousand feet, so it has a thousands separator.
             teleport(singleplayer, 1, 5);
-            ClientWait.until(
-                    context, "the client in layer_1", client -> TestLayers.isIn(ClientLight.clientLevel(client), 1));
+            ClientWait.until(context, "the client in layer_1", client -> TestLayers.clientIsIn(client, 1));
             assertAltimeter(
                     context,
                     "layer 1",
@@ -104,7 +103,7 @@ public class BreachHudTest implements FabricClientGameTest {
                 throw new AssertionError(
                         "The fade should last about " + BreachEffects.fadeTicks() + " ticks, lasted " + length);
             }
-            if (!context.computeOnClient(client -> TestLayers.isIn(ClientLight.clientLevel(client), 2))) {
+            if (!context.computeOnClient(client -> TestLayers.clientIsIn(client, 2))) {
                 throw new AssertionError("The crossing should have put the client in layer 2");
             }
         }

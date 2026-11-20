@@ -83,7 +83,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     }
                 }
                 ServerLevel one = TestLayers.level(server, 1);
-                first.teleportTo(one, X, one.getMinY() - 1, Z, Set.of(), 0, 0, true);
+                first.teleportTo(one, X, TestLayers.band(one, 1).minY() - 1, Z, Set.of(), 0, 0, true);
                 return first.getGameProfile().name();
             });
 

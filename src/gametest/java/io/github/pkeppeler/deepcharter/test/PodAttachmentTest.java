@@ -225,7 +225,7 @@ public class PodAttachmentTest {
                         BlockPos.containing(x, TestLayers.worldY(1, 8), z));
             }
             ServerPlayer player = mock.player();
-            if (!TestLayers.isIn(player.level(), 2)) {
+            if (!TestLayers.isIn(player, 2)) {
                 throw failure(
                         helper,
                         "the rider is still in %s (pod ticked %s times)",
@@ -270,8 +270,8 @@ public class PodAttachmentTest {
         BlockPos column = BlockPos.containing(x, 0, z);
         RoomCarver.carve(
                 level,
-                column.offset(-1, 0, -1).atY(level.getMinY()),
-                column.offset(1, 0, 1).atY(level.getMinY() + 10),
+                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).minY()),
+                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).minY() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
     }

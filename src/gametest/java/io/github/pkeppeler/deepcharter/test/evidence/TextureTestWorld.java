@@ -454,7 +454,7 @@ final class TextureTestWorld {
         ClientWait.until(
                 ctx,
                 "the camera at " + eye + " in layer " + layer,
-                client -> TestLayers.isIn(ClientLight.clientLevel(client), layer)
+                client -> TestLayers.clientIsIn(client, layer)
                         && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
                         && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - yaw)) < 0.01f
                         && Math.abs(ClientSession.player(client).getXRot() - pitch) < 0.01f);

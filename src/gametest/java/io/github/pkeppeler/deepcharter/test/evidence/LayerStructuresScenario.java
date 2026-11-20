@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.handbook.HandbookRegistry;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
@@ -119,14 +120,15 @@ public class LayerStructuresScenario extends EvidenceScenario {
     private static StructureSite prepare(TestSingleplayerContext singleplayer, StructureKind kind) {
         return singleplayer.getServer().computeOnServer(server -> {
             ServerLevel level = TestLayers.level(server, kind.layer());
+            LayerChain.Band levelBand = TestLayers.band(level, kind.layer());
             StructureSite site = kind == StructureKind.WRECK
                     ? LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
                             .orElseThrow(() -> new AssertionError("the colony was not built when the world started"))
                     : StructureSite.in(
                             level.getSeed(),
                             kind,
-                            level.getMinY(),
-                            level.getHeight(),
+                            levelBand.minY(),
+                            levelBand.height(),
                             CELL,
                             CELL,
                             Colony.anchor(server, ColonyAnchor.CONDUIT)

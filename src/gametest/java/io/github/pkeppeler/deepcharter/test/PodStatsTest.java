@@ -607,7 +607,7 @@ public class PodStatsTest {
             pod.setHull(hull);
         });
         TestTicks.each(helper, () -> {
-            if (!rig.pod.isPresent() || !TestLayers.isIn(rig.pilot.player().level(), 2)) {
+            if (!rig.pod.isPresent() || !TestLayers.isIn(rig.pilot.player(), 2)) {
                 return;
             }
             rig.pilot.releaseInput();

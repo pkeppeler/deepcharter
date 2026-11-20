@@ -66,7 +66,11 @@ public class SurfaceBreachTest {
         ServerLevel surface = surface(helper);
         openShaft(surface, x, z);
         MockPlayer mock = MockPlayers.join(helper, "surface-falls");
-        mock.teleportTo(surface, new Vec3(x, surface.getMinY() + 6, z), 0, 0);
+        mock.teleportTo(
+                surface,
+                new Vec3(x, TestLayers.band(surface, TestLayers.SURFACE).minY() + 6, z),
+                0,
+                0);
         fallWhileIn(helper, mock, surface);
         helper.succeedWhen(() -> {
             ServerPlayer player = mock.player();
@@ -79,10 +83,11 @@ public class SurfaceBreachTest {
                 throw failure(helper, "arrived at x=%s z=%s, expected %s %s", player.getX(), player.getZ(), x, z);
             }
             ServerLevel one = TestLayers.level(helper, 1);
-            if (player.getY() > one.getMaxY()
-                    || player.getY() < one.getMaxY() - LayerTuning.DEFAULT.pocketHeight() - 1) {
+            LayerChain.Band oneBand = TestLayers.band(one, 1);
+            if (player.getY() > oneBand.maxY()
+                    || player.getY() < oneBand.maxY() - LayerTuning.DEFAULT.pocketHeight() - 1) {
                 throw failure(
-                        helper, "arrived at y=%s, not just under the top %s of layer 1", player.getY(), one.getMaxY());
+                        helper, "arrived at y=%s, not just under the top %s of layer 1", player.getY(), oneBand.maxY());
             }
         });
     }
@@ -94,7 +99,7 @@ public class SurfaceBreachTest {
         ServerLevel surface = surface(helper);
         openShaft(surface, x, z);
         MockPlayer mock = MockPlayers.join(helper, "surface-rides");
-        double y = surface.getMinY() + 6;
+        double y = TestLayers.band(surface, TestLayers.SURFACE).minY() + 6;
         mock.teleportTo(surface, new Vec3(x, y, z), 0, 0);
         boolean[] ticking = {false};
         FarChunks.awaitEntityTicking(helper, surface, BlockPos.containing(x, y, z), () -> {
@@ -128,14 +133,15 @@ public class SurfaceBreachTest {
         double z = 2700.5;
         ServerLevel one = TestLayers.level(helper, 1);
         MockPlayer mock = MockPlayers.join(helper, "surface-rises");
-        mock.teleportTo(one, new Vec3(x, one.getMaxY() + 2, z), 0, 0);
+        mock.teleportTo(one, new Vec3(x, TestLayers.band(one, 1).maxY() + 2, z), 0, 0);
         helper.succeedWhen(() -> {
             ServerPlayer player = mock.player();
             expectIn(helper, player, Level.OVERWORLD);
             if (Math.abs(player.getX() - x) > 0.5 || Math.abs(player.getZ() - z) > 0.5) {
                 throw failure(helper, "arrived at x=%s z=%s, expected %s %s", player.getX(), player.getZ(), x, z);
             }
-            int floor = surface(helper).getMinY() + LayerTuning.DEFAULT.crustThickness();
+            int floor =
+                    TestLayers.band(surface(helper), TestLayers.SURFACE).minY() + LayerTuning.DEFAULT.crustThickness();
             if (player.getY() < floor || player.getY() > floor + LayerTuning.DEFAULT.pocketHeight()) {
                 throw failure(helper, "arrived at y=%s, not just above the overworld floor (%s)", player.getY(), floor);
             }
@@ -146,7 +152,11 @@ public class SurfaceBreachTest {
     public void theOverworldHasNoCrossingAtTheSkyLimit(GameTestHelper helper) {
         ServerLevel surface = surface(helper);
         MockPlayer mock = MockPlayers.join(helper, "surface-sky");
-        mock.teleportTo(surface, new Vec3(2800.5, surface.getMaxY() + 5, 2800.5), 0, 0);
+        mock.teleportTo(
+                surface,
+                new Vec3(2800.5, TestLayers.band(surface, TestLayers.SURFACE).maxY() + 5, 2800.5),
+                0,
+                0);
         helper.runAfterDelay(40, () -> {
             expectIn(helper, mock.player(), Level.OVERWORLD);
             helper.succeed();
@@ -232,7 +242,8 @@ public class SurfaceBreachTest {
     /** Clear the floor of {@code level} at one column, so an entity above it falls straight out of the world. */
     private static void openShaft(ServerLevel level, double x, double z) {
         BlockPos column = BlockPos.containing(x, 0, z);
-        for (int y = level.getMinY(); y <= level.getMinY() + 10; y++) {
+        int floor = TestLayers.band(level, TestLayers.SURFACE).minY();
+        for (int y = floor; y <= floor + 10; y++) {
             // room-carver: opens the overworld floor, which is the surface and not layer rock; it is only called with
             // the surface
             level.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);

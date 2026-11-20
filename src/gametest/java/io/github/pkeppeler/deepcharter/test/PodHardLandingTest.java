@@ -286,7 +286,7 @@ public class PodHardLandingTest {
         ServerLevel one = TestLayers.level(helper.getLevel().getServer(), 1);
         RoomCarver.carve(
                 one,
-                new BlockPos(x - 1, one.getMinY(), z - 1),
+                new BlockPos(x - 1, TestLayers.band(one, 1).minY(), z - 1),
                 new BlockPos(x + 1, SHAFT_FLOOR_TOP_Y, z + 1),
                 Blocks.STONE.defaultBlockState(),
                 Block.UPDATE_ALL);

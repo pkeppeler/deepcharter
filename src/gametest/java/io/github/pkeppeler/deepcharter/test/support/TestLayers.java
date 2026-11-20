@@ -1,11 +1,13 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -36,9 +38,37 @@ public final class TestLayers {
         return level(helper.getLevel().getServer(), layer);
     }
 
-    /** True when {@code level} is the level of {@code layer}. */
-    public static boolean isIn(Level level, int layer) {
-        return level.dimension().equals(dimension(layer));
+    /** The band of {@code layer} in {@code level}, which must be the level that holds it. */
+    public static LayerChain.Band band(Level level, int layer) {
+        if (!level.dimension().equals(dimension(layer))) {
+            throw new IllegalArgumentException(
+                    "level " + level.dimension() + " does not hold layer " + layer + " (" + dimension(layer) + ")");
+        }
+        return new LayerChain.Band(layer, level.getMinY(), level.getHeight());
+    }
+
+    /** The band of {@code layer} in the server's level for it. */
+    public static LayerChain.Band band(MinecraftServer server, int layer) {
+        return band(level(server, layer), layer);
+    }
+
+    /** True when block position {@code pos} of {@code level} is in {@code layer}. */
+    public static boolean isIn(Level level, BlockPos pos, int layer) {
+        return level.dimension().equals(dimension(layer)) && inBand(band(level, layer), pos.getY());
+    }
+
+    private static boolean inBand(LayerChain.Band band, int y) {
+        return y >= band.minY() && y <= band.maxY();
+    }
+
+    /** True when {@code entity} is in {@code layer}. */
+    public static boolean isIn(Entity entity, int layer) {
+        return isIn(entity.level(), entity.blockPosition(), layer);
+    }
+
+    /** True when {@code client} has a player, and it is in {@code layer}. */
+    public static boolean clientIsIn(Minecraft client, int layer) {
+        return client.player != null && isIn(client.player, layer);
     }
 
     /** The world Y of {@code localY} in {@code layer}. */

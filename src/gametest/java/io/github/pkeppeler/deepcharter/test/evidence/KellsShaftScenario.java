@@ -7,13 +7,13 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -120,7 +120,7 @@ public class KellsShaftScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the camera in layer 2",
-                    client -> client.player != null && TestLayers.isIn(ClientLight.clientLevel(client), LAYER));
+                    client -> client.player != null && TestLayers.clientIsIn(client, LAYER));
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             // The pilot's "joined the game" line would sit over the bottom of every frame.
             context.runOnClient(client -> client.gui.hud.getChat().clearMessages(false));
@@ -322,11 +322,12 @@ public class KellsShaftScenario extends EvidenceScenario {
     private static StructureSite prepare(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
             ServerLevel level = TestLayers.level(server, LAYER);
+            LayerChain.Band levelBand = TestLayers.band(level, LAYER);
             StructureSite site = StructureSite.in(
                     level.getSeed(),
                     StructureKind.KELLS_SHAFT,
-                    level.getMinY(),
-                    level.getHeight(),
+                    levelBand.minY(),
+                    levelBand.height(),
                     CELL,
                     CELL,
                     Colony.anchor(server, ColonyAnchor.CONDUIT)

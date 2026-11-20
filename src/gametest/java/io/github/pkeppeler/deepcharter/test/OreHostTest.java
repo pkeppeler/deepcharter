@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreBlock.Host;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -58,13 +59,19 @@ public class OreHostTest {
     public void generatedOreInEachLayerSitsInThatLayersRock(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
+            LayerChain.Band levelBand = TestLayers.band(level, layer);
             Map<Host, Integer> found = new EnumMap<>(Host.class);
             for (int cx = FIRST_CHUNK; cx < FIRST_CHUNK + SIDE; cx++) {
                 for (int cz = FIRST_CHUNK; cz < FIRST_CHUNK + SIDE; cz++) {
                     level.getChunk(cx, cz, ChunkStatus.FULL);
                     for (int x = cx << 4; x < (cx << 4) + 16; x++) {
                         for (int z = cz << 4; z < (cz << 4) + 16; z++) {
-                            for (int y = level.getMinY(); y < level.getMinY() + level.getHeight(); y++) {
+                            for (int y = levelBand.minY();
+                                    y
+                                            < levelBand.minY()
+                                                    + TestLayers.band(level, layer)
+                                                            .height();
+                                    y++) {
                                 BlockState state = level.getBlockState(new BlockPos(x, y, z));
                                 if (state.getBlock() instanceof OreBlock) {
                                     found.merge(state.getValue(OreBlock.HOST), 1, Integer::sum);
