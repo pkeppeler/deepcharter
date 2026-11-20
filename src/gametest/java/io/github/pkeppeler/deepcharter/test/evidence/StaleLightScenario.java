@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
@@ -78,11 +79,12 @@ public class StaleLightScenario extends EvidenceScenario {
                 StructureSite site = server.computeOnServer(s -> {
                     BlockPos conduit = Colony.anchor(s, ColonyAnchor.CONDUIT).orElseThrow();
                     ServerLevel level = ClientLight.serverLevel(s, layer);
+                    LayerChain.Band band = TestLayers.band(level, 2);
                     return StructureSite.in(
                             s.overworld().getSeed(),
                             StructureKind.GALLERY,
-                            TestLayers.band(level, 2).minY(),
-                            TestLayers.band(level, 2).height(),
+                            band.minY(),
+                            band.height(),
                             at,
                             at,
                             conduit);

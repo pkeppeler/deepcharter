@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.LavaHazard;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -823,9 +824,8 @@ public class LavaBoreTest {
 
     /** The highest block in the columns of the bore. */
     private static int topOfTheRock(ServerLevel level, int centreX, int centreZ) {
-        for (int y = TestLayers.band(level, 1).maxY() - 1;
-                y >= TestLayers.band(level, 1).minY();
-                y--) {
+        LayerChain.Band band = TestLayers.band(level, 1);
+        for (int y = band.maxY() - 1; y >= band.minY(); y--) {
             for (int x = centreX - FOOTPRINT_WIDTH / 2; x < centreX - FOOTPRINT_WIDTH / 2 + FOOTPRINT_WIDTH; x++) {
                 for (int z = centreZ - FOOTPRINT_WIDTH / 2; z < centreZ - FOOTPRINT_WIDTH / 2 + FOOTPRINT_WIDTH; z++) {
                     if (!level.getBlockState(new BlockPos(x, y, z)).isAir()) {

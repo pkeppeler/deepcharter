@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayDeque;
@@ -115,8 +116,9 @@ public class LayerTerrainScenario extends EvidenceScenario {
     private static List<Vec3> findRoute(ServerLevel level, int layer) {
         List<BlockPos> starts = new ArrayList<>();
         Map<BlockPos, Integer> room = new HashMap<>();
-        int top = TestLayers.band(level, layer).minY() + 24;
-        int bottom = TestLayers.band(level, layer).maxY() - 40;
+        LayerChain.Band band = TestLayers.band(level, layer);
+        int top = band.minY() + 24;
+        int bottom = band.maxY() - 40;
         for (int x = START_X - SEARCH_RADIUS; x <= START_X + SEARCH_RADIUS; x += 2) {
             for (int z = START_Z - SEARCH_RADIUS; z <= START_Z + SEARCH_RADIUS; z += 2) {
                 for (int y = top; y <= bottom; y += 2) {

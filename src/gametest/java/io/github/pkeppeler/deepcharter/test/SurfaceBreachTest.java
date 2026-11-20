@@ -242,9 +242,8 @@ public class SurfaceBreachTest {
     /** Clear the floor of {@code level} at one column, so an entity above it falls straight out of the world. */
     private static void openShaft(ServerLevel level, double x, double z) {
         BlockPos column = BlockPos.containing(x, 0, z);
-        for (int y = TestLayers.band(level, TestLayers.SURFACE).minY();
-                y <= TestLayers.band(level, TestLayers.SURFACE).minY() + 10;
-                y++) {
+        int floor = TestLayers.band(level, TestLayers.SURFACE).minY();
+        for (int y = floor; y <= floor + 10; y++) {
             // room-carver: opens the overworld floor, which is the surface and not layer rock; it is only called with
             // the surface
             level.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);

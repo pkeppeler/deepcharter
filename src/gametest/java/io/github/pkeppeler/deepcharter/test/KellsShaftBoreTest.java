@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.layer.LavaHazard;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
@@ -270,14 +271,9 @@ public class KellsShaftBoreTest {
 
     /** The shaft of a spacing cell, with the chunks round it generated: the straight bores go down beside it. */
     private static StructureSite shaftIn(ServerLevel level, BlockPos conduit, int cellX) {
+        LayerChain.Band band = TestLayers.band(level, LAYER);
         StructureSite site = StructureSite.in(
-                level.getSeed(),
-                StructureKind.KELLS_SHAFT,
-                TestLayers.band(level, LAYER).minY(),
-                TestLayers.band(level, LAYER).height(),
-                cellX,
-                CELL_Z,
-                conduit);
+                level.getSeed(), StructureKind.KELLS_SHAFT, band.minY(), band.height(), cellX, CELL_Z, conduit);
         for (int x = (site.origin().getX() - BESIDE - 2) >> 4;
                 x <= (site.origin().getX() + BESIDE + 2) >> 4;
                 x++) {
