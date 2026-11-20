@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -111,8 +112,17 @@ public class BandFiguresTest {
         mock.player().setPermanentlyInvulnerable(true);
         mock.teleportTo(level, Vec3.atBottomCenterOf(one), 0f, 0f);
         int[] ready = {0};
+        FarChunks.Deadline deadline = FarChunks.deadline();
         TestTicks.each(helper, () -> {
             if (ready[0] < 3) {
+                return;
+            }
+            // The light engine runs behind the carve: the light of the ore the room replaced is read until it catches
+            // up.
+            boolean dark = Stream.of(one, two, surface)
+                    .allMatch(room -> level.getBrightness(LightLayer.BLOCK, room) < TUNING.litBlockLight());
+            deadline.await(helper, level, dark, () -> "the light of the old rock did not leave the rooms");
+            if (!dark) {
                 return;
             }
             LamplessFigures.clearRespawnDelays();

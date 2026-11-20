@@ -544,7 +544,7 @@ public class BandReadersTest {
         return mock.player().level();
     }
 
-    /** A place with gas in it is no place to stand: goto passes over a pocket of gas where it would have put the player, and never ends in one. */
+    /** A gas pocket is solid, so goto never puts the player inside one: it passes over the pocket in the only room of the column and ends in the pocket it cuts. */
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void gotoNeverStandsAPlayerInGas(GameTestHelper helper) throws CommandSyntaxException {
         int x = 23512;
