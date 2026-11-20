@@ -37,6 +37,8 @@ import org.jspecify.annotations.Nullable;
 public class WorldFormatTest {
     private static final String REFUSED = "deepcharter.world_format.refused";
     private static final String UNREADABLE = "deepcharter.world_format.unreadable";
+    /** The format #803 makes real: the gate is asked at it, so a refusal can be tested while this build's format is the legacy one. */
+    private static final int RAISED = 2;
 
     /** The id and the saved form are permanent: a build that changed either would find no stamp in every world made so far. */
     @GameTest
@@ -53,9 +55,6 @@ public class WorldFormatTest {
         }
         if (!saved.equals(WorldFormat.CODEC.encodeStart(NbtOps.INSTANCE, read).getOrThrow())) {
             throw failure(helper, "the saved form of the stamp changed: expected %s", saved);
-        }
-        if (WorldFormat.CURRENT != 1) {
-            throw failure(helper, "the format of this build is 1 until #803, got %s", WorldFormat.CURRENT);
         }
         helper.succeed();
     }
@@ -89,10 +88,25 @@ public class WorldFormatTest {
         helper.succeed();
     }
 
+    /**
+     * Until #803 the format of this build is {@link WorldFormat#LEGACY}, so a world made before the stamp existed, with a built
+     * colony and no stamp, must still start. This guards against refusing every old world weeks before it cannot be played.
+     */
+    @GameTest
+    public void aLegacyWorldWithNoStampStartsWhileTheFormatIsStillTheLegacyOne(GameTestHelper helper) {
+        MinecraftServer server = server(helper);
+        if (WorldFormat.CURRENT != WorldFormat.LEGACY) {
+            throw failure(helper, "this test is for the build whose format is still the legacy one");
+        }
+        WorldData.with(
+                server, WorldFormat.TYPE, new WorldFormat(), () -> expectPass(helper, server, WorldFormat.CURRENT));
+        helper.succeed();
+    }
+
     @GameTest
     public void aCurrentStampPasses(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        WorldData.with(server, WorldFormat.TYPE, stamped(WorldFormat.CURRENT), () -> expectPass(helper, server));
+        WorldData.with(server, WorldFormat.TYPE, stamped(RAISED), () -> expectPass(helper, server, RAISED));
         helper.succeed();
     }
 
@@ -100,35 +114,49 @@ public class WorldFormatTest {
     @GameTest
     public void aHigherStampPasses(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        WorldData.with(server, WorldFormat.TYPE, stamped(WorldFormat.CURRENT + 1), () -> expectPass(helper, server));
+        WorldData.with(server, WorldFormat.TYPE, stamped(RAISED + 1), () -> expectPass(helper, server, RAISED));
         helper.succeed();
     }
 
+    /** An empty stamp counts as the legacy format. */
     @GameTest
-    public void aColonyWithoutAStampIsRefused(GameTestHelper helper) {
+    public void anEmptyStampIsRefusedOnceTheFormatIsRaised(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         WorldData.with(server, WorldFormat.TYPE, new WorldFormat(), () -> expectRefused(helper, server, REFUSED));
         helper.succeed();
     }
 
     @GameTest
-    public void anOlderStampIsRefused(GameTestHelper helper) {
+    public void anOlderStampIsRefusedOnceTheFormatIsRaised(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         WorldData.with(
-                server,
-                WorldFormat.TYPE,
-                stamped(WorldFormat.CURRENT - 1),
-                () -> expectRefused(helper, server, REFUSED));
+                server, WorldFormat.TYPE, stamped(WorldFormat.LEGACY), () -> expectRefused(helper, server, REFUSED));
         helper.succeed();
     }
 
     @GameTest
     public void anUnreadableStampIsRefused(GameTestHelper helper) {
         MinecraftServer server = server(helper);
-        WorldFormat unreadable = WorldFormat.CODEC
-                .parse(NbtOps.INSTANCE, UnreadableChecks.futureData())
-                .getOrThrow();
+        WorldFormat unreadable = unreadableStamp();
         WorldData.with(server, WorldFormat.TYPE, unreadable, () -> expectRefused(helper, server, UNREADABLE));
+        helper.succeed();
+    }
+
+    /** The BUILT listener runs at server start: it must not throw on a record it cannot read, and must leave it as it is. */
+    @GameTest
+    public void aBuiltColonyLeavesAnUnreadableStampAloneAndDoesNotThrow(GameTestHelper helper) {
+        MinecraftServer server = server(helper);
+        ColonySite.Placed placed = Colony.placed(server).orElseThrow();
+        WorldFormat unreadable = unreadableStamp();
+        WorldData.with(server, WorldFormat.TYPE, unreadable, () -> {
+            ColonyEvents.BUILT.invoker().onBuilt(server, placed);
+            if (!UnreadableChecks.futureData()
+                    .equals(WorldFormat.CODEC
+                            .encodeStart(NbtOps.INSTANCE, unreadable)
+                            .getOrThrow())) {
+                throw failure(helper, "an unreadable stamp must be written back as it was read");
+            }
+        });
         helper.succeed();
     }
 
@@ -138,7 +166,7 @@ public class WorldFormatTest {
         WorldData.swap(server)
                 .with(ColonySite.TYPE, new ColonySite())
                 .with(WorldFormat.TYPE, new WorldFormat())
-                .run(() -> expectPass(helper, server));
+                .run(() -> expectPass(helper, server, RAISED));
         helper.succeed();
     }
 
@@ -155,7 +183,7 @@ public class WorldFormatTest {
         WorldData.swap(server)
                 .with(ColonySite.TYPE, begun)
                 .with(WorldFormat.TYPE, new WorldFormat())
-                .run(() -> expectPass(helper, server));
+                .run(() -> expectPass(helper, server, RAISED));
         helper.succeed();
     }
 
@@ -172,20 +200,24 @@ public class WorldFormatTest {
                 ColonySite colony = ColonySite.get(server);
                 colony.setDirty();
                 writer.set(ColonySite.TYPE, colony);
-                writer.set(WorldFormat.TYPE, stamped(WorldFormat.CURRENT));
+                writer.set(WorldFormat.TYPE, stamped(RAISED));
                 writer.saveAndJoin();
             }
             try (SavedDataStorage reader = storage(server, dir)) {
-                if (WorldFormatGate.refusal(reader).isPresent()) {
+                if (WorldFormatGate.refusal(reader, RAISED).isPresent()) {
                     throw failure(helper, "a world saved with its stamp should pass");
                 }
             }
             Path stampFile = dir.resolve("deepcharter").resolve("world_format.dat");
             Files.delete(stampFile);
             try (SavedDataStorage reader = storage(server, dir)) {
-                Optional<Refusal> refusal = WorldFormatGate.refusal(reader);
+                Optional<Refusal> refusal = WorldFormatGate.refusal(reader, RAISED);
                 if (refusal.isEmpty() || !isMessage(refusal.get(), REFUSED)) {
                     throw failure(helper, "a world saved without its stamp file should be refused, got %s", refusal);
+                }
+                if (WorldFormatGate.refusal(reader, WorldFormat.LEGACY).isPresent()) {
+                    throw failure(
+                            helper, "a world with no stamp file is the legacy format, so it starts at that format");
                 }
             }
             if (Files.exists(stampFile)) {
@@ -204,7 +236,7 @@ public class WorldFormatTest {
     public void theMessagePointsToPlayingMd(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         WorldData.with(server, WorldFormat.TYPE, new WorldFormat(), () -> {
-            Refusal refusal = WorldFormatGate.refusal(server).orElseThrow();
+            Refusal refusal = WorldFormatGate.refusal(server, RAISED).orElseThrow();
             if (refusal.reason().isBlank()) {
                 throw failure(helper, "a refusal names its reason for the log");
             }
@@ -216,8 +248,8 @@ public class WorldFormatTest {
         helper.succeed();
     }
 
-    private static void expectPass(GameTestHelper helper, MinecraftServer server) {
-        Optional<Refusal> refusal = WorldFormatGate.refusal(server);
+    private static void expectPass(GameTestHelper helper, MinecraftServer server, int current) {
+        Optional<Refusal> refusal = WorldFormatGate.refusal(server, current);
         if (refusal.isPresent()) {
             throw failure(
                     helper,
@@ -227,7 +259,7 @@ public class WorldFormatTest {
     }
 
     private static void expectRefused(GameTestHelper helper, MinecraftServer server, String key) {
-        Optional<Refusal> refusal = WorldFormatGate.refusal(server);
+        Optional<Refusal> refusal = WorldFormatGate.refusal(server, RAISED);
         if (refusal.isEmpty()) {
             throw failure(helper, "the world should be refused with %s", key);
         }
@@ -243,6 +275,12 @@ public class WorldFormatTest {
     private static boolean isMessage(Refusal refusal, String key) {
         return refusal.message().getContents() instanceof TranslatableContents contents
                 && contents.getKey().equals(key);
+    }
+
+    private static WorldFormat unreadableStamp() {
+        return WorldFormat.CODEC
+                .parse(NbtOps.INSTANCE, UnreadableChecks.futureData())
+                .getOrThrow();
     }
 
     /** A record as a world of that format saved it. */

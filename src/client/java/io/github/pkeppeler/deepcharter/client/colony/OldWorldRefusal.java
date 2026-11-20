@@ -37,6 +37,8 @@ public final class OldWorldRefusal {
                 "Refusing to open the world {}: {}",
                 access.getLevelId(),
                 refusal.get().reason());
+        // The world's own resource pack was pushed before this point; vanilla's cancel paths pop it too.
+        client.getDownloadedPackSource().popAll();
         worldStem.close();
         access.safeClose();
         // Both are vanilla's screens, so the layout gate for the mod's own screens (test_screen_layout_gate.py) has

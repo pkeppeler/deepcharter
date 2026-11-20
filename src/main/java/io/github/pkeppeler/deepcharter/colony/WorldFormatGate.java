@@ -2,21 +2,18 @@ package io.github.pkeppeler.deepcharter.colony;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import java.util.Optional;
-import java.util.OptionalInt;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.SavedDataStorage;
 
 /**
- * Refuses to start a world made in an older world format (ADR 0059). A world that has a built colony and no {@link WorldFormat}
- * stamp, or a stamp lower than {@link WorldFormat#CURRENT}, or a stamp that cannot be read, is refused. A world with no colony
- * passes: it has no saved terrain that a new format could not hold, and its colony gets the stamp when it is built.
+ * Refuses to start a world made in an older world format (ADR 0059). A world that has a built colony and a format lower than
+ * {@link WorldFormat#CURRENT}, or a stamp that cannot be read, is refused. A world with no stamp is {@link WorldFormat#LEGACY}. A
+ * world with no colony passes: it has no saved terrain that a new format could not hold, and its colony gets the stamp when it is
+ * built.
  *
- * <p>The check runs on {@link ServerLifecycleEvents#SERVER_STARTING}, which Fabric fires from {@code MinecraftServer.runServer}
- * just before {@code initServer}. That is before {@code createLevels} makes the first level, so no chunk has been generated, loaded
- * or saved: {@code saveAllChunks} only reaches a level that exists. It reads the saved data storage, which the server builds in its
- * constructor.
+ * <p>The check runs on {@link ServerLifecycleEvents#SERVER_STARTING}, before the first level exists (the ordering is in the ADR).
  *
  * <p>A singleplayer world never reaches this check for an old world: the client refuses it earlier, with a screen
  * ({@code client/colony}), because a server that fails to start is a crash report. Here an integrated server throws, as a backstop
@@ -51,35 +48,41 @@ public final class WorldFormatGate {
 
     /** Why the world of {@code server} may not start, or empty when it may. */
     public static Optional<Refusal> refusal(MinecraftServer server) {
-        return refusal(server.getDataStorage());
+        return refusal(server, WorldFormat.CURRENT);
+    }
+
+    // test-seam: the tests run the gate at format 2, the number #803 makes real, while CURRENT is still 1
+    public static Optional<Refusal> refusal(MinecraftServer server, int current) {
+        return refusal(server.getDataStorage(), current);
+    }
+
+    /** Why the world in {@code storage} may not start, or empty when it may: the client asks it before a server exists. */
+    public static Optional<Refusal> refusal(SavedDataStorage storage) {
+        return refusal(storage, WorldFormat.CURRENT);
     }
 
     /**
-     * Why the world in {@code storage} may not start, or empty when it may. It reads with {@code get}, never {@code computeIfAbsent}:
-     * that would make a default record, which is dirty, and the next save would write a file into a world that is refused.
+     * Why the world in {@code storage} may not start in format {@code current}, or empty when it may. A world with no stamp, or an
+     * empty one, is {@link WorldFormat#LEGACY}. It reads with {@code get}, never {@code computeIfAbsent}: that would make a default
+     * record, which is dirty, and the next save would write a file into a world that is refused.
      */
-    public static Optional<Refusal> refusal(SavedDataStorage storage) {
+    // test-seam: the tests run the gate at format 2, the number #803 makes real, while CURRENT is still 1
+    public static Optional<Refusal> refusal(SavedDataStorage storage, int current) {
         ColonySite site = storage.get(ColonySite.TYPE);
         // An unreadable colony is another build's data: its own accessors log it and skip.
         if (site == null || !site.isReadable() || !site.isBuilt()) {
             return Optional.empty();
         }
         WorldFormat stamp = storage.get(WorldFormat.TYPE);
-        if (stamp == null) {
-            return Optional.of(refused("the world has a colony and no world-format stamp"));
-        }
-        if (!stamp.isReadable()) {
+        if (stamp != null && !stamp.isReadable()) {
             return Optional.of(new Refusal(
                     Component.translatable("deepcharter.world_format.unreadable"),
                     "the world-format stamp has a version this build cannot read"));
         }
-        OptionalInt format = stamp.format();
-        if (format.isEmpty()) {
-            return Optional.of(refused("the world has a colony and an empty world-format stamp"));
-        }
-        if (format.getAsInt() < WorldFormat.CURRENT) {
-            return Optional.of(
-                    refused("the world is format " + format.getAsInt() + ", this build needs " + WorldFormat.CURRENT));
+        int format = stamp == null ? WorldFormat.LEGACY : stamp.format().orElse(WorldFormat.LEGACY);
+        if (format < current) {
+            return Optional.of(refused("the world is format " + format + " (no stamp counts as " + WorldFormat.LEGACY
+                    + "), this build needs " + current));
         }
         return Optional.empty();
     }

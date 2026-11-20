@@ -1,19 +1,17 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
-import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OldWorlds;
 import java.util.Map;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.world.TestWorldSave;
 import net.minecraft.client.gui.screens.AlertScreen;
-import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
 import net.minecraft.network.chat.contents.TranslatableContents;
 
 /**
- * Client GameTest for #800: a singleplayer world with a colony and no world-format stamp is refused with a screen, not a crash report,
- * and nothing in it changes (ADR 0059). The world is made, stripped of its stamp through {@code WorldData}, saved and closed; opening
+ * Client GameTest for #800: a singleplayer world with a colony and an old world-format stamp is refused with a screen, not a crash report,
+ * and nothing in it changes (ADR 0059). The world is made, given an old stamp through {@code WorldData}, saved and closed; opening
  * it from the world list shows the refusal. A crash would end this test with the client, so reaching the checks proves there was none.
  */
 public class OldWorldRefusedClientTest implements FabricClientGameTest {
@@ -46,7 +44,6 @@ public class OldWorldRefusedClientTest implements FabricClientGameTest {
                     "opening a refused world changed its region files: before " + before + ", after " + after);
         }
 
-        context.clickScreenButton("gui.back");
-        ClientWait.screen(context, SelectWorldScreen.class);
+        OldWorlds.backToTheTitleScreen(context);
     }
 }

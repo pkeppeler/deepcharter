@@ -4,7 +4,7 @@ import io.github.pkeppeler.deepcharter.test.support.OldWorlds;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 
 /**
- * Evidence scenario "m3-old-world-refused" for #800: a world made before the world-format stamp is opened from the world list, and the
+ * Evidence scenario "m3-old-world-refused" for #800: a world with an old world-format stamp is opened from the world list, and the
  * player reads the refusal screen that points to PLAYING.md.
  */
 public class OldWorldRefusedScenario extends EvidenceScenario {
@@ -23,5 +23,6 @@ public class OldWorldRefusedScenario extends EvidenceScenario {
             frame(context);
         }
         screenshot(context, "refusal-screen");
+        OldWorlds.backToTheTitleScreen(context);
     }
 }

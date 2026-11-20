@@ -14,7 +14,7 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 
 /**
  * The world-format stamp (ADR 0059): the number of the world format a world was made in. {@link ColonyEvents#BUILT} writes
- * {@link #CURRENT}, and {@link WorldFormatGate} refuses to start a world that has a colony and a lower number, or none.
+ * {@link #CURRENT}, and {@link WorldFormatGate} refuses to start a world that has a colony and a lower number (none counts as {@link #LEGACY}).
  *
  * <p>The saved-data id {@code deepcharter:world_format} is permanent. A build that renamed it would find no stamp in every
  * world made so far and refuse them all. The number is not the record's {@link #VERSION}: the number says which world layout the
@@ -33,6 +33,12 @@ public final class WorldFormat extends SavedData {
      * number is refused.
      */
     public static final int CURRENT = 1;
+
+    /**
+     * The format of a world with no stamp: every world made before the stamp existed. It is also the format that {@link #CURRENT}
+     * has until #803, so those worlds are not refused before they cannot be played.
+     */
+    public static final int LEGACY = 1;
 
     private static final Identifier ID = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "world_format");
 
@@ -59,7 +65,15 @@ public final class WorldFormat extends SavedData {
     }
 
     static void init() {
-        ColonyEvents.BUILT.register((server, colony) -> get(server).stamp());
+        ColonyEvents.BUILT.register(WorldFormat::stampBuilt);
+    }
+
+    /** An unreadable record is logged once by {@code isReadable} and left as it is: a throw would stop the server start. */
+    private static void stampBuilt(MinecraftServer server, ColonySite.Placed colony) {
+        WorldFormat stamp = get(server);
+        if (stamp.isReadable()) {
+            stamp.stamp();
+        }
     }
 
     /** The world's stamp. Call on the server thread. */
