@@ -7,6 +7,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import java.util.List;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
@@ -122,20 +123,33 @@ public final class BandBiomeSource extends BiomeSource {
                 .flatMap(stream -> stream);
     }
 
+    /** The biome of the cell whose middle block is at {@code y}, for a block below the surface. */
+    private Holder<Biome> bandBiome(int y) {
+        for (Layer layer : layers) {
+            if (layer.contains(y)) {
+                return layer.biomes.get(Zones.index(layer.minY, layer.height, y));
+            }
+        }
+        return unbuilt;
+    }
+
     @Override
     public BiomeResolver createResolver(Climate.Sampler sampler) {
         BiomeResolver surfaceResolver = surface.createResolver(sampler);
+        // Below the surface a biome depends on the cell's height alone, so the bands are looked up once, for the cells
+        // from the lowest layer up to the surface; a cell under the lowest layer is the unbuilt rock.
+        int lowestQuart =
+                QuartPos.fromBlock(layers.stream().mapToInt(Layer::minY).min().orElse(surfaceMinY));
+        int surfaceQuart = Math.floorDiv(surfaceMinY - 3, 4) + 1;
+        List<Holder<Biome>> bands = IntStream.range(lowestQuart, surfaceQuart)
+                .mapToObj(quartY -> bandBiome(QuartPos.toBlock(quartY) + 2))
+                .toList();
         return (quartX, quartY, quartZ) -> {
             int y = QuartPos.toBlock(quartY) + 2;
             if (y >= surfaceMinY) {
                 return surfaceResolver.getNoiseBiome(quartX, quartY, quartZ);
             }
-            for (Layer layer : layers) {
-                if (layer.contains(y)) {
-                    return layer.biomes.get(Zones.index(layer.minY, layer.height, y));
-                }
-            }
-            return unbuilt;
+            return quartY < lowestQuart ? unbuilt : bands.get(quartY - lowestQuart);
         };
     }
 }

@@ -112,7 +112,8 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
             high++;
         }
         // The rolls and the states they place do not change from block to block, and the rock hardly does: a layer is
-        // mostly one state, so its tag test and the ore states it hosts are worked out once for each new rock.
+        // mostly one state, so its ore states are worked out once for each new rock. A section that holds nothing but
+        // ground is not read block by block: its blocks are only rolled for, and the few that place something are read.
         double[] oreFloors = floors(ores);
         double[] hazardFloors = floors(hazards);
         @Nullable BlockState[] oreStates = new BlockState[ores.size()];
@@ -124,22 +125,39 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
             if (section.hasOnlyAir() || !section.maybeHas(state -> state.is(LayerBlocks.GROUND))) {
                 continue;
             }
+            boolean onlyGround = !section.maybeHas(state -> !state.is(LayerBlocks.GROUND));
             int sectionY = chunk.getSectionYFromSectionIndex(index) << 4;
             for (int y = Math.max(low, sectionY); y <= Math.min(high, sectionY + 15); y++) {
                 for (int x = 0; x < 16; x++) {
                     for (int z = 0; z < 16; z++) {
-                        BlockState rock = section.getBlockState(x, y & 15, z);
-                        if (rock != lastRock) {
-                            lastRock = rock;
-                            lastIsGround = rock.is(LayerBlocks.GROUND);
-                            Arrays.fill(oreStates, null);
-                            Arrays.fill(hazardStates, null);
+                        @Nullable BlockState rock = null;
+                        if (!onlyGround) {
+                            rock = section.getBlockState(x, y & 15, z);
+                            if (rock != lastRock) {
+                                lastRock = rock;
+                                lastIsGround = rock.is(LayerBlocks.GROUND);
+                                Arrays.fill(oreStates, null);
+                                Arrays.fill(hazardStates, null);
+                            }
+                            if (!lastIsGround) {
+                                continue;
+                            }
                         }
-                        if (!lastIsGround) {
+                        int ore = roll(oreFloors, random);
+                        int hazard = ore >= 0 ? -1 : roll(hazardFloors, random);
+                        if (ore < 0 && hazard < 0) {
                             continue;
                         }
-                        BlockState state = null;
-                        int ore = roll(oreFloors, random);
+                        if (rock == null) {
+                            rock = section.getBlockState(x, y & 15, z);
+                            if (rock != lastRock) {
+                                lastRock = rock;
+                                lastIsGround = true;
+                                Arrays.fill(oreStates, null);
+                                Arrays.fill(hazardStates, null);
+                            }
+                        }
+                        BlockState state;
                         if (ore >= 0) {
                             state = oreStates[ore];
                             if (state == null) {
@@ -147,22 +165,17 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
                                 oreStates[ore] = state;
                             }
                         } else {
-                            int hazard = roll(hazardFloors, random);
-                            if (hazard >= 0) {
-                                state = hazardStates[hazard];
-                                if (state == null) {
-                                    Block block = hazards.get(hazard).block();
-                                    state = block instanceof CompanyRockBlock company
-                                            ? company.in(rock)
-                                            : block.defaultBlockState();
-                                    hazardStates[hazard] = state;
-                                }
+                            state = hazardStates[hazard];
+                            if (state == null) {
+                                Block block = hazards.get(hazard).block();
+                                state = block instanceof CompanyRockBlock company
+                                        ? company.in(rock)
+                                        : block.defaultBlockState();
+                                hazardStates[hazard] = state;
                             }
                         }
-                        if (state != null) {
-                            chunk.setBlockState(pos.set(firstX + x, y, firstZ + z), state, Block.UPDATE_CLIENTS);
-                            placed = true;
-                        }
+                        chunk.setBlockState(pos.set(firstX + x, y, firstZ + z), state, Block.UPDATE_CLIENTS);
+                        placed = true;
                     }
                 }
             }
