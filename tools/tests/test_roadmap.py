@@ -119,113 +119,115 @@ class RenderTest(unittest.TestCase):
         self.assertIn("Session handoff: none found", render(handoff=None))
 
 
-def _page(nodes, more=False):
-    return {"pageInfo": {"hasNextPage": more}, "nodes": nodes}
-
-
 def _issue(**kw):
-    base = {
-        "number": 1,
-        "title": "t",
-        "url": "u",
-        "state": "CLOSED",
-        "stateReason": "COMPLETED",
-        "closedByPullRequestsReferences": _page(
-            [{"number": 9, "url": "p9", "merged": False}, {"number": 8, "url": "p8", "merged": True}]
-        ),
-    }
+    base = {"number": 1, "title": "t", "html_url": "iu1", "state": "closed", "state_reason": "completed"}
     return {**base, **kw}
 
 
-def _pr(**kw):
+def _pull(**kw):
     base = {
         "number": 5,
         "title": "p",
-        "url": "pu",
-        "isDraft": False,
-        "labels": _page([{"name": "stage:simplified"}, {"name": "infra"}]),
-        "closingIssuesReferences": _page([{"number": 15, "url": "iu"}]),
+        "html_url": "pu5",
+        "draft": False,
+        "state": "open",
+        "merged_at": None,
+        "body": "Closes #15",
+        "labels": [{"name": "stage:simplified"}, {"name": "infra"}],
     }
     return {**base, **kw}
 
 
-def _repo(**kw):
-    base = {
-        "milestones": _page(
-            [
-                {"number": 2, "title": "b", "description": None, "issues": _page([])},
-                {"number": 1, "title": "a", "description": "d", "issues": _page([_issue()])},
-            ]
-        ),
-        "pullRequests": _page([_pr()]),
-        "handoff": _page([{"number": 14, "title": "H", "url": "hu"}]),
-    }
-    return {**base, **kw}
+MILESTONES = [
+    {"number": 2, "title": "b", "description": None},
+    {"number": 1, "title": "a", "description": "d"},
+]
+ISSUES = {1: [_issue(), _issue(number=2, state="open", state_reason=None)], 2: []}
+PULLS = [
+    _pull(number=9, html_url="p9", state="closed", body="Closes #1"),  # closed, never merged
+    _pull(number=8, html_url="p8", state="closed", merged_at="2026-01-01T00:00:00Z", body="Fixes #1"),
+    _pull(),
+]
+HANDOFFS = [{"number": 14, "title": "H", "html_url": "hu"}]
 
 
-class ParseTest(unittest.TestCase):
-    def test_parses_records(self):
-        roadmap = r.parse_github(_repo(), ())
+def build(milestones=MILESTONES, issues=ISSUES, pulls=PULLS, handoffs=HANDOFFS):
+    return r.build_roadmap(milestones, issues, pulls, handoffs, ())
+
+
+class BuildTest(unittest.TestCase):
+    def test_builds_records(self):
+        roadmap = build()
         self.assertEqual([m.number for m in roadmap.milestones], [1, 2])
+        self.assertEqual(roadmap.milestones[0].description, "d")
+        self.assertEqual(roadmap.milestones[1].description, "")
         issue = roadmap.milestones[0].issues[0]
         self.assertEqual(issue.closed_by, (r.Link(8, "p8"),))
         self.assertEqual(issue.close_reason, "COMPLETED")
+        self.assertEqual(issue.url, "iu1")
+        self.assertIsNone(roadmap.milestones[0].issues[1].close_reason)
+        self.assertEqual(roadmap.milestones[0].issues[1].closed_by, ())
         pr = roadmap.pull_requests[0]
         self.assertEqual(pr.labels, ("infra", "stage:simplified"))
-        self.assertEqual(pr.closes, (r.Link(15, "iu"),))
+        self.assertEqual(pr.closes, (r.Link(15, "https://github.com/pkeppeler/deepcharter/issues/15"),))
         self.assertEqual(roadmap.handoff, r.Handoff("H", "hu"))
 
+    def test_only_open_prs_are_in_flight(self):
+        self.assertEqual([p.number for p in build().pull_requests], [5])
+
+    def test_closing_prs_come_from_merged_pr_bodies_in_number_order(self):
+        pulls = [
+            _pull(number=30, html_url="p30", state="closed", merged_at="2026-01-02T00:00:00Z", body="Closes #1"),
+            _pull(number=20, html_url="p20", state="closed", merged_at="2026-01-01T00:00:00Z", body="Closes #1"),
+        ]
+        self.assertEqual(build(pulls=pulls).milestones[0].issues[0].closed_by, (r.Link(20, "p20"), r.Link(30, "p30")))
+
+    def test_a_pr_body_closing_another_repo_or_nothing_closes_nothing_here(self):
+        pulls = [
+            _pull(number=20, state="closed", merged_at="2026-01-01T00:00:00Z", body="Closes owner/repo#1"),
+            _pull(number=21, state="closed", merged_at="2026-01-01T00:00:00Z", body=None),
+        ]
+        self.assertEqual(build(pulls=pulls).milestones[0].issues[0].closed_by, ())
+
+    def test_milestone_issue_list_drops_pull_requests(self):
+        issues = {1: [_issue(), _issue(number=3, pull_request={"url": "x"})], 2: []}
+        self.assertEqual([i.number for i in build(issues=issues).milestones[0].issues], [1])
+
+    def test_not_planned_reason(self):
+        issues = {1: [_issue(state_reason="not_planned")], 2: []}
+        self.assertEqual(build(issues=issues).milestones[0].issues[0].close_reason, "NOT_PLANNED")
+
+    def test_closed_without_reason_has_none(self):
+        issues = {1: [_issue(state_reason=None)], 2: []}
+        self.assertIsNone(build(issues=issues).milestones[0].issues[0].close_reason)
+
     def test_no_handoff(self):
-        self.assertIsNone(r.parse_github(_repo(handoff=_page([])), ()).handoff)
+        self.assertIsNone(build(handoffs=[]).handoff)
+
+    def test_labelled_pr_is_not_a_handoff(self):
+        pr_entry = {"number": 31, "title": "x", "html_url": "y", "pull_request": {}}
+        self.assertEqual(build(handoffs=[pr_entry, *HANDOFFS]).handoff, r.Handoff("H", "hu"))
+        self.assertIsNone(build(handoffs=[pr_entry]).handoff)
 
     def test_two_handoffs_fail(self):
-        two = _page([{"number": 1, "title": "a", "url": "x"}, {"number": 2, "title": "b", "url": "y"}])
+        two = [{"number": 1, "title": "a", "html_url": "x"}, {"number": 2, "title": "b", "html_url": "y"}]
         with self.assertRaisesRegex(r.RoadmapError, "found 2"):
-            r.parse_github(_repo(handoff=two), ())
-
-    def test_every_truncated_connection_fails_loud(self):
-        cases = {
-            "milestones": _repo(milestones=_page([], more=True)),
-            "open PRs": _repo(pullRequests=_page([], more=True)),
-            "handoff": _repo(handoff=_page([], more=True)),
-            "issues in milestone": _repo(
-                milestones=_page([{"number": 1, "title": "a", "description": "", "issues": _page([], more=True)}])
-            ),
-            "closing PRs": _repo(
-                milestones=_page(
-                    [
-                        {
-                            "number": 1,
-                            "title": "a",
-                            "description": "",
-                            "issues": _page(
-                                [_issue(closedByPullRequestsReferences=_page([], more=True))]
-                            ),
-                        }
-                    ]
-                )
-            ),
-            "labels": _repo(pullRequests=_page([_pr(labels=_page([], more=True))])),
-            "closing issues": _repo(pullRequests=_page([_pr(closingIssuesReferences=_page([], more=True))])),
-        }
-        for what, repo in cases.items():
-            with self.subTest(what):
-                with self.assertRaisesRegex(r.RoadmapError, f"too many .*{what.split()[0]}"):
-                    r.parse_github(repo, ())
+            build(handoffs=two)
 
 
 def _completed(returncode=0, stdout="", stderr=""):
     return subprocess.CompletedProcess([], returncode, stdout, stderr)
 
 
-class GhGraphqlTest(unittest.TestCase):
-    def call(self, **run_kw):
-        with mock.patch.object(r.subprocess, "run", **run_kw):
-            return r.gh_graphql()
+class GhRestTest(unittest.TestCase):
+    def call(self, path="x", **run_kw):
+        with mock.patch.object(r.subprocess, "run", **run_kw) as run:
+            return r.gh_rest(path), run
 
-    def test_success(self):
-        out = self.call(return_value=_completed(stdout=json.dumps({"data": {"a": 1}})))
-        self.assertEqual(out, {"a": 1})
+    def test_flattens_every_page_and_asks_gh_to_paginate(self):
+        out, run = self.call("pulls?state=all", return_value=_completed(stdout=json.dumps([[{"a": 1}], [{"a": 2}, {"a": 3}]])))
+        self.assertEqual(out, [{"a": 1}, {"a": 2}, {"a": 3}])
+        self.assertEqual(run.call_args.args[0], ["gh", "api", "--paginate", "--slurp", "repos/pkeppeler/deepcharter/pulls?state=all"])
 
     def test_nonzero_exit(self):
         with self.assertRaisesRegex(r.RoadmapError, "gh failed \\(exit 4\\): boom"):
@@ -239,10 +241,27 @@ class GhGraphqlTest(unittest.TestCase):
         with self.assertRaisesRegex(r.RoadmapError, "invalid JSON"):
             self.call(return_value=_completed(stdout="not json"))
 
-    def test_graphql_errors(self):
-        payload = json.dumps({"errors": [{"message": "bad"}], "data": None})
-        with self.assertRaisesRegex(r.RoadmapError, "GraphQL errors"):
-            self.call(return_value=_completed(stdout=payload))
+
+class FetchTest(unittest.TestCase):
+    def test_reads_each_milestone_and_every_pr_through_rest(self):
+        answers = {
+            "milestones?state=all&per_page=100": MILESTONES,
+            "issues?milestone=2&state=all&sort=created&direction=asc&per_page=100": [],
+            "issues?milestone=1&state=all&sort=created&direction=asc&per_page=100": ISSUES[1],
+            "pulls?state=all&per_page=100": PULLS,
+            "issues?labels=handoff&state=open&per_page=100": HANDOFFS,
+        }
+        asked = []
+
+        def fake(path):
+            asked.append(path)
+            return answers[path]
+
+        with mock.patch.object(r, "gh_rest", fake), mock.patch.object(r, "read_adrs", return_value=()):
+            roadmap = r.fetch()
+        self.assertEqual(sorted(asked), sorted(answers))
+        self.assertEqual(roadmap.handoff, r.Handoff("H", "hu"))
+        self.assertEqual(len(roadmap.milestones[0].issues), 2)
 
 
 class MainTest(unittest.TestCase):
@@ -266,9 +285,8 @@ class MainTest(unittest.TestCase):
     def test_writes_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "ROADMAP.md"
-            stdout = json.dumps({"data": {"repository": _repo()}})
             with (
-                mock.patch.object(r.subprocess, "run", return_value=_completed(stdout=stdout)),
+                mock.patch.object(r, "gh_rest", return_value=[]),
                 mock.patch.object(r, "OUTPUT", out),
                 contextlib.redirect_stdout(io.StringIO()),
             ):

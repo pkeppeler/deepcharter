@@ -9,9 +9,9 @@
 # runs `git fetch origin main` (the stale-base rule needs it), so it updates only the local origin/main ref.
 #
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
-# labelled `review-passed` with a `review-passed <head sha>` comment for the
+# labelled `review-passed` with a `review-passed <head sha>` first-line comment from the trusted account for the
 # current head (see tools/mark-review-passed.sh), closes exactly its branch's
-# issue (GitHub's closingIssuesReferences set is {N} for branch `<N>-<slug>`),
+# issue (the body's closing keywords name {N} for branch `<N>-<slug>`),
 # adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug) or twice in the PR,
 # mergeable, shows a demo if it changes in-game code (see the demo check below), changes docs/feature-map/map.json
 # or says `No map change: <reason>` if it is labelled `gameplay`, has no map node that cites its issue and is not built
@@ -21,8 +21,8 @@
 # a failure.
 # Refuses if origin/main commits made since the PR's latest successful CI run was created (minus a
 # 2-minute margin) changed anything outside docs (`docs/**`, `*.md`, `.papercuts.jsonl`).
-# Retargets open PRs stacked on its branch to its base, then squash-merges pinned to that head sha
-# and regenerates docs/ROADMAP.md.
+# Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
+# and regenerates docs/ROADMAP.md. GitHub is read through REST only (tools/lib/gh-rest.sh).
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
@@ -51,13 +51,13 @@ origin=$(git remote get-url origin)
 
 # Read the head sha first. The merge below is pinned to it, so a push that lands
 # after this point makes the merge fail instead of merging unchecked code.
-sha=$(pr_field headRefOid .headRefOid) || refuse "could not be read from GitHub"
+sha=$(pr_field .head.sha) || refuse "could not be read from GitHub"
 [[ $sha =~ ^[0-9a-f]+$ ]] || refuse "has no readable head commit"
 
-state=$(pr_field state .state)
+state=$(pr_state_of "$pr") || refuse "could not read its state"
 [[ $state == OPEN ]] || refuse "is not open (state: $state)"
 
-is_draft=$(pr_field isDraft .isDraft) || refuse "could not read isDraft"
+is_draft=$(pr_field .draft) || refuse "could not read isDraft"
 if [[ $gate_only -eq 1 ]]; then
   [[ $is_draft == false ]] && echo "draft: no" || echo "draft: yes (the merge refuses a draft)"
 else
@@ -66,21 +66,29 @@ fi
 
 check_closing_reference # sets $branch, $issue, $body, $closes
 
+# GitHub closes the issue only for a PR into the default branch, so a PR into anything else closes nothing.
+base=$(pr_field .base.ref) || refuse "has no readable base branch"
+[[ $base == main ]] \
+  || refuse "targets '$base', not main: GitHub closes its issue only for a PR into the default branch (retarget it to main, or merge the PR it is stacked on first: that retargets it)"
+
 load_labels
 # Bodies are compared whole (as JSON strings), so a longer comment cannot match.
 review_pass_refusal=
 has_label review-passed || review_pass_refusal="lacks the review-passed label"
 if [[ -z $review_pass_refusal ]]; then
-  pr_field comments '.comments[].body|@json' | grep -qxF "\"review-passed $sha\"" \
+  # Only the trusted account's comments, and only a comment's first line: the cloud proxy appends a footer to every
+  # comment it posts.
+  gh api "repos/$repo/issues/$pr/comments?per_page=100" --paginate \
+    --jq ".[] | select(.user.login == \"$TRUSTED_LOGIN\") | .body | split(\"\\n\")[0] | @json" | grep -qxF "\"review-passed $sha\"" \
     || review_pass_refusal="has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
 fi
 if [[ $gate_only -eq 1 ]]; then
-  echo "review-passed: ${review_pass_refusal:+no ($review_pass_refusal)}${review_pass_refusal:-yes}"
+  if [[ -n $review_pass_refusal ]]; then echo "review-passed: no ($review_pass_refusal)"; else echo "review-passed: yes"; fi
 else
   [[ -z $review_pass_refusal ]] || refuse "$review_pass_refusal"
 fi
 
-mergeable=$(pr_field mergeable .mergeable)
+mergeable=$(pr_mergeable_of "$pr") || refuse "could not read mergeable"
 [[ $mergeable == MERGEABLE ]] || refuse "is not mergeable (mergeable: $mergeable)$([[ $mergeable == CONFLICTING ]] && echo '; merge origin/main into the branch and push')"
 
 # Checks come from the check-runs API, not `gh pr checks`: workflows that run on
@@ -160,7 +168,7 @@ if [[ ${#code_moved[@]} -gt 0 ]]; then
   shown=${code_moved[*]:0:5}
   more=
   [[ ${#code_moved[@]} -le 5 ]] || more=" (+$((${#code_moved[@]} - 5)) more)"
-  refuse "main changed since its CI run (CI run $ci_run created $ci_created): ${shown// /, }$more; re-run CI on a fresh merge ref with 'gh pr close $pr && gh pr reopen $pr' (the head sha is unchanged, so the review pass stays valid)"
+  refuse "main changed since its CI run (CI run $ci_run created $ci_created): ${shown// /, }$more; re-run CI on a fresh merge ref by closing and reopening the PR [stale-base] (the head sha is unchanged, so the review pass stays valid)"
 fi
 
 # A PR may not ADD docs/adr/NNNN-*.md when NNNN is already on origin/main (parallel
@@ -222,26 +230,30 @@ if [[ $gate_only -eq 1 ]]; then
   exit 0
 fi
 
-# --delete-branch closes (it does not retarget) every open PR based on this head branch, and a
-# closed PR whose base is gone cannot be reopened (#663). Retarget each to this PR's base first.
-base=$(pr_field baseRefName .baseRefName) || refuse "has no readable base branch"
-stacked=$(gh pr list -R "$repo" --base "$branch" --state open --limit 1000 --json number --jq '.[].number') \
+# Closing a PR whose base branch is gone cannot be reopened (#663), and GitHub deletes the head branch on merge
+# (the repo's delete_branch_on_merge, so this script deletes no ref). Retarget each open PR stacked on this head
+# branch to this PR's base first.
+stacked=$(gh api "repos/$repo/pulls?base=$branch&state=open&per_page=100" --paginate --jq '.[].number') \
   || refuse "could not list the PRs stacked on $branch"
 for stacked_pr in $stacked; do
-  gh pr edit "$stacked_pr" -R "$repo" --base "$base" \
+  gh api -X PATCH "repos/$repo/pulls/$stacked_pr" -f base="$base" >/dev/null \
     || refuse "cannot retarget stacked PR #$stacked_pr to $base (merging would close it)"
   echo "Retargeted PR #$stacked_pr to $base"
 done
 
-# gh can merge on GitHub and then fail on local cleanup (branch checked out in a
-# worktree), so a nonzero exit is judged by the PR's real state.
-if ! gh pr merge "$pr" -R "$repo" --squash --delete-branch --match-head-commit "$sha"; then
-  state=$(pr_field state .state) || state=unknown
+# The repo's squash settings are PR_TITLE and PR_BODY: the subject is "<title> (#n)" and the message the body.
+# The merge endpoint is not documented to apply them, so pass both. A merge request can fail after GitHub merged
+# (a timeout), so a nonzero exit is judged by the PR's real state.
+title=$(pr_field .title) || refuse "has no readable title"
+message=$(pr_field '.body // ""') || refuse "has no readable body"
+if ! gh api -X PUT "repos/$repo/pulls/$pr/merge" -f merge_method=squash -f sha="$sha" \
+  -f commit_title="$title (#$pr)" -f commit_message="$message" >/dev/null; then
+  state=$(pr_state_of "$pr") || state=unknown
   if [[ $state != MERGED ]]; then
-    echo "ERROR: gh pr merge failed and PR #$pr is not merged (state: $state)" >&2
+    echo "ERROR: the merge request failed and PR #$pr is not merged (state: $state)" >&2
     exit 1
   fi
-  echo "WARNING: gh pr merge exited nonzero but PR #$pr is MERGED (likely local branch cleanup); continuing" >&2
+  echo "WARNING: the merge request failed but PR #$pr is MERGED; continuing" >&2
 fi
 echo "Merged PR #$pr at $sha"
 
