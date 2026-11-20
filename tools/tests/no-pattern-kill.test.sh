@@ -43,7 +43,7 @@ allowed 'kill -9 ${server_pid}'
 allowed 'sleep 100 & pid=$!; kill $pid'
 allowed 'kill -l'
 allowed 'grep -n pkill file'
-allowed 'gh issue view 396'
+allowed 'gh api repos/pkeppeler/deepcharter/issues/396'
 allowed 'git commit -m "stop using pkill and killall; kill $(pgrep x) is refused"'
 allowed "echo 'pkill -f x'"
 allowed 'ls killall.txt'

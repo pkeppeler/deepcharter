@@ -4,7 +4,7 @@
 # Merges the given PRs one at a time, in order, through tools/merge-pr.sh (the gate).
 # Per PR: wait until no workflow run for the head is unfinished, run the gate, then
 #   - PR already MERGED (checked first and after every refusal): done, skipped
-#   - refusal naming "gh pr reopen" (stale base): close and reopen the PR, sleep, wait
+#   - refusal carrying the "[stale-base]" marker (stale base): close and reopen the PR, sleep, wait
 #     for CI again, retry (up to MERGE_QUEUE_STALE_RETRIES, default 3)
 #   - refusal "mergeable: UNKNOWN": sleep, retry (up to MERGE_QUEUE_UNKNOWN_RETRIES, default 4)
 #   - any other refusal: stop the queue and print the reason
@@ -95,8 +95,9 @@ release() {
 trap release EXIT
 trap 'exit 130' INT TERM
 
-pr_field() { gh pr view "$1" -R "$repo" --json "$2" --jq ".$2"; }
-pr_state() { pr_field "$1" state 2>/dev/null || echo unknown; }
+# shellcheck source=lib/gh-rest.sh
+source "$root/tools/lib/gh-rest.sh"
+pr_state() { pr_state_of "$1" 2>/dev/null || echo unknown; }
 
 # wait_ci <branch> <sha>: return once no run for that head is unfinished; 1 on timeout.
 wait_ci() {
@@ -229,12 +230,12 @@ run_pr() {
   result=stopped
   detail=
   state=$(pr_state "$pr")
-  branch=$(pr_field "$pr" headRefName 2>/dev/null || true)
+  branch=$(pr_get "$pr" .head.ref 2>/dev/null || true)
   if [[ $state == MERGED ]]; then
     say "PR #$pr is already merged"
     result=skipped
     detail="already merged"
-    sha=$(pr_field "$pr" headRefOid 2>/dev/null || true)
+    sha=$(pr_get "$pr" .head.sha 2>/dev/null || true)
     if [[ -n $branch ]]; then cleanup_pr "$branch" "$sha"; fi
     return 0
   fi
@@ -243,7 +244,7 @@ run_pr() {
     return 0
   fi
   while true; do
-    sha=$(pr_field "$pr" headRefOid 2>/dev/null || true)
+    sha=$(pr_get "$pr" .head.sha 2>/dev/null || true)
     if [[ -z $sha ]]; then
       detail="PR #$pr: could not read its head sha"
       return 0
@@ -278,19 +279,19 @@ run_pr() {
     fi
     reason=$(grep -m1 -E '^(REFUSED|ERROR):' <<<"$out" || true)
     if [[ -z $reason ]]; then reason="gate exited $rc: $(tail -n 1 <<<"$out")"; fi
-    if [[ $out == *"gh pr reopen"* ]]; then
+    if [[ $out == *"[stale-base]"* ]]; then
       if ((stale_n >= stale_max)); then
         detail="$reason (still stale after $stale_max reruns)"
         return 0
       fi
       stale_n=$((stale_n + 1))
       say "PR #$pr has a stale base; close and reopen to rerun CI ($stale_n of $stale_max)"
-      if ! gh pr close "$pr" -R "$repo" >/dev/null; then
-        detail="PR #$pr: gh pr close failed"
+      if ! gh api -X PATCH "repos/$repo/pulls/$pr" -f state=closed >/dev/null; then
+        detail="PR #$pr: closing it failed"
         return 0
       fi
-      if ! gh pr reopen "$pr" -R "$repo" >/dev/null; then
-        detail="PR #$pr: gh pr reopen failed (the PR is closed now)"
+      if ! gh api -X PATCH "repos/$repo/pulls/$pr" -f state=open >/dev/null; then
+        detail="PR #$pr: reopening it failed (the PR is closed now)"
         return 0
       fi
       sleep "$stale_sleep"
