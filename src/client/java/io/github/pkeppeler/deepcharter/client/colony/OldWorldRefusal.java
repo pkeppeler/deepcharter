@@ -7,8 +7,6 @@ import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.AlertScreen;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.WorldStem;
 import net.minecraft.util.datafix.DataFixers;
@@ -19,16 +17,17 @@ import net.minecraft.world.level.storage.SavedDataStorage;
 /**
  * Refuses an old world from the singleplayer world list, before its server exists (ADR 0059). A server that fails to start is a
  * crash report to a singleplayer client, so the check runs here, on the world's saved data, and shows a message screen instead.
- * {@code WorldOpenFlows.openWorldDoLoad} calls it first: it has the world's storage and registries and has started nothing.
+ * {@code WorldOpenFlows.openWorldCheckWorldStemCompatibility} calls it first: it has the world's storage and registries, has started nothing, and runs before vanilla's backup prompt, so a player is never asked to back up a world that is then refused.
  */
 public final class OldWorldRefusal {
     private OldWorldRefusal() {}
 
     /**
      * Shows the refusal screen and returns true when the world must not start. The world's storage and resources are closed, so
-     * the world can be opened again, and nothing is written to the world.
+     * the world can be opened again, and nothing is written to the world. The screen's button runs {@code onCancel}, as vanilla's
+     * own refusals do: it returns to the world list.
      */
-    public static boolean refuse(Minecraft client, LevelStorageAccess access, WorldStem worldStem) {
+    public static boolean refuse(Minecraft client, LevelStorageAccess access, WorldStem worldStem, Runnable onCancel) {
         Optional<Refusal> refusal = read(access, worldStem);
         if (refusal.isEmpty()) {
             return false;
@@ -37,15 +36,12 @@ public final class OldWorldRefusal {
                 "Refusing to open the world {}: {}",
                 access.getLevelId(),
                 refusal.get().reason());
-        // The world's own resource pack was pushed before this point; vanilla's cancel paths pop it too.
-        client.getDownloadedPackSource().popAll();
         worldStem.close();
         access.safeClose();
-        // Both are vanilla's screens, so the layout gate for the mod's own screens (test_screen_layout_gate.py) has
-        // nothing to check.
-        Screen worldList = new SelectWorldScreen(new TitleScreen());
+        // Vanilla's screen, so the layout gate for the mod's own screens (test_screen_layout_gate.py) has nothing to
+        // check.
         Screen message = new AlertScreen(
-                () -> client.gui.setScreen(worldList),
+                onCancel,
                 Component.translatable("deepcharter.world_format.refused.title"),
                 refusal.get().message());
         client.gui.setScreen(message);

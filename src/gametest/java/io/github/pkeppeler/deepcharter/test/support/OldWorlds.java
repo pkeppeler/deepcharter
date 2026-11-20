@@ -67,7 +67,8 @@ public final class OldWorlds {
     /** Opens the saved world from the world list's code path and waits for the refusal screen, which is an {@link AlertScreen}. */
     public static void open(ClientGameTestContext context, TestWorldSave save) {
         String levelId = save.getSaveDirectory().getFileName().toString();
-        context.runOnClient(client -> client.createWorldOpenFlows().openWorld(levelId, () -> {}));
+        context.runOnClient(client -> client.createWorldOpenFlows()
+                .openWorld(levelId, () -> client.gui.setScreen(new SelectWorldScreen(new TitleScreen()))));
         ClientWait.screen(context, AlertScreen.class);
     }
 

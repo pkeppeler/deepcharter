@@ -20,10 +20,14 @@ public abstract class WorldOpenFlowsMixin {
     @Final
     private Minecraft minecraft;
 
-    @Inject(method = "openWorldDoLoad", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "openWorldCheckWorldStemCompatibility", at = @At("HEAD"), cancellable = true)
     private void deepcharter$refuseOldWorld(
-            LevelStorageAccess access, WorldStem worldStem, PackRepository packRepository, CallbackInfo ci) {
-        if (OldWorldRefusal.refuse(this.minecraft, access, worldStem)) {
+            LevelStorageAccess access,
+            WorldStem worldStem,
+            PackRepository packRepository,
+            Runnable onCancel,
+            CallbackInfo ci) {
+        if (OldWorldRefusal.refuse(this.minecraft, access, worldStem, onCancel)) {
             ci.cancel();
         }
     }
