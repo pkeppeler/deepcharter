@@ -231,7 +231,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                 client -> heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
         long idleBefore = heard.count("pod.engine_idle");
         teleportReal(two, TestLayers.dimension(1), 0.5, TestLayers.worldY(1, 100), 0.5);
-        await(context, heard, "the client in layer 1", client -> TestLayers.isIn(ClientLight.clientLevel(client), 1));
+        await(context, heard, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
         teleportReal(two, Level.OVERWORLD, X + 3.5, FLOOR_Y, Z - 3.5);
         await(
                 context,
@@ -334,7 +334,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                     context,
                     heard,
                     "pod.engine_idle stopped in layer 1",
-                    client -> TestLayers.isIn(ClientLight.clientLevel(client), 1)
+                    client -> TestLayers.clientIsIn(client, 1)
                             && !heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
 
             // Each layer's zone biomes carry its music, and the client plays what the biome at the player says.
@@ -361,7 +361,7 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                 ClientWait.until(
                         context,
                         "the client in the target layer",
-                        client -> client.level != null && TestLayers.isIn(client.level, target));
+                        client -> client.level != null && TestLayers.clientIsIn(client, target));
                 // The music is the biome's, so read it only once the client has the chunk and its biome.
                 ClientWait.until(context, "the client's biome at the player in layer " + target, client -> {
                     Vec3 at = ClientSession.player(client).position();

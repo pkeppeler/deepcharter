@@ -100,7 +100,7 @@ public class OutpostSharingScenario extends EvidenceScenario {
                     context,
                     "the player in layer 1 in the built hall",
                     client -> client.player != null
-                            && TestLayers.isIn(ClientLight.clientLevel(client), 1)
+                            && TestLayers.clientIsIn(client, 1)
                             && ClientCharter.view().isPresent()
                             && !ClientLight.clientLevel(client)
                                     .getBlockState(scene.pump())

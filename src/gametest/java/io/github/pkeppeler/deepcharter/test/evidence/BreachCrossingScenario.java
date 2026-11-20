@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -61,7 +60,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
                 BlockPos column = BlockPos.containing(X, 0, Z);
                 RoomCarver.carve(
                         one,
-                        column.atY(one.getMinY()),
+                        column.atY(TestLayers.band(one, 1).floor()),
                         column.atY(SHAFT_TOP),
                         Blocks.AIR.defaultBlockState(),
                         Block.UPDATE_ALL);
@@ -75,8 +74,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(one, X, SHAFT_TOP - 1, Z, Set.of(), 0, 70, true);
             });
-            ClientWait.until(
-                    context, "the client in layer 1", client -> TestLayers.isIn(ClientLight.clientLevel(client), 1));
+            ClientWait.until(context, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
 
             int typedAt = -1;
             for (int tick = 0; tick < PATIENCE; tick++) {
@@ -130,10 +128,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
             // Yaw -90 faces east, towards the pillars.
             player.teleportTo(level, X, standing, Z, Set.of(), -90, 0, true);
         });
-        ClientWait.until(
-                context,
-                "the client in layer " + layer,
-                client -> TestLayers.isIn(ClientLight.clientLevel(client), layer));
+        ClientWait.until(context, "the client in layer " + layer, client -> TestLayers.clientIsIn(client, layer));
         context.waitTicks(60);
     }
 }

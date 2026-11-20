@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayDeque;
@@ -76,7 +75,7 @@ public class LayerTerrainScenario extends EvidenceScenario {
             ClientGameTestContext context, TestSingleplayerContext singleplayer, int layer, int frames) {
         List<Vec3> route = singleplayer.getServer().computeOnServer(server -> {
             ServerLevel level = TestLayers.level(server, layer);
-            return smooth(findRoute(level));
+            return smooth(findRoute(level, layer));
         });
         int stride = Math.max(1, (int) Math.ceil(route.size() / (double) frames));
         float yaw = 0f;
@@ -99,9 +98,7 @@ public class LayerTerrainScenario extends EvidenceScenario {
             });
             if (first) {
                 ClientWait.until(
-                        context,
-                        "the client in layer " + layer,
-                        client -> TestLayers.isIn(ClientLight.clientLevel(client), layer));
+                        context, "the client in layer " + layer, client -> TestLayers.clientIsIn(client, layer));
                 context.waitTicks(40);
                 first = false;
             }
@@ -115,11 +112,11 @@ public class LayerTerrainScenario extends EvidenceScenario {
     }
 
     /** The longest open way out of the roomiest of the few best caves near the start, as cell centres. */
-    private static List<Vec3> findRoute(ServerLevel level) {
+    private static List<Vec3> findRoute(ServerLevel level, int layer) {
         List<BlockPos> starts = new ArrayList<>();
         Map<BlockPos, Integer> room = new HashMap<>();
-        int top = level.getMinY() + 24;
-        int bottom = level.getMaxY() - 40;
+        int top = TestLayers.band(level, layer).floor() + 24;
+        int bottom = TestLayers.band(level, layer).top() - 40;
         for (int x = START_X - SEARCH_RADIUS; x <= START_X + SEARCH_RADIUS; x += 2) {
             for (int z = START_Z - SEARCH_RADIUS; z <= START_Z + SEARCH_RADIUS; z += 2) {
                 for (int y = top; y <= bottom; y += 2) {

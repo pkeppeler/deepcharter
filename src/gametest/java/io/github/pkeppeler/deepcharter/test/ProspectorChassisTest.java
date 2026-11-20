@@ -359,8 +359,8 @@ public class ProspectorChassisTest {
         StructureSite ordinary = StructureSite.in(
                 level.getSeed(),
                 StructureKind.WRECK,
-                level.getMinY(),
-                level.getHeight(),
+                TestLayers.band(level, 2).floor(),
+                TestLayers.band(level, 2).height(),
                 WRECK_CELL,
                 WRECK_CELL,
                 conduit);
@@ -995,7 +995,7 @@ public class ProspectorChassisTest {
             }
             expect(
                     helper,
-                    TestLayers.isIn(pilot.player().level(), 2),
+                    TestLayers.isIn(pilot.player(), 2),
                     "the pilot should have crossed to layer 2, is in %s",
                     pilot.player().level().dimension());
             expect(
@@ -1055,8 +1055,7 @@ public class ProspectorChassisTest {
             }
             expect(
                     helper,
-                    TestLayers.isIn(pilot.player().level(), 2)
-                            && TestLayers.isIn(navigator.player().level(), 2),
+                    TestLayers.isIn(pilot.player(), 2) && TestLayers.isIn(navigator.player(), 2),
                     "both riders of the towed Prospector should have crossed to layer 2, they are in %s and %s",
                     pilot.player().level().dimension(),
                     navigator.player().level().dimension());
@@ -1186,8 +1185,8 @@ public class ProspectorChassisTest {
         BlockPos column = BlockPos.containing(x, 0, z);
         RoomCarver.carve(
                 level,
-                column.offset(-1, 0, -1).atY(level.getMinY()),
-                column.offset(1, 0, 1).atY(level.getMinY() + 10),
+                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).floor()),
+                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).floor() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
     }

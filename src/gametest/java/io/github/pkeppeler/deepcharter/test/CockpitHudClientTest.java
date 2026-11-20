@@ -146,7 +146,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         "the pilot seated in the pod in layer 1",
                         client -> client.player != null
                                 && client.player.getVehicle() instanceof PodEntity
-                                && TestLayers.isIn(ClientLight.clientLevel(client), 1));
+                                && TestLayers.clientIsIn(client, 1));
                 context.waitTicks(
                         40); // tick-wait: the charter's first transmission arrives a moment after the mount, and is
                 // cleared below
@@ -576,7 +576,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 SignalDecay.intensity(
                         1,
                         Math.floor(shown.getY() + 1e-3)
-                                - ClientLight.clientLevel(client).getMinY(),
+                                - TestLayers.band(ClientLight.clientLevel(client), 1)
+                                        .floor(),
                         2)
             };
         });

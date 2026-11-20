@@ -5,7 +5,6 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -60,7 +59,7 @@ public class PodBraceClientTest implements FabricClientGameTest {
                     "the pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity pod
-                            && TestLayers.isIn(ClientLight.clientLevel(client), 1)
+                            && TestLayers.clientIsIn(client, 1)
                             && Math.round(pod.hull()) == Math.round(HULL));
             List<Component> lines = crustLines(context);
             if (lines.size() != 1) {

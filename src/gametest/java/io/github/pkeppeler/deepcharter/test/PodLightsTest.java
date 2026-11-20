@@ -452,7 +452,12 @@ public class PodLightsTest {
             }
             if (!checked[0]) {
                 checked[0] = true;
-                List<BlockPos> left = lightsInBox(one, BlockPos.containing(x, one.getMinY(), z), 4, one.getMinY(), 20);
+                List<BlockPos> left = lightsInBox(
+                        one,
+                        BlockPos.containing(x, TestLayers.band(one, 1).floor(), z),
+                        4,
+                        TestLayers.band(one, 1).floor(),
+                        20);
                 if (!left.isEmpty()
                         || !ledgerEntriesIn(one, BlockPos.containing(x, TestLayers.worldY(1, 8), z), 40)
                                 .isEmpty()) {
@@ -669,8 +674,8 @@ public class PodLightsTest {
         BlockPos column = BlockPos.containing(x, 0, z);
         RoomCarver.carve(
                 level,
-                column.offset(-1, 0, -1).atY(level.getMinY()),
-                column.offset(1, 0, 1).atY(level.getMinY() + 10),
+                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).floor()),
+                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).floor() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
     }

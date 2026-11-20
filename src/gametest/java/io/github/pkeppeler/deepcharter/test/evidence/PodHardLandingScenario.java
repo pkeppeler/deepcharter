@@ -7,7 +7,6 @@ import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -72,7 +71,7 @@ public class PodHardLandingScenario extends EvidenceScenario {
             ClientWait.until(
                     context,
                     "the player in layer 1",
-                    client -> client.player != null && TestLayers.isIn(ClientLight.clientLevel(client), 1));
+                    client -> client.player != null && TestLayers.clientIsIn(client, 1));
             context.waitTicks(30);
 
             // Braked: the pilot taps the rotor whenever the sink passes BRAKE_ABOVE_SINK.

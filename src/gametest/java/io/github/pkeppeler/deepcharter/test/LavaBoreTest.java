@@ -823,7 +823,9 @@ public class LavaBoreTest {
 
     /** The highest block in the columns of the bore. */
     private static int topOfTheRock(ServerLevel level, int centreX, int centreZ) {
-        for (int y = level.getMaxY() - 1; y >= level.getMinY(); y--) {
+        for (int y = TestLayers.band(level, 1).top() - 1;
+                y >= TestLayers.band(level, 1).floor();
+                y--) {
             for (int x = centreX - FOOTPRINT_WIDTH / 2; x < centreX - FOOTPRINT_WIDTH / 2 + FOOTPRINT_WIDTH; x++) {
                 for (int z = centreZ - FOOTPRINT_WIDTH / 2; z < centreZ - FOOTPRINT_WIDTH / 2 + FOOTPRINT_WIDTH; z++) {
                     if (!level.getBlockState(new BlockPos(x, y, z)).isAir()) {
@@ -840,7 +842,7 @@ public class LavaBoreTest {
     private static void step(GameTestHelper helper, Bore bore) {
         ServerPlayer player = bore.pilot.player();
         PodEntity pod = player.getVehicle() instanceof PodEntity ridden ? ridden : bore.pod.get();
-        boolean through = TestLayers.isIn(player.level(), 2);
+        boolean through = TestLayers.isIn(player, 2);
         if (through && player.isAlive() && player.getVehicle() instanceof PodEntity crossed) {
             finish(bore, Outcome.SURVIVED, "", crossed);
             crossed.discard();
@@ -874,7 +876,8 @@ public class LavaBoreTest {
             bore.biggestOtherHit = hullLost;
             bore.biggestOtherHitY = pod.blockPosition().getY();
         }
-        boolean inCrust = pod.blockPosition().getY() <= level.getMinY() + CRUST_BAND;
+        boolean inCrust =
+                pod.blockPosition().getY() <= TestLayers.band(level, 1).floor() + CRUST_BAND;
         Cause cause = touching
                 ? Cause.LAVA
                 : gasPocketVanished(level, bore)
@@ -2051,7 +2054,7 @@ public class LavaBoreTest {
         if (!DECAY) {
             return;
         }
-        int minY = bores.getFirst().level.getMinY();
+        int minY = TestLayers.band(bores.getFirst().level, 1).floor();
         int onset = (int) Math.ceil(SignalDecayTuning.DEFAULT.band(1).onset()
                 * UpgradeTuning.DEFAULT.ratio(ComponentTrack.CONSOLE, CONSOLE_TIER));
         List<Bore> inBand = bores.stream().filter(b -> b.decayTicks > 0).toList();

@@ -88,8 +88,8 @@ public class M2SliceTest {
         // The colony's chunk too: a pod there is found by its UUID, which a cable needs, only once the chunk ticks
         // entities.
         List<Awaited> awaited = List.of(
-                new Awaited(one, BlockPos.containing(X, zoneY(one, 2), Z)),
-                new Awaited(two, BlockPos.containing(X, zoneY(two, 2), Z)),
+                new Awaited(one, BlockPos.containing(X, zoneY(one, 1, 2), Z)),
+                new Awaited(two, BlockPos.containing(X, zoneY(two, 2, 2), Z)),
                 new Awaited(
                         server.overworld(), Colony.placed(server).orElseThrow().center()),
                 // The Host's chunk, whose displays the end state inspects: the colony's centre is in it, and this names
@@ -113,8 +113,9 @@ public class M2SliceTest {
         }
     }
 
-    private static double zoneY(ServerLevel level, int index) {
-        Zones.Span span = Zones.span(level.getMinY(), level.getHeight(), index);
+    private static double zoneY(ServerLevel level, int layer, int index) {
+        TestLayers.Band band = TestLayers.band(level, layer);
+        Zones.Span span = Zones.span(band.floor(), band.height(), index);
         return span.low() + span.size() / 2.0;
     }
 
@@ -296,7 +297,7 @@ public class M2SliceTest {
                                 helper,
                                 Terminals.act(first, terminal, RepairStation.REPAIR_TOTAL, new CompoundTag()),
                                 "repairing the hull");
-                        director.teleportTo(one, new Vec3(X, zoneY(one, 2), Z), 0, 0);
+                        director.teleportTo(one, new Vec3(X, zoneY(one, 1, 2), Z), 0, 0);
                         HandbookTriggers.pollPlayer(server, first);
 
                         // Chapter 8: the first descent into the Old Workings.
@@ -304,12 +305,12 @@ public class M2SliceTest {
 
                         // Chapter 9: find the wreck, tow it into the colony, restore it at the hangar, and fly it to
                         // the floor.
-                        director.teleportTo(two, new Vec3(X, zoneY(two, 2), Z), 0, 0);
+                        director.teleportTo(two, new Vec3(X, zoneY(two, 2, 2), Z), 0, 0);
                         PodEntity wreck = pod(
                                 helper,
                                 two,
                                 PodRegistry.PROSPECTOR,
-                                new Vec3(X + HandbookTuning.DEFAULT.findProspectorBlocks() / 2.0, zoneY(two, 2), Z));
+                                new Vec3(X + HandbookTuning.DEFAULT.findProspectorBlocks() / 2.0, zoneY(two, 2, 2), Z));
                         pods.add(wreck);
                         wreck.damageHull(wreck.maxHull());
                         HandbookTriggers.pollPlayer(server, first);
@@ -347,13 +348,13 @@ public class M2SliceTest {
                         PodEntity restored = (PodEntity) Objects.requireNonNull(
                                 wreck.teleport(new net.minecraft.world.level.portal.TeleportTransition(
                                         two,
-                                        new Vec3(X, zoneY(two, 2), Z),
+                                        new Vec3(X, zoneY(two, 2, 2), Z),
                                         Vec3.ZERO,
                                         0f,
                                         0f,
                                         net.minecraft.world.level.portal.TeleportTransition.DO_NOTHING)),
                                 "the restored wreck did not teleport");
-                        director.teleportTo(two, new Vec3(X, zoneY(two, 2), Z), 0, 0);
+                        director.teleportTo(two, new Vec3(X, zoneY(two, 2, 2), Z), 0, 0);
                         expect(
                                 helper,
                                 first.startRiding(restored, true, false),

@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.transmission.Transmission;
@@ -57,20 +56,19 @@ public class TransmissionsScenario extends EvidenceScenario {
                     }
                 }
                 ServerLevel one = TestLayers.level(server, 1);
-                player.teleportTo(one, X, one.getMinY() + 40, Z, Set.of(), 0, 0, true);
+                player.teleportTo(one, X, TestLayers.band(one, 1).floor() + 40, Z, Set.of(), 0, 0, true);
                 return Charters.charterOfOrThrow(server, player.getUUID())
                         .orElseThrow()
                         .id();
             });
-            ClientWait.until(
-                    context, "the client in layer 1", client -> TestLayers.isIn(ClientLight.clientLevel(client), 1));
+            ClientWait.until(context, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
             context.waitTicks(SETTLE_TICKS);
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 // One block under the floor of layer 1, so it crosses on the next server tick.
-                player.teleportTo(one, X, one.getMinY() - 1, Z, Set.of(), 0, 0, true);
+                player.teleportTo(one, X, TestLayers.band(one, 1).floor() - 1, Z, Set.of(), 0, 0, true);
             });
 
             Set<Identifier> shot = new HashSet<>();

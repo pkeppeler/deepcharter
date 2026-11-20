@@ -205,6 +205,7 @@ public class LamplessFigureTest {
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
             buildCorridor(level, origin);
             figure[0] = spawnFigure(level, origin, 0, Direction.SOUTH);
+            // level-height: the void under the test world, not a layer
             figure[0].setPos(figure[0].getX(), level.getMinY() - 100, figure[0].getZ());
         });
     }
@@ -481,8 +482,8 @@ public class LamplessFigureTest {
         StructureSite site = StructureSite.in(
                 level.getSeed(),
                 StructureKind.RAILS,
-                level.getMinY(),
-                level.getHeight(),
+                TestLayers.band(level, StructureKind.RAILS.layer()).floor(),
+                TestLayers.band(level, StructureKind.RAILS.layer()).height(),
                 RAIL_SITE_CELL,
                 RAIL_SITE_CELL,
                 conduit);

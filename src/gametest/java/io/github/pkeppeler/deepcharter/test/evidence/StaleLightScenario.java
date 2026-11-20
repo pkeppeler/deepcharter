@@ -81,8 +81,8 @@ public class StaleLightScenario extends EvidenceScenario {
                     return StructureSite.in(
                             s.overworld().getSeed(),
                             StructureKind.GALLERY,
-                            level.getMinY(),
-                            level.getHeight(),
+                            TestLayers.band(level, 2).floor(),
+                            TestLayers.band(level, 2).height(),
                             at,
                             at,
                             conduit);

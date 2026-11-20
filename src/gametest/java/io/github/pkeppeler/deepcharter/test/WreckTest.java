@@ -1008,7 +1008,7 @@ public class WreckTest {
                         pilot.player().connection.hasClientLoaded(),
                         pilot.player().getVehicle());
             }
-            if (!TestLayers.isIn(pilot.player().level(), 1) || pod[0].isRemoved()) {
+            if (!TestLayers.isIn(pilot.player(), 1) || pod[0].isRemoved()) {
                 throw failure(
                         helper,
                         "the wreck must stay in layer 1, pilot in %s",

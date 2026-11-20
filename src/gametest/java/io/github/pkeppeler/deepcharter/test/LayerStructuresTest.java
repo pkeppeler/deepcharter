@@ -150,7 +150,13 @@ public class LayerStructuresTest {
                 for (int cellX = -2; cellX <= 1; cellX++) {
                     for (int cellZ = -2; cellZ <= 1; cellZ++) {
                         StructureSite site = StructureSite.in(
-                                level.getSeed(), kind, level.getMinY(), level.getHeight(), cellX, cellZ, conduit);
+                                level.getSeed(),
+                                kind,
+                                TestLayers.band(level, layer).floor(),
+                                TestLayers.band(level, layer).height(),
+                                cellX,
+                                cellZ,
+                                conduit);
                         BoundingBox box = site.bounds();
                         if (box.minX() < cellX * SPACING
                                 || box.maxX() >= (cellX + 1) * SPACING
@@ -159,7 +165,11 @@ public class LayerStructuresTest {
                             throw failure(helper, "%s in cell (%d, %d) reaches out of it: %s", kind, cellX, cellZ, box);
                         }
                         for (int y = box.minY(); y <= box.maxY(); y++) {
-                            if (Zones.index(level.getMinY(), level.getHeight(), y) != kind.zone()) {
+                            if (Zones.index(
+                                            TestLayers.band(level, layer).floor(),
+                                            TestLayers.band(level, layer).height(),
+                                            y)
+                                    != kind.zone()) {
                                 throw failure(
                                         helper,
                                         "%s in cell (%d, %d) at y=%d is in zone %d, not %d",
@@ -167,7 +177,10 @@ public class LayerStructuresTest {
                                         cellX,
                                         cellZ,
                                         y,
-                                        Zones.index(level.getMinY(), level.getHeight(), y),
+                                        Zones.index(
+                                                TestLayers.band(level, layer).floor(),
+                                                TestLayers.band(level, layer).height(),
+                                                y),
                                         kind.zone());
                             }
                         }
@@ -185,15 +198,33 @@ public class LayerStructuresTest {
         int differing = 0;
         for (StructureKind kind : StructureKind.inLayer(2)) {
             for (int cell = 0; cell < 8; cell++) {
-                StructureSite one =
-                        StructureSite.in(11L, kind, level.getMinY(), level.getHeight(), cell, -cell, conduit);
-                if (!one.equals(
-                        StructureSite.in(11L, kind, level.getMinY(), level.getHeight(), cell, -cell, conduit))) {
+                StructureSite one = StructureSite.in(
+                        11L,
+                        kind,
+                        TestLayers.band(level, 2).floor(),
+                        TestLayers.band(level, 2).height(),
+                        cell,
+                        -cell,
+                        conduit);
+                if (!one.equals(StructureSite.in(
+                        11L,
+                        kind,
+                        TestLayers.band(level, 2).floor(),
+                        TestLayers.band(level, 2).height(),
+                        cell,
+                        -cell,
+                        conduit))) {
                     throw failure(
                             helper, "%s in cell %d is not the same when asked twice for the same seed", kind, cell);
                 }
-                if (!one.equals(
-                        StructureSite.in(12L, kind, level.getMinY(), level.getHeight(), cell, -cell, conduit))) {
+                if (!one.equals(StructureSite.in(
+                        12L,
+                        kind,
+                        TestLayers.band(level, 2).floor(),
+                        TestLayers.band(level, 2).height(),
+                        cell,
+                        -cell,
+                        conduit))) {
                     differing++;
                 }
             }
@@ -218,7 +249,13 @@ public class LayerStructuresTest {
             ServerLevel level = TestLayers.level(helper, layer);
             for (StructureKind kind : StructureKind.inLayer(layer)) {
                 StructureSite site = StructureSite.in(
-                        level.getSeed(), kind, level.getMinY(), level.getHeight(), CELL, CELL, conduit);
+                        level.getSeed(),
+                        kind,
+                        TestLayers.band(level, layer).floor(),
+                        TestLayers.band(level, layer).height(),
+                        CELL,
+                        CELL,
+                        conduit);
                 sites.add(site);
                 for (ChunkPos chunk : chunksOf(site)) {
                     level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
@@ -307,7 +344,8 @@ public class LayerStructuresTest {
      * come first, then no fluid or gas, only its own Note in its own zone, and a lit candle beside it.
      */
     private static List<String> unmet(ServerLevel level, StructureSite site, Map<Block, Integer> found) {
-        return unmet(level, level.getMinY(), level.getHeight(), site, found);
+        TestLayers.Band band = TestLayers.band(level, site.kind().layer());
+        return unmet(level, band.floor(), band.height(), site, found);
     }
 
     /** {@link #unmet(ServerLevel, StructureSite, Map)} for a layer that spans {@code height} blocks from {@code minY} in its level (a band of the campaign world). */
@@ -381,11 +419,23 @@ public class LayerStructuresTest {
             ServerLevel level = TestLayers.level(helper, layer);
             for (StructureKind kind : StructureKind.inLayer(layer)) {
                 StructureSite free = StructureSite.in(
-                        level.getSeed(), kind, level.getMinY(), level.getHeight(), CELL, CELL, FAR_CONDUIT);
+                        level.getSeed(),
+                        kind,
+                        TestLayers.band(level, layer).floor(),
+                        TestLayers.band(level, layer).height(),
+                        CELL,
+                        CELL,
+                        FAR_CONDUIT);
                 // A Conduit through the middle of the site it would have had.
                 BlockPos blocking = free.origin();
                 StructureSite moved = StructureSite.in(
-                        level.getSeed(), kind, level.getMinY(), level.getHeight(), CELL, CELL, blocking);
+                        level.getSeed(),
+                        kind,
+                        TestLayers.band(level, layer).floor(),
+                        TestLayers.band(level, layer).height(),
+                        CELL,
+                        CELL,
+                        blocking);
                 BoundingBox box = moved.bounds();
                 if (box.minX() <= blocking.getX() + radius
                         && box.maxX() >= blocking.getX() - radius
@@ -398,7 +448,13 @@ public class LayerStructuresTest {
                     throw failure(helper, "%s did not move off a Conduit through its centre", kind);
                 }
                 if (!moved.equals(StructureSite.in(
-                        level.getSeed(), kind, level.getMinY(), level.getHeight(), CELL, CELL, blocking))) {
+                        level.getSeed(),
+                        kind,
+                        TestLayers.band(level, layer).floor(),
+                        TestLayers.band(level, layer).height(),
+                        CELL,
+                        CELL,
+                        blocking))) {
                     throw failure(helper, "%s is not the same when asked twice for the same Conduit", kind);
                 }
                 if (box.minX() < CELL * SPACING
@@ -418,8 +474,8 @@ public class LayerStructuresTest {
         StructureSite site = StructureSite.in(
                 level.getSeed(),
                 StructureKind.RAILS,
-                level.getMinY(),
-                level.getHeight(),
+                TestLayers.band(level, 2).floor(),
+                TestLayers.band(level, 2).height(),
                 SEAL_CELL,
                 SEAL_CELL,
                 conduit(helper));
@@ -478,8 +534,8 @@ public class LayerStructuresTest {
         StructureSite site = StructureSite.in(
                 level.getSeed(),
                 StructureKind.WRECK,
-                level.getMinY(),
-                level.getHeight(),
+                TestLayers.band(level, 2).floor(),
+                TestLayers.band(level, 2).height(),
                 DISK_CELL,
                 DISK_CELL,
                 conduit(helper));
@@ -515,8 +571,8 @@ public class LayerStructuresTest {
         StructureSite site = StructureSite.in(
                 level.getSeed(),
                 StructureKind.WRECK,
-                level.getMinY(),
-                level.getHeight(),
+                TestLayers.band(level, 2).floor(),
+                TestLayers.band(level, 2).height(),
                 CASING_CELL,
                 CASING_CELL,
                 conduit(helper));
@@ -544,7 +600,13 @@ public class LayerStructuresTest {
         ServerLevel level = TestLayers.level(helper, 2);
         StructureKind kind = StructureKind.RAILS;
         StructureSite site = StructureSite.in(
-                level.getSeed(), kind, level.getMinY(), level.getHeight(), SEAM_CELL, SEAM_CELL, conduit(helper));
+                level.getSeed(),
+                kind,
+                TestLayers.band(level, 2).floor(),
+                TestLayers.band(level, 2).height(),
+                SEAM_CELL,
+                SEAM_CELL,
+                conduit(helper));
         BoundingBox box = site.bounds();
         for (int chunkX = box.minX() >> 4; chunkX <= box.maxX() >> 4; chunkX++) {
             for (int chunkZ = box.minZ() >> 4; chunkZ <= box.maxZ() >> 4; chunkZ++) {
@@ -594,16 +656,16 @@ public class LayerStructuresTest {
         StructureSite rails = StructureSite.in(
                 level.getSeed(),
                 StructureKind.RAILS,
-                level.getMinY(),
-                level.getHeight(),
+                TestLayers.band(level, 2).floor(),
+                TestLayers.band(level, 2).height(),
                 KELLS_CELL,
                 KELLS_CELL,
                 conduit);
         StructureSite shaft = StructureSite.in(
                 level.getSeed(),
                 StructureKind.KELLS_SHAFT,
-                level.getMinY(),
-                level.getHeight(),
+                TestLayers.band(level, 2).floor(),
+                TestLayers.band(level, 2).height(),
                 KELLS_CELL,
                 KELLS_CELL,
                 conduit);
@@ -618,7 +680,7 @@ public class LayerStructuresTest {
                     StructureKind.KELLS_OFFSET,
                     rails.origin().toShortString());
         }
-        if (shaft.origin().getY() != level.getMinY() + LayerTuning.DEFAULT.crustThickness()) {
+        if (shaft.origin().getY() != TestLayers.band(level, 2).floor() + LayerTuning.DEFAULT.crustThickness()) {
             throw failure(
                     helper,
                     "the shaft's floor row is y=%d, not the first block above the crust",
@@ -666,8 +728,8 @@ public class LayerStructuresTest {
                 StructureSite shaft = StructureSite.in(
                         level.getSeed(),
                         StructureKind.KELLS_SHAFT,
-                        level.getMinY(),
-                        level.getHeight(),
+                        TestLayers.band(level, 2).floor(),
+                        TestLayers.band(level, 2).height(),
                         cellX,
                         cellZ,
                         conduit);
@@ -839,8 +901,8 @@ public class LayerStructuresTest {
                 StructureSite site = StructureSite.in(
                         level.getSeed(),
                         StructureKind.WRECK,
-                        level.getMinY(),
-                        level.getHeight(),
+                        TestLayers.band(level, 2).floor(),
+                        TestLayers.band(level, 2).height(),
                         cellX,
                         cellZ,
                         conduit);

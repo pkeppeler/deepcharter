@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Objects;
@@ -86,10 +85,7 @@ public class OrePlacementScenario extends EvidenceScenario {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             player.teleportTo(level, room.getX() - 5.5, room.getY(), room.getZ() + 0.5, Set.of(), EAST, 0f, true);
         });
-        ClientWait.until(
-                context,
-                "the client in layer " + layer,
-                client -> TestLayers.isIn(ClientLight.clientLevel(client), layer));
+        ClientWait.until(context, "the client in layer " + layer, client -> TestLayers.clientIsIn(client, layer));
         context.waitTicks(40);
         screenshot(context, shot);
         if (pan) {

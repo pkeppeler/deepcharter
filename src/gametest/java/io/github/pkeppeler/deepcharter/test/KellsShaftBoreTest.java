@@ -271,7 +271,13 @@ public class KellsShaftBoreTest {
     /** The shaft of a spacing cell, with the chunks round it generated: the straight bores go down beside it. */
     private static StructureSite shaftIn(ServerLevel level, BlockPos conduit, int cellX) {
         StructureSite site = StructureSite.in(
-                level.getSeed(), StructureKind.KELLS_SHAFT, level.getMinY(), level.getHeight(), cellX, CELL_Z, conduit);
+                level.getSeed(),
+                StructureKind.KELLS_SHAFT,
+                TestLayers.band(level, LAYER).floor(),
+                TestLayers.band(level, LAYER).height(),
+                cellX,
+                CELL_Z,
+                conduit);
         for (int x = (site.origin().getX() - BESIDE - 2) >> 4;
                 x <= (site.origin().getX() + BESIDE + 2) >> 4;
                 x++) {
@@ -358,7 +364,7 @@ public class KellsShaftBoreTest {
             return;
         }
         int feetY = pod.blockPosition().getY();
-        if (feetY <= run.level.getMinY() + CRUST_BAND) {
+        if (feetY <= TestLayers.band(run.level, LAYER).floor() + CRUST_BAND) {
             finish(run, Outcome.CRUST, pod);
             return;
         }

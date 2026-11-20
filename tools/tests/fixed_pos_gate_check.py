@@ -4,6 +4,10 @@ literal for a world Y fails the build unless a `// fixed-pos: <reason>` marker w
 `*_Y` constant set to a number, a literal Y in a BlockPos or Vec3 beside literal X and Z of 100 or more (new BlockPos(3616, 40, 3616)), and a literal Y in
 teleportTo, setPos, moveTo, snapTo or atY. A relative offset (a vector with a small or variable X or Z, pos.offset(1, 0, 2), above(3)) is left alone.
 
+A raw read of a level's height (getMinY, getMaxY, getMinBuildHeight, getMaxBuildHeight, and getHeight on a receiver that names a level) fails the same
+way anywhere but in TestLayers.java, unless a `// level-height: <reason>` marker sits on its statement or the comment lines above it: a layer is a band of
+a level, so a test asks TestLayers.band for its floor, top and height. A `fixed-pos` marker does not count for it.
+
 Its fixture trees go through checkGametestFixtures in one Gradle run (gate_checks.py, gate_batch.py), so it needs the repo's Gradle wrapper
 on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
 Usage: tools/py tools/tests/gate_checks.py fixed_pos
@@ -73,6 +77,25 @@ public final class TestLayers {
     public static ResourceKey<Level> dimension(int layer) {
         return LayerChain.dimension(layer);
     }
+    public static Band band(Level level, int layer) {
+        return new Band(level.getMinY(), level.getHeight());
+    }
+}
+""",
+    "BandReadsTest.java": """
+public class BandReadsTest {
+    // level.getMinY() and level.getHeight() in a comment are not reads
+    void run(ServerLevel level, NativeImage image, Button button, Minecraft client) {
+        TestLayers.Band band = TestLayers.band(level, 1);
+        int floor = band.floor() + band.top() - band.height();
+        int pixels = image.getHeight() + button.getHeight() + client.getWindow().getHeight();
+        String text = "level.getMinY() and level.getMaxY()";
+        // level-height: the void under the test world, not a layer
+        int bottom = level.getMinY();
+        int size = level.getHeight(); // level-height: a whole test world
+        int top = ClientLight.serverLevel(server, dimension)
+                .getMaxY(); // level-height: wrapped, the marker at the end of the statement
+    }
 }
 """,
     "support/TestLayersMention.java": """
@@ -126,6 +149,24 @@ LAYER_CALLS = {
     "LayerChain.dimension in a lambda": ("Function<Integer, ResourceKey<Level>> key = layer -> LayerChain.dimension(layer);", 3),
 }
 MARKED_LAYER_CALL = "// fixed-pos: a layer key for a registry lookup\n    ResourceKey<Level> key = LayerChain.dimension(1);"
+# label: (statement in a class body, line the gate reports)
+HEIGHT_READS = {
+    "getMinY": ("int floor(ServerLevel level) { return level.getMinY(); }", 3),
+    "getMaxY": ("int top(ServerLevel level) { return level.getMaxY(); }", 3),
+    "getMinBuildHeight": ("int floor(ServerLevel level) { return level.getMinBuildHeight(); }", 3),
+    "getMaxBuildHeight": ("int top(ServerLevel level) { return level.getMaxBuildHeight(); }", 3),
+    "getHeight of a level": ("int size(ServerLevel level) { return level.getHeight(); }", 3),
+    "getHeight of a named level": ("int size(ServerLevel one) { return one.getHeight(); }", 3),
+    "getHeight of a call": ("int size(MinecraftServer s) { return ClientLight.serverLevel(s, dimension).getHeight(); }", 3),
+    "getMinY of a call": ("int floor(MinecraftServer s) { return TestLayers.level(s, 1).getMinY(); }", 3),
+    "wrapped read": ("int top(ServerLevel level) {\n        return level\n            .getMaxY();\n    }", 4),
+}
+HEIGHT_MARKERS = {
+    "a bare marker": ("// level-height:\n    int floor(ServerLevel level) { return level.getMinY(); }", 4),
+    "a fixed-pos marker": ("// fixed-pos: not the marker of a height read\n    int floor(ServerLevel level) { return level.getMinY(); }", 4),
+    "a marker two lines above": ("// level-height: too far above\n    int gap = 0;\n    int floor(ServerLevel level) { return level.getMinY(); }", 5),
+    "a marker on the next statement": ("int floor(ServerLevel level) { return level.getMinY(); }\n    int gap = 0; // level-height: belongs to the next statement", 3),
+}
 BAD = {**{f"literal/{label}": case for label, case in STATEMENTS.items()}, **{f"marker/{label}": case for label, case in MARKERS.items()}}
 
 
@@ -156,6 +197,10 @@ CASES = {
     **{
         f"layer/{label}": Case(fixture({"NamesLayerTest.java": named_class("NamesLayerTest", statement)}), None, gate="fixed_pos")
         for label, (statement, _) in LAYER_CALLS.items()
+    },
+    **{
+        f"height/{label}": Case(fixture({"ReadsHeightTest.java": named_class("ReadsHeightTest", statement)}), None, gate="fixed_pos")
+        for label, (statement, _) in {**HEIGHT_READS, **HEIGHT_MARKERS}.items()
     },
     **{label: Case(fixture({"evidence/StagesScenario.java": staging(statement)}), None, gate="fixed_pos") for label, (statement, _) in BAD.items()},
 }
@@ -205,3 +250,21 @@ class FixedPosGateTest(unittest.TestCase):
         for label in MARKERS:
             with self.subTest(label):
                 self.check_fails(f"marker/{label}")
+
+    def check_height_fails(self, label: str, line: int):
+        result = outcome(f"height/{label}")
+        self.assertFalse(result.ok, f"the gate should fail the build for {label}")
+        self.assertIn(f"ReadsHeightTest.java:{line} reads a level's height", result.message)
+        self.assertIn("// level-height: <reason>", result.message)
+        self.assertNotIn("BandReadsTest", result.message)
+        self.assertNotIn("support/TestLayers.java", result.message)
+
+    def test_raw_level_height_read_fails(self):
+        for label, (_, line) in HEIGHT_READS.items():
+            with self.subTest(label):
+                self.check_height_fails(label, line)
+
+    def test_height_marker_without_a_reason_or_in_the_wrong_place_does_not_count(self):
+        for label, (_, line) in HEIGHT_MARKERS.items():
+            with self.subTest(label):
+                self.check_height_fails(label, line)

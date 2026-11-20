@@ -27,10 +27,13 @@ public class LayerBandTest {
             throw helper.assertionException("the overworld read as layer %d", band.layer());
         }
         if (band.layer() != LayerChain.SURFACE
-                || band.minY() != surface.getMinY()
-                || band.height() != surface.getHeight()) {
+                || band.minY() != TestLayers.band(surface, TestLayers.SURFACE).floor()
+                || band.height() != TestLayers.band(surface, TestLayers.SURFACE).height()) {
             throw helper.assertionException(
-                    "expected the surface band %d..+%d, got %s", surface.getMinY(), surface.getHeight(), band);
+                    "expected the surface band %d..+%d, got %s",
+                    TestLayers.band(surface, TestLayers.SURFACE).floor(),
+                    TestLayers.band(surface, TestLayers.SURFACE).height(),
+                    band);
         }
         helper.succeed();
     }
@@ -38,6 +41,7 @@ public class LayerBandTest {
     @GameTest
     public void aLevelOutsideTheChainHasNoBand(GameTestHelper helper) {
         ServerLevel nether = ClientLight.serverLevel(helper.getLevel().getServer(), Level.NETHER);
+        // level-height: the Nether is not in the chain, so it has no layer band
         Optional<Band> band = LayerChain.bandAt(nether, nether.getMinY() + 4);
         if (band.isPresent()) {
             throw helper.assertionException("the Nether read as %s", band.get());
@@ -47,7 +51,11 @@ public class LayerBandTest {
 
     private static void expectBand(GameTestHelper helper, int layer, int minY, int height) {
         ServerLevel level = TestLayers.level(helper, layer);
-        for (int y : new int[] {level.getMinY(), level.getMinY() + height / 2, level.getMaxY()}) {
+        for (int y : new int[] {
+            TestLayers.band(level, layer).floor(),
+            TestLayers.band(level, layer).floor() + height / 2,
+            TestLayers.band(level, layer).top()
+        }) {
             Band band = bandAt(helper, level, y);
             if (!band.isLayer() || band.layer() != layer || band.minY() != minY || band.height() != height) {
                 throw helper.assertionException(

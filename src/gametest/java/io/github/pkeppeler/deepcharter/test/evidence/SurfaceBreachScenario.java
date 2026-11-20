@@ -5,7 +5,6 @@ import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
@@ -74,9 +73,7 @@ public class SurfaceBreachScenario extends EvidenceScenario {
                 server.getPlayerList().getPlayers().getFirst().teleportTo(surface, X, y, Z, Set.of(), 0, -10, true);
             });
             ClientWait.until(
-                    context,
-                    "the client on the surface",
-                    client -> TestLayers.isIn(ClientLight.clientLevel(client), LayerChain.SURFACE));
+                    context, "the client on the surface", client -> TestLayers.clientIsIn(client, LayerChain.SURFACE));
             context.waitTicks(SETTLE_TICKS);
             screenshot(context, "overworld-surface");
             for (int i = 0; i < SURFACE_FRAMES; i++) {
@@ -88,7 +85,9 @@ public class SurfaceBreachScenario extends EvidenceScenario {
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel surface = server.overworld();
                 BlockPos column = BlockPos.containing(X, 0, Z);
-                for (int y = surface.getMinY(); y <= surface.getMinY() + SHAFT_HEIGHT; y++) {
+                for (int y = TestLayers.band(surface, TestLayers.SURFACE).floor();
+                        y <= TestLayers.band(surface, TestLayers.SURFACE).floor() + SHAFT_HEIGHT;
+                        y++) {
                     // room-carver: opens the overworld floor, which is the surface and not layer rock
                     surface.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);
                 }
@@ -100,7 +99,15 @@ public class SurfaceBreachScenario extends EvidenceScenario {
                     }
                 }
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                player.teleportTo(surface, X, surface.getMinY() + SHAFT_HEIGHT - 1, Z, Set.of(), 0, 70, true);
+                player.teleportTo(
+                        surface,
+                        X,
+                        TestLayers.band(surface, TestLayers.SURFACE).floor() + SHAFT_HEIGHT - 1,
+                        Z,
+                        Set.of(),
+                        0,
+                        70,
+                        true);
             });
             recordUntilFadeEnds(context, "falling into layer 1");
             screenshot(context, "layer-1-arrival");
@@ -118,7 +125,10 @@ public class SurfaceBreachScenario extends EvidenceScenario {
                 // in.
                 for (int dx = -ROCK_RADIUS; dx <= ROCK_RADIUS; dx++) {
                     for (int dz = -ROCK_RADIUS; dz <= ROCK_RADIUS; dz++) {
-                        for (int y = surface.getMinY(); y < surface.getMinY() + ROCK_HEIGHT; y++) {
+                        for (int y = TestLayers.band(surface, TestLayers.SURFACE)
+                                        .floor();
+                                y < TestLayers.band(surface, TestLayers.SURFACE).floor() + ROCK_HEIGHT;
+                                y++) {
                             surface.setBlock(column.offset(dx, 0, dz).atY(y), Blocks.STONE.defaultBlockState(), 3);
                         }
                     }
@@ -144,10 +154,11 @@ public class SurfaceBreachScenario extends EvidenceScenario {
         while (singleplayer.getServer().computeOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
             ServerLevel level = player.level();
-            if (!TestLayers.isIn(level, 1)) {
+            if (!TestLayers.isIn(player, 1)) {
                 return false;
             }
-            double y = Math.min(player.getY() + CLIMB_STEP, level.getMaxY() + LayerTuning.DEFAULT.pocketRadius());
+            double y = Math.min(
+                    player.getY() + CLIMB_STEP, TestLayers.band(level, 1).top() + LayerTuning.DEFAULT.pocketRadius());
             player.teleportTo(level, X, y, Z, Set.of(), 0, -80, true);
             return true;
         })) {

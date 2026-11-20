@@ -157,6 +157,7 @@ public class CampaignCostTest {
     }
 
     private static int height(GameTestHelper helper, String world) {
+        // level-height: the cost baseline is the height of a whole test world, which is no layer
         return world(helper, world).getHeight();
     }
 
@@ -164,6 +165,7 @@ public class CampaignCostTest {
     private static int fillRows(GameTestHelper helper, String world) {
         ServerLevel level = world(helper, world);
         List<LayerChain.Band> bands = LayerChain.campaignLayers(level);
+        // level-height: a layer-only test world is read whole, which is no layer of the chain
         return bands.isEmpty()
                 ? level.getHeight()
                 : bands.stream().mapToInt(LayerChain.Band::height).sum();

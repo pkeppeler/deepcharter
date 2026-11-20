@@ -1,11 +1,13 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -36,9 +38,55 @@ public final class TestLayers {
         return level(helper.getLevel().getServer(), layer);
     }
 
-    /** True when {@code level} is the level of {@code layer}. */
-    public static boolean isIn(Level level, int layer) {
-        return level.dimension().equals(dimension(layer));
+    /**
+     * The vertical span of a layer: {@code floor} is its lowest block and {@code height} the blocks it spans. A layer dimension is one band
+     * wide, so this is the whole level today; a test asks for the band, never for the level's height, so that it also works where a layer
+     * is a band of a taller level.
+     */
+    public record Band(int floor, int height) {
+        /** The highest block of the band. */
+        public int top() {
+            return floor + height - 1;
+        }
+
+        /** The first Y above the band. */
+        public int topExclusive() {
+            return floor + height;
+        }
+
+        /** True when block row {@code y} is in the band. */
+        public boolean contains(int y) {
+            return y >= floor && y <= top();
+        }
+    }
+
+    /** The band of {@code layer} in {@code level}, which must be the level that holds it. */
+    public static Band band(Level level, int layer) {
+        if (!level.dimension().equals(dimension(layer))) {
+            throw new IllegalArgumentException(
+                    "level " + level.dimension() + " does not hold layer " + layer + " (" + dimension(layer) + ")");
+        }
+        return new Band(level.getMinY(), level.getHeight());
+    }
+
+    /** The band of {@code layer} in the server's level for it. */
+    public static Band band(MinecraftServer server, int layer) {
+        return band(level(server, layer), layer);
+    }
+
+    /** True when block position {@code pos} of {@code level} is in {@code layer}. */
+    public static boolean isIn(Level level, BlockPos pos, int layer) {
+        return level.dimension().equals(dimension(layer)) && band(level, layer).contains(pos.getY());
+    }
+
+    /** True when {@code entity} is in {@code layer}. */
+    public static boolean isIn(Entity entity, int layer) {
+        return isIn(entity.level(), entity.blockPosition(), layer);
+    }
+
+    /** True when {@code client} has a player, and it is in {@code layer}. */
+    public static boolean clientIsIn(Minecraft client, int layer) {
+        return client.player != null && isIn(client.player, layer);
     }
 
     /** The world Y of {@code localY} in {@code layer}. */

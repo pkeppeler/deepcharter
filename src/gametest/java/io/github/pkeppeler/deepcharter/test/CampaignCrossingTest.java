@@ -260,6 +260,7 @@ public class CampaignCrossingTest {
         MockPlayer mock = floater(helper, "cross-leave", 21600.5, 21600.5, CampaignBands.LAYER_1.minY() + 50);
         helper.runAfterDelay(
                 SETTLE_TICKS,
+                // level-height: the top of the whole campaign level, where the surface band ends and the sky begins
                 () -> mock.teleportTo(overworld, new Vec3(21600.5, overworld.getMaxY() - 50, 21600.5), 0, 0));
         helper.runAfterDelay(
                 SETTLE_TICKS + 10,

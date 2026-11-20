@@ -92,7 +92,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                 for (int layer : new int[] {LayerChain.SURFACE, 1, 2}) {
                     int minY = singleplayer
                             .getServer()
-                            .computeOnServer(server -> openHole(TestLayers.level(server, layer)));
+                            .computeOnServer(server -> openHole(TestLayers.level(server, layer), layer));
                     Vec3 hole = new Vec3(X + 0.5, minY + 0.5, Z + 0.5);
                     View[] views = {
                         new View(
@@ -137,8 +137,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
      * Carves a lit room, and a column over its middle, with a 9 x 9 hole through the floor to the void. Four glowstone lamps stand on the
      * floor round it. Returns the bottom Y.
      */
-    private static int openHole(ServerLevel level) {
-        int minY = level.getMinY();
+    private static int openHole(ServerLevel level, int layer) {
+        int minY = TestLayers.band(level, layer).floor();
         RoomCarver.carve(
                 level,
                 new BlockPos(X - ROOM_RADIUS, minY + SHAFT_DEPTH, Z - ROOM_RADIUS),
@@ -151,7 +151,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                 Blocks.AIR.defaultBlockState());
         BlockPos low = new BlockPos(X - HOLE_RADIUS, minY, Z - HOLE_RADIUS);
         BlockPos high = new BlockPos(X + HOLE_RADIUS, minY + SHAFT_DEPTH - 1, Z + HOLE_RADIUS);
-        if (TestLayers.isIn(level, LayerChain.SURFACE)) {
+        if (TestLayers.isIn(level, low, LayerChain.SURFACE)) {
             // The surface has no crust: its floor is open, and the hole is a shaft bored to the bottom.
             RoomCarver.carve(level, low, high, Blocks.AIR.defaultBlockState());
         } else {
@@ -227,7 +227,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "the camera at " + name,
-                client -> TestLayers.isIn(ClientLight.clientLevel(client), layer)
+                client -> TestLayers.clientIsIn(client, layer)
                         && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
                         && Math.abs(Mth.wrapDegrees(ClientSession.player(client).getYRot() - angles[0])) < 0.01f
                         && Math.abs(ClientSession.player(client).getXRot() - angles[1]) < 0.01f);

@@ -49,8 +49,8 @@ public class LayerAtmosphereTest {
     /** The biome at a quart in each third of the layer, by name: the zones top to bottom. */
     private static Map<Identifier, BlockPos> zones(ServerLevel level, int layer) {
         Map<Identifier, BlockPos> zones = new LinkedHashMap<>();
-        int minY = level.getMinY();
-        for (int y = minY; y < minY + level.getHeight(); y += 8) {
+        int minY = TestLayers.band(level, layer).floor();
+        for (int y = minY; y < minY + TestLayers.band(level, layer).height(); y += 8) {
             BlockPos pos = new BlockPos(0, y, 0);
             Holder<Biome> biome = level.getBiome(pos);
             zones.putIfAbsent(biome.unwrapKey().orElseThrow().identifier(), pos);

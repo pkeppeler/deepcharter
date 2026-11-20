@@ -26,13 +26,14 @@ public class DeepCharterClientGameTest implements FabricClientGameTest {
                 int[] heights = {192, 256};
                 for (int layer = 1; layer <= 2; layer++) {
                     ServerLevel level = TestLayers.level(server, layer);
-                    if (level.getMinY() != 0 || level.getHeight() != heights[layer - 1]) {
+                    if (TestLayers.band(level, layer).floor() != 0
+                            || TestLayers.band(level, layer).height() != heights[layer - 1]) {
                         out.append("layer_")
                                 .append(layer)
                                 .append(" has minY ")
-                                .append(level.getMinY())
+                                .append(TestLayers.band(level, layer).floor())
                                 .append(" height ")
-                                .append(level.getHeight())
+                                .append(TestLayers.band(level, layer).height())
                                 .append("; ");
                     }
                 }

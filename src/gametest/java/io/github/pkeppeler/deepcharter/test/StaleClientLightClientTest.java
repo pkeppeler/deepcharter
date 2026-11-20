@@ -219,11 +219,20 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 new BlockPos(
                         column,
                         server.computeOnServer(
-                                s -> ClientLight.serverLevel(s, from).getMinY() + 40),
+                                s -> TestLayers.band(s, layer - 1).floor() + 40),
                         column));
         server.runOnServer(s -> {
             ServerLevel level = ClientLight.serverLevel(s, from);
-            player(s).teleportTo(level, column + 0.5, level.getMinY() - 2, column + 0.5, Set.of(), 0, 0, true);
+            player(s)
+                    .teleportTo(
+                            level,
+                            column + 0.5,
+                            TestLayers.band(level, layer - 1).floor() - 2,
+                            column + 0.5,
+                            Set.of(),
+                            0,
+                            0,
+                            true);
         });
         ClientWait.until(
                 context,
@@ -337,7 +346,13 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             List<StructureSite> found = new ArrayList<>();
             for (StructureKind kind : StructureKind.inLayer(layer)) {
                 found.add(StructureSite.in(
-                        s.overworld().getSeed(), kind, level.getMinY(), level.getHeight(), cell, cell, conduit));
+                        s.overworld().getSeed(),
+                        kind,
+                        TestLayers.band(level, layer).floor(),
+                        TestLayers.band(level, layer).height(),
+                        cell,
+                        cell,
+                        conduit));
             }
             return found;
         });

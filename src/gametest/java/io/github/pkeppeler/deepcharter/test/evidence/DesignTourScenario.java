@@ -1173,7 +1173,7 @@ public class DesignTourScenario extends EvidenceScenario {
                 ServerLevel one = TestLayers.level(server, 1);
                 loadChunks(one, LAYER_X, LAYER_Z, 3);
             });
-            Vec3 cell = serverGet(server -> openCell(TestLayers.level(server, 1)));
+            Vec3 cell = serverGet(server -> openCell(TestLayers.level(server, 1), 1));
             terrainViews(1, cell);
 
             // The structures of layer 1: the three shafts, one in each zone.
@@ -1216,7 +1216,9 @@ public class DesignTourScenario extends EvidenceScenario {
                 ServerLevel one = TestLayers.level(server, 1);
                 for (int dx = -1; dx <= 1; dx++) {
                     for (int dz = -1; dz <= 1; dz++) {
-                        for (int y = one.getMinY(); y <= one.getMinY() + 3; y++) {
+                        for (int y = TestLayers.band(one, 1).floor();
+                                y <= TestLayers.band(one, 1).floor() + 3;
+                                y++) {
                             BreachService.breakCrust(one, new BlockPos(x + dx, y, z + dz));
                         }
                     }
@@ -1250,12 +1252,13 @@ public class DesignTourScenario extends EvidenceScenario {
             EvidencePins.breachFadeAlpha = FADE_SHOT_ALPHA;
             serverDo(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
-                player(server).teleportTo(one, x + 0.5, one.getMinY() - 1, z + 0.5, Set.of(), 0, 60, true);
+                player(server)
+                        .teleportTo(one, x + 0.5, TestLayers.band(one, 1).floor() - 1, z + 0.5, Set.of(), 0, 60, true);
             });
             ClientWait.until(
                     ctx,
                     "layer 2 with the breach fade running and no screen",
-                    client -> TestLayers.isIn(ClientLight.clientLevel(client), 2)
+                    client -> TestLayers.clientIsIn(client, 2)
                             && client.gui.screen() == null
                             && BreachEffects.fadeAlpha(0f) > 0f);
             settle("hud-breach-fade");
@@ -1277,8 +1280,7 @@ public class DesignTourScenario extends EvidenceScenario {
                 last = current;
                 ctx.waitTick();
             }
-            ClientWait.until(
-                    ctx, "the client in layer 2", client -> TestLayers.isIn(ClientLight.clientLevel(client), 2));
+            ClientWait.until(ctx, "the client in layer 2", client -> TestLayers.clientIsIn(client, 2));
             clearTransmissions();
         }
 
@@ -1288,7 +1290,7 @@ public class DesignTourScenario extends EvidenceScenario {
                 loadChunks(two, LAYER_X, LAYER_Z, 3);
             });
             hud(false);
-            Vec3 cell = serverGet(server -> openCell(TestLayers.level(server, 2)));
+            Vec3 cell = serverGet(server -> openCell(TestLayers.level(server, 2), 2));
             terrainViews(2, cell);
 
             // A pod in the dark with a scanner: the HUD at depth.
@@ -1297,7 +1299,8 @@ public class DesignTourScenario extends EvidenceScenario {
                 ServerLevel two = TestLayers.level(server, 2);
                 int x = LAYER_X + 120;
                 int z = LAYER_Z + 120;
-                int floor = (two.getMinY() + two.getMaxY()) / 2;
+                TestLayers.Band band = TestLayers.band(two, 2);
+                int floor = (band.floor() + band.top()) / 2;
                 loadChunks(two, x, z, 3);
                 BlockPos min = new BlockPos(x - 6, floor, z - 6);
                 BlockPos max = new BlockPos(x + 6, floor + 7, z + 6);
@@ -1437,12 +1440,13 @@ public class DesignTourScenario extends EvidenceScenario {
         }
 
         /** A cell of air with room round it, close to the layer's start column, as the middle of a cave. */
-        private static Vec3 openCell(ServerLevel level) {
+        private static Vec3 openCell(ServerLevel level, int layer) {
+            TestLayers.Band band = TestLayers.band(level, layer);
             BlockPos best = null;
             int bestClearance = 0;
             for (int x = LAYER_X - 40; x <= LAYER_X + 40; x += 2) {
                 for (int z = LAYER_Z - 40; z <= LAYER_Z + 40; z += 2) {
-                    for (int y = level.getMinY() + 24; y <= level.getMaxY() - 40; y += 2) {
+                    for (int y = band.floor() + 24; y <= band.top() - 40; y += 2) {
                         BlockPos pos = new BlockPos(x, y, z);
                         int clearance = clearance(level, pos);
                         if (clearance > bestClearance) {
@@ -1454,7 +1458,7 @@ public class DesignTourScenario extends EvidenceScenario {
             }
             if (best == null) {
                 // No cave in reach: cut a hall into the rock, sealed first, so there is a place to stand.
-                int mid = (level.getMinY() + level.getMaxY()) / 2;
+                int mid = (band.floor() + band.top()) / 2;
                 BlockPos min = new BlockPos(LAYER_X - 6, mid, LAYER_Z - 6);
                 BlockPos max = new BlockPos(LAYER_X + 6, mid + 6, LAYER_Z + 6);
                 RoomCarver.carve(level, min, max, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
@@ -1507,8 +1511,8 @@ public class DesignTourScenario extends EvidenceScenario {
                 return LayerStructures.nearest(
                         level.getSeed(),
                         kind,
-                        level.getMinY(),
-                        level.getHeight(),
+                        TestLayers.band(level, kind.layer()).floor(),
+                        TestLayers.band(level, kind.layer()).height(),
                         near == null ? conduit : near,
                         conduit);
             });
@@ -1578,7 +1582,7 @@ public class DesignTourScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the camera at the eye in layer " + layer + ", facing yaw " + yaw + " and pitch " + pitch,
-                    client -> TestLayers.isIn(ClientLight.clientLevel(client), layer)
+                    client -> TestLayers.clientIsIn(client, layer)
                             && ClientSession.player(client).distanceToSqr(eye.x, eye.y - EYE, eye.z) < 0.0001
                             && Math.abs(Mth.wrapDegrees(
                                             ClientSession.player(client).getYRot() - yaw))

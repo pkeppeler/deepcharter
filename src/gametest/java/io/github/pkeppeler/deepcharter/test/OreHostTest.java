@@ -64,7 +64,12 @@ public class OreHostTest {
                     level.getChunk(cx, cz, ChunkStatus.FULL);
                     for (int x = cx << 4; x < (cx << 4) + 16; x++) {
                         for (int z = cz << 4; z < (cz << 4) + 16; z++) {
-                            for (int y = level.getMinY(); y < level.getMinY() + level.getHeight(); y++) {
+                            for (int y = TestLayers.band(level, layer).floor();
+                                    y
+                                            < TestLayers.band(level, layer).floor()
+                                                    + TestLayers.band(level, layer)
+                                                            .height();
+                                    y++) {
                                 BlockState state = level.getBlockState(new BlockPos(x, y, z));
                                 if (state.getBlock() instanceof OreBlock) {
                                     found.merge(state.getValue(OreBlock.HOST), 1, Integer::sum);

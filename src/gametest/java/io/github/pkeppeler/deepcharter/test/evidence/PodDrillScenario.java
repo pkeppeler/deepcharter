@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -60,7 +59,7 @@ public class PodDrillScenario extends EvidenceScenario {
                     "the player riding a pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && TestLayers.isIn(ClientLight.clientLevel(client), 1));
+                            && TestLayers.clientIsIn(client, 1));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 ClientSession.player(client).setXRot(LOOK_DOWN);
@@ -95,7 +94,7 @@ public class PodDrillScenario extends EvidenceScenario {
     }
 
     private static boolean inLayer(ClientGameTestContext context, int layer) {
-        return context.computeOnClient(client -> client.level != null && TestLayers.isIn(client.level, layer));
+        return context.computeOnClient(client -> client.level != null && TestLayers.clientIsIn(client, layer));
     }
 
     /** Crust rows, a row of stone under the pod, an open room above, and glowstone to light the shaft. */

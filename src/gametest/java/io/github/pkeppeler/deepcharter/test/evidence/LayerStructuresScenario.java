@@ -125,8 +125,8 @@ public class LayerStructuresScenario extends EvidenceScenario {
                     : StructureSite.in(
                             level.getSeed(),
                             kind,
-                            level.getMinY(),
-                            level.getHeight(),
+                            TestLayers.band(level, kind.layer()).floor(),
+                            TestLayers.band(level, kind.layer()).height(),
                             CELL,
                             CELL,
                             Colony.anchor(server, ColonyAnchor.CONDUIT)

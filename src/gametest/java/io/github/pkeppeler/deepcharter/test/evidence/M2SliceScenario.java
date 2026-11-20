@@ -578,7 +578,7 @@ public class M2SliceScenario extends EvidenceScenario {
                 PodEntity pod = pod(server, mole.get());
                 int x = pod.getBlockX();
                 int z = pod.getBlockZ();
-                int floor = overworld.getMinY();
+                int floor = TestLayers.band(overworld, TestLayers.SURFACE).floor();
                 int low = floor + BORE_RESUMED_ABOVE_FLOOR;
                 RoomCarver.carve(
                         overworld,
@@ -604,7 +604,10 @@ public class M2SliceScenario extends EvidenceScenario {
                     "the player riding a pod near the floor of the overworld",
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity
                             && ClientSession.player(client).getY()
-                                    < ClientLight.clientLevel(client).getMinY() + BORE_RESUMED_ABOVE_FLOOR + 3,
+                                    < TestLayers.band(ClientLight.clientLevel(client), TestLayers.SURFACE)
+                                                    .floor()
+                                            + BORE_RESUMED_ABOVE_FLOOR
+                                            + 3,
                     client -> "the player at " + ClientSession.player(client).position() + ", riding "
                             + ClientSession.player(client).getVehicle());
             ctx.runOnClient(client -> ClientSession.player(client).setXRot(40f));
@@ -733,7 +736,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the player riding a pod in layer 1",
-                    client -> TestLayers.isIn(ClientLight.clientLevel(client), 1)
+                    client -> TestLayers.clientIsIn(client, 1)
                             && ClientSession.player(client).getVehicle() instanceof PodEntity);
             ctx.runOnClient(client -> ClientSession.player(client).setYRot(-90f));
             ctx.waitTicks(60);
@@ -768,8 +771,7 @@ public class M2SliceScenario extends EvidenceScenario {
                                     .isPresent(),
                             "31-boring-through-the-crust"));
             ctx.getInput().releaseKey(options -> options.keySprint);
-            ClientWait.until(
-                    ctx, "the client in layer 2", client -> TestLayers.isIn(ClientLight.clientLevel(client), 2));
+            ClientWait.until(ctx, "the client in layer 2", client -> TestLayers.clientIsIn(client, 2));
             say("10. Layer 2, the Old Workings. The first breach is crossed.");
             awaitServer(server -> directiveDone(server, "first_breach/breach_workings"));
             refuelWithCoal();
@@ -841,7 +843,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the drift's rail under the Mole on the client",
-                    client -> TestLayers.isIn(ClientLight.clientLevel(client), 2)
+                    client -> TestLayers.clientIsIn(client, 2)
                             && ClientLight.clientLevel(client)
                                     .getBlockState(BlockPos.containing(moleAt))
                                     .is(Blocks.RAIL),
@@ -954,7 +956,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the player riding the Mole in layer 2 with no screen open",
-                    client -> TestLayers.isIn(ClientLight.clientLevel(client), 2)
+                    client -> TestLayers.clientIsIn(client, 2)
                             && ClientSession.player(client).getVehicle() instanceof PodEntity
                             && client.gui.screen() == null);
             ctx.getInput().holdKey(options -> options.keyUp);
@@ -1265,7 +1267,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the player riding a pod in layer 2",
-                    client -> TestLayers.isIn(ClientLight.clientLevel(client), 2)
+                    client -> TestLayers.clientIsIn(client, 2)
                             && ClientSession.player(client).getVehicle() instanceof PodEntity);
             awaitServer(server -> directiveDone(server, "company_property/reach_workings_floor"));
             ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
@@ -1641,7 +1643,7 @@ public class M2SliceScenario extends EvidenceScenario {
             ClientWait.until(
                     ctx,
                     "the player at the feet in layer " + layer,
-                    client -> TestLayers.isIn(ClientLight.clientLevel(client), layer)
+                    client -> TestLayers.clientIsIn(client, layer)
                             && ClientSession.player(client).distanceToSqr(feet) < 1.0);
             ctx.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             ctx.waitTicks(4);
@@ -1701,8 +1703,8 @@ public class M2SliceScenario extends EvidenceScenario {
                     level,
                     X - ROOM_WEST,
                     X + ROOM_EAST,
-                    level.getMinY(),
-                    level.getMinY() + LayerTuning.DEFAULT.crustThickness() - 1,
+                    TestLayers.band(level, 1).floor(),
+                    TestLayers.band(level, 1).floor() + LayerTuning.DEFAULT.crustThickness() - 1,
                     Z - ROOM_RADIUS_Z,
                     Z + ROOM_RADIUS_Z,
                     LayerBlocks.BREACH_CRUST);
