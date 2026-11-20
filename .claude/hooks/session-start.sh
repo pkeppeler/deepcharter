@@ -80,7 +80,8 @@ else:
   echo
   echo "## Open PRs and their pipeline stage"
   # The list endpoint omits mergeable: read it per PR (REST null = still computing, false = conflicting).
-  # All the reads share one deadline; a PR reached after it is listed without its mergeable mark.
+  # All the reads share one deadline; a PR reached after it, or whose read times out or fails, is listed without its
+  # mergeable mark and the note below.
   if open_prs=$(t gh api "repos/$R/pulls?state=open&per_page=100" \
     --jq '.[] | [.number, "#\(.number) \(.title) [\(.head.ref)]\(if .draft then " draft" else "" end) stages: \([.labels[].name | select(startswith("stage:") or . == "review-passed")] | join(","))"] | @tsv'); then
     pr_deadline=$((SECONDS + ${SESSION_START_PR_BUDGET:-6}))
@@ -90,7 +91,7 @@ else:
       left=$((pr_deadline - SECONDS))
       mergeable=
       if [ "$left" -gt 0 ]; then
-        mergeable=$(T=$left t gh api "repos/$R/pulls/$n" --jq '.mergeable | tostring') || mergeable=
+        mergeable=$(T=$left t gh api "repos/$R/pulls/$n" --jq '.mergeable | tostring') || { mergeable=; unread=1; }
       else
         unread=1
       fi
