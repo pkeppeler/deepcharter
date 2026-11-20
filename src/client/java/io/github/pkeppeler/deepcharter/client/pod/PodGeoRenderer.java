@@ -193,7 +193,13 @@ public final class PodGeoRenderer extends GeoReplacedEntityRenderer<PodGeoAnimat
 
     /** The share of the full drill spin that the cutter {@code appearance} shows turns at. */
     private float spinScaleOf(Appearance appearance) {
-        return appearance.cutter() == null ? (float) geo.drillSpinScale() : spinScales.get(appearance.cutter());
+        String cutter = appearance.cutter();
+        if (cutter == null) {
+            return (float) geo.drillSpinScale();
+        }
+        return Objects.requireNonNull(
+                spinScales.get(cutter),
+                () -> "no spin scale for cutter " + cutter + ", the constructor fills one per geo.cutters()");
     }
 
     @Override
