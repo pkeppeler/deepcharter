@@ -12,18 +12,32 @@ py=$root/tools/py
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
+command -v jq >/dev/null || { echo "FAIL: handoff.test.sh needs jq (the gh stub applies the tool's --jq filter)"; exit 1; }
+
 mkdir -p "$work/bin"
 cat >"$work/bin/gh" <<'S'
 #!/usr/bin/env bash
-# Stub: `issue list` prints STUB_ISSUE (empty = none); `issue edit` records its args and body file.
-case "$1 $2" in
-  "issue list") printf '%s\n' "${STUB_ISSUE-14}" ;;
-  "issue edit")
+# Stub, REST only: the issues list answers STUB_ISSUES (a JSON array; the issues endpoint lists PRs too, as
+# entries with a pull_request key) through the tool's own --jq filter; a PATCH records its args and body file.
+[[ $1 == api ]] || exit 1
+method=GET
+jq=
+prev=
+for a in "$@"; do
+  [[ $prev == -X ]] && method=$a
+  [[ $prev == --jq ]] && jq=$a
+  prev=$a
+done
+case "$method $2" in
+  "GET repos/"*"/issues?labels=handoff&state=open"*)
+    default='[{"number":14}]'
+    printf '%s\n' "${STUB_ISSUES-$default}" | jq -r "$jq" ;;
+  "PATCH "*)
     echo "$*" >>"$STUB_LOG"
-    while [[ $# -gt 0 ]]; do
-      [[ $1 == --body-file ]] && cat "$2" >"$STUB_LOG.body"
-      shift
-    done ;;
+    for a in "$@"; do
+      [[ $a == body=@* ]] && cat "${a#body=@}" >"$STUB_LOG.body"
+    done
+    true ;;
   *) exit 1 ;;
 esac
 S
@@ -51,7 +65,7 @@ printf '**Updated:** now\n\n**In flight:** #1 next: merge.\n\n**Next:** x\n\n**N
 run_tool "$good"
 check "good body passes" 0 "$status"
 check "good body edits the issue" yes "$(edited)"
-check "edit targets the handoff issue number" yes "$(grep -qF 'issue edit 14' "$work/log" && echo yes || echo no)"
+check "edit targets the handoff issue number" yes "$(grep -qF 'api -X PATCH repos/pkeppeler/deepcharter/issues/14 ' "$work/log" && echo yes || echo no)"
 check "edit sends the file's body" "$(cat "$good")" "$(cat "$work/log.body")"
 
 long="$work/long.md"
@@ -81,9 +95,16 @@ for prose in 'The hook lists merged PRs and open PRs itself.' '- Merged into the
   check "prose [$prose] is not a section" 0 "$status"
 done
 
-run_tool "$good" STUB_ISSUE=
+run_tool "$good" 'STUB_ISSUES=[]'
 check "no open handoff issue refuses" 1 "$status"
 check "no-issue refusal names the label" yes "$(has 'label handoff')"
+
+# The issues endpoint also lists PRs carrying the label: they are skipped, wherever they sit in the list.
+run_tool "$good" 'STUB_ISSUES=[{"number":31,"pull_request":{"url":"x"}},{"number":14}]'
+check "a labelled PR listed first is skipped" yes "$(grep -qF 'issues/14 ' "$work/log" && echo yes || echo no)"
+run_tool "$good" 'STUB_ISSUES=[{"number":31,"pull_request":{"url":"x"}}]'
+check "only a labelled PR is no handoff issue" 1 "$status"
+check "only a labelled PR is not edited" no "$(edited)"
 
 run_tool "$work/missing.md"
 check "missing file refuses" 1 "$status"

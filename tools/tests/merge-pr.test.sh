@@ -16,78 +16,90 @@ export LOG="$work/calls.log"
 # The roadmap runs through tools/py, which runs the stub uv on the version .python-version names.
 roadmap_line="uv run --no-project --python $(cat "$tools/../.python-version") python -I tools/roadmap.py"
 
-# The gh stub answers the scripts' `--json <field> --jq <expr>` calls with the
-# plain text a real gh prints after the jq filter, driven by STUB_* variables.
+# The gh stub is REST only (`gh api`, as the scripts call it; a `gh pr` or `gh issue` call finds no case and
+# fails). It answers the scripts' `--jq <expr>` calls with the plain text a real gh prints after the jq filter,
+# driven by STUB_* variables: a single-PR read is told apart by its filter, the other endpoints by their path.
 cat >"$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 echo "gh $*" >>"$LOG"
-field=
+[[ $1 == api ]] || exit 1
+method=GET
+path=
+jq=
 prev=
 for a in "$@"; do
-  [[ $prev == --json ]] && field=$a
+  [[ $prev == -X ]] && method=$a
+  [[ $prev == --jq ]] && jq=$a
+  [[ $a == repos/* ]] && path=$a
   prev=$a
 done
-case "$1 $2" in
-  "pr view")
+case "$method $path" in
+  "GET "*/pulls/*/files*)
+    [[ ${STUB_FILES_FAIL-0} == 1 ]] && exit 1
+    printf '%s' "${STUB_FILES-}" ;;
+  "GET "*/contents/docs/feature-map/map.json*)
+    # STUB_MAP_FAIL: 404 (no map at that head) or 500 (unreadable). STUB_MAP_STALE: the lines the gate's --jq prints.
+    [[ ${STUB_MAP_FAIL-0} == 404 ]] && { echo "gh: Not Found (HTTP 404)"; exit 1; }
+    [[ ${STUB_MAP_FAIL-0} == 500 ]] && { echo "gh: Server Error (HTTP 500)"; exit 1; }
+    printf '%s' "${STUB_MAP_STALE-}" ;;
+  "GET "*/actions/runs\?*)
+    [[ ${STUB_CI_RUNS_FAIL-0} == 1 ]] && exit 1
+    # STUB_CI_RUNS: "<id>[:<conclusion>]" lines (default success). Like the real
+    # --jq, only ids of runs the select clause asks for are printed.
+    while IFS=: read -r id concl; do
+      [[ -n $id ]] || continue
+      [[ $* != *'.conclusion == "success"'* || ${concl:-success} == success ]] && echo "$id"
+    done <<<"${STUB_CI_RUNS-9001}"
+    exit 0 ;;
+  "GET "*/actions/runs/*)
+    [[ ${STUB_CI_CREATED_FAIL-0} == 1 ]] && exit 1
+    printf '%s' "${STUB_CI_CREATED-2026-10-08T03:40:43Z
+}" ;;
+  "GET "*/check-runs*)
+    echo "${STUB_RUNS-$DEFAULT_RUNS}"
+    exit "${STUB_RUNS_RC:-0}" ;;
+  "GET "*/issues/*/comments*)
+    # The marker comment as `.body | @json` prints it; STUB_COMMENT empty means no such comment.
+    echo "\"${STUB_COMMENT-review-passed ${STUB_SHA-abc123}}\"" ;;
+  "GET "*/pulls\?base=*) [[ ${STUB_LIST_FAIL-0} == 1 ]] && exit 1; printf '%s' "${STUB_STACKED-}" ;; # open PR numbers whose base is the head branch
+  "PATCH "*/pulls/*) [[ ${STUB_EDIT_FAIL-0} == 1 ]] && exit 1; exit 0 ;;
+  "PUT "*/pulls/*/merge) touch "$LOG.merged"; exit "${STUB_MERGE_RC:-0}" ;;
+  "POST "*/issues/*) exit 0 ;;
+  "GET "*/pulls/*)
     [[ ${STUB_VIEW_FAIL-0} == 1 ]] && exit 1
-    case "$field" in
-      headRefOid) echo "${STUB_SHA-abc123}" ;;
-      headRefOid,headRefName) echo "${STUB_SHA-abc123} ${STUB_BRANCH-12-some-slug}" ;;
-      state)
-        if [[ -e $LOG.merged ]]; then echo "${STUB_STATE_AFTER-MERGED}"; else echo "${STUB_STATE-OPEN}"; fi ;;
-      isDraft) [[ ${STUB_DRAFT_FAIL-0} == 1 ]] && exit 1; echo "${STUB_DRAFT-false}" ;;
-      headRefName) echo "${STUB_BRANCH-12-some-slug}" ;;
-      baseRefName) echo "${STUB_BASE-main}" ;;
-      body) printf '%s\n' "${STUB_BODY-Closes #12}" ;;
-      closingIssuesReferences)
-        [[ ${STUB_CLOSING_FAIL-0} == 1 ]] && exit 1
-        # STUB_CLOSING_LATER, when set, answers every read after the first.
-        n=$(cat "$LOG.closing" 2>/dev/null || echo 0)
-        echo $((n + 1)) >"$LOG.closing"
-        set_now=${STUB_CLOSING-pkeppeler/deepcharter#12}
-        [[ $n -eq 0 ]] || set_now=${STUB_CLOSING_LATER-$set_now}
-        [[ -z $set_now ]] || printf '%s\n' "$set_now" ;;
-      labels)
+    case "$jq" in
+      '.head.sha + " " + .head.ref') echo "${STUB_SHA-abc123} ${STUB_BRANCH-12-some-slug}" ;;
+      .head.sha) echo "${STUB_SHA-abc123}" ;;
+      # REST state is open/closed plus a merged flag. STUB_STATE keeps the words OPEN, CLOSED, MERGED.
+      '"\(.merged) \(.state)"')
+        st=${STUB_STATE-OPEN}
+        [[ ! -e $LOG.merged ]] || st=${STUB_STATE_AFTER-MERGED}
+        case "$st" in
+          MERGED) echo "true closed" ;;
+          CLOSED) echo "false closed" ;;
+          *) echo "false open" ;;
+        esac ;;
+      .draft) [[ ${STUB_DRAFT_FAIL-0} == 1 ]] && exit 1; echo "${STUB_DRAFT-false}" ;;
+      .head.ref) echo "${STUB_BRANCH-12-some-slug}" ;;
+      .base.ref) echo "${STUB_BASE-main}" ;;
+      .title) echo "A title" ;;
+      *.body*)
+        # The gate reads the body twice before the closing set is re-read: reads after those answer with
+        # STUB_BODY_LATER, STUB_BODY_FAIL_AT=<n> fails the nth read.
+        n=$(cat "$LOG.body" 2>/dev/null || echo 0)
+        n=$((n + 1))
+        echo "$n" >"$LOG.body"
+        [[ ${STUB_BODY_FAIL_AT-0} == "$n" ]] && exit 1
+        if [[ $n -le 2 ]]; then printf '%s\n' "${STUB_BODY-Closes #12}"; else printf '%s\n' "${STUB_BODY_LATER-${STUB_BODY-Closes #12}}"; fi ;;
+      '.labels[].name')
         [[ ${STUB_LABELS_FAIL-0} == 1 ]] && exit 1
         echo "${STUB_LABELS-infra
 review-passed}" ;;
-      comments) echo "\"${STUB_COMMENT-review-passed ${STUB_SHA-abc123}}\"" ;;
-      mergeable) echo "${STUB_MERGEABLE-MERGEABLE}" ;;
+      # REST: true, false, or null while GitHub computes it. gh prints a null as an empty line; the script asks
+      # for tostring, so the stub prints the word.
+      '.mergeable | tostring') echo "${STUB_MERGEABLE-true}" ;;
     esac ;;
-  "api repos/"*)
-    if [[ $2 == */pulls/*/files* ]]; then
-      [[ ${STUB_FILES_FAIL-0} == 1 ]] && exit 1
-      printf '%s' "${STUB_FILES-}"
-      exit 0
-    fi
-    if [[ $2 == */contents/docs/feature-map/map.json* ]]; then
-      # STUB_MAP_FAIL: 404 (no map at that head) or 500 (unreadable). STUB_MAP_STALE: the lines the gate's --jq prints.
-      [[ ${STUB_MAP_FAIL-0} == 404 ]] && { echo "gh: Not Found (HTTP 404)"; exit 1; }
-      [[ ${STUB_MAP_FAIL-0} == 500 ]] && { echo "gh: Server Error (HTTP 500)"; exit 1; }
-      printf '%s' "${STUB_MAP_STALE-}"
-      exit 0
-    fi
-    if [[ $2 == */actions/runs\?* ]]; then
-      [[ ${STUB_CI_RUNS_FAIL-0} == 1 ]] && exit 1
-      # STUB_CI_RUNS: "<id>[:<conclusion>]" lines (default success). Like the real
-      # --jq, only ids of runs the select clause asks for are printed.
-      while IFS=: read -r id concl; do
-        [[ -n $id ]] || continue
-        [[ $* != *'.conclusion == "success"'* || ${concl:-success} == success ]] && echo "$id"
-      done <<<"${STUB_CI_RUNS-9001}"
-      exit 0
-    fi
-    if [[ $2 == */actions/runs/* ]]; then
-      [[ ${STUB_CI_CREATED_FAIL-0} == 1 ]] && exit 1
-      printf '%s' "${STUB_CI_CREATED-2026-10-08T03:40:43Z
-}"
-      exit 0
-    fi
-    echo "${STUB_RUNS-$DEFAULT_RUNS}"
-    exit "${STUB_RUNS_RC:-0}" ;;
-  "pr list") [[ ${STUB_LIST_FAIL-0} == 1 ]] && exit 1; printf '%s' "${STUB_STACKED-}" ;; # open PR numbers whose base is the head branch
-  "pr edit") [[ ${STUB_EDIT_FAIL-0} == 1 ]] && exit 1; exit 0 ;;
-  "pr merge") touch "$LOG.merged"; exit "${STUB_MERGE_RC:-0}" ;;
+  *) exit 1 ;;
 esac
 STUB
 
@@ -190,7 +202,7 @@ rc=0
 pass() { cases=$((cases + 1)); echo "ok   $1"; }
 fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
-reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push" "$LOG.closing"; : >"$LOG"; }
+reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push" "$LOG.body"; : >"$LOG"; }
 
 # run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
 run_script() {
@@ -215,7 +227,7 @@ refusal() {
   shift 2
   run_script "$@"
   if [[ $rc -ne 0 && $out == *"$msg"* ]] \
-    && ! grep -qE '^gh pr merge|^git worktree|push' "$LOG"; then
+    && ! grep -qE '^gh api -X PUT|^git worktree|push' "$LOG"; then
     pass "$name"
   else
     fail "$name (rc=$rc out=$out)"
@@ -234,44 +246,58 @@ last_line_is() { local last=${out##*$'\n'}; if [[ $last == "$2" ]]; then pass "$
 
 wt() { grep -o '[^ ]*/wt' "$LOG" | head -1; }
 
-merge_line="gh pr merge 7 -R pkeppeler/deepcharter --squash --delete-branch --match-head-commit abc123"
+# The merge is one REST call pinned to the head sha, with the repo's squash subject "<title> (#n)" and the body.
+merge_prefix="gh api -X PUT repos/pkeppeler/deepcharter/pulls/7/merge -f merge_method=squash -f sha=abc123 -f commit_title=A title (#7) -f commit_message="
+merge_line="${merge_prefix}Closes #12"
+merged_via_rest() { if grep -qF -- "$merge_prefix" "$LOG"; then pass "$1"; else fail "$1 (no merge request with the pinned sha and title)"; fi; }
 
 refusal "closed PR" "REFUSED: PR #7 is not open" STUB_STATE=CLOSED
 refusal "merged PR" "REFUSED: PR #7 is not open" STUB_STATE=MERGED
 refusal "draft PR" "REFUSED: PR #7 is a draft" STUB_DRAFT=true
-# Closing set: GitHub's own parse (`closingIssuesReferences`, one owner/repo#N per line,
-# STUB_CLOSING in the stub) must be exactly {this repo's branch issue}. The body is
-# not parsed. The default stub is branch 12-some-slug closing pkeppeler/deepcharter#12.
+# Closing set: REST has no closingIssuesReferences, so the gate reads the body for closing keywords
+# (STUB_BODY in the stub). It must be exactly {this repo's branch issue}. The default stub is branch
+# 12-some-slug with the body "Closes #12".
 mismatch="but branch 12-some-slug is for issue #12 only"
 me=pkeppeler/deepcharter
-refusal "closes another issue" "$mismatch" "STUB_CLOSING=$me#13"
-refusal "no closing reference" "has no closing reference (put 'Closes #12' in the body)" STUB_CLOSING=
+nl=$'\n'
+refusal "closes another issue" "$mismatch" "STUB_BODY=Closes #13"
+refusal "no closing reference" "has no closing reference (put 'Closes #12' in the body)" "STUB_BODY=No keyword here, see #12."
 refusal "closing set changes before the merge" "closing set changed during the gate (was #12, now #12 #13); re-run" \
-  "STUB_CLOSING_LATER=$me#12
-$me#13"
-refusal "closing set emptied before the merge" "closing set changed during the gate (was #12, now empty)" STUB_CLOSING_LATER=
-refusal "closes branch issue and another" "closes #12 #13 but" "STUB_CLOSING=$me#12
-$me#13"
-refusal "closes two others" "closes #13 #14 but" "STUB_CLOSING=$me#13
-$me#14"
-refusal "closes the same number in another repo" "closes owner/repo#12 but" "STUB_CLOSING=owner/repo#12"
-refusal "closes branch issue and another repo's" "closes #12 owner/repo#54 but" "STUB_CLOSING=$me#12
-owner/repo#54"
-refusal "closing references unreadable" "has no readable closing references" STUB_CLOSING_FAIL=1
+  "STUB_BODY_LATER=Closes #12${nl}Closes #13"
+refusal "closing set emptied before the merge" "closing set changed during the gate (was #12, now empty)" STUB_BODY_LATER=
+refusal "closes branch issue and another" "closes #12 #13 but" "STUB_BODY=Closes #12${nl}Closes #13"
+refusal "closes two others" "closes #13 #14 but" "STUB_BODY=Closes #13${nl}Closes #14"
+refusal "closes the same number in another repo" "closes owner/repo#12 but" "STUB_BODY=Closes owner/repo#12"
+refusal "closes branch issue and another repo's" "closes #12 owner/repo#54 but" "STUB_BODY=Closes #12${nl}Closes owner/repo#54"
+refusal "closing references unreadable" "has no readable closing references" STUB_BODY_FAIL_AT=2
+refusal "body unreadable" "has no readable body" STUB_BODY_FAIL_AT=1
 refusal "branch without issue number" "has head branch 'main-fix', not <issue>-<slug>" STUB_BRANCH=main-fix
 refusal "branch number without slug" "not <issue>-<slug>" STUB_BRANCH=12
 # A Renovate branch names the replacement-PR route: Renovate rewrites its own body, so the gate
 # cannot hold on it (#758).
 refusal "renovate branch names the replacement route" "push Renovate's commits to <issue>-<slug>" STUB_BRANCH=renovate/foo-1.x
-# Prose such as "the same fix #252 verified" is not a closing reference: GitHub's set decides.
-run_script "STUB_BODY=Closes #12
-Uses the same fix #252 verified."
-exited "noun 'fix #N' in prose does not count" 0
-logged "closing references read from GitHub" "gh pr view 7 -R pkeppeler/deepcharter --json closingIssuesReferences --jq .closingIssuesReferences[] | \"\(.repository.owner.login)/\(.repository.name)#\(.number)\""
-refusal "wrong closing set despite a matching body" "$mismatch" "STUB_BODY=Closes #12" "STUB_CLOSING=$me#13"
+# GitHub's keywords, in any case, with an optional colon, and the issue URL form, all count.
+for body in "Fixes #12" "resolved #12" "CLOSED: #12" "Closes https://github.com/$me/issues/12" "Closes $me#12" "Summary${nl}${nl}Resolves #12${nl}${nl}More text."; do
+  run_script "STUB_BODY=$body"
+  exited "closing form [${body//$'\n'/ }] merges" 0
+done
+# A bare '#N' with no keyword is not a closing reference.
+refusal "issue number without a keyword does not count" "has no closing reference" "STUB_BODY=Part of #12"
+# Known limit of reading the body ourselves: prose such as "the same fix #252 verified" holds a keyword.
+refusal "keyword in prose counts as a closing reference" "closes #12 #252 but" \
+  "STUB_BODY=Closes #12${nl}Uses the same fix #252 verified."
+logged "closing references read from the PR body" 'gh api repos/pkeppeler/deepcharter/pulls/7 --jq .body // ""'
 run_script
 exited "matching closing reference is merged" 0
 logged "matching close merge invocation" "$merge_line"
+count "merge sends the title and body from the PR" "^gh api -X PUT .*commit_title=A title (#7) -f commit_message=Closes #12\$" 1
+
+# REST mappings: state is open/closed plus a merged flag, and mergeable null means GitHub is still computing it.
+refusal "closed PR is reported with its state" "(state: CLOSED)" STUB_STATE=CLOSED
+refusal "merged PR is detected from the merged flag" "(state: MERGED)" STUB_STATE=MERGED
+refusal "mergeable null is the UNKNOWN wait path" "is not mergeable (mergeable: UNKNOWN)" STUB_MERGEABLE=null
+refusal "mergeable false is a conflict" "(mergeable: CONFLICTING); merge origin/main into the branch" STUB_MERGEABLE=false
+refusal "stale-base refusal carries the stable marker" "[stale-base]" "STUB_MAIN_LOG=c1 2099-01-01T00:00:00Z" STUB_SHOW_c1=src/A.java
 
 # ADR numbers: a PR may not ADD docs/adr/NNNN-*.md when NNNN is already on
 # origin/main (any slug). Main's default ADRs are 0007 and 0018; next free is 0019.
@@ -295,7 +321,7 @@ refusal "origin/main ADR list unreadable" "could not read the ADR list on origin
 refusal "origin/main ADR list empty" "could not read the ADR list on origin/main" STUB_MAIN_ADRS=
 run_script "STUB_FILES=$(files added:docs/adr/0019-free.md)"
 exited "new ADR with a free number merges" 0
-logged "ADR merge invocation" "$merge_line"
+merged_via_rest "ADR merge invocation"
 logged "ADR list read from origin/main" "git ls-tree --name-only origin/main docs/adr/"
 run_script "STUB_FILES=$(files added:README.md modified:tools/merge-pr.sh)"
 exited "PR with no ADR merges" 0
@@ -310,7 +336,6 @@ exited "PR modifying or removing an existing ADR merges" 0
 # embedded pr-media/7/ image, or the `no-demo` label plus a `No demo:` line.
 # Embedded pr-media needs the `demo` label. Default labels: infra, review-passed.
 game=$(files modified:src/main/java/Foo.java)
-nl=$'\n'
 gif="Closes #12${nl}![demo](https://github.com/pkeppeler/deepcharter/blob/pr-media/7/run.gif?raw=true)"
 png="Closes #12${nl}![shot](https://github.com/pkeppeler/deepcharter/blob/pr-media/7/shot.png?raw=true)"
 demo_labels="infra${nl}review-passed${nl}demo"
@@ -347,7 +372,7 @@ refusal "demo label lookalike does not count" "with no demo" "STUB_FILES=$game" 
 refusal "labels unreadable" "has no readable labels" "STUB_FILES=$game" STUB_LABELS_FAIL=1
 run_script "STUB_FILES=$game" "STUB_LABELS=$demo_labels" "STUB_BODY=$gif"
 exited "in-game change with demo label and gif merges" 0
-logged "demo merge invocation" "$merge_line"
+merged_via_rest "demo merge invocation"
 run_script "STUB_FILES=$game" "STUB_LABELS=$demo_labels" "STUB_BODY=$png"
 exited "in-game change with demo label and png merges" 0
 run_script "STUB_FILES=$game" "STUB_LABELS=$nodemo_labels" "STUB_BODY=Closes #12${nl}No demo: logic only, nothing visible."
@@ -421,11 +446,11 @@ refusal "newer failure after success" "lint (newest non-skipped run: failure)" \
   "STUB_RUNS=$(runs lint:1:success lint:2:failure)"
 run_script "STUB_RUNS=$(runs build:1:success tool-tests:1:success lint:1:failure lint:2:success lint:3:skipped)"
 exited "failed run then newer success merges" 0
-logged "merge after re-run" "$merge_line"
-refusal "conflicting PR" "REFUSED: PR #7 is not mergeable" STUB_MERGEABLE=CONFLICTING
-refusal "unknown mergeability" "REFUSED: PR #7 is not mergeable" STUB_MERGEABLE=UNKNOWN
-refusal "conflicting PR says to merge origin/main" "merge origin/main into the branch" STUB_MERGEABLE=CONFLICTING
-refusal "gh pr view fails silently" "REFUSED: PR #7 could not be read" STUB_VIEW_FAIL=1
+merged_via_rest "merge after re-run"
+refusal "conflicting PR" "REFUSED: PR #7 is not mergeable" STUB_MERGEABLE=false
+refusal "unknown mergeability" "REFUSED: PR #7 is not mergeable" STUB_MERGEABLE=null
+refusal "conflicting PR says to merge origin/main" "merge origin/main into the branch" STUB_MERGEABLE=false
+refusal "PR read fails silently" "REFUSED: PR #7 could not be read" STUB_VIEW_FAIL=1
 refusal "zero checks includes gh output" "gh: Not Found" "STUB_RUNS=gh: Not Found" STUB_RUNS_RC=1
 refusal "wrong origin" "REFUSED: origin is" STUB_ORIGIN=git@github.com:someone/else.git
 
@@ -451,7 +476,7 @@ SCRIPT=$work/tools/merge-pr.sh refusal "required check only skipped" "required c
   "STUB_RUNS=$(runs build:1:success lint:1:skipped lint:2:skipped)"
 SCRIPT=$work/tools/merge-pr.sh run_script "STUB_RUNS=$(runs build:1:success lint:1:success)"
 exited "all required checks present merges" 0
-logged "required-checks merge invocation" "$merge_line"
+merged_via_rest "required-checks merge invocation"
 
 # The production names: dropping any one of them is refused.
 for name in $required; do
@@ -468,7 +493,7 @@ done
 # main was then. Every main commit since the run was created (minus a 2-minute margin)
 # that changed anything outside docs refuses the merge. Default stubs: the latest CI
 # run was created 03:40:43Z (so the window opens 03:38:43Z) and main has no commits.
-stale_hint="gh pr close 7 && gh pr reopen 7"
+stale_hint="by closing and reopening the PR [stale-base]"
 after="2026-10-08T03:47:00Z"
 run_script
 exited "no main commits since the CI run merges" 0
@@ -487,7 +512,7 @@ code_log="STUB_MAIN_LOG=c1 $after"
 refusal "main commit in src" "main changed since its CI run" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
 refusal "refusal names the moved path" "src/main/java/Charters.java" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
 refusal "refusal names the CI run creation time" "CI run 9001 created 2026-10-08T03:40:43Z" "$code_log" STUB_SHOW_c1=src/A.java
-refusal "refusal gives the close/reopen fix" "$stale_hint" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
+refusal "refusal gives the close/reopen fix and its marker" "$stale_hint" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
 refusal "main commit in a build file" "$stale_hint" "$code_log" STUB_SHOW_c1=build.gradle.kts
 refusal "build file beside another path" "build.gradle.kts" "$code_log" "STUB_SHOW_c1=gradle.properties${nl}build.gradle.kts"
 refusal "code beside docs still refuses" "tools/merge-pr.sh" "$code_log" "STUB_SHOW_c1=docs/ROADMAP.md${nl}tools/merge-pr.sh"
@@ -518,8 +543,8 @@ logged "origin/main fetched before comparing" "git fetch origin main"
 # Happy path: roadmap changed, so it is committed and pushed.
 run_script STUB_ROADMAP_CHANGED=1
 exited "happy path exits 0" 0
-logged "happy path merge invocation" "$merge_line"
-logged "labels read from pinned repo" "gh pr view 7 -R pkeppeler/deepcharter --json labels --jq .labels[].name"
+merged_via_rest "happy path merge invocation"
+logged "labels read from pinned repo" "gh api repos/pkeppeler/deepcharter/pulls/7 --jq .labels[].name"
 logged "roadmap regenerated" "$roadmap_line"
 logged "worktree of origin/main" "git worktree add --detach $(wt) origin/main"
 logged "roadmap commit message" "git -C $(wt) commit -m Regenerate roadmap after #7"
@@ -531,23 +556,23 @@ logged "worktree pruned" "git worktree prune"
 # unchanged roadmap is not committed. Runs are read from the pinned sha, all pages.
 run_script
 exited "skipped non-required check merges" 0
-logged "skipped non-required merge invocation" "$merge_line"
+merged_via_rest "skipped non-required merge invocation"
 logged "check-runs read for pinned sha" "gh api repos/pkeppeler/deepcharter/commits/abc123/check-runs?filter=all&per_page=100 --paginate --jq .check_runs[] | [.name, (.started_at // \"9999-12-31T23:59:59Z\"), (.id | tostring), .status, (.conclusion // \"\")] | @tsv"
 refusal "every check skipped" "required check that was only skipped" "STUB_RUNS=$(runs "${skipped_required_specs[@]}")"
 not_logged "unchanged roadmap not committed" "git -C .* commit"
 
 # Stacked PRs: an open PR based on this PR's head branch is retargeted to this PR's
-# base before the merge call, because --delete-branch would close it (#663).
+# base before the merge call, because GitHub deletes the head branch on merge and that would close it (#663).
 run_script "STUB_STACKED=21
 22
 " STUB_BASE=release
 exited "stacked PRs merge" 0
-logged "stacked PRs listed by base" "gh pr list -R pkeppeler/deepcharter --base 12-some-slug --state open --limit 1000 --json number --jq .[].number"
-logged "first stacked PR retargeted" "gh pr edit 21 -R pkeppeler/deepcharter --base release"
-logged "second stacked PR retargeted" "gh pr edit 22 -R pkeppeler/deepcharter --base release"
+logged "stacked PRs listed by base" "gh api repos/pkeppeler/deepcharter/pulls?base=12-some-slug&state=open&per_page=100 --paginate --jq .[].number"
+logged "first stacked PR retargeted" "gh api -X PATCH repos/pkeppeler/deepcharter/pulls/21 -f base=release"
+logged "second stacked PR retargeted" "gh api -X PATCH repos/pkeppeler/deepcharter/pulls/22 -f base=release"
 printed "retarget is announced" "Retargeted PR #21 to release"
-retarget_at=$(grep -n '^gh pr edit 22' "$LOG" | cut -d: -f1)
-merge_at=$(grep -n '^gh pr merge' "$LOG" | cut -d: -f1)
+retarget_at=$(grep -n '^gh api -X PATCH .*pulls/22 ' "$LOG" | cut -d: -f1)
+merge_at=$(grep -n '^gh api -X PUT .*/merge' "$LOG" | cut -d: -f1)
 if [[ -n $retarget_at && -n $merge_at && $retarget_at -lt $merge_at ]]; then
   pass "retarget happens before the merge call"
 else
@@ -556,12 +581,13 @@ fi
 refusal "failed retarget refuses the merge" "REFUSED: PR #7 cannot retarget stacked PR #21 to main" STUB_STACKED=21 STUB_EDIT_FAIL=1
 refusal "unreadable stacked list refuses the merge" "REFUSED: PR #7 could not list the PRs stacked on 12-some-slug" STUB_LIST_FAIL=1
 run_script
-not_logged "no stacked PR means no retarget" "^gh pr edit"
+not_logged "no stacked PR means no retarget" "^gh api -X PATCH"
+not_logged "the head branch is never deleted by the script" "git push\|DELETE"
 
-# gh pr merge exits nonzero after merging on GitHub (local cleanup failure).
+# The merge request fails after GitHub merged (a timeout): the PR's real state decides.
 run_script STUB_MERGE_RC=1
 exited "merged-despite-error continues to roadmap" 0
-printed "merged-despite-error warns" "exited nonzero but PR #7 is MERGED"
+printed "merged-despite-error warns" "the merge request failed but PR #7 is MERGED"
 logged "merged-despite-error ran roadmap" "$roadmap_line"
 run_script STUB_MERGE_RC=1 STUB_STATE_AFTER=OPEN
 exited "failed merge exits nonzero" 1
@@ -578,7 +604,7 @@ not_logged "missing roadmap.py runs nothing" "^uv"
 run_script STUB_ROADMAP_RC=1 STUB_ROADMAP_CHANGED=1
 exited "roadmap failure exits nonzero" 1
 printed "roadmap failure says merged" "is MERGED, but the roadmap regeneration FAILED"
-logged "roadmap failure still merged" "$merge_line"
+merged_via_rest "roadmap failure still merged"
 not_logged "roadmap failure not pushed" "git -C .* push"
 logged "roadmap failure removes worktree" "git worktree remove --force $(wt)"
 
@@ -617,10 +643,10 @@ run_check
 exited "check passes a PR the gate would merge" 0
 printed "check prints a required check's state" "check build: pass"
 printed "check says the gate passes" "GATE OK: PR #7 at abc123 passes the merge gate"
-not_logged "check never merges" "^gh pr merge"
-not_logged "check never edits" "^gh pr edit"
-not_logged "check never comments" "^gh pr comment"
-not_logged "check never retargets (no stacked-PR listing)" "^gh pr list"
+not_logged "check never merges" "^gh api -X PUT"
+not_logged "check never edits or retargets" "^gh api -X PATCH"
+not_logged "check never comments or labels" "^gh api -X POST"
+not_logged "check never retargets (no stacked-PR listing)" "pulls?base="
 not_logged "check never pushes" "push"
 run_check "STUB_LABELS=infra" "STUB_COMMENT=nope"
 exited "check passes before the review pass is marked" 0
@@ -635,7 +661,7 @@ last_line_is "check's last line names both" "GATE OK except: draft, no review pa
 run_check STUB_DRAFT_FAIL=1
 exited "check refuses an unreadable draft flag" 1
 printed "check keeps the one-line contract on an unreadable draft flag" "REFUSED: PR #7 could not read isDraft"
-run_check STUB_CLOSING=
+run_check "STUB_BODY=nothing closes"
 exited "check refuses a body with no closing reference" 1
 printed "check names the closing fix" "has no closing reference (put 'Closes #12' in the body)"
 run_check "STUB_RUNS=$(runs build:1:failure build:2:skipped tool-tests:3:success)"
@@ -643,7 +669,7 @@ exited "check refuses a failed run hidden by a later skipped run" 1
 printed "check names the failing check" "not passing: build (newest non-skipped run: failure)"
 printed "check lists the passing check beside the failing one" "check tool-tests: pass"
 printed "check lists the failing check" "check build: failure"
-run_check "STUB_RUNS=$(runs build:1:failure build:2:skipped tool-tests:3:success)" STUB_MERGEABLE=CONFLICTING
+run_check "STUB_RUNS=$(runs build:1:failure build:2:skipped tool-tests:3:success)" STUB_MERGEABLE=false
 exited "check refuses a conflicting PR" 1
 run_check "STUB_RUNS=$(runs build:1:success tool-tests:2:in_progress)"
 exited "check refuses a running required check" 1
@@ -667,9 +693,9 @@ exited "unknown flag is a usage error" 2
 # mark-review-passed.sh
 SCRIPT=$mark run_script STUB_SHA=def456
 exited "mark-review-passed exits 0" 0
-logged "mark reads head sha and branch in one call" "gh pr view 7 -R pkeppeler/deepcharter --json headRefOid,headRefName --jq .headRefOid + \" \" + .headRefName"
-logged "mark comments exact body" "gh pr comment 7 -R pkeppeler/deepcharter --body review-passed def456"
-logged "mark adds label" "gh pr edit 7 -R pkeppeler/deepcharter --add-label review-passed"
+logged "mark reads head sha and branch in one call" "gh api repos/pkeppeler/deepcharter/pulls/7 --jq .head.sha + \" \" + .head.ref"
+logged "mark comments exact body" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed def456"
+logged "mark adds label" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/labels -f labels[]=review-passed"
 # merge-pr.sh calls the lib's steps one at a time, interleaved with its other checks, and mark calls them through
 # check_pr_body_and_labels: the two lists must hold the same steps.
 lib=$tools/lib/pr-body-checks.sh
@@ -685,9 +711,8 @@ fi
 # mark runs the merge gate's closing-reference, demo and map checks (tools/lib/pr-body-checks.sh), and never waits for CI.
 SCRIPT=$mark run_script STUB_SHA=def456 STUB_REMOTE_SHA=abc123
 exited "mark refuses a head that lags the pushed branch" 1
-printed "mark names both shas and the fix" "head def456 on GitHub but origin/12-some-slug is at abc123 (wait, or 'gh pr close 7 && gh pr reopen 7')"
-not_logged "mark stale head refused before commenting" "^gh pr comment"
-not_logged "mark stale head refused before labelling" "^gh pr edit"
+printed "mark names both shas and the fix" "head def456 on GitHub but origin/12-some-slug is at abc123 (wait, or close and reopen the PR)"
+not_logged "mark stale head refused before commenting" "^gh api -X POST"
 SCRIPT=$mark run_script STUB_REMOTE_SHA=
 exited "mark refuses a branch missing on origin" 1
 printed "mark names the missing branch" "origin has no branch 12-some-slug"
@@ -696,11 +721,10 @@ exited "mark refuses when origin is unreadable" 1
 printed "mark names the unreadable origin" "could not read origin/12-some-slug"
 SCRIPT=$mark run_script
 logged "mark reads the branch tip" "git ls-remote origin refs/heads/12-some-slug"
-SCRIPT=$mark run_script STUB_CLOSING=
+SCRIPT=$mark run_script "STUB_BODY=nothing closes"
 exited "mark refuses a body with no closing reference" 1
 printed "mark names the closing fix" "has no closing reference (put 'Closes #12' in the body)"
-not_logged "mark refused before commenting" "^gh pr comment"
-not_logged "mark refused before labelling" "^gh pr edit"
+not_logged "mark refused before writing anything" "^gh api -X POST"
 SCRIPT=$mark run_script STUB_FILES="$(files modified:src/main/A.java)" STUB_LABELS=infra
 exited "mark refuses an in-game PR with no demo" 1
 printed "mark names the demo fix" "changes in-game code (src/main/A.java) with no demo"

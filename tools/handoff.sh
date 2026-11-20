@@ -22,8 +22,10 @@ if ! problems=$("$here/py" "$here/handoff_check.py" <"$file"); then
   exit 1
 fi
 
-number=$(gh issue list --repo "$repo" --label handoff --state open --limit 1 --json number --jq '.[0].number // empty')
+# The issues endpoint lists PRs too (REST, #788): skip them.
+number=$(gh api "repos/$repo/issues?labels=handoff&state=open&per_page=100" \
+  --jq '[.[] | select(has("pull_request") | not)][0].number // empty')
 [[ -n $number ]] || { echo "REFUSED: no open issue with label handoff; create one and label it" >&2; exit 1; }
 
-gh issue edit "$number" --repo "$repo" --body-file "$file"
+gh api -X PATCH "repos/$repo/issues/$number" -F body=@"$file" >/dev/null
 echo "handoff #$number updated ($(wc -w <"$file" | tr -d ' ') words)"

@@ -19,33 +19,44 @@ mkdir "$work/bin" "$work/st"
 export LOG="$work/calls.log"
 export ST="$work/st"
 
-# gh: state/branch/sha come from $ST/state.N (default OPEN), $ST/branch.N (default N-slug).
-# `run list` pops one line per call from $ST/runs ("-" or no line = nothing unfinished).
+# gh: REST only. state (OPEN, CLOSED or MERGED, answered as the REST merged flag plus open/closed),
+# branch and sha come from $ST/state.N (default OPEN), $ST/branch.N (default N-slug).
+# $ST/rest_fail makes every PR read fail. `run list` pops one line per call from $ST/runs ("-" or no line = nothing unfinished).
 cat >"$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 echo "gh $*" >>"$LOG"
-field=
+method=GET
+path=
+jq=
 prev=
 for a in "$@"; do
-  [[ $prev == --json ]] && field=$a
+  [[ $prev == -X ]] && method=$a
+  [[ $prev == --jq ]] && jq=$a
+  [[ $a == repos/* ]] && path=$a
   prev=$a
 done
-case "$1 $2" in
-  "pr view")
-    n=$3
-    case "$field" in
-      state) cat "$ST/state.$n" 2>/dev/null || echo OPEN ;;
-      headRefName) cat "$ST/branch.$n" 2>/dev/null || echo "$n-slug" ;;
-      headRefOid) echo "sha$n" ;;
+case "$1 $method" in
+  "api GET")
+    [[ ! -e $ST/rest_fail ]] || exit 1
+    n=${path##*/}
+    case "$jq" in
+      '"\(.merged) \(.state)"')
+        case "$(cat "$ST/state.$n" 2>/dev/null || echo OPEN)" in
+          MERGED) echo "true closed" ;;
+          CLOSED) echo "false closed" ;;
+          *) echo "false open" ;;
+        esac ;;
+      .head.ref) cat "$ST/branch.$n" 2>/dev/null || echo "$n-slug" ;;
+      .head.sha) echo "sha$n" ;;
     esac ;;
-  "run list")
+  "api PATCH") exit 0 ;;
+  "run "*)
     if [[ -s $ST/runs ]]; then
       line=$(head -n 1 "$ST/runs")
       tail -n +2 "$ST/runs" >"$ST/runs.next"
       mv "$ST/runs.next" "$ST/runs"
       [[ $line == - ]] || echo "$line"
     fi ;;
-  "pr close"|"pr reopen") ;;
 esac
 exit 0
 STUB
@@ -108,7 +119,8 @@ exec /bin/mv "$@"
 STUB
 chmod +x "$work/bin/"* "$work/gate"
 
-stale_msg() { echo "REFUSED: PR #$1 main changed since its CI run: x; re-run CI on a fresh merge ref with 'gh pr close $1 && gh pr reopen $1'"; }
+# The refusal as merge-pr.sh prints it: the queue keys on the "[stale-base]" marker, not on a command hint.
+stale_msg() { echo "REFUSED: PR #$1 main changed since its CI run: x; re-run CI on a fresh merge ref by closing and reopening the PR [stale-base] (the head sha is unchanged)"; }
 
 # gate N K "<rc> [flag]" [output]
 gate() { { echo "$3"; [[ -z ${4-} ]] || echo "$4"; } >"$ST/gate.$1.$2"; }
@@ -198,7 +210,7 @@ worktrees
 gate 7 1 "0 merged"
 run_q 7
 printed "main elsewhere: says why main was not updated" "left: main not updated (primary checkout $W is on 'feature')"
-not_logged "main elsewhere: no pull" "pull"
+not_logged "main elsewhere: no pull" "pull --ff-only"
 
 # --- cleanup: a dirty primary checkout is not pulled ---
 reset
@@ -207,7 +219,7 @@ echo "$W" >"$ST/dirty"
 gate 7 1 "0 merged"
 run_q 7
 printed "dirty primary: says why main was not updated" "has uncommitted changes"
-not_logged "dirty primary: no pull" "pull"
+not_logged "dirty primary: no pull" "pull --ff-only"
 logged "dirty primary: the PR worktree is still removed" "git worktree remove $S"
 
 # --- cleanup: a dirty worktree is left whole ---
@@ -226,6 +238,7 @@ not_logged "dirty worktree: branch kept" "git branch -D"
 reset
 mkdir -p "$W/.claude/worktrees/q/tools"
 cp "$script" "$W/.claude/worktrees/q/tools/merge-queue.sh"
+cp -R "$tools/lib" "$W/.claude/worktrees/q/tools/lib"
 { wt_entry "$W" aaaa main; wt_entry "$W/.claude/worktrees/q" sha7 7-slug; } >"$ST/worktrees"
 gate 7 1 "0 merged"
 SCRIPT=$W/.claude/worktrees/q/tools/merge-queue.sh run_q 7
@@ -305,8 +318,8 @@ gate 7 1 "1" "$(stale_msg 7)"
 gate 7 2 "0 merged"
 run_q 7
 exited "stale retry: exit 0" 0
-logged "stale retry: closes the PR" "gh pr close 7 -R pkeppeler/deepcharter"
-logged "stale retry: reopens the PR" "gh pr reopen 7 -R pkeppeler/deepcharter"
+logged "stale retry: closes the PR" "gh api -X PATCH repos/pkeppeler/deepcharter/pulls/7 -f state=closed"
+logged "stale retry: reopens the PR" "gh api -X PATCH repos/pkeppeler/deepcharter/pulls/7 -f state=open"
 logged "stale retry: sleeps for the rerun" "sleep 9"
 count "stale retry: gate ran twice" "merge-pr 7" 2
 printed "stale retry: merged" "merged:  #7"
@@ -316,7 +329,7 @@ reset
 for k in 1 2 3 4; do gate 7 "$k" "1" "$(stale_msg 7)"; done
 run_q 7
 exited "stale exhausted: exit 1" 1
-count "stale exhausted: three close/reopen cycles" "gh pr close 7" 3
+count "stale exhausted: three close/reopen cycles" "state=closed" 3
 count "stale exhausted: gate ran four times" "merge-pr 7" 4
 printed "stale exhausted: summary says why" "still stale after 3 reruns"
 
@@ -327,7 +340,7 @@ gate 7 2 "0 merged"
 run_q 7
 exited "unknown: exit 0" 0
 logged "unknown: sleeps before retrying" "sleep 3"
-not_logged "unknown: does not close the PR" "gh pr close"
+not_logged "unknown: does not close the PR" "state=closed"
 count "unknown: gate ran twice" "merge-pr 7" 2
 
 # --- UNKNOWN that never clears stops after 4 retries ---
@@ -353,7 +366,7 @@ reset
 gate 7 1 "1 other" "$(stale_msg 7)"
 run_q 7
 exited "raced merge: exit 0" 0
-not_logged "raced merge: never closes the merged PR" "gh pr close"
+not_logged "raced merge: never closes the merged PR" "state=closed"
 printed "raced merge: listed as skipped" "#7 (merged by someone else)"
 
 # --- the gate merged but its roadmap step failed: still counted as merged ---
@@ -373,7 +386,7 @@ printed "stop: #7 merged before it" "merged:  #7"
 printed "stop: prints the reason" "stopped: #8: REFUSED: PR #8 lacks the review-passed label"
 printed "stop: names what was not attempted" "not attempted: #9"
 not_logged "stop: later PR's gate not run" "merge-pr 9"
-not_logged "stop: no close/reopen for a plain refusal" "gh pr close"
+not_logged "stop: no close/reopen for a plain refusal" "state=closed"
 
 # --- order: merged one at a time in argument order ---
 reset
@@ -389,6 +402,23 @@ echo CLOSED >"$ST/state.7"
 run_q 7
 exited "closed: exit 1" 1
 printed "closed: says why" "is not open (state: CLOSED)"
+
+# --- REST reads that fail leave the PR unknown and stop the queue ---
+reset
+touch "$ST/rest_fail"
+run_q 7
+exited "rest unreadable: exit 1" 1
+printed "rest unreadable: says why" "is not open (state: unknown)"
+not_logged "rest unreadable: never ran the gate" "merge-pr"
+
+# --- the stale-base marker is one string in both scripts: the gate prints it, the queue matches it ---
+# shellcheck disable=SC2016 # the sed program is a literal pattern
+marker=$(sed -n 's/.*\$out == \*"\(\[stale-base\]\)"\*.*/\1/p' "$script")
+if [[ $marker == "[stale-base]" ]] && grep -qF -- "$marker" "$tools/merge-pr.sh"; then
+  pass "stale marker: the queue matches what merge-pr.sh prints"
+else
+  fail "stale marker: queue matches [$marker], merge-pr.sh must print it"
+fi
 
 # --- single instance ---
 reset

@@ -1,7 +1,8 @@
 #!/bin/bash
 # SessionStart: inject the orchestrator handoff so a new session resumes in-flight work.
 # Also derives what the handoff must not carry: the next free ADR number and the last merged PRs.
-# Network calls are bounded; a failure degrades to a note and never blocks the session.
+# Network calls are bounded; a failure degrades to a note and never blocks the session. GitHub is read through
+# REST only (`gh api`): the cloud sessions' proxy blocks GraphQL, which `gh pr` and `gh issue` use (#788).
 cd "$(dirname "$0")/../.." || exit 0
 py=$PWD/tools/py
 adr_lib=0
@@ -9,7 +10,8 @@ adr_lib=0
 source tools/lib/adr.sh 2>/dev/null && adr_lib=1
 R=pkeppeler/deepcharter
 # Worst case: limit check 8 s + handoff 10 s + open PRs 10 s + ADR list 10 s + merged PRs 10 s = 48 s,
-# under the 60 s hook timeout (the local git calls and python start-ups take well under a second).
+# under the 60 s hook timeout (the local git calls and python start-ups take well under a second). The
+# per-PR mergeable reads share the open-PR list's budget: see the loop below.
 t() { perl -e 'alarm shift; exec @ARGV' "${T:-10}" "$@" 2>/dev/null; }
 
 {
@@ -46,8 +48,9 @@ else:
     fi
   fi
   echo "## Orchestrator handoff (pinned issue)"
-  if handoff=$(t gh issue list --repo "$R" --label handoff --state open --limit 1 --json number,body \
-    --jq 'if length == 0 then empty else .[0] | "#\(.number)\n\(.body)" end'); then
+  # The issues endpoint lists PRs too: skip them.
+  if handoff=$(t gh api "repos/$R/issues?labels=handoff&state=open&per_page=100" \
+    --jq '[.[] | select(has("pull_request") | not)] | if length == 0 then empty else .[0] | "#\(.number)\n\(.body)" end'); then
     echo "${handoff:-(no open issue labelled handoff)}"
     # The same rules tools/handoff.sh enforces; this catches an edit made without the tool.
     if [ -n "$handoff" ] && ! rules=$(printf %s "$handoff" | "$py" tools/handoff_check.py 2>&1); then
@@ -71,13 +74,29 @@ else:
   fi
   echo
   echo "## Last 15 merged PRs (derived; the handoff must not repeat them)"
-  t gh pr list --repo "$R" --state merged --limit 15 --json number,title --jq '.[] | "#\(.number) \(.title)"' \
+  # No REST merged filter: closed PRs by update time, the merged ones, newest merge first.
+  t gh api "repos/$R/pulls?state=closed&sort=updated&direction=desc&per_page=100" \
+    --jq '[.[] | select(.merged_at != null)] | sort_by(.merged_at) | reverse | .[:15][] | "#\(.number) \(.title)"' \
     || echo "(could not fetch merged PRs)"
   echo
   echo "## Open PRs and their pipeline stage"
-  t gh pr list --repo "$R" --state open --json number,title,headRefName,isDraft,labels,mergeable \
-    --jq '.[] | "#\(.number) \(.title) [\(.headRefName)]\(if .isDraft then " draft" else "" end) stages: \([.labels[].name | select(startswith("stage:") or . == "review-passed")] | join(","))\(if .mergeable == "CONFLICTING" then "  CONFLICTING: merge origin/main into the branch" elif .mergeable == "UNKNOWN" then "  (mergeability not known yet)" else "" end)"' \
-    || echo "(could not fetch PRs)"
+  # The list endpoint omits mergeable: read it per PR (REST null = still computing, false = conflicting).
+  # Total budget for the loop: the list call plus 5 s per PR, bounded by the 60 s hook timeout in practice
+  # because a healthy gh answers in well under a second.
+  if open_prs=$(t gh api "repos/$R/pulls?state=open&per_page=100" \
+    --jq '.[] | [.number, "#\(.number) \(.title) [\(.head.ref)]\(if .draft then " draft" else "" end) stages: \([.labels[].name | select(startswith("stage:") or . == "review-passed")] | join(","))"] | @tsv'); then
+    while IFS=$'\t' read -r n text; do
+      [ -n "$n" ] || continue
+      mergeable=$(T=5 t gh api "repos/$R/pulls/$n" --jq '.mergeable | tostring') || mergeable=
+      case $mergeable in
+        false) text="$text  CONFLICTING: merge origin/main into the branch" ;;
+        null) text="$text  (mergeability not known yet)" ;;
+      esac
+      echo "$text"
+    done <<<"$open_prs"
+  else
+    echo "(could not fetch PRs)"
+  fi
   echo
   echo "## Local-only state (not on GitHub)"
   git status --porcelain | sed 's/^/uncommitted: /'

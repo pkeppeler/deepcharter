@@ -8,16 +8,22 @@ refuse() {
   exit 1
 }
 
-pr_field() { gh pr view "$pr" -R "$repo" --json "$1" --jq "$2"; }
+# shellcheck source=gh-rest.sh
+source "$(dirname "${BASH_SOURCE[0]}")/gh-rest.sh"
 
-# GitHub's own parse of the body (keywords, cross-repo refs, URLs), not a regex of ours.
-# The set is GitHub's, so it can lag a body edit made just before the gate runs; merge-pr.sh
-# reads it again right before the merge. It also holds issues linked by hand in the sidebar.
-# One owner/repo#N per line; refs in this repo print as #N. Sets $closes.
+pr_field() { pr_get "$pr" "$1"; }
+
+# The issues the body closes. REST has no closingIssuesReferences (it is GraphQL only, #788), so this reads the
+# body for GitHub's keywords (close, closes, closed, fix, fixes, fixed, resolve, resolves, resolved, optional colon)
+# before #N, owner/repo#N or an issue URL. The first reference after each keyword counts ("Closes #1, #2" reads as
+# #1 only). Prose such as "the same fix #252 verified" is a keyword too, so write it differently. One owner/repo#N
+# per line; refs in this repo print as #N. Reads the body live, so merge-pr.sh calls it again right before the merge.
+# Sets $closes.
 closing_set() {
-  local refs
-  refs=$(pr_field closingIssuesReferences '.closingIssuesReferences[] | "\(.repository.owner.login)/\(.repository.name)#\(.number)"') \
-    || refuse "has no readable closing references"
+  local text refs
+  text=$(pr_field '.body // ""') || refuse "has no readable closing references"
+  refs=$(grep -oiE '(^|[^[:alnum:]_])(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+(https://github\.com/[[:alnum:]_.-]+/[[:alnum:]_.-]+/issues/|[[:alnum:]_.-]+/[[:alnum:]_.-]+#|#)[0-9]+' <<<"$text" \
+    | sed -E 's/^.*[[:space:]]//; s|https://github\.com/([^/]+/[^/]+)/issues/|\1#|' || true) # grep: no keyword exits 1
   closes=$(sort -u <<<"${refs//$repo#/#}" | grep . | tr '\n' ' ' || true) # grep: an empty set exits 1
   closes=${closes% }
 }
@@ -25,13 +31,13 @@ closing_set() {
 # The PR must close exactly the issue its branch (<issue>-<slug>) is named for.
 # Sets $branch, $issue, $body and $closes (not in a subshell, so a refusal exits the script).
 check_closing_reference() {
-  branch=$(pr_field headRefName .headRefName) || refuse "has no readable head branch"
+  branch=$(pr_field .head.ref) || refuse "has no readable head branch"
   if [[ $branch == renovate/* ]]; then
     refuse "has head branch '$branch', not <issue>-<slug>: Renovate rewrites its body. File an issue, push Renovate's commits to <issue>-<slug> (regenerate locks and gradle/verification-metadata.xml if a Gradle version changed), open a PR that closes it, close this one with a pointer"
   fi
   [[ $branch =~ ^([0-9]+)- ]] || refuse "has head branch '$branch', not <issue>-<slug>"
   issue=${BASH_REMATCH[1]}
-  body=$(pr_field body .body) || refuse "has no readable body"
+  body=$(pr_field '.body // ""') || refuse "has no readable body"
   closing_set
   [[ -n $closes ]] || refuse "has no closing reference (put 'Closes #$issue' in the body)"
   [[ $closes == "#$issue" ]] \
@@ -39,7 +45,7 @@ check_closing_reference() {
 }
 
 # Sets $labels; has_label <name> tests it.
-load_labels() { labels=$(pr_field labels '.labels[].name') || refuse "has no readable labels"; }
+load_labels() { labels=$(pr_field '.labels[].name') || refuse "has no readable labels"; }
 has_label() { grep -qxF -- "$1" <<<"$labels"; }
 
 # Sets $pr_files: one status, path and previous path (or empty) per line.
