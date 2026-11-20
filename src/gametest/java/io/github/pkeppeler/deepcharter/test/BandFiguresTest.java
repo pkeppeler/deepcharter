@@ -64,9 +64,12 @@ public class BandFiguresTest {
         return Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, level);
     }
 
-    /** A dark room of air, 5 high, on a stone floor, whose floor-level cell at {@code feet} is where a figure would stand. */
+    /**
+     * A dark room of air, 5 high, in a mass of plain stone with a stone floor, so that no glowing ore in the walls lights it: the cell at
+     * {@code feet} is where a figure would stand.
+     */
     private static void darkRoom(ServerLevel level, BlockPos feet) {
-        RoomCarver.carve(level, feet.offset(-3, -1, -3), feet.offset(3, -1, 3), Blocks.STONE.defaultBlockState());
+        RoomCarver.carve(level, feet.offset(-4, -1, -4), feet.offset(4, 6, 4), Blocks.STONE.defaultBlockState());
         RoomCarver.carve(level, feet.offset(-2, 0, -2), feet.offset(2, 4, 2), Blocks.AIR.defaultBlockState());
     }
 
@@ -140,7 +143,13 @@ public class BandFiguresTest {
             expect(helper, passes(level, surface) == 0, "a figure appears in the dark beside a player on the surface");
             // The player is in layer 2.
             mock.teleportTo(level, Vec3.atBottomCenterOf(two), 0f, 0f);
-            expect(helper, passes(level, two) > 0, "no figure appears in layer 2's dark with a player in layer 2");
+            expect(
+                    helper,
+                    passes(level, two) > 0,
+                    "no figure appears in layer 2's dark with a player in layer 2 (may appear %s, block light %d, ticking %s)",
+                    LamplessFigures.canAppearAt(level, two),
+                    level.getBrightness(LightLayer.BLOCK, two),
+                    level.isPositionEntityTicking(two));
             helper.succeed();
         });
         List<BlockPos> rooms = List.of(one, two, surface);
@@ -169,7 +178,7 @@ public class BandFiguresTest {
             LamplessFigures.clearRespawnDelays();
             // Made and counted in one tick: a figure with no player near it despawns on the next.
             List<LamplessFigure> placed = new ArrayList<>();
-            for (int i = 0; i < TUNING.maxPerLevel(); i++) {
+            for (int i = 0; i < TUNING.maxPerBand(); i++) {
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
                 figure.markNatural();
                 figure.setNoAi(true);
@@ -177,11 +186,11 @@ public class BandFiguresTest {
                 level.addFreshEntity(figure);
                 placed.add(figure);
             }
-            boolean oneFull = !LamplessFigures.levelHasRoom(level, true, one.getY());
-            boolean twoOpen = LamplessFigures.levelHasRoom(level, true, two.getY());
-            boolean railOpen = LamplessFigures.levelHasRoom(level, false, one.getY());
+            boolean oneFull = !LamplessFigures.bandHasRoom(level, true, one.getY());
+            boolean twoOpen = LamplessFigures.bandHasRoom(level, true, two.getY());
+            boolean railOpen = LamplessFigures.bandHasRoom(level, false, one.getY());
             placed.forEach(LamplessFigure::discard);
-            expect(helper, oneFull, "layer 1's band holds %d figures and takes another", TUNING.maxPerLevel());
+            expect(helper, oneFull, "layer 1's band holds %d figures and takes another", TUNING.maxPerBand());
             expect(helper, twoOpen, "the figures of layer 1 use up the room of layer 2");
             expect(helper, railOpen, "the figures of layer 1 hold back the rail's figure");
             helper.succeed();

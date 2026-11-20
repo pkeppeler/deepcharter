@@ -10,8 +10,8 @@ package io.github.pkeppeler.deepcharter.creature;
  * @param spawnRangeBlocks     a rail site spawns a figure when a player is within this many blocks of its centre
  * @param spawnClearanceBlocks how far from every player a rail figure may appear
  * @param maxPerSite           figures on one rail site
- * @param maxPerLevel          figures in one level, however they came
- * @param respawnDelayTicks    ticks after a figure was killed before the level spawns another
+ * @param maxPerBand           figures in one band of a level (a layer dimension is one band), however they came
+ * @param respawnDelayTicks    ticks after a figure was killed before its band spawns another
  * @param maxHealth            the figure's health: what the cutter, or a person's hand, has to take off it
  * @param cling                what a figure does to a dark pod
  * @param natural              how figures appear in the open dark of the layers
@@ -24,7 +24,7 @@ public record CreatureTuning(
         double spawnRangeBlocks,
         double spawnClearanceBlocks,
         int maxPerSite,
-        int maxPerLevel,
+        int maxPerBand,
         int respawnDelayTicks,
         float maxHealth,
         Cling cling,
@@ -41,7 +41,7 @@ public record CreatureTuning(
                 || spawnRangeBlocks <= 0
                 || spawnClearanceBlocks <= 0
                 || maxPerSite < 1
-                || maxPerLevel < maxPerSite
+                || maxPerBand < maxPerSite
                 || respawnDelayTicks < 0
                 || maxHealth <= 0) {
             throw new IllegalArgumentException("creature tuning out of range: " + this);

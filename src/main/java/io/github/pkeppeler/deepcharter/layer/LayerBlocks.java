@@ -82,16 +82,16 @@ public final class LayerBlocks {
     public static final TagKey<Block> GROUND = TagKey.create(Registries.BLOCK, id("layer_ground"));
 
     /**
-     * The ground of the layer that a level is, for a room that is sealed or filled in it: the layer's own rock, so that no block of vanilla stone shows
-     * in it. Any other level (the surface, a test's) has vanilla stone.
+     * The ground of the layer that holds height {@code y} in {@code level}, for a room that is sealed or filled there: the layer's own rock,
+     * so that no block of vanilla stone shows in it. Anywhere else (the surface, unbuilt depth, a test's level) it is vanilla stone.
      */
     public static Block groundOf(Level level, int y) {
         return layerGroundOf(level, y).orElse(Blocks.STONE);
     }
 
-    /** The rock of the layer that a level is; empty for a level that is no layer (the surface, a test's). Fails for a layer with no rock block yet. */
+    /** The rock of the layer that holds height {@code y} in {@code level}; empty where there is no layer (the surface, unbuilt depth, a test's level). Fails for a layer with no rock block yet. */
     public static Optional<Block> layerGroundOf(Level level, int y) {
-        return LayerChain.layerAt(level, level.getMinY()).map(band -> layerGround(band.layer()));
+        return LayerChain.layerAt(level, y).map(band -> layerGround(band.layer()));
     }
 
     /** The rock of layer {@code layer}, counted from 1; fails for a layer with no rock block yet. */

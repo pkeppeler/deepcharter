@@ -207,7 +207,7 @@ public final class PodDrill {
                     }
                 } else if (breakable(state)
                         && (state.getDestroySpeed(level, pos) < 0
-                                || (state.is(LayerBlocks.BREACH_CRUST) && !crustLeadsOn()))) {
+                                || (state.is(LayerBlocks.BREACH_CRUST) && !crustLeadsOn(pos)))) {
                     return false;
                 }
             }
@@ -275,10 +275,13 @@ public final class PodDrill {
             return !state.isAir() && !(state.getBlock() instanceof LiquidBlock);
         }
 
-        /** The last layer's crust has nothing under it: a hole would only drop the pod into the void. */
-        private boolean crustLeadsOn() {
-            Optional<Band> band = LayerChain.layerAt(level, level.getMinY());
-            return band.isEmpty() || band.get().layer() < LayerChain.count(level.registryAccess());
+        /**
+         * The last layer's crust has nothing under it: a hole would only drop the pod into the void. The layer is the band at the crust's Y,
+         * so layer 2's floor crust in the campaign world is refused too, with unbuilt depth below it.
+         */
+        private boolean crustLeadsOn(BlockPos crust) {
+            Optional<Band> band = LayerChain.layerAt(level, crust.getY());
+            return band.isEmpty() || band.get().layer() < LayerChain.layerCount(level);
         }
     }
 }

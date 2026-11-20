@@ -857,7 +857,7 @@ public class RetainedTest {
         BlockPos spot = slot(12);
         FarChunks.awaitEntityTicking(helper, nether, spot, () -> {
             List<LamplessFigure> naturals = new ArrayList<>();
-            for (int i = 0; i < TUNING.maxPerLevel(); i++) {
+            for (int i = 0; i < TUNING.maxPerBand(); i++) {
                 LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, nether);
                 figure.markNatural();
                 figure.setNoAi(true);
@@ -865,13 +865,13 @@ public class RetainedTest {
                 nether.addFreshEntity(figure);
                 naturals.add(figure);
             }
-            boolean naturalRoom = LamplessFigures.levelHasRoom(nether, true, spot.getY());
-            boolean railRoom = LamplessFigures.levelHasRoom(nether, false, spot.getY());
+            boolean naturalRoom = LamplessFigures.bandHasRoom(nether, true, spot.getY());
+            boolean railRoom = LamplessFigures.bandHasRoom(nether, false, spot.getY());
             naturals.forEach(LamplessFigure::discard);
             expect(
                     helper,
                     !naturalRoom,
-                    "a level that holds " + TUNING.maxPerLevel() + " natural figures takes another");
+                    "a level that holds " + TUNING.maxPerBand() + " natural figures takes another");
             expect(helper, railRoom, "the rail's figure is held back by natural figures");
             helper.succeed();
         });

@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.fuel.FuelPump;
 import io.github.pkeppeler.deepcharter.hangar.HangarEvents;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -295,10 +296,23 @@ public final class HandbookTriggers {
         }
     }
 
-    /** Below the colony's ground by the tuned depth, or in a layer under the overworld, which is deeper still. */
+    /**
+     * Below the colony's ground by the tuned depth, or in a layer, which is deeper still: the layer is the band at the pod's Y, so a
+     * pod in a layer band of the campaign world counts, and one in the surface band does not until it is that far down. A level outside
+     * the chain (the Nether, the End) counts at any height.
+     */
     private static boolean deepEnough(PodEntity pod, ColonySite.Placed colony) {
-        return pod.level().dimension() != Level.OVERWORLD
+        Level level = pod.level();
+        if (LayerChain.layerAt(level, pod.getBlockY()).isPresent()) {
+            return true;
+        }
+        return !isOverworldBand(level, pod.getBlockY())
                 || pod.getY() <= colony.groundY() - HandbookTuning.DEFAULT.drillDownBlocks();
+    }
+
+    /** Whether {@code y} in {@code level} is in the surface band of the chain, which the colony's ground is measured in. */
+    private static boolean isOverworldBand(Level level, int y) {
+        return LayerChain.bandAt(level, y).filter(band -> !band.isLayer()).isPresent();
     }
 
     /** On the colony's pad: inside its square, from just under the ground to the height it is cleared to. */

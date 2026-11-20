@@ -134,7 +134,7 @@ public class EntityQueryAuditTest {
                 new UnloadedChunk.Stages(
                         () -> {
                             floor(level, far, 3);
-                            for (int i = 0; i < CREATURES.maxPerLevel(); i++) {
+                            for (int i = 0; i < CREATURES.maxPerBand(); i++) {
                                 LamplessFigure figure = TestEntities.create(
                                         CreatureRegistry.LAMPLESS_FIGURE, level, EntitySpawnReason.EVENT);
                                 figure.setPos(Vec3.atBottomCenterOf(far.above()));
@@ -142,15 +142,15 @@ public class EntityQueryAuditTest {
                                 level.addFreshEntity(figure);
                                 figures.add(figure.getUUID());
                             }
-                            if (LamplessFigures.levelHasRoom(level, false, far.getY())) {
+                            if (LamplessFigures.bandHasRoom(level, false, far.getY())) {
                                 throw failure(
                                         helper,
                                         "the level holds its %d figures and still has room for another",
-                                        CREATURES.maxPerLevel());
+                                        CREATURES.maxPerBand());
                             }
                         },
                         () -> {
-                            if (!LamplessFigures.levelHasRoom(level, false, far.getY())) {
+                            if (!LamplessFigures.bandHasRoom(level, false, far.getY())) {
                                 throw failure(
                                         helper, "the figures of a chunk that unloaded still use up the level's room");
                             }

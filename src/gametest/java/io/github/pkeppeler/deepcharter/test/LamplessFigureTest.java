@@ -416,12 +416,12 @@ public class LamplessFigureTest {
         });
     }
 
-    /** A level holds {@code maxPerLevel} figures however many sites ask. The End has no fades, no tick spawns and no other figure test. */
+    /** A level holds {@code maxPerBand} figures however many sites ask. The End has no fades, no tick spawns and no other figure test. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
     public void aLevelHoldsNoMoreFiguresThanItsCap(GameTestHelper helper) {
         ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), Level.END);
         List<StructureSite> sites = new ArrayList<>();
-        for (int i = 0; i <= TUNING.maxPerLevel(); i++) {
+        for (int i = 0; i <= TUNING.maxPerBand(); i++) {
             sites.add(new StructureSite(StructureKind.RAILS, slot(10 + i), true, 4, 0L));
         }
         int[] ready = {0};
@@ -438,14 +438,14 @@ public class LamplessFigureTest {
                 int inLevel = level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> true)
                         .size();
                 spawned.forEach(LamplessFigure::discard);
-                if (spawned.size() != TUNING.maxPerLevel() || inLevel != TUNING.maxPerLevel()) {
+                if (spawned.size() != TUNING.maxPerBand() || inLevel != TUNING.maxPerBand()) {
                     throw failure(
                             helper,
                             "%d sites asked: %d figures were spawned and %d stood in the level, not %d",
                             sites.size(),
                             spawned.size(),
                             inLevel,
-                            TUNING.maxPerLevel());
+                            TUNING.maxPerBand());
                 }
                 helper.succeed();
             });
@@ -498,7 +498,7 @@ public class LamplessFigureTest {
             List<? extends LamplessFigure> here = figuresIn(level, site);
             int inLevel = level.getEntities(CreatureRegistry.LAMPLESS_FIGURE, figure -> true)
                     .size();
-            if (here.size() > TUNING.maxPerSite() || inLevel > TUNING.maxPerLevel()) {
+            if (here.size() > TUNING.maxPerSite() || inLevel > TUNING.maxPerBand()) {
                 throw failure(helper, "%d figures on the rail site and %d in the level", here.size(), inLevel);
             }
             if (level.getGameTime() - firstSeen[0] >= 3L * TUNING.spawnIntervalTicks() && here.size() == 1) {

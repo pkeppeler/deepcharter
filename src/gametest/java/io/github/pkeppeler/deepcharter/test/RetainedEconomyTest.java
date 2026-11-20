@@ -189,12 +189,12 @@ public class RetainedEconomyTest {
     /**
      * Figures placed in a run in a layer whose roll passes {@code chance}: the pinned rate, held down by the two limits the tuning sets. The
      * delay after a kill allows one placement per {@code respawnDelayTicks}; and the figures that are not met are not killed, so they stand
-     * until the cap, which leaves {@code maxPerLevel / (1 - MEET_SHARE)} placements before the level is full.
+     * until the cap, which leaves {@code maxPerBand / (1 - MEET_SHARE)} placements before the level is full.
      */
     private static double placedPerRun(CreatureTuning tuning, double chance) {
         double perMinute =
                 Math.min(PLACED_PER_MINUTE_PER_CHANCE * chance, 60.0 * TICKS_PER_SECOND / tuning.respawnDelayTicks());
-        return Math.min(perMinute * RUN_MINUTES, tuning.maxPerLevel() / (1 - MEET_SHARE));
+        return Math.min(perMinute * RUN_MINUTES, tuning.maxPerBand() / (1 - MEET_SHARE));
     }
 
     /** Grabs a run of {@code RUN_MINUTES} meets in a layer whose roll passes {@code chance} of the spawner's tries. */
@@ -238,11 +238,11 @@ public class RetainedEconomyTest {
                     LAYER_TWO_GRABS_MIN,
                     LAYER_TWO_GRABS_MAX);
         }
-        if (placedPerRun(tuning, tuning.natural().chancePerTry()) >= tuning.maxPerLevel() / (1 - MEET_SHARE)) {
+        if (placedPerRun(tuning, tuning.natural().chancePerTry()) >= tuning.maxPerBand() / (1 - MEET_SHARE)) {
             throw failure(
                     helper,
                     "the cap of %d binds a layer 2 run: the model's placements stop at the cap, not at the roll",
-                    tuning.maxPerLevel());
+                    tuning.maxPerBand());
         }
         if (twoGrabs <= oneGrabs) {
             throw failure(

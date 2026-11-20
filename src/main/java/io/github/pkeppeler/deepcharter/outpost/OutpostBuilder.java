@@ -4,12 +4,13 @@ import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import java.util.Optional;
-import java.util.OptionalInt;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -23,7 +24,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Builds the outpost of a charter at the floor of layer 1, the start of layer 2: a lit steel hall with the colony's fuel pump and ore processor
+ * Builds the outpost of a charter at the floor of layer 1 (the band at the clicked block's Y, in a campaign world), the start of layer 2: a lit steel hall with the colony's fuel pump and ore processor
  * (the pump and the sell terminal of SPEC section 11) against its north wall. It is cut into the rock round the block that the kit is used on,
  * which is the floor of the hall.
  *
@@ -54,14 +55,14 @@ public final class OutpostBuilder {
 
     /** Builds the outpost on the top of {@code clicked}, or returns why not. Checks everything before it changes anything. */
     public static Optional<Component> build(ServerPlayer player, ServerLevel level, BlockPos clicked, Direction face) {
-        OptionalInt layer = OutpostRates.layerOf(level, clicked.getY());
-        if (layer.isEmpty() || layer.getAsInt() != LAYER) {
+        Optional<Band> band = LayerChain.layerAt(level, clicked.getY()).filter(found -> found.layer() == LAYER);
+        if (band.isEmpty()) {
             return refusal("not_here");
         }
         if (face != Direction.UP) {
             return refusal("not_on_top");
         }
-        int crustTop = level.getMinY() + LayerTuning.DEFAULT.crustThickness() - 1;
+        int crustTop = band.get().minY() + LayerTuning.DEFAULT.crustThickness() - 1;
         if (clicked.getY() < crustTop || clicked.getY() > crustTop + OutpostTuning.DEFAULT.floorBand()) {
             return Optional.of(
                     Component.translatable("message.deepcharter.outpost.not_floor", OutpostTuning.DEFAULT.floorBand()));

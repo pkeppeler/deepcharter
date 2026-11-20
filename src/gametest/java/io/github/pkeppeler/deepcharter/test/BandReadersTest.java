@@ -210,7 +210,7 @@ public class BandReadersTest {
                 above.slabsAway() == 7 && above.crustSlabs() == crust && Math.abs(above.cost() - crust * ROW) < 0.01f,
                 "the warning above layer 1's floor is %s",
                 above);
-        PodBrace.Warning inside = PodBrace.status(pod(level, ONE.minY() + 1, 10f), true)
+        PodBrace.Warning inside = PodBrace.status(pod(level, ONE.minY() + 1, ROW), true)
                 .warning()
                 .orElseThrow(() -> failure(helper, "no crust warning in layer 1's crust"));
         expect(helper, inside.slabsAway() == 0 && inside.crustSlabs() == 1, "the warning in the crust is %s", inside);
