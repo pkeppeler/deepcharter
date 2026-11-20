@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import static io.github.pkeppeler.deepcharter.test.support.BoreBot.FORWARD;
-import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SPRINT;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;

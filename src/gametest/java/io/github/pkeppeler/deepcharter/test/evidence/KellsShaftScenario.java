@@ -1,10 +1,10 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
-import static io.github.pkeppeler.deepcharter.test.support.BoreBot.FORWARD;
-import static io.github.pkeppeler.deepcharter.test.support.BoreBot.IDLE;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.ROTOR;
-import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SPRINT;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.lavaToLine;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.IDLE;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;

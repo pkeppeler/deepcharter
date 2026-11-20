@@ -28,8 +28,6 @@ final class TowStage {
     static final int CHAT_FADE_TICKS = 220;
 
     static final int TICKS_PER_FRAME = 3;
-    static final Input FORWARD = new Input(true, false, false, false, false, false, false);
-    static final Input JUMP = new Input(false, false, false, false, true, false, false);
     static final Input FORWARD_JUMP = new Input(true, false, false, false, true, false, false);
     /** The mock pilot's yaws: it drives south, and turns to drive east or back north. */
     static final float SOUTH = 0f;

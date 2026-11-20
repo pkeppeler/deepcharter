@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 
 import io.github.pkeppeler.deepcharter.client.pod.TowChainRenderer;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -24,7 +25,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -44,8 +44,6 @@ public class TowingClientTest implements FabricClientGameTest {
     private static final double MIN_FOLLOWED_BLOCKS = 5;
     /** What the client's pods may disagree by: each one is interpolated from what the server last sent. */
     private static final double CLIENT_LAG_BLOCKS = 1.5;
-
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
 
     /** The two pods by UUID: a pod whose chunk is unloaded and loaded again comes back as a new entity with a new id. */
     private record Rig(UUID tower, UUID towed) {}

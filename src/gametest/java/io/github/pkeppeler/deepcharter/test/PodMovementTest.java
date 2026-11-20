@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodMovement;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -25,10 +28,8 @@ public class PodMovementTest {
     private static final float SOUTH = 0f;
     private static final float WEST = 90f;
 
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
     private static final Input FORWARD_RIGHT = new Input(true, false, false, true, false, false, false);
     private static final Input RIGHT = new Input(false, false, false, true, false, false, false);
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
     private static final Input FORWARD_JUMP = new Input(true, false, false, false, true, false, false);
 
     /** A pod standing on a small stone floor, with a mock pilot seated and looking along {@code yaw}. */

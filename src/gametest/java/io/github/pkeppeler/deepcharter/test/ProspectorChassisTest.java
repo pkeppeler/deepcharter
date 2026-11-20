@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -86,9 +89,7 @@ public class ProspectorChassisTest {
     /** Ticks a pod needs, once its chunk ticks, to fall through the shaft and cross. */
     private static final int CROSSING_TICKS = 200;
 
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
     private static final Input FORWARD_AND_SPRINT = new Input(true, false, false, false, false, false, true);
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
     private static final long PRICE = 1_390;
     private static final int CATALYSTS = 3;
 

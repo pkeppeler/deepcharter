@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SNEAK;
+
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -28,7 +30,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
@@ -37,7 +38,6 @@ import net.minecraft.world.phys.Vec3;
 /** Server GameTests for pod spawn, mount, dismount, seats and save/load. */
 public class PodShellTest {
     private static final int EXPECTED_DATA_FIELDS = 11;
-    private static final Input SNEAK = new Input(false, false, false, false, false, true, false);
 
     @GameTest
     public void podSpawnsWithMoleHitboxAndFullGauges(GameTestHelper helper) {

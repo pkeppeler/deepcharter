@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -20,7 +21,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -51,7 +51,6 @@ public class PodMovementClientTest implements FabricClientGameTest {
     private static final int PAD_HEADROOM = 10;
     private static final Logger LOGGER = LoggerFactory.getLogger(PodMovementClientTest.class);
     private static final double MOCK_OFFSET_BLOCKS = 8;
-    private static final Input MOCK_FORWARD = new Input(true, false, false, false, false, false, false);
 
     /** Seat the real player in a new pod, and the mock in another pod beside it. Returns the mock pod's entity id. */
     public static int mountBoth(TwoPlayerServer two) {
@@ -124,7 +123,7 @@ public class PodMovementClientTest implements FabricClientGameTest {
     }
 
     public static void driveMock(TwoPlayerServer two) {
-        two.server().runOnServer(server -> two.mock().setInput(MOCK_FORWARD));
+        two.server().runOnServer(server -> two.mock().setInput(FORWARD));
     }
 
     private static ServerPlayer realPlayer(MinecraftServer server, UUID mockId) {

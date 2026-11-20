@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -70,7 +72,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.Display;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
@@ -93,7 +94,6 @@ import org.jspecify.annotations.Nullable;
 public class ColonyTest {
     private static final int DRILL_MARGIN_TICKS = 1000;
     private static final int DRILL_MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + DRILL_MARGIN_TICKS;
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
     private static final float EAST = -90f;
     /** The world spawn right after the colony was built. */
     private static final AtomicReference<@Nullable GlobalPos> SPAWN_AT_START = new AtomicReference<>();

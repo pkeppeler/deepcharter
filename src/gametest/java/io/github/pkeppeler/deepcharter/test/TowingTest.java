@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
@@ -49,7 +51,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -89,8 +90,6 @@ public class TowingTest {
     private static final int CHUNK_X = 15600;
     /** Blocks that the floor of a shaft's gallery is above the floor of its shaft. */
     private static final int GALLERY_FLOOR = 10;
-
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
 
     static {
         BreachEvents.CROSSED.register((entity, from, to, fromLayer, toLayer) -> CROSSED.add(entity.getUUID()));

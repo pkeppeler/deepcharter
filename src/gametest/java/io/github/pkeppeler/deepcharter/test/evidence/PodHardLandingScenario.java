@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+
 import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
@@ -37,7 +39,6 @@ public class PodHardLandingScenario extends EvidenceScenario {
     private static final int FALL_TICKS_PER_FRAME = 2;
     private static final int MAX_TICKS = 900;
     private static final double BRAKE_ABOVE_SINK = 0.5;
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
 
     @Override
     protected String name() {

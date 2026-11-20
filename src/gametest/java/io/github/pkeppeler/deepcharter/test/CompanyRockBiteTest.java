@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.layer.Depth;
@@ -28,7 +30,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -44,7 +45,6 @@ public class CompanyRockBiteTest {
     private static final int FLOOR = 60;
     private static final int ROOM = 8;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 900;
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     /** The pilot and the room; {@link #pod} stays null until the far chunk ticks entities, so a tick callback must check it. */
     private static final class Bite {
