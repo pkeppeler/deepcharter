@@ -66,10 +66,9 @@ public final class LayerStructures {
         if (bands.isEmpty()) {
             return;
         }
-        // The pad is chosen before the build sets its first block, and the build loads the pad's chunks to read the
-        // ground: a chunk that
-        // waited for the finished colony would lose its sites for good, and in the campaign world those chunks hold
-        // both layers.
+        // The pad is chosen before the build sets a block, and the build loads the pad's chunks to read the
+        // ground. A chunk that waited for the finished colony would lose its sites for good, and in the
+        // campaign world those chunks hold both layers.
         Optional<BlockPos> conduit = Colony.plannedAnchor(level.getServer(), ColonyAnchor.CONDUIT);
         if (conduit.isPresent()) {
             drawSites(level, chunk, bands, conduit.get());

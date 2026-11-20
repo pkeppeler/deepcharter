@@ -7,6 +7,7 @@ import com.google.errorprone.annotations.FormatString;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
@@ -21,6 +22,9 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.RoomSeal;
 import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.market.WorkOrder;
+import io.github.pkeppeler.deepcharter.market.WorkOrders;
+import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.outpost.OutpostBuilder;
 import io.github.pkeppeler.deepcharter.outpost.OutpostData;
 import io.github.pkeppeler.deepcharter.outpost.OutpostRates;
@@ -35,6 +39,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.List;
@@ -439,6 +444,59 @@ public class BandReadersTest {
         helper.succeed();
     }
 
+    /**
+     * The Morale Initiative opens at the top of layer 3, depth 575, as the band table gives it for the level the player is in: a charter at
+     * 574 is not offered it and one at 575 is. The cockpit's depth gauge is the pod's depth out of the deepest block, 575.
+     */
+    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void workOrdersOpenAndTheGaugeEndsAtTheDepthsOfTheBandTable(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        MinecraftServer server = level.getServer();
+        MockPlayer mock = MockPlayers.join(helper, "band-orders");
+        if (Charters.found(
+                        server,
+                        mock.player().getUUID(),
+                        "Band Orders " + UUID.randomUUID().toString().substring(0, 8))
+                .isPresent()) {
+            throw failure(helper, "founding the charter should succeed");
+        }
+        CharterId charter = Charters.charterOfOrThrow(server, mock.player().getUUID())
+                .orElseThrow()
+                .id();
+        BlockPos processor = new BlockPos(23448, ONE.minY() + 100, Z);
+        mock.teleportTo(level, Vec3.atBottomCenterOf(processor), 0f, 0f);
+        for (int depth : new int[] {574, 575}) {
+            Charters.recordDeepestPoint(server, charter, depth);
+            boolean offered = WorkOrders.view(
+                            server,
+                            mock.player(),
+                            Charters.charterOfOrThrow(server, mock.player().getUUID()),
+                            processor)
+                    .orders()
+                    .stream()
+                    .anyMatch(entry -> entry.order() == WorkOrder.MORALE_INITIATIVE);
+            expect(
+                    helper,
+                    offered == (depth == 575),
+                    "a charter at depth %d is %s the Morale Initiative",
+                    depth,
+                    offered ? "offered" : "not offered");
+        }
+        PodEntity pod = pod(level, TWO.minY(), 10f);
+        expect(
+                helper,
+                Math.abs(CockpitReading.of(pod, 0).depth() - 1.0) < 1e-9,
+                "the gauge at layer 2's floor reads %s",
+                CockpitReading.of(pod, 0).depth());
+        pod.setPos(23128, ONE.maxY(), Z);
+        expect(
+                helper,
+                Math.abs(CockpitReading.of(pod, 0).depth() - 128.0 / 575.0) < 1e-9,
+                "the gauge at layer 1's top reads %s",
+                CockpitReading.of(pod, 0).depth());
+        helper.succeed();
+    }
+
     // ---- Zones ----
 
     @GameTest(dimension = SAMPLE)
@@ -466,17 +524,11 @@ public class BandReadersTest {
     public void anOverworldThatIsNotTheCampaignIsOneSurfaceBand(GameTestHelper helper) {
         ServerLevel overworld = helper.getLevel().getServer().overworld();
         expect(helper, !LayerChain.isCampaign(overworld), "the test overworld is a campaign level");
-        for (int y : new int[] {overworld.getMinY(), 64, overworld.getMaxY()}) {
+        LayerChain.Band whole = TestLayers.band(overworld, LayerChain.SURFACE);
+        for (int y : new int[] {whole.minY(), 64, whole.minY() + whole.height() - 1}) {
             LayerChain.Band band =
                     LayerChain.bandAt(overworld, y).orElseThrow(() -> failure(helper, "no band in the overworld"));
-            expect(
-                    helper,
-                    band.layer() == LayerChain.SURFACE
-                            && band.minY() == overworld.getMinY()
-                            && band.height() == overworld.getHeight(),
-                    "the overworld at y=%d is %s",
-                    y,
-                    band);
+            expect(helper, band.equals(whole), "the overworld at y=%d is %s, expected %s", y, band, whole);
         }
         expect(helper, LayerChain.layerAt(overworld, 64).isEmpty(), "the overworld surface is a layer");
         helper.succeed();
@@ -490,6 +542,45 @@ public class BandReadersTest {
         var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
         server.getCommands().getDispatcher().execute(command, source);
         return mock.player().level();
+    }
+
+    /** A place with gas in it is no place to stand: goto passes over a pocket of gas where it would have put the player, and never ends in one. */
+    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void gotoNeverStandsAPlayerInGas(GameTestHelper helper) throws CommandSyntaxException {
+        int x = 23512;
+        ServerLevel level = helper.getLevel();
+        int floor = ONE.maxY() - 6;
+        BlockPos feet = new BlockPos(x, floor + 1, Z);
+        MockPlayer mock = MockPlayers.join(helper, "band-goto-gas");
+        mock.player().setPos(x + 0.5, CampaignBands.SURFACE.minY() + 100, Z + 0.5);
+        FarChunks.awaitEntityTicking(helper, level, feet, () -> {
+            try {
+                // A bed of stone with the only room in the column at the floor's top, and gas in the room's lower cell.
+                RoomCarver.carve(level, feet.offset(0, -1, 0), feet.offset(0, 1, 0), Blocks.STONE.defaultBlockState());
+                RoomCarver.carve(level, feet.above(), feet.above(), Blocks.AIR.defaultBlockState());
+                RoomCarver.carve(level, feet, feet, HazardBlocks.GAS_POCKET.defaultBlockState());
+                RoomCarver.carve(
+                        level, feet.above(2), feet.above(ONE.maxY() - feet.getY()), Blocks.STONE.defaultBlockState());
+                op(helper, mock, "deepcharter layer goto 1");
+                BlockPos at = mock.player().blockPosition();
+                expect(
+                        helper,
+                        !level.getBlockState(at).is(HazardBlocks.GAS_POCKET)
+                                && !level.getBlockState(at.above()).is(HazardBlocks.GAS_POCKET),
+                        "goto stood the player in gas at %s",
+                        at.toShortString());
+                expect(
+                        helper,
+                        at.getY() >= ONE.minY() + CampaignBands.crustRows() && at.getY() <= ONE.maxY(),
+                        "goto put the player at y=%d, outside layer 1",
+                        at.getY());
+            } catch (CommandSyntaxException e) {
+                throw failure(helper, "goto failed: %s", e.getMessage());
+            } finally {
+                mock.leave();
+            }
+            helper.succeed();
+        });
     }
 
     /** In the campaign world goto stays in the level and lands in the layer's band, on a floor, with room to stand. */

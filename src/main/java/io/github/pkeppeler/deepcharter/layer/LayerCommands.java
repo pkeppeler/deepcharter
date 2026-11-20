@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.Dynamic2CommandExceptionType;
 import io.github.pkeppeler.deepcharter.command.FeatureCommands;
+import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import java.util.Set;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -113,6 +114,7 @@ public final class LayerCommands {
     private static boolean isRoom(ServerLevel level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
         return state.getFluidState().isEmpty()
+                && !state.is(HazardBlocks.GAS_POCKET)
                 && state.getCollisionShape(level, pos).isEmpty();
     }
 }

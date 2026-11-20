@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands.Band;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -28,6 +29,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -177,6 +179,22 @@ public class BandStructuresTest {
             if (!unmet.isEmpty()) {
                 throw failure(helper, "the chunks held until the pad was chosen were not drawn: %s", unmet);
             }
+            // Each held chunk is drawn once: a second choice of the pad, or a second release, places no second pod.
+            ColonyEvents.BEGUN.invoker().onBegun(server, chosen.started().orElseThrow());
+            sites.keySet().stream()
+                    .filter(site -> site.kind() == StructureKind.WRECK)
+                    .forEach(site -> {
+                        // entity-query: a test reads the pods of a bay it generated, in a chunk it loaded this tick
+                        int pods = level.getEntitiesOfClass(PodEntity.class, new AABB(site.origin()).inflate(3))
+                                .size();
+                        if (pods != 1) {
+                            throw failure(
+                                    helper,
+                                    "the wreck bay at %s holds %d pods after the pad was chosen twice",
+                                    site.origin().toShortString(),
+                                    pods);
+                        }
+                    });
         });
         helper.succeed();
     }
