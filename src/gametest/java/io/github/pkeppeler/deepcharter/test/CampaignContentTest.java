@@ -363,14 +363,7 @@ public class CampaignContentTest {
         for (int number = 1; number <= CampaignBands.LAYERS.size(); number++) {
             Band band = CampaignBands.layer(number);
             for (int zone = 0; zone < Zones.COUNT; zone++) {
-                String id = Zones.of(
-                                number,
-                                band.minY(),
-                                band.height(),
-                                Zones.span(band.minY(), band.height(), zone).low())
-                        .orElseThrow()
-                        .id()
-                        .toString();
+                String id = zoneBiomeId(number, zone);
                 bandOfBiome.put(id, band);
                 zoneOfBiome.put(id, new int[] {number, zone});
             }
@@ -536,22 +529,27 @@ public class CampaignContentTest {
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theLamplessFigureSpawnsInTheZonesOfBothLayersAndNowhereElse(GameTestHelper helper) throws IOException {
         for (int number = 1; number <= CampaignBands.LAYERS.size(); number++) {
-            Band band = CampaignBands.layer(number);
             for (int zone = 0; zone < Zones.COUNT; zone++) {
-                String id = Zones.of(
-                                number,
-                                band.minY(),
-                                band.height(),
-                                Zones.span(band.minY(), band.height(), zone).low())
-                        .orElseThrow()
-                        .id()
-                        .toString();
+                String id = zoneBiomeId(number, zone);
                 expect(helper, spawnsFigure(helper, id), "%s lacks the lampless figure", id);
             }
         }
         expect(helper, !spawnsFigure(helper, UNBUILT_BIOME), "unbuilt depth spawns the figure");
         expect(helper, !spawnsFigure(helper, "deepcharter:regolith_plains"), "the surface spawns the figure");
         helper.succeed();
+    }
+
+    /** The id of the zone biome of {@code zone} in layer {@code number}, found from the zone's own rows. */
+    private static String zoneBiomeId(int number, int zone) {
+        Band band = CampaignBands.layer(number);
+        return Zones.of(
+                        number,
+                        band.minY(),
+                        band.height(),
+                        Zones.span(band.minY(), band.height(), zone).low())
+                .orElseThrow()
+                .id()
+                .toString();
     }
 
     private static boolean spawnsFigure(GameTestHelper helper, String biome) throws IOException {

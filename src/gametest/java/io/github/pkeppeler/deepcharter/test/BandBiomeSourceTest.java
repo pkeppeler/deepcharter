@@ -12,7 +12,6 @@ import net.minecraft.core.QuartPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeResolver;
 import net.minecraft.world.level.biome.Biomes;
@@ -35,12 +34,14 @@ public class BandBiomeSourceTest {
     public void theBandTableAnswersTheHeightRuleAtEveryCell(GameTestHelper helper) {
         HolderLookup.RegistryLookup<Biome> biomes =
                 helper.getLevel().registryAccess().lookupOrThrow(Registries.BIOME);
-        Holder<Biome> unbuilt = biome(biomes, Biomes.THE_VOID);
-        Holder<Biome> surfaceBiome = biome(biomes, Biomes.PLAINS);
-        List<Holder<Biome>> upper =
-                List.of(biome(biomes, Biomes.DESERT), biome(biomes, Biomes.FOREST), biome(biomes, Biomes.TAIGA));
-        List<Holder<Biome>> lower =
-                List.of(biome(biomes, Biomes.SWAMP), biome(biomes, Biomes.BEACH), biome(biomes, Biomes.SNOWY_PLAINS));
+        Holder<Biome> unbuilt = biomes.getOrThrow(Biomes.THE_VOID);
+        Holder<Biome> surfaceBiome = biomes.getOrThrow(Biomes.PLAINS);
+        List<Holder<Biome>> upper = List.of(
+                biomes.getOrThrow(Biomes.DESERT), biomes.getOrThrow(Biomes.FOREST), biomes.getOrThrow(Biomes.TAIGA));
+        List<Holder<Biome>> lower = List.of(
+                biomes.getOrThrow(Biomes.SWAMP),
+                biomes.getOrThrow(Biomes.BEACH),
+                biomes.getOrThrow(Biomes.SNOWY_PLAINS));
         MultiNoiseBiomeSource surface = MultiNoiseBiomeSource.createFromList(
                 new Climate.ParameterList<>(List.of(Pair.of(Climate.parameters(0, 0, 0, 0, 0, 0, 0), surfaceBiome))));
 
@@ -97,10 +98,6 @@ public class BandBiomeSourceTest {
             }
         }
         return unbuilt;
-    }
-
-    private static Holder<Biome> biome(HolderLookup.RegistryLookup<Biome> biomes, ResourceKey<Biome> key) {
-        return biomes.getOrThrow(key);
     }
 
     /** A sampler that reads 0 everywhere: the surface source here has one entry, so it answers that whatever the climate. */

@@ -79,9 +79,7 @@ public class CampaignCostTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void theCostWorldsBothRunTheZoneFill(GameTestHelper helper) {
         for (String world : FILLED_WORLDS) {
-            ServerLevel level = ClientLight.serverLevel(
-                    helper.getLevel().getServer(),
-                    ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", world)));
+            ServerLevel level = world(helper, world);
             // Not the column of the colony or of another test's cell: the middle of the sample, as ColumnCost samples
             // it.
             LevelChunk chunk = level.getChunk(CHUNK, CHUNK);
