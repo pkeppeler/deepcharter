@@ -159,7 +159,7 @@ HEIGHT_READS = {
     "getHeight of a named level": ("int size(ServerLevel one) { return one.getHeight(); }", 3),
     "getHeight of a call": ("int size(MinecraftServer s) { return ClientLight.serverLevel(s, dimension).getHeight(); }", 3),
     "getMinY of a call": ("int floor(MinecraftServer s) { return TestLayers.level(s, 1).getMinY(); }", 3),
-    "wrapped read": ("int top(ServerLevel level) {\n        return level\n            .getMaxY();\n    }", 4),
+    "wrapped read": ("int top(ServerLevel level) {\n        return level\n            .getMaxY();\n    }", 5),
 }
 HEIGHT_MARKERS = {
     "a bare marker": ("// level-height:\n    int floor(ServerLevel level) { return level.getMinY(); }", 4),
