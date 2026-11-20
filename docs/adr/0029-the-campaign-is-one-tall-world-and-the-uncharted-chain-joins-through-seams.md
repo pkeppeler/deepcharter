@@ -82,7 +82,7 @@ Split of the gap by feature (JFR worker-thread samples with `-XX:+DebugNonSafepo
 | Band biome source | 4% |
 | Structures, cave stalks, other features | about 0 |
 | Light (cheaper in the campaign world: 530 samples fewer) | -11% |
-| Frames in none of these | 3% |
+| Frames in none of these | 2% |
 
 Ablations (campaign cost per block of height, as the change from 1.37x, the mean of 2 runs on the unchanged code, which is not the 1.29x above): no zone fill about -0.34, no layer-rock rule about -0.22, both off 0.85x. Both off reads below 1.0x because the remaining content (surface, structures, stalks, biome source) is net cheaper than `tall_baseline`.
 
@@ -96,7 +96,7 @@ Quiet measurement: the same method as above, but 6 rounds per run against the ea
 | 2 | campaign, baseline | 0.96 | 91.87 / 120.61 | 126.54 / 140.39 | 1.16x | 1.01x |
 | 3 | baseline, campaign | 0.95 | 85.26 / 109.22 | 112.01 / 148.51 | 1.36x | 1.18x |
 
-Pooled over the 18 rounds: `tall_baseline` min 85.26, median 118.57; `campaign_sample` min 112.01, median 151.45. That is 1.28x per column and 1.11x per block of height on the medians (the minima give 1.31x and 1.14x). The runs spread from 1.01x to 1.20x per block. Within a run the rounds drift: the mean of the campaign world's rounds rises from 140 ms in rounds 1 to 3 to 176 ms in rounds 4 to 6, the baseline's from 118 to 123 (means, not medians). Per block that is about 1.10x in rounds 1 to 3 and about 1.25x in rounds 4 to 6; the pooled mean is 1.139x. The cause of the drift is open and is tracked on #781.
+Pooled over the 18 rounds: `tall_baseline` min 85.26, median 118.57; `campaign_sample` min 112.01, median 151.45. That is 1.28x per column and 1.11x per block of height on the medians (the minima give 1.31x and 1.14x). The runs spread from 1.01x to 1.20x per block. Within a run the rounds drift: the median of the campaign world's rounds rises from 141 ms in rounds 1 to 3 to 180 ms in rounds 4 to 6, the baseline's from 111 to 125 (the means move from 140 to 176 and from 118 to 123). On those medians, per block, that is about 1.10x in rounds 1 to 3 and about 1.25x in rounds 4 to 6; the pooled mean of all 18 rounds is 1.139x. The cause of the drift is open and is tracked on #781.
 
 Verdict: against the 1.15x per-block bar, the pooled medians pass, at 1.11x, but the pass is inside the run-to-run noise. The margin is small: two of the three runs read above 1.15x alone (1.20x and 1.18x, and the test's own per-run assertion failed on them), and the pooled minima read 1.14x. What is left of the gap is mostly layer rock, the vanilla `buildSurface` writes of the layers' own stone.
 
