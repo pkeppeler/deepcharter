@@ -128,6 +128,22 @@ ecosystem = "Maven"
 license.ignore = true
 reason = "Checkstyle tool classpath, build-time only, never shipped: Checkstyle is LGPL-2.1-or-later, Saxon-HE is MPL-2.0, javassist is MPL-1.1 or LGPL-2.1 or Apache-2.0, reflections is WTFPL"
 
+[[PackageOverrides]]
+name = "com.google.guava:guava"
+version = "33.6.0-jre"
+ecosystem = "Maven"
+vulnerability.ignore = true
+effectiveUntil = 2026-12-13
+reason = "GHSA-xxph-c9ww-hj94: deserialization of CompactHashMap, CompactHashSet and MapMakerInternalMap allocates an unvalidated size. Mojang pins Guava 33.6.0-jre in Minecraft 26.3's manifest, so only a Minecraft update changes it; forcing the fixed 33.7.2 would compile and test against a Guava the player's game does not run. It is on the dev and test classpath, and the player's game ships its own copy. Build-tool Guava (the buildscript, Error Prone and Checkstyle classpaths) is forced to 33.7.2 in build.gradle.kts"
+
+[[PackageOverrides]]
+name = "com.google.guava:guava"
+version = "32.1.3-jre"
+ecosystem = "Maven"
+vulnerability.ignore = true
+effectiveUntil = 2026-12-13
+reason = "GHSA-xxph-c9ww-hj94 (see the 33.6.0-jre entry): palantir-java-format brings Guava 32.1.3-jre into Spotless's detached configuration, which no lock, constraint or resolution rule reaches. It runs on our own source at build time, never shipped, and deserializes nothing. Only a palantir-java-format update changes it"
+
 [[IgnoredVulns]]
 id = "GHSA-343h-94h5-c4wr"
 ignoreUntil = 2026-12-13

@@ -9,6 +9,13 @@ buildscript {
 		lockAllConfigurations()
 		lockMode = LockMode.STRICT
 	}
+	dependencies {
+		constraints {
+			// The dependency-analysis plugin brings Guava below 33.7.2 (GHSA-xxph-c9ww-hj94). Keep equal to libs.versions.guava;
+			// a buildscript block cannot read the catalog.
+			add("classpath", "com.google.guava:guava:33.7.2-jre")
+		}
+	}
 }
 
 plugins {
@@ -149,6 +156,14 @@ val fabricApiModules = mapOf(
 )
 
 dependencies {
+	// Error Prone and Checkstyle bring Guava below 33.7.2 (GHSA-xxph-c9ww-hj94). The game's classpath keeps Mojang's pin:
+	// forcing it would compile against a Guava the player's game does not run.
+	constraints {
+		listOf(
+			"annotationProcessor", "clientAnnotationProcessor", "gametestAnnotationProcessor", "testAnnotationProcessor", "checkstyle",
+		).forEach { add(it, "com.google.guava:guava:${libs.versions.guava.get()}") }
+	}
+
 	minecraft(libs.minecraft)
 	// api: entrypoints implement ModInitializer, a public Loader type.
 	api(libs.fabric.loader)
