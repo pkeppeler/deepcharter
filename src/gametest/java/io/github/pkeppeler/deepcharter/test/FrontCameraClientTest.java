@@ -230,7 +230,7 @@ public class FrontCameraClientTest implements FabricClientGameTest {
                 "the pilot seated in the pod in layer 1",
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
-                        && TestLayers.isIn(ClientLight.clientLevel(client), 1));
+                        && TestLayers.clientIsIn(client, 1));
         return made[0];
     }
 

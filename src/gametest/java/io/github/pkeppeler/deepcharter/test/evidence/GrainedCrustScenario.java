@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PulseClock;
@@ -89,7 +88,7 @@ public class GrainedCrustScenario extends EvidenceScenario {
                     "the player riding a pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && TestLayers.isIn(ClientLight.clientLevel(client), 1));
+                            && TestLayers.clientIsIn(client, 1));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 ClientSession.player(client).setXRot(LOOK_DOWN);

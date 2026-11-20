@@ -8,7 +8,6 @@ import io.github.pkeppeler.deepcharter.pod.PodLiner;
 import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodLiningTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -90,7 +89,7 @@ public class PodLinerDryScenario extends EvidenceScenario {
                     "the pilot seated in the pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && TestLayers.isIn(ClientLight.clientLevel(client), 1));
+                            && TestLayers.clientIsIn(client, 1));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
                 ClientSession.player(client).setXRot(LOOK_DOWN);

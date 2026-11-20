@@ -17,6 +17,13 @@
 // assigned after its declaration, a Y reached by `.above(n)` or `.offset(...)` from a position that is only known at run time, a Y with a variable X
 // or Z (`new BlockPos(X, 100, Z)`), and a call split from its own parenthesis by a line break.
 //
+// It also fails a raw read of a level's height anywhere but TestLayers: getMinY, getMaxY, getMinBuildHeight, getMaxBuildHeight, and getHeight on a receiver whose
+// text names a level (level, world, layer, dimension, surface, overworld, nether, one, two, from, to, end). A layer is a band of a level, so a test asks
+// TestLayers.band(level, layer) for its floor, top and height; a read that really is about the level (the world bottom of a test world, the Nether, a whole
+// test dimension) ends with, or sits under the comment lines of, `// level-height: <reason>`, a different marker from fixed-pos. Blind spots: a getHeight
+// whose receiver is a local with another name (`var w = ...; w.getHeight()`), a height read through dimensionType(), a method reference (`Level::getMinY`), and `isInsideBuildHeight` or `isOutsideBuildHeight`, which compare a Y with the level's height
+// (ScannerFrameTimeClientTest, LayerTerrainScenario).
+//
 // tools/tests/fixed_pos_gate_check.py runs the scan over fixture trees (checkGametestFixtures in gametest.gradle.kts), so a change that makes
 // the pattern miss fails there, not silently.
 object FixedPosGate {
@@ -26,6 +33,10 @@ object FixedPosGate {
 	private val POSITION = Regex("""\b(?:new\s+(?:BlockPos|Vec3i|Vec3)|BlockPos\s*\.\s*containing)\s*\(""")
 	private val MOVE = Regex("""\.\s*(teleportTo|setPosRaw|setPos|moveTo|snapTo|absMoveTo|atY)\s*\(""")
 	private val LAYER_DIMENSION = Regex("""\bLayerChain\s*\.\s*dimension\s*\(""")
+	private val LEVEL_HEIGHT_MARKER = Regex("""//\s*level-height:\s*\S""")
+	private val LEVEL_EDGE = Regex("""\.\s*(?:getMinY|getMaxY|getMinBuildHeight|getMaxBuildHeight)\s*\(\s*\)""")
+	private val LEVEL_SIZE = Regex("""(\b\w+(?:\([^()]*\))?(?:\s*\.\s*\w+\([^()]*\))*)\s*\.\s*getHeight\s*\(\s*\)""")
+	private val LEVEL_NAME = Regex("""(?i)level|world|layer|dimension|surface|overworld|nether|\b(?:one|two|from|to|end)\b""")
 	private val COMMENT = Regex("(?s)/\\*.*?\\*/|//[^\\n]*")
 	private val notNewline = Regex("[^\\n]")
 	private const val MIN_LITERAL_XZ = 100.0
@@ -82,6 +93,18 @@ object FixedPosGate {
 			.filter { !markedNear(lines, it) { line -> MARKER.containsMatchIn(line) } }
 			.map { it + 1 }
 	}
+
+	/** Lines (1-based) of {@code text}, already passed through blankLiterals, that read a level's height and carry no `// level-height: <reason>` marker. */
+	fun levelHeightReads(text: String, markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean): List<Int> {
+		val code = COMMENT.replace(text) { it.value.replace(notNewline, " ") }
+		val lines = text.reader().readLines()
+		val starts = mutableListOf<Int>()
+		LEVEL_EDGE.findAll(code).forEach { starts.add(it.range.first) }
+		LEVEL_SIZE.findAll(code).filter { LEVEL_NAME.containsMatchIn(it.groupValues[1]) }.forEach { starts.add(it.range.first) }
+		return starts.map { code.substring(0, it).count { c -> c == '\n' } }.distinct().sorted()
+			.filter { !markedNear(lines, it) { line -> LEVEL_HEIGHT_MARKER.containsMatchIn(line) } }
+			.map { it + 1 }
+	}
 }
 
 val fixedPosAdvice = "Derive the place: TestLayers (test/support: TestLayers.level, TestLayers.worldY, TestLayers.pos), the colony's anchors (Colony.anchor, ColonySite), a RoomCarver room, the layer's own geometry, or " +
@@ -97,6 +120,9 @@ val fixedPosProblems: (File, File, (String) -> String, (List<String>, Int, (Stri
 			val what = if (lines[n - 1].contains("LayerChain")) "names LayerChain.dimension, which only TestLayers may" else "stages at a literal world Y, which breaks when the world moves or lands in the signal-decay blackout"
 			problems.add("${source.relativeTo(base)}:$n $what: ${lines[n - 1].trim()}")
 		}
+		FixedPosGate.levelHeightReads(blankLiterals(source.readText()), markedNear).forEach { n ->
+			problems.add("${source.relativeTo(base)}:$n reads a level's height, which only TestLayers may unless the read is about the level and not a layer (TestLayers.band(level, layer) gives a layer's floor, top and height; otherwise end with '// level-height: <reason>'): ${lines[n - 1].trim()}")
+		}
 	}
 	problems
 }
@@ -106,7 +132,7 @@ extra["fixedPosAdvice"] = fixedPosAdvice
 
 tasks.register("checkFixedPosGate") {
 	group = "verification"
-	description = "Fails on a literal world Y or a LayerChain.dimension call in src/gametest that carries no '// fixed-pos: <reason>' marker (TestLayers.java is exempt)."
+	description = "Fails on a literal world Y or a LayerChain.dimension call in src/gametest that carries no '// fixed-pos: <reason>' marker, and on a raw level-height read that carries no '// level-height: <reason>' marker (TestLayers.java is exempt)."
 	@Suppress("UNCHECKED_CAST")
 	val blankLiterals = project.extra["blankLiterals"] as (String) -> String
 	@Suppress("UNCHECKED_CAST")
@@ -120,7 +146,7 @@ tasks.register("checkFixedPosGate") {
 	doLast {
 		val problems = problemsIn(gametestRoot, root, blankLiterals, markedNear)
 		if (problems.isNotEmpty()) {
-			throw GradleException("Literal world Y or LayerChain.dimension in tests and scenarios. $advice\n  " + problems.joinToString("\n  "))
+			throw GradleException("Literal world Y, LayerChain.dimension or a raw level-height read in tests and scenarios. $advice\n  " + problems.joinToString("\n  "))
 		}
 	}
 }

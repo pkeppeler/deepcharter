@@ -6,7 +6,6 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -99,7 +98,7 @@ public class CompanyRockRungsScenario extends EvidenceScenario {
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity pod
                         && pod.onGround()
-                        && TestLayers.isIn(ClientLight.clientLevel(client), 1));
+                        && TestLayers.clientIsIn(client, 1));
         context.runOnClient(client -> {
             client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
             ClientSession.player(client).setXRot(LOOK_DOWN);

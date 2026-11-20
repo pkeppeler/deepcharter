@@ -46,6 +46,11 @@ public final class LayerChain {
         public boolean isLayer() {
             return layer != SURFACE;
         }
+
+        /** The highest block of the band. */
+        public int maxY() {
+            return minY + height - 1;
+        }
     }
 
     /**

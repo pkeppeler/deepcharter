@@ -125,7 +125,7 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
                 "the player and the lit pod in layer " + layer,
                 client -> client.player != null
                         && client.level != null
-                        && TestLayers.isIn(client.level, layer)
+                        && TestLayers.clientIsIn(client, layer)
                         && client.level.getEntity(litId[0]) instanceof PodEntity);
         context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
         context.waitTicks(60); // tick-wait: chunks, light and the pod's light block reach the client

@@ -551,17 +551,19 @@ public class ColonyTest {
         double x = centre.getX() + radius + LayerTuning.DEFAULT.pocketRadius() + 0.5;
         double z = centre.getZ() + 0.5;
         ServerLevel surface = server.overworld();
+        LayerChain.Band surfaceBand = TestLayers.band(surface, TestLayers.SURFACE);
         ServerLevel one = TestLayers.level(helper, 1);
-        for (int y = surface.getMinY(); y <= surface.getMinY() + 10; y++) {
+        LayerChain.Band oneBand = TestLayers.band(one, 1);
+        for (int y = surfaceBand.minY(); y <= surfaceBand.minY() + 10; y++) {
             // room-carver: the overworld surface, which opens onto layer 1 but is not layer rock
             surface.setBlock(BlockPos.containing(x, y, z), Blocks.AIR.defaultBlockState(), 3);
         }
         MockPlayer mock = MockPlayers.join(helper, "conduit-breach");
-        mock.teleportTo(surface, new Vec3(x, surface.getMinY() + 6, z), 0, 0);
+        mock.teleportTo(surface, new Vec3(x, surfaceBand.minY() + 6, z), 0, 0);
         int[] ticking = {0};
         FarChunks.awaitEntityTicking(helper, surface, mock.player().blockPosition(), () -> ticking[0]++);
         for (BlockPos corner : corners(centre)) {
-            FarChunks.awaitEntityTicking(helper, one, corner.atY(one.getMinY() + 8), () -> ticking[0]++);
+            FarChunks.awaitEntityTicking(helper, one, corner.atY(oneBand.minY() + 8), () -> ticking[0]++);
         }
         TestTicks.each(helper, () -> {
             ServerPlayer player = mock.player();
@@ -582,7 +584,7 @@ public class ColonyTest {
             }
             for (int cx = centre.getX() - radius; cx <= centre.getX() + radius; cx++) {
                 for (int cz = centre.getZ() - radius; cz <= centre.getZ() + radius; cz++) {
-                    for (int y = one.getMaxY() - LayerTuning.DEFAULT.pocketHeight() - 1; y <= one.getMaxY(); y++) {
+                    for (int y = oneBand.maxY() - LayerTuning.DEFAULT.pocketHeight() - 1; y <= oneBand.maxY(); y++) {
                         if (!one.getBlockState(new BlockPos(cx, y, cz)).is(ColonyBlocks.CONDUIT)) {
                             throw failure(helper, "the crossing carved the casing at (%s, %s, %s)", cx, y, cz);
                         }
@@ -602,7 +604,8 @@ public class ColonyTest {
             ServerLevel level = TestLayers.level(helper, layer);
             // The corners of the casing: they name every chunk that holds a part of it.
             for (BlockPos corner : corners(centre)) {
-                FarChunks.awaitEntityTicking(helper, level, corner.atY(level.getMinY() + 8), () -> loaded[0]++);
+                FarChunks.awaitEntityTicking(
+                        helper, level, corner.atY(TestLayers.band(level, layer).minY() + 8), () -> loaded[0]++);
             }
         }
         helper.succeedWhen(() -> {
@@ -613,11 +616,11 @@ public class ColonyTest {
                 ServerLevel level = TestLayers.level(helper, layer);
                 int top = layer == LayerChain.SURFACE
                         ? placed(helper).groundY() + ColonyTuning.DEFAULT.conduitStack()
-                        : level.getMaxY();
+                        : TestLayers.band(level, layer).maxY();
                 int radius = ColonyTuning.DEFAULT.conduitRadius();
                 for (int x = centre.getX() - radius; x <= centre.getX() + radius; x++) {
                     for (int z = centre.getZ() - radius; z <= centre.getZ() + radius; z++) {
-                        for (int y = level.getMinY(); y <= top; y++) {
+                        for (int y = TestLayers.band(level, layer).minY(); y <= top; y++) {
                             if (!level.getBlockState(new BlockPos(x, y, z)).is(ColonyBlocks.CONDUIT)) {
                                 throw failure(helper, "layer %s has no Conduit at (%s, %s, %s)", layer, x, y, z);
                             }
@@ -644,7 +647,8 @@ public class ColonyTest {
         int[] loaded = {0};
         for (int layer = 0; layer <= layers; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
-            FarChunks.awaitEntityTicking(helper, level, centre.atY(level.getMinY() + 8), () -> loaded[0]++);
+            FarChunks.awaitEntityTicking(
+                    helper, level, centre.atY(TestLayers.band(level, layer).minY() + 8), () -> loaded[0]++);
         }
         helper.succeedWhen(() -> {
             if (loaded[0] < layers + 1) {
@@ -657,9 +661,23 @@ public class ColonyTest {
             for (int layer = 0; layer <= layers; layer++) {
                 ServerLevel level = TestLayers.level(helper, layer);
                 player.teleportTo(
-                        level, centre.getX() + 0.5, level.getMinY() + 20, centre.getZ() + 4.5, Set.of(), 0, 0, true);
-                int highest = layer == LayerChain.SURFACE ? placed(helper).groundY() + 5 : level.getMaxY() - 2;
-                for (int y : new int[] {level.getMinY() + 5, level.getMinY() + 8, level.getMinY() + 20, highest}) {
+                        level,
+                        centre.getX() + 0.5,
+                        TestLayers.band(level, layer).minY() + 20,
+                        centre.getZ() + 4.5,
+                        Set.of(),
+                        0,
+                        0,
+                        true);
+                int highest = layer == LayerChain.SURFACE
+                        ? placed(helper).groundY() + 5
+                        : TestLayers.band(level, layer).maxY() - 2;
+                for (int y : new int[] {
+                    TestLayers.band(level, layer).minY() + 5,
+                    TestLayers.band(level, layer).minY() + 8,
+                    TestLayers.band(level, layer).minY() + 20,
+                    highest
+                }) {
                     BlockPos pos = centre.atY(y);
                     if (!level.getBlockState(pos).is(ColonyBlocks.CONDUIT)) {
                         throw failure(helper, "layer %s has no Conduit at %s", layer, pos.toShortString());
@@ -671,13 +689,13 @@ public class ColonyTest {
                             pos,
                             ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
                             Direction.UP,
-                            level.getMaxY(),
+                            TestLayers.band(level, layer).maxY(),
                             0);
                     player.gameMode.handleBlockBreakAction(
                             pos,
                             ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK,
                             Direction.UP,
-                            level.getMaxY(),
+                            TestLayers.band(level, layer).maxY(),
                             1);
                     if (!level.getBlockState(pos).is(ColonyBlocks.CONDUIT)) {
                         throw failure(

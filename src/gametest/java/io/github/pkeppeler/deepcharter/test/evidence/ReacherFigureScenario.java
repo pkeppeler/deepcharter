@@ -163,7 +163,7 @@ public class ReacherFigureScenario extends EvidenceScenario {
                     ctx,
                     "the camera in layer " + LAYER,
                     client -> client.level != null
-                            && TestLayers.isIn(client.level, LAYER)
+                            && TestLayers.clientIsIn(client, LAYER)
                             && client.gui.screen() == null);
             serverDo(server -> {
                 ServerPlayer camera = server.getPlayerList().getPlayers().getFirst();

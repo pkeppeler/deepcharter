@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
@@ -219,11 +220,20 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 new BlockPos(
                         column,
                         server.computeOnServer(
-                                s -> ClientLight.serverLevel(s, from).getMinY() + 40),
+                                s -> TestLayers.band(s, layer - 1).minY() + 40),
                         column));
         server.runOnServer(s -> {
             ServerLevel level = ClientLight.serverLevel(s, from);
-            player(s).teleportTo(level, column + 0.5, level.getMinY() - 2, column + 0.5, Set.of(), 0, 0, true);
+            player(s)
+                    .teleportTo(
+                            level,
+                            column + 0.5,
+                            TestLayers.band(level, layer - 1).minY() - 2,
+                            column + 0.5,
+                            Set.of(),
+                            0,
+                            0,
+                            true);
         });
         ClientWait.until(
                 context,
@@ -334,10 +344,11 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
         List<StructureSite> sites = server.computeOnServer(s -> {
             BlockPos conduit = Colony.anchor(s, ColonyAnchor.CONDUIT).orElseThrow();
             ServerLevel level = ClientLight.serverLevel(s, dimension);
+            LayerChain.Band levelBand = TestLayers.band(level, layer);
             List<StructureSite> found = new ArrayList<>();
             for (StructureKind kind : StructureKind.inLayer(layer)) {
                 found.add(StructureSite.in(
-                        s.overworld().getSeed(), kind, level.getMinY(), level.getHeight(), cell, cell, conduit));
+                        s.overworld().getSeed(), kind, levelBand.minY(), levelBand.height(), cell, cell, conduit));
             }
             return found;
         });

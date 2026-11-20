@@ -127,7 +127,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 "the real client riding a pod in layer_1 with the mock's pod in view",
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
-                        && TestLayers.isIn(ClientLight.clientLevel(client), 1)
+                        && TestLayers.clientIsIn(client, 1)
                         && ClientLight.clientLevel(client)
                                         .getEntity(rig.mockPod().getId())
                                 instanceof PodEntity);
@@ -196,7 +196,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
                 two.server().runOnServer(server -> two.mock().releaseInput());
                 mockReleased = true;
             }
-            clientSawMockBore |= context.computeOnClient(client -> TestLayers.isIn(ClientLight.clientLevel(client), 1)
+            clientSawMockBore |= context.computeOnClient(client -> TestLayers.clientIsIn(client, 1)
                     && ClientLight.clientLevel(client).getBlockState(mockStone).isAir());
             if (realReleased && mockReleased) {
                 break;
@@ -257,7 +257,9 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     private static Vec3 liftOutOfDecay(MinecraftServer server, PodEntity pod) {
         ServerLevel one = TestLayers.level(server, 1);
         Vec3 floorPosition = pod.position();
-        int clearY = one.getMinY() + SignalDecayTuning.DEFAULT.band(1).onset() + 1;
+        int clearY = TestLayers.band(one, 1).minY()
+                + SignalDecayTuning.DEFAULT.band(1).onset()
+                + 1;
         int centerX = Mth.floor(floorPosition.x);
         int centerZ = Mth.floor(floorPosition.z);
         int roofY = FLOOR_Y + 10;
@@ -306,7 +308,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     }
 
     private static boolean inLayer2(ServerPlayer player) {
-        return TestLayers.isIn(player.level(), 2);
+        return TestLayers.isIn(player, 2);
     }
 
     private static ServerPlayer realPlayer(MinecraftServer server, ServerPlayer mock) {
@@ -347,7 +349,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "both players riding pods in layer_2",
-                client -> TestLayers.isIn(ClientLight.clientLevel(client), 2)
+                client -> TestLayers.clientIsIn(client, 2)
                         && ClientSession.player(client).getVehicle() instanceof PodEntity
                         && ClientLight.clientLevel(client).getPlayerByUUID(mockId) instanceof AbstractClientPlayer mock
                         && mock.getVehicle() instanceof PodEntity);

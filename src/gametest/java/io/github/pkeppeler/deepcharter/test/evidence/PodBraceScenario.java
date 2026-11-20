@@ -6,7 +6,6 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -84,7 +83,7 @@ public class PodBraceScenario extends EvidenceScenario {
                     "the pilot seated in the pod in layer 1",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity
-                            && TestLayers.isIn(ClientLight.clientLevel(client), 1));
+                            && TestLayers.clientIsIn(client, 1));
             context.runOnClient(client -> {
                 client.options.setCameraType(CameraType.FIRST_PERSON);
                 ClientSession.player(client).setXRot(LOOK_DOWN);
@@ -140,15 +139,13 @@ public class PodBraceScenario extends EvidenceScenario {
             // Through the crust: three rows, 8 hull each.
             context.getInput().holdKey(options -> options.keySprint);
             ticks = 0;
-            while (!context.computeOnClient(client -> TestLayers.isIn(ClientLight.clientLevel(client), 2))
-                    && ticks < MAX_TICKS) {
+            while (!context.computeOnClient(client -> TestLayers.clientIsIn(client, 2)) && ticks < MAX_TICKS) {
                 context.waitTicks(TICKS_PER_FRAME);
                 ticks += TICKS_PER_FRAME;
                 frame(context);
             }
             context.getInput().releaseKey(options -> options.keySprint);
-            ClientWait.until(
-                    context, "the pod in layer 2", client -> TestLayers.isIn(ClientLight.clientLevel(client), 2));
+            ClientWait.until(context, "the pod in layer 2", client -> TestLayers.clientIsIn(client, 2));
             context.waitTicks(120);
             for (int i = 0; i < 6; i++) {
                 frame(context);
