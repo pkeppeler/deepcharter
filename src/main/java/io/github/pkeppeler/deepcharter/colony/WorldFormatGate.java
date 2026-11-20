@@ -34,7 +34,7 @@ public final class WorldFormatGate {
     }
 
     private static void check(MinecraftServer server) {
-        Optional<Refusal> refusal = refusal(server);
+        Optional<Refusal> refusal = refusal(server.getDataStorage());
         if (refusal.isEmpty()) {
             return;
         }
@@ -44,16 +44,6 @@ public final class WorldFormatGate {
         }
         DeepCharter.LOGGER.error("Refusing to start this world: {}", text);
         Runtime.getRuntime().halt(1);
-    }
-
-    /** Why the world of {@code server} may not start, or empty when it may. */
-    public static Optional<Refusal> refusal(MinecraftServer server) {
-        return refusal(server, WorldFormat.CURRENT);
-    }
-
-    // test-seam: the tests run the gate at format 2, the number #803 makes real, while CURRENT is still 1
-    public static Optional<Refusal> refusal(MinecraftServer server, int current) {
-        return refusal(server.getDataStorage(), current);
     }
 
     /** Why the world in {@code storage} may not start, or empty when it may: the client asks it before a server exists. */
