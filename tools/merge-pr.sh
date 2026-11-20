@@ -75,7 +75,7 @@ if [[ -z $review_pass_refusal ]]; then
     || review_pass_refusal="has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
 fi
 if [[ $gate_only -eq 1 ]]; then
-  echo "review-passed: ${review_pass_refusal:+no ($review_pass_refusal)}${review_pass_refusal:-yes}"
+  if [[ -n $review_pass_refusal ]]; then echo "review-passed: no ($review_pass_refusal)"; else echo "review-passed: yes"; fi
 else
   [[ -z $review_pass_refusal ]] || refuse "$review_pass_refusal"
 fi

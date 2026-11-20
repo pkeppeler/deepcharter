@@ -13,6 +13,8 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 mkdir "$work/bin"
 export LOG="$work/calls.log"
+REAL_PATH=$PATH
+export REAL_PATH
 # The roadmap runs through tools/py, which runs the stub uv on the version .python-version names.
 roadmap_line="uv run --no-project --python $(cat "$tools/../.python-version") python -I tools/roadmap.py"
 
@@ -148,6 +150,8 @@ STUB
 
 cat >"$work/bin/uv" <<'STUB'
 #!/usr/bin/env bash
+# The closing-reference parser really runs (through the real uv) and is not logged; everything else is the roadmap.
+if [[ $* == *closing_refs.py* ]]; then PATH=$REAL_PATH exec uv "$@"; fi
 echo "uv $*" >>"$LOG"
 exit "${STUB_ROADMAP_RC:-0}"
 STUB
@@ -464,7 +468,7 @@ exited "runs as ./merge-pr.sh from tools/" 0
 # script has no override seam).
 mkdir "$work/tools"
 cp -R "$tools/lib" "$work/tools/lib"
-cp "$tools/py" "$work/tools/py"
+cp "$tools/py" "$tools/closing_refs.py" "$work/tools/"
 cp "$tools/../.python-version" "$work/.python-version"
 sed 's/^REQUIRED_CHECKS=(.*)$/REQUIRED_CHECKS=(build lint)/' "$script" >"$work/tools/merge-pr.sh"
 grep -q 'REQUIRED_CHECKS=(build lint)' "$work/tools/merge-pr.sh" || fail "required-checks copy was not patched"
@@ -651,6 +655,10 @@ not_logged "check never pushes" "push"
 run_check "STUB_LABELS=infra" "STUB_COMMENT=nope"
 exited "check passes before the review pass is marked" 0
 printed "check notes the missing review pass" "review-passed: no"
+if grep -qxF "review-passed: no (lacks the review-passed label)" <<<"$out"; then pass "check prints the missing-pass reason once"; else fail "check prints the missing-pass reason once (out: $out)"; fi
+run_check
+if grep -qxF "review-passed: yes" <<<"$out"; then pass "check prints yes for a marked pass"; else fail "check prints yes for a marked pass (out: $out)"; fi
+run_check "STUB_LABELS=infra" "STUB_COMMENT=nope"
 last_line_is "check's last line names the missing review pass" "GATE OK except: no review pass (the merge would refuse until then)"
 run_check STUB_DRAFT=true
 exited "check passes a draft" 0

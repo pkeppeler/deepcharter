@@ -13,18 +13,16 @@ source "$(dirname "${BASH_SOURCE[0]}")/gh-rest.sh"
 
 pr_field() { pr_get "$pr" "$1"; }
 
-# The issues the body closes. REST has no closingIssuesReferences (it is GraphQL only, #788), so this reads the
-# body for GitHub's keywords (close, closes, closed, fix, fixes, fixed, resolve, resolves, resolved, optional colon)
-# before #N, owner/repo#N or an issue URL. The first reference after each keyword counts ("Closes #1, #2" reads as
-# #1 only). Prose such as "the same fix #252 verified" is a keyword too, so write it differently. One owner/repo#N
+# The issues the body closes. REST has no closingIssuesReferences (it is GraphQL only, #788), so the body is read for
+# GitHub's closing keywords by tools/closing_refs.py, the one grammar (tools/roadmap.py imports it too). One owner/repo#N
 # per line; refs in this repo print as #N. Reads the body live, so merge-pr.sh calls it again right before the merge.
 # Sets $closes.
 closing_set() {
-  local text refs
+  local text refs here
+  here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
   text=$(pr_field '.body // ""') || refuse "has no readable closing references"
-  refs=$(grep -oiE '(^|[^[:alnum:]_])(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+(https://github\.com/[[:alnum:]_.-]+/[[:alnum:]_.-]+/issues/|[[:alnum:]_.-]+/[[:alnum:]_.-]+#|#)[0-9]+' <<<"$text" \
-    | sed -E 's/^.*[[:space:]]//; s|https://github\.com/([^/]+/[^/]+)/issues/|\1#|' || true) # grep: no keyword exits 1
-  closes=$(sort -u <<<"${refs//$repo#/#}" | grep . | tr '\n' ' ' || true) # grep: an empty set exits 1
+  refs=$(printf '%s\n' "$text" | "$here/py" "$here/closing_refs.py" "$repo") || refuse "has no readable closing references"
+  closes=$(tr '\n' ' ' <<<"$refs")
   closes=${closes% }
 }
 

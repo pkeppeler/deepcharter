@@ -8,6 +8,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from closing_refs import closing_issue_numbers  # noqa: E402
+
 REPO = "pkeppeler/deepcharter"
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = ROOT / "docs" / "ROADMAP.md"
@@ -23,43 +27,6 @@ STAGE_WORDS = {
 }
 NO_STAGE_WORD = "No stage yet"
 CLOSE_WORDS = {"COMPLETED": "Completed", "NOT_PLANNED": "Not planned"}
-PAGE = 100
-
-QUERY = """
-query($owner: String!, $name: String!) {
-  repository(owner: $owner, name: $name) {
-    milestones(first: %(page)d, orderBy: {field: NUMBER, direction: ASC}) {
-      pageInfo { hasNextPage }
-      nodes {
-        number title description
-        issues(first: %(page)d, orderBy: {field: CREATED_AT, direction: ASC}) {
-          pageInfo { hasNextPage }
-          nodes {
-            number title state stateReason url
-            closedByPullRequestsReferences(first: 10, includeClosedPrs: true) {
-              pageInfo { hasNextPage }
-              nodes { number url merged }
-            }
-          }
-        }
-      }
-    }
-    pullRequests(states: OPEN, first: %(page)d, orderBy: {field: CREATED_AT, direction: ASC}) {
-      pageInfo { hasNextPage }
-      nodes {
-        number title url isDraft
-        labels(first: 20) { pageInfo { hasNextPage } nodes { name } }
-        closingIssuesReferences(first: 10) { pageInfo { hasNextPage } nodes { number url } }
-      }
-    }
-    handoff: issues(labels: ["%(handoff)s"], states: OPEN, first: 5) {
-      pageInfo { hasNextPage }
-      nodes { number title url }
-    }
-  }
-}
-""" % {"page": PAGE, "handoff": HANDOFF_LABEL}
-
 
 @dataclass(frozen=True)
 class Link:
@@ -79,7 +46,7 @@ class Issue:
     title: str
     url: str
     closed: bool
-    close_reason: str | None  # GitHub stateReason, only for closed issues
+    close_reason: str | None  # GitHub state reason (COMPLETED, NOT_PLANNED), only for closed issues
     closed_by: tuple[Link, ...]  # merged PRs only
 
 
@@ -207,9 +174,9 @@ def render(roadmap: Roadmap, updated: str) -> str:
 # ----------------------------------------------------------------- fetching
 
 
-def gh_graphql() -> dict:
-    owner, name = REPO.split("/")
-    cmd = ["gh", "api", "graphql", "-f", f"query={QUERY}", "-f", f"owner={owner}", "-f", f"name={name}"]
+def gh_rest(path: str) -> list[dict]:
+    """Every item of a REST list endpoint, all pages (gh --paginate --slurp). Only REST: the cloud proxy blocks GraphQL (#788)."""
+    cmd = ["gh", "api", "--paginate", "--slurp", f"repos/{REPO}/{path}"]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     except FileNotFoundError:
@@ -217,60 +184,67 @@ def gh_graphql() -> dict:
     if proc.returncode != 0:
         raise RoadmapError(f"gh failed (exit {proc.returncode}): {proc.stderr.strip()}")
     try:
-        data = json.loads(proc.stdout)
+        pages = json.loads(proc.stdout)
     except json.JSONDecodeError as e:
         raise RoadmapError(f"gh returned invalid JSON: {e}") from None
-    if data.get("errors"):
-        raise RoadmapError(f"GraphQL errors: {data['errors']}")
-    return data["data"]
+    return [item for page in pages for item in page]
 
 
-def _require_complete(connection: dict, what: str) -> None:
-    if connection["pageInfo"]["hasNextPage"]:
-        raise RoadmapError(f"too many {what}: add pagination to tools/roadmap.py")
+def _issue_url(number: int) -> str:
+    return f"https://github.com/{REPO}/issues/{number}"
 
 
-def parse_github(repository: dict, adrs: tuple[Doc, ...]) -> Roadmap:
-    _require_complete(repository["milestones"], "milestones")
-    _require_complete(repository["pullRequests"], "open PRs")
-    _require_complete(repository["handoff"], f"open '{HANDOFF_LABEL}' issues")
-    milestones = []
-    for m in repository["milestones"]["nodes"]:
-        _require_complete(m["issues"], f"issues in milestone {m['title']}")
+def build_roadmap(
+    milestones: list[dict],
+    issues_by_milestone: dict[int, list[dict]],
+    pulls: list[dict],
+    handoffs: list[dict],
+    adrs: tuple[Doc, ...],
+) -> Roadmap:
+    """The roadmap from REST records. `pulls` is every PR (all states): REST has no closing-PR link, so an issue's
+    closing PRs are the merged PRs whose body closes it (tools/closing_refs.py), in PR-number order."""
+    closed_by: dict[int, list[Link]] = {}
+    for p in sorted(pulls, key=lambda p: p["number"]):
+        if p["merged_at"] is None:
+            continue
+        for number in closing_issue_numbers(p["body"] or "", REPO):
+            closed_by.setdefault(number, []).append(Link(p["number"], p["html_url"]))
+    built = []
+    for m in milestones:
         issues = []
-        for i in m["issues"]["nodes"]:
-            closers = i["closedByPullRequestsReferences"]
-            _require_complete(closers, f"closing PRs for issue #{i['number']}")
+        for i in issues_by_milestone[m["number"]]:
+            if "pull_request" in i:
+                continue
+            closed = i["state"] == "closed"
+            reason = (i.get("state_reason") or "").upper() if closed else None
             issues.append(
                 Issue(
                     number=i["number"],
                     title=i["title"],
-                    url=i["url"],
-                    closed=i["state"] == "CLOSED",
-                    close_reason=i["stateReason"],
-                    closed_by=tuple(Link(p["number"], p["url"]) for p in closers["nodes"] if p["merged"]),
+                    url=i["html_url"],
+                    closed=closed,
+                    close_reason=reason or None,
+                    closed_by=tuple(closed_by.get(i["number"], ())),
                 )
             )
-        milestones.append(Milestone(m["number"], m["title"], m["description"] or "", tuple(issues)))
-    prs = []
-    for p in repository["pullRequests"]["nodes"]:
-        _require_complete(p["labels"], f"labels on PR #{p['number']}")
-        _require_complete(p["closingIssuesReferences"], f"closing issues on PR #{p['number']}")
-        prs.append(
-            PullRequest(
-                number=p["number"],
-                title=p["title"],
-                url=p["url"],
-                draft=p["isDraft"],
-                labels=tuple(sorted(label["name"] for label in p["labels"]["nodes"])),
-                closes=tuple(Link(i["number"], i["url"]) for i in p["closingIssuesReferences"]["nodes"]),
-            )
+        built.append(Milestone(m["number"], m["title"], m["description"] or "", tuple(issues)))
+    prs = [
+        PullRequest(
+            number=p["number"],
+            title=p["title"],
+            url=p["html_url"],
+            draft=p["draft"],
+            labels=tuple(sorted(label["name"] for label in p["labels"])),
+            closes=tuple(Link(n, _issue_url(n)) for n in closing_issue_numbers(p["body"] or "", REPO)),
         )
-    handoffs = repository["handoff"]["nodes"]
+        for p in sorted(pulls, key=lambda p: p["number"])
+        if p["state"] == "open"
+    ]
+    handoffs = [i for i in handoffs if "pull_request" not in i]
     if len(handoffs) > 1:
         raise RoadmapError(f"expected one open '{HANDOFF_LABEL}' issue, found {len(handoffs)}")
-    handoff = Handoff(handoffs[0]["title"], handoffs[0]["url"]) if handoffs else None
-    return Roadmap(tuple(sorted(milestones, key=lambda m: m.number)), tuple(prs), handoff, adrs)
+    handoff = Handoff(handoffs[0]["title"], handoffs[0]["html_url"]) if handoffs else None
+    return Roadmap(tuple(sorted(built, key=lambda m: m.number)), tuple(prs), handoff, adrs)
 
 
 def read_adrs() -> tuple[Doc, ...]:
@@ -284,7 +258,14 @@ def read_adrs() -> tuple[Doc, ...]:
 
 
 def fetch() -> Roadmap:
-    return parse_github(gh_graphql()["repository"], read_adrs())
+    milestones = gh_rest("milestones?state=all&per_page=100")
+    issues = {
+        m["number"]: gh_rest(f"issues?milestone={m['number']}&state=all&sort=created&direction=asc&per_page=100")
+        for m in milestones
+    }
+    pulls = gh_rest("pulls?state=all&per_page=100")
+    handoffs = gh_rest(f"issues?labels={HANDOFF_LABEL}&state=open&per_page=100")
+    return build_roadmap(milestones, issues, pulls, handoffs, read_adrs())
 
 
 def main() -> int:
