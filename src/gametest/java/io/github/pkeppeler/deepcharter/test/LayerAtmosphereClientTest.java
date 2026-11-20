@@ -140,7 +140,8 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
      * The acceptance case of #744 and #761: skylight falls down an open shaft, and the layer biome's sky light factor of 0 keeps it dark,
      * while the sky timeline of the campaign type runs. The sealed room is in layer 1's band; the shaft and its control stand on the
      * surface's ground. The timeline's {@code override} tracks win over a biome unless the biome layer of ADR 0062 is applied after
-     * them, so the shaft reads as the room only with that layer.
+     * them, so the shaft reads as the room only with that layer. The shaft models the bottom of a layer shaft, not the
+     * surface-to-layer transition, which {@link #theBlendAtABiomeEdge} covers.
      */
     private void theShaftReadsAsTheSealedRoomWhileTheSkyTimelineRuns(
             ClientGameTestContext context, TestServerContext server) {
@@ -159,18 +160,36 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         for (SkyTime sky : List.of(new SkyTime("dusk", SKY_DUSK), new SkyTime("night", SKY_NIGHT))) {
             server.runCommand("time of deepcharter:sky set " + sky.ticks());
             Reading shaft = look(context, server, shaftFloor, 180, 0, "shaft-layer-biome-" + sky.name());
+            float shaftFactor = skyLightFactor(context, shaftFloor);
             Reading room = look(context, server, roomFloor, 180, 0, "room-layer-biome-" + sky.name());
             Reading control = look(context, server, controlFloor, 180, 0, "shaft-surface-biome-" + sky.name());
+            float controlFactor = skyLightFactor(context, controlFloor);
+            table.add("campaign type, sky timeline at %s, sky light factor at the camera: shaft %.3f, control %.3f"
+                    .formatted(sky.name(), shaftFactor, controlFactor));
+            // The luma rows below are logs at night, where the surface is as dark as the room: only the factor tells
+            // the
+            // layer biome from the timeline there (without the biome layer the shaft's factor is the timeline's).
+            ClientChecks.require(
+                    shaftFactor == 0f,
+                    "the layer biome's sky light factor of 0 wins over the sky timeline at the bottom of the shaft at "
+                            + sky.name() + ", read " + shaftFactor);
+            ClientChecks.require(
+                    controlFactor > 0f,
+                    "the surface biome leaves the sky timeline's sky light factor at the control shaft at " + sky.name()
+                            + ", read " + controlFactor);
             table.add("campaign type, sky timeline at %s, open shaft, layer biome: %s, server sky light %d"
                     .formatted(sky.name(), shaft, shaftSky));
             table.add("campaign type, sky timeline at %s, sealed room, layer biome: %s, server sky light %d"
                     .formatted(sky.name(), room, roomSky));
             table.add("campaign type, sky timeline at %s, open shaft, surface biome: %s; attributes at the camera: %s"
                     .formatted(sky.name(), control, attributes(context, controlFloor)));
-            ClientChecks.require(
-                    Math.abs(shaft.luma() - room.luma()) <= SAME_LUMA,
-                    "the bottom of a layer shaft under open sky renders at layer brightness (the sealed room's " + room
-                            + ") while the sky timeline runs at " + sky.name() + ", read " + shaft);
+            // Dusk only, like the control: at night the room's luma is within SAME_LUMA of the surface's own, so it
+            // proves nothing.
+            if (sky.ticks() == SKY_DUSK)
+                ClientChecks.require(
+                        Math.abs(shaft.luma() - room.luma()) <= SAME_LUMA,
+                        "the bottom of a layer shaft under open sky renders at layer brightness (the sealed room's "
+                                + room + ") while the sky timeline runs at " + sky.name() + ", read " + shaft);
             // The surface at night is dark by its own timeline, so the control is held to the ratio at dusk only.
             if (sky.ticks() == SKY_DUSK) {
                 ClientChecks.require(
@@ -222,6 +241,15 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
             row.append(" %d: %.3f;".formatted(below, factor));
         }
         table.add(row.toString());
+    }
+
+    /** The sky light factor the client's attribute system reads at the camera standing on {@code floor}. */
+    private static float skyLightFactor(ClientGameTestContext context, BlockPos floor) {
+        return context.computeOnClient(client -> ClientLight.clientLevel(client)
+                .environmentAttributes()
+                .getValue(
+                        EnvironmentAttributes.SKY_LIGHT_FACTOR,
+                        Vec3.atBottomCenterOf(floor).add(0, 1.6, 0)));
     }
 
     /** What the client's attribute system reads at the camera: the layer biome wants fog 8 to 64, a sky light factor of 0. */
