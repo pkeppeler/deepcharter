@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
@@ -36,7 +37,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -82,8 +82,6 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     private static final int ARRIVAL_FRAMES = 8;
     private static final int ARRIVAL_TICKS_PER_FRAME = 8;
     private static final int RGB = 0xFFFFFF;
-
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     /** What the server holds for the flow: both pods, and the layer 1 columns each one bores. */
     private record Rig(PodEntity realPod, PodEntity mockPod, List<BlockPos> realColumns, List<BlockPos> mockColumns) {}

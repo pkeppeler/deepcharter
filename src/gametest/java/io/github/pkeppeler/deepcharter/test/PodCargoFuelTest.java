@@ -1,5 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD_JUMP;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -48,9 +52,6 @@ public class PodCargoFuelTest {
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 1);
     private static final int FLOOR_RADIUS = 3;
     private static final float SOUTH = 0f;
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
-    private static final Input FORWARD_JUMP = new Input(true, false, false, false, true, false, false);
 
     private static final PodTuning.Cargo CARGO = PodTuning.DEFAULT.cargo();
     private static final PodTuning.Fuel FUEL = PodTuning.DEFAULT.fuel();

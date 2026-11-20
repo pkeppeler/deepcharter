@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
@@ -39,7 +41,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
@@ -64,7 +65,6 @@ public class PodLinerTest {
     private static final int PLENTY = 200;
     private static final int DRILL_TICKS = 2600;
     private static final int RING_TICKS = 400;
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     /**
      * A bed of stone with the pod's room above it, walled so that the only open cells beside the pod are those of the east column (x + 1, the

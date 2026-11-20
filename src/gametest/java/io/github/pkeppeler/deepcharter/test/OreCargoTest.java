@@ -1,5 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SNEAK;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
@@ -38,7 +42,6 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -59,9 +62,6 @@ import org.jspecify.annotations.Nullable;
 public class OreCargoTest {
     private static final int MAX_TICKS = 20000;
     private static final int Z = 3200;
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
-    private static final Input SNEAK = new Input(false, false, false, false, false, true, false);
     private static final double EPSILON = 1e-6;
     private static final float ENGINE_POWER = PodTuning.DEFAULT.movement().enginePower();
 

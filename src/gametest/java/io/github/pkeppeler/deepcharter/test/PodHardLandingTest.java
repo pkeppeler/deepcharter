@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
@@ -33,7 +35,6 @@ import org.jspecify.annotations.Nullable;
  * rotor survives the 192-block layer 1 shaft and a free fall of it wrecks the pod; the seated pilot takes no fall damage, the hull does.
  */
 public class PodHardLandingTest {
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
     /** The rotor holds the pod while it sinks faster than this, in blocks per tick; under the pod's hard landing speed of 0.7. */
     private static final double BRAKE_ABOVE_SINK = 0.5;
 

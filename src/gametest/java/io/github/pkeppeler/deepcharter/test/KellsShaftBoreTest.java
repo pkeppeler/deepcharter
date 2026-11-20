@@ -1,12 +1,11 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import static io.github.pkeppeler.deepcharter.test.support.BoreBot.IDLE;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.ROTOR;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SIDE_STEP;
-import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SPRINT;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.STUCK_TICKS;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.lavaToLine;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.withRotor;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.colony.Colony;
@@ -335,7 +334,7 @@ public class KellsShaftBoreTest {
         }
         run.lastHull = pod.hull();
         run.pod.set(pod);
-        run.pilot.setInput(run.column.inShaft ? IDLE : SPRINT);
+        run.pilot.setInput(run.column.inShaft ? Input.EMPTY : SPRINT);
     }
 
     private static void step(Run run) {
@@ -439,7 +438,7 @@ public class KellsShaftBoreTest {
             }
         }
         boolean rotor = !pod.onGround() && pod.getDeltaMovement().y < -SHAFT_SINK;
-        run.pilot.setInput(rotor ? ROTOR : !lining && pod.onGround() ? SPRINT : IDLE);
+        run.pilot.setInput(rotor ? ROTOR : !lining && pod.onGround() ? SPRINT : Input.EMPTY);
     }
 
     /** A straight bore, as {@code LavaBoreTest}'s bot drives it, down to the crust. */

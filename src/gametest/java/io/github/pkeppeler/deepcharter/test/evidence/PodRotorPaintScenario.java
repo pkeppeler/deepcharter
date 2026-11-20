@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.client.pod.PodGeoRenderer;
@@ -28,7 +30,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -64,8 +65,6 @@ public class PodRotorPaintScenario extends EvidenceScenario {
     private static final int SETTLED_FRAMES = 12;
     /** The pods face the camera, which stands north (-z) of them. */
     private static final float FACING_CAMERA = 180f;
-
-    private static final Input LIFT = new Input(false, false, false, false, true, false, false);
 
     private int framesTaken;
 
@@ -185,7 +184,7 @@ public class PodRotorPaintScenario extends EvidenceScenario {
                 }
                 serverDo(server -> {
                     if (thrust) {
-                        stage.pilot().setInput(LIFT);
+                        stage.pilot().setInput(JUMP);
                     } else {
                         stage.pilot().releaseInput();
                     }

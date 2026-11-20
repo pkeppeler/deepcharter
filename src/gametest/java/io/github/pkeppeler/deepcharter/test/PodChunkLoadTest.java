@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -26,7 +28,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -63,8 +64,6 @@ public class PodChunkLoadTest {
     private static final int DRILL_TICKS = 300;
     /** Pod ticks for the drill to bore through a slab of stone and out the gas pocket in it. */
     private static final int GAS_DRILL_TICKS = 400;
-
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     /** A chunk of the overworld, with a spot at its east edge where a pod's box and bore cross into the chunk next door. */
     private record Site(int slot) {

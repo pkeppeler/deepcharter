@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SNEAK;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
@@ -61,7 +64,6 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
@@ -90,8 +92,6 @@ public class WreckTest {
 
     private static final Map<UUID, Report> REPORTS = new ConcurrentHashMap<>();
 
-    private static final Input SNEAK = new Input(false, false, false, false, false, true, false);
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
     /** Pods whose crust bore costs 20 hull. Only the crust test adds to it. */
     private static final Set<UUID> CRUST_PODS = ConcurrentHashMap.newKeySet();
 
