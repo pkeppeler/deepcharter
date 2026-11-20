@@ -230,7 +230,7 @@ final class TextureTestWorld {
                 room.offset(-halfWidth, 0, -WALL - 5),
                 room.offset(halfWidth, HEIGHT - 1, WALL - 1),
                 Blocks.AIR.defaultBlockState());
-        Block rock = LayerBlocks.groundOf(level);
+        Block rock = LayerBlocks.groundOf(level, room.getY());
         for (int dx = -halfWidth - 1; dx <= halfWidth + 1; dx++) {
             for (int dy = -1; dy <= HEIGHT; dy++) {
                 level.setBlock(room.offset(dx, dy, WALL), rock.defaultBlockState(), Block.UPDATE_ALL);

@@ -25,18 +25,18 @@ public final class OutpostRates {
      * True in a layer of the chain, false on the surface (the colony's level) and in any other dimension. A dimension is one layer from
      * its floor to its ceiling, so the floor stands for the level.
      */
-    public static boolean atDepth(Level level) {
+    public static boolean atDepth(Level level, int y) {
         return layerOf(level, level.getMinY()).isPresent();
     }
 
     /** Dollars one litre costs at a fuel pump in {@code level}. */
-    public static long fuelPricePerLitre(Level level) {
+    public static long fuelPricePerLitre(Level level, int y) {
         long colony = FuelTuning.DEFAULT.pricePerLitre();
-        return atDepth(level) ? colony * OutpostTuning.DEFAULT.fuelPriceFactor() : colony;
+        return atDepth(level, y) ? colony * OutpostTuning.DEFAULT.fuelPriceFactor() : colony;
     }
 
     /** Dollars one {@code ore} sells for at a sell terminal in {@code level}: a whole number, rounded down. */
-    public static long orePrice(Level level, OreType ore) {
-        return atDepth(level) ? ore.value() * OutpostTuning.DEFAULT.sellPercent() / 100 : ore.value();
+    public static long orePrice(Level level, int y, OreType ore) {
+        return atDepth(level, y) ? ore.value() * OutpostTuning.DEFAULT.sellPercent() / 100 : ore.value();
     }
 }

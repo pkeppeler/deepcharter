@@ -590,7 +590,8 @@ public class LamplessFigureTest {
 
     private static void expectSpawnTick(
             GameTestHelper helper, ResourceKey<Level> dimension, long gameTime, boolean expected) {
-        if (LamplessFigures.isSpawnTick(dimension, gameTime) != expected) {
+        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), dimension);
+        if (LamplessFigures.isSpawnTick(level, gameTime) != expected) {
             throw failure(
                     helper,
                     "%s at game time %d: a spawn tick should be %s",

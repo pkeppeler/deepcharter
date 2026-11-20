@@ -60,7 +60,7 @@ public final class WorkOrders {
     /** True when {@code charter} is offered {@code order}: it has reached the layer the order opens at. */
     static boolean offered(MinecraftServer server, Charter charter, WorkOrder order) {
         return order.unlockLayer() == 0
-                || charter.deepestPoint() >= LayerChain.topDepth(server.registryAccess(), order.unlockLayer());
+                || charter.deepestPoint() >= LayerChain.topDepth(server.overworld(), order.unlockLayer());
     }
 
     /**

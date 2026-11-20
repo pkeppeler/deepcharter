@@ -85,7 +85,8 @@ public final class OreProcessor {
         int count = 0;
         for (PodEntity pod : readable) {
             for (PodCargo.Entry entry : pod.cargo().entries()) {
-                total += value(level, entry.stack()) * entry.stack().getCount();
+                total += value(level, context.pos().getY(), entry.stack())
+                        * entry.stack().getCount();
                 count += entry.stack().getCount();
             }
         }
@@ -105,7 +106,7 @@ public final class OreProcessor {
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
             if (OreRegistry.typeOf(stack).isPresent()) {
-                total += value(level, stack) * stack.getCount();
+                total += value(level, context.pos().getY(), stack) * stack.getCount();
                 count += stack.getCount();
             }
         }
@@ -342,8 +343,8 @@ public final class OreProcessor {
         return Optional.empty();
     }
 
-    private static long value(Level level, ItemStack stack) {
-        return OutpostRates.orePrice(level, OreRegistry.typeOf(stack).orElseThrow());
+    private static long value(Level level, int y, ItemStack stack) {
+        return OutpostRates.orePrice(level, y, OreRegistry.typeOf(stack).orElseThrow());
     }
 
     private static List<PodEntity> podsAt(TerminalAction.Context context, Charter charter) {

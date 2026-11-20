@@ -142,7 +142,7 @@ public class EntityQueryAuditTest {
                                 level.addFreshEntity(figure);
                                 figures.add(figure.getUUID());
                             }
-                            if (LamplessFigures.levelHasRoom(level, false)) {
+                            if (LamplessFigures.levelHasRoom(level, false, far.getY())) {
                                 throw failure(
                                         helper,
                                         "the level holds its %d figures and still has room for another",
@@ -150,7 +150,7 @@ public class EntityQueryAuditTest {
                             }
                         },
                         () -> {
-                            if (!LamplessFigures.levelHasRoom(level, false)) {
+                            if (!LamplessFigures.levelHasRoom(level, false, far.getY())) {
                                 throw failure(
                                         helper, "the figures of a chunk that unloaded still use up the level's room");
                             }

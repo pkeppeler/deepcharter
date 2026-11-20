@@ -4,11 +4,7 @@ import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
-import net.minecraft.core.Registry;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.dimension.DimensionType;
 
 /**
  * What the cockpit's five gauges read, each from 0 to 1: the fuel tank, the hull out of the most the pod's parts allow, the depth out of the deepest
@@ -27,7 +23,7 @@ public record CockpitReading(double fuel, double hull, double depth, double heat
 
     public static CockpitReading of(PodEntity pod, double heat) {
         Level level = pod.level();
-        double deepest = deepestBlocks(level.registryAccess());
+        double deepest = LayerChain.deepestDepth(level);
         return new CockpitReading(
                 clamp(pod.fuel() / FULL_TANK_PERCENT),
                 pod.maxHull() > 0f ? clamp(pod.hull() / pod.maxHull()) : 0.0,
@@ -39,14 +35,6 @@ public record CockpitReading(double fuel, double hull, double depth, double heat
     private static double cargoShare(PodEntity pod) {
         int slots = PodStats.of(pod).cargoSlots();
         return slots > 0 ? clamp((double) pod.cargoUsed() / slots) : 0.0;
-    }
-
-    /** The depth, in blocks below sea level, of the floor of the last layer. */
-    static double deepestBlocks(RegistryAccess registries) {
-        int last = LayerChain.count(registries);
-        Registry<DimensionType> types = registries.lookupOrThrow(Registries.DIMENSION_TYPE);
-        return LayerChain.topDepth(registries, last)
-                + types.getValueOrThrow(LayerChain.type(last)).height();
     }
 
     private static double clamp(double share) {

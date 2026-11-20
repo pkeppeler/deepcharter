@@ -55,10 +55,11 @@ public final class FuelPumpScreen extends CrtScreen implements TerminalViewScree
                 Component.translatable("screen.deepcharter.fuel_pump.online", price()), new TypewriterSound());
     }
 
-    /** What a litre costs here: the server charges the price of the level the pump stands in, which is the client's own. */
-    private static long price() {
+    /** What a litre costs here: the server charges the price of the band the pump stands in, in the level that is the client's own. */
+    private long price() {
         return OutpostRates.fuelPricePerLitre(
-                Objects.requireNonNull(Minecraft.getInstance().level, "a pump screen opens in a world"));
+                Objects.requireNonNull(Minecraft.getInstance().level, "a pump screen opens in a world"),
+                view.pos().getY());
     }
 
     private static TerminalType typeOf(TerminalView view) {

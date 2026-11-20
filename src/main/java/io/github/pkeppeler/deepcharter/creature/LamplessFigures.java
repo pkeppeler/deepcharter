@@ -69,17 +69,17 @@ public final class LamplessFigures {
     }
 
     /** Whether a level looks for sites to put a figure on at this game time: the rail level, every {@link CreatureTuning#spawnIntervalTicks}. */
-    public static boolean isSpawnTick(ResourceKey<Level> dimension, long gameTime) {
-        return dimension.equals(RAIL_LEVEL) && gameTime % CreatureTuning.DEFAULT.spawnIntervalTicks() == 0;
+    public static boolean isSpawnTick(ServerLevel level, long gameTime) {
+        return level.dimension().equals(RAIL_LEVEL) && gameTime % CreatureTuning.DEFAULT.spawnIntervalTicks() == 0;
     }
 
-    static void killed(ServerLevel level, boolean natural) {
+    static void killed(ServerLevel level, boolean natural, int y) {
         (natural ? LAST_NATURAL_KILL : LAST_KILL).put(level.dimension(), level.getGameTime());
     }
 
     /** A tick path: it logs each kind of failure once for a level and carries on. */
     private static void tick(ServerLevel level) {
-        if (!isSpawnTick(level.dimension(), level.getGameTime())) {
+        if (!isSpawnTick(level, level.getGameTime())) {
             return;
         }
         try {
@@ -130,7 +130,7 @@ public final class LamplessFigures {
         BoundingBox bounds = site.bounds();
         // entity-query: a figure is not saved (CreatureRegistry noSave), so it lives exactly while its chunk is loaded
         // and the query sees every one
-        if (!levelHasRoom(level, false)
+        if (!levelHasRoom(level, false, site.origin().getY())
                 || level.getEntities(
                                         CreatureRegistry.LAMPLESS_FIGURE,
                                         figure -> bounds.isInside(figure.blockPosition()))
@@ -160,7 +160,7 @@ public final class LamplessFigures {
      * enough since the last of that kind was killed. The two kinds are counted apart, so that the rail's figure of Prospector's Run, which is
      * fixed lore, is never held back by the figures of the caverns.
      */
-    public static boolean levelHasRoom(ServerLevel level, boolean natural) {
+    public static boolean levelHasRoom(ServerLevel level, boolean natural, int y) {
         CreatureTuning tuning = CreatureTuning.DEFAULT;
         Long lastKill = (natural ? LAST_NATURAL_KILL : LAST_KILL).get(level.dimension());
         return (lastKill == null || level.getGameTime() - lastKill >= tuning.respawnDelayTicks())
@@ -173,15 +173,15 @@ public final class LamplessFigures {
 
     /** What the game's own spawner asks of a try at {@code pos}: a roll that keeps them rare, then the rules of {@link #canAppearAt} and room in the level. */
     static boolean mayAppearNaturally(ServerLevel level, BlockPos pos, RandomSource random) {
-        return rolls(level, random) && canAppearAt(level, pos) && levelHasRoom(level, true);
+        return rolls(level.dimension().equals(LayerChain.dimension(1)) ? 1 : 2, random)
+                && canAppearAt(level, pos)
+                && levelHasRoom(level, true, pos.getY());
     }
 
     /** The cheap check, first: one try in {@link CreatureTuning.Natural#chancePerTry} passes in layer 2, and fewer in layer 1. */
-    public static boolean rolls(ServerLevel level, RandomSource random) {
+    public static boolean rolls(int layer, RandomSource random) {
         CreatureTuning.Natural natural = CreatureTuning.DEFAULT.natural();
-        double chance = level.dimension().equals(LayerChain.dimension(1))
-                ? natural.layerOneChancePerTry()
-                : natural.chancePerTry();
+        double chance = layer == 1 ? natural.layerOneChancePerTry() : natural.chancePerTry();
         return random.nextDouble() < chance;
     }
 

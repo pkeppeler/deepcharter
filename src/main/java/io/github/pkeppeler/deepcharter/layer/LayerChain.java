@@ -159,6 +159,23 @@ public final class LayerChain {
         return count;
     }
 
+    /** How many layers {@code level} holds: the registry's count for a layer dimension and the surface, the band table's for a campaign world. */
+    public static int layerCount(Level level) {
+        return count(level.registryAccess());
+    }
+
+    /** {@link #topDepth(RegistryAccess, int)} for the layers {@code level} holds. */
+    public static int topDepth(Level level, int layer) {
+        return topDepth(level.registryAccess(), layer);
+    }
+
+    /** The depth in blocks below sea level of the floor of the last layer {@code level} holds. */
+    public static int deepestDepth(Level level) {
+        Registry<DimensionType> types = level.registryAccess().lookupOrThrow(Registries.DIMENSION_TYPE);
+        int last = layerCount(level);
+        return topDepth(level, last) + types.getValueOrThrow(type(last)).height();
+    }
+
     /** Layer 1 starts at the overworld's floor; each later layer starts where the one above ends. */
     public static int topDepth(RegistryAccess registries, int layer) {
         Registry<DimensionType> types = registries.lookupOrThrow(Registries.DIMENSION_TYPE);

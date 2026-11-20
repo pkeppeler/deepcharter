@@ -85,12 +85,12 @@ public final class LayerBlocks {
      * The ground of the layer that a level is, for a room that is sealed or filled in it: the layer's own rock, so that no block of vanilla stone shows
      * in it. Any other level (the surface, a test's) has vanilla stone.
      */
-    public static Block groundOf(Level level) {
-        return layerGroundOf(level).orElse(Blocks.STONE);
+    public static Block groundOf(Level level, int y) {
+        return layerGroundOf(level, y).orElse(Blocks.STONE);
     }
 
     /** The rock of the layer that a level is; empty for a level that is no layer (the surface, a test's). Fails for a layer with no rock block yet. */
-    public static Optional<Block> layerGroundOf(Level level) {
+    public static Optional<Block> layerGroundOf(Level level, int y) {
         return LayerChain.layerAt(level, level.getMinY()).map(band -> layerGround(band.layer()));
     }
 

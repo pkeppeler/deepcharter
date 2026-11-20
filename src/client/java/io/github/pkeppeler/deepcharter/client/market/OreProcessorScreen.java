@@ -510,7 +510,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
         if (typewriter.done()) {
             int y = top;
             int x = rightColumn();
-            // The server pays the price of the level the terminal stands in, which is the client's own.
+            // The server pays the price of the band the terminal stands in, in the level that is the client's own.
             Level level = Objects.requireNonNull(
                     Objects.requireNonNull(minecraft, "a screen draws once it is open").level,
                     "a processor screen opens in a world");
@@ -520,7 +520,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
                                 Component.translatable(OreRegistry.item(ore).getDescriptionId())
                                         .getString()
                                         .toUpperCase(Locale.ROOT),
-                                OutpostRates.orePrice(level, ore))
+                                OutpostRates.orePrice(level, view.pos().getY(), ore))
                         .getString();
                 CrtDraw.glowText(graphics, font, price, x, y, PanelLook.dimText(tuning.dimColor()));
                 y += font.lineHeight + 2;

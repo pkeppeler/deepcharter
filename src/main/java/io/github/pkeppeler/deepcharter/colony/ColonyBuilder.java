@@ -127,6 +127,7 @@ public final class ColonyBuilder {
         ColonySite.Placed started =
                 new ColonySite.Placed(ground, ColonyLayout.read(server).anchorsAt(ground), false, false);
         site.begin(started);
+        ColonyEvents.BEGUN.invoker().onBegun(server, started);
         return started;
     }
 

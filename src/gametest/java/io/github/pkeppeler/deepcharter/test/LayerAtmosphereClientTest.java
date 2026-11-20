@@ -301,7 +301,8 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
                         level,
                         floor.offset(-MASS, -1, -MASS),
                         floor.offset(MASS, ROOM_HEIGHT, MASS),
-                        LayerBlocks.groundOf(TestLayers.level(s, 1)).defaultBlockState());
+                        LayerBlocks.groundOf(TestLayers.level(s, 1), floor.getY())
+                                .defaultBlockState());
             }
             RoomCarver.carve(
                     level,

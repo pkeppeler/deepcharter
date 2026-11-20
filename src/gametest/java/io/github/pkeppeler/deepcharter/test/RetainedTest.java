@@ -865,8 +865,8 @@ public class RetainedTest {
                 nether.addFreshEntity(figure);
                 naturals.add(figure);
             }
-            boolean naturalRoom = LamplessFigures.levelHasRoom(nether, true);
-            boolean railRoom = LamplessFigures.levelHasRoom(nether, false);
+            boolean naturalRoom = LamplessFigures.levelHasRoom(nether, true, spot.getY());
+            boolean railRoom = LamplessFigures.levelHasRoom(nether, false, spot.getY());
             naturals.forEach(LamplessFigure::discard);
             expect(
                     helper,
@@ -891,8 +891,8 @@ public class RetainedTest {
         int inOne = 0;
         int inTwo = 0;
         for (int i = 0; i < tries; i++) {
-            inOne += LamplessFigures.rolls(one, one.getRandom()) ? 1 : 0;
-            inTwo += LamplessFigures.rolls(two, two.getRandom()) ? 1 : 0;
+            inOne += LamplessFigures.rolls(1, one.getRandom()) ? 1 : 0;
+            inTwo += LamplessFigures.rolls(2, two.getRandom()) ? 1 : 0;
         }
         LOGGER.info(
                 "[retained] rolls in {} tries: layer 1 {} ({}), layer 2 {} ({})",
@@ -1080,7 +1080,7 @@ public class RetainedTest {
                 LamplessFigures.clearRespawnDelays();
                 int rolled = 0;
                 for (int i = 0; i < tries; i++) {
-                    rolled += LamplessFigures.rolls(two, two.getRandom()) ? 1 : 0;
+                    rolled += LamplessFigures.rolls(2, two.getRandom()) ? 1 : 0;
                 }
                 double expected = tries * TUNING.natural().chancePerTry();
                 expect(

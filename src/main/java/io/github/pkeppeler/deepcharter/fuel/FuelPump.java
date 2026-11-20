@@ -89,7 +89,8 @@ public final class FuelPump {
             return Optional.of(Component.translatable("message.deepcharter.fuel.no_room", wholeRoom));
         }
         int roomLitres = (int) Math.ceil(room - FULL_TOLERANCE);
-        long price = OutpostRates.fuelPricePerLitre(context.player().level());
+        long price = OutpostRates.fuelPricePerLitre(
+                context.player().level(), context.pos().getY());
         long affordable =
                 Charters.findOrThrow(server, charter.get()).orElseThrow().account() / price;
         int minimum = partial ? 1 : litres;
