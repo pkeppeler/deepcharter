@@ -220,7 +220,13 @@ public class BreachCrossingTest {
             if (CROSSINGS.containsKey(mock.player().getUUID())) {
                 throw failure(helper, "the last layer's floor crossed");
             }
-            expectIn(helper, mock.player(), 2);
+            // Still under the floor: below the last layer's band is no layer, so it is not asked to be in one.
+            if (mock.player().getY() >= TestLayers.band(two, 2).floor()) {
+                throw failure(
+                        helper,
+                        "the player was moved up to y=%s from under the last floor",
+                        mock.player().getY());
+            }
             helper.succeed();
         });
     }
