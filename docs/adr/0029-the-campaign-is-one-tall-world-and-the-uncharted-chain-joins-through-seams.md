@@ -80,12 +80,13 @@ Split of the gap by feature (JFR worker-thread samples with `-XX:+DebugNonSafepo
 | Chunk save | 5.5% |
 | Band biome source | 4% |
 | Structures, cave stalks | about 0 |
+| Light (cheaper in the campaign world: 530 samples fewer) | about -2.5% |
 
-Ablations (campaign cost per block of height, change in the ratio against the unchanged code): no zone fill about -0.34, no layer-rock rule about -0.22, both off 0.85x.
+Ablations (campaign cost per block of height, as the change from 1.37x, the mean of 2 runs on the unchanged code, which is not the 1.29x above): no zone fill about -0.34, no layer-rock rule about -0.22, both off 0.85x. Both off reads below 1.0x because the remaining content (surface, structures, stalks, biome source) is net cheaper than `tall_baseline`.
 
-Two cuts, neither changing a roll: `ZoneFillFeature` and `OreBlock` work out the rock's tag test, ore states and thresholds once, not per block, and read only the blocks that place something in a section; `BandBiomeSource` takes the biome from a table by height. The generated world is identical (108 chunks of three worlds hashed by block state name, 0 differ). By JFR worker samples the ratio goes from 1.18x to 1.107x per block.
+Two cuts, neither changing a roll: `ZoneFillFeature` and `OreBlock` work out the rock's tag test, ore states and thresholds once, not per block, and read only the blocks that place something in a section; `BandBiomeSource` takes the biome from a table by height. The generated world is identical: `CampaignWorldHashTest` run on the tree before the cuts (`b00ddbd9`) and on this one gives the same 216 chunk lines (`campaign_sample`, `layer_1` and `tall_layer`, two 6 x 6 patches each, seed 0 only, as the GameTest world's seed is fixed), with every block state hashed by name and properties and every biome cell by key, 0 differ. By JFR worker-thread samples (a count of samples, not CPU ms) the ratio goes from 1.18x to 1.107x per block.
 
-Quiet measurement: the same method as above, 6 rounds per run, 3 runs, world order alternating, no JFR. Load before each run was under 1.0 and no other process used CPU.
+Quiet measurement: the same method as above, but 6 rounds per run against the earlier 5, 3 runs, world order alternating, no JFR. The load average before each run was under 1.0 (0.55, 0.96, 0.95); it was not sampled during the runs.
 
 | Run | World order | Load before | `tall_baseline` min / median | `campaign_sample` min / median | Per column | Per block |
 |---|---|---|---|---|---|---|
@@ -93,8 +94,8 @@ Quiet measurement: the same method as above, 6 rounds per run, 3 runs, world ord
 | 2 | campaign, baseline | 0.96 | 91.87 / 120.61 | 126.54 / 140.39 | 1.16x | 1.01x |
 | 3 | baseline, campaign | 0.95 | 85.26 / 109.22 | 112.01 / 148.51 | 1.36x | 1.18x |
 
-Pooled over the 18 rounds: `tall_baseline` min 85.26, median 118.57; `campaign_sample` min 112.01, median 151.45. That is 1.28x per column and 1.11x per block of height on the medians (the minima give 1.31x and 1.14x). The runs spread from 1.01x to 1.20x per block. Within a run the rounds drift: the campaign world's median rises from 140 ms in rounds 1 to 3 to 176 ms in rounds 4 to 6, the baseline's from 118 to 123.
+Pooled over the 18 rounds: `tall_baseline` min 85.26, median 118.57; `campaign_sample` min 112.01, median 151.45. That is 1.28x per column and 1.11x per block of height on the medians (the minima give 1.31x and 1.14x). The runs spread from 1.01x to 1.20x per block. Within a run the rounds drift: the mean of the campaign world's rounds rises from 140 ms in rounds 1 to 3 to 176 ms in rounds 4 to 6, the baseline's from 118 to 123 (means, not medians). Per block that is about 1.10x in rounds 1 to 3 and about 1.25x in rounds 4 to 6; the pooled mean is 1.139x. The cause of the drift is open and is tracked on #781.
 
-Verdict: against the 1.15x per-block bar, the pooled medians pass, at 1.11x. The margin is small: two of the three runs read above 1.15x alone (1.20x and 1.18x, and the test's own per-run assertion failed on them), and the pooled minima read 1.14x. What is left of the gap is mostly layer rock, the vanilla `buildSurface` writes of the layers' own stone.
+Verdict: against the 1.15x per-block bar, the pooled medians pass, at 1.11x, but the pass is inside the run-to-run noise. The margin is small: two of the three runs read above 1.15x alone (1.20x and 1.18x, and the test's own per-run assertion failed on them), and the pooled minima read 1.14x. What is left of the gap is mostly layer rock, the vanilla `buildSurface` writes of the layers' own stone.
 
-`ColumnCost` counts process CPU, so JIT and GC threads are in it; JFR worker samples are steadier for a small change.
+`ColumnCost` counts process CPU, so JIT and GC threads are in it; JFR worker-thread samples (counts, not CPU ms) are steadier for a small change.
