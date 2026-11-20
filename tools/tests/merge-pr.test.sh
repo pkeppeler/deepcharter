@@ -295,13 +295,14 @@ if gh_fixture_available; then
     "$(fx_pr $reviewed.hand-edited.json)" "$(fx_comments issue-comments.foreign-login.hand-edited.json)" "STUB_SHA=$fx_sha"
   run_script "$(fx_pr $reviewed.hand-edited.json)" "$(fx_comments issue-comments.json)" "STUB_SHA=$fx_sha"
   exited "fixture: the recorded comment with its proxy footer passes the gate" 0
-  fx_title=$(jq -r .title "$FIXTURES/pulls-open.json")
-  fx_body_first=$(jq -r '.body | split("\n")[0]' "$FIXTURES/pulls-open.json")
+  fx_title=$(jq -r .title "$open_pr")
+  fx_body_first=$(jq -r '.body | split("\n")[0]' "$open_pr")
   logged "fixture: the merge is pinned to the recorded head sha and sends its title and the body's first line" \
     "gh api -X PUT repos/pkeppeler/deepcharter/pulls/7/merge -f merge_method=squash -f sha=$fx_sha -f commit_title=$fx_title (#7) -f commit_message=$fx_body_first"
-  SCRIPT=$mark run_script "$(fx_pr pulls-open.json)" "STUB_SHA=$(jq -r .head.sha "$open_pr")"
+  open_sha=$(jq -r .head.sha "$open_pr")
+  SCRIPT=$mark run_script "$(fx_pr pulls-open.json)" "STUB_SHA=$open_sha"
   exited "fixture: mark reads the head sha and ref from the recorded PR" 0
-  logged "fixture: mark comments on the recorded head sha" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed $(jq -r .head.sha "$open_pr")"
+  logged "fixture: mark comments on the recorded head sha" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed $open_sha"
 else
   echo "SKIP fixture cases (no jq: tools/tests/lib/gh-fixture.sh needs it; CI runs them)"
 fi

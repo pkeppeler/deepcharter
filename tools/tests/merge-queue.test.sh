@@ -488,7 +488,7 @@ if [[ ! -e $work/lock && ! -L $work/lock ]]; then pass "lock: released after a s
 
 # --- the production jq filters over recorded REST responses ---
 if gh_fixture_available; then
-  # A recorded merged PR is skipped as already merged, and its cleanup reads the recorded branch and head sha.
+  # A recorded merged PR is skipped as already merged.
   reset
   echo "$FIXTURES/pulls-merged.json" >"$ST/fixture.7"
   run_q 7
@@ -498,11 +498,12 @@ if gh_fixture_available; then
   # A recorded open PR is read as OPEN and handed to the gate with the recorded head sha for the CI wait.
   reset
   echo "$FIXTURES/pulls-open.json" >"$ST/fixture.7"
+  open_sha=$(jq -r .head.sha "$FIXTURES/pulls-open.json")
   gate 7 1 "0 merged"
   run_q 7
   count "fixture: a recorded open PR reaches the gate" "merge-pr 7" 1
   count "fixture: the CI wait uses the recorded head branch" "--branch 743-campaign-content " 1
-  count "fixture: the CI wait looks for the recorded head sha" ".headSha == \"$(jq -r .head.sha "$FIXTURES/pulls-open.json")\"" 1
+  count "fixture: the CI wait looks for the recorded head sha" ".headSha == \"$open_sha\"" 1
 else
   echo "SKIP fixture cases (no jq: tools/tests/lib/gh-fixture.sh needs it; CI runs them)"
 fi
