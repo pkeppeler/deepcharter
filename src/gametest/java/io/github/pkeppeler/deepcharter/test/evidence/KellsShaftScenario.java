@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.ROTOR;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.lavaToLine;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
-import static io.github.pkeppeler.deepcharter.test.support.Inputs.IDLE;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
@@ -34,6 +33,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -268,7 +268,7 @@ public class KellsShaftScenario extends EvidenceScenario {
                     lining = PodLining.working(pod);
                 }
                 boolean rotor = !pod.onGround() && pod.getDeltaMovement().y < -SINK;
-                pilot.setInput(rotor ? ROTOR : !lining && !hold && pod.onGround() ? SPRINT : IDLE);
+                pilot.setInput(rotor ? ROTOR : !lining && !hold && pod.onGround() ? SPRINT : Input.EMPTY);
             }
             look();
             return new PodState(
