@@ -48,6 +48,7 @@
       "destroy_on_use": false
     },
     "minecraft:visual/ambient_light_color": "#1c1814",
+    "minecraft:visual/ambient_particles": [],
     "minecraft:visual/fog_color": "#2a2118",
     "minecraft:visual/fog_end_distance": 64.0,
     "minecraft:visual/fog_start_distance": 8.0,
