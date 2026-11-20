@@ -18,10 +18,16 @@ trap cleanup EXIT
 mkdir "$work/bin" "$work/st"
 export LOG="$work/calls.log"
 export ST="$work/st"
+# $ST/fixture.N (a path) makes the stub run the script's own --jq over that recorded response for PR N.
+FIXTURES=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fixtures/gh-rest
+FIXTURE_LIB=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/gh-fixture.sh
+export FIXTURE_LIB
+# shellcheck source=lib/gh-fixture.sh
+source "$FIXTURE_LIB"
 
 # gh: REST only. state (OPEN, CLOSED or MERGED, answered as the REST merged flag plus open/closed),
 # branch and sha come from $ST/state.N (default OPEN), $ST/branch.N (default N-slug).
-# $ST/rest_fail makes every PR read fail. `run list` pops one line per call from $ST/runs ("-" or no line = nothing unfinished).
+# $ST/fixture.N replaces those with a recorded response (tools/tests/fixtures/gh-rest). $ST/rest_fail makes every PR read fail. `run list` pops one line per call from $ST/runs ("-" or no line = nothing unfinished).
 cat >"$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 echo "gh $*" >>"$LOG"
@@ -39,6 +45,12 @@ case "$1 $method" in
   "api GET")
     [[ ! -e $ST/rest_fail ]] || exit 1
     n=${path##*/}
+    if [[ -e $ST/fixture.$n ]]; then
+      # shellcheck source=lib/gh-fixture.sh
+      source "$FIXTURE_LIB"
+      gh_fixture_jq "$(cat "$ST/fixture.$n")" "$jq"
+      exit
+    fi
     case "$jq" in
       '"\(.merged) \(.state)"')
         case "$(cat "$ST/state.$n" 2>/dev/null || echo OPEN)" in
@@ -473,6 +485,26 @@ reset
 gate 7 1 "1" "REFUSED: PR #7 nope"
 run_q 7
 if [[ ! -e $work/lock && ! -L $work/lock ]]; then pass "lock: released after a stopped run"; else fail "lock: released after a stopped run"; fi
+
+# --- the production jq filters over recorded REST responses ---
+if gh_fixture_available; then
+  # A recorded merged PR is skipped as already merged, and its cleanup reads the recorded branch and head sha.
+  reset
+  echo "$FIXTURES/pulls-merged.json" >"$ST/fixture.7"
+  run_q 7
+  exited "fixture: a recorded merged PR is skipped" 0
+  printed "fixture: the merged PR is listed as already merged" "already merged"
+  not_logged "fixture: the gate never runs on a merged PR" "merge-pr 7"
+  # A recorded open PR is read as OPEN and handed to the gate with the recorded head sha for the CI wait.
+  reset
+  echo "$FIXTURES/pulls-open.json" >"$ST/fixture.7"
+  gate 7 1 "0 merged"
+  run_q 7
+  count "fixture: a recorded open PR reaches the gate" "merge-pr 7" 1
+  if grep -qF -- "--branch 743-campaign-content " "$LOG"; then pass "fixture: the CI wait uses the recorded head branch"; else fail "fixture: the CI wait uses the recorded head branch"; fi
+else
+  echo "SKIP fixture cases (no jq: tools/tests/lib/gh-fixture.sh needs it; CI runs them)"
+fi
 
 # --- usage ---
 reset
