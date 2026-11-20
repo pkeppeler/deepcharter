@@ -590,8 +590,9 @@ public class LamplessFigureTest {
 
     private static void expectSpawnTick(
             GameTestHelper helper, ResourceKey<Level> dimension, long gameTime, boolean expected) {
-        ServerLevel level = ClientLight.serverLevel(helper.getLevel().getServer(), dimension);
-        if (LamplessFigures.isSpawnTick(level, gameTime) != expected) {
+        // A level the server does not have (a third layer) never ticks.
+        ServerLevel level = helper.getLevel().getServer().getLevel(dimension);
+        if (level == null ? expected : LamplessFigures.isSpawnTick(level, gameTime) != expected) {
             throw failure(
                     helper,
                     "%s at game time %d: a spawn tick should be %s",
