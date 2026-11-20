@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
+import java.util.Arrays;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -110,6 +111,14 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
         while (high + 1 < minY + height && Zones.index(minY, height, high + 1) == zone) {
             high++;
         }
+        // The rolls and the states they place do not change from block to block, and the rock hardly does: a layer is
+        // mostly one state, so its tag test and the ore states it hosts are worked out once for each new rock.
+        double[] oreFloors = floors(ores);
+        double[] hazardFloors = floors(hazards);
+        @Nullable BlockState[] oreStates = new BlockState[ores.size()];
+        @Nullable BlockState[] hazardStates = new BlockState[hazards.size()];
+        @Nullable BlockState lastRock = null;
+        boolean lastIsGround = false;
         for (int index = chunk.getSectionIndex(low); index <= chunk.getSectionIndex(high); index++) {
             LevelChunkSection section = chunk.getSection(index);
             if (section.hasOnlyAir() || !section.maybeHas(state -> state.is(LayerBlocks.GROUND))) {
@@ -120,19 +129,34 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
                 for (int x = 0; x < 16; x++) {
                     for (int z = 0; z < 16; z++) {
                         BlockState rock = section.getBlockState(x, y & 15, z);
-                        if (!rock.is(LayerBlocks.GROUND)) {
+                        if (rock != lastRock) {
+                            lastRock = rock;
+                            lastIsGround = rock.is(LayerBlocks.GROUND);
+                            Arrays.fill(oreStates, null);
+                            Arrays.fill(hazardStates, null);
+                        }
+                        if (!lastIsGround) {
                             continue;
                         }
                         BlockState state = null;
-                        OreBlock ore = roll(ores, random);
-                        if (ore != null) {
-                            state = ore.in(rock);
+                        int ore = roll(oreFloors, random);
+                        if (ore >= 0) {
+                            state = oreStates[ore];
+                            if (state == null) {
+                                state = ores.get(ore).block().in(rock);
+                                oreStates[ore] = state;
+                            }
                         } else {
-                            Block hazard = roll(hazards, random);
-                            if (hazard != null) {
-                                state = hazard instanceof CompanyRockBlock company
-                                        ? company.in(rock)
-                                        : hazard.defaultBlockState();
+                            int hazard = roll(hazardFloors, random);
+                            if (hazard >= 0) {
+                                state = hazardStates[hazard];
+                                if (state == null) {
+                                    Block block = hazards.get(hazard).block();
+                                    state = block instanceof CompanyRockBlock company
+                                            ? company.in(rock)
+                                            : block.defaultBlockState();
+                                    hazardStates[hazard] = state;
+                                }
                             }
                         }
                         if (state != null) {
@@ -146,19 +170,28 @@ public record ZoneFillFeature(int layer, int zone, List<Entry<OreBlock>> ores, L
         return placed;
     }
 
-    /** One roll over the entries: the first whose chance the roll falls in, or null for none. */
-    private static <B extends Block> @Nullable B roll(List<Entry<B>> entries, RandomSource random) {
-        if (entries.isEmpty()) {
-            return null;
+    /** The running totals of the entries' chances, so that a roll finds its entry the way a sum over the list would. */
+    private static double[] floors(List<? extends Entry<?>> entries) {
+        double[] floors = new double[entries.size()];
+        double floor = 0;
+        for (int i = 0; i < floors.length; i++) {
+            floor += entries.get(i).chance();
+            floors[i] = floor;
+        }
+        return floors;
+    }
+
+    /** One roll over the running totals: the index of the first one the roll falls below, or -1 for none. No entries, no roll. */
+    private static int roll(double[] floors, RandomSource random) {
+        if (floors.length == 0) {
+            return -1;
         }
         double roll = random.nextDouble();
-        double floor = 0;
-        for (Entry<B> entry : entries) {
-            floor += entry.chance();
-            if (roll < floor) {
-                return entry.block();
+        for (int i = 0; i < floors.length; i++) {
+            if (roll < floors[i]) {
+                return i;
             }
         }
-        return null;
+        return -1;
     }
 }
