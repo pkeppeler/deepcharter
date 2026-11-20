@@ -90,8 +90,12 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
     private static final int ROOM_HEIGHT = 5;
     /** Layer brightness is the sealed room's; a shaft that reads this close to it is at layer brightness. */
     private static final double SAME_LUMA = 3.0;
-    /** The same shaft in a surface biome reads at least this many times brighter, so the test can tell the two apart. */
-    private static final double CONTROL_RATIO = 4.0;
+    /**
+     * The same shaft in a surface biome reads at least this many times brighter, so the test can tell the two apart. It was 4.0 (102.8
+     * against 21.8) in a type with no sky timeline; at dusk the campaign type's timeline sets a sky light factor of 0.62 and the surface
+     * shaft reads 64.2 (2.9x), so the bar is 2.0.
+     */
+    private static final double CONTROL_RATIO = 2.0;
 
     private final List<String> table = new ArrayList<>();
 
