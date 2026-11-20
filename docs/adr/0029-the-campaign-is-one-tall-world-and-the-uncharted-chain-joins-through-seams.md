@@ -66,3 +66,35 @@ Pooled over the 15 rounds: `tall_baseline` min 114.57, median 139.32; `campaign_
 Context, one run (load 1.56, busiest other process a 74% Code helper): `tall_layer` min 186.60, median 235.41; `campaign_sample` min 169.42, median 218.64. The campaign world is 0.93x per column and 0.81x per block of height against a world that fills every row.
 
 Verdict: against the 1.15x per-block bar the campaign world with its content is over, at 1.17x to 1.25x per block (1.25x pooled) against `tall_baseline`. The bar is not met. The baseline is a world with no fill, no biome zones, no structures and no layer rock, so the comparison charges the campaign world for all its content. The fill alone is not shown to be the cost: the world fills 448 rows and costs 0.81x per block of the world that fills 2048. Which part of the content makes up the 1.25x (the band biome source, the layer rock, the structure draw, the ore and cave features) is not measured. A split by feature is the next step if the bar is to be met, and the heap readings drift too much between rounds (negative deltas) to judge.
+
+## Follow-up, 2026-11-20 (#743): the cost split by feature, two cuts, re-measured
+
+The machine changed: a cloud Linux VM with 4 vCPU. The unchanged code read about 1.29x mean per block of height here by process CPU (four indicative runs), so a reading here is not directly comparable with the Mac's 1.25x.
+
+Split of the gap by feature (JFR worker-thread samples with `-XX:+DebugNonSafepoints`, share of the campaign world's extra samples over `tall_baseline`):
+
+| Feature | Share of the gap |
+|---|---|
+| Layer rock (surface-rule writes in `MaterialSystem.buildSurface`) | 63% |
+| Zone fill (before the cuts) | 30% |
+| Chunk save | 5.5% |
+| Band biome source | 4% |
+| Structures, cave stalks | about 0 |
+
+Ablations (campaign cost per block of height, change in the ratio against the unchanged code): no zone fill about -0.34, no layer-rock rule about -0.22, both off 0.85x.
+
+Two cuts, neither changing a roll: `ZoneFillFeature` and `OreBlock` work out the rock's tag test, ore states and thresholds once, not per block, and read only the blocks that place something in a section; `BandBiomeSource` takes the biome from a table by height. The generated world is identical (108 chunks of three worlds hashed by block state name, 0 differ). By JFR worker samples the ratio goes from 1.18x to 1.107x per block.
+
+Quiet measurement: the same method as above, 6 rounds per run, 3 runs, world order alternating, no JFR. Load before each run was under 1.0 and no other process used CPU.
+
+| Run | World order | Load before | `tall_baseline` min / median | `campaign_sample` min / median | Per column | Per block |
+|---|---|---|---|---|---|---|
+| 1 | baseline, campaign | 0.55 | 100.17 / 125.94 | 143.77 / 173.53 | 1.38x | 1.20x |
+| 2 | campaign, baseline | 0.96 | 91.87 / 120.61 | 126.54 / 140.39 | 1.16x | 1.01x |
+| 3 | baseline, campaign | 0.95 | 85.26 / 109.22 | 112.01 / 148.51 | 1.36x | 1.18x |
+
+Pooled over the 18 rounds: `tall_baseline` min 85.26, median 118.57; `campaign_sample` min 112.01, median 151.45. That is 1.28x per column and 1.11x per block of height on the medians (the minima give 1.31x and 1.14x). The runs spread from 1.01x to 1.20x per block. Within a run the rounds drift: the campaign world's median rises from 140 ms in rounds 1 to 3 to 176 ms in rounds 4 to 6, the baseline's from 118 to 123.
+
+Verdict: against the 1.15x per-block bar, the pooled medians pass, at 1.11x. The margin is small: two of the three runs read above 1.15x alone (1.20x and 1.18x, and the test's own per-run assertion failed on them), and the pooled minima read 1.14x. What is left of the gap is mostly layer rock, the vanilla `buildSurface` writes of the layers' own stone.
+
+`ColumnCost` counts process CPU, so JIT and GC threads are in it; JFR worker samples are steadier for a small change.
