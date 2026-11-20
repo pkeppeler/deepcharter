@@ -232,7 +232,11 @@ run_script() {
   out=$(env "$@" PATH="$work/bin:$PATH" bash "${SCRIPT:-$script}" 7 2>&1) || rc=$?
 }
 
-logged() { if grep -qxF -- "$2" "$LOG"; then pass "$1"; else fail "$1 (missing: $2)"; fi; }
+# The pattern is one log line: grep -F splits a multi-line pattern into several, and an empty one matches any blank line.
+logged() {
+  [[ $2 != *$'\n'* ]] || { echo "logged: the pattern for '$1' has a newline; match one line" >&2; exit 1; }
+  if grep -qxF -- "$2" "$LOG"; then pass "$1"; else fail "$1 (missing: $2)"; fi
+}
 not_logged() { if grep -q -- "$2" "$LOG"; then fail "$1 (found: $2)"; else pass "$1"; fi; }
 exited() { if [[ $rc -eq $2 ]]; then pass "$1"; else fail "$1 (rc=$rc, wanted $2: $out)"; fi; }
 printed() { if [[ $out == *"$2"* ]]; then pass "$1"; else fail "$1 (out: $out)"; fi; }
@@ -273,7 +277,6 @@ merge_line="${merge_prefix}Closes #12"
 merged_via_rest() { if grep -qF -- "$merge_prefix" "$LOG"; then pass "$1"; else fail "$1 (no merge request with the pinned sha and title)"; fi; }
 
 # --- the production jq filters over recorded REST responses ---
-# First, so a changed filter fails here by name before the canned-answer cases below lose their stub match.
 # STUB_FIXTURE_PR / STUB_FIXTURE_COMMENTS: the stub evaluates the script's own --jq on a file from
 # tools/tests/fixtures/gh-rest (README.md there says which files are recorded and which hand-edited). Needs jq.
 if gh_fixture_available; then
@@ -293,8 +296,9 @@ if gh_fixture_available; then
   run_script "$(fx_pr $reviewed.hand-edited.json)" "$(fx_comments issue-comments.json)" "STUB_SHA=$fx_sha"
   exited "fixture: the recorded comment with its proxy footer passes the gate" 0
   fx_title=$(jq -r .title "$FIXTURES/pulls-open.json")
-  logged "fixture: the merge is pinned to the recorded head sha and sends its title" \
-    "gh api -X PUT repos/pkeppeler/deepcharter/pulls/7/merge -f merge_method=squash -f sha=$fx_sha -f commit_title=$fx_title (#7) -f commit_message=$(jq -r .body "$FIXTURES/pulls-open.json")"
+  fx_body_first=$(jq -r '.body | split("\n")[0]' "$FIXTURES/pulls-open.json")
+  logged "fixture: the merge is pinned to the recorded head sha and sends its title and the body's first line" \
+    "gh api -X PUT repos/pkeppeler/deepcharter/pulls/7/merge -f merge_method=squash -f sha=$fx_sha -f commit_title=$fx_title (#7) -f commit_message=$fx_body_first"
   SCRIPT=$mark run_script "$(fx_pr pulls-open.json)" "STUB_SHA=$(jq -r .head.sha "$open_pr")"
   exited "fixture: mark reads the head sha and ref from the recorded PR" 0
   logged "fixture: mark comments on the recorded head sha" "gh api -X POST repos/pkeppeler/deepcharter/issues/7/comments -f body=review-passed $(jq -r .head.sha "$open_pr")"

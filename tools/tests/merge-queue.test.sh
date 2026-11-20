@@ -501,7 +501,8 @@ if gh_fixture_available; then
   gate 7 1 "0 merged"
   run_q 7
   count "fixture: a recorded open PR reaches the gate" "merge-pr 7" 1
-  if grep -qF -- "--branch 743-campaign-content " "$LOG"; then pass "fixture: the CI wait uses the recorded head branch"; else fail "fixture: the CI wait uses the recorded head branch"; fi
+  count "fixture: the CI wait uses the recorded head branch" "--branch 743-campaign-content " 1
+  count "fixture: the CI wait looks for the recorded head sha" ".headSha == \"$(jq -r .head.sha "$FIXTURES/pulls-open.json")\"" 1
 else
   echo "SKIP fixture cases (no jq: tools/tests/lib/gh-fixture.sh needs it; CI runs them)"
 fi
