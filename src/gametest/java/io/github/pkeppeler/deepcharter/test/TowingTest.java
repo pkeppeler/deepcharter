@@ -1075,7 +1075,7 @@ public class TowingTest {
                 throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
             }
             ServerPlayer player = mock.player();
-            if (!TestLayers.isIn(player.level(), 2)) {
+            if (!TestLayers.isIn(player, 2)) {
                 throw failure(
                         helper,
                         "the rider is still in %s (tower ticked %s times)",
@@ -1135,7 +1135,7 @@ public class TowingTest {
                 throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
             }
             ServerPlayer seated = rider.player();
-            if (!TestLayers.isIn(seated.level(), 2)) {
+            if (!TestLayers.isIn(seated, 2)) {
                 throw failure(
                         helper,
                         "the rider in the towed pod is still in %s",
@@ -1149,7 +1149,7 @@ public class TowingTest {
                         "the rider should still ride the towed pod on its cable, is on %s",
                         seated.getVehicle());
             }
-            if (!TestLayers.isIn(pilot.player().level(), 2)) {
+            if (!TestLayers.isIn(pilot.player(), 2)) {
                 throw failure(
                         helper,
                         "the pilot is still in %s",
@@ -1433,8 +1433,8 @@ public class TowingTest {
         BlockPos column = BlockPos.containing(x, 0, z);
         RoomCarver.carve(
                 level,
-                column.offset(-1, 0, -1).atY(level.getMinY()),
-                column.offset(1, 0, 1).atY(level.getMinY() + 10),
+                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).minY()),
+                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).minY() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
     }

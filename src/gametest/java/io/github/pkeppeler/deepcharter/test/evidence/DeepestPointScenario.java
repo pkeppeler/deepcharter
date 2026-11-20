@@ -163,7 +163,7 @@ public class DeepestPointScenario extends EvidenceScenario {
         BlockPos wall = server.computeOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
             ServerLevel level = TestLayers.level(minecraftServer, layer);
-            int y = level.getMinY() + rowsAboveFloor;
+            int y = TestLayers.band(level, layer).minY() + rowsAboveFloor;
             RoomCarver.carve(
                     level,
                     new BlockPos(-ROOM_RADIUS, y, -ROOM_RADIUS),
@@ -177,7 +177,7 @@ public class DeepestPointScenario extends EvidenceScenario {
                 context,
                 "the client to see the room's wall in layer " + layer,
                 client -> client.level != null
-                        && TestLayers.isIn(client.level, layer)
+                        && TestLayers.clientIsIn(client, layer)
                         && !client.level.getBlockState(wall).isAir());
         context.waitTicks(ARRIVAL_TICKS);
         frame(context);

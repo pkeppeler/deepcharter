@@ -403,6 +403,7 @@ public class SurfaceTerrainTest {
             GameTestHelper helper, ServerLevel level, String biome, int minimumRise, String expected) {
         BlockPos column = surveyColumn(helper, level, biome, minimumRise);
         LevelChunk chunk = level.getChunkAt(column);
+        // level-height: surface_sample is a copy of the overworld for the generator, not a layer of the chain
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(column.getX(), level.getMaxY(), column.getZ());
         while (chunk.getBlockState(pos).isAir()) {
             pos.move(Direction.DOWN);

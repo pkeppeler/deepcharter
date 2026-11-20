@@ -79,7 +79,7 @@ public class CompanyRockBlastScenario extends EvidenceScenario {
                 context,
                 "the slab of Company rock in layer " + layer,
                 client -> client.player != null
-                        && TestLayers.isIn(ClientLight.clientLevel(client), layer)
+                        && TestLayers.clientIsIn(client, layer)
                         && ClientLight.clientLevel(client)
                                 .getBlockState(slabCell())
                                 .is(HazardBlocks.COMPANY_ROCK));

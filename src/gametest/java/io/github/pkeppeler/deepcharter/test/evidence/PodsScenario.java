@@ -21,6 +21,7 @@ import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import java.util.ArrayList;
@@ -195,8 +196,10 @@ public class PodsScenario extends EvidenceScenario {
     /** The first air over the ground at x, z, found by looking down the column from the sky, in a chunk loaded for it. */
     private static int groundY(ServerLevel level, int x, int z) {
         LevelChunk chunk = level.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, level.getMaxY(), z);
-        while (pos.getY() > level.getMinY() && chunk.getBlockState(pos).isAir()) {
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(
+                x, TestLayers.band(level, TestLayers.SURFACE).maxY(), z);
+        while (pos.getY() > TestLayers.band(level, TestLayers.SURFACE).minY()
+                && chunk.getBlockState(pos).isAir()) {
             pos.move(0, -1, 0);
         }
         return pos.getY() + 1;

@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -292,22 +293,23 @@ public class SignalDecayTest {
         }
         surface.discard();
         ServerLevel layer = TestLayers.level(helper.getLevel().getServer(), 1);
+        LayerChain.Band layerBand = TestLayers.band(layer, 1);
         PodEntity pod = TestEntities.create(PodRegistry.typeOf(Chassis.MOLE), layer);
         MockPlayer owner = MockPlayers.join(helper, "Decay owner");
         try {
-            pod.setPos(0.5, layer.getMinY() + 2, 0.5);
+            pod.setPos(0.5, layerBand.minY() + 2, 0.5);
             if (SignalDecay.intensity(pod) != 1) {
                 throw failure(
                         helper,
                         "a stock pod 2 slabs over the floor of layer 1 is in the blackout, got %s",
                         SignalDecay.intensity(pod));
             }
-            pod.setPos(0.5, layer.getMinY() + 100, 0.5);
+            pod.setPos(0.5, layerBand.minY() + 100, 0.5);
             if (SignalDecay.intensity(pod) != 0) {
                 throw failure(
                         helper, "a pod 100 slabs over the floor reads no decay, got %s", SignalDecay.intensity(pod));
             }
-            pod.setPos(0.5, layer.getMinY() + 21, 0.5);
+            pod.setPos(0.5, layerBand.minY() + 21, 0.5);
             double stock = SignalDecay.intensity(pod);
             ScannerPods.fit(helper.getLevel().getServer(), owner.player(), pod, ComponentTrack.CONSOLE, 2);
             if (Math.abs(stock - 0.5) > EPSILON

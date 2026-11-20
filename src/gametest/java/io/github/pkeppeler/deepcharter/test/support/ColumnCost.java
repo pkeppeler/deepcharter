@@ -220,6 +220,7 @@ public final class ColumnCost {
             double heapMb = smoke ? 0 : (usedHeap() - heapBefore) / (1024.0 * 1024.0);
             forEachChunk(chunk -> FarChunks.release(helper, level.get(), chunk[0], chunk[1]));
             return new Measurement(
+                    // level-height: the cost is per block of the whole test world, which is no layer
                     cpuMs / columns, heapMb, wallMs / columns, level.get().getHeight());
         }
 

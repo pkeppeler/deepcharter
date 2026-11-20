@@ -36,7 +36,7 @@ public class LayerDimensionsTest {
     @GameTest(dimension = "deepcharter:layer_1")
     public void gameTestRunsInLayerOne(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        if (!TestLayers.isIn(level, 1)) {
+        if (!TestLayers.isIn(level, helper.absolutePos(BlockPos.ZERO), 1)) {
             throw helper.assertionException("test ran in %s, not deepcharter:layer_1", level.dimension());
         }
         helper.succeed();
@@ -86,7 +86,7 @@ public class LayerDimensionsTest {
         for (int layer = 1; layer <= 2; layer++) {
             int thickness = LayerTuning.DEFAULT.crustThickness();
             ServerLevel level = TestLayers.level(helper, layer);
-            int floor = level.getMinY();
+            int floor = TestLayers.band(level, layer).minY();
             for (int dy = 0; dy < thickness; dy++) {
                 if (!level.getBlockState(new BlockPos(5, floor + dy, 5)).is(crust)) {
                     throw helper.assertionException("layer_%d: expected breach_crust at y=%d", layer, floor + dy);
@@ -103,13 +103,16 @@ public class LayerDimensionsTest {
     public void depthMatchesTheFormula(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
         ServerLevel two = TestLayers.level(helper, 2);
-        expectInt(helper, Depth.of(one, one.getMaxY() + 1), 127);
+        expectInt(helper, Depth.of(one, TestLayers.band(one, 1).maxY() + 1), 127);
         expectInt(helper, Depth.of(one, 100), 127 + 92);
-        expectInt(helper, Depth.of(two, two.getMaxY() + 1), 127 + 192);
+        expectInt(helper, Depth.of(two, TestLayers.band(two, 2).maxY() + 1), 127 + 192);
         expectInt(helper, Depth.of(two, 0), 127 + 192 + 256);
         ServerLevel surface = helper.getLevel().getServer().overworld();
         expectInt(helper, Depth.of(surface, 63), 0);
-        expectInt(helper, Depth.of(surface, surface.getMinY()), 127);
+        expectInt(
+                helper,
+                Depth.of(surface, TestLayers.band(surface, TestLayers.SURFACE).minY()),
+                127);
         expectInt(helper, Depth.feet(1000), 3280);
         helper.succeed();
     }
@@ -118,10 +121,14 @@ public class LayerDimensionsTest {
     @GameTest
     public void depthIsContinuousAcrossTheBoundary(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
+        LayerChain.Band oneBand = TestLayers.band(one, 1);
         ServerLevel two = TestLayers.level(helper, 2);
         ServerLevel surface = helper.getLevel().getServer().overworld();
-        expectInt(helper, Depth.of(two, two.getMaxY() + 1), Depth.of(one, one.getMinY()));
-        expectInt(helper, Depth.of(one, one.getMaxY() + 1), Depth.of(surface, surface.getMinY()));
+        expectInt(helper, Depth.of(two, TestLayers.band(two, 2).maxY() + 1), Depth.of(one, oneBand.minY()));
+        expectInt(
+                helper,
+                Depth.of(one, oneBand.maxY() + 1),
+                Depth.of(surface, TestLayers.band(surface, TestLayers.SURFACE).minY()));
         helper.succeed();
     }
 
@@ -173,11 +180,12 @@ public class LayerDimensionsTest {
             var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
             server.getCommands().getDispatcher().execute("deepcharter layer goto 2", source);
             ServerLevel level = mock.player().level();
-            if (!TestLayers.isIn(level, 2)) {
+            LayerChain.Band levelBand = TestLayers.band(level, 2);
+            if (!TestLayers.isIn(mock.player(), 2)) {
                 throw helper.assertionException("player is in %s after goto 2", level.dimension());
             }
             Vec3 pos = mock.player().position();
-            if (pos.y < level.getMinY() + LayerTuning.DEFAULT.crustThickness() || pos.y > level.getMaxY()) {
+            if (pos.y < levelBand.minY() + LayerTuning.DEFAULT.crustThickness() || pos.y > levelBand.maxY()) {
                 throw helper.assertionException("player placed at y=%s, outside the layer", pos.y);
             }
             try {
@@ -205,7 +213,7 @@ public class LayerDimensionsTest {
             ServerLevel layer = TestLayers.level(helper, 2);
             mock.player().setPos(300_000.5, TestLayers.worldY(2, 80), 300_000.5);
             layer.getChunk(300_000 >> 4, 300_000 >> 4);
-            BlockPos block = new BlockPos(300_000, layer.getMaxY() - 2, 300_000);
+            BlockPos block = new BlockPos(300_000, TestLayers.band(layer, 2).maxY() - 2, 300_000);
             layer.setBlockAndUpdate(block, SurfaceBlocks.REGOLITH.defaultBlockState());
             var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
             server.getCommands().getDispatcher().execute("deepcharter layer goto 2", source);
@@ -228,13 +236,14 @@ public class LayerDimensionsTest {
         try {
             mock.player().setPos(200_000.5, TestLayers.worldY(1, 80), 200_000.5);
             ServerLevel layer = TestLayers.level(helper, 1);
+            LayerChain.Band layerBand = TestLayers.band(layer, 1);
             if (layer.getChunkSource().getChunkNow(200_000 >> 4, 200_000 >> 4) != null) {
                 throw helper.assertionException("the far chunk was already loaded, so the test proves nothing");
             }
             var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
             server.getCommands().getDispatcher().execute("deepcharter layer goto 1", source);
             double y = mock.player().position().y;
-            if (y < layer.getMinY() + LayerTuning.DEFAULT.crustThickness() || y > layer.getMaxY()) {
+            if (y < layerBand.minY() + LayerTuning.DEFAULT.crustThickness() || y > layerBand.maxY()) {
                 throw helper.assertionException("player placed at y=%s, outside the layer", y);
             }
         } finally {
@@ -255,10 +264,11 @@ public class LayerDimensionsTest {
 
     private static void expectLayer(GameTestHelper helper, int layer, int minY, int height) {
         ServerLevel level = TestLayers.level(helper, layer);
-        if (level.getMinY() != minY || level.getHeight() != height) {
+        LayerChain.Band levelBand = TestLayers.band(level, layer);
+        if (levelBand.minY() != minY || levelBand.height() != height) {
             throw helper.assertionException(
                     "layer_%d: expected minY %d height %d, got minY %d height %d",
-                    layer, minY, height, level.getMinY(), level.getHeight());
+                    layer, minY, height, levelBand.minY(), levelBand.height());
         }
     }
 

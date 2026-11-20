@@ -269,7 +269,12 @@ public class PodChunkLoadTest {
     /** Discards every pod standing in the site's chunk, the one under test and any that tow or ride it. */
     private static void discardPods(ServerLevel level, Site site) {
         AABB column = new AABB(
-                site.minX() - 2, level.getMinY(), site.minZ() - 2, site.minX() + 18, level.getMaxY(), site.minZ() + 18);
+                site.minX() - 2,
+                TestLayers.band(level, TestLayers.SURFACE).minY(),
+                site.minZ() - 2,
+                site.minX() + 18,
+                TestLayers.band(level, TestLayers.SURFACE).maxY(),
+                site.minZ() + 18);
         for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, column)) {
             pod.discard();
         }

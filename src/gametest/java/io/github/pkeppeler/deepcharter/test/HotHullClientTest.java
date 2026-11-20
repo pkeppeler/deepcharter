@@ -9,7 +9,6 @@ import io.github.pkeppeler.deepcharter.client.pod.PodHotLayer;
 import io.github.pkeppeler.deepcharter.client.pod.PodLook;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -60,7 +59,7 @@ public class HotHullClientTest implements FabricClientGameTest {
                     "the pod in layer 1, burning",
                     client -> client.player != null
                             && client.player.getVehicle() instanceof PodEntity pod
-                            && TestLayers.isIn(ClientLight.clientLevel(client), 1)
+                            && TestLayers.clientIsIn(client, 1)
                             && pod.hullBurning());
             context.runOnClient(client -> {
                 PodEntity pod = TestEntities.vehicle(ClientSession.player(client), PodEntity.class);

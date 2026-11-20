@@ -869,7 +869,8 @@ public class RepairStationTest {
                         .getHeightmapPos(
                                 Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, TestLayers.pos(TestLayers.SURFACE, x, 64, 0))
                         .getY();
-                if (surface <= overworld.getMinY() || Math.abs(station.pod().getY() - surface) > 0.01) {
+                if (surface <= TestLayers.band(overworld, TestLayers.SURFACE).minY()
+                        || Math.abs(station.pod().getY() - surface) > 0.01) {
                     throw helper.assertionException(
                             "the pod should stand at y=%d, is at y=%s",
                             surface, station.pod().getY());

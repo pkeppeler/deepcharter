@@ -93,6 +93,7 @@ public class CampaignTerrainTest {
                         band.name());
             }
         }
+        // level-height: this checks the whole campaign level against the band table, not one layer
         expect(
                 helper,
                 level.getMinY() == worldMinY() && level.getMaxY() + 1 == worldTopExclusive(),

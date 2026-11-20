@@ -49,7 +49,7 @@ final class RetainedChamber {
         ClientWait.until(
                 ctx,
                 "the player in layer " + LAYER,
-                client -> client.level != null && TestLayers.isIn(client.level, LAYER) && client.gui.screen() == null);
+                client -> client.level != null && TestLayers.clientIsIn(client, LAYER) && client.gui.screen() == null);
     }
 
     /** A stone chamber with its floor block at {@link #FLOOR}: {@code length} blocks along x, {@code 2 * halfWidth + 1} across, {@code height} high, sealed. */
