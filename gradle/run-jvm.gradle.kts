@@ -16,9 +16,13 @@ addVmArgToRuns(exitOnOom)
 // TestTicks.each replaced it). Chunks that FarChunks forced stayed forced to the end of the run, and each forced chunk pins the
 // proto chunks around it, so one layer level held 34,000 chunks (#569; FarChunks.force lets go when the test finishes).
 // Measured 2026-10-15 (-Xlog:gc; 1110 tests for the 1 GB and 1.5 GB sweep, 1132 for the peak): 1 GB fails (Full GCs at 1022M), 1.5 GB passes with 6 Full GCs, 2 GB passes with none.
-// The live set is 300 to 550 MB, peaking at 1.13 GB while one batch of about 50 tests runs. 2G is below 2x the peak (2.3 GB), so
-// it cannot be lowered. POI is not the holder (#636). Re-measure when the suite grows by a tenth.
-val gameTestHeap = "-Xmx2G"
+// The live set was 300 to 550 MB, peaking at 1.13 GB while one batch of about 50 tests runs. POI is not the holder (#636).
+// Measured 2026-11-20 (-Xlog:gc, 1250 tests): CI died of OutOfMemoryError at 2 GB twice (#805). The live set is 300 to 450 MB between
+// batches, with no growth across batches in 4 runs, and peaks at 1.23 to 1.45 GB in the batch that runs the campaign tests (the
+// CampaignCrossingTest cases and OrePlacementTest's campaign case each generate a tall world). That batch starts with chunk data
+// carried over from the batch before it, which is not traced (#807). 3G is above 2x the peak (2.9 GB) and well under the 16 GB of a
+// CI runner. Re-measure when the suite grows by a tenth or when a test adds a tall world to that batch.
+val gameTestHeap = "-Xmx3G"
 addVmArgToRun("gameTest", gameTestHeap)
 
 // Proof the gate holds: every run carries the flag, and a JVM that catches its OutOfMemoryError exits non-zero with the flag and
