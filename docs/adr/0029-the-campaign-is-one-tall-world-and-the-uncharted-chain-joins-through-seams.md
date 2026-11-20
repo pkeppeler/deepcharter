@@ -77,10 +77,12 @@ Split of the gap by feature (JFR worker-thread samples with `-XX:+DebugNonSafepo
 |---|---|
 | Layer rock (surface-rule writes in `MaterialSystem.buildSurface`) | 63% |
 | Zone fill (before the cuts) | 30% |
+| Terrain noise fill (`doFill`) | 6% |
 | Chunk save | 5.5% |
 | Band biome source | 4% |
-| Structures, cave stalks | about 0 |
-| Light (cheaper in the campaign world: 530 samples fewer) | about -2.5% |
+| Structures, cave stalks, other features | about 0 |
+| Light (cheaper in the campaign world: 530 samples fewer) | -11% |
+| Frames in none of these | 3% |
 
 Ablations (campaign cost per block of height, as the change from 1.37x, the mean of 2 runs on the unchanged code, which is not the 1.29x above): no zone fill about -0.34, no layer-rock rule about -0.22, both off 0.85x. Both off reads below 1.0x because the remaining content (surface, structures, stalks, biome source) is net cheaper than `tall_baseline`.
 
