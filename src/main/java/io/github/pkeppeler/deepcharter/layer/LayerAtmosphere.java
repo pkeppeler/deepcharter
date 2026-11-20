@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.layer;
 import io.github.pkeppeler.deepcharter.layer.mixin.EnvironmentAttributeSystemInvoker;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -43,7 +42,7 @@ public final class LayerAtmosphere {
                 .filter(LayerAtmosphere::isVisualOrAudio)
                 .filter(attribute -> layersByAttribute.getOrDefault(attribute, List.of()).stream()
                         .anyMatch(EnvironmentAttributeLayer.TimeBased.class::isInstance))
-                .collect(Collectors.toList());
+                .toList();
         // The server holds the level's generator; a client reads the same registry the server already checked.
         if (level instanceof ServerLevel server) {
             server.getChunkSource()
