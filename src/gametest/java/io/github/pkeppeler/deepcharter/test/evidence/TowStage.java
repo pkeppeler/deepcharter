@@ -12,7 +12,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
@@ -28,7 +27,6 @@ final class TowStage {
     static final int CHAT_FADE_TICKS = 220;
 
     static final int TICKS_PER_FRAME = 3;
-    static final Input FORWARD_JUMP = new Input(true, false, false, false, true, false, false);
     /** The mock pilot's yaws: it drives south, and turns to drive east or back north. */
     static final float SOUTH = 0f;
 
