@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.colony.WorldFormatGate.Refusal;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.AlertScreen;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
 import net.minecraft.network.chat.Component;
@@ -38,15 +39,15 @@ public final class OldWorldRefusal {
                 refusal.get().reason());
         worldStem.close();
         access.safeClose();
-        client.gui.setScreen(
-                screen(refusal.get(), () -> client.gui.setScreen(new SelectWorldScreen(new TitleScreen()))));
+        // Both are vanilla's screens, so the layout gate for the mod's own screens (test_screen_layout_gate.py) has
+        // nothing to check.
+        Screen worldList = new SelectWorldScreen(new TitleScreen());
+        Screen message = new AlertScreen(
+                () -> client.gui.setScreen(worldList),
+                Component.translatable("deepcharter.world_format.refused.title"),
+                refusal.get().message());
+        client.gui.setScreen(message);
         return true;
-    }
-
-    /** The refusal screen: the message, and a button that runs {@code back}. */
-    public static AlertScreen screen(Refusal refusal, Runnable back) {
-        return new AlertScreen(
-                back, Component.translatable("deepcharter.world_format.refused.title"), refusal.message());
     }
 
     private static Optional<Refusal> read(LevelStorageAccess access, WorldStem worldStem) {

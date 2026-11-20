@@ -75,4 +75,3 @@ The stamp that the Decision names is the saved record `colony/WorldFormat`, unde
 
 - **Throw from the server's start in singleplayer.** Rejected: it is a crash report, and the client's world-load loop waits for a ready server.
 - **Stop the integrated server and show the screen from the client.** Rejected: the server's start continues through `initServer` after a stop, so it generates the spawn chunks first, and the client loop waits until it is ready.
-- **Stamp when the colony build begins.** Rejected: the Decision says the stamp is written when the colony is built, and a world with a begun colony has not yet had its terrain built over.
