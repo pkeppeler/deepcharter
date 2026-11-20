@@ -13,7 +13,7 @@ buildscript {
 		constraints {
 			// The dependency-analysis plugin brings Guava below 33.7.2 (GHSA-xxph-c9ww-hj94). Keep equal to libs.versions.guava;
 			// a buildscript block cannot read the catalog.
-			add("classpath", "com.google.guava:guava:33.7.2-jre")
+			add("classpath", "com.google.guava:guava:33.8.0-jre")
 		}
 	}
 }
