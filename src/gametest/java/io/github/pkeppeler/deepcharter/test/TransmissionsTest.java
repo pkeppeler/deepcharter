@@ -640,16 +640,9 @@ public class TransmissionsTest {
         CharterId charter = directCharter(helper, crew.player().getUUID());
         ServerLevel one = TestLayers.level(server, 1);
         ServerLevel two = TestLayers.level(server, 2);
+        LayerChain.Band twoBand = TestLayers.band(two, 2);
         crew.player().setNoGravity(true);
-        crew.teleportTo(
-                two,
-                new Vec3(
-                        BREACH_COLUMN,
-                        TestLayers.band(two, 2).floor()
-                                + TestLayers.band(two, 2).height() / 2,
-                        BREACH_COLUMN),
-                0,
-                0);
+        crew.teleportTo(two, new Vec3(BREACH_COLUMN, twoBand.minY() + twoBand.height() / 2, BREACH_COLUMN), 0, 0);
 
         expectThrows(helper, "an explicit read of unreadable data", () -> unreadable.progress(charter));
         TransmissionData world = server.getDataStorage().computeIfAbsent(TransmissionData.TYPE);
@@ -800,7 +793,7 @@ public class TransmissionsTest {
         MockPlayer crew = MockPlayers.join(helper, "tx-breach");
         CharterId charter = foundedCharter(helper, crew.player().getUUID());
         crew.player().setPermanentlyInvulnerable(true);
-        crew.teleportTo(one, new Vec3(BREACH_COLUMN, TestLayers.band(one, 1).floor() - 1, BREACH_COLUMN), 0, 0);
+        crew.teleportTo(one, new Vec3(BREACH_COLUMN, TestLayers.band(one, 1).minY() - 1, BREACH_COLUMN), 0, 0);
         helper.succeedWhen(() -> {
             List<Identifier> delivered = deliveredTo(crew);
             if (!delivered.contains(id("t05"))) {
@@ -845,14 +838,15 @@ public class TransmissionsTest {
     public void standingInAZoneFiresItsTransmissionForTheCharter(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         ServerLevel two = TestLayers.level(server, 2);
+        LayerChain.Band twoBand = TestLayers.band(two, 2);
         MockPlayer crew = MockPlayers.join(helper, "tx-zone");
         foundedCharter(helper, crew.player().getUUID());
         crew.player().setPermanentlyInvulnerable(true);
         // Held in place, so the player stays in the zone it was put in.
         crew.player().setNoGravity(true);
         // The middle third of layer 2 is zone 1 and the bottom third is zone 2.
-        int middle = TestLayers.band(two, 2).floor() + TestLayers.band(two, 2).height() / 2;
-        int bottom = TestLayers.band(two, 2).floor() + 4;
+        int middle = twoBand.minY() + twoBand.height() / 2;
+        int bottom = twoBand.minY() + 4;
         if (Zones.of(two, middle).orElseThrow().index() != 1
                 || Zones.of(two, bottom).orElseThrow().index() != 2) {
             throw helper.assertionException("the test's heights should be in zones 1 and 2");

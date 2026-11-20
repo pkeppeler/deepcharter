@@ -115,8 +115,8 @@ public class LayerTerrainScenario extends EvidenceScenario {
     private static List<Vec3> findRoute(ServerLevel level, int layer) {
         List<BlockPos> starts = new ArrayList<>();
         Map<BlockPos, Integer> room = new HashMap<>();
-        int top = TestLayers.band(level, layer).floor() + 24;
-        int bottom = TestLayers.band(level, layer).top() - 40;
+        int top = TestLayers.band(level, layer).minY() + 24;
+        int bottom = TestLayers.band(level, layer).maxY() - 40;
         for (int x = START_X - SEARCH_RADIUS; x <= START_X + SEARCH_RADIUS; x += 2) {
             for (int z = START_Z - SEARCH_RADIUS; z <= START_Z + SEARCH_RADIUS; z += 2) {
                 for (int y = top; y <= bottom; y += 2) {

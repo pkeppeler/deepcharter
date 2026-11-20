@@ -270,8 +270,8 @@ public class PodAttachmentTest {
         BlockPos column = BlockPos.containing(x, 0, z);
         RoomCarver.carve(
                 level,
-                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).floor()),
-                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).floor() + 10),
+                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).minY()),
+                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).minY() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
     }

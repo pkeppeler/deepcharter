@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -26,14 +27,14 @@ public class DeepCharterClientGameTest implements FabricClientGameTest {
                 int[] heights = {192, 256};
                 for (int layer = 1; layer <= 2; layer++) {
                     ServerLevel level = TestLayers.level(server, layer);
-                    if (TestLayers.band(level, layer).floor() != 0
-                            || TestLayers.band(level, layer).height() != heights[layer - 1]) {
+                    LayerChain.Band levelBand = TestLayers.band(level, layer);
+                    if (levelBand.minY() != 0 || levelBand.height() != heights[layer - 1]) {
                         out.append("layer_")
                                 .append(layer)
                                 .append(" has minY ")
-                                .append(TestLayers.band(level, layer).floor())
+                                .append(levelBand.minY())
                                 .append(" height ")
-                                .append(TestLayers.band(level, layer).height())
+                                .append(levelBand.height())
                                 .append("; ");
                     }
                 }

@@ -578,7 +578,7 @@ public class M2SliceScenario extends EvidenceScenario {
                 PodEntity pod = pod(server, mole.get());
                 int x = pod.getBlockX();
                 int z = pod.getBlockZ();
-                int floor = TestLayers.band(overworld, TestLayers.SURFACE).floor();
+                int floor = TestLayers.band(overworld, TestLayers.SURFACE).minY();
                 int low = floor + BORE_RESUMED_ABOVE_FLOOR;
                 RoomCarver.carve(
                         overworld,
@@ -605,7 +605,7 @@ public class M2SliceScenario extends EvidenceScenario {
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity
                             && ClientSession.player(client).getY()
                                     < TestLayers.band(ClientLight.clientLevel(client), TestLayers.SURFACE)
-                                                    .floor()
+                                                    .minY()
                                             + BORE_RESUMED_ABOVE_FLOOR
                                             + 3,
                     client -> "the player at " + ClientSession.player(client).position() + ", riding "
@@ -1703,8 +1703,8 @@ public class M2SliceScenario extends EvidenceScenario {
                     level,
                     X - ROOM_WEST,
                     X + ROOM_EAST,
-                    TestLayers.band(level, 1).floor(),
-                    TestLayers.band(level, 1).floor() + LayerTuning.DEFAULT.crustThickness() - 1,
+                    TestLayers.band(level, 1).minY(),
+                    TestLayers.band(level, 1).minY() + LayerTuning.DEFAULT.crustThickness() - 1,
                     Z - ROOM_RADIUS_Z,
                     Z + ROOM_RADIUS_Z,
                     LayerBlocks.BREACH_CRUST);

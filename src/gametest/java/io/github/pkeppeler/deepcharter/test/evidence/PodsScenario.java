@@ -197,8 +197,8 @@ public class PodsScenario extends EvidenceScenario {
     private static int groundY(ServerLevel level, int x, int z) {
         LevelChunk chunk = level.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(
-                x, TestLayers.band(level, TestLayers.SURFACE).top(), z);
-        while (pos.getY() > TestLayers.band(level, TestLayers.SURFACE).floor()
+                x, TestLayers.band(level, TestLayers.SURFACE).maxY(), z);
+        while (pos.getY() > TestLayers.band(level, TestLayers.SURFACE).minY()
                 && chunk.getBlockState(pos).isAir()) {
             pos.move(0, -1, 0);
         }

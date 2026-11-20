@@ -273,7 +273,7 @@ public class KellsShaftBoreTest {
         StructureSite site = StructureSite.in(
                 level.getSeed(),
                 StructureKind.KELLS_SHAFT,
-                TestLayers.band(level, LAYER).floor(),
+                TestLayers.band(level, LAYER).minY(),
                 TestLayers.band(level, LAYER).height(),
                 cellX,
                 CELL_Z,
@@ -364,7 +364,7 @@ public class KellsShaftBoreTest {
             return;
         }
         int feetY = pod.blockPosition().getY();
-        if (feetY <= TestLayers.band(run.level, LAYER).floor() + CRUST_BAND) {
+        if (feetY <= TestLayers.band(run.level, LAYER).minY() + CRUST_BAND) {
             finish(run, Outcome.CRUST, pod);
             return;
         }

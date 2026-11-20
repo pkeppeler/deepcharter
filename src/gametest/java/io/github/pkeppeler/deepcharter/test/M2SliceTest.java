@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.market.WorkOrder;
@@ -114,8 +115,8 @@ public class M2SliceTest {
     }
 
     private static double zoneY(ServerLevel level, int layer, int index) {
-        TestLayers.Band band = TestLayers.band(level, layer);
-        Zones.Span span = Zones.span(band.floor(), band.height(), index);
+        LayerChain.Band band = TestLayers.band(level, layer);
+        Zones.Span span = Zones.span(band.minY(), band.height(), index);
         return span.low() + span.size() / 2.0;
     }
 

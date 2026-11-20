@@ -60,7 +60,7 @@ public class BreachCrossingScenario extends EvidenceScenario {
                 BlockPos column = BlockPos.containing(X, 0, Z);
                 RoomCarver.carve(
                         one,
-                        column.atY(TestLayers.band(one, 1).floor()),
+                        column.atY(TestLayers.band(one, 1).minY()),
                         column.atY(SHAFT_TOP),
                         Blocks.AIR.defaultBlockState(),
                         Block.UPDATE_ALL);

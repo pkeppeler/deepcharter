@@ -109,7 +109,7 @@ public class OutpostTest {
     /** The floor of layer 1: the top block of the breach crust, in a column of solid stone with a 2 by 2 shaft up from it. */
     private static BlockPos stageFloor(GameTestHelper helper, ServerLevel level, int x) {
         BlockPos floor =
-                new BlockPos(x, TestLayers.band(level, 1).floor() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
+                new BlockPos(x, TestLayers.band(level, 1).minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
         RoomCarver.carve(level, x - 8, x + 8, floor.getY() + 1, floor.getY() + 16, Z - 8, Z + 8, Blocks.STONE);
         RoomCarver.carve(
                 level,

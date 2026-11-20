@@ -21,7 +21,8 @@
 // text names a level (level, world, layer, dimension, surface, overworld, nether, one, two, from, to, end). A layer is a band of a level, so a test asks
 // TestLayers.band(level, layer) for its floor, top and height; a read that really is about the level (the world bottom of a test world, the Nether, a whole
 // test dimension) ends with, or sits under the comment lines of, `// level-height: <reason>`, a different marker from fixed-pos. Blind spots: a getHeight
-// whose receiver is a local with another name (`var w = ...; w.getHeight()`), and a height read through dimensionType().
+// whose receiver is a local with another name (`var w = ...; w.getHeight()`), a height read through dimensionType(), a method reference (`Level::getMinY`), and `isInsideBuildHeight` or `isOutsideBuildHeight`, which compare a Y with the level's height
+// (ScannerFrameTimeClientTest, LayerTerrainScenario).
 //
 // tools/tests/fixed_pos_gate_check.py runs the scan over fixture trees (checkGametestFixtures in gametest.gradle.kts), so a change that makes
 // the pattern miss fails there, not silently.

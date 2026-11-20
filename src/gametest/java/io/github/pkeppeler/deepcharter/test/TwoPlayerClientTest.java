@@ -257,7 +257,7 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     private static Vec3 liftOutOfDecay(MinecraftServer server, PodEntity pod) {
         ServerLevel one = TestLayers.level(server, 1);
         Vec3 floorPosition = pod.position();
-        int clearY = TestLayers.band(one, 1).floor()
+        int clearY = TestLayers.band(one, 1).minY()
                 + SignalDecayTuning.DEFAULT.band(1).onset()
                 + 1;
         int centerX = Mth.floor(floorPosition.x);

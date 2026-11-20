@@ -22,18 +22,16 @@ public class LayerBandTest {
     @GameTest
     public void theSurfaceIsBandZero(GameTestHelper helper) {
         ServerLevel surface = helper.getLevel().getServer().overworld();
+        LayerChain.Band surfaceBand = TestLayers.band(surface, TestLayers.SURFACE);
         Band band = bandAt(helper, surface, 63);
         if (band.isLayer()) {
             throw helper.assertionException("the overworld read as layer %d", band.layer());
         }
         if (band.layer() != LayerChain.SURFACE
-                || band.minY() != TestLayers.band(surface, TestLayers.SURFACE).floor()
-                || band.height() != TestLayers.band(surface, TestLayers.SURFACE).height()) {
+                || band.minY() != surfaceBand.minY()
+                || band.height() != surfaceBand.height()) {
             throw helper.assertionException(
-                    "expected the surface band %d..+%d, got %s",
-                    TestLayers.band(surface, TestLayers.SURFACE).floor(),
-                    TestLayers.band(surface, TestLayers.SURFACE).height(),
-                    band);
+                    "expected the surface band %d..+%d, got %s", surfaceBand.minY(), surfaceBand.height(), band);
         }
         helper.succeed();
     }
@@ -51,11 +49,8 @@ public class LayerBandTest {
 
     private static void expectBand(GameTestHelper helper, int layer, int minY, int height) {
         ServerLevel level = TestLayers.level(helper, layer);
-        for (int y : new int[] {
-            TestLayers.band(level, layer).floor(),
-            TestLayers.band(level, layer).floor() + height / 2,
-            TestLayers.band(level, layer).top()
-        }) {
+        LayerChain.Band levelBand = TestLayers.band(level, layer);
+        for (int y : new int[] {levelBand.minY(), levelBand.minY() + height / 2, levelBand.maxY()}) {
             Band band = bandAt(helper, level, y);
             if (!band.isLayer() || band.layer() != layer || band.minY() != minY || band.height() != height) {
                 throw helper.assertionException(

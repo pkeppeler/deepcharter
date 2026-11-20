@@ -163,7 +163,7 @@ public class DeepestPointScenario extends EvidenceScenario {
         BlockPos wall = server.computeOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
             ServerLevel level = TestLayers.level(minecraftServer, layer);
-            int y = TestLayers.band(level, layer).floor() + rowsAboveFloor;
+            int y = TestLayers.band(level, layer).minY() + rowsAboveFloor;
             RoomCarver.carve(
                     level,
                     new BlockPos(-ROOM_RADIUS, y, -ROOM_RADIUS),

@@ -7,6 +7,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
@@ -321,11 +322,12 @@ public class KellsShaftScenario extends EvidenceScenario {
     private static StructureSite prepare(TestSingleplayerContext singleplayer) {
         return singleplayer.getServer().computeOnServer(server -> {
             ServerLevel level = TestLayers.level(server, LAYER);
+            LayerChain.Band levelBand = TestLayers.band(level, LAYER);
             StructureSite site = StructureSite.in(
                     level.getSeed(),
                     StructureKind.KELLS_SHAFT,
-                    TestLayers.band(level, LAYER).floor(),
-                    TestLayers.band(level, LAYER).height(),
+                    levelBand.minY(),
+                    levelBand.height(),
                     CELL,
                     CELL,
                     Colony.anchor(server, ColonyAnchor.CONDUIT)

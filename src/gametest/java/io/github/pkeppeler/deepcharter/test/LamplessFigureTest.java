@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigures;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -477,13 +478,14 @@ public class LamplessFigureTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
     public void aLoadedRailSiteOfLayerTwoGetsOneFigureWhenAPlayerIsNear(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper.getLevel().getServer(), StructureKind.RAILS.layer());
+        LayerChain.Band levelBand = TestLayers.band(level, StructureKind.RAILS.layer());
         BlockPos conduit = Colony.anchor(level.getServer(), ColonyAnchor.CONDUIT)
                 .orElseThrow(() -> failure(helper, "the colony was not built"));
         StructureSite site = StructureSite.in(
                 level.getSeed(),
                 StructureKind.RAILS,
-                TestLayers.band(level, StructureKind.RAILS.layer()).floor(),
-                TestLayers.band(level, StructureKind.RAILS.layer()).height(),
+                levelBand.minY(),
+                levelBand.height(),
                 RAIL_SITE_CELL,
                 RAIL_SITE_CELL,
                 conduit);

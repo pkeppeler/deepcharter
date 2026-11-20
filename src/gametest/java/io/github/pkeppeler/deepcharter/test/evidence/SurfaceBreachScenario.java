@@ -85,8 +85,8 @@ public class SurfaceBreachScenario extends EvidenceScenario {
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel surface = server.overworld();
                 BlockPos column = BlockPos.containing(X, 0, Z);
-                for (int y = TestLayers.band(surface, TestLayers.SURFACE).floor();
-                        y <= TestLayers.band(surface, TestLayers.SURFACE).floor() + SHAFT_HEIGHT;
+                for (int y = TestLayers.band(surface, TestLayers.SURFACE).minY();
+                        y <= TestLayers.band(surface, TestLayers.SURFACE).minY() + SHAFT_HEIGHT;
                         y++) {
                     // room-carver: opens the overworld floor, which is the surface and not layer rock
                     surface.setBlock(column.atY(y), Blocks.AIR.defaultBlockState(), 3);
@@ -102,7 +102,7 @@ public class SurfaceBreachScenario extends EvidenceScenario {
                 player.teleportTo(
                         surface,
                         X,
-                        TestLayers.band(surface, TestLayers.SURFACE).floor() + SHAFT_HEIGHT - 1,
+                        TestLayers.band(surface, TestLayers.SURFACE).minY() + SHAFT_HEIGHT - 1,
                         Z,
                         Set.of(),
                         0,
@@ -126,8 +126,8 @@ public class SurfaceBreachScenario extends EvidenceScenario {
                 for (int dx = -ROCK_RADIUS; dx <= ROCK_RADIUS; dx++) {
                     for (int dz = -ROCK_RADIUS; dz <= ROCK_RADIUS; dz++) {
                         for (int y = TestLayers.band(surface, TestLayers.SURFACE)
-                                        .floor();
-                                y < TestLayers.band(surface, TestLayers.SURFACE).floor() + ROCK_HEIGHT;
+                                        .minY();
+                                y < TestLayers.band(surface, TestLayers.SURFACE).minY() + ROCK_HEIGHT;
                                 y++) {
                             surface.setBlock(column.offset(dx, 0, dz).atY(y), Blocks.STONE.defaultBlockState(), 3);
                         }
@@ -158,7 +158,7 @@ public class SurfaceBreachScenario extends EvidenceScenario {
                 return false;
             }
             double y = Math.min(
-                    player.getY() + CLIMB_STEP, TestLayers.band(level, 1).top() + LayerTuning.DEFAULT.pocketRadius());
+                    player.getY() + CLIMB_STEP, TestLayers.band(level, 1).maxY() + LayerTuning.DEFAULT.pocketRadius());
             player.teleportTo(level, X, y, Z, Set.of(), 0, -80, true);
             return true;
         })) {

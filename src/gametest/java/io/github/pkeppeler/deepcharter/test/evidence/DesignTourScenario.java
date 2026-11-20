@@ -29,6 +29,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.layer.BreachService;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
@@ -1216,8 +1217,8 @@ public class DesignTourScenario extends EvidenceScenario {
                 ServerLevel one = TestLayers.level(server, 1);
                 for (int dx = -1; dx <= 1; dx++) {
                     for (int dz = -1; dz <= 1; dz++) {
-                        for (int y = TestLayers.band(one, 1).floor();
-                                y <= TestLayers.band(one, 1).floor() + 3;
+                        for (int y = TestLayers.band(one, 1).minY();
+                                y <= TestLayers.band(one, 1).minY() + 3;
                                 y++) {
                             BreachService.breakCrust(one, new BlockPos(x + dx, y, z + dz));
                         }
@@ -1253,7 +1254,7 @@ public class DesignTourScenario extends EvidenceScenario {
             serverDo(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 player(server)
-                        .teleportTo(one, x + 0.5, TestLayers.band(one, 1).floor() - 1, z + 0.5, Set.of(), 0, 60, true);
+                        .teleportTo(one, x + 0.5, TestLayers.band(one, 1).minY() - 1, z + 0.5, Set.of(), 0, 60, true);
             });
             ClientWait.until(
                     ctx,
@@ -1299,8 +1300,8 @@ public class DesignTourScenario extends EvidenceScenario {
                 ServerLevel two = TestLayers.level(server, 2);
                 int x = LAYER_X + 120;
                 int z = LAYER_Z + 120;
-                TestLayers.Band band = TestLayers.band(two, 2);
-                int floor = (band.floor() + band.top()) / 2;
+                LayerChain.Band band = TestLayers.band(two, 2);
+                int floor = (band.minY() + band.maxY()) / 2;
                 loadChunks(two, x, z, 3);
                 BlockPos min = new BlockPos(x - 6, floor, z - 6);
                 BlockPos max = new BlockPos(x + 6, floor + 7, z + 6);
@@ -1441,12 +1442,12 @@ public class DesignTourScenario extends EvidenceScenario {
 
         /** A cell of air with room round it, close to the layer's start column, as the middle of a cave. */
         private static Vec3 openCell(ServerLevel level, int layer) {
-            TestLayers.Band band = TestLayers.band(level, layer);
+            LayerChain.Band band = TestLayers.band(level, layer);
             BlockPos best = null;
             int bestClearance = 0;
             for (int x = LAYER_X - 40; x <= LAYER_X + 40; x += 2) {
                 for (int z = LAYER_Z - 40; z <= LAYER_Z + 40; z += 2) {
-                    for (int y = band.floor() + 24; y <= band.top() - 40; y += 2) {
+                    for (int y = band.minY() + 24; y <= band.maxY() - 40; y += 2) {
                         BlockPos pos = new BlockPos(x, y, z);
                         int clearance = clearance(level, pos);
                         if (clearance > bestClearance) {
@@ -1458,7 +1459,7 @@ public class DesignTourScenario extends EvidenceScenario {
             }
             if (best == null) {
                 // No cave in reach: cut a hall into the rock, sealed first, so there is a place to stand.
-                int mid = (band.floor() + band.top()) / 2;
+                int mid = (band.minY() + band.maxY()) / 2;
                 BlockPos min = new BlockPos(LAYER_X - 6, mid, LAYER_Z - 6);
                 BlockPos max = new BlockPos(LAYER_X + 6, mid + 6, LAYER_Z + 6);
                 RoomCarver.carve(level, min, max, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
@@ -1507,12 +1508,13 @@ public class DesignTourScenario extends EvidenceScenario {
         private StructureSite siteOf(StructureKind kind, @Nullable BlockPos near) {
             StructureSite site = serverGet(server -> {
                 ServerLevel level = TestLayers.level(server, kind.layer());
+                LayerChain.Band levelBand = TestLayers.band(level, kind.layer());
                 BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT).orElseThrow();
                 return LayerStructures.nearest(
                         level.getSeed(),
                         kind,
-                        TestLayers.band(level, kind.layer()).floor(),
-                        TestLayers.band(level, kind.layer()).height(),
+                        levelBand.minY(),
+                        levelBand.height(),
                         near == null ? conduit : near,
                         conduit);
             });

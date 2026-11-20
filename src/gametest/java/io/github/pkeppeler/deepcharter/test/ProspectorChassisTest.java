@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
@@ -355,12 +356,13 @@ public class ProspectorChassisTest {
     public void everyWreckSiteHoldsAnUnownedProspectorWreckAndOnlyPROSPECTOR0002HasALampAndN10(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel level = TestLayers.level(helper, 2);
+        LayerChain.Band levelBand = TestLayers.band(level, 2);
         BlockPos conduit = conduit(helper);
         StructureSite ordinary = StructureSite.in(
                 level.getSeed(),
                 StructureKind.WRECK,
-                TestLayers.band(level, 2).floor(),
-                TestLayers.band(level, 2).height(),
+                levelBand.minY(),
+                levelBand.height(),
                 WRECK_CELL,
                 WRECK_CELL,
                 conduit);
@@ -1185,8 +1187,8 @@ public class ProspectorChassisTest {
         BlockPos column = BlockPos.containing(x, 0, z);
         RoomCarver.carve(
                 level,
-                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).floor()),
-                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).floor() + 10),
+                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).minY()),
+                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).minY() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
     }

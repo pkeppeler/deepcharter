@@ -56,7 +56,7 @@ public class TransmissionsScenario extends EvidenceScenario {
                     }
                 }
                 ServerLevel one = TestLayers.level(server, 1);
-                player.teleportTo(one, X, TestLayers.band(one, 1).floor() + 40, Z, Set.of(), 0, 0, true);
+                player.teleportTo(one, X, TestLayers.band(one, 1).minY() + 40, Z, Set.of(), 0, 0, true);
                 return Charters.charterOfOrThrow(server, player.getUUID())
                         .orElseThrow()
                         .id();
@@ -68,7 +68,7 @@ public class TransmissionsScenario extends EvidenceScenario {
                 ServerLevel one = TestLayers.level(server, 1);
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 // One block under the floor of layer 1, so it crosses on the next server tick.
-                player.teleportTo(one, X, TestLayers.band(one, 1).floor() - 1, Z, Set.of(), 0, 0, true);
+                player.teleportTo(one, X, TestLayers.band(one, 1).minY() - 1, Z, Set.of(), 0, 0, true);
             });
 
             Set<Identifier> shot = new HashSet<>();

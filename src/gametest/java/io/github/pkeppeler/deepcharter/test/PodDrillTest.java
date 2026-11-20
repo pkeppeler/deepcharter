@@ -214,7 +214,7 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aWallUnderTheCeilingIsNeverBored(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 1);
-        int ceiling = TestLayers.band(level, 1).top();
+        int ceiling = TestLayers.band(level, 1).maxY();
         int x = 3128;
         int floor = ceiling - 1;
         room(level, x, floor, 4);
@@ -249,7 +249,7 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aWallOneRowBelowTheCeilingIsBored(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 1);
-        int top = TestLayers.band(level, 1).top() - 1;
+        int top = TestLayers.band(level, 1).maxY() - 1;
         int x = 3192;
         // The slab is as tall as the Mole's box, and its top row is the last row under the ceiling.
         int height = Chassis.MOLE.boreHeight();

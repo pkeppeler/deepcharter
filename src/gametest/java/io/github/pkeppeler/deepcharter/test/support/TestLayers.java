@@ -38,45 +38,27 @@ public final class TestLayers {
         return level(helper.getLevel().getServer(), layer);
     }
 
-    /**
-     * The vertical span of a layer: {@code floor} is its lowest block and {@code height} the blocks it spans. A layer dimension is one band
-     * wide, so this is the whole level today; a test asks for the band, never for the level's height, so that it also works where a layer
-     * is a band of a taller level.
-     */
-    public record Band(int floor, int height) {
-        /** The highest block of the band. */
-        public int top() {
-            return floor + height - 1;
-        }
-
-        /** The first Y above the band. */
-        public int topExclusive() {
-            return floor + height;
-        }
-
-        /** True when block row {@code y} is in the band. */
-        public boolean contains(int y) {
-            return y >= floor && y <= top();
-        }
-    }
-
     /** The band of {@code layer} in {@code level}, which must be the level that holds it. */
-    public static Band band(Level level, int layer) {
+    public static LayerChain.Band band(Level level, int layer) {
         if (!level.dimension().equals(dimension(layer))) {
             throw new IllegalArgumentException(
                     "level " + level.dimension() + " does not hold layer " + layer + " (" + dimension(layer) + ")");
         }
-        return new Band(level.getMinY(), level.getHeight());
+        return new LayerChain.Band(layer, level.getMinY(), level.getHeight());
     }
 
     /** The band of {@code layer} in the server's level for it. */
-    public static Band band(MinecraftServer server, int layer) {
+    public static LayerChain.Band band(MinecraftServer server, int layer) {
         return band(level(server, layer), layer);
     }
 
     /** True when block position {@code pos} of {@code level} is in {@code layer}. */
     public static boolean isIn(Level level, BlockPos pos, int layer) {
-        return level.dimension().equals(dimension(layer)) && band(level, layer).contains(pos.getY());
+        return level.dimension().equals(dimension(layer)) && inBand(band(level, layer), pos.getY());
+    }
+
+    private static boolean inBand(LayerChain.Band band, int y) {
+        return y >= band.minY() && y <= band.maxY();
     }
 
     /** True when {@code entity} is in {@code layer}. */

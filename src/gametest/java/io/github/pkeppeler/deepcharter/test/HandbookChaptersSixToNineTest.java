@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarEvents;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -175,8 +176,8 @@ public class HandbookChaptersSixToNineTest {
 
     /** A Y inside zone {@code index} of the layer (0 is the top third, 2 the bottom). */
     private static double zoneY(ServerLevel level, int layer, int index) {
-        TestLayers.Band band = TestLayers.band(level, layer);
-        Zones.Span span = Zones.span(band.floor(), band.height(), index);
+        LayerChain.Band band = TestLayers.band(level, layer);
+        Zones.Span span = Zones.span(band.minY(), band.height(), index);
         return span.low() + span.size() / 2.0;
     }
 

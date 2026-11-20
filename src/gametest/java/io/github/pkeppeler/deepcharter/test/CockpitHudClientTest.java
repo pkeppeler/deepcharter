@@ -577,7 +577,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         1,
                         Math.floor(shown.getY() + 1e-3)
                                 - TestLayers.band(ClientLight.clientLevel(client), 1)
-                                        .floor(),
+                                        .minY(),
                         2)
             };
         });

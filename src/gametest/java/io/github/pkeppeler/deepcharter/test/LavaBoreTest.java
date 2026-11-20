@@ -823,8 +823,8 @@ public class LavaBoreTest {
 
     /** The highest block in the columns of the bore. */
     private static int topOfTheRock(ServerLevel level, int centreX, int centreZ) {
-        for (int y = TestLayers.band(level, 1).top() - 1;
-                y >= TestLayers.band(level, 1).floor();
+        for (int y = TestLayers.band(level, 1).maxY() - 1;
+                y >= TestLayers.band(level, 1).minY();
                 y--) {
             for (int x = centreX - FOOTPRINT_WIDTH / 2; x < centreX - FOOTPRINT_WIDTH / 2 + FOOTPRINT_WIDTH; x++) {
                 for (int z = centreZ - FOOTPRINT_WIDTH / 2; z < centreZ - FOOTPRINT_WIDTH / 2 + FOOTPRINT_WIDTH; z++) {
@@ -877,7 +877,7 @@ public class LavaBoreTest {
             bore.biggestOtherHitY = pod.blockPosition().getY();
         }
         boolean inCrust =
-                pod.blockPosition().getY() <= TestLayers.band(level, 1).floor() + CRUST_BAND;
+                pod.blockPosition().getY() <= TestLayers.band(level, 1).minY() + CRUST_BAND;
         Cause cause = touching
                 ? Cause.LAVA
                 : gasPocketVanished(level, bore)
@@ -2054,7 +2054,7 @@ public class LavaBoreTest {
         if (!DECAY) {
             return;
         }
-        int minY = TestLayers.band(bores.getFirst().level, 1).floor();
+        int minY = TestLayers.band(bores.getFirst().level, 1).minY();
         int onset = (int) Math.ceil(SignalDecayTuning.DEFAULT.band(1).onset()
                 * UpgradeTuning.DEFAULT.ratio(ComponentTrack.CONSOLE, CONSOLE_TIER));
         List<Bore> inBand = bores.stream().filter(b -> b.decayTicks > 0).toList();

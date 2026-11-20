@@ -687,12 +687,12 @@ public class OrePlacementTest {
     public void aDescendingArrivalPocketIsSealedAgainstLavaAndGas(GameTestHelper helper) {
         ServerLevel from = TestLayers.level(helper, 1);
         ServerLevel to = TestLayers.level(helper, 2);
-        BlockPos bottom = new BlockPos(7600, TestLayers.band(to, 2).top() - LayerTuning.DEFAULT.pocketHeight(), Z);
+        BlockPos bottom = new BlockPos(7600, TestLayers.band(to, 2).maxY() - LayerTuning.DEFAULT.pocketHeight(), Z);
         expectSealedArrival(
                 helper,
                 "seal-down",
                 from,
-                new Vec3(7600.5, TestLayers.band(from, 1).floor() - 2, Z + 0.5),
+                new Vec3(7600.5, TestLayers.band(from, 1).minY() - 2, Z + 0.5),
                 to,
                 bottom,
                 true);
@@ -702,12 +702,12 @@ public class OrePlacementTest {
     public void anAscendingArrivalPocketIsSealedAgainstLavaAndGas(GameTestHelper helper) {
         ServerLevel from = TestLayers.level(helper, 2);
         ServerLevel to = TestLayers.level(helper, 1);
-        BlockPos bottom = new BlockPos(7700, TestLayers.band(to, 1).floor() + LayerTuning.DEFAULT.crustThickness(), Z);
+        BlockPos bottom = new BlockPos(7700, TestLayers.band(to, 1).minY() + LayerTuning.DEFAULT.crustThickness(), Z);
         expectSealedArrival(
                 helper,
                 "seal-up",
                 from,
-                new Vec3(7700.5, TestLayers.band(from, 2).top() + 2, Z + 0.5),
+                new Vec3(7700.5, TestLayers.band(from, 2).maxY() + 2, Z + 0.5),
                 to,
                 bottom,
                 false);
@@ -830,8 +830,8 @@ public class OrePlacementTest {
         if (census == null) {
             census = count(layer -> {
                 ServerLevel level = TestLayers.level(helper, layer);
-                TestLayers.Band band = TestLayers.band(level, layer);
-                return new Rows(level, band.floor(), band.height());
+                LayerChain.Band band = TestLayers.band(level, layer);
+                return new Rows(level, band.minY(), band.height());
             });
         }
         return census;

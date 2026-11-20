@@ -5,6 +5,7 @@ import com.google.errorprone.annotations.FormatString;
 import com.mojang.serialization.Dynamic;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
@@ -420,6 +421,7 @@ public class PodLightsTest {
         double x = 3500.5;
         double z = 3500.5;
         ServerLevel one = TestLayers.level(helper, 1);
+        LayerChain.Band oneBand = TestLayers.band(one, 1);
         ServerLevel two = TestLayers.level(helper, 2);
         openShaft(one, x, z);
         MockPlayer mock = MockPlayers.join(helper, "lights-crossing");
@@ -452,12 +454,8 @@ public class PodLightsTest {
             }
             if (!checked[0]) {
                 checked[0] = true;
-                List<BlockPos> left = lightsInBox(
-                        one,
-                        BlockPos.containing(x, TestLayers.band(one, 1).floor(), z),
-                        4,
-                        TestLayers.band(one, 1).floor(),
-                        20);
+                List<BlockPos> left =
+                        lightsInBox(one, BlockPos.containing(x, oneBand.minY(), z), 4, oneBand.minY(), 20);
                 if (!left.isEmpty()
                         || !ledgerEntriesIn(one, BlockPos.containing(x, TestLayers.worldY(1, 8), z), 40)
                                 .isEmpty()) {
@@ -674,8 +672,8 @@ public class PodLightsTest {
         BlockPos column = BlockPos.containing(x, 0, z);
         RoomCarver.carve(
                 level,
-                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).floor()),
-                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).floor() + 10),
+                column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).minY()),
+                column.offset(1, 0, 1).atY(TestLayers.band(level, 1).minY() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
     }

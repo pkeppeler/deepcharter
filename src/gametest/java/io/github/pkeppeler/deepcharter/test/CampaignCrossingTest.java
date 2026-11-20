@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionEvents;
 import io.netty.buffer.Unpooled;
@@ -260,8 +261,14 @@ public class CampaignCrossingTest {
         MockPlayer mock = floater(helper, "cross-leave", 21600.5, 21600.5, CampaignBands.LAYER_1.minY() + 50);
         helper.runAfterDelay(
                 SETTLE_TICKS,
-                // level-height: the top of the whole campaign level, where the surface band ends and the sky begins
-                () -> mock.teleportTo(overworld, new Vec3(21600.5, overworld.getMaxY() - 50, 21600.5), 0, 0));
+                () -> mock.teleportTo(
+                        overworld,
+                        new Vec3(
+                                21600.5,
+                                TestLayers.band(overworld, TestLayers.SURFACE).maxY() - 50,
+                                21600.5),
+                        0,
+                        0));
         helper.runAfterDelay(
                 SETTLE_TICKS + 10,
                 () -> mock.teleportTo(campaign, new Vec3(21600.5, CampaignBands.LAYER_2.minY() + 100, 21600.5), 0, 0));

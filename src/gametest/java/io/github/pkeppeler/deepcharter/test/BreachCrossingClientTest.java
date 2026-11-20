@@ -87,8 +87,8 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
         BlockPos column = BlockPos.containing(x, 0, Z);
         RoomCarver.carve(
                 level,
-                column.atY(TestLayers.band(level, 1).floor()),
-                column.atY(TestLayers.band(level, 1).floor() + 10),
+                column.atY(TestLayers.band(level, 1).minY()),
+                column.atY(TestLayers.band(level, 1).minY() + 10),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
     }

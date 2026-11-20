@@ -77,8 +77,8 @@ public final class TestLayers {
     public static ResourceKey<Level> dimension(int layer) {
         return LayerChain.dimension(layer);
     }
-    public static Band band(Level level, int layer) {
-        return new Band(level.getMinY(), level.getHeight());
+    public static LayerChain.Band band(Level level, int layer) {
+        return new LayerChain.Band(layer, level.getMinY(), level.getHeight());
     }
 }
 """,
@@ -86,8 +86,8 @@ public final class TestLayers {
 public class BandReadsTest {
     // level.getMinY() and level.getHeight() in a comment are not reads
     void run(ServerLevel level, NativeImage image, Button button, Minecraft client) {
-        TestLayers.Band band = TestLayers.band(level, 1);
-        int floor = band.floor() + band.top() - band.height();
+        LayerChain.Band band = TestLayers.band(level, 1);
+        int floor = band.minY() + band.maxY() - band.height();
         int pixels = image.getHeight() + button.getHeight() + client.getWindow().getHeight();
         String text = "level.getMinY() and level.getMaxY()";
         // level-height: the void under the test world, not a layer

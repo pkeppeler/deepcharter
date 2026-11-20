@@ -326,8 +326,8 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
     /** As above, up to the world's height {@code topY} (the scene's top plus the margin when it is the maximum). */
     private static void fillBiome(
             TestServerContext server, ResourceKey<Level> dimension, BlockPos floor, String biome, int topY) {
-        // level-height: fills the whole test dimension, which is the overworld, layer 1 or the custom OPEN_SKY, not one
-        // layer
+        // level-height: fills the whole test dimension (overworld, layer 1 or the custom OPEN_SKY), not one layer;
+        // #802 gives the layer-1 case a band
         int minY = server.computeOnServer(
                 s -> ClientLight.serverLevel(s, dimension).getMinY());
         int top = Math.min(topY, floor.getY() + SHAFT_DEPTH + MARGIN);

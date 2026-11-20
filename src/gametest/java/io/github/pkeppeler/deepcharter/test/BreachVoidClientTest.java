@@ -138,7 +138,7 @@ public class BreachVoidClientTest implements FabricClientGameTest {
      * floor round it. Returns the bottom Y.
      */
     private static int openHole(ServerLevel level, int layer) {
-        int minY = TestLayers.band(level, layer).floor();
+        int minY = TestLayers.band(level, layer).minY();
         RoomCarver.carve(
                 level,
                 new BlockPos(X - ROOM_RADIUS, minY + SHAFT_DEPTH, Z - ROOM_RADIUS),

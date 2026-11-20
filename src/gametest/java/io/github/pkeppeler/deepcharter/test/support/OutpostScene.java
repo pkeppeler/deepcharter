@@ -53,7 +53,7 @@ public final class OutpostScene {
     /** Stages the shaft bottom and puts the first player at it, a charter founded, the terminals repaired and the kit in hand. */
     public static Scene stage(MinecraftServer server) {
         ServerLevel one = TestLayers.level(server, 1);
-        BlockPos floor = new BlockPos(X, TestLayers.band(one, 1).floor() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
+        BlockPos floor = new BlockPos(X, TestLayers.band(one, 1).minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
         RoomCarver.carve(
                 one,
                 floor.offset(-BED_RADIUS, 1, -BED_RADIUS),
