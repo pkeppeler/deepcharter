@@ -236,7 +236,7 @@ public class WorldFormatTest {
     public void theMessagePointsToPlayingMd(GameTestHelper helper) {
         MinecraftServer server = server(helper);
         WorldData.with(server, WorldFormat.TYPE, new WorldFormat(), () -> {
-            Refusal refusal = WorldFormatGate.refusal(server.getDataStorage(), RAISED).orElseThrow();
+            Refusal refusal = WorldFormatGate.refusal(server, RAISED).orElseThrow();
             if (refusal.reason().isBlank()) {
                 throw failure(helper, "a refusal names its reason for the log");
             }
@@ -249,7 +249,7 @@ public class WorldFormatTest {
     }
 
     private static void expectPass(GameTestHelper helper, MinecraftServer server, int current) {
-        Optional<Refusal> refusal = WorldFormatGate.refusal(server.getDataStorage(), current);
+        Optional<Refusal> refusal = WorldFormatGate.refusal(server, current);
         if (refusal.isPresent()) {
             throw failure(
                     helper,
@@ -259,7 +259,7 @@ public class WorldFormatTest {
     }
 
     private static void expectRefused(GameTestHelper helper, MinecraftServer server, String key) {
-        Optional<Refusal> refusal = WorldFormatGate.refusal(server.getDataStorage(), RAISED);
+        Optional<Refusal> refusal = WorldFormatGate.refusal(server, RAISED);
         if (refusal.isEmpty()) {
             throw failure(helper, "the world should be refused with %s", key);
         }
