@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>pkeppeler/renovate"],
+  "extends": ["github>pkeppeler/renovate", "github>pkeppeler/renovate:no-automerge"],
   "ignorePaths": [
     "**/node_modules/**",
     "**/bower_components/**",
