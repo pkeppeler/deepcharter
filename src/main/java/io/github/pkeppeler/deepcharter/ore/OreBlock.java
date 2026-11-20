@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.ore;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import java.util.Arrays;
 import java.util.Locale;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -20,6 +19,8 @@ public final class OreBlock extends Block {
         PACKED_SHALE(LayerBlocks.PACKED_SHALE),
         GREEN_SHALE(LayerBlocks.GREEN_SHALE);
 
+        private static final Host[] VALUES = values();
+
         private final Block rock;
 
         Host(Block rock) {
@@ -28,11 +29,13 @@ public final class OreBlock extends Block {
 
         /** The host of an ore that replaces {@code rock}. */
         static Host of(BlockState rock) {
-            return Arrays.stream(values())
-                    .filter(host -> rock.is(host.rock))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            rock + " is not a rock an ore can sit in; give its layer a Host (ADR 0055)"));
+            for (Host host : VALUES) {
+                if (rock.is(host.rock)) {
+                    return host;
+                }
+            }
+            throw new IllegalArgumentException(
+                    rock + " is not a rock an ore can sit in; give its layer a Host (ADR 0055)");
         }
 
         @Override

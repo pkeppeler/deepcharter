@@ -363,8 +363,8 @@ public class ProspectorChassisTest {
                 WRECK_CELL,
                 WRECK_CELL,
                 conduit);
-        StructureSite prospector =
-                LayerStructures.prospector(server).orElseThrow(() -> failure(helper, "no Prospector site"));
+        StructureSite prospector = LayerStructures.prospector(TestLayers.level(server, StructureKind.WRECK.layer()))
+                .orElseThrow(() -> failure(helper, "no Prospector site"));
         if (prospector.equals(ordinary)) {
             throw failure(helper, "cell %d is the Prospector's own site, so it cannot be the ordinary one", WRECK_CELL);
         }
