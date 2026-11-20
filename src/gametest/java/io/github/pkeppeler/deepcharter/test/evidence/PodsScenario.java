@@ -548,14 +548,12 @@ public class PodsScenario extends EvidenceScenario {
                     turnParked(FACING_CAMERA + i * 360f / TURN_FRAMES);
                     ctx.waitTick();
                     takeFrame();
-                    if (i == 0) {
-                        shot(subject, "front");
-                    } else if (i == THREEQUARTER_FRAME) {
-                        shot(subject, "threequarter");
-                    } else if (i == TURN_FRAMES / 4) {
-                        shot(subject, "side");
-                    } else if (i == TURN_FRAMES / 2) {
-                        shot(subject, "back");
+                    switch (i) {
+                        case 0 -> shot(subject, "front");
+                        case THREEQUARTER_FRAME -> shot(subject, "threequarter");
+                        case TURN_FRAMES / 4 -> shot(subject, "side");
+                        case TURN_FRAMES / 2 -> shot(subject, "back");
+                        default -> {}
                     }
                 }
                 turnParked(FACING_CAMERA);
