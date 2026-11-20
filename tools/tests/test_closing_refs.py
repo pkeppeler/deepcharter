@@ -55,6 +55,28 @@ class ClosingRefsTest(unittest.TestCase):
         self.assertEqual(self.refs("Summary\r\n\r\nCloses #12\r\n"), ["#12"])
         self.assertEqual(self.refs("(closes #12)"), ["#12"])
 
+    def test_fenced_code_is_not_read(self):
+        self.assertEqual(self.refs("Closes #1\n```\nCloses #2\n```\nFixes #3"), ["#1", "#3"])
+        self.assertEqual(self.refs("~~~sh\nresolves #2\n~~~"), [])
+        self.assertEqual(self.refs("````\n```\nCloses #2\n```\n````\nCloses #4"), ["#4"])
+        self.assertEqual(self.refs("  ```text\nCloses #2\n  ```"), [])
+
+    def test_an_unclosed_fence_hides_the_rest(self):
+        self.assertEqual(self.refs("Closes #1\n```\nCloses #2"), ["#1"])
+
+    def test_inline_code_is_not_read(self):
+        self.assertEqual(self.refs("write `Closes #2` in the body. Closes #1"), ["#1"])
+        self.assertEqual(self.refs("``Closes #2``"), [])
+        self.assertEqual(self.refs("`Closes` #2"), [])
+
+    def test_html_comments_are_not_read(self):
+        self.assertEqual(self.refs("<!-- Closes #2 -->\nCloses #1"), ["#1"])
+        self.assertEqual(self.refs("<!--\nCloses #2\n-->"), [])
+        self.assertEqual(self.refs("Closes #1 <!-- unclosed Closes #2"), ["#1"])
+
+    def test_a_single_backtick_is_not_code(self):
+        self.assertEqual(self.refs("it's a ` tick\nCloses #1"), ["#1"])
+
     def test_issue_numbers_of_this_repo_only(self):
         self.assertEqual(c.closing_issue_numbers("Closes #10\nCloses owner/repo#5\nFixes #2", REPO), [2, 10])
         self.assertEqual(c.closing_issue_numbers("", REPO), [])

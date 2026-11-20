@@ -83,7 +83,7 @@ case "$method $path" in
         esac ;;
       .draft) [[ ${STUB_DRAFT_FAIL-0} == 1 ]] && exit 1; echo "${STUB_DRAFT-false}" ;;
       .head.ref) echo "${STUB_BRANCH-12-some-slug}" ;;
-      .base.ref) echo "${STUB_BASE-main}" ;;
+      .base.ref) [[ ${STUB_BASE_FAIL-0} == 1 ]] && exit 1; echo "${STUB_BASE-main}" ;;
       .title) echo "A title" ;;
       *.body*)
         # The gate reads the body twice before the closing set is re-read: reads after those answer with
@@ -275,6 +275,9 @@ refusal "closes the same number in another repo" "closes owner/repo#12 but" "STU
 refusal "closes branch issue and another repo's" "closes #12 owner/repo#54 but" "STUB_BODY=Closes #12${nl}Closes owner/repo#54"
 refusal "closing references unreadable" "has no readable closing references" STUB_BODY_FAIL_AT=2
 refusal "body unreadable" "has no readable body" STUB_BODY_FAIL_AT=1
+# GitHub closes only for a PR into the default branch.
+refusal "base other than main" "REFUSED: PR #7 targets 'release', not main" STUB_BASE=release
+refusal "base unreadable" "has no readable base branch" STUB_BASE_FAIL=1
 refusal "branch without issue number" "has head branch 'main-fix', not <issue>-<slug>" STUB_BRANCH=main-fix
 refusal "branch number without slug" "not <issue>-<slug>" STUB_BRANCH=12
 # A Renovate branch names the replacement-PR route: Renovate rewrites its own body, so the gate
@@ -285,6 +288,9 @@ for body in "Fixes #12" "resolved #12" "CLOSED: #12" "Closes https://github.com/
   run_script "STUB_BODY=$body"
   exited "closing form [${body//$'\n'/ }] merges" 0
 done
+# GitHub links nothing from code or comments, so the gate reads none.
+refusal "keyword in a fenced block does not count" "has no closing reference" "STUB_BODY=\`\`\`${nl}Closes #12${nl}\`\`\`"
+refusal "keyword in an HTML comment does not count" "has no closing reference" "STUB_BODY=<!-- Closes #12 -->"
 # A bare '#N' with no keyword is not a closing reference.
 refusal "issue number without a keyword does not count" "has no closing reference" "STUB_BODY=Part of #12"
 # Known limit of reading the body ourselves: prose such as "the same fix #252 verified" holds a keyword.
@@ -569,12 +575,12 @@ not_logged "unchanged roadmap not committed" "git -C .* commit"
 # base before the merge call, because GitHub deletes the head branch on merge and that would close it (#663).
 run_script "STUB_STACKED=21
 22
-" STUB_BASE=release
+"
 exited "stacked PRs merge" 0
 logged "stacked PRs listed by base" "gh api repos/pkeppeler/deepcharter/pulls?base=12-some-slug&state=open&per_page=100 --paginate --jq .[].number"
-logged "first stacked PR retargeted" "gh api -X PATCH repos/pkeppeler/deepcharter/pulls/21 -f base=release"
-logged "second stacked PR retargeted" "gh api -X PATCH repos/pkeppeler/deepcharter/pulls/22 -f base=release"
-printed "retarget is announced" "Retargeted PR #21 to release"
+logged "first stacked PR retargeted" "gh api -X PATCH repos/pkeppeler/deepcharter/pulls/21 -f base=main"
+logged "second stacked PR retargeted" "gh api -X PATCH repos/pkeppeler/deepcharter/pulls/22 -f base=main"
+printed "retarget is announced" "Retargeted PR #21 to main"
 retarget_at=$(grep -n '^gh api -X PATCH .*pulls/22 ' "$LOG" | cut -d: -f1)
 merge_at=$(grep -n '^gh api -X PUT .*/merge' "$LOG" | cut -d: -f1)
 if [[ -n $retarget_at && -n $merge_at && $retarget_at -lt $merge_at ]]; then

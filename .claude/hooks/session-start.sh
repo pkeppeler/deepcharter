@@ -9,9 +9,9 @@ adr_lib=0
 # shellcheck source=../../tools/lib/adr.sh
 source tools/lib/adr.sh 2>/dev/null && adr_lib=1
 R=pkeppeler/deepcharter
-# Worst case: limit check 8 s + handoff 10 s + open PRs 10 s + ADR list 10 s + merged PRs 10 s = 48 s,
-# under the 60 s hook timeout (the local git calls and python start-ups take well under a second). The
-# per-PR mergeable reads share the open-PR list's budget: see the loop below.
+# Worst case: limit check 8 s + handoff 10 s + open PRs 10 s + the per-PR mergeable reads 6 s in total + ADR list
+# 10 s + merged PRs 10 s = 54 s, under the 60 s hook timeout (the local git calls and python start-ups take well
+# under a second). SESSION_START_PR_BUDGET (seconds) is a test seam for the 6 s.
 t() { perl -e 'alarm shift; exec @ARGV' "${T:-10}" "$@" 2>/dev/null; }
 
 {
@@ -81,19 +81,27 @@ else:
   echo
   echo "## Open PRs and their pipeline stage"
   # The list endpoint omits mergeable: read it per PR (REST null = still computing, false = conflicting).
-  # Total budget for the loop: the list call plus 5 s per PR, bounded by the 60 s hook timeout in practice
-  # because a healthy gh answers in well under a second.
+  # All the reads share one deadline; a PR reached after it is listed without its mergeable mark.
   if open_prs=$(t gh api "repos/$R/pulls?state=open&per_page=100" \
     --jq '.[] | [.number, "#\(.number) \(.title) [\(.head.ref)]\(if .draft then " draft" else "" end) stages: \([.labels[].name | select(startswith("stage:") or . == "review-passed")] | join(","))"] | @tsv'); then
+    pr_deadline=$((SECONDS + ${SESSION_START_PR_BUDGET:-6}))
+    unread=''
     while IFS=$'\t' read -r n text; do
       [ -n "$n" ] || continue
-      mergeable=$(T=5 t gh api "repos/$R/pulls/$n" --jq '.mergeable | tostring') || mergeable=
+      left=$((pr_deadline - SECONDS))
+      mergeable=
+      if [ "$left" -gt 0 ]; then
+        mergeable=$(T=$left t gh api "repos/$R/pulls/$n" --jq '.mergeable | tostring') || mergeable=
+      else
+        unread=1
+      fi
       case $mergeable in
         false) text="$text  CONFLICTING: merge origin/main into the branch" ;;
         null) text="$text  (mergeability not known yet)" ;;
       esac
       echo "$text"
     done <<<"$open_prs"
+    [ -z "$unread" ] || echo "(mergeability not read for some PRs: time budget used up)"
   else
     echo "(could not fetch PRs)"
   fi

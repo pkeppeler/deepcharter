@@ -21,7 +21,7 @@
 # a failure.
 # Refuses if origin/main commits made since the PR's latest successful CI run was created (minus a
 # 2-minute margin) changed anything outside docs (`docs/**`, `*.md`, `.papercuts.jsonl`).
-# Retargets open PRs stacked on its branch to its base, then squash-merges pinned to that head sha
+# Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
 # and regenerates docs/ROADMAP.md. GitHub reads only through REST (`gh api`): no `gh pr`, `gh issue` or GraphQL (#788).
 set -euo pipefail
 
@@ -65,6 +65,11 @@ else
 fi
 
 check_closing_reference # sets $branch, $issue, $body, $closes
+
+# GitHub closes the issue only for a PR into the default branch, so a PR into anything else closes nothing.
+base=$(pr_field .base.ref) || refuse "has no readable base branch"
+[[ $base == main ]] \
+  || refuse "targets '$base', not main: GitHub closes its issue only for a PR into the default branch (retarget it to main, or merge the PR it is stacked on first: that retargets it)"
 
 load_labels
 # Bodies are compared whole (as JSON strings), so a longer comment cannot match.
@@ -225,7 +230,6 @@ fi
 # Closing a PR whose base branch is gone cannot be reopened (#663), and GitHub deletes the head branch on merge
 # (the repo's delete_branch_on_merge, so this script deletes no ref). Retarget each open PR stacked on this head
 # branch to this PR's base first.
-base=$(pr_field .base.ref) || refuse "has no readable base branch"
 stacked=$(gh api "repos/$repo/pulls?base=$branch&state=open&per_page=100" --paginate --jq '.[].number') \
   || refuse "could not list the PRs stacked on $branch"
 for stacked_pr in $stacked; do

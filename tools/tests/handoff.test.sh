@@ -12,13 +12,17 @@ py=$root/tools/py
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-command -v jq >/dev/null || { echo "FAIL: handoff.test.sh needs jq (the gh stub applies the tool's --jq filter)"; exit 1; }
+# The Mac has no jq: the cases use the canned number the tool's --jq filter would print (STUB_NUMBER, default 14,
+# empty for none). The cases that check the filter itself (STUB_ISSUES, JSON) run only where jq exists.
+have_jq=0
+command -v jq >/dev/null && have_jq=1
 
 mkdir -p "$work/bin"
 cat >"$work/bin/gh" <<'S'
 #!/usr/bin/env bash
-# Stub, REST only: the issues list answers STUB_ISSUES (a JSON array; the issues endpoint lists PRs too, as
-# entries with a pull_request key) through the tool's own --jq filter; a PATCH records its args and body file.
+# Stub, REST only: the issues list prints STUB_NUMBER, or runs STUB_ISSUES (a JSON array; the issues endpoint lists
+# PRs too, as entries with a pull_request key) through the tool's own --jq filter when set; a PATCH records its
+# args and body file.
 [[ $1 == api ]] || exit 1
 method=GET
 jq=
@@ -30,8 +34,7 @@ for a in "$@"; do
 done
 case "$method $2" in
   "GET repos/"*"/issues?labels=handoff&state=open"*)
-    default='[{"number":14}]'
-    printf '%s\n' "${STUB_ISSUES-$default}" | jq -r "$jq" ;;
+    if [[ -n ${STUB_ISSUES-} ]]; then printf '%s\n' "$STUB_ISSUES" | jq -r "$jq"; else printf '%s\n' "${STUB_NUMBER-14}"; fi ;;
   "PATCH "*)
     echo "$*" >>"$STUB_LOG"
     for a in "$@"; do
@@ -95,16 +98,22 @@ for prose in 'The hook lists merged PRs and open PRs itself.' '- Merged into the
   check "prose [$prose] is not a section" 0 "$status"
 done
 
-run_tool "$good" 'STUB_ISSUES=[]'
+run_tool "$good" STUB_NUMBER=
 check "no open handoff issue refuses" 1 "$status"
 check "no-issue refusal names the label" yes "$(has 'label handoff')"
 
-# The issues endpoint also lists PRs carrying the label: they are skipped, wherever they sit in the list.
-run_tool "$good" 'STUB_ISSUES=[{"number":31,"pull_request":{"url":"x"}},{"number":14}]'
-check "a labelled PR listed first is skipped" yes "$(grep -qF 'issues/14 ' "$work/log" && echo yes || echo no)"
-run_tool "$good" 'STUB_ISSUES=[{"number":31,"pull_request":{"url":"x"}}]'
-check "only a labelled PR is no handoff issue" 1 "$status"
-check "only a labelled PR is not edited" no "$(edited)"
+# The issues endpoint also lists PRs carrying the label: the tool's filter skips them, wherever they sit in the list.
+if [[ $have_jq -eq 1 ]]; then
+  run_tool "$good" 'STUB_ISSUES=[{"number":31,"pull_request":{"url":"x"}},{"number":14}]'
+  check "a labelled PR listed first is skipped" yes "$(grep -qF 'issues/14 ' "$work/log" && echo yes || echo no)"
+  run_tool "$good" 'STUB_ISSUES=[{"number":31,"pull_request":{"url":"x"}}]'
+  check "only a labelled PR is no handoff issue" 1 "$status"
+  check "only a labelled PR is not edited" no "$(edited)"
+  run_tool "$good" 'STUB_ISSUES=[]'
+  check "an empty list is no handoff issue" 1 "$status"
+else
+  echo "skip handoff filter cases (no jq)"
+fi
 
 run_tool "$work/missing.md"
 check "missing file refuses" 1 "$status"
