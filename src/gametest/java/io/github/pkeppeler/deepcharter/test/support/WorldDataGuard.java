@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test.support;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.colony.ColonyDisplays;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.colony.WorldFormat;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.NotesData;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
@@ -47,7 +48,8 @@ public final class WorldDataGuard implements ModInitializer {
             RepairState.TYPE,
             TransmissionData.TYPE,
             ColonyDisplays.TYPE,
-            OutpostData.TYPE);
+            OutpostData.TYPE,
+            WorldFormat.TYPE);
     private static final Map<SavedDataType<?>, SavedData> SEEN = new HashMap<>();
 
     @Override

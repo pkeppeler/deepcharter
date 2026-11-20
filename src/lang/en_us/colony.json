@@ -24,5 +24,8 @@
   "block.deepcharter.steel_ladder": "Steel Ladder",
   "block.deepcharter.wall_lamp": "Company Wall Lamp",
   "block.deepcharter.window_ribbon_dark": "Dark Ribbon Window",
-  "block.deepcharter.window_ribbon_lit": "Lit Ribbon Window"
+  "block.deepcharter.window_ribbon_lit": "Lit Ribbon Window",
+  "deepcharter.world_format.refused": "This world was made by an older version of Deep Charter, before the campaign world. Its saved terrain does not fit the new world, so it is not opened and nothing in it is changed. Start a new world. For the details, see the \"Old worlds\" note in PLAYING.md.",
+  "deepcharter.world_format.refused.title": "This world cannot be opened",
+  "deepcharter.world_format.unreadable": "This world's format stamp cannot be read by this version of Deep Charter, so the world is not opened and nothing in it is changed. Update Deep Charter, or start a new world. For the details, see the \"Old worlds\" note in PLAYING.md."
 }
