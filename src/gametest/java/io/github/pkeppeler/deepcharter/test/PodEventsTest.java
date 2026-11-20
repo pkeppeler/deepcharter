@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -26,7 +29,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
@@ -45,8 +47,6 @@ public class PodEventsTest {
     /** The pod starts at z 3.5 with a 1.9-wide hull, so a wall at z 5 stops it after 0.55 blocks. */
     private static final int WALL_Z = 5;
 
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
-
     private static final Map<UUID, Integer> DEPLETED = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> TICKS = new ConcurrentHashMap<>();
     private static final Set<UUID> VETO_MOUNT = ConcurrentHashMap.newKeySet();
@@ -55,7 +55,6 @@ public class PodEventsTest {
     private static final Set<UUID> NEGATIVE_MASS = ConcurrentHashMap.newKeySet();
     private static final Set<UUID> NAN_MASS = ConcurrentHashMap.newKeySet();
     private static final Set<UUID> PASS_THROUGH = ConcurrentHashMap.newKeySet();
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
 
     static {
         PodEvents.HULL_DEPLETED.register(pod -> DEPLETED.merge(pod.getUUID(), 1, Integer::sum));

@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
@@ -30,7 +32,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import org.jspecify.annotations.Nullable;
@@ -47,8 +48,6 @@ public class PodBraceTest {
     private static final int PATCH = PodBraceTuning.DEFAULT.patchTicks();
     /** Slabs the pilot bores, each one a fall into a new hole. */
     private static final int SLABS = 4;
-
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     @FormatMethod
     private static RuntimeException failure(

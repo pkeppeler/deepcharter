@@ -2,9 +2,9 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.ROTOR;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SIDE_STEP;
-import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SPRINT;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.STUCK_TICKS;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.withRotor;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;

@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.layer.Depth;
@@ -63,9 +66,6 @@ public class PodDrillTest {
     private static final int Z = 3000;
     private static final int FLOOR = 60;
     private static final float EAST = -90f;
-
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
 
     /**
      * A mock pilot, and the pod it sits in once the far chunk ticks entities. The pilot joins and moves there at

@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
@@ -71,9 +74,6 @@ public class GrainedCrustTest {
     private static final int ABSORB_TICKS = 2;
     /** Ticks a fluid has to reach the wall: water takes 5 ticks a cell and lava 30, so the wall has been reached by now. */
     private static final int FLUID_SETTLE_TICKS = 160;
-
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
 
     /** A pilot, and the pod it sits in once the far chunk ticks entities. */
     private static final class Rig {

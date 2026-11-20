@@ -1,6 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -48,7 +51,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.Music;
 import net.minecraft.world.attribute.EnvironmentAttributes;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -64,9 +66,6 @@ public class SoundWiringClientTest implements FabricClientGameTest {
     /** The layers that have music. A new layer fails the count check until its music is listed here. */
     private static final List<String> LAYER_MUSIC = List.of("music.layer_1", "music.layer_2");
 
-    private static final Input JUMP = new Input(false, false, false, false, true, false, false);
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
-    private static final Input FORWARD = new Input(true, false, false, false, false, false, false);
     private static final int X = 500;
     private static final int Z = 500;
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);

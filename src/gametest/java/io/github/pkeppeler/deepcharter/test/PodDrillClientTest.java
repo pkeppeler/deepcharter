@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -15,7 +16,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -25,7 +25,6 @@ public class PodDrillClientTest implements FabricClientGameTest {
     private static final int X = 500;
     private static final int Z = 500;
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     @Override
     public void runTest(ClientGameTestContext context) {

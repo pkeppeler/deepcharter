@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
@@ -20,7 +22,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -35,7 +36,6 @@ public class DeepestPointTest {
     private static final int X = 9100;
     private static final int Z = 9100;
     private static final int FLOOR = 60;
-    private static final Input SPRINT = new Input(false, false, false, false, false, false, true);
 
     private static MockPlayer charterMember(GameTestHelper helper, String name) {
         MockPlayer mock = MockPlayers.join(helper, name);

@@ -13,12 +13,9 @@ import net.minecraft.world.entity.player.Input;
 public final class BoreBot {
     private BoreBot() {}
 
-    public static final Input IDLE = new Input(false, false, false, false, false, false, false);
-    public static final Input FORWARD = new Input(true, false, false, false, false, false, false);
     /** The rotor key (the jump key, held in the air). */
-    public static final Input ROTOR = new Input(false, false, false, false, true, false, false);
+    public static final Input ROTOR = Inputs.JUMP;
 
-    public static final Input SPRINT = new Input(false, false, false, false, false, false, true);
     private static final Input STRAFE_EAST = new Input(false, false, true, false, false, false, false);
     private static final Input STRAFE_WEST = new Input(false, false, false, true, false, false, false);
     private static final Input DRIVE_NORTH = new Input(false, true, false, false, false, false, false);
@@ -36,7 +33,7 @@ public final class BoreBot {
     public enum Side {
         EAST(1, 0, STRAFE_EAST),
         WEST(-1, 0, STRAFE_WEST),
-        SOUTH(0, 1, FORWARD),
+        SOUTH(0, 1, Inputs.FORWARD),
         NORTH(0, -1, DRIVE_NORTH);
 
         public final int dx;
