@@ -363,6 +363,9 @@ dependencyAnalysis {
 			onUsedTransitiveDependencies {
 				exclude("com.mojang:brigadier", "com.mojang:datafixerupper", "io.netty:netty-buffer", "org.slf4j:slf4j-api")
 				excludeRegex("net\\.minecraft:minecraft-common-.*")
+				// Fabric Loader supplies Mixin and pins its version; the layer's @Invoker (ADR 0062) made the analysis ask for a direct
+				// declaration, which would be a second version to drift from the Loader's.
+				exclude("net.fabricmc:sponge-mixin")
 			}
 		}
 	}

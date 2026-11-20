@@ -27,13 +27,16 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.attribute.EnvironmentAttribute;
+import net.minecraft.world.attribute.EnvironmentAttributeMap;
 import net.minecraft.world.attribute.EnvironmentAttributeProbe;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.attribute.modifier.AttributeModifier;
+import net.minecraft.world.attribute.modifier.ColorModifier;
 import net.minecraft.world.clock.WorldClock;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3f;
 
 /**
  * Server GameTests for #797 (campaign world plan, #214; ADR 0062): in a campaign level the layers' zone biomes are applied after the
@@ -260,6 +263,31 @@ public class CampaignAtmosphereTest {
         helper.succeed();
     }
 
+    @GameTest
+    public void aBiomeThatSetsAReaddedAttributeWithoutOverrideFailsLoud(GameTestHelper helper) {
+        Identifier biome = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "multiplied");
+        var multiplied = EnvironmentAttributeMap.builder()
+                .modify(EnvironmentAttributes.FOG_COLOR, ColorModifier.MULTIPLY_RGB, new Vector3f(0.5f, 0.5f, 0.5f))
+                .build();
+        var overridden = EnvironmentAttributeMap.builder()
+                .modify(EnvironmentAttributes.FOG_COLOR, AttributeModifier.override(), new Vector3f(0.5f, 0.5f, 0.5f))
+                .build();
+        LayerAtmosphere.requireOverride(biome, overridden, EnvironmentAttributes.FOG_COLOR);
+        LayerAtmosphere.requireOverride(biome, multiplied, EnvironmentAttributes.FOG_START_DISTANCE);
+        try {
+            LayerAtmosphere.requireOverride(biome, multiplied, EnvironmentAttributes.FOG_COLOR);
+        } catch (IllegalStateException e) {
+            String message = Objects.requireNonNullElse(e.getMessage(), "");
+            expect(
+                    message.contains("deepcharter:multiplied") && message.contains("minecraft:visual/fog_color"),
+                    "the failure should name the biome and the attribute, said: %s",
+                    message);
+            helper.succeed();
+            return;
+        }
+        throw new AssertionError("a multiplied fog colour was accepted");
+    }
+
     // ------------------------------------------------------------------------------------------------ helpers
 
     /** The sky light factor the camera's probe reads at {@code position}, blending biomes as the client does. */
@@ -354,7 +382,7 @@ public class CampaignAtmosphereTest {
         return biome.unwrapKey().orElseThrow().identifier();
     }
 
-    /** The audio is not compared: the flat overworld's biome has its own music and ambient sounds. */
+    /** The audio is not compared: the flat overworld's biome has its own music and sounds. {@link #noSurfaceBiomeSetsWhatATimelineSets} covers audio. */
     private static boolean isVisual(EnvironmentAttribute<?> attribute) {
         return name(attribute).startsWith("minecraft:visual/");
     }

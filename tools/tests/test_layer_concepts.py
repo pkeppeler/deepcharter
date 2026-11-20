@@ -354,7 +354,7 @@ class LayerConceptsTest(unittest.TestCase):
             self.assertEqual({"minecraft:visual/block_light_tint"}, changed, "the two kinds of light differ only in the lamp tint")
         self.assertEqual(len(LAYERS), len({a["fog_color"] for a in make.ATMOSPHERE.values()}))
         for pack in make.PACKS:
-            assets = [p for p in self.files if make.pack_dir(pack) in p.parents and "biome" in p.as_posix()]
+            assets = [p for p in self.files if make.pack_dir(pack) in p.parents and "biome" in p.relative_to(ROOT).as_posix()]
             self.assertEqual([], assets, "a pack must not carry its own atmosphere")
         self.assertEqual([], [p for p in (ROOT / "src/main/resources").rglob("lc_layer_*")], "the atmosphere ships in the mod")
 

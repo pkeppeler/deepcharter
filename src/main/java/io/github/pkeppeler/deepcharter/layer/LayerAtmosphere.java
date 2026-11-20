@@ -1,18 +1,20 @@
 package io.github.pkeppeler.deepcharter.layer;
 
+import io.github.pkeppeler.deepcharter.layer.mixin.EnvironmentAttributeSystemInvoker;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.Mth;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.attribute.EnvironmentAttribute;
 import net.minecraft.world.attribute.EnvironmentAttributeLayer;
+import net.minecraft.world.attribute.EnvironmentAttributeMap;
 import net.minecraft.world.attribute.EnvironmentAttributeSystem;
+import net.minecraft.world.attribute.modifier.AttributeModifier;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
-import net.minecraft.world.phys.Vec3;
 
 /**
  * The biome layer of a campaign level, added again after the timelines and the weather (ADR 0062). In one shared dimension type the
@@ -23,16 +25,17 @@ public final class LayerAtmosphere {
 
     /**
      * Adds to {@code builder}, for each {@code visual/*} and {@code audio/*} attribute that a biome sets and that a timeline or the weather
-     * also drives, a positional layer that reads the biome as vanilla's own biome layer does. The biome entry is applied a second time, so
-     * a biome sets such an attribute with {@code override} (the layers' zone biomes do; {@code CampaignAtmosphereTest} pins it). An attribute
-     * nothing drives after the biome is left out: its first biome layer already stands last.
+     * also drives, vanilla's own biome layer (its private {@code addBiomeLayerForAttribute}, through
+     * {@link EnvironmentAttributeSystemInvoker}). The biome entry is applied a second time, so every biome sets such an attribute with
+     * {@code override}; any other modifier would apply twice, so this throws, naming the biome and the attribute. Only the biomes the level's
+     * generator can place are checked: the registry holds every vanilla biome, which a campaign level never reads. An attribute nothing
+     * drives after the biome is left out: its first biome layer already stands last.
      */
     public static void addBiomeLayers(
             EnvironmentAttributeSystem.Builder builder,
             Level level,
             Map<EnvironmentAttribute<?>, List<EnvironmentAttributeLayer<?>>> layersByAttribute) {
-        BiomeManager biomes = level.getBiomeManager();
-        level.registryAccess()
+        List<EnvironmentAttribute<?>> readded = level.registryAccess()
                 .lookupOrThrow(Registries.BIOME)
                 .listElements()
                 .flatMap(biome -> biome.value().getAttributes().keySet().stream())
@@ -40,30 +43,42 @@ public final class LayerAtmosphere {
                 .filter(LayerAtmosphere::isVisualOrAudio)
                 .filter(attribute -> layersByAttribute.getOrDefault(attribute, List.of()).stream()
                         .anyMatch(EnvironmentAttributeLayer.TimeBased.class::isInstance))
-                .forEach(attribute -> addBiomeLayer(builder, attribute, biomes));
+                .collect(Collectors.toList());
+        // The server holds the level's generator; a client reads the same registry the server already checked.
+        if (level instanceof ServerLevel server) {
+            server.getChunkSource()
+                    .getGenerator()
+                    .getBiomeSource()
+                    .possibleBiomes()
+                    .forEach(biome -> {
+                        for (EnvironmentAttribute<?> attribute : readded) {
+                            requireOverride(
+                                    biome.unwrapKey().orElseThrow().identifier(),
+                                    biome.value().getAttributes(),
+                                    attribute);
+                        }
+                    });
+        }
+        BiomeManager biomes = level.getBiomeManager();
+        for (EnvironmentAttribute<?> attribute : readded) {
+            EnvironmentAttributeSystemInvoker.addBiomeLayerForAttribute(builder, attribute, biomes);
+        }
+    }
+
+    /** Fails, naming the biome and the attribute, when {@code attributes} sets {@code attribute} with a modifier other than override. */
+    public static void requireOverride(
+            Identifier biome, EnvironmentAttributeMap attributes, EnvironmentAttribute<?> attribute) {
+        var entry = attributes.get(attribute);
+        if (entry != null && !entry.modifier().equals(AttributeModifier.override())) {
+            throw new IllegalStateException(
+                    "Biome " + biome + " sets " + BuiltInRegistries.ENVIRONMENT_ATTRIBUTE.getKey(attribute)
+                            + " with a modifier other than override, but a campaign level applies the biome layer twice (ADR 0062)");
+        }
     }
 
     /** True for {@code visual/*} and {@code audio/*}: the attributes a player sees and hears, as against {@code gameplay/*}. */
     public static boolean isVisualOrAudio(EnvironmentAttribute<?> attribute) {
         Identifier id = BuiltInRegistries.ENVIRONMENT_ATTRIBUTE.getKey(attribute);
         return id != null && (id.getPath().startsWith("visual/") || id.getPath().startsWith("audio/"));
-    }
-
-    /** Vanilla's {@code EnvironmentAttributeSystem.addBiomeLayerForAttribute}, which is private. */
-    private static <Value> void addBiomeLayer(
-            EnvironmentAttributeSystem.Builder builder, EnvironmentAttribute<Value> attribute, BiomeManager biomes) {
-        builder.addPositionalLayer(attribute, (value, position, interpolator) -> {
-            if (interpolator != null && attribute.isSpatiallyInterpolated()) {
-                return interpolator.applyAttributeLayer(attribute, value);
-            }
-            return biomeAt(biomes, attribute, position).getAttributes().applyModifier(attribute, value);
-        });
-    }
-
-    private static Biome biomeAt(BiomeManager biomes, EnvironmentAttribute<?> attribute, Vec3 position) {
-        return (attribute.isFullResolutionBiomes()
-                        ? biomes.getBiome(Mth.floor(position.x), Mth.floor(position.y), Mth.floor(position.z))
-                        : biomes.getNoiseBiomeAtPosition(position.x, position.y, position.z))
-                .value();
     }
 }
