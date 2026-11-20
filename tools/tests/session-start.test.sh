@@ -224,6 +224,13 @@ check "a hung mergeable read stops at the shared deadline" yes "$([[ $((SECONDS 
 check "the PRs are still listed after the deadline" yes "$(has '#13 Fresh')"
 check "a PR reached after the deadline gets no mark" no "$([[ $(line '#12 Broken') == *CONFLICTING* ]] && echo yes || echo no)"
 check "the deadline is noted" yes "$(has 'mergeability not read for some PRs')"
+# A read that starts before the deadline and then times out (here the last PR's) also leaves its PR unmarked and noted.
+out=$(LIMITS_JSON='{}' OPEN_OUT="$open_lines" MERGEABLE_SLOW=13 MERGEABLE_12=false SESSION_START_PR_BUDGET=2 run_hook)
+check "a read that times out inside the budget is noted" yes "$(has 'mergeability not read for some PRs')"
+check "the PRs read before it keep their mark" yes "$([[ $(line '#12 Broken') == *CONFLICTING* ]] && echo yes || echo no)"
+check "the timed-out PR is still listed" yes "$(has '#13 Fresh')"
+out=$(LIMITS_JSON='{}' OPEN_OUT="$open_lines" MERGEABLE_12=false run_hook)
+check "no note when every read succeeds" no "$(has 'mergeability not read')"
 out=$(LIMITS_JSON='{}' OPEN_MODE=fail run_hook)
 check "open PR fetch failure is noted" yes "$(has '(could not fetch PRs)')"
 
