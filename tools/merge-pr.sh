@@ -9,7 +9,7 @@
 # runs `git fetch origin main` (the stale-base rule needs it), so it updates only the local origin/main ref.
 #
 # Refuses (nonzero exit, one "REFUSED:" line) unless the PR is open, not a draft,
-# labelled `review-passed` with a `review-passed <head sha>` comment for the
+# labelled `review-passed` with a `review-passed <head sha>` first-line comment from the trusted account for the
 # current head (see tools/mark-review-passed.sh), closes exactly its branch's
 # issue (the body's closing keywords name {N} for branch `<N>-<slug>`),
 # adds no docs/adr/NNNN-*.md whose NNNN is already on origin/main (any slug) or twice in the PR,
@@ -76,7 +76,10 @@ load_labels
 review_pass_refusal=
 has_label review-passed || review_pass_refusal="lacks the review-passed label"
 if [[ -z $review_pass_refusal ]]; then
-  gh api "repos/$repo/issues/$pr/comments?per_page=100" --paginate --jq '.[].body | @json' | grep -qxF "\"review-passed $sha\"" \
+  # Only the trusted account's comments, and only a comment's first line: the cloud proxy appends a footer to every
+  # comment it posts.
+  gh api "repos/$repo/issues/$pr/comments?per_page=100" --paginate \
+    --jq ".[] | select(.user.login == \"$TRUSTED_LOGIN\") | .body | split(\"\\n\")[0] | @json" | grep -qxF "\"review-passed $sha\"" \
     || review_pass_refusal="has no 'review-passed $sha' comment for the current head (re-run tools/mark-review-passed.sh)" # pipe-grep-q: fail-closed — a missed match (SIGPIPE) only refuses the merge
 fi
 if [[ $gate_only -eq 1 ]]; then

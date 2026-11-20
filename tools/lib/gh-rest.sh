@@ -2,6 +2,9 @@
 # GraphQL, which every `gh pr` and `gh issue` subcommand uses (#788); tools/tests/no-gh-graphql.test.sh keeps it out.
 # The caller sets $repo. Compatible with bash 3.2.
 
+# The one account whose comments count (the repo is public: only this login is trusted).
+TRUSTED_LOGIN=pkeppeler
+
 # pr_get <n> <jq>: one filter over GET pulls/<n>. Fails when gh fails.
 pr_get() { gh api "repos/$repo/pulls/$1" --jq "$2"; }
 
