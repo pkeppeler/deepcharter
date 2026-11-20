@@ -5,6 +5,8 @@
 # Comment lines are skipped. .github/workflows/ is out of scope (Actions has GraphQL); tools/*.py is not scanned.
 # Detection is line-based and errs toward over-flagging.
 set -euo pipefail
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 
