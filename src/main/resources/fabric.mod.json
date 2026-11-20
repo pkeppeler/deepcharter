@@ -23,7 +23,8 @@
 	"mixins": [
 		"deepcharter.mixins.json",
 		"deepcharter.pod.mixins.json",
-		"deepcharter.colony.client.mixins.json"
+		"deepcharter.colony.client.mixins.json",
+		"deepcharter.layer.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.19.5",
