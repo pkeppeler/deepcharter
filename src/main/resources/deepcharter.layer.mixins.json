@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "io.github.pkeppeler.deepcharter.layer.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "EnvironmentAttributeSystemBuilderMixin",
+    "EnvironmentAttributeSystemInvoker"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

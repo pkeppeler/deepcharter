@@ -48,9 +48,12 @@ public final class LayerChain {
         }
     }
 
-    /** True for a level of the campaign world, where the layers are Y bands of one level and a crossing moves nothing. */
+    /**
+     * True for a level of the campaign world, where the layers are Y bands of one level and a crossing moves nothing. False for a level
+     * whose dimension type is given inline, which has no key.
+     */
     public static boolean isCampaign(Level level) {
-        return dimensionType(level).equals(CAMPAIGN_TYPE);
+        return level.dimensionTypeRegistration().is(CAMPAIGN_TYPE);
     }
 
     /**
