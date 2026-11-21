@@ -245,7 +245,9 @@ public class FrontCameraClientTest implements FabricClientGameTest {
                 "the pilot seated in the pod in layer 1",
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
-                        && TestLayers.clientIsIn(client, 1));
+                        && TestLayers.clientIsIn(client, 1)
+                        // The campaign level is tall: the loading screen outlasts the arrival.
+                        && client.gui.screen() == null);
         return made[0];
     }
 
@@ -409,7 +411,9 @@ public class FrontCameraClientTest implements FabricClientGameTest {
             client.gui.toastManager().clear();
         });
         ClientWait.until(
-                context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
+                context,
+                "every section in view rendered",
+                client -> client.gui.screen() == null && client.levelRenderer.hasRenderedAllSections());
         context.waitTicks(5); // tick-wait: the pod and the view settle for a few frames
         Path file = context.takeScreenshot(name);
         try {
