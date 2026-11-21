@@ -1,6 +1,10 @@
 package io.github.pkeppeler.deepcharter.sound.phonograph;
 
+import io.github.pkeppeler.deepcharter.sound.SoundTuning;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -16,11 +20,12 @@ import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The state of a phonograph: the cylinder in it, and what it is playing. A playback is not saved: the sound is a one-shot that a
- * restart cuts off, so a block that came back "playing" would be silent. The colony's phonograph holds no cylinder; it plays the next
+ * The state of a phonograph: the cylinder in it, and what it is playing. A playback is not saved: a restart cuts the sound off, so a
+ * block that came back "playing" would be silent. A chunk that unloads mid-playback does not stop the sound for a client that already
+ * has it: the client plays out the tail, and the block starts silent when it loads. The colony's phonograph holds no cylinder; it plays the next
  * recording of {@link Recording#COLONY_RACK} each time, and remembers where it is in the rack and the night it last started by itself
  * ({@code ColonyPhonograph}). The block entity is saved as plain values of vanilla codecs, not through {@code Versioned}: it is neither a
- * SavedData nor an attachment, and a cylinder's own item codec carries its version.
+ * SavedData nor an attachment. The cylinder is an {@code ItemStack}, saved with the item codec.
  */
 public final class PhonographBlockEntity extends BlockEntity {
     private static final long NEVER = Long.MIN_VALUE;
@@ -28,6 +33,8 @@ public final class PhonographBlockEntity extends BlockEntity {
     private ItemStack cylinder = ItemStack.EMPTY;
     private @Nullable Recording playing;
     private int ticksLeft;
+    /** The players this playback has sent its start to, and will send its stop to. In memory only. */
+    private Set<UUID> listeners = new HashSet<>();
     /** The colony's rack: the index of the recording the next playback starts. */
     private int rack;
 
@@ -133,7 +140,7 @@ public final class PhonographBlockEntity extends BlockEntity {
         ticksLeft = next.lengthTicks();
         setChanged();
         showLoaded();
-        PhonographSound.start(server, getBlockPos(), next);
+        listeners = PhonographSound.start(server, getBlockPos(), next);
         return true;
     }
 
@@ -145,13 +152,25 @@ public final class PhonographBlockEntity extends BlockEntity {
         }
     }
 
-    /** Ends a playback and cuts its sound off, leaving the block state alone. */
+    /** How many players the playback has sent its start to: none when nobody was within earshot and nobody has come since. */
+    public int listenerCount() {
+        return listeners.size();
+    }
+
+    /** Whether any player is within earshot of this phonograph now. */
+    public boolean hasAudience() {
+        return level instanceof ServerLevel server
+                && !PhonographSound.audience(server, getBlockPos()).isEmpty();
+    }
+
+    /** Ends a playback and cuts its sound off for its listeners, leaving the block state alone. */
     private void silence(ServerLevel server) {
         if (playing != null) {
-            PhonographSound.stop(server, playing);
+            PhonographSound.stop(server.getServer(), playing, listeners);
             playing = null;
             ticksLeft = 0;
         }
+        listeners = new HashSet<>();
     }
 
     /** Draws the cylinder on the spindle when a player's phonograph holds one, and when the colony's rack plays. */
@@ -164,9 +183,17 @@ public final class PhonographBlockEntity extends BlockEntity {
     }
 
     static void tick(Level level, BlockPos pos, BlockState state, PhonographBlockEntity phonograph) {
-        if (phonograph.playing != null && --phonograph.ticksLeft <= 0) {
+        Recording recording = phonograph.playing;
+        if (recording == null || !(level instanceof ServerLevel server)) {
+            return;
+        }
+        if (--phonograph.ticksLeft <= 0) {
+            // The sound ends by itself, so nothing is sent.
             phonograph.playing = null;
+            phonograph.listeners = new HashSet<>();
             phonograph.showLoaded();
+        } else if (server.getGameTime() % SoundTuning.DEFAULT.phonographListenTicks() == 0) {
+            PhonographSound.recruit(server, pos, recording, phonograph.listeners);
         }
     }
 

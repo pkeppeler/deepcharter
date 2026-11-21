@@ -1,41 +1,41 @@
 {
   "gamme_de_la_voix": {
-    "bed_frames": 373010,
-    "bed_sha256": "8068a118da97c29abd1fc6d6e0590e372a45e2c7ab1e1e0efff5b8a6b6ae7ea8",
+    "bed_frames": 350784,
+    "bed_sha256": "234bc47d551ad9d929707ff0c50b0d95939ed62ff2cd440e50ad064895168e3c",
     "credit": "Phonautogram by Édouard-Léon Scott de Martinville (May 17, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
     "duration_seconds": 15.909,
     "license": "CC BY",
-    "ogg_sha256": "69573ccc941856f1234c6b713c8462d317684a482b30042767cdc5fac0f2b0e4",
+    "ogg_sha256": "3f108ca885f35a989d8ac4b9c174c3e74129f25a35d26edb53a4cc533f68e085",
     "recorded": "May 17, 1860",
     "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
     "source_url": "https://firstsounds.org/sounds/1860-Vocal-Scale-05-09.mp3",
     "title": "Gamme de la Voix, vocal scale",
-    "treatment_sha256": "5519d5623a8c040ea9525e9765c96cfa01dc167fc4d73fe328ab811db18a0a39"
+    "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
   },
   "jeune_jouvencelle": {
-    "bed_frames": 373355,
-    "bed_sha256": "21cf2444fd882ea9c135f89ac8edde9eca8629bde99e087756b32b3981d4ec5f",
+    "bed_frames": 351936,
+    "bed_sha256": "c05148344bf7fe81a36c12b0eeefc607d2bc098476ad2638adec08bcf6724184",
     "credit": "Phonautogram by Édouard-Léon Scott de Martinville (Aug. 17, 1857); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
     "duration_seconds": 15.961,
     "license": "CC BY",
-    "ogg_sha256": "dc0697fd24f7070eaaf947521d3ab1de2fd4e646a1362dbed996999f31f7203f",
+    "ogg_sha256": "913e9c79648ab778189487633043dc11c867258fd64604fdf966fdafeb8cf66e",
     "recorded": "Aug. 17, 1857",
     "source_sha256": "c14c8de6c1258e54fcb55147593ad667d87d2a3af4434292ca3409c6ba1ff862",
     "source_url": "https://firstsounds.org/sounds/Scott-Feaster-No-09.mp3",
     "title": "Jeune Jouvencelle, vocal solo",
-    "treatment_sha256": "5519d5623a8c040ea9525e9765c96cfa01dc167fc4d73fe328ab811db18a0a39"
+    "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
   },
   "othello": {
-    "bed_frames": 413008,
-    "bed_sha256": "3519aed85ee44a45865592ab81967be4cff5b4260c80d45a9c444d8b1d5e37e3",
+    "bed_frames": 391680,
+    "bed_sha256": "81f7e29f1f8175cbb6cd407a05ed39992fd9d5b8c6ed31c136fe6f30ad22c8f3",
     "credit": "Phonautogram by Édouard-Léon Scott de Martinville (Apr. 17, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
     "duration_seconds": 17.763,
     "license": "CC BY",
-    "ogg_sha256": "82272bcdc69c5cf288a8524c1a34cfd3da68f14cf5bc92adcb46e1b4879ea682",
+    "ogg_sha256": "e34cf38010dc75a027d08c6a8b7a071226c82975bcfcd03852c79cbe2e7533c8",
     "recorded": "Apr. 17, 1860",
     "source_sha256": "0e564635920b4457923e112f5dded4c36cd7fe604b906721768682ebf6e64012",
     "source_url": "https://firstsounds.org/sounds/Scott-Feaster-No-38.mp3",
     "title": "Excerpt from Ducis' Othello",
-    "treatment_sha256": "5519d5623a8c040ea9525e9765c96cfa01dc167fc4d73fe328ab811db18a0a39"
+    "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
   }
 }

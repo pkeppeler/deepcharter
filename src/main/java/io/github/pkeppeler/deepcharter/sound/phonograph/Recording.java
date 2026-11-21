@@ -69,7 +69,7 @@ public enum Recording implements StringRepresentable, TooltipProvider {
     /** The title and the year and nothing else, as on the label of a cylinder. */
     public Component label() {
         return Component.translatable(
-                "deepcharter.phonograph.label", Component.translatable("deepcharter.recording." + id), year);
+                "deepcharter.phonograph.label", Component.translatable("deepcharter.recording." + id), year());
     }
 
     /** The recording a cylinder holds: its component, which the item's default makes always present. */

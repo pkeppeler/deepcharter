@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyPhonograph;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
+import io.github.pkeppeler.deepcharter.sound.SoundTuning;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographBlockEntity;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
 import io.github.pkeppeler.deepcharter.sound.phonograph.Recording;
@@ -16,12 +17,14 @@ import io.github.pkeppeler.deepcharter.test.support.TestClocks;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -171,19 +174,31 @@ public class ColonyPhonographTest {
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100, environment = NIGHT)
-    public void atNightWithNobodyInTheRoomItStartsByItselfOnceANightAndNeverByDayOrWithSomeoneThere(
-            GameTestHelper helper) {
+    public void atNightWithNobodyInTheRoomButSomeoneWithinEarshotItStartsByItselfOnceANight(GameTestHelper helper) {
         ServerLevel level = server(helper).overworld();
         BlockPos pos = position(helper);
         MockPlayer visitor = MockPlayers.join(helper, "visitor");
         FarChunks.awaitEntityTicking(helper, level, pos, () -> {
             PhonographBlockEntity phonograph = phonograph(helper, level, pos);
-            // A player in the room, from another test or this one, is what keeps the colony quiet: this test needs the
-            // room empty first.
-            visitor.teleportTo(level, Vec3.atBottomCenterOf(pos).add(100, 0, 0), 0f, 0f);
             long period = period(level);
             long midnight = period / 2;
             expect(helper, !phonograph.isPlaying(), "the phonograph was playing when the test began");
+            // Out of earshot first: nobody could hear it start, so it does not, and the night is not used up.
+            visitor.teleportTo(level, Vec3.atBottomCenterOf(pos).add(100, 0, 0), 0f, 0f);
+            pinned(level, 30 * period + midnight, () -> {
+                expect(
+                        helper,
+                        !ColonyPhonograph.autoPlay(level, phonograph, roll(true)),
+                        "it started with nobody to hear it: %s",
+                        level.players().stream()
+                                .map(p -> p.getName().getString() + "@" + p.position())
+                                .toList());
+                expect(
+                        helper,
+                        !phonograph.isPlaying() && phonograph.lastAutoNight().isEmpty(),
+                        "an unheard start used the night");
+            });
+            visitor.teleportTo(level, outsideTheRoomWithinEarshot(pos), 0f, 0f);
             pinned(level, 31 * period + midnight, () -> {
                 expect(helper, !ColonyPhonograph.autoPlay(level, phonograph, roll(false)), "a failed roll started it");
                 expect(helper, !phonograph.isPlaying(), "a failed roll left it playing");
@@ -191,7 +206,10 @@ public class ColonyPhonographTest {
                         helper,
                         ColonyPhonograph.autoPlay(level, phonograph, roll(true)),
                         "a won roll at night did not start it");
-                expect(helper, phonograph.isPlaying(), "it is not playing");
+                expect(
+                        helper,
+                        phonograph.isPlaying() && phonograph.listenerCount() == 1,
+                        "it is not playing to the visitor");
                 phonograph.stop();
                 expect(
                         helper,
@@ -228,7 +246,7 @@ public class ColonyPhonographTest {
                         "it did not start at the night's last tick");
                 phonograph.stop();
             });
-            // Someone in the room: at the edge of the quiet radius, and inside it.
+            // Someone in the room keeps it quiet.
             visitor.teleportTo(level, Vec3.atBottomCenterOf(pos), 0f, 0f);
             pinned(level, 36 * period + midnight, () -> {
                 expect(
@@ -237,18 +255,56 @@ public class ColonyPhonographTest {
                         "it started with a player in the room");
                 expect(helper, !phonograph.isPlaying(), "it plays with a player in the room");
             });
-            visitor.teleportTo(
-                    level,
-                    Vec3.atBottomCenterOf(pos).add(ColonyTuning.DEFAULT.phonographQuietRadius() + 4, 0, 0),
-                    0f,
-                    0f);
-            pinned(level, 37 * period + midnight, () -> {
-                expect(
-                        helper,
-                        ColonyPhonograph.autoPlay(level, phonograph, roll(true)),
-                        "a player outside the room kept it quiet");
-                phonograph.stop();
-            });
+            helper.succeed();
+        });
+    }
+
+    /** More than the quiet radius from the phonograph and less than its range: outside the room, inside earshot. */
+    private static Vec3 outsideTheRoomWithinEarshot(BlockPos pos) {
+        double between = (ColonyTuning.DEFAULT.phonographQuietRadius() + SoundTuning.DEFAULT.phonographRange()) / 2.0;
+        return Vec3.atBottomCenterOf(pos).add(between, 0, 0);
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100, environment = RACK)
+    public void theColonyFieldsSurviveASaveAndALoad(GameTestHelper helper) {
+        ServerLevel level = server(helper).overworld();
+        BlockPos pos = position(helper);
+        FarChunks.awaitEntityTicking(helper, level, pos, () -> {
+            PhonographBlockEntity phonograph = phonograph(helper, level, pos);
+            // Two plays move the rack on by two, wherever it stood; the night is any number.
+            phonograph.play();
+            phonograph.stop();
+            phonograph.play();
+            phonograph.stop();
+            phonograph.markAutoNight(777_001L);
+            CompoundTag saved = phonograph.saveWithFullMetadata(level.registryAccess());
+            BlockEntity read = BlockEntity.loadStatic(pos, level.getBlockState(pos), saved, level.registryAccess());
+            if (!(read instanceof PhonographBlockEntity loaded)) {
+                throw helper.assertionException("the block entity did not load: %s", String.valueOf(read));
+            }
+            expect(
+                    helper,
+                    loaded.lastAutoNight().equals(Optional.of(777_001L)),
+                    "the night did not survive: %s",
+                    loaded.lastAutoNight());
+            expect(
+                    helper,
+                    loaded.cylinder().isEmpty() && !loaded.isPlaying(),
+                    "the colony's holds a cylinder or plays after a load");
+            // The rack: from where the saved one stands, the loaded one plays the same recording.
+            loaded.setLevel(level);
+            loaded.play();
+            Recording fromLoaded = loaded.playing().orElseThrow();
+            loaded.stop();
+            phonograph.play();
+            Recording fromSaved = phonograph.playing().orElseThrow();
+            phonograph.stop();
+            expect(
+                    helper,
+                    fromLoaded == fromSaved,
+                    "the loaded rack plays %s, the saved one %s",
+                    fromLoaded,
+                    fromSaved);
             helper.succeed();
         });
     }

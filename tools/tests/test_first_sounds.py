@@ -2,14 +2,18 @@
 
 Nothing here downloads: the sources are not in the repo, so a build is tested through its refusals and the committed OGGs through the manifest.
 """
+import array
 import contextlib
 import hashlib
 import io
 import json
+import math
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
+import wave
 from pathlib import Path
 from unittest import mock
 
@@ -119,6 +123,44 @@ class CommittedRecordingsTest(unittest.TestCase):
                 self.assertNotIn("no-36", text.lower())
 
 
+@unittest.skipUnless(all(TOOLS), "ffmpeg is needed to render")
+class OpeningTest(unittest.TestCase):
+    """An amix in the filter graph once opened every clip with 0.6 s of loud buzz that the source does not have."""
+
+    def test_a_silent_source_opens_as_quiet_as_the_rest_of_the_clip(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        source = tmp / "silence.wav"
+        with wave.open(str(source), "wb") as out:
+            out.setnchannels(1)
+            out.setsampwidth(2)
+            out.setframerate(44100)
+            out.writeframes(bytes(2 * 44100 * 3))
+        target = tmp / "out.ogg"
+        first_sounds._render(first_sounds.RECORDINGS[0], source, target)
+        raw = subprocess.run(
+            ["ffmpeg", "-v", "error", "-nostdin", "-i", str(target), "-ac", "1", "-f", "s16le", "-"], check=True, capture_output=True
+        ).stdout
+        samples = array.array("h", raw[: len(raw) // 2 * 2])
+        window = int(0.7 * first_sounds.RATE)
+
+        def rms(part):
+            return math.sqrt(sum(v * v for v in part) / len(part))
+
+        opening, rest = rms(samples[:window]), rms(samples[window:])
+        # The bed is the only sound: its hiss and crackle, about -35 dBFS (1000 of 32768). The buzz was near full scale.
+        self.assertLess(opening, 3000)
+        self.assertLess(opening, rest * 3)
+
+
+class TreatmentTest(unittest.TestCase):
+    def test_the_filter_graph_and_the_bed_are_part_of_the_treatment_hash(self):
+        before = first_sounds.treatment_sha256()
+        for name, value in (("BAND_FILTERS", "anull"), ("VOICE_FILTERS", "anull"), ("HISS", 0.5), ("CRACKLE_PEAK", 0.9)):
+            with mock.patch.object(first_sounds, name, value):
+                self.assertNotEqual(before, first_sounds.treatment_sha256(), name)
+
+
 class CheckTest(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
@@ -158,6 +200,12 @@ class CheckTest(unittest.TestCase):
         manifest["othello"]["treatment_sha256"] = "0" * 64
         self.manifest.write_text(json.dumps(manifest))
         self.assertTrue(any("othello" in p and "treatment" in p for p in first_sounds.check(self.out, self.manifest)))
+
+    def test_a_bed_that_is_not_the_one_the_script_makes_fails(self):
+        manifest = json.loads(self.manifest.read_text())
+        manifest["othello"]["bed_sha256"] = "0" * 64
+        self.manifest.write_text(json.dumps(manifest))
+        self.assertTrue(any("othello" in p and "bed" in p for p in first_sounds.check(self.out, self.manifest)))
 
     def test_a_recording_the_script_does_not_know_fails(self):
         manifest = json.loads(self.manifest.read_text())

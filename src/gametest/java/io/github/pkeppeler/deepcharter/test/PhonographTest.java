@@ -25,6 +25,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -232,7 +233,7 @@ public class PhonographTest {
     }
 
     @GameTest(maxTicks = 100)
-    public void aPlayerBeyondTheRangeIsNeverSentTheStartButTheStopReachesEveryone(GameTestHelper helper) {
+    public void aPlayerBeyondTheRangeIsNeverSentTheStartNorTheStop(GameTestHelper helper) {
         PhonographBlockEntity phonograph = place(helper);
         MockPlayer near = join(helper, "near");
         MockPlayer far = join(helper, "far");
@@ -247,12 +248,104 @@ public class PhonographTest {
             expect(helper, startsAtMine(helper, far).isEmpty(), "a player past %s blocks heard the start", range);
             expect(
                     helper,
-                    far.soundsStopped().contains(id(DeepSound.PHONOGRAPH_OTHELLO)),
-                    "the stop reached the far player: %s",
+                    !far.soundsStopped().contains(id(DeepSound.PHONOGRAPH_OTHELLO)),
+                    "a player who never heard the start was sent the stop: %s",
                     far.soundsStopped());
             expect(helper, startsAtMine(helper, near).size() == 1, "the near player heard the start once");
             helper.succeed();
         });
+    }
+
+    @GameTest(maxTicks = 200)
+    public void aPlayerWhoComesIntoRangeWhileItPlaysIsSentTheStartAndTheStopLater(GameTestHelper helper) {
+        PhonographBlockEntity phonograph = place(helper);
+        MockPlayer first = join(helper, "first");
+        MockPlayer late = join(helper, "late");
+        ServerLevel level = helper.getLevel();
+        Vec3 at = Vec3.atBottomCenterOf(helper.absolutePos(PLACE));
+        double range = SoundTuning.DEFAULT.phonographRange();
+        late.teleportTo(level, at.add(range + 6, 1, 0), 0f, 0f);
+        use(helper, first, cylinder(Recording.GAMME_DE_LA_VOIX), false);
+        expect(helper, phonograph.listenerCount() >= 1, "the first player is a listener");
+        int listeners = phonograph.listenerCount();
+        helper.runAfterDelay(DRAIN_TICKS, () -> {
+            expect(helper, startsAtMine(helper, late).isEmpty(), "the late player heard the start from afar");
+            late.teleportTo(level, at.add(3, 1, 0), 0f, 0f);
+        });
+        helper.runAfterDelay(DRAIN_TICKS + SoundTuning.DEFAULT.phonographListenTicks() + DRAIN_TICKS, () -> {
+            expect(helper, phonograph.isPlaying() && phonograph.listenerCount() > 0, "still playing");
+            expect(
+                    helper,
+                    startsAtMine(helper, late).equals(List.of(id(DeepSound.PHONOGRAPH_GAMME_DE_LA_VOIX))),
+                    "the late player was sent the start once: %s",
+                    startsAtMine(helper, late));
+            expect(helper, startsAtMine(helper, first).size() == 1, "the first player was sent it again");
+            expect(helper, phonograph.listenerCount() > listeners, "the late player became a listener");
+            use(helper, first, ItemStack.EMPTY, false);
+        });
+        helper.runAfterDelay(DRAIN_TICKS * 3 + SoundTuning.DEFAULT.phonographListenTicks() + 2, () -> {
+            expect(
+                    helper,
+                    late.soundsStopped().contains(id(DeepSound.PHONOGRAPH_GAMME_DE_LA_VOIX)),
+                    "the late listener was not sent the stop: %s",
+                    late.soundsStopped());
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = 100)
+    public void stoppingOnePhonographLeavesAnotherPlayingTheSameRecordingAlone(GameTestHelper helper) {
+        PhonographBlockEntity mine = place(helper);
+        ServerLevel level = helper.getLevel();
+        BlockPos otherPos = helper.absolutePos(PLACE).offset(60, 0, 0);
+        level.getChunk(otherPos.getX() >> 4, otherPos.getZ() >> 4);
+        level.setBlock(otherPos, PhonographRegistry.PHONOGRAPH.defaultBlockState(), 3);
+        MockPlayer nearMine = join(helper, "near-mine");
+        MockPlayer nearOther = join(helper, "near-other");
+        nearOther.teleportTo(level, Vec3.atBottomCenterOf(otherPos).add(2, 0, 0), 0f, 0f);
+        if (!(level.getBlockEntity(otherPos) instanceof PhonographBlockEntity other)) {
+            throw helper.assertionException("the second phonograph has no block entity");
+        }
+        use(helper, nearMine, cylinder(Recording.OTHELLO), false);
+        nearOther.player().setItemInHand(InteractionHand.MAIN_HAND, cylinder(Recording.OTHELLO));
+        other.insert(nearOther.player(), InteractionHand.MAIN_HAND);
+        helper.runAfterDelay(DRAIN_TICKS, () -> {
+            expect(helper, other.isPlaying() && mine.isPlaying(), "both play the same recording");
+            mine.stop();
+        });
+        helper.runAfterDelay(DRAIN_TICKS * 2 + 2, () -> {
+            expect(
+                    helper,
+                    nearMine.soundsStopped().contains(id(DeepSound.PHONOGRAPH_OTHELLO)),
+                    "the stopped phonograph's listener was not told to stop");
+            expect(
+                    helper,
+                    !nearOther.soundsStopped().contains(id(DeepSound.PHONOGRAPH_OTHELLO)),
+                    "the other phonograph's listener was told to stop it: %s",
+                    nearOther.soundsStopped());
+            expect(helper, other.isPlaying(), "the other phonograph stopped");
+            other.stop();
+            level.setBlock(otherPos, Blocks.AIR.defaultBlockState(), 3);
+            helper.succeed();
+        });
+    }
+
+    /** The saved names of the recordings are permanent: a cylinder in a world and a loot table name them. */
+    @GameTest
+    public void theRecordingsNamesArePermanent(GameTestHelper helper) {
+        expect(
+                helper,
+                List.of(Recording.values()).stream()
+                        .map(Recording::getSerializedName)
+                        .toList()
+                        .equals(List.of("gamme_de_la_voix", "jeune_jouvencelle", "othello")),
+                "the recordings are named %s",
+                List.of(Recording.values()));
+        expect(
+                helper,
+                Recording.GAMME_DE_LA_VOIX.year() == 1860 && Recording.JEUNE_JOUVENCELLE.year() == 1857,
+                "the years moved");
+        helper.succeed();
     }
 
     @GameTest

@@ -14,12 +14,15 @@ import java.util.List;
  *                                  a player is not given a hymn while their last one is still playing
  * @param phonographRange           a phonograph's playback starts for the players within this many blocks of it (the sound's own
  *                                  {@code attenuation_distance} in sounds.json is the same number)
+ * @param phonographListenTicks     while a phonograph plays it looks this often for a player who has come into range, and starts the
+ *                                  recording again for them from the top
  */
 public record SoundTuning(
         int typewriterLettersPerClick,
         double movingSpeed,
         int movingHoldTicks,
         List<Integer> hymnTicks,
-        int phonographRange) {
-    public static final SoundTuning DEFAULT = new SoundTuning(2, 0.02, 10, List.of(218, 322, 468), 24);
+        int phonographRange,
+        int phonographListenTicks) {
+    public static final SoundTuning DEFAULT = new SoundTuning(2, 0.02, 10, List.of(218, 322, 468), 24, 20);
 }
