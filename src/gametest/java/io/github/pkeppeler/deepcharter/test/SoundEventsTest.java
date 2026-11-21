@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
+import io.github.pkeppeler.deepcharter.sound.SoundTuning;
 import io.github.pkeppeler.deepcharter.sound.phonograph.Recording;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -45,6 +46,8 @@ public class SoundEventsTest {
             "phonograph.gamme_de_la_voix",
             "phonograph.jeune_jouvencelle",
             "phonograph.othello",
+            "song.wreck",
+            "song.dark",
             "pod.engine_idle",
             "pod.engine_drive",
             "pod.engine_drill_side",
@@ -177,13 +180,14 @@ public class SoundEventsTest {
 
     /**
      * The drone beds, the Lamp Hymn (#249), the wax cylinders' recordings (#864, made by tools/sounds/first_sounds.py) and the ambience's
-     * fragments (#866, tools/sounds/ambience.py) are ours alone: the original game has nothing to map them to.
+     * fragments (#866, tools/sounds/ambience.py) and the two variants of "Au clair de la lune" (#861, {@code song.*}, made by first_sounds.py) are ours alone: the original game has nothing to map them to.
      */
     private static boolean hasNoOriginal(DeepSound sound) {
         String path = sound.event().location().getPath();
         return path.startsWith("ambient.")
                 || path.startsWith("hymn.")
                 || path.startsWith("phonograph.")
+                || path.startsWith("song.")
                 || path.startsWith("ambience.");
     }
 
@@ -219,8 +223,34 @@ public class SoundEventsTest {
                         recording.lengthTicks());
             }
         }
-        if (!manifest.keySet().equals(names)) {
-            throw failure(helper, "the manifest holds %s and Recording %s", manifest.keySet(), names);
+        // The song (#861) is two more entries of the same manifest, in a folder of their own and no cylinder's: the
+        // wreck's, whole, and the dark's.
+        for (String name : List.of("wreck", "dark")) {
+            Path file = root.resolve("src/main/resources/assets/deepcharter/sounds/song/" + name + ".ogg");
+            byte[] head = Arrays.copyOf(Files.readAllBytes(file), 256);
+            int identification = indexOf(head, new byte[] {1, 'v', 'o', 'r', 'b', 'i', 's'});
+            if (identification < 0 || head[identification + 11] != 1) {
+                throw failure(helper, "%s is not a mono Vorbis file", file);
+            }
+            if (manifest.getAsJsonObject(name) == null
+                    || !"song"
+                            .equals(manifest.getAsJsonObject(name).get("folder").getAsString())) {
+                throw failure(helper, "the manifest has no entry %s in the folder song", name);
+            }
+        }
+        int wreckTicks = (int) Math.ceil(
+                manifest.getAsJsonObject("wreck").get("duration_seconds").getAsDouble() * 20);
+        if (wreckTicks != SoundTuning.DEFAULT.wreckSongTicks()) {
+            throw failure(
+                    helper,
+                    "the wreck's song lasts %s ticks by the manifest and SoundTuning plays it for %s",
+                    wreckTicks,
+                    SoundTuning.DEFAULT.wreckSongTicks());
+        }
+        Set<String> expected = new TreeSet<>(names);
+        expected.addAll(List.of("wreck", "dark"));
+        if (!manifest.keySet().equals(expected)) {
+            throw failure(helper, "the manifest holds %s and Recording and the song %s", manifest.keySet(), expected);
         }
         helper.succeed();
     }

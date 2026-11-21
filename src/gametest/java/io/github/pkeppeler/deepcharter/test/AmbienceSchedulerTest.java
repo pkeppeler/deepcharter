@@ -361,6 +361,22 @@ public class AmbienceSchedulerTest {
                 expect(helper, !path.contains("clair") && !path.contains("lune"), "%s is the wreck's song", path);
             }
         }
+        // The song's two variants (#861) are events of their own and sit in no tier's pool: the random ambience never
+        // plays them.
+        for (DeepSound song : List.of(DeepSound.SONG_WRECK, DeepSound.SONG_DARK)) {
+            String path = song.event().location().getPath();
+            expect(helper, !path.startsWith("ambience."), "%s is an ambience event", path);
+            for (AmbienceTier tier : AmbienceTier.values()) {
+                for (String fragment : pools.getOrDefault(tier, List.of())) {
+                    expect(
+                            helper,
+                            AmbienceFragments.sound(tier, fragment) != song.event(),
+                            "%s is in the %s pool",
+                            path,
+                            tier);
+                }
+            }
+        }
         helper.succeed();
     }
 
