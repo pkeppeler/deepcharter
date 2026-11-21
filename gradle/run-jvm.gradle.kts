@@ -30,6 +30,14 @@ addVmArgToRuns(exitOnOom)
 val gameTestHeap = "-Xmx3G"
 addVmArgToRun("gameTest", gameTestHeap)
 
+// Client GameTest heap. It had none (a quarter of RAM: 4 GB on the 16 GB runner), and the first client run on the campaign overworld
+// (#803) died of OutOfMemoryError while a client test's world was saving on stop, 52 classes in. Every default-preset world is now
+// the 2352-tall campaign world, whose chunks hold six times the sections of the old surface's, and the integrated server and the client
+// each hold the chunks in view. 6 GB is a guess with that margin, not a measurement (the run cannot be repeated on a Mac without a
+// display): the first CI run on it must pass, and a lower figure needs a measured peak.
+val clientGameTestHeap = "-Xmx6G"
+addVmArgToRun("clientGameTest", clientGameTestHeap)
+
 // Proof the gate holds: every run carries the flag, and a JVM that catches its OutOfMemoryError exits non-zero with the flag and
 // 0 without it. The second half fails if the JVM ever stops honouring the flag; the first, if a run drops it.
 val probeDir = layout.buildDirectory.dir("oom-probe")
@@ -66,10 +74,14 @@ tasks.register("checkRunJvmOom") {
 	val bare = probeDir.map { it.file("bare.exit") }
 	val flag = exitOnOom
 	val heap = gameTestHeap
+	val clientHeap = clientGameTestHeap
 	doLast {
 		val missing = runArgs.get().filterValues { flag !in it }.keys
 		if (missing.isNotEmpty()) {
 			throw GradleException("run(s) $missing lack $flag: an OutOfMemoryError there would not end the JVM, so the build could pass after one (#541)")
+		}
+		if (clientHeap !in runArgs.get().getValue("clientGameTest")) {
+			throw GradleException("the clientGameTest run lacks $clientHeap: its heap would be a quarter of RAM, which the tall campaign world outgrows (#803)")
 		}
 		if (heap !in runArgs.get().getValue("gameTest")) {
 			throw GradleException("the gameTest run lacks $heap: its heap would be the JVM default (a quarter of RAM), which the suite outgrows (#541)")

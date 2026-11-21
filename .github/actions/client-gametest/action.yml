@@ -85,10 +85,11 @@ runs:
           exit 1
         }
         deadline=$((SECONDS + 180))
-        # A passing run takes about 14 minutes. $SECONDS starts after setup, and both callers set
-        # timeout-minutes: 30, so 22 minutes keeps at least 5 minutes of job-limit margin for
-        # setup, the post steps and the stop. Raise only together with both job limits.
-        max_seconds=1320
+        # A passing run took about 14 minutes until the overworld became the 2352-tall campaign world (#803): each world a
+        # test makes then costs about 15 s more (its spawn chunks and the colony's pad), and the whole suite about twice as
+        # long. $SECONDS starts after setup, and both callers set timeout-minutes: 60, so 50 minutes keeps at least 5
+        # minutes of job-limit margin for setup, the post steps and the stop. Raise only together with both job limits.
+        max_seconds=3000
         while kill -0 "$gradle_pid" 2>/dev/null; do
           if grep -q 'Failed to create backend' "$log"; then
             stop_gradle "Minecraft could not create a graphics backend"
