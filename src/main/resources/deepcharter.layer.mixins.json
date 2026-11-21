@@ -3,8 +3,6 @@
   "package": "io.github.pkeppeler.deepcharter.layer.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ChunkCacheBroadcastMixin",
-    "ChunkHolderLightMixin",
     "EnvironmentAttributeSystemBuilderMixin",
     "EnvironmentAttributeSystemInvoker"
   ],

@@ -3,11 +3,11 @@
   "package": "io.github.pkeppeler.deepcharter.test.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ChunkHolderBroadcastMixin",
     "ChunkMapAccess",
     "ChunkMapUnloadMixin",
     "GameTestInfoMixin",
-    "GameTestTickerMixin"
+    "GameTestTickerMixin",
+    "LightSyncSendMixin"
   ],
   "client": [
     "BreachEffectsMixin",
