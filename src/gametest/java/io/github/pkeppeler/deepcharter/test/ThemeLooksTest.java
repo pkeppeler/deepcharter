@@ -530,16 +530,17 @@ public class ThemeLooksTest {
                 List.of(look.maxPanelWidth(), look.minPanelWidth()));
         expect(
                 helper,
-                "catalogue panel heights",
-                List.of(232, 196),
-                List.of(look.catalogueHeight(), look.recipeHeight()));
+                "catalogue console height, the inventory's, and the form",
+                List.of(166, 0),
+                List.of(look.consoleHeight(), look.form().ordinal()));
         expect(
                 helper,
                 "catalogue grid",
-                List.of(5, 5, 19),
+                List.of(5, 3, 19),
                 List.of(look.gridColumns(), look.gridRows(), look.gridCell()));
         rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"minPanelWidth\": 200 }")), "minPanelWidth");
         rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"gridColumns\": 0 }")), "gridColumns");
+        rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"form\": 2 }")), "form");
         rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"cycleMillis\": 5 }")), "cycleMillis");
         helper.succeed();
     }

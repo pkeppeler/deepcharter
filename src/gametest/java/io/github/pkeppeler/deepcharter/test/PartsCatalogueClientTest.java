@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.KnownRecipe;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.PartsCatalogue;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetHook;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
+import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook.Form;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueFixtures;
@@ -385,39 +386,85 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
 
     // ---------------------------------------------------------------- the layout
 
-    private static Optional<CatalogueLayout> layoutAt(int width, int height) {
-        return Optional.ofNullable(CatalogueLayout.of(width, height, CatalogueLook.current(), CrtTuning.current(), 9));
+    private static Optional<CatalogueLayout> layoutAt(int width, int height, Form form) {
+        return Optional.ofNullable(
+                CatalogueLayout.of(width, height, CatalogueLook.current().withForm(form), CrtTuning.current(), 9));
+    }
+
+    /** The narrowest GUI the form draws at: the console needs both bands, the monitor only the recipe console's. */
+    private static int narrowest(Form form) {
+        return form == Form.CONSOLE ? NARROWEST : NARROWEST - 1;
+    }
+
+    /** The shortest GUI the form draws at: the consoles stand level with the inventory, the monitor stands over it. */
+    private static int shortest(Form form) {
+        CatalogueLook look = CatalogueLook.current();
+        int stack = form == Form.CONSOLE
+                ? look.consoleHeight()
+                : look.monitor().height() + look.monitor().gap() + CatalogueLayout.IMAGE_HEIGHT;
+        return stack + 2 * look.screenEdge();
     }
 
     private static void thePanelsFitAtEveryWindowSize() {
-        require(
-                layoutAt(WIDTH, HEIGHT).isPresent(),
-                "the panels draw at the default window, " + WIDTH + " by " + HEIGHT);
-        require(layoutAt(NARROWEST, HEIGHT).isPresent(), "the panels draw at " + NARROWEST + " wide");
-        require(layoutAt(NARROWEST - 1, HEIGHT).isEmpty(), "and are hidden, not clipped, one pixel narrower");
-        require(layoutAt(320, 240).isEmpty(), "they are hidden at the game's smallest GUI, 320 by 240");
-        require(
-                layoutAt(WIDTH, 190).isEmpty(),
-                "and hidden when the window is too short for " + CatalogueLayout.MIN_ROWS + " rows of items");
-        for (int height : new int[] {200, 215, HEIGHT, 270}) {
-            for (int width : new int[] {NARROWEST, 426, WIDTH, 480, 854}) {
-                requireFits(layoutAt(width, height).orElseThrow(), width, height);
+        for (Form form : Form.values()) {
+            String in = " in the " + form + " form";
+            require(
+                    layoutAt(WIDTH, HEIGHT, form).isPresent(),
+                    "the panels draw at the default window, " + WIDTH + " by " + HEIGHT + in);
+            require(
+                    layoutAt(narrowest(form), HEIGHT, form).isPresent(),
+                    "the panels draw at " + narrowest(form) + " wide" + in);
+            require(
+                    layoutAt(narrowest(form) - 1, HEIGHT, form).isEmpty(),
+                    "and are hidden, not clipped, one pixel narrower" + in);
+            require(layoutAt(320, 240, form).isEmpty(), "they are hidden at the game's smallest GUI, 320 by 240" + in);
+            require(
+                    layoutAt(WIDTH, shortest(form), form).isPresent(),
+                    "the panels draw in a window just tall enough, " + shortest(form) + in);
+            require(
+                    layoutAt(WIDTH, shortest(form) - 1, form).isEmpty(),
+                    "and are hidden, not clipped, one pixel shorter" + in);
+            require(shortest(form) <= HEIGHT, "the default window is tall enough for the panels" + in);
+            for (int height : new int[] {shortest(form), HEIGHT, 270}) {
+                for (int width : new int[] {narrowest(form), 426, WIDTH, 480, 854}) {
+                    requireFits(layoutAt(width, height, form).orElseThrow(), width, height);
+                }
             }
         }
     }
 
     private static void requireFits(CatalogueLayout layout, int width, int height) {
-        CatalogueLook look = CatalogueLook.current();
-        String at = " at " + width + " by " + height;
+        CatalogueLook look = CatalogueLook.current().withForm(layout.form());
+        String at = " at " + width + " by " + height + " in the " + layout.form() + " form";
+        Rect screen = new Rect(0, 0, width, height);
+        Rect inventory = layout.inventory();
+        require(inside(inventory, screen), "the inventory image " + inventory + " leaves the screen" + at);
         for (Rect panel : List.of(layout.catalogue(), layout.recipe())) {
-            require(inside(panel, new Rect(0, 0, width, height)), "a panel " + panel + " leaves the screen" + at);
+            require(inside(panel, screen), "a unit " + panel + " leaves the screen" + at);
+            require(!panel.overlaps(inventory), "a unit " + panel + " overlaps the inventory " + inventory + at);
+            // A phone is a tall slab: a unit twice as tall as it is wide reads as one.
+            require(
+                    panel.height() * 2 <= panel.width() * 3,
+                    "a unit " + panel + " is a tall slab, which reads as a phone" + at);
         }
-        require(layout.recipe().right() <= layout.inventory().x(), "the recipe panel overlaps the inventory" + at);
-        require(layout.catalogue().x() >= layout.inventory().right(), "the catalogue overlaps the inventory" + at);
+        require(!layout.catalogue().overlaps(layout.recipe()), "the two units overlap" + at);
+        require(layout.recipe().right() <= inventory.x(), "the recipe console is not left of the inventory" + at);
+        if (layout.form() == Form.CONSOLE) {
+            require(layout.catalogue().x() >= inventory.right(), "the catalogue is not right of the inventory" + at);
+            require(layout.catalogue().y() == inventory.y(), "the console stands level with the inventory" + at);
+        } else {
+            require(layout.catalogue().bottom() <= inventory.y(), "the monitor is not over the inventory" + at);
+            require(
+                    layout.catalogue().width() > 2 * layout.catalogue().height(),
+                    "the monitor is not wide, " + layout.catalogue() + at);
+        }
         Rect glass = layout.catalogueGlass();
         CatalogueLayout.Shelf shelf = layout.shelf();
-        for (Rect rect : List.of(shelf.search(), shelf.craftable(), shelf.previous(), shelf.next())) {
-            require(inside(rect, glass), "a control " + rect + " leaves the catalogue's glass " + glass + at);
+        requireHardware(layout.catalogue(), glass, shelf.controls(), shelf.vents(), at);
+        CatalogueLayout.Card card = layout.card();
+        requireHardware(layout.recipe(), layout.recipeGlass(), List.of(card.spec()), card.vents(), at);
+        for (Rect rect : List.of(shelf.search(), shelf.favourites())) {
+            require(inside(rect, glass), "a part " + rect + " leaves the catalogue's glass " + glass + at);
         }
         Rect grid = new Rect(
                 shelf.gridX(),
@@ -425,23 +472,48 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 (shelf.columns() - 1) * look.gridCell() + look.slotSize(),
                 (shelf.rows() - 1) * look.gridCell() + look.slotSize());
         require(inside(grid, glass), "the item grid " + grid + " leaves the glass " + glass + at);
-        require(grid.bottom() <= shelf.favouritesLabelY(), "the grid runs into the favourites label" + at);
+        Rect row = new Rect(
+                shelf.favouritesX(),
+                shelf.favouritesY(),
+                (shelf.favouriteColumns() - 1) * look.gridCell() + look.slotSize(),
+                look.slotSize());
+        require(inside(row, shelf.favourites()), "the favourites row " + row + " leaves its area" + at);
+        require(!grid.overlaps(shelf.favourites()), "the item grid runs into the favourites" + at);
+        require(!grid.overlaps(shelf.search()), "the item grid runs into the search field" + at);
+        boolean console = layout.form() == Form.CONSOLE;
         require(
-                shelf.favouritesY() + look.slotSize() <= shelf.craftable().y(),
-                "the favourites row runs into the craftable toggle" + at);
-        require(shelf.craftable().bottom() <= shelf.previous().y(), "the toggle runs into the page buttons" + at);
-        require(shelf.columns() == 5, "the grid is 5 wide as in the mockup" + at);
-        require(
-                shelf.rows() >= CatalogueLayout.MIN_ROWS && (height < HEIGHT || shelf.rows() == 5),
-                "the grid is 5 rows at the default height and at least 3 in a shorter window, got " + shelf.rows()
-                        + at);
-        CatalogueLayout.Card card = layout.card();
-        require(inside(card.spec(), layout.recipeGlass()), "the spec sheet button leaves the recipe glass" + at);
-        require(card.needRows() >= 1 && (height < HEIGHT || card.needRows() >= 3), "the have/need rows fit" + at);
+                shelf.columns()
+                                == (console
+                                        ? look.gridColumns()
+                                        : look.monitor().columns())
+                        && shelf.rows()
+                                == (console ? look.gridRows() : look.monitor().rows()),
+                "the grid is " + shelf.columns() + " by " + shelf.rows() + at);
+        require(inside(card.spec(), layout.recipe()), "the spec sheet switch leaves the recipe console" + at);
+        require(card.needRows() >= 2, "the have/need rows fit, got " + card.needRows() + at);
         int gridBottom = card.gridY() + 3 * look.recipeCell();
-        require(gridBottom <= card.spec().y(), "the recipe grid runs into the spec sheet button" + at);
+        require(gridBottom <= card.needTop(), "the recipe grid runs into the have/need rows" + at);
+        require(
+                card.needTop() + card.needRows() * look.needRow()
+                        <= layout.recipeGlass().bottom(),
+                "the have/need rows leave the glass" + at);
         int resultRight = card.gridX() + look.resultX() + look.slotSize();
         require(resultRight <= card.right(), "the result cell leaves the recipe panel's text area" + at);
+    }
+
+    /** A unit's glass lies in its casing, with the controls and the vents on the casing round it, apart from each other and from the glass. */
+    private static void requireHardware(Rect casing, Rect glass, List<Rect> controls, List<Rect> vents, String at) {
+        require(inside(glass, casing), "the glass " + glass + " leaves its casing " + casing + at);
+        List<Rect> parts = new ArrayList<>(controls);
+        parts.addAll(vents);
+        for (int i = 0; i < parts.size(); i++) {
+            Rect part = parts.get(i);
+            require(inside(part, casing), "a control or vent " + part + " leaves its casing " + casing + at);
+            require(!part.overlaps(glass), "a control or vent " + part + " is on the glass " + glass + at);
+            for (int j = i + 1; j < parts.size(); j++) {
+                require(!part.overlaps(parts.get(j)), part + " overlaps " + parts.get(j) + at);
+            }
+        }
     }
 
     private static boolean inside(Rect inner, Rect outer) {
@@ -459,30 +531,41 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                     context, "the player's inventory", client -> client.player != null && client.level != null);
             context.runOnClient(client ->
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
-            CatalogueScene.openInventory(context);
-            // Reopens the inventory, so it comes before the screen and the panel the rest hold are taken.
-            theRecipeBookButtonIsGone(context);
-            AbstractContainerScreen<?> screen = screen(context);
-            CataloguePanel panel = CatalogueScene.panel(context);
-
-            theCatalogueListsOnlyWhatTheBookKnows(context, panel);
-            everyStringIsInsideItsGlass(context, screen, "with nothing looked up");
-            rAndUShowRecipesAndUsesOfAHoveredItem(context, screen, panel);
-            everyStringIsInsideItsGlass(context, screen, "with a recipe shown");
-            hoveringAnInventorySlotWorksToo(context, singleplayer, screen, panel);
-            theRecipePanelCanBePutAway(context, screen, panel);
-            theSpecSheetButtonCallsItsHook(context, panel);
-            theSearchFiltersAndKeepsItsKeys(context, screen, panel);
-            favouritesStarAndPersist(context, screen, panel);
-            craftableNowFiltersByWhatIsHeld(context, singleplayer, screen, panel);
-            thePanelsFollowTheWindowSize(context, screen);
-            theCatalogueOpensAtAnItem(context);
-            theCraftingTableHasTheCatalogueToo(context);
-
+            try {
+                for (Form form : Form.values()) {
+                    CatalogueScreens.form(form);
+                    inForm(context, singleplayer, form);
+                }
+            } finally {
+                CatalogueScreens.form(null);
+            }
             context.setScreen(() -> null);
             context.runOnClient(client ->
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
         }
+    }
+
+    /** Everything the real game is asked, with the catalogue in {@code form}. */
+    private static void inForm(ClientGameTestContext context, TestSingleplayerContext singleplayer, Form form) {
+        CatalogueScene.openInventory(context);
+        // Reopens the inventory, so it comes before the screen and the panel the rest hold are taken.
+        theRecipeBookButtonIsGone(context);
+        AbstractContainerScreen<?> screen = screen(context);
+        CataloguePanel panel = CatalogueScene.panel(context);
+
+        theCatalogueListsOnlyWhatTheBookKnows(context, panel);
+        everyStringIsInsideItsGlass(context, screen, "with nothing looked up");
+        rAndUShowRecipesAndUsesOfAHoveredItem(context, screen, panel);
+        everyStringIsInsideItsGlass(context, screen, "with a recipe shown");
+        hoveringAnInventorySlotWorksToo(context, singleplayer, screen, panel);
+        theRecipePanelCanBePutAway(context, screen, panel);
+        theSpecSheetButtonCallsItsHook(context, panel);
+        theSearchFiltersAndKeepsItsKeys(context, screen, panel);
+        favouritesStarAndPersist(context, screen, panel);
+        craftableNowFiltersByWhatIsHeld(context, singleplayer, screen, panel);
+        thePanelsFollowTheWindowSize(context, screen, form);
+        theCatalogueOpensAtAnItem(context);
+        theCraftingTableHasTheCatalogueToo(context);
     }
 
     private static AbstractContainerScreen<?> screen(ClientGameTestContext context) {
@@ -567,6 +650,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             Rect catalogue = layout.catalogueGlass();
             Rect recipe = layout.recipeGlass();
             Rect inventory = layout.inventory();
+            // A string is in a glass or on the plate of a control, which carries its own legend.
+            List<Rect> plates = new ArrayList<>(layout.shelf().controls());
+            plates.add(layout.card().spec());
             for (Drawn text : drawn) {
                 Rect box = new Rect(
                         text.box().x(),
@@ -574,9 +660,13 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                         text.box().width(),
                         text.box().height());
                 require(
-                        inside(box, catalogue) || inside(box, recipe) || inside(box, inventory),
-                        "text '" + text.shortText() + "' at " + box + " is in no glass and not in the inventory, "
-                                + when + " (catalogue glass " + catalogue + ", recipe glass " + recipe + ")");
+                        inside(box, catalogue)
+                                || inside(box, recipe)
+                                || inside(box, inventory)
+                                || plates.stream().anyMatch(plate -> inside(box, plate)),
+                        "text '" + text.shortText() + "' at " + box
+                                + " is in no glass, on no plate and not in the inventory, " + when
+                                + " (catalogue glass " + catalogue + ", recipe glass " + recipe + ")");
             }
             require(
                     texts.stream().anyMatch(text -> text.matches("\\d+/\\d+")),
@@ -969,7 +1059,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             require(
                     CatalogueFavourites.shared().items(player).contains(DRILL),
                     "A on a hovered cell stars its item for this player");
-            Rect first = new Rect(layout.shelf().gridX(), layout.shelf().favouritesY(), 18, 18);
+            Rect first = new Rect(layout.shelf().favouritesX(), layout.shelf().favouritesY(), 18, 18);
             CatalogueScene.hover(context, first);
             require(
                     context.computeOnClient(client -> panel.hoveredItem()) == DRILL,
@@ -1021,10 +1111,11 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(!context.computeOnClient(client -> panel.state().craftableOnly()), "a second click turns it off");
     }
 
-    private static void thePanelsFollowTheWindowSize(ClientGameTestContext context, AbstractContainerScreen<?> screen) {
+    private static void thePanelsFollowTheWindowSize(
+            ClientGameTestContext context, AbstractContainerScreen<?> screen, Form form) {
         CataloguePanel panel = context.computeOnClient(client -> panelOf(screen));
         context.runOnClient(client -> panel.state().look(panel.catalogue(), DRILL, CatalogueState.Mode.RECIPES));
-        for (int width : new int[] {NARROWEST, WIDTH}) {
+        for (int width : new int[] {narrowest(form), WIDTH}) {
             context.runOnClient(client -> screen.resize(width, HEIGHT));
             context.waitTicks(2);
             everyStringIsInsideItsGlass(context, screen, "at " + width + " by " + HEIGHT);
@@ -1032,7 +1123,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                     context.computeOnClient(client -> leftPos(screen)) == (width - CatalogueLayout.IMAGE_WIDTH) / 2,
                     "the inventory image is centred at " + width);
         }
-        for (int width : new int[] {NARROWEST - 1, 320}) {
+        for (int width : new int[] {narrowest(form) - 1, 320}) {
             context.runOnClient(client -> screen.resize(width, HEIGHT));
             context.waitTicks(2);
             require(context.computeOnClient(client -> panel.layout() == null), "the panels are hidden at " + width);

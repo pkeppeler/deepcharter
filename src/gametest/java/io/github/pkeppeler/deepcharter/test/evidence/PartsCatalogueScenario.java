@@ -4,6 +4,9 @@ import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueFavourites;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
+import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook.Form;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
@@ -11,6 +14,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -19,9 +23,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * Evidence scenario "m2-parts-catalogue" for #846: the inventory with the parts catalogue beside it, five items starred, and the recipe
- * of the scanner unit shown (R on its cell, with two iron and two copper in hand so the have/need rows differ), then a search typed. The
- * recipes are the ones the server taught from what the player holds (ADR 0070), not a fixture.
+ * Evidence scenario "m2-parts-catalogue" for #846: the inventory with the parts catalogue, five items starred, and the recipe of the
+ * scanner unit shown (R on its cell, with two iron and two copper in hand so the have/need rows differ), a hover and then a search typed,
+ * once for each form of the catalogue (stills {@code console-*} and {@code monitor-*}). The recipes are the ones the server taught from
+ * what the player holds (ADR 0070), not a fixture.
  */
 public class PartsCatalogueScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
@@ -59,47 +64,77 @@ public class PartsCatalogueScenario extends EvidenceScenario {
             context.waitTicks(TOAST_TICKS);
 
             ClientChecks.withHudHidden(context, () -> {
-                CatalogueLayout layout = CatalogueScene.layout(context, panel);
-                star(context, panel, layout);
-                int index = CatalogueScene.indexOf(context, panel, ScannerRegistry.SCANNER_UNIT);
-                CatalogueScene.hover(context, CatalogueScene.gridCell(layout, index));
-                context.getInput().pressKey(InputConstants.KEY_R);
-                context.waitTicks(2);
-                hold(context);
-                screenshot(context, "catalogue-recipe");
-
-                CatalogueScene.hover(context, CatalogueScene.gridCell(layout, index - 1));
-                hold(context);
-                screenshot(context, "catalogue-hover");
-
-                CatalogueScene.hover(context, layout.shelf().search());
-                context.getInput().pressMouse(LEFT_MOUSE);
-                context.getInput().typeChars("iron");
-                context.waitTicks(2);
-                hold(context);
-                screenshot(context, "catalogue-search");
-                context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+                try {
+                    for (Form form : Form.values()) {
+                        recordForm(context, panel, form);
+                    }
+                } finally {
+                    CatalogueScreens.form(null);
+                }
             });
             context.setScreen(() -> null);
         }
     }
 
-    /** Stars the scanner unit and four more of the first page, the ones not starred already (a run keeps its favourites). */
-    private void star(ClientGameTestContext context, CataloguePanel panel, CatalogueLayout layout) {
+    /** The three stills of one form: the recipe of the scanner unit looked up, a hover, and a search typed. */
+    private void recordForm(ClientGameTestContext context, CataloguePanel panel, Form form) {
+        String still = form.name().toLowerCase(Locale.ROOT);
+        context.runOnClient(client -> {
+            CatalogueScreens.form(form);
+            panel.state().setQuery("");
+            panel.state().clear();
+        });
+        context.waitTicks(2);
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
+        int perPage = layout.shelf().perPage();
+        int index = CatalogueScene.indexOf(context, panel, ScannerRegistry.SCANNER_UNIT);
+        showPage(context, panel, perPage, index / perPage);
+        star(context, panel, layout, index / perPage);
+        int cell = index % perPage;
+        CatalogueScene.hover(context, CatalogueScene.gridCell(layout, cell));
+        context.getInput().pressKey(InputConstants.KEY_R);
+        context.waitTicks(2);
+        hold(context);
+        screenshot(context, still + "-recipe");
+
+        CatalogueScene.hover(context, CatalogueScene.gridCell(layout, cell > 0 ? cell - 1 : cell + 1));
+        hold(context);
+        screenshot(context, still + "-hover");
+
+        CatalogueScene.hover(context, layout.shelf().search());
+        context.getInput().pressMouse(LEFT_MOUSE);
+        context.getInput().typeChars("iron");
+        context.waitTicks(2);
+        hold(context);
+        screenshot(context, still + "-search");
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+    }
+
+    /** Turns the catalogue to {@code page}, counting from 0. */
+    private void showPage(ClientGameTestContext context, CataloguePanel panel, int perPage, int page) {
+        context.runOnClient(client -> {
+            int pages = CatalogueState.pages(panel.shownItems().size(), perPage);
+            panel.state().turn(page - panel.state().page(pages), pages);
+        });
+    }
+
+    /** Stars the scanner unit and four more of {@code page}, the ones not starred already (a run keeps its favourites). */
+    private void star(ClientGameTestContext context, CataloguePanel panel, CatalogueLayout layout, int page) {
         UUID player =
                 context.computeOnClient(client -> ClientSession.player(client).getUUID());
-        List<Item> page = context.computeOnClient(client ->
-                panel.shownItems().stream().limit(layout.shelf().perPage()).toList());
+        int perPage = layout.shelf().perPage();
+        List<Item> shown = context.computeOnClient(client -> panel.shownItems());
+        List<Item> onPage = shown.subList(page * perPage, Math.min(shown.size(), (page + 1) * perPage));
         List<Item> starred = new ArrayList<>(List.of(ScannerRegistry.SCANNER_UNIT));
-        for (Item item : page) {
+        for (Item item : onPage) {
             if (starred.size() < FAVOURITES && !starred.contains(item)) {
                 starred.add(item);
             }
         }
         for (Item item : starred) {
-            if (page.contains(item)
+            if (onPage.contains(item)
                     && !CatalogueFavourites.shared().items(player).contains(item)) {
-                CatalogueScene.hover(context, CatalogueScene.gridCell(layout, page.indexOf(item)));
+                CatalogueScene.hover(context, CatalogueScene.gridCell(layout, onPage.indexOf(item)));
                 context.getInput().pressKey(InputConstants.KEY_A);
                 context.waitTicks(1);
             }

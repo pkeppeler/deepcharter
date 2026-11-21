@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
@@ -21,9 +20,7 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
 import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.entity.player.Inventory;
@@ -35,16 +32,14 @@ import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The parts catalogue of one open screen: the catalogue to the right of the inventory image and the recipe panel to its left, in the
- * colony terminals' CRT look (#846). It draws over the screen after the screen has drawn, reads keys and clicks before the screen does
+ * The parts catalogue of one open screen: the catalogue and the recipe console round the inventory image, in the colony terminals' CRT
+ * look (#846), in the form {@link CatalogueLook#form()} says. It draws over the screen after the screen has drawn, reads keys and clicks before the screen does
  * and takes the ones that are its own, so a click on a panel never reaches the inventory behind it.
  *
  * <p>It is not a widget: the screen it stands beside is a vanilla one, so the text the panels draw is the screen's own for the layout
  * tests ({@code DrawnText}), and the bounds they check are the panels'.
  */
 public final class CataloguePanel {
-    private static final Identifier FRAME =
-            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "textures/gui/sprites/panel/frame.png");
     /** Item icons are 16 pixels. */
     private static final int ICON = 16;
     /** The dots a name loses its tail to when it is too long for its line. */
@@ -75,6 +70,8 @@ public final class CataloguePanel {
     private int ticks;
     private int mouseX = -1;
     private int mouseY = -1;
+    private int screenWidth;
+    private int screenHeight;
 
     CataloguePanel(AbstractRecipeBookScreen<?> screen) {
         this.screen = screen;
@@ -84,8 +81,22 @@ public final class CataloguePanel {
 
     /** Lays the panels out for a screen {@code width} by {@code height}. */
     void resize(int width, int height) {
-        CrtTuning crt = CrtTuning.current();
-        layout = CatalogueLayout.of(width, height, CatalogueLook.current(), crt, font.lineHeight);
+        screenWidth = width;
+        screenHeight = height;
+        CatalogueLayout now = CatalogueLayout.of(width, height, look(), CrtTuning.current(), font.lineHeight);
+        layout = now;
+        if (now != null) {
+            ScreenTop.move(screen, now.inventory().y());
+        }
+    }
+
+    private CatalogueLook look() {
+        return CatalogueScreens.look();
+    }
+
+    /** Lays the panels out again, after the form they are in changed. */
+    void relayout() {
+        resize(screenWidth, screenHeight);
     }
 
     /** The layout, or null while the screen is too narrow to hold the panels and they are hidden. */
@@ -183,7 +194,8 @@ public final class CataloguePanel {
     }
 
     private Rect favouriteCell(CatalogueLayout.Shelf shelf, CatalogueLook look, int index) {
-        return new Rect(shelf.gridX() + index * look.gridCell(), shelf.favouritesY(), look.slotSize(), look.slotSize());
+        return new Rect(
+                shelf.favouritesX() + index * look.gridCell(), shelf.favouritesY(), look.slotSize(), look.slotSize());
     }
 
     private List<Item> favourites() {
@@ -236,7 +248,7 @@ public final class CataloguePanel {
         if (now == null) {
             return null;
         }
-        CatalogueLook look = CatalogueLook.current();
+        CatalogueLook look = look();
         CatalogueLayout.Shelf shelf = now.shelf();
         List<Item> shown = shown();
         int perPage = shelf.perPage();
@@ -248,8 +260,8 @@ public final class CataloguePanel {
             }
         }
         List<Item> favourites = favourites();
-        int offset = state.favouriteOffset(favourites.size(), shelf.columns());
-        for (int i = 0; i < shelf.columns() && offset + i < favourites.size(); i++) {
+        int offset = state.favouriteOffset(favourites.size(), shelf.favouriteColumns());
+        for (int i = 0; i < shelf.favouriteColumns() && offset + i < favourites.size(); i++) {
             Rect cell = favouriteCell(shelf, look, i);
             if (cell.contains(x, y)) {
                 return new Hit(favourites.get(offset + i), cell);
@@ -438,8 +450,7 @@ public final class CataloguePanel {
         int direction = vertical > 0 ? -1 : 1;
         if (now.catalogue().contains(x, y)) {
             CatalogueLayout.Shelf shelf = now.shelf();
-            if (y >= shelf.favouritesLabelY()
-                    && y < shelf.favouritesY() + CatalogueLook.current().slotSize()) {
+            if (shelf.favourites().contains(x, y)) {
                 state.scrollFavourites(direction);
             } else {
                 state.turn(direction, CatalogueState.pages(shown().size(), shelf.perPage()));
@@ -463,7 +474,7 @@ public final class CataloguePanel {
         if (now == null) {
             return;
         }
-        CatalogueLook look = CatalogueLook.current();
+        CatalogueLook look = look();
         Hit hit = hitAt(mouseX, mouseY);
         graphics.nextStratum();
         drawShelf(graphics, now, look, hit);
@@ -473,65 +484,6 @@ public final class CataloguePanel {
         if (hit != null) {
             drawNameStrip(graphics, now, look, hit);
         }
-    }
-
-    /** The bezel, cut from the pack's frame sprite as the terminals' panel is: corners as drawn, edges stretched from one clean pixel line. */
-    private void bezel(GuiGraphicsExtractor graphics, CatalogueLook look, Rect panel) {
-        int corner = look.bezelCorner();
-        int right = panel.right() - corner;
-        int bottom = panel.bottom() - corner;
-        int left = look.bezelLeftU();
-        int rightU = look.bezelRightU();
-        int top = look.bezelTopV();
-        int bottomV = look.bezelBottomV();
-        int across = panel.width() - 2 * corner;
-        int down = panel.height() - 2 * corner;
-        blit(graphics, look, panel.x(), panel.y(), left, top, corner, corner, corner, corner);
-        blit(graphics, look, right, panel.y(), rightU, top, corner, corner, corner, corner);
-        blit(graphics, look, panel.x(), bottom, left, bottomV, corner, corner, corner, corner);
-        blit(graphics, look, right, bottom, rightU, bottomV, corner, corner, corner, corner);
-        blit(graphics, look, panel.x() + corner, panel.y(), look.bezelEdgeU(), top, across, corner, 1, corner);
-        blit(graphics, look, panel.x() + corner, bottom, look.bezelEdgeU(), bottomV, across, corner, 1, corner);
-        blit(graphics, look, panel.x(), panel.y() + corner, left, look.bezelEdgeV(), corner, down, corner, 1);
-        blit(graphics, look, right, panel.y() + corner, rightU, look.bezelEdgeV(), corner, down, corner, 1);
-    }
-
-    private static void blit(
-            GuiGraphicsExtractor graphics,
-            CatalogueLook look,
-            int x,
-            int y,
-            int u,
-            int v,
-            int width,
-            int height,
-            int uWidth,
-            int vHeight) {
-        graphics.blit(
-                RenderPipelines.GUI_TEXTURED,
-                FRAME,
-                x,
-                y,
-                u,
-                v,
-                width,
-                height,
-                uWidth,
-                vHeight,
-                look.frameWidth(),
-                look.frameHeight());
-    }
-
-    /** What is behind a panel's content: the phosphor in the glass, then the bezel round it. */
-    private void back(GuiGraphicsExtractor graphics, CatalogueLook look, Rect panel, Rect glass) {
-        CrtDraw.backdrop(graphics, glass.x(), glass.y(), glass.right(), glass.bottom());
-        bezel(graphics, look, panel);
-    }
-
-    /** What is over a panel's content: the glass sprite and the scanlines, inside the glass only. */
-    private void front(GuiGraphicsExtractor graphics, Rect glass) {
-        CrtDraw.sprite(graphics, PanelLook.GLASS, glass.x(), glass.y(), glass.width(), glass.height());
-        CrtDraw.scanlines(graphics, glass.x(), glass.y(), glass.right(), glass.bottom());
     }
 
     /**
@@ -572,10 +524,9 @@ public final class CataloguePanel {
         CrtTuning crt = CrtTuning.current();
         PanelLook panel = PanelLook.current();
         CatalogueLayout.Shelf shelf = now.shelf();
-        back(graphics, look, now.catalogue(), now.catalogueGlass());
+        CatalogueHardware.body(graphics, look, now.catalogue(), now.catalogueGlass(), shelf.vents());
         graphics.nextStratum();
 
-        int width = shelf.right() - shelf.left();
         CrtDraw.header(
                 graphics, font, CrtText.terminal(text("title")), shelf.left(), shelf.titleY(), shelf.titleRight());
 
@@ -599,36 +550,60 @@ public final class CataloguePanel {
             drawCell(graphics, cell, look, shown.get(first + i), hit);
         }
         if (shown.isEmpty()) {
-            dim(graphics, fit(text("empty"), width), shelf.gridX(), shelf.gridY() + 2, panel);
+            dim(
+                    graphics,
+                    fit(text("empty"), shelf.columns() * look.gridCell()),
+                    shelf.gridX(),
+                    shelf.gridY() + 2,
+                    panel);
         }
 
-        dim(graphics, text("favourites"), shelf.left(), shelf.favouritesLabelY(), panel);
+        dim(graphics, text("favourites"), shelf.favouritesX(), shelf.favouritesLabelY(), panel);
         List<Item> favourites = favourites();
-        int offset = state.favouriteOffset(favourites.size(), shelf.columns());
-        for (int i = 0; i < shelf.columns() && offset + i < favourites.size(); i++) {
+        int offset = state.favouriteOffset(favourites.size(), shelf.favouriteColumns());
+        for (int i = 0; i < shelf.favouriteColumns() && offset + i < favourites.size(); i++) {
             drawCell(graphics, favouriteCell(shelf, look, i), look, favourites.get(offset + i), hit);
         }
 
         graphics.nextStratum();
-        front(graphics, now.catalogueGlass());
+        CatalogueHardware.glassFront(graphics, look, now.catalogueGlass());
         graphics.nextStratum();
 
-        // The buttons are metal, over the glass and its scanlines.
+        // The controls are on the deck under the glass, over the casing.
         Rect craftable = shelf.craftable();
-        button(
+        CatalogueHardware.legendSwitch(
                 graphics,
+                font,
+                look,
+                panel,
+                crt,
                 craftable,
                 text("craftable"),
+                state.craftableOnly(),
                 true,
-                state.craftableOnly() || craftable.contains(mouseX, mouseY),
-                panel,
-                crt);
+                craftable.contains(mouseX, mouseY));
         int page = state.page(pages);
-        button(graphics, shelf.previous(), "<", page > 0, shelf.previous().contains(mouseX, mouseY), panel, crt, false);
-        button(graphics, shelf.next(), ">", page < pages - 1, shelf.next().contains(mouseX, mouseY), panel, crt, false);
-        String counter = (page + 1) + "/" + pages;
-        int counterX = (shelf.left() + shelf.right()) / 2 - termWidth(counter) / 2;
-        dim(graphics, counter, counterX, shelf.pageTextY(), panel);
+        CatalogueHardware.knob(
+                graphics,
+                font,
+                look,
+                panel,
+                crt,
+                shelf.previous(),
+                "<",
+                page > 0,
+                shelf.previous().contains(mouseX, mouseY));
+        CatalogueHardware.knob(
+                graphics,
+                font,
+                look,
+                panel,
+                crt,
+                shelf.next(),
+                ">",
+                page < pages - 1,
+                shelf.next().contains(mouseX, mouseY));
+        CatalogueHardware.counter(graphics, font, look, panel, crt, shelf.counter(), (page + 1) + "/" + pages);
     }
 
     private void drawSearch(
@@ -687,7 +662,7 @@ public final class CataloguePanel {
         KnownRecipe recipe = state.shownRecipe(catalogue);
         int width = card.right() - card.left();
         graphics.nextStratum();
-        back(graphics, look, now.recipe(), now.recipeGlass());
+        CatalogueHardware.body(graphics, look, now.recipe(), now.recipeGlass(), card.vents());
         graphics.nextStratum();
 
         String title = recipe != null
@@ -709,17 +684,20 @@ public final class CataloguePanel {
         }
 
         graphics.nextStratum();
-        front(graphics, now.recipeGlass());
+        CatalogueHardware.glassFront(graphics, look, now.recipeGlass());
         graphics.nextStratum();
         Rect spec = card.spec();
-        button(
+        CatalogueHardware.legendSwitch(
                 graphics,
+                font,
+                look,
+                panel,
+                crt,
                 spec,
                 text("spec"),
+                false,
                 recipe != null,
-                recipe != null && spec.contains(mouseX, mouseY),
-                panel,
-                crt);
+                recipe != null && spec.contains(mouseX, mouseY));
     }
 
     private void drawRecipe(
@@ -793,36 +771,6 @@ public final class CataloguePanel {
             }
         }
         return have;
-    }
-
-    private void button(
-            GuiGraphicsExtractor graphics,
-            Rect rect,
-            String label,
-            boolean active,
-            boolean lit,
-            PanelLook panel,
-            CrtTuning crt) {
-        button(graphics, rect, label, active, lit, panel, crt, true);
-    }
-
-    /** A metal button of the machine panel with its label in the terminal font; the pip only when it fits and {@code pip} says so. */
-    private void button(
-            GuiGraphicsExtractor graphics,
-            Rect rect,
-            String label,
-            boolean active,
-            boolean lit,
-            PanelLook panel,
-            CrtTuning crt,
-            boolean pip) {
-        int labelWidth = termWidth(label);
-        boolean showPip = pip && panel.showsPip(rect.width(), labelWidth);
-        boolean hot = lit && active;
-        int labelX = CrtDraw.panelButtonFace(
-                graphics, panel, rect.x(), rect.y(), rect.width(), rect.height(), active, hot, labelWidth, showPip);
-        int labelY = rect.y() + (rect.height() - font.lineHeight) / 2 + crt.buttonLabelOffset();
-        graphics.text(font, CrtText.terminal(label), labelX, labelY, panel.labelColor(active, hot), false);
     }
 
     private void dim(GuiGraphicsExtractor graphics, String text, int x, int y, PanelLook panel) {

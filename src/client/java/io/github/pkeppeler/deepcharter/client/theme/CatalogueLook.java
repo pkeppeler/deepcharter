@@ -3,51 +3,33 @@ package io.github.pkeppeler.deepcharter.client.theme;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
 
 /**
- * The size and place of the parts catalogue and its recipe panel ({@code theme/catalogue.json}, #846), in GUI pixels. Its colours are the
- * colony terminals', {@code crt.json} and {@code panel.json}, and its glass, buttons, pips and bezel are the pack's own sprites under
- * {@code textures/gui/sprites/panel/}; the bezel is cut from {@code frame.png} by the {@code bezel*} numbers.
+ * The size, place and hardware of the parts catalogue and its recipe panel ({@code theme/catalogue.json}, #846), in GUI pixels. The
+ * glass is lit in the colony terminals' colours, {@code crt.json} and {@code panel.json}; the casing round it, the lip, vents, rivets,
+ * knobs and switches are drawn from the numbers and colours here ({@link Casing}), and the monitor form's sizes are {@link Monitor}.
  *
- * @param maxPanelWidth the widest either panel gets, beside the inventory
- * @param minPanelWidth the narrowest either panel draws at; room for less hides both
+ * @param form which form the catalogue takes, {@link Form}: a console beside the inventory, or a monitor above it
+ * @param maxPanelWidth the widest a console gets, beside the inventory
+ * @param minPanelWidth the narrowest a console draws at; room for less hides the panels
  * @param screenEdge pixels between a panel and the window's edge
- * @param gapLeft pixels between the recipe panel and the inventory
- * @param gapRight pixels between the inventory and the catalogue
- * @param catalogueTop the catalogue's top edge
- * @param catalogueHeight the catalogue's height, less on a GUI too short for it
- * @param recipeTop the recipe panel's top edge
- * @param recipeHeight the recipe panel's height, less on a GUI too short for it
- * @param glassLeft pixels from a panel's left edge to its glass
- * @param glassTop pixels from a panel's top edge to its glass
- * @param glassRight pixels from a panel's right edge to its glass
- * @param glassBottom pixels from a panel's bottom edge to its glass
- * @param frameWidth the width in pixels of the frame sprite the bezel is cut from
- * @param frameHeight its height
- * @param bezelCorner the side of a bezel corner cut from the frame sprite
- * @param bezelLeftU the frame sprite's x of the left corners, and of the left edge slice
- * @param bezelRightU the frame sprite's x of the right corners, and of the right edge slice
- * @param bezelTopV the frame sprite's y of the top corners, and of the top edge slice
- * @param bezelBottomV the frame sprite's y of the bottom corners, and of the bottom edge slice
- * @param bezelEdgeU the frame sprite's x of the one-pixel column the top and bottom edges are stretched from
- * @param bezelEdgeV the frame sprite's y of the one-pixel row the left and right edges are stretched from
+ * @param gapLeft pixels between the recipe console and the inventory
+ * @param gapRight pixels between the inventory and the catalogue console
+ * @param consoleHeight the height of both consoles, which stand level with the inventory image; a window too short for it hides them
+ * @param casing the casing and its hardware
  * @param pad pixels between the glass and what is drawn on it, left and right
  * @param gridRightPad pixels the item grid keeps clear of the glass's right edge
+ * @param contentBottom pixels the content keeps clear of the glass's bottom edge
  * @param titleTop pixels from the glass's top to a panel's title
  * @param titleGap pixels from the title's rule to what follows
  * @param searchHeight the search field's height
  * @param searchPad pixels between the search field's border and its text
  * @param searchGap pixels from the search field to the item grid
  * @param gridCell the pitch of the catalogue's cells
- * @param gridColumns the catalogue's columns at full width, fewer when the panel is narrower
- * @param gridRows the catalogue's rows, fewer when the panel is shorter
+ * @param gridColumns the console catalogue's columns at full width, fewer when the panel is narrower
+ * @param gridRows the console catalogue's rows
  * @param gridGap pixels from the item grid to the favourites label
  * @param labelHeight the height of a dim label with the row of cells under it
  * @param slotSize the side of one cell's outline
  * @param iconInset pixels from a cell's outline to its item
- * @param buttonHeight the height of a metal button
- * @param buttonRise pixels from the glass's bottom to the top of the bottom row of buttons
- * @param craftableRise pixels the craftable toggle sits above the bottom row of buttons
- * @param pageButtonWidth the width of the page arrows
- * @param pageButtonOutset pixels the page arrows reach out past the text margin
  * @param recipeCell the pitch of the recipe grid's cells
  * @param stationGap pixels from the station name to the recipe grid
  * @param arrowX pixels from the recipe grid's left to the arrow
@@ -64,32 +46,20 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param nameStripPad pixels between the border of the strip that names the hovered item and its text
  * @param nameStripGap pixels between the hovered cell and that strip
  * @param caretHeight the thickness of the search field's caret, the underline after the text; at least the scanline spacing, so a scanline never takes it
+ * @param monitor the monitor form's sizes
  */
 public record CatalogueLook(
+        Form form,
         int maxPanelWidth,
         int minPanelWidth,
         int screenEdge,
         int gapLeft,
         int gapRight,
-        int catalogueTop,
-        int catalogueHeight,
-        int recipeTop,
-        int recipeHeight,
-        int glassLeft,
-        int glassTop,
-        int glassRight,
-        int glassBottom,
-        int frameWidth,
-        int frameHeight,
-        int bezelCorner,
-        int bezelLeftU,
-        int bezelRightU,
-        int bezelTopV,
-        int bezelBottomV,
-        int bezelEdgeU,
-        int bezelEdgeV,
+        int consoleHeight,
+        Casing casing,
         int pad,
         int gridRightPad,
+        int contentBottom,
         int titleTop,
         int titleGap,
         int searchHeight,
@@ -102,11 +72,6 @@ public record CatalogueLook(
         int labelHeight,
         int slotSize,
         int iconInset,
-        int buttonHeight,
-        int buttonRise,
-        int craftableRise,
-        int pageButtonWidth,
-        int pageButtonOutset,
         int recipeCell,
         int stationGap,
         int arrowX,
@@ -122,37 +87,255 @@ public record CatalogueLook(
         int maxQueryLength,
         int nameStripPad,
         int nameStripGap,
-        int caretHeight) {
+        int caretHeight,
+        Monitor monitor) {
+    /** The two forms of the catalogue, chosen by the theme's {@code form} (0 or 1). */
+    public enum Form {
+        /** Two squat consoles flanking the inventory: the catalogue on its right, the recipe on its left. */
+        CONSOLE,
+        /** A wide CRT monitor over the inventory, which moves down to make room, and the recipe console on its left. */
+        MONITOR
+    }
+
+    /**
+     * The casing round a glass and the hardware on it, drawn in the pack's metal greens.
+     *
+     * @param sideBezel pixels from a console's side to its glass
+     * @param topBezel pixels from a unit's top to its glass
+     * @param deckGap pixels from the glass to the first row of controls under it
+     * @param deckRow the height of a row of controls
+     * @param deckRowGap pixels between the two rows of a console's deck
+     * @param bottomBezel pixels from the last row of controls to the unit's bottom
+     * @param chamfer how many pixels the casing's corners are cut by
+     * @param grooveInset pixels from the casing's edge to the groove cut round it
+     * @param lipWidth the width of the shadowed lip round the glass
+     * @param glassCorner the radius of the glass's cut corners
+     * @param vignetteWidth the width of the dark ring the glass's bulge puts round its edge
+     * @param highlightLength the length of the curved highlight in the glass's top left corner
+     * @param rivetPitch the distance between the rivets down a console's sides
+     * @param ventSlots the slots of a vent
+     * @param knobSize the diameter of a knob
+     * @param switchWidth the width of a toggle switch's slot
+     * @param switchHeight its height
+     * @param switchPad pixels from a plate's left edge to its switch
+     * @param counterWidth the width of the page counter's plate
+     * @param casingColor the casing's enamel
+     * @param casingLightColor its lit top and left edges
+     * @param casingDarkColor its shaded bottom and right edges
+     * @param grooveColor the groove cut round the casing
+     * @param plateColor the dark plates behind the switches and the counter
+     * @param rivetColor a rivet's head
+     * @param rivetShadowColor the shadow a rivet casts
+     * @param lipDarkColor the lip's shadowed top and left
+     * @param lipLightColor the lip's lit bottom and right
+     * @param ventColor a vent's slot
+     * @param ventLightColor the lit edge under a slot
+     * @param knobRimColor a knob's rim
+     * @param knobBodyColor a knob's face
+     * @param knobOffColor a knob that does nothing now
+     * @param knobLightColor a knob's lit edge
+     * @param leverColor a toggle's lever
+     * @param leverOffColor a lever of a switch that does nothing now
+     * @param vignetteColor the glass's dark ring at its darkest
+     * @param highlightColor the glass's curved highlight
+     */
+    public record Casing(
+            int sideBezel,
+            int topBezel,
+            int deckGap,
+            int deckRow,
+            int deckRowGap,
+            int bottomBezel,
+            int chamfer,
+            int grooveInset,
+            int lipWidth,
+            int glassCorner,
+            int vignetteWidth,
+            int highlightLength,
+            int rivetPitch,
+            int ventSlots,
+            int knobSize,
+            int switchWidth,
+            int switchHeight,
+            int switchPad,
+            int counterWidth,
+            int casingColor,
+            int casingLightColor,
+            int casingDarkColor,
+            int grooveColor,
+            int plateColor,
+            int rivetColor,
+            int rivetShadowColor,
+            int lipDarkColor,
+            int lipLightColor,
+            int ventColor,
+            int ventLightColor,
+            int knobRimColor,
+            int knobBodyColor,
+            int knobOffColor,
+            int knobLightColor,
+            int leverColor,
+            int leverOffColor,
+            int vignetteColor,
+            int highlightColor) {
+        static Casing of(ThemeData d) {
+            return new Casing(
+                    d.integer("sideBezel", 2, 64),
+                    d.integer("topBezel", 2, 64),
+                    d.integer("deckGap", 0, 32),
+                    d.integer("deckRow", 10, 32),
+                    d.integer("deckRowGap", 0, 32),
+                    d.integer("bottomBezel", 2, 64),
+                    d.integer("chamfer", 0, 8),
+                    d.integer("grooveInset", 1, 16),
+                    d.integer("lipWidth", 1, 8),
+                    d.integer("glassCorner", 0, 16),
+                    d.integer("vignetteWidth", 0, 16),
+                    d.integer("highlightLength", 0, 64),
+                    d.integer("rivetPitch", 8, 256),
+                    d.integer("ventSlots", 1, 8),
+                    d.integer("knobSize", 10, 32),
+                    d.integer("switchWidth", 8, 48),
+                    d.integer("switchHeight", 4, 16),
+                    d.integer("switchPad", 0, 16),
+                    d.integer("counterWidth", 16, 64),
+                    d.color("casingColor"),
+                    d.color("casingLightColor"),
+                    d.color("casingDarkColor"),
+                    d.color("grooveColor"),
+                    d.color("plateColor"),
+                    d.color("rivetColor"),
+                    d.color("rivetShadowColor"),
+                    d.color("lipDarkColor"),
+                    d.color("lipLightColor"),
+                    d.color("ventColor"),
+                    d.color("ventLightColor"),
+                    d.color("knobRimColor"),
+                    d.color("knobBodyColor"),
+                    d.color("knobOffColor"),
+                    d.color("knobLightColor"),
+                    d.color("leverColor"),
+                    d.color("leverOffColor"),
+                    d.color("vignetteColor"),
+                    d.color("highlightColor"));
+        }
+
+        /** What a console has under its glass: the gap, the two rows of controls with the gap between, and the bottom bezel. */
+        public int consoleDeck() {
+            return deckGap + 2 * deckRow + deckRowGap + bottomBezel;
+        }
+
+        /** What the monitor has under its glass: the gap, one row of controls and the bottom bezel. */
+        public int monitorDeck() {
+            return deckGap + deckRow + bottomBezel;
+        }
+    }
+
+    /**
+     * The monitor form's sizes: one wide unit over the inventory, with the title and search left of the grid and the favourites right of it.
+     *
+     * @param width the monitor's width
+     * @param height the monitor's height
+     * @param gap pixels between the monitor and the inventory under it
+     * @param sidebar the width of the title and the search field
+     * @param favouritesWidth the width kept for the favourites, the label and the cells
+     * @param favouriteColumns the cells of the favourites row
+     * @param gutter pixels between the grid and the sidebars
+     * @param columns the grid's columns
+     * @param rows the grid's rows
+     * @param deckGap pixels between the page controls and the craftable switch
+     * @param craftableWidth the width of the craftable switch's plate
+     */
+    public record Monitor(
+            int width,
+            int height,
+            int gap,
+            int sidebar,
+            int favouritesWidth,
+            int favouriteColumns,
+            int gutter,
+            int columns,
+            int rows,
+            int deckGap,
+            int craftableWidth) {
+        static Monitor of(ThemeData d) {
+            return new Monitor(
+                    d.integer("monitorWidth", 100, 1000),
+                    d.integer("monitorHeight", 40, 200),
+                    d.integer("monitorGap", 0, 32),
+                    d.integer("monitorSidebar", 40, 400),
+                    d.integer("monitorFavouritesWidth", 20, 400),
+                    d.integer("monitorFavouriteColumns", 1, 12),
+                    d.integer("monitorGutter", 0, 32),
+                    d.integer("monitorColumns", 1, 24),
+                    d.integer("monitorRows", 1, 6),
+                    d.integer("monitorDeckGap", 0, 64),
+                    d.integer("monitorCraftableWidth", 40, 400));
+        }
+    }
+
     public static CatalogueLook current() {
         return UiTheme.current().catalogue();
     }
 
+    /** This look with {@code other} for its form. */
+    public CatalogueLook withForm(Form other) {
+        return new CatalogueLook(
+                other,
+                maxPanelWidth,
+                minPanelWidth,
+                screenEdge,
+                gapLeft,
+                gapRight,
+                consoleHeight,
+                casing,
+                pad,
+                gridRightPad,
+                contentBottom,
+                titleTop,
+                titleGap,
+                searchHeight,
+                searchPad,
+                searchGap,
+                gridCell,
+                gridColumns,
+                gridRows,
+                gridGap,
+                labelHeight,
+                slotSize,
+                iconInset,
+                recipeCell,
+                stationGap,
+                arrowX,
+                arrowY,
+                resultX,
+                resultY,
+                counterY,
+                needTop,
+                needRow,
+                needTextX,
+                needTextY,
+                cycleMillis,
+                maxQueryLength,
+                nameStripPad,
+                nameStripGap,
+                caretHeight,
+                monitor);
+    }
+
     public static CatalogueLook of(ThemeData d) {
         CatalogueLook look = new CatalogueLook(
+                Form.values()[d.integer("form", 0, Form.values().length - 1)],
                 d.integer("maxPanelWidth", 40, 400),
                 d.integer("minPanelWidth", 40, 400),
                 d.integer("screenEdge", 0, 64),
                 d.integer("gapLeft", 0, 64),
                 d.integer("gapRight", 0, 64),
-                d.integer("catalogueTop", 0, 200),
-                d.integer("catalogueHeight", 40, 400),
-                d.integer("recipeTop", 0, 200),
-                d.integer("recipeHeight", 40, 400),
-                d.integer("glassLeft", 0, 64),
-                d.integer("glassTop", 0, 64),
-                d.integer("glassRight", 0, 64),
-                d.integer("glassBottom", 0, 64),
-                d.integer("frameWidth", 1, 4096),
-                d.integer("frameHeight", 1, 4096),
-                d.integer("bezelCorner", 1, 64),
-                d.integer("bezelLeftU", 0, 4096),
-                d.integer("bezelRightU", 0, 4096),
-                d.integer("bezelTopV", 0, 4096),
-                d.integer("bezelBottomV", 0, 4096),
-                d.integer("bezelEdgeU", 0, 4096),
-                d.integer("bezelEdgeV", 0, 4096),
+                d.integer("consoleHeight", 40, 400),
+                Casing.of(d),
                 d.integer("pad", 0, 64),
                 d.integer("gridRightPad", 0, 64),
+                d.integer("contentBottom", 0, 64),
                 d.integer("titleTop", 0, 64),
                 d.integer("titleGap", 0, 64),
                 d.integer("searchHeight", 9, 64),
@@ -165,11 +348,6 @@ public record CatalogueLook(
                 d.integer("labelHeight", 9, 64),
                 d.integer("slotSize", 16, 64),
                 d.integer("iconInset", 0, 16),
-                d.integer("buttonHeight", 9, 64),
-                d.integer("buttonRise", 0, 128),
-                d.integer("craftableRise", 0, 128),
-                d.integer("pageButtonWidth", 8, 64),
-                d.integer("pageButtonOutset", 0, 16),
                 d.integer("recipeCell", 16, 64),
                 d.integer("stationGap", 0, 64),
                 d.integer("arrowX", 0, 256),
@@ -185,7 +363,8 @@ public record CatalogueLook(
                 d.integer("maxQueryLength", 1, 256),
                 d.integer("nameStripPad", 0, 16),
                 d.integer("nameStripGap", 0, 16),
-                d.integer("caretHeight", 1, 8));
+                d.integer("caretHeight", 1, 8),
+                Monitor.of(d));
         if (look.minPanelWidth() > look.maxPanelWidth()) {
             throw d.conflict("minPanelWidth must not exceed maxPanelWidth", "minPanelWidth", "maxPanelWidth");
         }
