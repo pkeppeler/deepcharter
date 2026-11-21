@@ -1725,3 +1725,22 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Knobs.** None: the behaviour is the vanilla falling block's. `SurfaceBlocks.REGOLITH_DUST` is the dust colour.
 
 **Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
+
+## Hand tools against pod-only blocks (#858, A)
+
+**Problem.** Crust, Company rock and rock below layer 1 were refused to hands by a cancelled break the client was not told about, so a strong pick ghost-broke a block that then came back, and nothing said why. The rule is one intended way to play with no hard block: brute force is possible, futile, and the game says so ([ADR 0069](../adr/0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md)).
+
+**Ladder.**
+1. **By hand: ruinous.** A diamond or netherite pick (layer 1) or a netherite pick (layer 2 and deeper) breaks one block in 60 s, whatever its enchantments, and spends a share of its whole durability: 75%, 90%, then 100% from layer 3. Sparks, a grinding sound and a "burning out" line show the cost; the first swing says a pod drill is the way. Nothing drops.
+2. **A pod drill** (and the charges) clears the same blocks with no cost to a pick: the intended way.
+3. **Mastery** is the pod's own ladder, unchanged: Company rock still wants a charge or a tier 3 drill, and the hand route only ever clears one block at a time.
+
+**Trade-offs.**
+- A fresh netherite pick pays for 1 deep block (layer 3) or about 1.1 (layer 2). A diamond pick pays for 1.3 blocks of layer 1.
+- Stopping early wastes what was spent; Mending cannot refund it and Unbreaking cannot lower it.
+- It makes the default build marginally easier: a diamond pick can now pass Company rock in layer 1, which no tool could before. That is fine: a block costs 75% of a diamond pick, so a straight shaft by hand is far dearer than the charges of [Company Rock and the straight shaft](#company-rock-and-the-straight-shaft-509-a).
+- Drops are never given, so brute force is not an ore exploit. The break still fires the hand-break events, so (A) brute-forcing a gas pocket vents it and the hazard still bites; a protection mod's veto refuses the break and charges nothing.
+
+**Knobs (`HandBreakTuning` in `LayerTuning`).** `breakTicks` (1200), `shares` (0.75, 0.9, 1.0), `tools` (the tags `deepcharter:hand_break/layer_1` and `.../layer_2_and_deeper`), `sparkTicks` (4), `soundTicks` (10), `messageTicks` (40).
+
+**Open questions.** Whether layer 1 should ask for netherite too once Company rock sits on the early route; whether a block should drop its stone after the first deep layer; whether a pod crewmate's pick should count when the pod is the pilot's.

@@ -12,7 +12,8 @@ public final class LayerInit {
         LayerCommands.init();
         BreachService.init();
         BreachPayload.init();
-        LayerRock.init();
+        HandBreak.init();
+        LayerReadouts.init();
         Zones.init();
         LayerStructures.init();
         LavaHazard.init();

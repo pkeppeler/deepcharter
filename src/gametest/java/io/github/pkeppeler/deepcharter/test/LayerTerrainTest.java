@@ -231,9 +231,9 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    /** Below layer 1 rock is out of reach of hands (SPEC section 9); layer 1 is not. */
+    /** Below layer 1 rock is pod-only (SPEC section 9, ADR 0069): an empty hand cannot break it; layer 1's is ordinary. {@link HandBreakTest} covers the tools that can. */
     @GameTest
-    public void handsCannotBreakDeepRock(GameTestHelper helper) {
+    public void bareHandsCannotBreakDeepRock(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "terrain-hands");
         ServerLevel one = TestLayers.level(helper, 1);
         ServerLevel two = TestLayers.level(helper, 2);
@@ -243,7 +243,7 @@ public class LayerTerrainTest {
         two.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
         two.setBlock(pos.east(), Blocks.DIRT.defaultBlockState(), 3);
         if (mock.player().gameMode.destroyBlock(pos) || !two.getBlockState(pos).is(Blocks.STONE)) {
-            throw failure(helper, "a survival player broke rock by hand in layer_2");
+            throw failure(helper, "a bare-handed survival player broke rock in layer_2");
         }
         if (!mock.player().gameMode.destroyBlock(pos.east())) {
             throw failure(helper, "the guard stopped dirt, which is not rock");
@@ -251,11 +251,11 @@ public class LayerTerrainTest {
         two.setBlock(pos.west(), Blocks.IRON_ORE.defaultBlockState(), 3);
         if (mock.player().gameMode.destroyBlock(pos.west())
                 || !two.getBlockState(pos.west()).is(Blocks.IRON_ORE)) {
-            throw failure(helper, "a survival player broke iron ore by hand in layer_2");
+            throw failure(helper, "a bare-handed survival player broke iron ore in layer_2");
         }
         mock.player().setGameMode(GameType.ADVENTURE);
         if (mock.player().gameMode.destroyBlock(pos) || !two.getBlockState(pos).is(Blocks.STONE)) {
-            throw failure(helper, "an adventure player broke rock by hand in layer_2");
+            throw failure(helper, "a bare-handed adventure player broke rock in layer_2");
         }
         mock.player().setGameMode(GameType.CREATIVE);
         if (!mock.player().gameMode.destroyBlock(pos)) {
@@ -270,9 +270,9 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    /** The attack callback runs on the client too, so a refused swing starts no crack animation. */
+    /** The attack callback runs on the client too, so a swing that cannot bite starts no crack animation. */
     @GameTest
-    public void startingToBreakDeepRockByHandIsRefused(GameTestHelper helper) {
+    public void startingToBreakDeepRockWithABareHandIsRefused(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "terrain-attack");
         ServerLevel one = TestLayers.level(helper, 1);
         ServerLevel two = TestLayers.level(helper, 2);

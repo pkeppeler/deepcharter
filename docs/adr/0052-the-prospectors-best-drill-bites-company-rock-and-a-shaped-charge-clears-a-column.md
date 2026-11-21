@@ -6,6 +6,8 @@ status: accepted
 
 Amends [ADR 0050](0050-company-rock-can-be-blasted-and-the-drill-still-refuses-it.md). Issue #526. The user (2026-10-11) said enough upgrades, tools or purchases must resolve Company rock. ADR 0050 built the first rung, the blasting charge, and kept the drill refusing. This ADR builds the other two rungs.
 
+Amended by [ADR 0069](0069-a-hand-tool-can-brute-force-a-pod-only-block-at-a-ruinous-cost.md): a hand tool can brute-force Company rock at a ruinous cost. The bite and the shaped charge stand.
+
 ## Decision
 
 - **The drill bites Company rock from tier 3, as the chassis' cap leaves it** (`PodRockBite`, `PodRockBiteTuning.minTier`). A pod whose `effectiveTier(DRILL)` is 3 or more bores a slab with Company rock in it. Below that the drill still refuses, as ADR 0050 says. The tier is a number in one record, so the design log's earlier "tier 5 or 6" is a tuning change, not a rewrite.
