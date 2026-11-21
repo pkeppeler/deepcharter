@@ -966,6 +966,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(shown.contains(HangarParts.ROTOR_HUB), "an iron and two copper make the rotor hub, got " + shown);
         require(!shown.contains(DRILL), "but not the drill head, which needs more iron, got " + shown);
         everyStringIsInsideItsGlass(context, screen, "with the craftable filter on");
+        // The text check parked the cursor off the button.
+        CatalogueScene.hover(context, layout.shelf().craftable());
         context.getInput().pressMouse(LEFT_MOUSE);
         context.waitTicks(1);
         require(!context.computeOnClient(client -> panel.state().craftableOnly()), "a second click turns it off");
