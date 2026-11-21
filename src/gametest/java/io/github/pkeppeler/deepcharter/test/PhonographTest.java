@@ -142,6 +142,23 @@ public class PhonographTest {
     }
 
     @GameTest(maxTicks = 100)
+    public void anEmptyHandStoppingItSendsTheStopToThePlayer(GameTestHelper helper) {
+        PhonographBlockEntity phonograph = place(helper);
+        MockPlayer player = join(helper, "stopper");
+        use(helper, player, cylinder(Recording.JEUNE_JOUVENCELLE), false);
+        use(helper, player, ItemStack.EMPTY, false);
+        expect(helper, !phonograph.isPlaying(), "an empty hand stops it");
+        helper.runAfterDelay(DRAIN_TICKS, () -> {
+            expect(
+                    helper,
+                    player.soundsStopped().contains(id(DeepSound.PHONOGRAPH_JEUNE_JOUVENCELLE)),
+                    "the player was not told to stop the recording: %s",
+                    player.soundsStopped());
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = 100)
     public void anEmptyPhonographPlaysNothingAndEjectsNothing(GameTestHelper helper) {
         PhonographBlockEntity phonograph = place(helper);
         MockPlayer player = join(helper, "listener");

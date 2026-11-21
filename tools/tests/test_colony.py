@@ -255,7 +255,7 @@ class TownTest(unittest.TestCase):
         return (x, y, z) not in self.cells
 
     def test_the_pad_the_game_flattens_is_the_pad_the_town_is_drawn_for(self):
-        size, height = java_constants("ColonyTuning.java", r"DEFAULT = new ColonyTuning\((\d+), (\d+),")
+        size, height = java_constants("ColonyTuning.java", r"DEFAULT =\s*new ColonyTuning\((\d+), (\d+),")
         self.assertEqual(size // 2, town.PAD_HALF)
         self.assertEqual(height, town.CLEAR_HEIGHT)
 
