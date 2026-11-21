@@ -78,6 +78,16 @@ public final class SurfaceBlocks {
                         .strength(1.0F)
                         .sound(SoundType.STEM)
                         .noOcclusion()));
+        // The thick trunk and the cap of a great stalk: full cubes of the stalk's own bark, end and shelf looks, each a
+        // stalk's drop.
+        registerWoodBlock(
+                id("great_stalk"),
+                key -> new GreatStalkBlock(
+                        BlockBehaviour.Properties.of().setId(key).strength(1.5F).sound(SoundType.STEM)));
+        registerWoodBlock(
+                id("great_stalk_cap"),
+                key -> new GreatStalkBlock(
+                        BlockBehaviour.Properties.of().setId(key).strength(1.0F).sound(SoundType.FUNGUS)));
         // Planks pressed from stalk: any recipe that takes planks takes them.
         registerWoodBlock(
                 id("stalk_planks"),
