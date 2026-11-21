@@ -7,6 +7,7 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SPACING;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TEST_PRESET;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ZONE;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.biomeAt;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.build;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildLitRoom;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ground;
@@ -22,6 +23,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
+import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
@@ -180,6 +182,7 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
                 litRoomAndFigure(context, server);
                 shaftBottom(context, singleplayer, server);
                 descent(context, server);
+                netherShadedRoom(context, server);
             });
         }
     }
@@ -190,6 +193,8 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         ResourceKey<Level> layer1 = TestLayers.dimension(1);
         BlockPos campaign = buildLitRoom(server, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE));
         BlockPos today = buildLitRoom(server, layer1, todayFloor(x + 4 * SPACING), Optional.empty());
+        requireZone(server, layer1, today);
+        requireZone(server, CAMPAIGN, campaign);
         record View(String name, float pitch) {}
         for (View view : List.of(new View("wall", 0), new View("floor", DOWN), new View("ceiling", UP))) {
             still(context, server, layer1, today, view.pitch(), "lit-room-" + view.name() + "-today");
@@ -206,6 +211,23 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         stillWithFigure(context, server, CAMPAIGN, campaign, "figure-light-0-campaign");
     }
 
+    /**
+     * The campaign type's lit room again with {@link EvidencePins#cardinalLightNether} on, so that the one thing that differs from the
+     * campaign room above is the shading of the faces. The room is built after the switch is on, so that its sections are meshed with it.
+     */
+    private void netherShadedRoom(ClientGameTestContext context, TestServerContext server) {
+        EvidencePins.cardinalLightNether = true;
+        try {
+            BlockPos room = buildLitRoom(server, CAMPAIGN, layer1Floor(SITE + 5 * SPACING), Optional.of(ZONE));
+            requireZone(server, CAMPAIGN, room);
+            still(context, server, CAMPAIGN, room, UP, "lit-room-ceiling-campaign-nether");
+            still(context, server, CAMPAIGN, room, DOWN, "lit-room-floor-campaign-nether");
+            still(context, server, CAMPAIGN, room, 0, "lit-room-wall-campaign-nether");
+        } finally {
+            EvidencePins.cardinalLightNether = false;
+        }
+    }
+
     /** The bottom of an open shaft under the campaign type's sky, next to today's sealed room, with the sky timeline at dusk and at night. */
     private void shaftBottom(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, TestServerContext server) {
@@ -213,6 +235,8 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         ResourceKey<Level> layer1 = TestLayers.dimension(1);
         BlockPos shaft = build(server, CAMPAIGN, ground(server, x), Optional.of(ZONE), true);
         BlockPos room = build(server, layer1, todayFloor(x + SPACING), Optional.empty(), false);
+        requireZone(server, CAMPAIGN, shaft);
+        requireZone(server, layer1, room);
         record SkyTime(String name, long ticks) {}
         for (SkyTime sky : List.of(new SkyTime("dusk", SKY_DUSK), new SkyTime("night", SKY_NIGHT))) {
             EvidenceWorld.skyPhase(context, singleplayer, sky.ticks());
@@ -224,8 +248,8 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
     }
 
     /**
-     * A descent through the surface floor in a shaft cut from the ground, in the campaign type alone: a still at the floor's Y, at two
-     * steps above it and at two below, looking at the shaft's wall. The biome of the band changes at the floor, and the camera blends
+     * A descent through the surface floor in a shaft cut from the ground, in the campaign type alone: a still at the floor's Y, at 16 and 8
+     * blocks above it and at 8 and 16 below, looking at the shaft's wall. The biome of the band changes at the floor, and the camera blends
      * biomes over about 16 blocks.
      */
     private void descent(ClientGameTestContext context, TestServerContext server) {
@@ -233,11 +257,22 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         BlockPos top = ground(server, x);
         int edge = CampaignBands.SURFACE.minY();
         int lowest = edge - DESCENT_OFFSETS.getFirst() - SHAFT_BELOW;
-        server.runOnServer(s -> RoomCarver.carve(
-                ClientLight.serverLevel(s, CAMPAIGN),
-                new BlockPos(x - SHAFT_HALF, lowest, SITE - SHAFT_HALF),
-                new BlockPos(x + SHAFT_HALF, top.getY() + 1, SITE + SHAFT_HALF),
-                Blocks.AIR.defaultBlockState()));
+        // The shaft is a tube of one rock from its bottom to the ground, so that the wall is the same block at the same
+        // distance in every still
+        // and only the biome blend changes: past the surface floor the natural terrain is layer 1's open space.
+        server.runOnServer(s -> {
+            ServerLevel level = ClientLight.serverLevel(s, CAMPAIGN);
+            RoomCarver.carve(
+                    level,
+                    new BlockPos(x - SHAFT_HALF - 1, lowest - 1, SITE - SHAFT_HALF - 1),
+                    new BlockPos(x + SHAFT_HALF + 1, top.getY() + 1, SITE + SHAFT_HALF + 1),
+                    LayerBlocks.layerGround(1).defaultBlockState());
+            RoomCarver.carve(
+                    level,
+                    new BlockPos(x - SHAFT_HALF, lowest, SITE - SHAFT_HALF),
+                    new BlockPos(x + SHAFT_HALF, top.getY() + 1, SITE + SHAFT_HALF),
+                    Blocks.AIR.defaultBlockState());
+        });
         int step = 0;
         for (int offset : DESCENT_OFFSETS) {
             step++;
@@ -247,6 +282,15 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
                     : Math.abs(offset) + (offset > 0 ? "-above-the-edge" : "-below-the-edge");
             still(context, server, CAMPAIGN, at, 0, "descent-" + step + "-" + where);
         }
+    }
+
+    /** Both scenes of a pair are in one biome, so that the biome is not what the pair compares. */
+    private static void requireZone(TestServerContext server, ResourceKey<Level> dimension, BlockPos at) {
+        String biome = biomeAt(server, dimension, at);
+        ClientChecks.require(
+                biome.equals(ZONE),
+                "the scene at " + at.toShortString() + " in " + dimension.identifier() + " is in " + ZONE + ", not "
+                        + biome);
     }
 
     /** Stands the camera at {@code floor} facing north at {@code pitch}, takes the still and a frame. */

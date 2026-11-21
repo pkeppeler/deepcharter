@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.support;
 
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import java.util.Optional;
 import java.util.Set;
@@ -15,6 +16,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 
@@ -59,10 +61,10 @@ public final class AtmosphereScenes {
     private AtmosphereScenes() {}
 
     /**
-     * A stone mass with a 3 x 3 shaft in it, from {@code floor} up. {@code open}: the shaft runs to the top of the mass, so the sky reaches
-     * its floor (when the mass has open sky over it); otherwise it is a sealed room of the shaft's footprint. {@code biome}, when present,
-     * is filled over the mass. In layer 1, whose rock is its own, only the shaft is cut and {@code biome} must be empty. Returns {@code
-     * floor}, where the camera stands.
+     * A mass of layer 1's rock with a 3 x 3 shaft in it, from {@code floor} up, in {@code dimension}: the same fill in every dimension, so
+     * that two scenes of one shape differ in what is being compared and not in their rock. {@code open}: the shaft runs to the top of the
+     * mass, so the sky reaches its floor (when the mass has open sky over it); otherwise it is a sealed room of the shaft's footprint.
+     * {@code biome}, when present, is filled over the mass. Returns {@code floor}, where the camera stands.
      */
     public static BlockPos build(
             TestServerContext server,
@@ -70,16 +72,13 @@ public final class AtmosphereScenes {
             BlockPos floor,
             Optional<String> biome,
             boolean open) {
-        boolean layer = dimension.equals(TestLayers.dimension(1));
         server.runOnServer(s -> {
             ServerLevel level = ClientLight.serverLevel(s, dimension);
-            if (!layer) {
-                RoomCarver.carve(
-                        level,
-                        floor.offset(-MASS, -1, -MASS),
-                        floor.offset(MASS, SHAFT_DEPTH, MASS),
-                        Blocks.STONE.defaultBlockState());
-            }
+            RoomCarver.carve(
+                    level,
+                    floor.offset(-MASS, -1, -MASS),
+                    floor.offset(MASS, SHAFT_DEPTH, MASS),
+                    LayerBlocks.layerGround(1).defaultBlockState());
             RoomCarver.carve(
                     level,
                     floor.offset(-1, 0, -1),
@@ -101,20 +100,20 @@ public final class AtmosphereScenes {
         return TestLayers.pos(1, x, LAYER_1_SCENE_HEIGHT, SITE);
     }
 
-    /** A 7 x 7 room, lit by a light block of level 8 under the ceiling, in a mass of layer 1's own rock or cut in the layer's rock, so that the two walls have one texture. */
+    /**
+     * A 7 x 7 room, lit by a light block of level 8 under the ceiling, in a mass of layer 1's rock, the same in every dimension. One ore
+     * block is set in the ceiling, one in the north wall and one in the floor, at the same places in every room, so that a still shows
+     * whether ore stays readable.
+     */
     public static BlockPos buildLitRoom(
             TestServerContext server, ResourceKey<Level> dimension, BlockPos floor, Optional<String> biome) {
-        boolean layer = dimension.equals(TestLayers.dimension(1));
         server.runOnServer(s -> {
             ServerLevel level = ClientLight.serverLevel(s, dimension);
-            if (!layer) {
-                RoomCarver.carve(
-                        level,
-                        floor.offset(-MASS, -1, -MASS),
-                        floor.offset(MASS, ROOM_HEIGHT, MASS),
-                        LayerBlocks.groundOf(TestLayers.level(s, 1), floor.getY())
-                                .defaultBlockState());
-            }
+            RoomCarver.carve(
+                    level,
+                    floor.offset(-MASS, -1, -MASS),
+                    floor.offset(MASS, ROOM_HEIGHT, MASS),
+                    LayerBlocks.layerGround(1).defaultBlockState());
             RoomCarver.carve(
                     level,
                     floor.offset(-3, 0, -3),
@@ -124,10 +123,24 @@ public final class AtmosphereScenes {
                     floor.above(ROOM_HEIGHT - 2),
                     Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 8),
                     3);
+            BlockState ore = OreBlocks.of(OreType.IRONIUM).defaultBlockState();
+            level.setBlock(floor.offset(1, ROOM_HEIGHT, 0), ore, 3);
+            level.setBlock(floor.offset(1, 1, -4), ore, 3);
+            level.setBlock(floor.offset(0, -1, -1), ore, 3);
         });
         biome.ifPresent(name -> fillBiome(
                 server, dimension, floor, name, floor.getY() - MASS - 1 - MARGIN, floor.getY() + SHAFT_DEPTH + MARGIN));
         return floor;
+    }
+
+    /** The id of the biome the server holds at {@code pos} in {@code dimension}. */
+    public static String biomeAt(TestServerContext server, ResourceKey<Level> dimension, BlockPos pos) {
+        return server.computeOnServer(s -> ClientLight.serverLevel(s, dimension)
+                .getBiome(pos)
+                .unwrapKey()
+                .orElseThrow()
+                .identifier()
+                .toString());
     }
 
     /** Puts out the light of a room that {@link #buildLitRoom} built at {@code floor}: an unlit room shows the ambient floor alone. */
