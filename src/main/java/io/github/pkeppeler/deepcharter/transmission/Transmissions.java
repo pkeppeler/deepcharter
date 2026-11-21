@@ -35,7 +35,8 @@ import org.jspecify.annotations.Nullable;
  * world's, so a test can run on state of its own.
  */
 public final class Transmissions {
-    private static final String UNKNOWN_DIRECTOR = "the Director";
+    /** What {@code [DIRECTOR]} reads as when the Director is offline and the server does not know their name. */
+    public static final String UNKNOWN_DIRECTOR = "the Director";
 
     /** The running server, for {@link #fire(CharterId, Identifier)}, whose frozen signature has no server. Set while one is running. */
     private static @Nullable MinecraftServer running;
