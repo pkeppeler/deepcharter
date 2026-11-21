@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.pod.PodLightLedger;
 import io.github.pkeppeler.deepcharter.pod.PodLightsTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.Findings;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -428,6 +429,7 @@ public class PodLightsTest {
         mock.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         PodEntity[] pod = {null};
         boolean[] checked = {false};
+        Findings found = new Findings();
         FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, TestLayers.worldY(1, 8), z), () -> {
             pod[0] = TestEntities.create(PodRegistry.POD, one);
             pod[0].setPos(x, TestLayers.worldY(1, 8), z);
@@ -459,11 +461,12 @@ public class PodLightsTest {
                 if (!left.isEmpty()
                         || !ledgerEntriesIn(one, BlockPos.containing(x, TestLayers.worldY(1, 8), z), 40)
                                 .isEmpty()) {
-                    helper.fail(Component.literal(String.format(
+                    found.note(String.format(
                             "the pod crossed but layer_1 still holds lights %s, ledger %s",
-                            left, ledgerEntriesIn(one, BlockPos.containing(x, TestLayers.worldY(1, 8), z), 40))));
+                            left, ledgerEntriesIn(one, BlockPos.containing(x, TestLayers.worldY(1, 8), z), 40)));
                 }
             }
+            found.ensure(helper);
             if (lightsNear(two, arrived.blockPosition(), LOOK).size() != 1) {
                 throw failure(
                         helper,
