@@ -21,12 +21,14 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.toda
 
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
+import io.github.pkeppeler.deepcharter.test.support.ClientTestWatchdog;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -89,11 +91,14 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         }
     }
 
+    private static final int LIMIT_SECONDS = 360;
+
     @Override
     public void runTest(ClientGameTestContext context) {
-        // Long by design: a dozen looks of 160 settle ticks each, which a loaded runner stretches past the 180 s of a
-        // class (it ran 178 s).
-        ClientTestLog.startUntimed(this);
+        ClientTestLog.start(this);
+        // Long by design: a dozen looks of 160 settle ticks each. A loaded runner stretches it past the 180 s of a
+        // class (it ran 181 s and 146 s), so it has more.
+        ClientTestWatchdog.shared().arm(getClass().getSimpleName(), Duration.ofSeconds(LIMIT_SECONDS));
         boolean flickerWas = EvidencePins.lightFlickerOff;
         EvidencePins.lightFlickerOff = true;
         try (TestSingleplayerContext singleplayer = context.worldBuilder()

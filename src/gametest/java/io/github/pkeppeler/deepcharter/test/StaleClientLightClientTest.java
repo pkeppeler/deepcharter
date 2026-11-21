@@ -13,10 +13,12 @@ import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
+import io.github.pkeppeler.deepcharter.test.support.ClientTestWatchdog;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -66,9 +68,14 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
 
     private final List<Result> results = new ArrayList<>();
 
+    private static final int LIMIT_SECONDS = 360;
+
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
+        // Long by design: six trials of two layers over a tall campaign level. A loaded runner stretches it past the
+        // 180 s of a class (it ran 181 s and 146 s), so it has more.
+        ClientTestWatchdog.shared().arm(getClass().getSimpleName(), Duration.ofSeconds(LIMIT_SECONDS));
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the player in the world", client -> client.player != null && client.level != null);

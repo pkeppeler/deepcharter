@@ -951,6 +951,7 @@ public class RetainedTest {
         int[] ready = {0};
         int[] phase = {0};
         int[] since = {0};
+        FarChunks.Deadline[] lightDeadline = {FarChunks.deadline()};
         TestTicks.each(helper, () -> {
             if (ready[0] < 3) {
                 return;
@@ -969,6 +970,7 @@ public class RetainedTest {
                     expectNowhereElse(helper, server, overworld, overworldPos, column);
                     phase[0] = 1;
                     since[0] = 0;
+                    lightDeadline[0] = FarChunks.deadline();
                 }
                 case 1 -> {
                     if (rooms.stream()
@@ -984,11 +986,16 @@ public class RetainedTest {
                         }
                         phase[0] = 2;
                         since[0] = 0;
+                        lightDeadline[0] = FarChunks.deadline();
                     } else {
-                        expect(
+                        // Wall-clock, not ticks: the light engine works off the server thread, and a loaded runner
+                        // ticks fast.
+                        lightDeadline[0].await(
                                 helper,
-                                since[0] < LIGHT_BUDGET_TICKS,
-                                "the light of level 15 did not reach the room in " + LIGHT_BUDGET_TICKS + " ticks");
+                                rooms.getFirst().level(),
+                                false,
+                                () -> "the light of level 15 did not reach the room in " + FarChunks.WAIT_SECONDS
+                                        + " s");
                     }
                 }
                 default -> {
@@ -1004,10 +1011,11 @@ public class RetainedTest {
                         }
                         helper.succeed();
                     } else {
-                        expect(
+                        lightDeadline[0].await(
                                 helper,
-                                since[0] < LIGHT_BUDGET_TICKS,
-                                "the light did not go out of the room in " + LIGHT_BUDGET_TICKS + " ticks");
+                                rooms.getFirst().level(),
+                                false,
+                                () -> "the light did not go out of the room in " + FarChunks.WAIT_SECONDS + " s");
                     }
                 }
             }
