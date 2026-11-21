@@ -61,7 +61,8 @@ public class LootTableDropsTest {
             new Range("deepcharter:salvage_cloth", 0, 1),
             new Range("deepcharter:scrap_iron", 0, 2),
             new Range("deepcharter:scrap_copper", 0, 2),
-            new Range("minecraft:redstone", 0, 1));
+            new Range("minecraft:redstone", 0, 1),
+            new Range("deepcharter:company_ration", 0, 1));
 
     /** Seeds 1 to this: seed 0 means "no seed" to a loot context, which then rolls from the world's random sequence. */
     private static final int SEEDS = 200;
