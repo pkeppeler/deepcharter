@@ -340,14 +340,17 @@ public class LayerTerrainTest {
         }
         var noise = generator.generatorSettings().value().noiseSettings();
         // level-height: the campaign generator's noise spans the whole level, not one layer
-        if (noise.minY() != level.getMinY() || noise.height() != level.getHeight()) {
+        int levelMin = level.getMinY();
+        // level-height: as above
+        int levelHeight = level.getHeight();
+        if (noise.minY() != levelMin || noise.height() != levelHeight) {
             throw failure(
                     helper,
                     "the noise range %d+%d differs from the level's %d+%d",
                     noise.minY(),
                     noise.height(),
-                    level.getMinY(),
-                    level.getHeight());
+                    levelMin,
+                    levelHeight);
         }
         if (!(generator.getBiomeSource() instanceof BandBiomeSource)) {
             throw failure(helper, "the campaign level is not given its biomes by band");
