@@ -96,8 +96,7 @@ public final class AtmosphereScenes {
                     floor.offset(1, open ? SHAFT_DEPTH : ROOM_HEIGHT - 1, 1),
                     Blocks.AIR.defaultBlockState());
         });
-        biome.ifPresent(name -> fillBiome(
-                server, dimension, floor, name, floor.getY() - MASS - 1 - MARGIN, floor.getY() + SHAFT_DEPTH + MARGIN));
+        biome.ifPresent(name -> fillBiomeAround(server, dimension, floor, name));
         return floor;
     }
 
@@ -112,18 +111,10 @@ public final class AtmosphereScenes {
     }
 
     /**
-     * A 7 x 7 room, lit by a light block of level 8 under the ceiling, in a mass of layer 1's rock, the same in every dimension. One ore
-     * block is set in the ceiling, one in the north wall and one in the floor, at the same places in every room, so that a still shows
-     * whether ore stays readable.
-     */
-    public static BlockPos buildLitRoom(
-            TestServerContext server, ResourceKey<Level> dimension, BlockPos floor, Optional<String> biome) {
-        return buildRoom(server, dimension, floor, biome, true);
-    }
-
-    /**
-     * As {@link #buildLitRoom}, with the light block only if {@code lit}. A room that is to be dark is built dark: a light block that is
-     * taken out of a room whose chunk stays loaded leaves the client reading its light.
+     * A 7 x 7 room in a mass of layer 1's rock, the same in every dimension, with a light block of level 8 under the ceiling only if
+     * {@code lit}: a room that is to be dark is built dark, because a light block taken out of a room whose chunk stays loaded leaves the
+     * client reading its light. One ore block is set in the ceiling, one in the north wall and one in the floor, at the same places in every
+     * room, so that a still shows whether ore stays readable.
      */
     public static BlockPos buildRoom(
             TestServerContext server,
@@ -154,13 +145,20 @@ public final class AtmosphereScenes {
             level.setBlock(floor.offset(1, 1, -4), ore, 3);
             level.setBlock(floor.offset(0, -1, -1), ore, 3);
         });
-        biome.ifPresent(name -> fillBiome(
-                server, dimension, floor, name, floor.getY() - MASS - 1 - MARGIN, floor.getY() + SHAFT_DEPTH + MARGIN));
+        biome.ifPresent(name -> fillBiomeAround(server, dimension, floor, name));
         return floor;
     }
 
-    /** The id of the biome the server holds at {@code pos} in {@code dimension}. */
-    public static String biomeAt(TestServerContext server, ResourceKey<Level> dimension, BlockPos pos) {
+    /** Both scenes of a pair are in {@link #ZONE}, so that the biome is not what the pair compares. */
+    public static void requireZone(TestServerContext server, ResourceKey<Level> dimension, BlockPos at) {
+        String biome = biomeAt(server, dimension, at);
+        ClientChecks.require(
+                biome.equals(ZONE),
+                "the scene at " + at.toShortString() + " in " + dimension.identifier() + " is in " + ZONE + ", not "
+                        + biome);
+    }
+
+    private static String biomeAt(TestServerContext server, ResourceKey<Level> dimension, BlockPos pos) {
         return server.computeOnServer(s -> ClientLight.serverLevel(s, dimension)
                 .getBiome(pos)
                 .unwrapKey()
@@ -169,20 +167,22 @@ public final class AtmosphereScenes {
                 .toString());
     }
 
-    /** Puts out the light of a room that {@link #buildLitRoom} built at {@code floor}: an unlit room shows the ambient floor alone. */
+    /** Puts out the light of a lit room that {@link #buildRoom} built at {@code floor}: an unlit room shows the ambient floor alone. */
     public static void putOutTheLight(TestServerContext server, ResourceKey<Level> dimension, BlockPos floor) {
         server.runOnServer(s -> ClientLight.serverLevel(s, dimension)
                 .setBlock(floor.above(ROOM_HEIGHT - 2), Blocks.AIR.defaultBlockState(), 3));
+    }
+
+    private static void fillBiomeAround(
+            TestServerContext server, ResourceKey<Level> dimension, BlockPos floor, String biome) {
+        fillBiome(
+                server, dimension, floor, biome, floor.getY() - MASS - 1 - MARGIN, floor.getY() + SHAFT_DEPTH + MARGIN);
     }
 
     /**
      * Fills {@code biome} over {@link #MARGIN} blocks round the scene, from {@code bottomY} to {@code topY}, in slabs (a command fills at
      * most 32,768 blocks, counted in whole 4-block cells). The fill is bounded, not the world's whole height: the campaign world is 2,352 tall.
      */
-    public static void fillBiome(TestServerContext server, BlockPos floor, String biome, int bottomY, int topY) {
-        fillBiome(server, CAMPAIGN, floor, biome, bottomY, topY);
-    }
-
     public static void fillBiome(
             TestServerContext server,
             ResourceKey<Level> dimension,

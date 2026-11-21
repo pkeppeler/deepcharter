@@ -8,13 +8,13 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SPACING;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TEST_PRESET;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ZONE;
-import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.biomeAt;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.build;
-import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildLitRoom;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildRoom;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.fillBiome;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ground;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.layer1Floor;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.putOutTheLight;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.requireZone;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.stand;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.todayFloor;
 
@@ -187,7 +187,7 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
     private void theBlendAtABiomeEdge(ClientGameTestContext context, TestServerContext server) {
         BlockPos floor = ground(server, SITE + 5 * SPACING);
         int edge = floor.getY() - 40;
-        fillBiome(server, floor, ZONE, edge - BLEND_BELOW - MARGIN, edge);
+        fillBiome(server, CAMPAIGN, floor, ZONE, edge - BLEND_BELOW - MARGIN, edge);
         StringBuilder row = new StringBuilder(
                 "blend at an edge (layer biome at and below it), sky light factor by blocks below the edge:");
         for (int below : new int[] {-8, -4, 0, 2, 4, 6, 8, 12, 16, 24}) {
@@ -259,11 +259,10 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
     /** The same lit room as the campaign world will render a layer (a biome in the campaign type) and as today's layer dimension does. */
     private void whatTheCampaignWorldLoses(ClientGameTestContext context, TestServerContext server) {
         int x = SITE;
-        BlockPos campaign = buildLitRoom(server, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE));
-        BlockPos today = buildLitRoom(server, TestLayers.dimension(1), todayFloor(x + 4 * SPACING), Optional.empty());
-        String biome = biomeAt(server, TestLayers.dimension(1), today);
-        ClientChecks.require(
-                biome.equals(ZONE), "the layer 1 room is in " + ZONE + " so both models use one biome, not " + biome);
+        BlockPos campaign = buildRoom(server, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE), true);
+        BlockPos today =
+                buildRoom(server, TestLayers.dimension(1), todayFloor(x + 4 * SPACING), Optional.empty(), true);
+        requireZone(server, TestLayers.dimension(1), today);
         record View(String name, float yaw, float pitch) {}
         for (View view : List.of(new View("wall", 180, 0), new View("floor", 180, 90), new View("ceiling", 180, -90))) {
             Reading now = look(

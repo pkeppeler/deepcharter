@@ -9,11 +9,11 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SPACING;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TEST_PRESET;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ZONE;
-import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.biomeAt;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.build;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildRoom;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ground;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.layer1Floor;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.requireZone;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.stand;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.todayFloor;
 
@@ -126,7 +126,7 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
     private static final double PLAZA_HEIGHT = 2.5;
     private static final double OFFICE_HEIGHT = 1.5;
 
-    /** The most the surface may take to be ready for a still. */
+    /** Looks in a row at which the surface must be ready for a still. */
     private static final int READY_POLLS_STABLE = 3;
     /** Ticks between two looks at whether the surface is ready for a still. */
     private static final int READY_POLL_TICKS = 10;
@@ -348,15 +348,6 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
                 "the server's light engine to be idle",
                 () -> ClientLight.serverLightIdle(context, server),
                 () -> "light work pending");
-    }
-
-    /** Both scenes of a pair are in one biome, so that the biome is not what the pair compares. */
-    private static void requireZone(TestServerContext server, ResourceKey<Level> dimension, BlockPos at) {
-        String biome = biomeAt(server, dimension, at);
-        ClientChecks.require(
-                biome.equals(ZONE),
-                "the scene at " + at.toShortString() + " in " + dimension.identifier() + " is in " + ZONE + ", not "
-                        + biome);
     }
 
     /** Stands the camera at {@code floor} facing north at {@code pitch}, takes the still and a frame. */
