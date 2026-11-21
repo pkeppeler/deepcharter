@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.HandBreakChecks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -56,7 +57,7 @@ public class HandBreakClientTest implements FabricClientGameTest {
 
     private static void run(ClientGameTestContext context, TwoPlayerServer two) {
         BlockPos target = prepare(two, 1, X);
-        context.getInput().lookAt(target);
+        awaitCrust(context, target);
 
         // A tool that cannot bite: the swing refuses on the client, and the block stays on both sides.
         hold(two, new ItemStack(Items.IRON_PICKAXE));
@@ -94,6 +95,7 @@ public class HandBreakClientTest implements FabricClientGameTest {
         // the
         // break: the block holds on both sides, and nothing comes back.
         BlockPos deep = prepare(two, 2, X + 40);
+        awaitCrust(context, deep);
         hold(two, damaged(Items.NETHERITE_PICKAXE, 100));
         EvidencePins.attackHeld = true;
         mine(context, deep, SHATTER_TICKS, false);
