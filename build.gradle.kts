@@ -302,6 +302,14 @@ checkstyle {
 	maxWarnings = 0
 }
 
+// Checkstyle's ANTLR parser keeps its prediction DFA for the life of the worker, so what it holds grows with the Java it has read: about
+// 370 MB live by the end of checkstyleGametest (measured with a heap histogram, #878), against the 512 MB default. A task that runs out
+// fails with "Error was thrown while processing <the file it was on>", a different file each run. This is headroom, not a rule: no check is
+// changed.
+tasks.withType<Checkstyle>().configureEach {
+	maxHeapSize = "1g"
+}
+
 // palantir-java-format owns Java formatting (run `just fmt`); spotlessCheck is part of check. tooling/ is third-party code and is not
 // ours to reformat. The two single-file programs outside src/ are Java too. The gate fixtures in tools/tests are strings inside
 // Python, not files, so no target here touches them.
