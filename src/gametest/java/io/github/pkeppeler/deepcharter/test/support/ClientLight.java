@@ -101,10 +101,9 @@ public final class ClientLight {
         int serverSky = server.computeOnServer(minecraftServer -> maxSky(serverLevel(minecraftServer, dimension), box));
         int serverBlock =
                 server.computeOnServer(minecraftServer -> maxBlock(serverLevel(minecraftServer, dimension), box));
-        String cells = server.computeOnServer(minecraftServer -> differingCells(
-                serverLevel(minecraftServer, dimension),
-                box,
-                context.computeOnClient(client -> clientLights(client, box))));
+        int[] clientLights = context.computeOnClient(client -> clientLights(client, box));
+        String cells = server.computeOnServer(
+                minecraftServer -> differingCells(serverLevel(minecraftServer, dimension), box, clientLights));
         return Optional.of(context.computeOnClient(client -> {
             ClientLevel level = clientLevel(client);
             return cells + " client maxSky=" + maxSky(level, box) + " maxBlock=" + maxBlock(level, box) + " in "
