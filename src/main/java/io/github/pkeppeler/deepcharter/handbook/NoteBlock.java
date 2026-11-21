@@ -18,7 +18,8 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * A sheet of paper lying in the world. Using it files its Note in the handbook of the user's whole charter ({@link Notes#find}).
+ * A sheet of paper lying in the world. Using it opens its Note to read ({@link OpenNotePayload}), and files it in the handbook
+ * of the user's whole charter ({@link Notes#find}) when they are on one.
  * The block stays, so another charter can find the same Note. Which Note it is lies in the block state: the property
  * {@link #NOTE} is the Note's number (N07 is 7), so the world stores nothing more than a block. A number with no text yet shows
  * a message and files nothing. Where the blocks stand is level design (#79).
@@ -58,6 +59,8 @@ public final class NoteBlock extends Block {
             BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (player instanceof ServerPlayer serverPlayer) {
             FindResult result = Notes.find(serverPlayer, Notes.id(state.getValue(NOTE)));
+            OpenNotePayload.after(result, Notes.id(state.getValue(NOTE)))
+                    .ifPresent(payload -> OpenNotePayload.send(serverPlayer, payload));
             serverPlayer.sendSystemMessage(
                     Component.translatable(
                             "deepcharter.handbook.note.use." + result.name().toLowerCase(Locale.ROOT)),

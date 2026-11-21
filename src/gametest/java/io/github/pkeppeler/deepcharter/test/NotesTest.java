@@ -10,10 +10,12 @@ import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.NotesData;
 import io.github.pkeppeler.deepcharter.handbook.NotesSyncPayload;
+import io.github.pkeppeler.deepcharter.handbook.OpenNotePayload;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -23,6 +25,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -40,6 +43,7 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -171,6 +175,75 @@ public class NotesTest {
         }
         expectRead(helper, crew, FIRST, true);
         expectRead(helper, director, FIRST, false);
+        helper.succeed();
+    }
+
+    @GameTest
+    public void usingANoteOpensItToReadWhetherOrNotThePlayerHasACharter(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerPlayer director = MockPlayers.join(helper, "Director").player();
+        ServerPlayer loner = MockPlayers.join(helper, "Loner").player();
+        found(helper, server, director);
+
+        FindResult first = Notes.find(director, FIRST);
+        FindResult again = Notes.find(director, FIRST);
+        FindResult noCharter = Notes.find(loner, FIRST);
+        expectOpens(helper, first, FindResult.FOUND, FIRST);
+        expectOpens(helper, again, FindResult.ALREADY_FOUND, FIRST);
+        expectOpens(helper, noCharter, FindResult.NO_CHARTER, FIRST);
+        // Nothing is filed for the player on no charter, and the block itself still works for both.
+        use(helper, loner, 1);
+        use(helper, director, 2);
+        expectNotes(helper, server, loner, List.of());
+        expectNotes(helper, server, director, List.of(FIRST, SECOND));
+        helper.succeed();
+    }
+
+    private static void expectOpens(GameTestHelper helper, FindResult actual, FindResult expected, Identifier note) {
+        if (actual != expected) {
+            throw helper.assertionException("the find should be %s, was %s", expected, actual);
+        }
+        Optional<OpenNotePayload> payload = OpenNotePayload.after(actual, note);
+        if (!payload.equals(Optional.of(new OpenNotePayload(note)))) {
+            throw helper.assertionException("%s should open %s, would send %s", actual, note, payload);
+        }
+    }
+
+    @GameTest
+    public void aNoteWithNoTextOrUnreadableDataOpensNothing(GameTestHelper helper) {
+        Identifier note = Notes.id(Notes.MAX_NUMBER);
+        for (FindResult result : List.of(FindResult.UNKNOWN, FindResult.UNREADABLE)) {
+            if (OpenNotePayload.after(result, note).isPresent()) {
+                throw helper.assertionException("%s should open nothing", result);
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theOpenNotePayloadSurvivesTheWire(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), server.registryAccess());
+        OpenNotePayload.CODEC.encode(buf, new OpenNotePayload(SECOND));
+        OpenNotePayload decoded = OpenNotePayload.CODEC.decode(buf);
+        if (!decoded.note().equals(SECOND) || buf.isReadable()) {
+            throw helper.assertionException("the payload should round-trip to %s, was %s", SECOND, decoded);
+        }
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theNoCharterLinePointsToFoundingACharter(GameTestHelper helper) {
+        for (FindResult result : FindResult.values()) {
+            String key = "deepcharter.handbook.note.use." + result.name().toLowerCase(Locale.ROOT);
+            if (!Language.getInstance().has(key)) {
+                throw helper.assertionException("%s has no line %s", result, key);
+            }
+        }
+        String line = Language.getInstance().getOrDefault("deepcharter.handbook.note.use.no_charter");
+        if (!line.contains("found a charter") || !line.contains("contract terminal") || line.contains("no handbook")) {
+            throw helper.assertionException("the no-charter line should point to founding a charter, was: %s", line);
+        }
         helper.succeed();
     }
 

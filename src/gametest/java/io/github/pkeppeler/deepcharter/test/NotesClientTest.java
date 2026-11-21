@@ -147,6 +147,24 @@ public class NotesClientTest implements FabricClientGameTest {
     private static void inTheRealGame(ClientGameTestContext context) {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.runOnClient(client -> require(ClientNotes.entries().isEmpty(), "a new world has no notes"));
+            // Before any charter: using a Note in the world opens it to read, and files nothing.
+            singleplayer
+                    .getServer()
+                    .runOnServer(server ->
+                            useNoteBlock(server.getPlayerList().getPlayers().getFirst(), 1));
+            ClientWait.screen(context, HandbookScreen.class);
+            HandbookScreen worldNote =
+                    context.computeOnClient(client -> ClientSession.screen(client, HandbookScreen.class));
+            context.waitTicks(2);
+            require(
+                    context.computeOnClient(client -> HandbookDrawn.showsNote(worldNote, ClientNotes.entry(FIRST))),
+                    "a Note used in the world opens to read, with no charter");
+            require(
+                    context.computeOnClient(client -> ClientNotes.entries().isEmpty()),
+                    "a player on no charter files nothing by reading it");
+            context.takeScreenshot("notes-opened-from-world");
+            context.setScreen(() -> null);
+
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 require(
