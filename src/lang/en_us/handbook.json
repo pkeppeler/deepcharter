@@ -35,6 +35,7 @@
   "deepcharter.handbook.notes.empty": "No notes yet.",
   "deepcharter.handbook.notes.hint": "Notes you find in the world are filed here.",
   "deepcharter.handbook.notes.heading": "NOTES",
+  "deepcharter.handbook.pause_button": "Handbook",
   "deepcharter.handbook.progress.done": "done: %s",
   "deepcharter.handbook.progress.header": "%s of %s directives done",
   "deepcharter.handbook.progress.open": "open: %s",
