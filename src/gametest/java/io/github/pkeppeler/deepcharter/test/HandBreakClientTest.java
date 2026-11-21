@@ -25,6 +25,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
 
 /**
  * Client GameTest for #858 (ADR 0069): the real client mines pod-only crust as the attack button does, and the client and
@@ -160,6 +161,22 @@ public class HandBreakClientTest implements FabricClientGameTest {
                         && client.player != null
                         && client.player.blockPosition().distSqr(target) < 36);
         context.getInput().lookAt(target);
+        // The crosshair, which the game's own mining follows, must be on the crust before anything is mined.
+        ClientWait.until(
+                context,
+                "the crosshair on the crust at " + target.toShortString(),
+                client -> client.hitResult instanceof BlockHitResult hit
+                        && hit.getBlockPos().equals(target),
+                client -> "the crosshair is " + client.hitResult
+                        + (client.hitResult instanceof BlockHitResult hit
+                                ? " at " + hit.getBlockPos().toShortString() + " on "
+                                        + Objects.requireNonNull(client.level).getBlockState(hit.getBlockPos())
+                                : "")
+                        + ", the player at "
+                        + (client.player == null
+                                ? "(none)"
+                                : client.player.position() + " facing " + client.player.getYRot() + "/"
+                                        + client.player.getXRot()));
     }
 
     /** What the client holds of the block, for a failure message: its block, the player's game mode and the held item. */
