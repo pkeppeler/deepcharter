@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.KnownRecipes;
 import io.github.pkeppeler.deepcharter.handbook.KnownRecipesData;
+import io.github.pkeppeler.deepcharter.handbook.RecipeIndex;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
@@ -35,6 +36,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.level.gamerules.GameRules;
 
 /**
  * Server GameTests for #845: a charter knows the recipes its quest step asks for and the ones its members' items touch, the server
@@ -46,6 +49,7 @@ public class KnownRecipesTest {
     private static final Identifier BUCKET = Identifier.withDefaultNamespace("bucket");
     private static final Identifier DIAMOND_PICKAXE = Identifier.withDefaultNamespace("diamond_pickaxe");
     private static final Identifier STONE_PICKAXE = Identifier.withDefaultNamespace("stone_pickaxe");
+    private static final Identifier CRAFTING_TABLE = Identifier.withDefaultNamespace("crafting_table");
     private static final Identifier REDSTONE = Identifier.withDefaultNamespace("redstone");
     private static final Identifier COPPER_INGOT = Identifier.withDefaultNamespace("copper_ingot");
     private static final Identifier SCANNER_STEP =
@@ -97,6 +101,15 @@ public class KnownRecipesTest {
             throw helper.assertionException(
                     "the client of %s should %shold %s, holds %s",
                     mock.player().getGameProfile().name(), expected ? "" : "not ", recipe, mock.recipesHeld());
+        }
+    }
+
+    /** Never sent at all: a recipe sent and removed again was still seen by the client. */
+    private static void expectNeverSent(GameTestHelper helper, MockPlayer mock, Identifier recipe) {
+        if (mock.recipesEverSent().contains(recipe)) {
+            throw helper.assertionException(
+                    "the client of %s should never have been sent %s",
+                    mock.player().getGameProfile().name(), recipe);
         }
     }
 
@@ -168,6 +181,23 @@ public class KnownRecipesTest {
         expectKnows(helper, server, player, Identifier.withDefaultNamespace("oak_planks"), false);
         InventoryMenu menu = player.inventoryMenu;
 
+        // Control: with the vanilla rule that refuses a recipe the player has not unlocked, the same craft fails. So
+        // the craft
+        // below succeeds because nothing limits it, not because the test cannot fail.
+        GameRules rules = server.getGameRules();
+        rules.set(GameRules.LIMITED_CRAFTING, true, server);
+        try {
+            menu.getSlot(1).set(new ItemStack(Items.OAK_LOG));
+            menu.clicked(0, 0, ContainerInput.PICKUP, player);
+            if (!menu.getCarried().isEmpty()) {
+                throw helper.assertionException(
+                        "limited crafting should refuse an unknown recipe, took %s", menu.getCarried());
+            }
+        } finally {
+            rules.set(GameRules.LIMITED_CRAFTING, false, server);
+            menu.getSlot(1).set(ItemStack.EMPTY);
+        }
+
         // One log in the 2x2 grid, then take the result: the real crafting path.
         menu.getSlot(1).set(new ItemStack(Items.OAK_LOG));
         menu.clicked(0, 0, ContainerInput.PICKUP, player);
@@ -177,6 +207,60 @@ public class KnownRecipesTest {
                     "a player who knows no recipe still crafts planks, took %s", menu.getCarried());
         }
         helper.succeed();
+    }
+
+    @GameTest(maxTicks = 100)
+    public void holdingOnePlankTeachesARecipeThatTakesAnyPlank(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerPlayer player = MockPlayers.join(helper, "Planker").player();
+        player.getInventory().add(new ItemStack(Items.OAK_PLANKS));
+
+        // The crafting table takes the planks tag; oak planks are not the result of it.
+        helper.succeedWhen(() -> expectKnows(helper, server, player, CRAFTING_TABLE, true));
+    }
+
+    @GameTest(maxTicks = 100)
+    public void anItemOnTheCursorTeachesItsRecipe(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerPlayer player = MockPlayers.join(helper, "Carrier").player();
+        player.containerMenu.setCarried(new ItemStack(Items.BUCKET));
+
+        helper.succeedWhen(() -> expectKnows(helper, server, player, BUCKET, true));
+    }
+
+    @GameTest
+    public void theRecipeIndexIsBuiltAgainWhenTheRecipeManagerIsReplaced(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        RecipeIndex current = RecipeIndex.of(server, server.getRecipeManager());
+        RecipeManager replaced = new RecipeManager(server.reloadableRegistries().lookup());
+        replaced.finalizeRecipeLoading(server.getWorldData().enabledFeatures());
+
+        try {
+            if (RecipeIndex.of(server, server.getRecipeManager()) != current) {
+                throw helper.assertionException("the same recipe manager should keep its index");
+            }
+            // /reload replaces the manager; an index kept from the old one would hold the old recipes.
+            if (RecipeIndex.of(server, replaced) == current) {
+                throw helper.assertionException("a replaced recipe manager should get a new index");
+            }
+        } finally {
+            // The cache is static: leave the server's own manager in it, not the replaced one.
+            RecipeIndex.of(server, server.getRecipeManager());
+        }
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 100)
+    public void aRecipeTakenOutOfTheBookIsPutBackBecauseTheCharterKnowsIt(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        MockPlayer mock = MockPlayers.join(helper, "Taken");
+        ServerPlayer player = mock.player();
+        RecipeHolder<?> bucket = server.getRecipeManager().byKey(key(BUCKET)).orElseThrow();
+        KnownRecipesData.get(server).addToPlayer(player.getUUID(), Set.of(BUCKET));
+        // What /recipe take calls.
+        player.resetRecipes(List.of(bucket));
+
+        helper.succeedWhen(() -> expectInBook(helper, player, BUCKET, true));
     }
 
     @GameTest(maxTicks = 100)
@@ -227,7 +311,7 @@ public class KnownRecipesTest {
 
         CharterId id = found(helper, server, founder.player());
 
-        if (!KnownRecipesData.get(server).charter(id).equals(Set.of(BUCKET))) {
+        if (!KnownRecipesData.get(server).charter(id).contains(BUCKET)) {
             throw helper.assertionException("the charter should hold the founder's recipes");
         }
         helper.succeedWhen(() -> expectHeld(helper, founder, BUCKET, true));
@@ -297,6 +381,21 @@ public class KnownRecipesTest {
     }
 
     @GameTest(maxTicks = 100)
+    public void aVanillaUnlockOfAnUnknownRecipeIsNeverSentToTheClient(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        MockPlayer mock = MockPlayers.join(helper, "Unsent");
+        mock.player()
+                .awardRecipes(List.of(
+                        server.getRecipeManager().byKey(key(STONE_PICKAXE)).orElseThrow()));
+
+        // The mock reads the channel a tick late, so look after the packet would have arrived.
+        helper.runAfterDelay(5, () -> {
+            expectNeverSent(helper, mock, STONE_PICKAXE);
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = 100)
     public void aVanillaUnlockOfAnUnknownRecipeNeverReachesTheBook(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer mock = MockPlayers.join(helper, "Unlocked");
@@ -328,7 +427,10 @@ public class KnownRecipesTest {
         mock.player().getRecipeBook().sendInitialRecipeBook(mock.player());
 
         expectInBook(helper, mock.player(), STONE_PICKAXE, false);
-        helper.succeedWhen(() -> expectHeld(helper, mock, STONE_PICKAXE, false));
+        helper.runAfterDelay(5, () -> {
+            expectNeverSent(helper, mock, STONE_PICKAXE);
+            helper.succeed();
+        });
     }
 
     @GameTest

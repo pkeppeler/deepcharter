@@ -24,7 +24,7 @@ import org.jspecify.annotations.Nullable;
  * <p>An item <em>touches</em> a recipe when the recipe makes it, or when it is one of the recipe's ingredients (every item an
  * ingredient tag names). It <em>produces</em> a recipe when the recipe makes it.
  */
-final class RecipeIndex {
+public final class RecipeIndex {
     private static @Nullable RecipeIndex cached;
 
     private final RecipeManager manager;
@@ -32,8 +32,8 @@ final class RecipeIndex {
     private final Map<Item, Set<Identifier>> producing = new HashMap<>();
     private final Map<Identifier, ResourceKey<Recipe<?>>> keys = new HashMap<>();
 
-    private RecipeIndex(MinecraftServer server) {
-        this.manager = server.getRecipeManager();
+    private RecipeIndex(MinecraftServer server, RecipeManager manager) {
+        this.manager = manager;
         var context = SlotDisplayContext.fromLevel(server.overworld());
         for (RecipeHolder<?> holder : manager.getLearnableRecipes()) {
             Identifier id = holder.id().identifier();
@@ -60,12 +60,26 @@ final class RecipeIndex {
 
     /** The index of the server's current recipes. Call on the server thread. */
     static RecipeIndex of(MinecraftServer server) {
+        return of(server, server.getRecipeManager());
+    }
+
+    /**
+     * The index of {@code manager}'s recipes: the one built before when it is the same manager, and a new one when it is not, as
+     * after {@code /reload}, which replaces the manager.
+     */
+    // test-seam: the /reload rebuild is tested by passing a replaced manager
+    public static RecipeIndex of(MinecraftServer server, RecipeManager manager) {
         RecipeIndex index = cached;
-        if (index == null || index.manager != server.getRecipeManager()) {
-            index = new RecipeIndex(server);
+        if (index == null || index.manager != manager) {
+            index = new RecipeIndex(server, manager);
             cached = index;
         }
         return index;
+    }
+
+    /** Drops the index, which would otherwise keep the last server's recipes alive after it stops. */
+    static void clear() {
+        cached = null;
     }
 
     /** The recipes {@code item} is the result or an ingredient of. */
@@ -82,10 +96,5 @@ final class RecipeIndex {
     @Nullable
     ResourceKey<Recipe<?>> key(Identifier id) {
         return keys.get(id);
-    }
-
-    /** The id of every recipe that can be in a recipe book. */
-    Set<Identifier> learnable() {
-        return keys.keySet();
     }
 }

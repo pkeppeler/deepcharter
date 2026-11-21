@@ -46,6 +46,7 @@ public final class MockPlayer {
     private final List<Identifier> sounds = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
     private final Set<RecipeDisplayId> recipeDisplays = new HashSet<>();
+    private final Set<RecipeDisplayId> recipeDisplaysEverSent = new HashSet<>();
     private int recipeToasts;
     private boolean loaded;
 
@@ -95,8 +96,17 @@ public final class MockPlayer {
      * packets applied in order. Read on the mock's tick, so it lags by one.
      */
     public Set<Identifier> recipesHeld() {
+        return recipeIds(recipeDisplays);
+    }
+
+    /** The id of every recipe the server has sent this player at any time, even one it removed again. Read on the mock's tick, so it lags by one. */
+    public Set<Identifier> recipesEverSent() {
+        return recipeIds(recipeDisplaysEverSent);
+    }
+
+    private Set<Identifier> recipeIds(Set<RecipeDisplayId> displays) {
         Set<Identifier> held = new HashSet<>();
-        for (RecipeDisplayId display : recipeDisplays) {
+        for (RecipeDisplayId display : displays) {
             RecipeManager.ServerDisplayInfo info = server.getRecipeManager().getRecipeFromDisplay(display);
             if (info != null) {
                 held.add(info.parent().id().identifier());
@@ -202,6 +212,7 @@ public final class MockPlayer {
                     }
                     for (ClientboundRecipeBookAddPacket.Entry entry : packet.entries()) {
                         recipeDisplays.add(entry.contents().id());
+                        recipeDisplaysEverSent.add(entry.contents().id());
                         recipeToasts += entry.notification() ? 1 : 0;
                     }
                 }
