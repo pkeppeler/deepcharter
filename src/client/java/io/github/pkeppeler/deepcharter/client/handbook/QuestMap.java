@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -118,35 +119,62 @@ final class QuestMap {
     private enum Ahead {
         ALL,
         ONE_ROW,
-        TITLE,
-        NOTHING
+        TITLE
     }
 
     /**
-     * Lays {@code model} out in a map {@code mapWidth} wide, with {@code noteLines} lines of margin note under it, in at most
+     * Lays {@code model} out in a map {@code mapWidth} wide, with {@code noteLines} lines of margin note, in at most
      * {@code availableHeight} pixels when that can be done. Steps run in rows of up to {@link QuestMapTuning#stepColumns()}, fewer
-     * on a narrow sheet. A map that is too tall gives up, in order, the rows of the next chapter after its first, then its steps,
-     * then its title; the redaction bars with their stamp and the margin note always stay. Nothing is scaled.
+     * on a narrow sheet. A map that is too tall tries, in order: the note beside the last row of steps when that row is partial
+     * (the empty columns beside it hold the note), then the next chapter cut to its first row of steps, then to its title alone,
+     * each both with the note below and beside. The next chapter's title, the redaction bars with their stamp and the note always
+     * stay. Nothing is scaled.
      */
     static Layout layout(int mapWidth, int availableHeight, Model model, int lineHeight, int noteLines) {
-        Ahead[] tries = Ahead.values();
-        Layout layout = layout(mapWidth, model, lineHeight, noteLines, tries[0]);
-        for (int i = 1; i < tries.length && model.ahead() != null && layout.height() > availableHeight; i++) {
-            layout = layout(mapWidth, model, lineHeight, noteLines, tries[i]);
+        Layout smallest = null;
+        for (Ahead shown : Ahead.values()) {
+            for (boolean beside : new boolean[] {false, true}) {
+                Layout layout = layout(mapWidth, model, lineHeight, noteLines, shown, beside);
+                if (layout == null) {
+                    continue;
+                }
+                if (layout.height() <= availableHeight) {
+                    return layout;
+                }
+                if (smallest == null || layout.height() <= smallest.height()) {
+                    smallest = layout;
+                }
+            }
+            if (model.ahead() == null) {
+                break;
+            }
         }
-        return layout;
+        return Objects.requireNonNull(smallest, "the plain layout always exists");
     }
 
-    private static Layout layout(int mapWidth, Model model, int lineHeight, int noteLines, Ahead shown) {
+    /** The layout for one rung, or null when {@code beside} asks for a note beside a last row that has no room for it. */
+    private static @Nullable Layout layout(
+            int mapWidth, Model model, int lineHeight, int noteLines, Ahead shown, boolean beside) {
         QuestMapTuning q = QuestMapTuning.current();
         int columns =
                 Math.max(1, Math.min(q.stepColumns(), (mapWidth + q.stepGap()) / (q.stepMinWidth() + q.stepGap())));
         int boxWidth = (mapWidth - q.stepGap() * (columns - 1)) / columns;
         List<Rect> main = grid(model.main().chapter().directives().size(), 0, columns, boxWidth);
         int bottom = main.getLast().bottom();
+        int noteY = 0;
+        if (beside) {
+            int lastRow = main.size() % columns;
+            int freeLeft = lastRow == 0 ? mapWidth : lastRow * (boxWidth + q.stepGap());
+            if (noteLines == 0 || lastRow == 0 || freeLeft + q.noteWidth() > mapWidth - q.noteInset()) {
+                return null;
+            }
+            noteY = main.getLast().y();
+            bottom = Math.max(bottom, noteY + noteLines * (lineHeight + 1));
+        }
+        int height = bottom;
         List<Rect> ahead = List.of();
         int aheadTitleY = -1;
-        if (model.ahead() != null && shown != Ahead.NOTHING) {
+        if (model.ahead() != null) {
             aheadTitleY = bottom + q.aheadGap();
             bottom = aheadTitleY + lineHeight;
             if (shown != Ahead.TITLE) {
@@ -158,18 +186,21 @@ final class QuestMap {
                         boxWidth);
                 bottom = ahead.getLast().bottom();
             }
+            height = bottom;
         }
         List<Rect> bars = new ArrayList<>();
-        int noteY = bottom + q.aheadGap();
-        int height = bottom;
         if (model.bars()) {
             int barsY = bottom + q.aheadGap();
             int[] percents = {q.redactionBarPercent1(), q.redactionBarPercent2(), q.redactionBarPercent3()};
             for (int i = 0; i < Math.min(columns, percents.length); i++) {
                 bars.add(new Rect(i * (boxWidth + q.stepGap()), barsY, boxWidth * percents[i] / 100, lineHeight));
             }
-            noteY = barsY + lineHeight + q.barsNoteGap();
+            if (!beside) {
+                noteY = barsY + lineHeight + q.barsNoteGap();
+            }
             height = Math.max(barsY + lineHeight, barsY + lineHeight / 2 + q.stampYOffset() + q.stampReach());
+        } else if (!beside) {
+            noteY = bottom + q.aheadGap();
         }
         if (noteLines > 0) {
             height = Math.max(height, noteY + noteLines * (lineHeight + 1));

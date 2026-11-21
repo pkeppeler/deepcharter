@@ -521,6 +521,33 @@ public class QuestMapClientTest implements FabricClientGameTest {
                                         entry.text().equals(line) && entry.box().height() >= font.lineHeight),
                         where + " draws the margin note line '" + line + "' whole: " + texts(screen));
             }
+            if (chapter < chapters.size()) {
+                String title = Component.translatable(
+                                "deepcharter.handbook.quest.ahead", chapter + 1, "Title " + (chapter + 1))
+                        .getString();
+                require(
+                        drawn.stream()
+                                .anyMatch(entry -> entry.text().equals(title)
+                                        && entry.box().height() >= font.lineHeight),
+                        where + " draws the next chapter's title '" + title + "' whole: " + texts(screen));
+            }
+            List<Drawn> noteLines =
+                    drawn.stream().filter(entry -> whole.contains(entry.text())).toList();
+            String stampText = Component.translatable("deepcharter.handbook.chapter.stamp.classified")
+                    .getString();
+            for (Drawn line : noteLines) {
+                for (Drawn other : drawn) {
+                    if (other != line
+                            && !noteLines.contains(other)
+                            && !other.text().equals(stampText)) {
+                        require(
+                                !io.github.pkeppeler.deepcharter.test.support.ClientChecks.overlaps(
+                                        line.box(), other.box()),
+                                where + ": the margin note line '" + line.shortText() + "' overlaps '"
+                                        + other.shortText() + "'");
+                    }
+                }
+            }
             String stamp = Component.translatable("deepcharter.handbook.chapter.stamp.classified")
                     .getString();
             if (chapter + 1 < chapters.size()) {
