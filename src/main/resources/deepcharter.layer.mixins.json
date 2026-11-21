@@ -4,7 +4,9 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "EnvironmentAttributeSystemBuilderMixin",
-    "EnvironmentAttributeSystemInvoker"
+    "EnvironmentAttributeSystemInvoker",
+    "BlockStateBaseMixin",
+    "ServerPlayerGameModeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

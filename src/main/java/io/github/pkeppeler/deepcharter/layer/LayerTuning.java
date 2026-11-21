@@ -21,6 +21,7 @@ import java.util.Arrays;
  * @param grainSqueezeHull  hull a pod that is neither moving nor drilling loses to each pulse while it touches the grained crust
  * @param grainSqueezeDamage health a player on foot loses to each pulse while touching the grained crust
  * @param grainSkateHeatPerSecond hull heat a pod takes each second its drill skates sideways across the grain, before a radiator
+ * @param handBreak       what it takes to brute-force a pod-only block with a hand tool (#858, ADR 0069)
  */
 public record LayerTuning(
         int seaLevel,
@@ -36,8 +37,10 @@ public record LayerTuning(
         int grainPulseTicks,
         float grainSqueezeHull,
         float grainSqueezeDamage,
-        float grainSkateHeatPerSecond) {
-    public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f);
+        float grainSkateHeatPerSecond,
+        HandBreakTuning handBreak) {
+    public static final LayerTuning DEFAULT =
+            new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f, HandBreakTuning.DEFAULT);
 
     public LayerTuning {
         if (grainPulseTicks < 2) {
