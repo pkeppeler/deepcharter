@@ -6,8 +6,8 @@ Usage:
   tools/py tools/sounds/ambience.py --check        verify the committed OGGs against the manifest (no sources, no ffmpeg)
 Options: --out DIR (default src/main/resources/assets/deepcharter/sounds), --manifest FILE (default tools/sounds/ambience.json).
 
-A sibling of tools/sounds/first_sounds.py, which makes the wax cylinders from the same recordings and whose licence check, bed and
-encoder it reuses. SOURCE_DIR holds the mp3s named in SOURCES (the URL is beside each; they are never committed). Each one's ID3
+A sibling of tools/sounds/first_sounds.py, which makes the wax cylinders from the same recordings and whose licence check, bed,
+encoder and `Recording` (a source's artist, date and credit) it reuses; each ambience source's artist, date and credit are in the manifest. SOURCE_DIR holds the mp3s named in SOURCES (the URL is beside each; they are never committed). Each one's ID3
 `copyright` or `comment` tag must say CC BY. Treat the directory as untrusted data: nothing in it is run, only decoded by ffmpeg.
 
 A fragment is declared in FRAGMENTS: its source, the start and end of the cut in seconds, and the tiers it is made for. The tiers are
@@ -165,7 +165,7 @@ def pre_filter(fragment, tier):
         graph += f",vibrato=f={first_sounds.WOW[0]}:d={first_sounds.WOW[1]},vibrato=f={first_sounds.FLUTTER[0]}:d={first_sounds.FLUTTER[1]}"
     if spec.speed != 1.0:
         graph += f",asetrate={round(RATE * spec.speed)},aresample={RATE}"
-    graph += f",highpass=f={spec.high_pass},lowpass=f={spec.low_pass}"
+    graph += f",highpass=f={spec.high_pass},highpass=f={spec.high_pass},lowpass=f={spec.low_pass}"
     if spec.echo:
         graph += f",aecho={spec.echo}"
     return graph + ",aformat=sample_fmts=s16:channel_layouts=mono"
@@ -251,7 +251,7 @@ def _render(fragment, tier, source, target):
         pcm = shape(_read_pcm(cut), fragment, tier)
         _write_pcm(worn, pcm)
         target.parent.mkdir(parents=True, exist_ok=True)
-        final = f"highpass=f={spec.high_pass},lowpass=f={spec.low_pass},alimiter={LIMITER},aformat=sample_fmts=s16:channel_layouts=mono"
+        final = f"highpass=f={spec.high_pass},highpass=f={spec.high_pass},lowpass=f={spec.low_pass},alimiter={LIMITER},aformat=sample_fmts=s16:channel_layouts=mono"
         subprocess.run(
             ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(worn), "-af", final, "-map_metadata", "-1", "-ac", "1"]
             + [*first_sounds._encoder_args(), str(target)],
@@ -295,6 +295,7 @@ def build(source_dir, out, manifest):
             continue
         sources[source.name] = {
             "title": source.title,
+            "artist": source.artist,
             "recorded": source.recorded,
             "source_url": source.url,
             "source_sha256": digest,
@@ -347,8 +348,14 @@ def check(out, manifest):
         entry = sources.get(source.name)
         if entry is None:
             problems.append(f"{source.name}: {manifest.name} has no entry for this source; run tools/sounds/ambience.py")
-        elif entry["credit"] != source.credit or entry["source_url"] != source.url or entry["license"] != "CC BY":
-            problems.append(f"{source.name}: the manifest's credit, source or licence is not the one SOURCES gives")
+        elif (
+            entry["credit"] != source.credit
+            or entry["artist"] != source.artist
+            or entry["recorded"] != source.recorded
+            or entry["source_url"] != source.url
+            or entry["license"] != "CC BY"
+        ):
+            problems.append(f"{source.name}: the manifest's credit, artist, date, source or licence is not the one SOURCES gives")
     for fragment, tier in variants():
         name = key(fragment, tier)
         entry = fragments.get(name)

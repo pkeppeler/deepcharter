@@ -102,6 +102,17 @@ class CommittedRecordingsTest(unittest.TestCase):
             )
             self.assertIn(recording.recorded, credit)
 
+    def test_each_entry_names_its_own_artist_date_folder_and_treatment_and_the_credit_is_made_from_them(self):
+        for recording in first_sounds.RECORDINGS:
+            entry = self.manifest[recording.name]
+            self.assertEqual(recording.artist, entry["artist"])
+            self.assertEqual(recording.recorded, entry["recorded"])
+            self.assertEqual(recording.folder, entry["folder"])
+            self.assertIn(entry["treatment"], first_sounds.TREATMENTS)
+            self.assertTrue(entry["credit"].startswith(f"Phonautogram by {entry['artist']} ({entry['recorded']}); playback"))
+        other = first_sounds.Recording("x", "x.mp3", "X", "1900", artist="Someone Else")
+        self.assertTrue(other.credit.startswith("Phonautogram by Someone Else (1900);"))
+
     def test_the_credits_file_carries_every_credit_and_source(self):
         credits_text = (ROOT / "CREDITS.md").read_text()
         for recording in first_sounds.RECORDINGS:
@@ -194,6 +205,14 @@ class CheckTest(unittest.TestCase):
         manifest["othello"]["license"] = "CC BY-NC"
         self.manifest.write_text(json.dumps(manifest))
         self.assertTrue(any("othello" in p and "licence" in p for p in first_sounds.check(self.out, self.manifest)))
+
+    def test_an_entry_whose_folder_or_artist_is_not_the_recordings_fails(self):
+        for field in ("folder", "artist", "treatment"):
+            manifest = json.loads(self.manifest.read_text())
+            manifest["othello"][field] = "elsewhere"
+            self.manifest.write_text(json.dumps(manifest))
+            self.assertTrue(any("othello" in p and "folder" in p for p in first_sounds.check(self.out, self.manifest)), field)
+            shutil.copy(first_sounds.MANIFEST, self.manifest)
 
     def test_a_treatment_that_changed_since_the_files_were_made_fails(self):
         manifest = json.loads(self.manifest.read_text())

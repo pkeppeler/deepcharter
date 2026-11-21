@@ -13,8 +13,9 @@ import java.util.Optional;
  * @param quietAfterTicks how long after a hymn, a phonograph, a transmission or another fragment ends nothing starts
  * @param quietPrefixes   the sound events that hold the ambience back, by the start of their path
  * @param hornRange       a player this close (blocks) to a Company horn hears the fragments from it
- * @param hornMinTicks    while near a horn, a fragment is due this soon after arriving, or after the last one, at the earliest
- * @param hornMaxTicks    and this late at the latest
+ * @param hornMinTicks    while near a horn, the gap after a fragment is drawn between this and {@code hornMaxTicks}
+ * @param hornMaxTicks    the latest of that draw, and of the first fragment after arriving
+ * @param hornFirstMinTicks the first fragment after arriving near a horn is not sooner than this, whatever the draw
  * @param hornWarmupTicks the crackle of the horn's warm-up lasts this long before the fragment speaks
  * @param distanceMin     a fragment from the dark comes from at least this many blocks away
  * @param distanceMax     and from at most this many
@@ -29,6 +30,7 @@ public record AmbienceTuning(
         int hornRange,
         int hornMinTicks,
         int hornMaxTicks,
+        int hornFirstMinTicks,
         int hornWarmupTicks,
         int distanceMin,
         int distanceMax,
@@ -50,8 +52,9 @@ public record AmbienceTuning(
             200,
             List.of("hymn.", "phonograph.", "transmission.", "ambience."),
             24,
-            900,
-            2_400,
+            3_600,
+            9_600,
+            1_200,
             26,
             12,
             28,

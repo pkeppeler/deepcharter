@@ -141,6 +141,7 @@ public class AmbienceSchedulerTest {
                 24,
                 1,
                 2,
+                1,
                 26,
                 12,
                 28,
@@ -241,7 +242,7 @@ public class AmbienceSchedulerTest {
     }
 
     @GameTest
-    public void nearAHornTheFragmentsComeFromTheHornAndSoonerThanFromTheDark(GameTestHelper helper) {
+    public void nearAHornTheFragmentsComeFromTheHornNotSoonerThanAMinuteAfterArriving(GameTestHelper helper) {
         AmbienceTuning tuning = AmbienceTuning.DEFAULT;
         for (long seed = 40; seed < 60; seed++) {
             List<Pick> picks = new ArrayList<>();
@@ -259,7 +260,7 @@ public class AmbienceSchedulerTest {
                     seed);
             expect(
                     helper,
-                    at.getFirst() >= tuning.hornMinTicks() - 1,
+                    at.getFirst() >= tuning.hornFirstMinTicks() - 1,
                     "seed %s: the horn spoke at %s",
                     seed,
                     at.getFirst());
@@ -298,6 +299,7 @@ public class AmbienceSchedulerTest {
                 0,
                 List.of(),
                 24,
+                5,
                 5,
                 5,
                 26,

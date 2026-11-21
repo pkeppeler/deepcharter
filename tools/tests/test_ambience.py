@@ -113,6 +113,7 @@ class CommittedFragmentsTest(unittest.TestCase):
                 credit,
             )
             self.assertIn(ambience.source_named(name).recorded, credit)
+            self.assertEqual(ambience.source_named(name).artist, entry["artist"])
 
     def test_the_credits_file_carries_every_source(self):
         credits_text = (ROOT / "CREDITS.md").read_text()

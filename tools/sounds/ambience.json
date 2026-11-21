@@ -6,14 +6,14 @@
       "end": 4.1,
       "fragment": "aminta_a",
       "kind": "voice",
-      "ogg_sha256": "06193f99149c85a34dd969b78a6866d3e7457df40f60747e50c0555dab549f1c",
+      "ogg_sha256": "ce74db2c414a09a3166f82e2d3fb79930ffc7ad46ba944fa53b3a184a6dc13db",
       "pcm_frames": 34297,
-      "pcm_sha256": "327a76679134f03251cafb292a89212be8b82e3f31e74f05a594cfe1857cd280",
+      "pcm_sha256": "009ac1c6dac530345333b8419ff6013a3effc42b642e8183cb4650cbd932f0ae",
       "source": "aminta",
       "source_sha256": "558ed7ebbb2d9a9e7d4970a7bd21120789a53cfd6aab4cdec8f65a98e2fd337d",
       "start": 3.1,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/aminta_b": {
       "cut_sha256": "69305d2e50cbd0b095c69e63091c80aa954a5d99bac2e775e7e453f497349a41",
@@ -21,14 +21,14 @@
       "end": 7.6,
       "fragment": "aminta_b",
       "kind": "voice",
-      "ogg_sha256": "c6f3647db7aa3ffa892db3fb168704c8e6ec7589e0e4750474d054304e10d3d5",
+      "ogg_sha256": "78a769c863f247ab1495ad595987036aeaf55be7066431c40a95f24ca68cffd3",
       "pcm_frames": 42409,
-      "pcm_sha256": "0c84915c230370833f564794662a5aae275d04bdde12cb117e9a23d09784902d",
+      "pcm_sha256": "8b9405591921693e32a7da9da5beb3d1bc617e064e2c4236a3b9bae35093366d",
       "source": "aminta",
       "source_sha256": "558ed7ebbb2d9a9e7d4970a7bd21120789a53cfd6aab4cdec8f65a98e2fd337d",
       "start": 6.3,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/aminta_c": {
       "cut_sha256": "a946bd9d90a321595eb43e7256b4ac6e604844c03d650cd5374fe18f496e040e",
@@ -36,14 +36,14 @@
       "end": 12.4,
       "fragment": "aminta_c",
       "kind": "voice",
-      "ogg_sha256": "ef53ee5673453f15398d716609823724238a9b9dd7ee0799b87dfd406e530b3e",
+      "ogg_sha256": "c9fa1cf4691ec8933e791b80a615e223459b360bebf3cad4c731ccf070031d70",
       "pcm_frames": 37484,
-      "pcm_sha256": "5fcabb579ebd6f1f2d3d34acc0713998fd8ece43671ea9af112ac1900802b659",
+      "pcm_sha256": "766b6c8e48ee835d1904b06fdf0439fc56463fe523da172ab3ebc83b532c6f18",
       "source": "aminta",
       "source_sha256": "558ed7ebbb2d9a9e7d4970a7bd21120789a53cfd6aab4cdec8f65a98e2fd337d",
       "start": 11.3,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/breath_a": {
       "cut_sha256": "f37bd3539019019f3e42bee15bdf57b465db952741f257f70132d86c1ff52d43",
@@ -51,14 +51,14 @@
       "end": 2.7,
       "fragment": "breath_a",
       "kind": "voice",
-      "ogg_sha256": "dfdfa3f8127e51f633698f610af98b5ed234f5813f167c7790ed9e126fb8853e",
+      "ogg_sha256": "9086203b94695140b6fa2de9f4fb382a86c1e3b9c7ff16ec967aaf0910a9f4a0",
       "pcm_frames": 39661,
-      "pcm_sha256": "638f44a5d37ea22cc56272df9f351639b67ea3606fd1e27b9709a325ee82cf36",
+      "pcm_sha256": "dc954772eb0206a059c52bb43b588d26e639f06793a8edaf8271f9764b9fc4be",
       "source": "gamme_de_la_voix",
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "start": 1.5,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/breath_b": {
       "cut_sha256": "6c420747aed9c630502b0aec8db823acd02d4e185561396a66d8aa84c2dde5fc",
@@ -66,14 +66,14 @@
       "end": 5.1,
       "fragment": "breath_b",
       "kind": "voice",
-      "ogg_sha256": "1de1512e6b5523b4f9f68922f5f0a94b786bc0ddb46ae43213d3d87a80994382",
+      "ogg_sha256": "3e5069ec32c24c61b8cfa914a2e61994e0b7f055413b51f60bbe5cca289c8065",
       "pcm_frames": 37410,
-      "pcm_sha256": "7c546e51ae6c0c2b2bf3bcc9019d8f8add77f84279205c4c54741a2d4a29a921",
+      "pcm_sha256": "f28a15c222cee966ea548fcf9eac685a5dc68d39010dfdfd9c3043f6a517c8db",
       "source": "gamme_de_la_voix",
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "start": 4.0,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/breath_c": {
       "cut_sha256": "cc0887bb8d017404a9270cf9c70f55e7929d8580ff8a16336a89df8fc28c2d83",
@@ -81,14 +81,14 @@
       "end": 9.0,
       "fragment": "breath_c",
       "kind": "voice",
-      "ogg_sha256": "322c4f90d57e530f7cab599847881d85dd5f0c6a04392f501891bf2c9da39231",
+      "ogg_sha256": "b8d60cfa709614ce06b8952dc3ec1661dc707de31042f0c577dc6c29ab754c2b",
       "pcm_frames": 34071,
-      "pcm_sha256": "a948930399913d3a2847041645b3a709f85df1f305a3bf085f88b3fba78f42ae",
+      "pcm_sha256": "8805aaa24682536502128d5c03dde37b9cb14a791fabbde8474fd743efb30ee0",
       "source": "gamme_de_la_voix",
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "start": 8.0,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/breath_d": {
       "cut_sha256": "ac3229a31f1969cdb6482caadbace2eac5d8cee86af9eb09dab4b47024232b24",
@@ -96,14 +96,14 @@
       "end": 11.3,
       "fragment": "breath_d",
       "kind": "voice",
-      "ogg_sha256": "7d209627e998451253b1442bb67ee5d231a6b3895286d60989698371faabb2e6",
+      "ogg_sha256": "64f96a2eb2d589b1172979654b08dd9764b55d6aab4750808b1e14f32e90fbf5",
       "pcm_frames": 37348,
-      "pcm_sha256": "403e9bc728cc29269d8633170bc6a654635bb961b3cedafe9038424d531876bc",
+      "pcm_sha256": "365905d753ecb7a64bdc656c4d2315fcf326e2afb0d1bc5aaa8783aa6c38abb4",
       "source": "gamme_de_la_voix",
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "start": 10.2,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/fork_surfaces": {
       "cut_sha256": "2ace75c1eb85c76274dbadcf43bf53b23d426c6d7d0d2d2405baca651e2af671",
@@ -111,14 +111,14 @@
       "end": 15.5,
       "fragment": "fork_surfaces",
       "kind": "tone",
-      "ogg_sha256": "eb7bc41dfc251e88a495cd51f35e48abfd3b1ba2be5078ab3fc851084557a1a5",
+      "ogg_sha256": "574e123a1b2cac9f9827e6edf928eca2731e8a1df07e3af13e2376f36b7748e6",
       "pcm_frames": 78881,
-      "pcm_sha256": "f24790f2acce79775b2c892c1df11d65d50ffecc4469023ba7ef6161c61e99f8",
+      "pcm_sha256": "781103b8d98ee70e3e9dd90a72e7952f53aeed503f0f9018a7c00900c7bfc5fd",
       "source": "diapason_435",
       "source_sha256": "e2a7ca9d1fe61b45cf9c9361d32290c99bf4af8263e4c4d5a82b99836cc57400",
       "start": 12.9,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/fork_tone": {
       "cut_sha256": "e2ab0abc7e85ee1aaaa6c3b23b5651144fc04f25703e078b5f52299c84ef3598",
@@ -126,14 +126,14 @@
       "end": 22.0,
       "fragment": "fork_tone",
       "kind": "tone",
-      "ogg_sha256": "7d917e314ead26444ae1f5211327ff7b0b798b77636f9c090ac03dfed549ba00",
+      "ogg_sha256": "4e1c273f1e08ec2fca0cbf98521515f6931cb116b0387f233a6d549d2bfe85e4",
       "pcm_frames": 68312,
-      "pcm_sha256": "33f2c99bd5296c9ef4e00e23fcd6e8c015d59649a4d2e8fbeb2904ddcac2e022",
+      "pcm_sha256": "831e14f4d66a00598e70f7c81ff7ce273e0b697a5fae2e47db5c622529579d25",
       "source": "diapason_435",
       "source_sha256": "e2a7ca9d1fe61b45cf9c9361d32290c99bf4af8263e4c4d5a82b99836cc57400",
       "start": 19.8,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/othello_a": {
       "cut_sha256": "09916bc0532864e79a0c1d1d61c2485f70345a08659f034b9011022dfb60efcc",
@@ -141,14 +141,14 @@
       "end": 5.0,
       "fragment": "othello_a",
       "kind": "voice",
-      "ogg_sha256": "93ceb7c6cee23a9067a9c5f2c2ee385f7170f62904ea99def0f1323021d3dd77",
+      "ogg_sha256": "4216586156e0489dc325322cff9f583eb40b823c19b1e8883edd086171e3239b",
       "pcm_frames": 33293,
-      "pcm_sha256": "1df605a58489eb26f4e556fb59e06d52823c28fd0500d2f35f4e0fb5ec305730",
+      "pcm_sha256": "217ff57cd90eb35dc6b1dc0aebf59d3510e941b5087a6c78c6adaf1d75e2e6d7",
       "source": "othello",
       "source_sha256": "0e564635920b4457923e112f5dded4c36cd7fe604b906721768682ebf6e64012",
       "start": 4.0,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/othello_b": {
       "cut_sha256": "fce355a517612fe87576c9f73dc330c8c1803a02e214053f5ffde4ec4bb05685",
@@ -156,14 +156,14 @@
       "end": 7.5,
       "fragment": "othello_b",
       "kind": "voice",
-      "ogg_sha256": "ad5d38dfb426630647892945e44c98057479b1b3ed76d58d77bc801ce2a26fdd",
+      "ogg_sha256": "c20298cc493c200f44f97d070ebca0fe880a419f277808a32f9366a7af864dfe",
       "pcm_frames": 37320,
-      "pcm_sha256": "aaff56d015078ef48cdc98d148deed9c313cb9057e71b5e5c6abb75ac6637dba",
+      "pcm_sha256": "fb8b579d526c66200d1e6fec5e45b88118f1bb5db5c25605b9f7c268cbeb77fe",
       "source": "othello",
       "source_sha256": "0e564635920b4457923e112f5dded4c36cd7fe604b906721768682ebf6e64012",
       "start": 6.4,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/othello_c": {
       "cut_sha256": "d65f5364ec72c7f67a99664aecd5db05c27bc081ff4078de66a988ae2a1ce1ff",
@@ -171,14 +171,14 @@
       "end": 13.3,
       "fragment": "othello_c",
       "kind": "voice",
-      "ogg_sha256": "37620446633794b6e3faddb265e6c4be1aa7cd9c7459d4e98cadb812a660e561",
+      "ogg_sha256": "385fc4f843c284b66bd994eb92d2799c0aa1d9d43de939dd1d6a3ccd5b87f622",
       "pcm_frames": 36224,
-      "pcm_sha256": "ad34462fe6bc68d9d9358ea146c728b023834d92811436429b328377d8eca6fb",
+      "pcm_sha256": "c52f7974f96c92bca5c36e3f32fa90a65afada3da4ddcdd199b909fff893b1b6",
       "source": "othello",
       "source_sha256": "0e564635920b4457923e112f5dded4c36cd7fe604b906721768682ebf6e64012",
       "start": 12.2,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/vole_a": {
       "cut_sha256": "b43c5a18f551d09387d2a570c3f65f5dcbe709e9ecc6a2326dfae9cf5a042afc",
@@ -186,14 +186,14 @@
       "end": 3.0,
       "fragment": "vole_a",
       "kind": "voice",
-      "ogg_sha256": "3567791ad20d7f358d1a01afc02dc8d99a3f2eb2b9609648634e95631ae9fca7",
+      "ogg_sha256": "4bf87ad6a8611de4377c72707af94dab06f6adc694ff65a446b6d09a32f2eb1c",
       "pcm_frames": 34403,
-      "pcm_sha256": "dcb84e368c36a938d25f4550e55a83bf6da4c610fb5f8ec3ae609dbbf16950dc",
+      "pcm_sha256": "6e4e0a75afe1cee714e0cbdfefb6ad002fe3178cc46c6a1a21ae71f7f28492df",
       "source": "vole_petite_abeille",
       "source_sha256": "f74020486c9c202b460c6343eec7bb13f824c30eefd0a074fe4393a4005b5d9f",
       "start": 2.0,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "broken/vole_b": {
       "cut_sha256": "027ff5b4f00cd0470f00b55e1f9dd87bdb1393c5b197f9450ae324b88cd8dff0",
@@ -201,14 +201,14 @@
       "end": 7.1,
       "fragment": "vole_b",
       "kind": "voice",
-      "ogg_sha256": "39eadd74c9e495987353fc2fb749100df081e0a56156077a1033e53189973b0c",
+      "ogg_sha256": "5b9590679ade73dfb0bbdd7e0d8bda0cdd79a75eee7a40a4a41a1acfd331df0f",
       "pcm_frames": 36434,
-      "pcm_sha256": "2364c5b9d161f25c3a14f5d2267b46fb6417b8fcb12cb14bfd9a2ac0e1593f54",
+      "pcm_sha256": "27287881f4d1777183a798d48bfd9caadf777db9c189d16ee6e2dcaac6a2d965",
       "source": "vole_petite_abeille_no_6",
       "source_sha256": "e25660257cae4ccd2806bc55fdf80abb579311d214f1b1de0508923ee1c1bd66",
       "start": 6.0,
       "tier": "broken",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "faint/breath_a": {
       "cut_sha256": "f37bd3539019019f3e42bee15bdf57b465db952741f257f70132d86c1ff52d43",
@@ -216,14 +216,14 @@
       "end": 2.7,
       "fragment": "breath_a",
       "kind": "voice",
-      "ogg_sha256": "c68134964e365ce674c3f66490612f3a90effb5b3fa163ace30f22881d84772d",
+      "ogg_sha256": "df0b185e04ce562a0d25ca3aad2d565cfa85e0f0d324877a0ca2f7e30cec9e90",
       "pcm_frames": 31531,
-      "pcm_sha256": "a52b7b730f605668ba2abc913e22bdbd0c40a4b31003f5bd1a0e6409d90c2e4b",
+      "pcm_sha256": "eb22173338acc34b2b3426e990cc18837e750d9926094d3c3af9c7a3f4a2dfd6",
       "source": "gamme_de_la_voix",
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "start": 1.5,
       "tier": "faint",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "faint/breath_b": {
       "cut_sha256": "6c420747aed9c630502b0aec8db823acd02d4e185561396a66d8aa84c2dde5fc",
@@ -231,14 +231,14 @@
       "end": 5.1,
       "fragment": "breath_b",
       "kind": "voice",
-      "ogg_sha256": "3af6f192f00f278e1f0879f3ccb9a875b955fa72704e60106b90dea4686818f2",
+      "ogg_sha256": "3478ff4fa28a1f957c83716c63af943d276fb28eb90f0de18ce4f44baf6a614c",
       "pcm_frames": 29326,
-      "pcm_sha256": "f02cb9e21f48a32380bd817703d010b7edd2528ff3ce82661dee1dc3daa9c848",
+      "pcm_sha256": "1c9b59348f6a7d6be0829d7797d2ed2647a17ee6d0445070ba15cf58bbd0f982",
       "source": "gamme_de_la_voix",
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "start": 4.0,
       "tier": "faint",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "faint/breath_d": {
       "cut_sha256": "ac3229a31f1969cdb6482caadbace2eac5d8cee86af9eb09dab4b47024232b24",
@@ -246,14 +246,14 @@
       "end": 11.3,
       "fragment": "breath_d",
       "kind": "voice",
-      "ogg_sha256": "b6c1a3322a75c70fc8ee0d60113070d94e7471d05b0b8c10c5671b787ecec6ae",
+      "ogg_sha256": "17cb2cef2de7527c0210f2e36f93c6e453f91e8193222f074504a22ed29f0163",
       "pcm_frames": 29326,
-      "pcm_sha256": "df06359d40a160a5322b4f5fe7628ca54dc960cc937398a806250f01c3308ee9",
+      "pcm_sha256": "ab80596eb04d906fbe3c74f007f543c975d810ffc97b7ab5aaf3e961054e105a",
       "source": "gamme_de_la_voix",
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "start": 10.2,
       "tier": "faint",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "faint/fork_surfaces": {
       "cut_sha256": "2ace75c1eb85c76274dbadcf43bf53b23d426c6d7d0d2d2405baca651e2af671",
@@ -261,14 +261,14 @@
       "end": 15.5,
       "fragment": "fork_surfaces",
       "kind": "tone",
-      "ogg_sha256": "26f381b236f5a9b8433b27f50c6801340c8d95b59b3bcf7f6f7ea2703ad0a793",
+      "ogg_sha256": "a762c7500cc812f754e1988d4d4d491b5215ff535066b75e95ba2883dc5a5f5b",
       "pcm_frames": 62401,
-      "pcm_sha256": "391cbfbf67d4811484b78d1802dcedb4ab3e5e6cc2773a6d97c2fe396e282a83",
+      "pcm_sha256": "2054082e31d92611b81e38db3e0e9d7860faa971628fafcfdbb906e456d4f06a",
       "source": "diapason_435",
       "source_sha256": "e2a7ca9d1fe61b45cf9c9361d32290c99bf4af8263e4c4d5a82b99836cc57400",
       "start": 12.9,
       "tier": "faint",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "faint/vole_a": {
       "cut_sha256": "b43c5a18f551d09387d2a570c3f65f5dcbe709e9ecc6a2326dfae9cf5a042afc",
@@ -276,14 +276,14 @@
       "end": 3.0,
       "fragment": "vole_a",
       "kind": "voice",
-      "ogg_sha256": "6bed46e6140449b813dd24e7005ed90ef2ba24c5017ce6e1e0394de251639f54",
+      "ogg_sha256": "231f95a8653dea86e70cb4b20c34adecdff220fb762ab385d09f121a4f334ebf",
       "pcm_frames": 27121,
-      "pcm_sha256": "bd1dc7ac33ed625e41ffad446e882aa472ec7f793e738565123e45dd7ac8e79f",
+      "pcm_sha256": "bb8ff6da75b8a6a7ff2937dd6b2b1d319547482b80a1b2630297c1cef35cefc5",
       "source": "vole_petite_abeille",
       "source_sha256": "f74020486c9c202b460c6343eec7bb13f824c30eefd0a074fe4393a4005b5d9f",
       "start": 2.0,
       "tier": "faint",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/aminta_a": {
       "cut_sha256": "13d4b9eda50e56ad93f6a42d43b4cab1215e8aa7716498585b9ec480a018db6e",
@@ -291,14 +291,14 @@
       "end": 4.1,
       "fragment": "aminta_a",
       "kind": "voice",
-      "ogg_sha256": "e39848f4f9fe68d1a972b6e883e270d22c1baccf7abe6b80f910927f31c278e2",
+      "ogg_sha256": "132be5b606a8ad82d3a606fc5e330c95bf09a84bceb8591f5090984516523a72",
       "pcm_frames": 22050,
-      "pcm_sha256": "d73af7872f8ede99061854e116b07dddd4a18b891d805d364b88f56366add15d",
+      "pcm_sha256": "9b6e86bf48d9a0fbe157cff4f51edbafddee1d74670f71a33da3e624355c1e47",
       "source": "aminta",
       "source_sha256": "558ed7ebbb2d9a9e7d4970a7bd21120789a53cfd6aab4cdec8f65a98e2fd337d",
       "start": 3.1,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/breath_a": {
       "cut_sha256": "f37bd3539019019f3e42bee15bdf57b465db952741f257f70132d86c1ff52d43",
@@ -306,14 +306,14 @@
       "end": 2.7,
       "fragment": "breath_a",
       "kind": "voice",
-      "ogg_sha256": "f6eefc71f07e6f684ba38ec2568d8a2e9e13de06287048a9c14d987d07444952",
+      "ogg_sha256": "6b7b442379a399965df41a35ce6c46291f12b01e5d2a985465847cfdb1f66d49",
       "pcm_frames": 26460,
-      "pcm_sha256": "a356b24951f4158db9835185839dccec07f6f9226e26b4d5e82b3b67b1c533c7",
+      "pcm_sha256": "e1c78bda5e52f260fb3f09625874baf74fad72173fe2633681e9db5823585376",
       "source": "gamme_de_la_voix",
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "start": 1.5,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/breath_b": {
       "cut_sha256": "6c420747aed9c630502b0aec8db823acd02d4e185561396a66d8aa84c2dde5fc",
@@ -321,14 +321,14 @@
       "end": 5.1,
       "fragment": "breath_b",
       "kind": "voice",
-      "ogg_sha256": "740276fa561c5ce1c4e1b6868ac959dcf2a20414f7d7f9aef246d1eaa33817ed",
+      "ogg_sha256": "7b2ca21cb4e405cbbd29b219d07b6241596f5382d1d73d602a2409dfb2a01067",
       "pcm_frames": 24255,
-      "pcm_sha256": "ad184b642e5868feb43a603c2ca605af42ccb16a05ea4a21bc43b49740d951f3",
+      "pcm_sha256": "86fd9ecc8553c2e763e9058fa1c1b39cf86c3a9bc3be42f6b87caaacd1cf0275",
       "source": "gamme_de_la_voix",
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "start": 4.0,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/breath_c": {
       "cut_sha256": "cc0887bb8d017404a9270cf9c70f55e7929d8580ff8a16336a89df8fc28c2d83",
@@ -336,14 +336,14 @@
       "end": 9.0,
       "fragment": "breath_c",
       "kind": "voice",
-      "ogg_sha256": "f312ae26cae93382417cc9a86ec47ea4cb195fd04e12b0f095f452e7920ffbeb",
+      "ogg_sha256": "311fed962b975c52e4be60062f3fac685de823cd9a96cbdb59a7984be367e69f",
       "pcm_frames": 22050,
-      "pcm_sha256": "62ae80d36861e6362847cfce71b1c913a998a301c24bf6d892f20e71d3c123bf",
+      "pcm_sha256": "017409e8c25c07dc1c6a35bb0b96795008b17c1857b430698b02681eaa9be79b",
       "source": "gamme_de_la_voix",
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "start": 8.0,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/breath_d": {
       "cut_sha256": "ac3229a31f1969cdb6482caadbace2eac5d8cee86af9eb09dab4b47024232b24",
@@ -351,14 +351,14 @@
       "end": 11.3,
       "fragment": "breath_d",
       "kind": "voice",
-      "ogg_sha256": "30c22df7944f635acb74b32b1590b481b83318c80e0567139211f702ff820b56",
+      "ogg_sha256": "5f0ff085915baeaf0264892e2da9b037ba1fb9d8a4dafaa3474db4270ad742e3",
       "pcm_frames": 24255,
-      "pcm_sha256": "41af526a41fb0e766307967045810acd57314152dbee08e152b5b9fc465837d6",
+      "pcm_sha256": "66c2cfb18e623215b89a83498d6fe2c846ab127334708792230fdb0325540bc7",
       "source": "gamme_de_la_voix",
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "start": 10.2,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/fork_surfaces": {
       "cut_sha256": "2ace75c1eb85c76274dbadcf43bf53b23d426c6d7d0d2d2405baca651e2af671",
@@ -366,14 +366,14 @@
       "end": 15.5,
       "fragment": "fork_surfaces",
       "kind": "tone",
-      "ogg_sha256": "1683650262f0e9c490427cb0904264992b713d8e8059af859569479a2be3955b",
+      "ogg_sha256": "dfcbeb2eaf37702dda46df38958c0eab2ccccc572cc0264070c10cc4dba51f6f",
       "pcm_frames": 57330,
-      "pcm_sha256": "72342e251aca690d2c1711249ef0ab9ce3a91b36cd966f89c614acbd7a30ab3a",
+      "pcm_sha256": "fe36c3e6eae8d684a39f624c0e3371ea5b4ce6a0e0096bd495b78cb6d32cca06",
       "source": "diapason_435",
       "source_sha256": "e2a7ca9d1fe61b45cf9c9361d32290c99bf4af8263e4c4d5a82b99836cc57400",
       "start": 12.9,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/fork_tone": {
       "cut_sha256": "e2ab0abc7e85ee1aaaa6c3b23b5651144fc04f25703e078b5f52299c84ef3598",
@@ -381,14 +381,14 @@
       "end": 22.0,
       "fragment": "fork_tone",
       "kind": "tone",
-      "ogg_sha256": "93630967f2171917e4dfd6409a586a06fb0b0fca23d65791040edc457049d0ec",
+      "ogg_sha256": "0becd0825bb212247d0e4000e9f2cb904f3c693cb22d0f77cf42a3d5e7b1211e",
       "pcm_frames": 48510,
-      "pcm_sha256": "ed695bb3729fb948c284d61a9e7bc40fd6debdb9afa768a7cf12fa2fe69e1dc8",
+      "pcm_sha256": "c3b50f1a20fe15d8b057e3b205eb0ec27d0fb4f2c56ec22657b0181850d0ebc7",
       "source": "diapason_435",
       "source_sha256": "e2a7ca9d1fe61b45cf9c9361d32290c99bf4af8263e4c4d5a82b99836cc57400",
       "start": 19.8,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/horn_warmup": {
       "cut_sha256": "316af8fef55ef461189d985c932d5822055649ea4b556e1198e9cd8d7b6a6a22",
@@ -396,14 +396,14 @@
       "end": 4.9,
       "fragment": "horn_warmup",
       "kind": "warmup",
-      "ogg_sha256": "b7555eed83cf4c46aeab76063aa6e60a338838e16973f230d7873270d7bade99",
+      "ogg_sha256": "f91b2dbc84a73cd47b96f9d4ae246b30dfb991d22d44b0405781cda27bbc042e",
       "pcm_frames": 33075,
-      "pcm_sha256": "40804b7f4fad6f99afedecd11749819a6ec7b2d30acd15770b6fc300bd62f5d8",
+      "pcm_sha256": "57250ef4c753c09b3c482d4cfdb8199b70d7d48b64042292bc592f763476c092",
       "source": "diapason_435",
       "source_sha256": "e2a7ca9d1fe61b45cf9c9361d32290c99bf4af8263e4c4d5a82b99836cc57400",
       "start": 3.4,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/othello_a": {
       "cut_sha256": "09916bc0532864e79a0c1d1d61c2485f70345a08659f034b9011022dfb60efcc",
@@ -411,14 +411,14 @@
       "end": 5.0,
       "fragment": "othello_a",
       "kind": "voice",
-      "ogg_sha256": "4f1025dea5b4c5d01cc148671a06e7d13d65abf0dc023351af45b7c95a76b652",
+      "ogg_sha256": "a9f070c0ff0503cae8e869c532e86f655cc959546e9513f478f7546b76841360",
       "pcm_frames": 22050,
-      "pcm_sha256": "47c7a6bb6d2e96d649db7b7f55ec47dae6d83115a3de7f62784562d12f99c972",
+      "pcm_sha256": "4efe9179574c18348d0d9cbe7507ecf9092d5feefcf601e2ce9d60f936a96caa",
       "source": "othello",
       "source_sha256": "0e564635920b4457923e112f5dded4c36cd7fe604b906721768682ebf6e64012",
       "start": 4.0,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/othello_b": {
       "cut_sha256": "fce355a517612fe87576c9f73dc330c8c1803a02e214053f5ffde4ec4bb05685",
@@ -426,14 +426,14 @@
       "end": 7.5,
       "fragment": "othello_b",
       "kind": "voice",
-      "ogg_sha256": "a465a136b0b6df4d73820ac2a6a17fe7ed2d0bf8fff232d0c17da01c8a178218",
+      "ogg_sha256": "11be15a8469f8f48bc09bd0e38a19c443ef499046a15541cd9de00f373d0b7fa",
       "pcm_frames": 24255,
-      "pcm_sha256": "bcfd4f05a8e1543511b0bc489bbf86ef8500f5a56ef4dfa07e4b128f02fdbc9e",
+      "pcm_sha256": "e4fe4ac52442f3a78e2be54f2a4673c77b50dd11962feed034bec12295a866b1",
       "source": "othello",
       "source_sha256": "0e564635920b4457923e112f5dded4c36cd7fe604b906721768682ebf6e64012",
       "start": 6.4,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/othello_c": {
       "cut_sha256": "d65f5364ec72c7f67a99664aecd5db05c27bc081ff4078de66a988ae2a1ce1ff",
@@ -441,14 +441,14 @@
       "end": 13.3,
       "fragment": "othello_c",
       "kind": "voice",
-      "ogg_sha256": "1def73050e7c794e8ccfcb6ae7fa06d5c23348bc10b59009f344acec83b5a746",
+      "ogg_sha256": "9653a0b837d06f3dc3eb2d727420baf4820a1dd4625642bc32d7b26a6b8528a6",
       "pcm_frames": 24255,
-      "pcm_sha256": "111233ecc732bcb8b6f607b0ab7a259bd119c9a237a94d08020b69aaf0e9ee22",
+      "pcm_sha256": "1d392662b61ffae44a8eceafce56438580952673a4b6accab764a59516144892",
       "source": "othello",
       "source_sha256": "0e564635920b4457923e112f5dded4c36cd7fe604b906721768682ebf6e64012",
       "start": 12.2,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/vole_a": {
       "cut_sha256": "b43c5a18f551d09387d2a570c3f65f5dcbe709e9ecc6a2326dfae9cf5a042afc",
@@ -456,14 +456,14 @@
       "end": 3.0,
       "fragment": "vole_a",
       "kind": "voice",
-      "ogg_sha256": "866fb25d391d238fd9d9760a28dcbac773855b32ad0f410ad0be1943fb27106c",
+      "ogg_sha256": "9c7bf5645f4bce5b77f8a6b65af1395cb674e05393c33ac80908e757c39f7081",
       "pcm_frames": 22050,
-      "pcm_sha256": "8c361c782182cc1a2ab488c27f9779549c6d210e4e3e598c87b3f2d7b0274e6c",
+      "pcm_sha256": "afbf37d03e745ccc01e881d17fd738e3ad1f49415e60e367965991b7ad9dbe49",
       "source": "vole_petite_abeille",
       "source_sha256": "f74020486c9c202b460c6343eec7bb13f824c30eefd0a074fe4393a4005b5d9f",
       "start": 2.0,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     },
     "worn/vole_b": {
       "cut_sha256": "027ff5b4f00cd0470f00b55e1f9dd87bdb1393c5b197f9450ae324b88cd8dff0",
@@ -471,18 +471,19 @@
       "end": 7.1,
       "fragment": "vole_b",
       "kind": "voice",
-      "ogg_sha256": "0007c4c6af2c55b16d4e22b2bdff72e8db82a457ba4e5c6a56d3d330de29d9fa",
+      "ogg_sha256": "8f50a0f6a8c8241e93ed6741937ea8b721e847e2b8edce8944b7e942dca17407",
       "pcm_frames": 24255,
-      "pcm_sha256": "af13085d21cd3f96ee3f777952af85db63694163f5a1a9a446aed18b1e0b70d8",
+      "pcm_sha256": "e927564966542268c0bab72f4044f4b360b2661e24f74228ec75f125cb888b52",
       "source": "vole_petite_abeille_no_6",
       "source_sha256": "e25660257cae4ccd2806bc55fdf80abb579311d214f1b1de0508923ee1c1bd66",
       "start": 6.0,
       "tier": "worn",
-      "treatment_sha256": "3e347b20d9c20eca87fab92df48b09b70b9ef25a990fdaeae323dca379737a11"
+      "treatment_sha256": "1b593b91a8ee828fff5c07afef25cd5f2b8a480914b4080bca07f38142259f72"
     }
   },
   "sources": {
     "aminta": {
+      "artist": "Édouard-Léon Scott de Martinville",
       "credit": "Phonautogram by Édouard-Léon Scott de Martinville (ca. April-May 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
       "license": "CC BY",
       "recorded": "ca. April-May 1860",
@@ -491,6 +492,7 @@
       "title": "Excerpt from Torquato Tasso's Aminta"
     },
     "diapason_435": {
+      "artist": "Édouard-Léon Scott de Martinville",
       "credit": "Phonautogram by Édouard-Léon Scott de Martinville (deposited July 29, 1859); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
       "license": "CC BY",
       "recorded": "deposited July 29, 1859",
@@ -499,6 +501,7 @@
       "title": "Diapason at 435 Hz, at sequential stages of restoration"
     },
     "gamme_de_la_voix": {
+      "artist": "Édouard-Léon Scott de Martinville",
       "credit": "Phonautogram by Édouard-Léon Scott de Martinville (May 17, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
       "license": "CC BY",
       "recorded": "May 17, 1860",
@@ -507,6 +510,7 @@
       "title": "Gamme de la Voix, vocal scale"
     },
     "othello": {
+      "artist": "Édouard-Léon Scott de Martinville",
       "credit": "Phonautogram by Édouard-Léon Scott de Martinville (Apr. 17, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
       "license": "CC BY",
       "recorded": "Apr. 17, 1860",
@@ -515,6 +519,7 @@
       "title": "Excerpt from Ducis' Othello"
     },
     "vole_petite_abeille": {
+      "artist": "Édouard-Léon Scott de Martinville",
       "credit": "Phonautogram by Édouard-Léon Scott de Martinville (ca. Sept. 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
       "license": "CC BY",
       "recorded": "ca. Sept. 1860",
@@ -523,6 +528,7 @@
       "title": "Vole Petite Abeille, vocal solo"
     },
     "vole_petite_abeille_no_6": {
+      "artist": "Édouard-Léon Scott de Martinville",
       "credit": "Phonautogram by Édouard-Léon Scott de Martinville (Sept. 15, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
       "license": "CC BY",
       "recorded": "Sept. 15, 1860",

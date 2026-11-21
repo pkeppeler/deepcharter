@@ -16,7 +16,8 @@ import org.jspecify.annotations.Nullable;
  *   <li>A fragment never follows itself: the next is drawn from the tier's pool without the last one, whichever tier it was.
  *   <li>A fragment that falls due while something is sounding (the Lamp Hymn, a phonograph, a transmission, another fragment) waits a short,
  *       drawn time and tries again; it is never played over them.
- *   <li>Near a horn the player is on a shorter, drawn timer of their own, and a fragment due then comes from the horn. A fragment from the
+ *   <li>Near a horn the player is on a drawn timer of their own (the first fragment not sooner than a minute after arriving, then every few
+ *       minutes), and a fragment due then comes from the horn. A fragment from the
  *       dark that falls due while a horn is near comes from the horn too.
  * </ul>
  */
@@ -68,7 +69,7 @@ public final class AmbienceScheduler {
         if (!hornNear) {
             hornTicksLeft = UNSET;
         } else if (hornTicksLeft == UNSET) {
-            hornTicksLeft = draw(tuning.hornMinTicks(), tuning.hornMaxTicks());
+            hornTicksLeft = draw(tuning.hornFirstMinTicks(), tuning.hornMaxTicks());
         }
         ticksLeft--;
         if (hornNear) {

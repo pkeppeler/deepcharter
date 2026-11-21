@@ -40,6 +40,7 @@ OUT = ROOT / "src/main/resources/assets/deepcharter/sounds"
 MANIFEST = HERE / "first_sounds.json"
 
 FOLDER = "phonograph"
+SCOTT = "Édouard-Léon Scott de Martinville"
 RATE = 22050
 SOURCE_URL = "https://firstsounds.org/sounds/"
 
@@ -69,13 +70,32 @@ CLICK_DECAY = 0.6  # a click rings off by this share per sample
 
 
 @dataclass(frozen=True)
+class Treatment:
+    """How a recording is worn: the ffmpeg filters before the mix and after it, and the level of the bed under it."""
+
+    voice: str
+    band: str
+    bed_gain: float
+
+
+TREATMENTS = {"cylinder": Treatment(VOICE_FILTERS, BAND_FILTERS, BED_GAIN)}
+
+
+@dataclass(frozen=True)
 class Recording:
-    """One phonautogram playback: the file First Sounds publishes it as, and what the credit says of it."""
+    """One phonautogram playback: the file First Sounds publishes it as, and what the credit says of it.
+
+    Each entry names its own artist, date, output folder under the sounds folder and treatment (a key of TREATMENTS), and all of them are
+    written to the manifest. A recording for something other than a cylinder is one more entry with another folder or treatment.
+    """
 
     name: str
     file: str
     title: str
     recorded: str
+    artist: str = SCOTT
+    folder: str = FOLDER
+    treatment: str = "cylinder"
 
     @property
     def url(self):
@@ -84,7 +104,7 @@ class Recording:
     @property
     def credit(self):
         return (
-            f"Phonautogram by Édouard-Léon Scott de Martinville ({self.recorded}); playback by First Sounds (firstsounds.org), "
+            f"Phonautogram by {self.artist} ({self.recorded}); playback by First Sounds (firstsounds.org), "
             "co-produced by Patrick Feaster and David Giovannoni; CC BY."
         )
 
@@ -109,6 +129,7 @@ def treatment_sha256():
     """A hash of every number and filter that shapes a recording, so a changed treatment shows in `check`."""
     parts = [VOICE_FILTERS, BAND_FILTERS, VORBIS_QUALITY, BED_GAIN, RATE]
     parts += [HISS, HISS_SMOOTHING, CRACKLE_PER_SECOND, CRACKLE_PEAK, POPS_PER_SECOND, POP_PEAK, CLICK_DECAY]
+    parts += [repr(treatment) for name, treatment in sorted(TREATMENTS.items()) if name != "cylinder"]
     return hashlib.sha256(repr(parts).encode()).hexdigest()
 
 
@@ -177,8 +198,9 @@ def _render(recording, source, target):
 
     Returns the length of the bed in samples, which is the length of the recording.
     """
+    treatment = TREATMENTS[recording.treatment]
     decoded = subprocess.run(
-        ["ffmpeg", "-v", "error", "-nostdin", "-i", str(source), "-af", VOICE_FILTERS, "-ac", "1", "-f", "s16le", "-"],
+        ["ffmpeg", "-v", "error", "-nostdin", "-i", str(source), "-af", treatment.voice, "-ac", "1", "-f", "s16le", "-"],
         check=True,
         capture_output=True,
     ).stdout
@@ -187,7 +209,7 @@ def _render(recording, source, target):
     if sys.byteorder == "big":
         voice.byteswap()
     under = bed(recording.name, len(voice))
-    mixed = array("h", (max(-32768, min(32767, v + round(b * BED_GAIN))) for v, b in zip(voice, under)))
+    mixed = array("h", (max(-32768, min(32767, v + round(b * treatment.bed_gain))) for v, b in zip(voice, under)))
     if sys.byteorder == "big":
         mixed.byteswap()
     with tempfile.TemporaryDirectory() as tmp:
@@ -199,7 +221,7 @@ def _render(recording, source, target):
             out.writeframes(mixed.tobytes())
         target.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(
-            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(wav), "-af", BAND_FILTERS]
+            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(wav), "-af", treatment.band]
             + ["-map_metadata", "-1", "-ac", "1", *_encoder_args(), str(target)],
             check=True,
         )
@@ -211,7 +233,7 @@ def _load(manifest):
 
 
 def build(source_dir, out, manifest):
-    """Writes each recording's OGG under `out`/phonograph and the manifest. Returns the exit status."""
+    """Writes each recording's OGG under `out`/<its folder> and the manifest. Returns the exit status."""
     for tool in ("ffmpeg", "ffprobe"):
         if not shutil.which(tool):
             print(f"{tool} is required", file=sys.stderr)
@@ -234,20 +256,28 @@ def build(source_dir, out, manifest):
                 f"{recording.name}: {source.name} is not the file {manifest.name} credits (sha256 differs); delete its manifest entry to accept the new one"
             )
             continue
-        target = out / FOLDER / f"{recording.name}.ogg"
+        target = out / recording.folder / f"{recording.name}.ogg"
         if (
             old
             and old["treatment_sha256"] == treatment_sha256()
             and target.is_file()
             and sha256(target) == old["ogg_sha256"]
         ):
-            entries[recording.name] = old
+            entries[recording.name] = {
+                **old,
+                "artist": recording.artist,
+                "folder": recording.folder,
+                "treatment": recording.treatment,
+            }
             continue
         frames = _render(recording, source, target)
         seconds = duration_seconds(target)
         entries[recording.name] = {
             "title": recording.title,
+            "artist": recording.artist,
             "recorded": recording.recorded,
+            "folder": recording.folder,
+            "treatment": recording.treatment,
             "source_url": recording.url,
             "source_sha256": digest,
             "license": "CC BY",
@@ -268,7 +298,7 @@ def build(source_dir, out, manifest):
 
 def owned(manifest):
     """The names (paths under the sounds folder, without `.ogg`) of the OGGs the manifest owns."""
-    return {f"{FOLDER}/{name}" for name in _load(manifest)}
+    return {f"{entry.get('folder', FOLDER)}/{name}" for name, entry in _load(manifest).items()}
 
 
 def check(out, manifest):
@@ -277,7 +307,7 @@ def check(out, manifest):
     problems = []
     for recording in RECORDINGS:
         entry = known.get(recording.name)
-        target = out / FOLDER / f"{recording.name}.ogg"
+        target = out / recording.folder / f"{recording.name}.ogg"
         if entry is not None and hashlib.sha256(bed(recording.name, entry["bed_frames"]).tobytes()).hexdigest() != entry["bed_sha256"]:
             problems.append(f"{recording.name}: the bed the manifest names is not the one the script makes; run tools/sounds/first_sounds.py")
         if entry is None:
@@ -289,8 +319,16 @@ def check(out, manifest):
             problems.append(f"{recording.name}: {target.name} is not the file {manifest.name} was written for; do not edit an OGG")
         elif ogg_channels(target) != 1:
             problems.append(f"{recording.name}: {target.name} is not mono Vorbis; Minecraft positions mono sounds only")
-        if entry["credit"] != recording.credit or entry["source_url"] != recording.url or entry["license"] != "CC BY":
-            problems.append(f"{recording.name}: the manifest's credit, source or licence is not the one RECORDINGS gives")
+        if (
+            entry["credit"] != recording.credit
+            or entry["source_url"] != recording.url
+            or entry["license"] != "CC BY"
+            or entry["artist"] != recording.artist
+            or entry["recorded"] != recording.recorded
+            or entry["folder"] != recording.folder
+            or entry["treatment"] != recording.treatment
+        ):
+            problems.append(f"{recording.name}: the manifest's credit, artist, date, folder, treatment, source or licence is not the one RECORDINGS gives")
         if entry["treatment_sha256"] != treatment_sha256():
             problems.append(f"{recording.name}: the treatment changed since it was made; run tools/sounds/first_sounds.py")
     for name in sorted(set(known) - {recording.name for recording in RECORDINGS}):
