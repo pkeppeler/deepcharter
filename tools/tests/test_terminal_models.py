@@ -75,9 +75,31 @@ class TerminalModelTests(unittest.TestCase):
         glass = [e for e in elements if e["name"].startswith("glass")]
         self.assertLess(screen["from"][2], min(e["from"][2] for e in glass))
 
-    def test_every_face_texture_is_one_the_children_define(self):
-        child = model("deepcharter:block/fuel_pump")["textures"]
-        for element in model(PARENT)["elements"]:
+    def test_the_casing_has_its_own_textures_and_only_the_cabinet_carries_the_plaque(self):
+        parent = model(PARENT)
+        for key in ("casing", "casing_top"):
+            self.assertTrue((ASSETS / "textures/block" / f"terminal_{key}.png").exists(), key)
+            self.assertEqual(f"deepcharter:block/terminal_{key}", parent["textures"][key])
+        for element in parent["elements"]:
+            plaque = {f["texture"] for f in element["faces"].values()} & {"#side"}
+            self.assertEqual(element["name"] == "cabinet", bool(plaque), element["name"])
+
+    def test_the_glass_steps_out_and_the_knobs_are_brass(self):
+        elements = {e["name"]: e for e in model(PARENT)["elements"]}
+        rim, bulge = elements["glass_rim"], elements["glass_bulge"]
+        self.assertEqual(1.0, rim["from"][2] - bulge["from"][2], "the centre of the glass is a whole pixel proud of its rim")
+        self.assertLess(rim["from"][2], elements["monitor_casing"]["from"][2])
+        knobs = [e for n, e in elements.items() if n.startswith("knob")]
+        self.assertEqual(2, len(knobs))
+        for knob in knobs:
+            self.assertLess(knob["from"][2], elements["monitor_casing"]["from"][2], "a knob stands out of the front")
+            self.assertEqual("#front", knob["faces"]["north"]["texture"])
+            self.assertEqual(12, knob["faces"]["north"]["uv"][1], "its face is a pixel of the brass plate of the front texture")
+
+    def test_every_face_texture_is_one_the_children_or_the_parent_define(self):
+        parent = model(PARENT)
+        child = {**parent["textures"], **model("deepcharter:block/fuel_pump")["textures"]}
+        for element in parent["elements"]:
             for face in element["faces"].values():
                 self.assertIn(face["texture"].removeprefix("#"), child, element["name"])
 

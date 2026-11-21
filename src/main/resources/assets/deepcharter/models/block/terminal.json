@@ -1,7 +1,9 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "particle": "#side"
+    "particle": "#side",
+    "casing": "deepcharter:block/terminal_casing",
+    "casing_top": "deepcharter:block/terminal_casing_top"
   },
   "elements": [
     {
@@ -80,7 +82,7 @@
       ],
       "faces": {
         "up": {
-          "texture": "#top",
+          "texture": "#casing_top",
           "uv": [
             1,
             3,
@@ -98,7 +100,7 @@
           ]
         },
         "south": {
-          "texture": "#side",
+          "texture": "#casing",
           "uv": [
             1,
             4,
@@ -107,7 +109,7 @@
           ]
         },
         "west": {
-          "texture": "#side",
+          "texture": "#casing",
           "uv": [
             3,
             4,
@@ -116,7 +118,7 @@
           ]
         },
         "east": {
-          "texture": "#side",
+          "texture": "#casing",
           "uv": [
             3,
             4,
@@ -140,7 +142,7 @@
       ],
       "faces": {
         "up": {
-          "texture": "#top",
+          "texture": "#casing_top",
           "uv": [
             3,
             3,
@@ -149,7 +151,7 @@
           ]
         },
         "south": {
-          "texture": "#side",
+          "texture": "#casing",
           "uv": [
             3,
             4,
@@ -158,7 +160,7 @@
           ]
         },
         "west": {
-          "texture": "#side",
+          "texture": "#casing",
           "uv": [
             3,
             4,
@@ -167,7 +169,7 @@
           ]
         },
         "east": {
-          "texture": "#side",
+          "texture": "#casing",
           "uv": [
             3,
             4,
@@ -242,7 +244,7 @@
       "from": [
         4,
         8,
-        2
+        1.5
       ],
       "to": [
         12,
@@ -298,6 +300,126 @@
       }
     },
     {
+      "name": "knob_upper",
+      "from": [
+        13.25,
+        10.5,
+        2
+      ],
+      "to": [
+        14.75,
+        12,
+        3
+      ],
+      "faces": {
+        "north": {
+          "texture": "#front",
+          "uv": [
+            6,
+            12,
+            7,
+            13
+          ]
+        },
+        "up": {
+          "texture": "#front",
+          "uv": [
+            6,
+            13,
+            7,
+            14
+          ]
+        },
+        "down": {
+          "texture": "#front",
+          "uv": [
+            6,
+            13,
+            7,
+            14
+          ]
+        },
+        "west": {
+          "texture": "#front",
+          "uv": [
+            6,
+            13,
+            7,
+            14
+          ]
+        },
+        "east": {
+          "texture": "#front",
+          "uv": [
+            6,
+            13,
+            7,
+            14
+          ]
+        }
+      }
+    },
+    {
+      "name": "knob_lower",
+      "from": [
+        13.25,
+        8,
+        2
+      ],
+      "to": [
+        14.75,
+        9.5,
+        3
+      ],
+      "faces": {
+        "north": {
+          "texture": "#front",
+          "uv": [
+            6,
+            12,
+            7,
+            13
+          ]
+        },
+        "up": {
+          "texture": "#front",
+          "uv": [
+            6,
+            13,
+            7,
+            14
+          ]
+        },
+        "down": {
+          "texture": "#front",
+          "uv": [
+            6,
+            13,
+            7,
+            14
+          ]
+        },
+        "west": {
+          "texture": "#front",
+          "uv": [
+            6,
+            13,
+            7,
+            14
+          ]
+        },
+        "east": {
+          "texture": "#front",
+          "uv": [
+            6,
+            13,
+            7,
+            14
+          ]
+        }
+      }
+    },
+    {
       "name": "glow_leds",
       "from": [
         1,
@@ -328,12 +450,12 @@
       "from": [
         4,
         8,
-        1.99
+        1.49
       ],
       "to": [
         12,
         14,
-        1.99
+        1.49
       ],
       "light_emission": 15,
       "shade": false,

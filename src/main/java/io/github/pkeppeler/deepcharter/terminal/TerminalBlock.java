@@ -35,14 +35,14 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public final class TerminalBlock extends BaseEntityBlock {
     /**
      * The cabinet with its CRT monitor on top, facing north (the model {@code block/terminal}): the cabinet, the monitor's
-     * casing, its tube taper behind, and the two steps of the glass in front. Turned for the other facings.
+     * casing, its tube taper behind, and the two steps of the glass in front (the knobs are too small to count). Turned for the other facings.
      */
     private static final VoxelShape NORTH_SHAPE = Shapes.or(
             Block.box(0, 0, 0, 16, 6, 16),
             Block.box(1, 6, 3, 15, 16, 13),
             Block.box(3, 7, 13, 13, 14, 14),
             Block.box(3, 7, 2.5, 13, 15, 3),
-            Block.box(4, 8, 2, 12, 14, 2.5));
+            Block.box(4, 8, 1.5, 12, 14, 2.5));
 
     private static final Map<Direction, VoxelShape> SHAPES = Shapes.rotateHorizontal(NORTH_SHAPE);
 

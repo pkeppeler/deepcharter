@@ -23,7 +23,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 /**
  * Server GameTests for #857: a terminal is a cabinet with a CRT monitor on top ({@code models/block/terminal.json}), not a full
  * cube, and its collision and outline shape follow the model in every facing. The pixel positions below are the model's: the
- * cabinet is 6 high, the monitor's casing runs to the top, and the glass stands out of its front by half a pixel and a pixel.
+ * cabinet is 6 high, the monitor's casing runs to the top, and the glass stands out of its front by half a pixel and then a whole pixel more.
  */
 public class TerminalShapeTest {
     private static final double PIXEL = 1.0 / 16;
@@ -99,6 +99,11 @@ public class TerminalShapeTest {
         forEachState(state -> {
             VoxelShape shape = shape(helper, state);
             Direction facing = state.getValue(BlockStateProperties.HORIZONTAL_FACING);
+            // The middle of the glass stands a whole pixel proud of its rim: 1.7 pixels from the casing front.
+            if (!filled(shape, point(facing, 6.3, 12))) {
+                throw helper.assertionException(
+                        "%s: the middle of the glass should stand 1 pixel proud of its rim", state);
+            }
             // y 14.5: the glass (to 15) is there in front, the tube taper (to 14) is not behind.
             if (!filled(shape, point(facing, 5.7, 14.5))) {
                 throw helper.assertionException(
@@ -108,8 +113,8 @@ public class TerminalShapeTest {
                 throw helper.assertionException(
                         "%s: the glass is on the wrong side, or the tube is too tall, facing %s", state, facing);
             }
-            if (filled(shape, point(facing, 6.2, 12))) {
-                throw helper.assertionException("%s: nothing stands more than 2 pixels out of the monitor", state);
+            if (filled(shape, point(facing, 7, 12))) {
+                throw helper.assertionException("%s: nothing stands more than 2.5 pixels out of the monitor", state);
             }
         });
         helper.succeed();
