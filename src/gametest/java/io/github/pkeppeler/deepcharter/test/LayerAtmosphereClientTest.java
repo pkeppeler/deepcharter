@@ -19,6 +19,7 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.requ
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.standWithoutSettle;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.todayFloor;
 
+import io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.Holds;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -113,9 +114,15 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
             server.runCommand("time set noon");
             server.runOnServer(s -> player(s).setGameMode(GameType.SPECTATOR));
 
-            theShaftReadsAsTheSealedRoomWhileTheSkyTimelineRuns(context, server);
-            theBlendAtABiomeEdge(context, server);
-            whatTheCampaignWorldLoses(context, server);
+            try (Holds holds = Holds.of(server)) {
+                theShaftReadsAsTheSealedRoomWhileTheSkyTimelineRuns(context, server, holds);
+            }
+            try (Holds holds = Holds.of(server)) {
+                theBlendAtABiomeEdge(context, server, holds);
+            }
+            try (Holds holds = Holds.of(server)) {
+                whatTheCampaignWorldLoses(context, server, holds);
+            }
         } finally {
             EvidencePins.lightFlickerOff = flickerWas;
         }
@@ -132,11 +139,11 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
      * surface-to-layer transition, which {@link #theBlendAtABiomeEdge} covers.
      */
     private void theShaftReadsAsTheSealedRoomWhileTheSkyTimelineRuns(
-            ClientGameTestContext context, TestServerContext server) {
+            ClientGameTestContext context, TestServerContext server, Holds holds) {
         int x = SITE;
-        BlockPos shaftFloor = build(server, CAMPAIGN, ground(server, x), Optional.of(ZONE), true);
-        BlockPos roomFloor = build(server, CAMPAIGN, layer1Floor(x + SPACING), Optional.of(ZONE), false);
-        BlockPos controlFloor = build(server, CAMPAIGN, ground(server, x + 2 * SPACING), Optional.empty(), true);
+        BlockPos shaftFloor = build(server, holds, CAMPAIGN, ground(server, x), Optional.of(ZONE), true);
+        BlockPos roomFloor = build(server, holds, CAMPAIGN, layer1Floor(x + SPACING), Optional.of(ZONE), false);
+        BlockPos controlFloor = build(server, holds, CAMPAIGN, ground(server, x + 2 * SPACING), Optional.empty(), true);
         requireZone(server, CAMPAIGN, shaftFloor);
         requireZone(server, CAMPAIGN, roomFloor);
         int shaftSky = serverSky(server, shaftFloor);
@@ -192,10 +199,10 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
      * biome that sets none: the surface floor of ADR 0011 is open to layer 1, so a player in the top of layer 1 sees the blend. The layer
      * biome fills everything at or below an edge; the probe is read at distances from the edge, up to the edge and above it.
      */
-    private void theBlendAtABiomeEdge(ClientGameTestContext context, TestServerContext server) {
+    private void theBlendAtABiomeEdge(ClientGameTestContext context, TestServerContext server, Holds holds) {
         BlockPos floor = ground(server, SITE + 5 * SPACING);
         int edge = floor.getY() - 40;
-        fillBiome(server, CAMPAIGN, floor, ZONE, edge - BLEND_BELOW - MARGIN, edge);
+        fillBiome(server, holds, CAMPAIGN, floor, ZONE, edge - BLEND_BELOW - MARGIN, edge);
         StringBuilder row = new StringBuilder(
                 "blend at an edge (layer biome at and below it), sky light factor by blocks below the edge:");
         for (int below : new int[] {-8, -4, 0, 2, 4, 6, 8, 12, 16, 24}) {
@@ -265,11 +272,11 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
     // ---------------------------------------------------------------------------------------------- loss
 
     /** The same lit room as the campaign world will render a layer (a biome in the campaign type) and as today's layer dimension does. */
-    private void whatTheCampaignWorldLoses(ClientGameTestContext context, TestServerContext server) {
+    private void whatTheCampaignWorldLoses(ClientGameTestContext context, TestServerContext server, Holds holds) {
         int x = SITE;
-        BlockPos campaign = buildRoom(server, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE), true);
+        BlockPos campaign = buildRoom(server, holds, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE), true);
         BlockPos today =
-                buildRoom(server, TestLayers.dimension(1), todayFloor(x + 4 * SPACING), Optional.empty(), true);
+                buildRoom(server, holds, TestLayers.dimension(1), todayFloor(x + 4 * SPACING), Optional.empty(), true);
         requireZone(server, CAMPAIGN, campaign);
         requireZone(server, TestLayers.dimension(1), today);
         List<Reading> now = lookAround(context, server, TestLayers.dimension(1), today, "lit-room-today-");

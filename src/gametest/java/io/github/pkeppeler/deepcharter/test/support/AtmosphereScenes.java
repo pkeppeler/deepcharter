@@ -16,6 +16,7 @@ import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -23,6 +24,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -81,10 +83,11 @@ public final class AtmosphereScenes {
      * A mass of layer 1's rock with a 3 x 3 shaft in it, from {@code floor} up, in {@code dimension}: the same fill in every dimension, so
      * that two scenes of one shape differ in what is being compared and not in their rock. {@code open}: the shaft runs to the top of the
      * mass, so the sky reaches its floor (when the mass has open sky over it); otherwise it is a sealed room of the shaft's footprint.
-     * {@code biome}, when present, is filled over the mass. Returns {@code floor}, where the camera stands.
+     * {@code biome}, when present, is filled over the mass, its chunks held in {@code holds}. Returns {@code floor}, where the camera stands.
      */
     public static BlockPos build(
             TestServerContext server,
+            Holds holds,
             ResourceKey<Level> dimension,
             BlockPos floor,
             Optional<String> biome,
@@ -102,7 +105,7 @@ public final class AtmosphereScenes {
                     floor.offset(1, open ? SHAFT_DEPTH : ROOM_HEIGHT - 1, 1),
                     Blocks.AIR.defaultBlockState());
         });
-        biome.ifPresent(name -> fillBiomeAround(server, dimension, floor, name));
+        biome.ifPresent(name -> fillBiomeAround(server, holds, dimension, floor, name));
         return floor;
     }
 
@@ -124,6 +127,7 @@ public final class AtmosphereScenes {
      */
     public static BlockPos buildRoom(
             TestServerContext server,
+            Holds holds,
             ResourceKey<Level> dimension,
             BlockPos floor,
             Optional<String> biome,
@@ -151,7 +155,7 @@ public final class AtmosphereScenes {
             level.setBlock(floor.offset(1, 1, -4), ore, 3);
             level.setBlock(floor.offset(0, -1, -1), ore, 3);
         });
-        biome.ifPresent(name -> fillBiomeAround(server, dimension, floor, name));
+        biome.ifPresent(name -> fillBiomeAround(server, holds, dimension, floor, name));
         return floor;
     }
 
@@ -165,12 +169,8 @@ public final class AtmosphereScenes {
     }
 
     private static String biomeAt(TestServerContext server, ResourceKey<Level> dimension, BlockPos pos) {
-        return server.computeOnServer(s -> ClientLight.serverLevel(s, dimension)
-                .getBiome(pos)
-                .unwrapKey()
-                .orElseThrow()
-                .identifier()
-                .toString());
+        return server.computeOnServer(
+                s -> biomeKey(ClientLight.serverLevel(s, dimension).getBiome(pos)));
     }
 
     /** Puts out the light of a lit room that {@link #buildRoom} built at {@code floor}: an unlit room shows the ambient floor alone. */
@@ -180,20 +180,52 @@ public final class AtmosphereScenes {
     }
 
     private static void fillBiomeAround(
-            TestServerContext server, ResourceKey<Level> dimension, BlockPos floor, String biome) {
+            TestServerContext server, Holds holds, ResourceKey<Level> dimension, BlockPos floor, String biome) {
         fillBiome(
-                server, dimension, floor, biome, floor.getY() - MASS - 1 - MARGIN, floor.getY() + SHAFT_DEPTH + MARGIN);
+                server,
+                holds,
+                dimension,
+                floor,
+                biome,
+                floor.getY() - MASS - 1 - MARGIN,
+                floor.getY() + SHAFT_DEPTH + MARGIN);
+    }
+
+    /** A chunk this scene forced, and the level it is in. */
+    public record Held(ResourceKey<Level> dimension, ChunkPos chunk) {}
+
+    /**
+     * The chunks the fills of one scene forced and nothing else held, kept until the scene is done so that they do not unload and regenerate
+     * before the camera arrives. Close it at the end of the scene, also when it throws.
+     */
+    public record Holds(TestServerContext server, List<Held> held) implements AutoCloseable {
+        public static Holds of(TestServerContext server) {
+            return new Holds(server, new ArrayList<>());
+        }
+
+        @Override
+        public void close() {
+            List<Held> release = List.copyOf(held);
+            held.clear();
+            server.runOnServer(s -> {
+                for (Held h : release) {
+                    // force-ok: releases what fillBiome forced
+                    ClientLight.serverLevel(s, h.dimension())
+                            .setChunkForced(h.chunk().x(), h.chunk().z(), false);
+                }
+            });
+        }
     }
 
     /**
      * Fills {@code biome} over {@link #MARGIN} blocks round the scene, from {@code bottomY} to {@code topY}, in slabs (a command fills at
      * most 32,768 blocks, counted in whole 4-block cells). The fill is bounded, not the world's whole height: the campaign world is 2,352 tall.
-     * {@code fillbiome} skips a position in a chunk that is not loaded and says so only in a log line, and {@link RoomCarver} leaves
-     * its chunks loaded only until they unload, so the chunks of the box are held for the fill and every cell of the box is read back after
-     * it: a cell that is not {@code biome} fails the test, naming the columns. A chunk this holds and nothing else did is let go after.
+     * {@code fillbiome} reports a chunk that is not loaded only in the log, so the box's chunks are forced into {@code holds} first and every
+     * cell is read back after.
      */
     public static void fillBiome(
             TestServerContext server,
+            Holds holds,
             ResourceKey<Level> dimension,
             BlockPos floor,
             String biome,
@@ -203,44 +235,37 @@ public final class AtmosphereScenes {
         int maxX = floor.getX() + MARGIN;
         int minZ = floor.getZ() - MARGIN;
         int maxZ = floor.getZ() + MARGIN;
-        List<ChunkPos> held = server.computeOnServer(s -> {
+        server.runOnServer(s -> {
             ServerLevel level = ClientLight.serverLevel(s, dimension);
-            List<ChunkPos> forcedHere = new ArrayList<>();
             for (int cx = minX >> 4; cx <= maxX >> 4; cx++) {
                 for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) {
-                    if (!level.getForceLoadedChunks().contains(new ChunkPos(cx, cz).pack())) {
-                        forcedHere.add(new ChunkPos(cx, cz));
+                    ChunkPos chunk = new ChunkPos(cx, cz);
+                    if (!level.getForceLoadedChunks().contains(chunk.pack())) {
+                        holds.held().add(new Held(dimension, chunk));
                     }
-                    // force-ok: a client test and an evidence scenario have no GameTestHelper to release through; what
-                    // this forces is released below
+                    // force-ok: a client test and an evidence scenario have no GameTestHelper to release through;
+                    // Holds releases what this forces
                     level.setChunkForced(cx, cz, true);
                     level.getChunk(cx, cz);
                 }
             }
-            return forcedHere;
         });
-        try {
-            for (int y = bottomY; y <= topY; y += 4) {
-                server.runCommand("execute in %s run fillbiome %d %d %d %d %d %d %s"
-                        .formatted(dimension.identifier(), minX, y, minZ, maxX, Math.min(y + 3, topY), maxZ, biome));
-            }
-            List<String> missed = server.computeOnServer(s -> unfilledColumns(
-                    ClientLight.serverLevel(s, dimension), biome, minX, maxX, minZ, maxZ, bottomY, topY));
-            ClientChecks.require(
-                    missed.isEmpty(),
-                    "fillbiome did not put every cell round " + floor.toShortString() + " in " + dimension.identifier()
-                            + " (Y " + bottomY + " to " + topY + ") in " + biome + "; " + missed.size()
-                            + " columns have a cell that is not, from "
-                            + missed.stream().limit(8).toList());
-        } finally {
-            server.runOnServer(s -> {
-                ServerLevel level = ClientLight.serverLevel(s, dimension);
-                for (ChunkPos chunk : held) {
-                    // force-ok: releases what this method forced above
-                    level.setChunkForced(chunk.x(), chunk.z(), false);
-                }
-            });
+        for (int y = bottomY; y <= topY; y += 4) {
+            server.runCommand("execute in %s run fillbiome %d %d %d %d %d %d %s"
+                    .formatted(dimension.identifier(), minX, y, minZ, maxX, Math.min(y + 3, topY), maxZ, biome));
         }
+        List<String> missed = server.computeOnServer(s ->
+                unfilledColumns(ClientLight.serverLevel(s, dimension), biome, minX, maxX, minZ, maxZ, bottomY, topY));
+        ClientChecks.require(
+                missed.isEmpty(),
+                "fillbiome did not put every cell round " + floor.toShortString() + " in " + dimension.identifier()
+                        + " (Y " + bottomY + " to " + topY + ") in " + biome + "; " + missed.size()
+                        + " columns have a cell that is not, from "
+                        + missed.stream().limit(8).toList());
+    }
+
+    private static String biomeKey(Holder<Biome> biome) {
+        return biome.unwrapKey().orElseThrow().identifier().toString();
     }
 
     /**
@@ -259,11 +284,7 @@ public final class AtmosphereScenes {
                 }
                 boolean complete = true;
                 for (int y = bottomY & ~3; complete && y <= topY; y += 4) {
-                    complete = chunk.getNoiseBiome(x >> 2, y >> 2, z >> 2)
-                            .unwrapKey()
-                            .orElseThrow()
-                            .identifier()
-                            .toString()
+                    complete = biomeKey(chunk.getNoiseBiome(x >> 2, y >> 2, z >> 2))
                             .equals(biome);
                 }
                 if (!complete) {
