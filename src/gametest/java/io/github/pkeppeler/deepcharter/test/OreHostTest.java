@@ -1,11 +1,12 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreBlock.Host;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
-import io.github.pkeppeler.deepcharter.test.support.Failures;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
@@ -85,7 +86,7 @@ public class OreHostTest {
             int total = found.values().stream().mapToInt(Integer::intValue).sum();
             int right = found.getOrDefault(expectedHost(layer), 0);
             if (total < AT_LEAST || right != total) {
-                throw Failures.failure(
+                throw failure(
                         helper,
                         "layer_%s should hold at least %s ores, all in %s, it holds %s",
                         layer,
@@ -134,7 +135,7 @@ public class OreHostTest {
                 if (!result.consumesAction()
                         || !placed.is(OreBlocks.of(type))
                         || placed.getValue(OreBlock.HOST) != expectedHost(layer)) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "%s placed in layer_%s should sit in %s, it is %s (%s)",
                             type.blockId(),
@@ -165,7 +166,7 @@ public class OreHostTest {
                                 .create(LootContextParamSets.BLOCK),
                         1L);
                 if (drops.size() != 1 || !drops.getFirst().is(OreRegistry.item(type))) {
-                    throw Failures.failure(helper, "%s in %s should drop 1 %s, it drops %s", block, host, type, drops);
+                    throw failure(helper, "%s in %s should drop 1 %s, it drops %s", block, host, type, drops);
                 }
             }
         }
@@ -186,8 +187,7 @@ public class OreHostTest {
             legacy.keySet().removeIf(key -> !key.equals("Name") && !key.equals("id"));
             BlockState old = BlockState.CODEC.parse(NbtOps.INSTANCE, legacy).getOrThrow();
             if (!old.is(OreBlocks.of(type)) || old.getValue(OreBlock.HOST) != Host.PACKED_SHALE) {
-                throw Failures.failure(
-                        helper, "%s saved with no host should load in packed shale, it is %s", type, old);
+                throw failure(helper, "%s saved with no host should load in packed shale, it is %s", type, old);
             }
             BlockState green = OreBlocks.of(type).defaultBlockState().setValue(OreBlock.HOST, Host.GREEN_SHALE);
             BlockState back = BlockState.CODEC
@@ -196,7 +196,7 @@ public class OreHostTest {
                             BlockState.CODEC.encodeStart(NbtOps.INSTANCE, green).getOrThrow())
                     .getOrThrow();
             if (back != green) {
-                throw Failures.failure(helper, "%s in green shale should survive a save, it came back %s", type, back);
+                throw failure(helper, "%s in green shale should survive a save, it came back %s", type, back);
             }
         }
         helper.succeed();

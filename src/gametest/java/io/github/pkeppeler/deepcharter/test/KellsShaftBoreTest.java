@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.BoreBot.SIDE_STEP;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.STUCK_TICKS;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.lavaToLine;
 import static io.github.pkeppeler.deepcharter.test.support.BoreBot.withRotor;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
@@ -25,7 +26,6 @@ import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import io.github.pkeppeler.deepcharter.test.support.BoreBot.Side;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
-import io.github.pkeppeler.deepcharter.test.support.Failures;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -216,7 +216,7 @@ public class KellsShaftBoreTest {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel level = layer(helper);
         BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT)
-                .orElseThrow(() -> Failures.failure(helper, "the colony was not built"));
+                .orElseThrow(() -> failure(helper, "the colony was not built"));
         boolean smoke = REQUESTED_SHAFTS == null || REQUESTED_SHAFTS.isBlank();
         int shafts = smoke ? SMOKE_SHAFTS : shaftCount(helper);
         List<Column> columns = smoke
@@ -294,8 +294,7 @@ public class KellsShaftBoreTest {
             }
             return number;
         } catch (NumberFormatException e) {
-            throw Failures.failure(
-                    helper, "%s must be a whole number, 1 or more, not '%s'", SHAFTS_ENV, REQUESTED_SHAFTS);
+            throw failure(helper, "%s must be a whole number, 1 or more, not '%s'", SHAFTS_ENV, REQUESTED_SHAFTS);
         }
     }
 
@@ -323,7 +322,7 @@ public class KellsShaftBoreTest {
             ScannerPods.fit(server, run.pilot.player(), pod, ComponentTrack.SPOIL_HOPPER, 1);
         }
         if (!run.pilot.player().startRiding(pod)) {
-            throw Failures.failure(helper, "a pilot could not mount the pod at the shaft %s", run.site.origin());
+            throw failure(helper, "a pilot could not mount the pod at the shaft %s", run.site.origin());
         }
         if (run.column == Column.SHAFT_RESERVE) {
             run.pilot.player().getInventory().add(new ItemStack(SlagBrick.item(), CARRIED_BRICKS));
@@ -582,7 +581,7 @@ public class KellsShaftBoreTest {
                 .findFirst()
                 .orElseThrow();
         if (lined.outcome != Outcome.CRUST || bare.outcome != Outcome.CRUST) {
-            throw Failures.failure(
+            throw failure(
                     helper,
                     "both Moles should reach the crust: lined %s at hull %s, bare %s at hull %s",
                     lined.outcome,
@@ -592,7 +591,7 @@ public class KellsShaftBoreTest {
         }
         int bareGaps = gapsLeft(lined.level, bare.site);
         if (bare.contacts < 1 || bareGaps < 2 || bareGaps > 4) {
-            throw Failures.failure(
+            throw failure(
                     helper,
                     "the bare Mole touched lava %s times and left %s gaps open: the shaft has 2 to 4 gaps and a bare Mole meets each",
                     bare.contacts,
@@ -600,7 +599,7 @@ public class KellsShaftBoreTest {
         }
         int linedGaps = gapsLeft(lined.level, lined.site);
         if (lined.contacts != 0 || lined.liningPresses < 2 || linedGaps != 0) {
-            throw Failures.failure(
+            throw failure(
                     helper,
                     "the lined Mole touched lava %s times in %s presses and left %s gaps open, expected none touched, at least 2 presses and every gap lined",
                     lined.contacts,
@@ -608,7 +607,7 @@ public class KellsShaftBoreTest {
                     linedGaps);
         }
         if (lined.bricksUsed < 2) {
-            throw Failures.failure(helper, "the lined Mole used %s bricks on 2 to 4 gaps", lined.bricksUsed);
+            throw failure(helper, "the lined Mole used %s bricks on 2 to 4 gaps", lined.bricksUsed);
         }
     }
 

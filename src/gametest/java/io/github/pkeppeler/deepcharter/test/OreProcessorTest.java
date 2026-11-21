@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -20,7 +22,6 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
-import io.github.pkeppeler.deepcharter.test.support.Failures;
 import io.github.pkeppeler.deepcharter.test.support.LogCapture;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -79,7 +80,7 @@ public class OreProcessorTest {
                                 mock.player().getUUID(),
                                 name + " " + UUID.randomUUID().toString().substring(0, 8))
                         .isPresent()) {
-            throw Failures.failure(helper, "founding a charter for %s should succeed", name);
+            throw failure(helper, "founding a charter for %s should succeed", name);
         }
         return mock;
     }
@@ -143,14 +144,14 @@ public class OreProcessorTest {
 
     private static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> refusal, String what) {
         if (refusal.isPresent()) {
-            throw Failures.failure(helper, "%s should succeed, was refused: %s", what, refusal.get());
+            throw failure(helper, "%s should succeed, was refused: %s", what, refusal.get());
         }
     }
 
     private static void expectRefused(
             GameTestHelper helper, TerminalRefusal expected, Optional<TerminalRefusal> actual, String what) {
         if (!actual.equals(Optional.of(expected))) {
-            throw Failures.failure(helper, "%s should be refused with %s, got %s", what, expected, actual);
+            throw failure(helper, "%s should be refused with %s, got %s", what, expected, actual);
         }
     }
 
@@ -158,7 +159,7 @@ public class OreProcessorTest {
         if (refusal.isEmpty()
                 || !(refusal.get().getContents() instanceof TranslatableContents contents)
                 || !contents.getKey().equals(key)) {
-            throw Failures.failure(helper, "%s should be refused with %s, got %s", what, key, refusal);
+            throw failure(helper, "%s should be refused with %s, got %s", what, key, refusal);
         }
     }
 
@@ -194,7 +195,7 @@ public class OreProcessorTest {
                 if (balance(server, player) != before + cargo
                         || near.cargoUsed() != 0
                         || !near.cargo().entries().isEmpty()) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "selling the cargo should credit %s and empty the bay: balance %s -> %s, bay %s",
                             cargo,
@@ -203,7 +204,7 @@ public class OreProcessorTest {
                             near.cargo().entries());
                 }
                 if (far.cargoUsed() != 1 || ores(player) != 3) {
-                    throw Failures.failure(
+                    throw failure(
                             helper, "a pod out of the radius and the inventory must be left alone by a cargo sale");
                 }
 
@@ -213,7 +214,7 @@ public class OreProcessorTest {
                         "selling the inventory");
                 long inventory = worth(OreType.BRONZIUM, OreType.CICATRIUM, OreType.SILVERIUM);
                 if (balance(server, player) != before + cargo + inventory || ores(player) != 0) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "selling the inventory should credit %s and take every ore: balance %s -> %s, %s ore left",
                             inventory,
@@ -222,7 +223,7 @@ public class OreProcessorTest {
                             ores(player));
                 }
                 if (far.cargoUsed() != 1) {
-                    throw Failures.failure(helper, "a pod out of the radius must keep its cargo");
+                    throw failure(helper, "a pod out of the radius must keep its cargo");
                 }
             } finally {
                 near.discard();
@@ -247,7 +248,7 @@ public class OreProcessorTest {
                         Terminals.act(player, processor, OreProcessor.SELL_INVENTORY, new CompoundTag()),
                         "selling " + ore);
                 if (balance(server, player) != before + ore.value()) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "%s should sell for %s, balance went %s -> %s",
                             ore,
@@ -281,7 +282,7 @@ public class OreProcessorTest {
                         Terminals.act(player, processor, OreProcessor.SELL_INVENTORY, new CompoundTag()),
                         "an inventory sale by a player on no charter");
                 if (pod.cargoUsed() != 1 || ores(player) != 1) {
-                    throw Failures.failure(helper, "a refused sale must consume nothing");
+                    throw failure(helper, "a refused sale must consume nothing");
                 }
             } finally {
                 pod.discard();
@@ -318,7 +319,7 @@ public class OreProcessorTest {
                         Terminals.act(player, processor, OreProcessor.SELL_INVENTORY, new CompoundTag()),
                         "an inventory sale into a full account");
                 if (balance(server, player) != before || pod.cargoUsed() != 1 || ores(player) != 1) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "a full account must keep the ore and the balance: balance %s -> %s, cargo %s, carried %s",
                             before,
@@ -350,7 +351,7 @@ public class OreProcessorTest {
                 tag.putInt("cargo_version", 99);
                 pod.cargo().load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), tag), pod);
                 if (pod.cargo().isReadable()) {
-                    throw Failures.failure(helper, "the test needs unreadable cargo");
+                    throw failure(helper, "the test needs unreadable cargo");
                 }
                 long before = balance(server, player);
                 expectKey(
@@ -364,7 +365,7 @@ public class OreProcessorTest {
                         Terminals.act(player, processor, OreProcessor.SELL_CARGO, new CompoundTag()),
                         "selling unreadable cargo through the terminal");
                 if (balance(server, player) != before) {
-                    throw Failures.failure(helper, "unreadable cargo must credit nothing");
+                    throw failure(helper, "unreadable cargo must credit nothing");
                 }
             } finally {
                 pod.discard();
@@ -401,7 +402,7 @@ public class OreProcessorTest {
                 pod.discard();
             }
             if (balance(server, player) != 0) {
-                throw Failures.failure(helper, "nothing sold must credit nothing");
+                throw failure(helper, "nothing sold must credit nothing");
             }
         });
         helper.succeed();
@@ -442,7 +443,7 @@ public class OreProcessorTest {
                             || mine.cargoUsed() != 0
                             || theirs.cargoUsed() != 1
                             || theirs.cargo().entries().size() != 1) {
-                        throw Failures.failure(
+                        throw failure(
                                 helper,
                                 "only the own pod may be sold and dumped: balance %s -> %s, rival cargo %s",
                                 before,
@@ -474,7 +475,7 @@ public class OreProcessorTest {
                 Optional<CharterRefusal> left =
                         Charters.leave(server, lapsed.player().getUUID());
                 if (left.isPresent()) {
-                    throw Failures.failure(helper, "leaving should succeed, was refused: %s", left.get());
+                    throw failure(helper, "leaving should succeed, was refused: %s", left.get());
                 }
                 long before = balance(server, player);
                 expectDone(
@@ -484,7 +485,7 @@ public class OreProcessorTest {
                 if (balance(server, player) != before + worth(OreType.IRONIUM, OreType.GOLDIUM)
                         || unowned.cargoUsed() != 0
                         || dormant.cargoUsed() != 0) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "an unowned pod and a dormant owner's pod are anyone's: balance %s -> %s",
                             before,
@@ -514,7 +515,7 @@ public class OreProcessorTest {
                         OreProcessor.sellCargo(context(server, player, processor)),
                         "selling a pod whose owner is unknown");
                 if (pod.cargoUsed() != 1 || balance(server, player) != 0) {
-                    throw Failures.failure(helper, "a pod with unreadable components must keep its cargo");
+                    throw failure(helper, "a pod with unreadable components must keep its cargo");
                 }
             } finally {
                 pod.discard();
@@ -556,14 +557,14 @@ public class OreProcessorTest {
                 if (balance(server, player) != before + OreType.SILVERIUM.value()
                         || good.cargoUsed() != 0
                         || bad.cargo().isReadable()) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "the readable pod is sold and the unreadable one is left: balance %s -> %s",
                             before,
                             balance(server, player));
                 }
                 if (logged != 1) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "the skipped pod is logged once, \"%s\" appeared %s times in %s",
                             once,
@@ -627,7 +628,7 @@ public class OreProcessorTest {
                         || after.spoil() != 1
                         || balance(server, player) != before
                         || bricksCarried(player) != 0) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "7 spoil make 3 bricks for $0 and leave 1 spoil: rack %s, spoil %s, balance %s -> %s, carried %s",
                             after.bricks(),
@@ -666,7 +667,7 @@ public class OreProcessorTest {
                         "fusing into a nearly full rack");
                 PodLining.State after = PodLining.of(pod);
                 if (after.bricks() != 24 || after.spoil() != 0 || bricksCarried(player) != 8) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "2 bricks fill the rack and 8 go to the pack: rack %s, spoil %s, carried %s",
                             after.bricks(),
@@ -687,7 +688,7 @@ public class OreProcessorTest {
                         OreProcessor.fuseSpoil(context(server, player, processor)),
                         "fusing with nowhere to put the brick");
                 if (PodLining.of(pod).spoil() != 10 || balance(server, player) != before) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "a refused fuse takes no spoil and no money: spoil %s, balance %s -> %s",
                             PodLining.of(pod).spoil(),
@@ -738,7 +739,7 @@ public class OreProcessorTest {
             int expectedRack,
             int expectedCarried,
             String what,
-            String failure) {
+            String message) {
         MinecraftServer server = helper.getLevel().getServer();
         withProcessorOnline(server, () -> {
             MockPlayer mock = player(helper, player, true);
@@ -755,10 +756,10 @@ public class OreProcessorTest {
                 if (after.bricks() != expectedRack
                         || after.spoil() != 0
                         || bricksCarried(serverPlayer) != expectedCarried) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "%s: rack %s, spoil %s, carried %s",
-                            failure,
+                            message,
                             after.bricks(),
                             after.spoil(),
                             bricksCarried(serverPlayer));
@@ -804,7 +805,7 @@ public class OreProcessorTest {
                         Terminals.act(player, processor, OreProcessor.FUSE_SPOIL, new CompoundTag()),
                         "fusing with $0");
                 if (PodLining.of(pod).bricks() != 2 || PodLining.of(pod).spoil() != 0 || balance(server, player) != 0) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "4 spoil make 2 bricks with no money: rack %s, spoil %s, balance %s",
                             PodLining.of(pod).bricks(),
@@ -847,7 +848,7 @@ public class OreProcessorTest {
                     if (PodLining.of(mine).bricks() != 2
                             || PodLining.of(theirs).spoil() != 10
                             || PodLining.of(theirs).bricks() != 0) {
-                        throw Failures.failure(
+                        throw failure(
                                 helper,
                                 "only the own pod is fused: own rack %s, rival spoil %s and rack %s",
                                 PodLining.of(mine).bricks(),
@@ -881,7 +882,7 @@ public class OreProcessorTest {
                         OreProcessor.fuseSpoil(context(server, player, processor)),
                         "fusing a pod whose lining cannot be read");
                 if (!(bad.getAttached(PodLining.STATE) instanceof Versioned.Unreadable<PodLining.State>)) {
-                    throw Failures.failure(helper, "the unreadable lining state must be left as it was read");
+                    throw failure(helper, "the unreadable lining state must be left as it was read");
                 }
             } finally {
                 bad.discard();
@@ -922,7 +923,7 @@ public class OreProcessorTest {
                         || after.bricks() != 5
                         || after.used() != 3
                         || !after.dry()) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "55 spoil press 2 crates for $0 and leave 7 spoil, the rack as it was: crates %s, state %s, balance %s",
                             cratesCarried(player),
@@ -957,7 +958,7 @@ public class OreProcessorTest {
                         OreProcessor.pressCrates(context(server, player, processor)),
                         "pressing 23 spoil, one under a crate");
                 if (PodLining.of(pod).spoil() != 23 || cratesCarried(player) != 0) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "a refused press takes nothing and makes nothing: spoil %s, crates %s",
                             PodLining.of(pod).spoil(),
@@ -970,7 +971,7 @@ public class OreProcessorTest {
                         Terminals.act(player, processor, OreProcessor.PRESS_CRATES, new CompoundTag()),
                         "pressing 24 spoil with $0");
                 if (cratesCarried(player) != 1 || PodLining.of(pod).spoil() != 0 || balance(server, player) != 0) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "24 spoil press 1 crate with no money: crates %s, spoil %s, balance %s",
                             cratesCarried(player),
@@ -1005,7 +1006,7 @@ public class OreProcessorTest {
                         Terminals.act(player, processor, OreProcessor.PRESS_CRATES, new CompoundTag()),
                         "pressing with room for one crate");
                 if (cratesCarried(player) != 64 || PodLining.of(pod).spoil() != 40) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "room for one crate makes one and keeps 40 spoil: crates %s, spoil %s",
                             cratesCarried(player),
@@ -1017,7 +1018,7 @@ public class OreProcessorTest {
                         OreProcessor.pressCrates(context(server, player, processor)),
                         "pressing into a full pack");
                 if (PodLining.of(pod).spoil() != 40) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "a refused press takes no spoil, the pod holds %s",
                             PodLining.of(pod).spoil());
@@ -1056,7 +1057,7 @@ public class OreProcessorTest {
                         || PodLining.of(first).spoil() != 16
                         || PodLining.of(second).spoil() != 16
                         || PodLining.of(theirs).spoil() != 64) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "one crate from each own pod and none from the rival's: crates %s, spoil %s and %s, rival %s",
                             cratesCarried(player),
@@ -1089,7 +1090,7 @@ public class OreProcessorTest {
                         OreProcessor.pressCrates(context(server, player, processor)),
                         "pressing a pod whose lining cannot be read");
                 if (!(bad.getAttached(PodLining.STATE) instanceof Versioned.Unreadable<PodLining.State>)) {
-                    throw Failures.failure(helper, "the unreadable lining state must be left as it was read");
+                    throw failure(helper, "the unreadable lining state must be left as it was read");
                 }
             } finally {
                 bad.discard();
@@ -1155,7 +1156,7 @@ public class OreProcessorTest {
                         || pod.cargo().count(OreType.BRONZIUM) + second.cargo().count(OreType.BRONZIUM) != 2
                         || pod.cargo().count(OreType.IRONIUM) != 1
                         || balance(server, player) != before) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "2 Bronzium move to the pack and pay nothing: packed %s, cargo %s and %s, iron %s, balance %s -> %s",
                             carried(player, OreType.BRONZIUM),
@@ -1166,7 +1167,7 @@ public class OreProcessorTest {
                             balance(server, player));
                 }
                 if (pod.cargoUsed() != pod.cargo().entries().size()) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "the pod's synced cargo count must follow its cargo: %s of %s",
                             pod.cargoUsed(),
@@ -1181,7 +1182,7 @@ public class OreProcessorTest {
                         || second.cargo().count(OreType.BRONZIUM) != 0
                         || pod.cargo().count(OreType.IRONIUM) != 1
                         || balance(server, player) != before) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "asking for more takes what the pods hold, from both: packed %s, cargo %s and %s",
                             carried(player, OreType.BRONZIUM),
@@ -1259,7 +1260,7 @@ public class OreProcessorTest {
                 if (carried(player, OreType.IRONIUM) + carried(player, OreType.BRONZIUM) != 0
                         || theirs.cargo().count(OreType.BRONZIUM) != 1
                         || mine.cargo().count(OreType.IRONIUM) != 1) {
-                    throw Failures.failure(helper, "a refused withdrawal changes nothing");
+                    throw failure(helper, "a refused withdrawal changes nothing");
                 }
             } finally {
                 theirs.discard();
@@ -1285,7 +1286,7 @@ public class OreProcessorTest {
                                 drifter.player(), processor, OreProcessor.WITHDRAW_ORE, withdrawalArgs("bronzium", 1)),
                         "a withdrawal by a player on no charter");
                 if (unowned.cargo().count(OreType.BRONZIUM) != 1) {
-                    throw Failures.failure(helper, "a refused withdrawal leaves the cargo");
+                    throw failure(helper, "a refused withdrawal leaves the cargo");
                 }
             } finally {
                 unowned.discard();
@@ -1312,7 +1313,7 @@ public class OreProcessorTest {
                         "withdrawing with room for one");
                 if (carried(player, OreType.IRONIUM) != packed + 1
                         || pod.cargo().count(OreType.IRONIUM) != 2) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "room for one takes one and leaves 2 in the cargo: packed %s of %s, cargo %s",
                             carried(player, OreType.IRONIUM),
@@ -1325,7 +1326,7 @@ public class OreProcessorTest {
                         OreProcessor.withdrawOre(withdrawal(server, player, near, "ironium", 1)),
                         "withdrawing into a full pack");
                 if (pod.cargo().count(OreType.IRONIUM) != 2) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "a refused withdrawal takes nothing, the cargo holds %s",
                             pod.cargo().count(OreType.IRONIUM));
@@ -1356,7 +1357,7 @@ public class OreProcessorTest {
                         .equals(List.of(
                                 new ProcessorView.Hold(OreType.BRONZIUM, 3),
                                 new ProcessorView.Hold(OreType.SILVERIUM, 1)))) {
-                    throw Failures.failure(helper, "the view lists the ore of the pods, by ore: %s", view.cargo());
+                    throw failure(helper, "the view lists the ore of the pods, by ore: %s", view.cargo());
                 }
                 TagValueOutput output =
                         TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
@@ -1369,7 +1370,7 @@ public class OreProcessorTest {
                         .equals(List.of(
                                 new ProcessorView.Hold(OreType.BRONZIUM, 2),
                                 new ProcessorView.Hold(OreType.SILVERIUM, 1)))) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "the view skips a pod whose cargo it cannot read and lists the other: %s",
                             skipped.cargo());
@@ -1379,7 +1380,7 @@ public class OreProcessorTest {
                         Terminals.act(player, processor, OreProcessor.WITHDRAW_ORE, withdrawalArgs("bronzium", 5)),
                         "withdrawing beside a pod with unreadable cargo");
                 if (carried(player, OreType.BRONZIUM) != 2 || good.cargo().count(OreType.BRONZIUM) != 0) {
-                    throw Failures.failure(
+                    throw failure(
                             helper,
                             "the readable pod gives its 2 Bronzium: packed %s",
                             carried(player, OreType.BRONZIUM));
@@ -1391,7 +1392,7 @@ public class OreProcessorTest {
                         OreProcessor.withdrawOre(withdrawal(server, player, processor, "bronzium", 1)),
                         "withdrawing when only unreadable cargo is parked");
                 if (bad.cargo().isReadable()) {
-                    throw Failures.failure(helper, "the unreadable cargo must be left as it was read");
+                    throw failure(helper, "the unreadable cargo must be left as it was read");
                 }
             } finally {
                 good.discard();

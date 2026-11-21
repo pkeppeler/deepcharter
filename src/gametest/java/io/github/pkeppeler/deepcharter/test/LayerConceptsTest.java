@@ -1,8 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
-import io.github.pkeppeler.deepcharter.test.support.Failures;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.Hold;
 import io.github.pkeppeler.deepcharter.test.support.LayerConceptScenes.Scene;
@@ -43,21 +44,21 @@ public class LayerConceptsTest {
         Hold hold = LayerConceptScenes.heldBy(helper);
         List<Scene> scenes = LayerConceptScenes.read(server);
         if (scenes.size() != LayerConceptScenes.LAYERS.size()) {
-            throw Failures.failure(helper, "%s scenes, not one for each layer", scenes.size());
+            throw failure(helper, "%s scenes, not one for each layer", scenes.size());
         }
         for (Scene scene : scenes) {
             LayerConceptScenes.place(hold, server, scene, size);
             ServerLevel level = scene.level(server);
             Counts counts = count(level, scene.origin(), size);
             if (counts.shellOpen > 0) {
-                throw Failures.failure(
+                throw failure(
                         helper,
                         "scene %s has %s open blocks in the shell of its box: a still could show the world behind it",
                         scene.key(),
                         counts.shellOpen);
             }
             if (counts.lights < 1 || counts.companyRock < COMPANY_ROCK_BLOCKS || counts.crust < CRUST_BLOCKS) {
-                throw Failures.failure(
+                throw failure(
                         helper,
                         "scene %s has %s light blocks, %s Company Rock and %s breach crust",
                         scene.key(),
@@ -66,7 +67,7 @@ public class LayerConceptsTest {
                         counts.crust);
             }
             if (counts.lava > 0) {
-                throw Failures.failure(
+                throw failure(
                         helper,
                         "scene %s holds %s lava before the camera arrives; the scenario places it",
                         scene.key(),
@@ -75,7 +76,7 @@ public class LayerConceptsTest {
             for (View view : scene.views()) {
                 Vec3 eye = scene.absolute(view.eye());
                 if (!level.getBlockState(BlockPos.containing(eye)).isAir()) {
-                    throw Failures.failure(
+                    throw failure(
                             helper, "scene %s: the camera of %s at %s is in a block", scene.key(), view.name(), eye);
                 }
             }
@@ -94,13 +95,13 @@ public class LayerConceptsTest {
             ServerLevel level = scene.level(server);
             for (BlockPos at : scene.lava()) {
                 if (!level.getBlockState(scene.origin().offset(at)).isAir()) {
-                    throw Failures.failure(helper, "scene %s: the lava source %s is not in air", scene.key(), at);
+                    throw failure(helper, "scene %s: the lava source %s is not in air", scene.key(), at);
                 }
             }
             LayerConceptScenes.startLava(server, scene);
             for (BlockPos at : scene.lava()) {
                 if (!level.getBlockState(scene.origin().offset(at)).is(Blocks.LAVA)) {
-                    throw Failures.failure(helper, "scene %s: the lava source %s did not take", scene.key(), at);
+                    throw failure(helper, "scene %s: the lava source %s did not take", scene.key(), at);
                 }
             }
             LayerConceptScenes.release(hold, server, scene, size);
@@ -120,7 +121,7 @@ public class LayerConceptsTest {
             for (String light : List.of("company", "deep")) {
                 Identifier id = LayerConceptScenes.atmosphere(layer, light);
                 EnvironmentAttributeMap attributes = biomes.get(ResourceKey.create(Registries.BIOME, id))
-                        .orElseThrow(() -> Failures.failure(helper, "the biome %s does not load", id))
+                        .orElseThrow(() -> failure(helper, "the biome %s does not load", id))
                         .value()
                         .getAttributes();
                 for (EnvironmentAttribute<?> attribute : List.of(
@@ -130,17 +131,16 @@ public class LayerConceptsTest {
                         EnvironmentAttributes.FOG_START_DISTANCE,
                         EnvironmentAttributes.FOG_END_DISTANCE)) {
                     if (!attributes.contains(attribute)) {
-                        throw Failures.failure(helper, "the biome %s sets no %s", id, attribute);
+                        throw failure(helper, "the biome %s sets no %s", id, attribute);
                     }
                 }
                 Object thisFog = attributes.applyModifier(EnvironmentAttributes.FOG_COLOR, new Vector3f());
                 Object tint = attributes.applyModifier(EnvironmentAttributes.BLOCK_LIGHT_TINT, new Vector3f());
                 if (fog != null && !fog.equals(thisFog)) {
-                    throw Failures.failure(
-                            helper, "layer %s: the two kinds of light have different fog colours", layer);
+                    throw failure(helper, "layer %s: the two kinds of light have different fog colours", layer);
                 }
                 if (tintCompany != null && tintCompany.equals(tint)) {
-                    throw Failures.failure(helper, "layer %s: the company and deep lamp tints are the same", layer);
+                    throw failure(helper, "layer %s: the company and deep lamp tints are the same", layer);
                 }
                 fog = thisFog;
                 tintCompany = tint;
