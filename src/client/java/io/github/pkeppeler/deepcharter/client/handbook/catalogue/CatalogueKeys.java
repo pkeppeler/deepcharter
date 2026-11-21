@@ -1,12 +1,14 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookKeys;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.resources.Identifier;
 
-/** The catalogue's keys, rebindable: R on an item shows its recipes, U its uses and A stars it. */
+/**
+ * The catalogue's keys, rebindable, in the mod's key category ({@link HandbookKeys}): R on an item shows its recipes, U its uses and A stars
+ * it. R is also the pilot's lining key, which is used only in a pod with no screen open, so the two never meet.
+ */
 public final class CatalogueKeys {
     public static final KeyMapping RECIPES = key("recipes", InputConstants.KEY_R);
     public static final KeyMapping USES = key("uses", InputConstants.KEY_U);
@@ -19,7 +21,7 @@ public final class CatalogueKeys {
                 "key.deepcharter.catalogue." + name,
                 InputConstants.Type.KEYBOARD,
                 code,
-                KeyMapping.Category.register(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "main")));
+                HandbookKeys.OPEN.getCategory());
     }
 
     static void register() {
