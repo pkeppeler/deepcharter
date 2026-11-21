@@ -1,0 +1,136 @@
+{
+  "textures": {
+    "horn": "deepcharter:block/phonograph_horn",
+    "particle": "#horn"
+  },
+  "elements": [
+    {
+      "from": [
+        6,
+        14,
+        6
+      ],
+      "to": [
+        10,
+        16,
+        10
+      ],
+      "faces": {
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "down": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "from": [
+        7,
+        10,
+        7
+      ],
+      "to": [
+        9,
+        14,
+        9
+      ],
+      "faces": {
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "down": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "from": [
+        6,
+        8,
+        6
+      ],
+      "to": [
+        10,
+        10,
+        10
+      ],
+      "faces": {
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "down": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "from": [
+        4,
+        6,
+        4
+      ],
+      "to": [
+        12,
+        8,
+        12
+      ],
+      "faces": {
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "down": {
+          "texture": "#horn"
+        }
+      }
+    }
+  ]
+}

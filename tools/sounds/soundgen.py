@@ -17,7 +17,8 @@ so a recipe edited without a rebuild fails too.
 
 The wax cylinders' recordings (the phonograph folder) are not recipes: they are processed recordings, made by tools/sounds/first_sounds.py
 from downloaded sources and owned by tools/sounds/first_sounds.json, which has the hash of each committed OGG. `--check` accepts exactly
-those OGGs and asks `first_sounds.check` about them.
+those OGGs and asks `first_sounds.check` about them. The ambience's fragments (the ambience folder) are the same kind of thing, made by
+tools/sounds/ambience.py and owned by tools/sounds/ambience.json, and `--check` asks `ambience.check` about them.
 
 Standard library and ffmpeg only; this Mac's ffmpeg has the native Vorbis encoder alone, which writes stereo.
 """
@@ -34,6 +35,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+import ambience  # noqa: E402
 import first_sounds  # noqa: E402
 import recipes  # noqa: E402
 
@@ -107,6 +109,8 @@ def check(names, out, manifest):
     # The recordings' manifest sits beside the recipes' one; a manifest that is not there owns nothing, so its OGGs count as strays.
     recordings_manifest = manifest.with_name(first_sounds.MANIFEST.name)
     recordings = first_sounds.owned(recordings_manifest)
+    fragments_manifest = manifest.with_name(ambience.MANIFEST.name)
+    recordings |= ambience.owned(fragments_manifest)
     for stray in sorted(out.rglob("*.ogg")):
         name = stray.relative_to(out).with_suffix("").as_posix()
         if name not in recipes.RECIPES and name not in recordings:
@@ -115,6 +119,8 @@ def check(names, out, manifest):
         problems.append(f"{name}: the manifest lists a sound with no recipe")
     if recordings_manifest.is_file():
         problems += first_sounds.check(out, recordings_manifest)
+    if fragments_manifest.is_file():
+        problems += ambience.check(out, fragments_manifest)
     if problems:
         print("\n".join(problems), file=sys.stderr)
         return 1

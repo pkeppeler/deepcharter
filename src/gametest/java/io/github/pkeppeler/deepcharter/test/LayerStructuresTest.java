@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
+import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -92,7 +93,17 @@ public class LayerStructuresTest {
                 Map.of(Blocks.LADDER, height, Blocks.CANDLE, 1, HandbookRegistry.NOTE, 1);
             case GALLERY -> Map.of(Blocks.CONCRETE.black(), 1, Blocks.RAW_IRON_BLOCK, 1, HandbookRegistry.NOTE, 1);
             case PUNCH_CLOCK ->
-                Map.of(Blocks.BOOKSHELF, 1, Blocks.SEA_LANTERN, 1, Blocks.IRON_BLOCK, 1, HandbookRegistry.NOTE, 1);
+                Map.of(
+                        Blocks.BOOKSHELF,
+                        1,
+                        Blocks.SEA_LANTERN,
+                        1,
+                        Blocks.IRON_BLOCK,
+                        1,
+                        HandbookRegistry.NOTE,
+                        1,
+                        AmbienceRegistry.COMPANY_HORN,
+                        1);
             case RAILS -> Map.of(Blocks.OAK_PLANKS, 1, Blocks.OAK_LOG, 1, Blocks.RAIL, 1);
             case KELLS_SHAFT -> Map.of(SlagBrick.BLOCK, 12, Blocks.OAK_PLANKS, 1, Blocks.RAIL, 1, Blocks.LAVA, 2);
             case WRECK -> Map.of(Blocks.BLACKSTONE, 1, Blocks.DEEPSLATE_TILES, 1, Blocks.RAIL, 1);
