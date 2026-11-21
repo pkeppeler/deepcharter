@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.BlockPos;
@@ -16,10 +18,14 @@ public class StalkCollapseScenario extends EvidenceScenario {
     private static final int TALL_ENOUGH = 4;
 
     private static final int GREAT_HEIGHT = 10;
-    /** The player starts this far south of the foot, so that the whole stalk is in view as it comes down. */
-    private static final int WATCH_DISTANCE = 9;
+    /** The player starts this far south of the foot, so that the whole stalk, cap and all, is in view. */
+    private static final int WATCH_DISTANCE = 13;
     /** Backing away from the stalk after the break, for the first part of the collapse: a quarter of a second of walking. */
     private static final int BACK_AWAY_TICKS = 24;
+    /** The quiet walk up to the foot, ending a step inside the reach of a bare hand (about 9.5 blocks from a start 13 away). */
+    private static final int APPROACH_TICKS = 44;
+    /** The height, in blocks above the foot, that the camera looks at: the middle of a great stalk, so that its cap is in view from a distance. */
+    private static final int MIDDLE = 9;
     /** The collapse of the tallest great stalk: its sag, a step for each layer and its cap, and a margin. */
     private static final int COLLAPSE_TICKS = 100;
 
@@ -41,25 +47,45 @@ public class StalkCollapseScenario extends EvidenceScenario {
                 return GatherWalk.nearest(server, "fungal_stalk", true, WATCH_DISTANCE, TALL_ENOUGH);
             }
         });
-        GatherWalk walk = new GatherWalk(this, context, singleplayer, WATCH_DISTANCE);
+        // The recording is the stalk and nothing else: no HUD, hands or item name, and no toast over it.
+        EvidencePins.handsHidden = true;
+        EvidencePins.itemNameHidden = true;
+        try {
+            ClientChecks.withHudHidden(context, () -> collapse(context, singleplayer, foot));
+        } finally {
+            EvidencePins.reset();
+        }
+    }
+
+    /** The cut: standing, a walk up and the break with no frames, then the sag, the puff and the stalk settled. */
+    private void collapse(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos foot) {
+        BlockPos middle = foot.above(MIDDLE);
+        GatherWalk walk = new GatherWalk(this, context, singleplayer, WATCH_DISTANCE, false);
         walk.stand(foot);
+        context.getInput().lookAt(middle);
+        context.waitTicks(10); // tick-wait: the turned view renders before the still
+        clean(context);
         screenshot(context, "standing");
-        walk.walk(GatherWalk.WALK_UP_TICKS);
+        frame(context);
+        walk.walk(APPROACH_TICKS);
         walk.breakBlock(foot);
-        BlockPos watched = foot.above(TALL_ENOUGH);
         context.getInput().holdKey(options -> options.keyDown);
         for (int tick = 0; tick < COLLAPSE_TICKS; tick += GatherWalk.TICKS_PER_FRAME) {
             if (tick == BACK_AWAY_TICKS) {
                 context.getInput().releaseKey(options -> options.keyDown);
             }
-            context.getInput().lookAt(watched);
+            context.getInput().lookAt(middle);
             context.waitTicks(
                     GatherWalk.TICKS_PER_FRAME); // tick-wait: the collapse takes a fixed number of server ticks
+            clean(context);
             frame(context);
         }
         context.getInput().releaseKey(options -> options.keyDown);
         screenshot(context, "collapsed");
-        walk.walk(GatherWalk.PICK_UP_TICKS);
-        screenshot(context, "gathered");
+    }
+
+    /** Clears the toasts ("New Recipe Unlocked") that would cover the frame. */
+    private static void clean(ClientGameTestContext context) {
+        context.runOnClient(client -> client.gui.toastManager().clear());
     }
 }

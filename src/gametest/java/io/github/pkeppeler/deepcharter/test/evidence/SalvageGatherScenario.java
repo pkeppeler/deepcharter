@@ -35,7 +35,7 @@ public class SalvageGatherScenario extends EvidenceScenario {
                 .getServer()
                 .computeOnServer(
                         server -> GatherWalk.nearest(server, "fungal_stalk", true, START_DISTANCE, ANY_HEIGHT));
-        GatherWalk walk = new GatherWalk(this, context, singleplayer, START_DISTANCE);
+        GatherWalk walk = new GatherWalk(this, context, singleplayer, START_DISTANCE, true);
         walk.gather(crate);
         walk.gather(stalk);
         screenshot(context, "gathered");

@@ -43,12 +43,20 @@ final class GatherWalk {
     private final TestSingleplayerContext world;
     /** How far south of a block the player starts. */
     private final int distance;
+    /** Whether the walk records frames of itself: a scenario that cuts to the moment after the walk turns it off. */
+    private final boolean framed;
 
-    GatherWalk(EvidenceScenario scenario, ClientGameTestContext ctx, TestSingleplayerContext world, int distance) {
+    GatherWalk(
+            EvidenceScenario scenario,
+            ClientGameTestContext ctx,
+            TestSingleplayerContext world,
+            int distance,
+            boolean framed) {
         this.scenario = scenario;
         this.ctx = ctx;
         this.world = world;
         this.distance = distance;
+        this.framed = framed;
     }
 
     /** Builds the tour's world, pins it, puts the camera in first person and empties the pack, and runs {@code scenes} in it. */
@@ -153,7 +161,9 @@ final class GatherWalk {
                                 .hasChunk(target.getX() >> 4, target.getZ() >> 4));
         ctx.getInput().lookAt(target);
         ctx.waitTicks(10); // tick-wait: the chunks and the light round the player come in
-        scenario.frame(ctx);
+        if (framed) {
+            scenario.frame(ctx);
+        }
     }
 
     /** Holds forward for {@code ticks} ticks, a frame every {@link #TICKS_PER_FRAME}. */
@@ -161,13 +171,15 @@ final class GatherWalk {
         ctx.getInput().holdKey(options -> options.keyUp);
         for (int tick = 0; tick < ticks; tick += TICKS_PER_FRAME) {
             ctx.waitTicks(TICKS_PER_FRAME); // tick-wait: a walk of a fixed length
-            scenario.frame(ctx);
+            if (framed) {
+                scenario.frame(ctx);
+            }
         }
         ctx.getInput().releaseKey(options -> options.keyUp);
     }
 
     /** Mines the block bare handed, a frame every {@link #TICKS_PER_FRAME} ticks. */
     void breakBlock(BlockPos target) {
-        scenario.mineBlock(ctx, world, target, TICKS_PER_FRAME);
+        scenario.mineBlock(ctx, world, target, framed ? TICKS_PER_FRAME : EvidenceScenario.NO_FRAMES);
     }
 }
