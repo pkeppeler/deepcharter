@@ -148,7 +148,7 @@ public class LightSyncSafetyNetTest {
                     }
                     case 3 -> {
                         // The chunk lies dark and its light has stopped changing.
-                        if (!steady(level, home, lamp[0], steady, waited, marker)) {
+                        if (!steady(level, home, home, lamp[0], steady, waited, marker)) {
                             return;
                         }
                         dark[0] = steady[0];
@@ -157,7 +157,7 @@ public class LightSyncSafetyNetTest {
                     }
                     case 4 -> {
                         if (changedSections(level, home, lamp[0], dark[0]).isEmpty()
-                                || !steady(level, home, lamp[0], steady, waited, marker)) {
+                                || !steady(level, home, home, lamp[0], steady, waited, marker)) {
                             return;
                         }
                         changed[0] = changedSections(level, home, lamp[0], dark[0]);
@@ -182,7 +182,7 @@ public class LightSyncSafetyNetTest {
                         // Held again from the send on, so no comparison of the net sees the chunk lit or half dark.
                         keepHeld(level, lamp[0]);
                         if (!changedSections(level, home, lamp[0], dark[0]).isEmpty()
-                                || !steady(level, home, lamp[0], steady, waited, marker)) {
+                                || !steady(level, home, home, lamp[0], steady, waited, marker)) {
                             return;
                         }
                         // The sends so far are not the ones the case is about. The last hold, as a draw's, ends with
@@ -324,7 +324,7 @@ public class LightSyncSafetyNetTest {
                     case 3 -> {
                         boolean over = holdsEnded(List.of(lampChunk));
                         deadline.await(helper, level, over, () -> "the hold of " + lampChunk + " did not end");
-                        if (!over || !steady(level, beyond, lamp[0], steady, waited, marker)) {
+                        if (!over || !steady(level, beyond, lampChunk, lamp[0], steady, waited, marker)) {
                             return;
                         }
                         lit[0] = steady[0];
@@ -345,6 +345,15 @@ public class LightSyncSafetyNetTest {
                         phase[0] = 5;
                     }
                     case 5 -> {
+                        // The lamp's removal is published: every task queued for it has run and the light has stopped
+                        // changing.
+                        if (!steady(level, beyond, lampChunk, lamp[0], steady, waited, marker)) {
+                            return;
+                        }
+                        waited[0] = 0;
+                        phase[0] = 6;
+                    }
+                    case 6 -> {
                         if (waited[0]++ < NET_WAIT_TICKS) {
                             return;
                         }
@@ -409,10 +418,15 @@ public class LightSyncSafetyNetTest {
         }
     }
 
-    /** True once the stored light of the chunk has been the same for {@value #STEADY_TICKS} ticks in a row; {@code last} holds it. */
+    /**
+     * True once the light tasks queued for {@code marked} have run and the stored light of {@code chunk} has been the same for
+     * {@value #STEADY_TICKS} ticks in a row; {@code last} holds it. Light spreads from one chunk to the next in the batch that runs
+     * the first's tasks, so a marker on the lamp's chunk covers the neighbour's light.
+     */
     private static boolean steady(
             ServerLevel level,
             ChunkPos chunk,
+            ChunkPos marked,
             BlockPos lamp,
             int[][] last,
             int[] same,
@@ -420,7 +434,7 @@ public class LightSyncSafetyNetTest {
         // Every light task queued for the chunk so far has run: a marker the light engine completes behind them.
         CompletableFuture<?> waiting = marker.get();
         if (waiting == null) {
-            waiting = ((ThreadedLevelLightEngine) level.getLightEngine()).waitForPendingTasks(chunk.x(), chunk.z());
+            waiting = ((ThreadedLevelLightEngine) level.getLightEngine()).waitForPendingTasks(marked.x(), marked.z());
             marker.set(waiting);
         }
         if (!waiting.isDone()) {
