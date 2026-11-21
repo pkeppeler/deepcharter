@@ -91,7 +91,9 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext context) {
-        ClientTestLog.start(this);
+        // Long by design: a dozen looks of 160 settle ticks each, which a loaded runner stretches past the 180 s of a
+        // class (it ran 178 s).
+        ClientTestLog.startUntimed(this);
         boolean flickerWas = EvidencePins.lightFlickerOff;
         EvidencePins.lightFlickerOff = true;
         try (TestSingleplayerContext singleplayer = context.worldBuilder()
