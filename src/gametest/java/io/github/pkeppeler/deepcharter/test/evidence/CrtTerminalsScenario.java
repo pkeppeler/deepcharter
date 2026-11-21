@@ -26,6 +26,8 @@ import net.minecraft.world.phys.Vec3;
 public class CrtTerminalsScenario extends EvidenceScenario {
     private static final int SETTLE_TICKS = 60;
     private static final double EYE = 1.62;
+    private static final int SWING_FRAMES = 8;
+    private static final int TICKS_PER_FRAME = 2;
 
     @Override
     protected String name() {
@@ -70,10 +72,17 @@ public class CrtTerminalsScenario extends EvidenceScenario {
             }
             for (Map.Entry<String, BlockPos> terminal : terminals.entrySet()) {
                 Vec3 screen = Vec3.atCenterOf(terminal.getValue()).add(0, 0.25, 0);
-                look(singleplayer, screen.add(0, 0.2, 2.6), screen);
+                Vec3 front = screen.add(0, 0.2, 2.6);
+                Vec3 threeQuarter = screen.add(-1.9, 0.9, 1.9);
+                look(singleplayer, front, screen);
                 context.waitTicks(SETTLE_TICKS);
                 screenshot(context, terminal.getKey() + "-front");
-                look(singleplayer, screen.add(-1.9, 0.9, 1.9), screen);
+                // The recording: a slow swing from the front round to three quarters, one frame a step.
+                for (int i = 0; i < SWING_FRAMES; i++) {
+                    look(singleplayer, front.lerp(threeQuarter, (double) i / (SWING_FRAMES - 1)), screen);
+                    context.waitTicks(TICKS_PER_FRAME);
+                    frame(context);
+                }
                 context.waitTicks(SETTLE_TICKS);
                 screenshot(context, terminal.getKey() + "-three-quarter");
             }
@@ -82,6 +91,7 @@ public class CrtTerminalsScenario extends EvidenceScenario {
             look(singleplayer, plinths.add(0, 3, 14), plinths);
             context.waitTicks(SETTLE_TICKS);
             screenshot(context, "plinths");
+            frame(context);
         }
     }
 
