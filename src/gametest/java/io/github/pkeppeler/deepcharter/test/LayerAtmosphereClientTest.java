@@ -16,7 +16,7 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.grou
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.layer1Floor;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.putOutTheLight;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.requireZone;
-import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.standSteady;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.standWithoutSettle;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.todayFloor;
 
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
@@ -306,7 +306,7 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
 
     // ---------------------------------------------------------------------------------------------- reading
 
-    /** Stands the spectator on {@code floor}, waits for the light and the lightmap to settle, and reads the middle of the screen. */
+    /** Stands the spectator on {@code floor} and reads the middle of the screen. */
     private static Reading look(
             ClientGameTestContext context,
             TestServerContext server,
@@ -325,7 +325,7 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
             float yaw,
             float pitch,
             String shot) {
-        standSteady(context, server, dimension, floor, yaw, pitch, shot);
+        standWithoutSettle(context, server, dimension, floor, yaw, pitch, shot);
         return read(context, floor, shot);
     }
 
@@ -350,25 +350,14 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         List<Reading> readings = new ArrayList<>();
         for (View view : VIEWS) {
             String shot = shotPrefix + view.name();
-            readings.add(
-                    readings.isEmpty()
-                            ? look(context, server, dimension, floor, view.yaw(), view.pitch(), shot)
-                            : turn(context, server, dimension, floor, view.yaw(), view.pitch(), shot));
+            if (readings.isEmpty()) {
+                readings.add(look(context, server, dimension, floor, view.yaw(), view.pitch(), shot));
+            } else {
+                face(context, server, dimension, floor, view.yaw(), view.pitch(), shot);
+                readings.add(read(context, floor, shot));
+            }
         }
         return readings;
-    }
-
-    /** Turns in the room the spectator stands in, and reads the middle of the screen. */
-    private static Reading turn(
-            ClientGameTestContext context,
-            TestServerContext server,
-            ResourceKey<Level> dimension,
-            BlockPos floor,
-            float yaw,
-            float pitch,
-            String shot) {
-        face(context, server, dimension, floor, yaw, pitch, shot);
-        return read(context, floor, shot);
     }
 
     private static Reading average(Path file) {

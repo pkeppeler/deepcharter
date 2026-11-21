@@ -222,10 +222,9 @@ public final class AtmosphereScenes {
     }
 
     /**
-     * Stands the first player, a spectator, on {@code floor} in {@code dimension} facing {@code yaw} and {@code pitch}, and waits until
-     * the picture is the settled one: {@link #arrive}, a fixed {@link #SETTLE_TICKS} for the lightmap and the fog, then a steady
-     * picture. For the evidence scenario, whose full-frame stills must not depend on how early a picture happens to be steady.
-     * {@code shot} names the view in a failure.
+     * Stands the first player, a spectator, on {@code floor} in {@code dimension} facing {@code yaw} and {@code pitch}: {@link #arrive},
+     * a fixed {@link #SETTLE_TICKS} for the lightmap and the fog, then a steady picture. For full-frame stills. {@code shot} names the
+     * view in a failure.
      */
     public static void stand(
             ClientGameTestContext context,
@@ -243,10 +242,9 @@ public final class AtmosphereScenes {
     }
 
     /**
-     * Like {@link #stand}, without the fixed settle: the picture is read when the middle of the screen stops changing. For a reading of
-     * the middle of the screen; a full-frame still uses {@link #stand}.
+     * Like {@link #stand}, without the fixed settle: for a reading of the middle of the screen.
      */
-    public static void standSteady(
+    public static void standWithoutSettle(
             ClientGameTestContext context,
             TestServerContext server,
             ResourceKey<Level> dimension,
@@ -259,9 +257,8 @@ public final class AtmosphereScenes {
     }
 
     /**
-     * Teleports to {@code floor} and waits for the client to be there, to hold the chunks round the scene, to have meshed every section
-     * and for its light to match the server's. The steady-picture check reads only the middle of the screen, so it cannot tell that
-     * sections are unmeshed.
+     * Teleports to {@code floor} and waits for the client to be there with the chunks meshed and the light matching the server's. The
+     * steady-picture check reads only the middle of the screen, so it cannot tell that sections are unmeshed.
      */
     private static void arrive(
             ClientGameTestContext context,
@@ -304,8 +301,8 @@ public final class AtmosphereScenes {
     }
 
     /**
-     * Turns the spectator, already standing on {@code floor} in {@code dimension} with the light settled, to {@code yaw} and
-     * {@code pitch}, and waits for the picture to stop changing. Only the view changes, so the lightmap has nothing to ease toward.
+     * Turns the spectator, already standing on {@code floor} in {@code dimension}, to {@code yaw} and {@code pitch}. Only the view
+     * changes, so nothing needs to mesh or settle.
      */
     public static void face(
             ClientGameTestContext context,
