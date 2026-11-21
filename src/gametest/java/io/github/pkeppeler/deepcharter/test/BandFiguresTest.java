@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.HEAVY;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
@@ -100,7 +102,7 @@ public class BandFiguresTest {
      * band: in the dark room of layer 2 when the only player is in layer 1, in the surface band's room at all, and under a player on the
      * surface.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aFigureAppearsOnlyInTheBandOfAPlayerWhoIsInIt(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int x = 24000;
@@ -170,7 +172,7 @@ public class BandFiguresTest {
     }
 
     /** Each band holds its own cap of natural figures, and the rail's figure of Prospector's Run is held back by neither. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void eachBandHasItsOwnCapOfFigures(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int x = 24128;
@@ -211,7 +213,7 @@ public class BandFiguresTest {
      * The server keeps sky light 15 down an open shaft from the surface, and a figure at its bottom, in layer 1's dark, still appears: it reads
      * block light only. A light of 15 at the bottom stops it.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aFigureAppearsAtTheBottomOfAnOpenShaftByBlockLight(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int x = 24256;

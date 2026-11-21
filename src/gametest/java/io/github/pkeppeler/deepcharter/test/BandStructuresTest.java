@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.HEAVY;
+
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.colony.Colony;
@@ -120,7 +122,7 @@ public class BandStructuresTest {
      * A chunk that loads while the colony is begun and not finished (the pad's own, during the build) draws every site it holds, in both
      * bands. The sites are those of the finished colony: the pad and the anchors do not move.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aPadChunkLoadedBeforeTheBuildFinishesGetsItsSitesWhole(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
@@ -138,7 +140,7 @@ public class BandStructuresTest {
     }
 
     /** PROSPECTOR-0002's site is known as soon as the pad is chosen, so its bay is drawn with its lamp and its note whatever chunk comes first. */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = HEAVY, dimension = SAMPLE)
     public void theProspectorsSiteIsKnownOnceThePadIsChosen(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
@@ -160,7 +162,7 @@ public class BandStructuresTest {
      * A chunk that loads before the pad is chosen (the build reads the ground of candidate pads first) is held, and drawn, once, when the
      * pad is chosen: the chunk has no sites before, and all of them after.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aChunkLoadedBeforeThePadIsChosenIsDrawnWhenItIs(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();

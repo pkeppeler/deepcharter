@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.HEAVY;
+
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -193,7 +195,7 @@ public class SalvageBootstrapTest {
         return Math.sqrt((double) pos.getX() * pos.getX() + (double) pos.getZ() * pos.getZ());
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void cratesLieAroundTheColonyWithinTheYardRadiusAndNoFurther(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int radius = yardRadius();
@@ -246,7 +248,7 @@ public class SalvageBootstrapTest {
     }
 
     /** The yard's edges are read in biome cells of 4 blocks, at the corner of each, so it is exact to a cell: a block a cell and a block inside is in, a cell outside is out. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theYardEndsAtItsRadiusOnTheBlock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int radius = yardRadius();
@@ -279,7 +281,7 @@ public class SalvageBootstrapTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void stalksStandOnlyInCraters(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         List<BlockPos> stalks = survey(level).stalks();
@@ -304,7 +306,7 @@ public class SalvageBootstrapTest {
     }
 
     /** How far a player walks from a crate to the nearest stalk column: the wood is a walk from the salvage, not a trek. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aStalkColumnIsAWalkFromEveryCrate(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         List<BlockPos> bases = columnBases(survey(level).stalks());
@@ -343,7 +345,7 @@ public class SalvageBootstrapTest {
                 + (double) (a.getZ() - b.getZ()) * (a.getZ() - b.getZ());
     }
 
-    @GameTest(dimension = "deepcharter:campaign_sample", maxTicks = MAX_TICKS)
+    @GameTest(environment = HEAVY, dimension = "deepcharter:campaign_sample", maxTicks = MAX_TICKS)
     public void stalksGrowOnTheFloorsOfLayerOneCaves(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         // The campaign level holds the surface and both layers: only the stalks in layer 1's band are this test's.
