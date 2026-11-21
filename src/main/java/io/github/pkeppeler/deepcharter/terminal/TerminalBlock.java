@@ -196,7 +196,7 @@ public final class TerminalBlock extends BaseEntityBlock {
     protected InteractionResult useWithoutItem(
             BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (player instanceof ServerPlayer serverPlayer) {
-            Terminals.open(serverPlayer, lowerHalf(level, pos));
+            Terminals.open(serverPlayer, pos);
         }
         return InteractionResult.SUCCESS;
     }
