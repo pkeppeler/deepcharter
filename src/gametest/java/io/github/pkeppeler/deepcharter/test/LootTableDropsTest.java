@@ -209,7 +209,7 @@ public class LootTableDropsTest {
                 found.merge(recording(helper, cylinder), 1, Integer::sum);
             }
         }
-        expectRare(helper, "salvage_crate", crates, RARE_SEEDS, 0.01, 0.10, found);
+        expectRare(helper, "salvage_crate", crates, RARE_SEEDS, 0.03, 0.05, found);
         helper.succeed();
     }
 
@@ -245,7 +245,7 @@ public class LootTableDropsTest {
                 found.merge(recording(helper, cylinder), 1, Integer::sum);
             }
         }
-        expectRare(helper, "wreck_locker", lockers, RARE_SEEDS, 0.15, 0.45, found);
+        expectRare(helper, "wreck_locker", lockers, RARE_SEEDS, 0.26, 0.34, found);
         helper.succeed();
     }
 
@@ -265,6 +265,14 @@ public class LootTableDropsTest {
         }
         if (!found.keySet().equals(Set.of(Recording.values()))) {
             throw helper.assertionException("%s drops the recordings %s, expected every one of them", table, found);
+        }
+        // Each recording is as likely as the next: a third of the cylinders, give or take, so a doubled weight fails.
+        for (Map.Entry<Recording, Integer> entry : found.entrySet()) {
+            double of = (double) entry.getValue() / cylinders;
+            if (of < 0.25 || of > 0.42) {
+                throw helper.assertionException(
+                        "%s drops %s in %s of its cylinders, expected a third", table, entry.getKey(), of);
+            }
         }
     }
 

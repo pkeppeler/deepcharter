@@ -4,9 +4,11 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographBlockEntity;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
 import java.util.Map;
+import java.util.Optional;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -21,13 +23,13 @@ import net.minecraft.world.timeline.Timeline;
 
 /**
  * The phonograph on the counter of the Lamp and Pick: the colony's, shared by the whole charter, holding the rack of the colony's
- * cylinders that cannot be taken ({@link PhonographRegistry#COLONY_PHONOGRAPH}). It is set by the build, two blocks over the counter's
- * front edge from the anchor of the bar, so the saved anchors gain no key. A world whose colony was built before it has none.
+ * cylinders that cannot be taken ({@link PhonographRegistry#COLONY_PHONOGRAPH}). It is set by the build on the counter along the bar's back
+ * wall, two up and five south of the bar's anchor, so the saved anchors gain no key. A world whose colony was built before it has none.
  *
  * <p>Rarely, at night, it starts by itself while nobody is near: atmosphere only, never a rule or a reward. Every
  * {@link ColonyTuning#phonographCheckTicks()} ticks it is asked ({@link #autoPlay}); the answer is yes with
- * {@link ColonyTuning#phonographChance()} when it is night, no player is within {@link ColonyTuning#phonographQuietRadius()} blocks, it is
- * not playing, and it has not started by itself already this night. A night is a stretch of the sky timeline round its darkest point,
+ * {@link ColonyTuning#phonographChance()} when it is night, no player is within {@link ColonyTuning#phonographQuietRadius()} blocks but
+ * one is within earshot, it is not playing, and it has not started by itself already this night. A night is a stretch of the sky timeline round its darkest point,
  * counted by the timeline's period.
  */
 public final class ColonyPhonograph {
@@ -74,18 +76,28 @@ public final class ColonyPhonograph {
      * chance in it, so a test forces the roll with one that answers 0.
      */
     public static boolean autoPlay(ServerLevel level, PhonographBlockEntity phonograph, RandomSource random) {
-        Timeline sky = level.registryAccess()
+        // A world with no sky timeline (a data pack removed it) has no night: skip, never throw on a tick.
+        Optional<Timeline> found = level.registryAccess()
                 .lookupOrThrow(Registries.TIMELINE)
-                .getOrThrow(SKY)
-                .value();
+                .get(SKY)
+                .map(Holder.Reference::value);
+        if (found.isEmpty() || found.get().periodTicks().isEmpty()) {
+            return false;
+        }
+        Timeline sky = found.get();
         long night = sky.getPeriodCount(level.clockManager());
         if (phonograph.isPlaying()
                 || !isNight(sky, level)
                 || phonograph.lastAutoNight().filter(last -> last == night).isPresent()
-                || someoneNear(level, phonograph.getBlockPos())) {
+                || someoneNear(level, phonograph.getBlockPos())
+                // A start nobody can hear is no start: it would use up the night.
+                || !phonograph.hasAudience()
+                || random.nextDouble() >= ColonyTuning.DEFAULT.phonographChance()
+                || !phonograph.play()) {
             return false;
         }
-        if (random.nextDouble() >= ColonyTuning.DEFAULT.phonographChance() || !phonograph.play()) {
+        if (phonograph.listenerCount() == 0) {
+            phonograph.stop();
             return false;
         }
         phonograph.markAutoNight(night);
@@ -93,7 +105,7 @@ public final class ColonyPhonograph {
     }
 
     private static boolean isNight(Timeline sky, ServerLevel level) {
-        long period = sky.periodTicks().orElseThrow();
+        long period = sky.periodTicks().orElse(1);
         long darkest = period / 2;
         return Math.abs(sky.getCurrentTicks(level.clockManager()) - darkest)
                 <= ColonyTuning.DEFAULT.phonographNightHalfWidth();

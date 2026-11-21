@@ -44,20 +44,27 @@ RATE = 22050
 SOURCE_URL = "https://firstsounds.org/sounds/"
 
 # The processing, as numbers: change one and `check` asks for a re-run, because the treatment hash moves.
-HIGH_PASS_HZ = 250
+HIGH_PASS_HZ = 250  # applied twice, 4 poles, so 130 to 200 Hz is well down and not at full level
 LOW_PASS_HZ = 3500
+PRESENCE = "equalizer=f=1500:t=q:w=1:g=3"  # a horn's honk: a little lift at 1 to 2 kHz
 WOW = (0.6, 0.04)  # Hz, depth
 FLUTTER = (7.0, 0.015)
 COMPRESSOR = "threshold=0.125:ratio=3:attack=15:release=200:makeup=4"
 LIMITER = "limit=0.9:level=0"  # level=0: the limiter only catches peaks and does not raise the whole clip to its limit
 VORBIS_QUALITY = 3
 BED_GAIN = 0.55  # the bed against the programme, which the compressor evens out after the mix
+# The mix is made here and not by ffmpeg's amix: with amix in the graph, the filters after it opened every clip with 0.6 s of loud buzz.
+VOICE_FILTERS = f"aresample={RATE},vibrato=f={WOW[0]}:d={WOW[1]},vibrato=f={FLUTTER[0]}:d={FLUTTER[1]}"
+BAND_FILTERS = (
+    f"highpass=f={HIGH_PASS_HZ},highpass=f={HIGH_PASS_HZ},lowpass=f={LOW_PASS_HZ},{PRESENCE},"
+    f"acompressor={COMPRESSOR},alimiter={LIMITER},aformat=sample_fmts=s16:channel_layouts=mono"
+)
 HISS = 0.012  # standard deviation of the hiss, as a share of full scale
 HISS_SMOOTHING = 0.55  # one-pole low-pass of the hiss: nearer 1 is darker
 CRACKLE_PER_SECOND = 9.0
 CRACKLE_PEAK = 0.22
 POPS_PER_SECOND = 0.35
-POP_PEAK = 0.5
+POP_PEAK = 0.3
 CLICK_DECAY = 0.6  # a click rings off by this share per sample
 
 
@@ -100,7 +107,7 @@ def licensed(tags):
 
 def treatment_sha256():
     """A hash of every number and filter that shapes a recording, so a changed treatment shows in `check`."""
-    parts = [HIGH_PASS_HZ, LOW_PASS_HZ, WOW, FLUTTER, COMPRESSOR, LIMITER, VORBIS_QUALITY, BED_GAIN, RATE]
+    parts = [VOICE_FILTERS, BAND_FILTERS, VORBIS_QUALITY, BED_GAIN, RATE]
     parts += [HISS, HISS_SMOOTHING, CRACKLE_PER_SECOND, CRACKLE_PEAK, POPS_PER_SECOND, POP_PEAK, CLICK_DECAY]
     return hashlib.sha256(repr(parts).encode()).hexdigest()
 
@@ -165,28 +172,38 @@ def _encoder_args():
     return ["-c:a", "libvorbis", "-q:a", str(VORBIS_QUALITY)]
 
 
-def _render(recording, source, target, frames):
-    """Decodes the source, mixes its bed in (`frames` long), band-limits and compresses, and encodes mono Vorbis to `target`."""
+def _render(recording, source, target):
+    """Decodes the source with its wow and flutter, mixes the bed in, band-limits and compresses, and encodes mono Vorbis to `target`.
+
+    Returns the length of the bed in samples, which is the length of the recording.
+    """
+    decoded = subprocess.run(
+        ["ffmpeg", "-v", "error", "-nostdin", "-i", str(source), "-af", VOICE_FILTERS, "-ac", "1", "-f", "s16le", "-"],
+        check=True,
+        capture_output=True,
+    ).stdout
+    voice = array("h")
+    voice.frombytes(decoded[: len(decoded) // 2 * 2])
+    if sys.byteorder == "big":
+        voice.byteswap()
+    under = bed(recording.name, len(voice))
+    mixed = array("h", (max(-32768, min(32767, v + round(b * BED_GAIN))) for v, b in zip(voice, under)))
+    if sys.byteorder == "big":
+        mixed.byteswap()
     with tempfile.TemporaryDirectory() as tmp:
-        wav = Path(tmp) / "bed.wav"
+        wav = Path(tmp) / "mix.wav"
         with wave.open(str(wav), "wb") as out:
             out.setnchannels(1)
             out.setsampwidth(2)
             out.setframerate(RATE)
-            out.writeframes(bed(recording.name, frames).tobytes())
-        graph = (
-            f"[0:a]aresample={RATE},vibrato=f={WOW[0]}:d={WOW[1]},vibrato=f={FLUTTER[0]}:d={FLUTTER[1]}[voice];"
-            f"[1:a]volume={BED_GAIN}[bed];"
-            "[voice][bed]amix=inputs=2:normalize=0:duration=first,"
-            f"highpass=f={HIGH_PASS_HZ},lowpass=f={LOW_PASS_HZ},acompressor={COMPRESSOR},alimiter={LIMITER},"
-            "aformat=sample_fmts=s16:channel_layouts=mono[out]"
-        )
+            out.writeframes(mixed.tobytes())
         target.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(
-            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(source), "-i", str(wav), "-filter_complex", graph]
-            + ["-map", "[out]", "-map_metadata", "-1", "-ac", "1", *_encoder_args(), str(target)],
+            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(wav), "-af", BAND_FILTERS]
+            + ["-map_metadata", "-1", "-ac", "1", *_encoder_args(), str(target)],
             check=True,
         )
+    return len(voice)
 
 
 def _load(manifest):
@@ -226,8 +243,7 @@ def build(source_dir, out, manifest):
         ):
             entries[recording.name] = old
             continue
-        frames = round(duration_seconds(source) * RATE) + RATE  # a second of bed past the end, for the mix to take what it needs
-        _render(recording, source, target, frames)
+        frames = _render(recording, source, target)
         seconds = duration_seconds(target)
         entries[recording.name] = {
             "title": recording.title,
@@ -262,6 +278,8 @@ def check(out, manifest):
     for recording in RECORDINGS:
         entry = known.get(recording.name)
         target = out / FOLDER / f"{recording.name}.ogg"
+        if entry is not None and hashlib.sha256(bed(recording.name, entry["bed_frames"]).tobytes()).hexdigest() != entry["bed_sha256"]:
+            problems.append(f"{recording.name}: the bed the manifest names is not the one the script makes; run tools/sounds/first_sounds.py")
         if entry is None:
             problems.append(f"{recording.name}: {manifest.name} has no entry; run tools/sounds/first_sounds.py")
             continue

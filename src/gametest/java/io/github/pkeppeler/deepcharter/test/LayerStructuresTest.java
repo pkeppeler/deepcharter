@@ -44,6 +44,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CandleBlock;
+import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ImposterProtoChunk;
@@ -529,6 +530,64 @@ public class LayerStructuresTest {
             if (level.getBlockState(floor).isAir()) {
                 throw failure(
                         helper, "a newly generated chunk was not drawn: the floor at %s is air", floor.toShortString());
+            }
+        });
+    }
+
+    /** A cell of its own for the wreck bay's locker, which no other test draws. */
+    private static final int LOCKER_CELL = 10;
+
+    @GameTest(maxTicks = 600)
+    public void aWreckBayHoldsTheCrewsLockerInItsCornerClearOfThePodAndTheRail(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 2);
+        LayerChain.Band levelBand = TestLayers.band(level, 2);
+        StructureSite site = StructureSite.in(
+                level.getSeed(),
+                StructureKind.WRECK,
+                levelBand.minY(),
+                levelBand.height(),
+                LOCKER_CELL,
+                LOCKER_CELL,
+                conduit(helper));
+        StructureSite again = StructureSite.in(
+                level.getSeed(),
+                StructureKind.WRECK,
+                levelBand.minY(),
+                levelBand.height(),
+                LOCKER_CELL,
+                LOCKER_CELL,
+                conduit(helper));
+        // The locker is at u 5, v -5 of the bay (StructureKind.WRECK); the bay turns along X or Z with the site.
+        BlockPos locker = site.origin().offset(site.alongZ() ? -5 : 5, 0, site.alongZ() ? 5 : -5);
+        if (!site.equals(again)
+                || !locker.equals(again.origin().offset(site.alongZ() ? -5 : 5, 0, site.alongZ() ? 5 : -5))) {
+            throw failure(helper, "the same seed gave two different sites: %s and %s", site, again);
+        }
+        BlockPos pod = site.origin();
+        List<BlockPos> rail = new ArrayList<>();
+        for (int u = -6; u <= -3; u++) {
+            rail.add(site.origin().offset(site.alongZ() ? 0 : u, 0, site.alongZ() ? u : 0));
+        }
+        if (locker.equals(pod) || rail.contains(locker) || locker.distSqr(pod) < 9) {
+            throw failure(helper, "the locker at %s is on the pod's spot %s or the rail %s", locker, pod, rail);
+        }
+        level.getChunk(locker.getX() >> 4, locker.getZ() >> 4);
+        helper.succeedWhen(() -> {
+            BlockState state = level.getBlockState(locker);
+            if (!state.is(Blocks.BARREL)) {
+                throw failure(helper, "the corner of the wreck bay at %s holds %s, not the locker", locker, state);
+            }
+            if (!(level.getBlockEntity(locker) instanceof RandomizableContainerBlockEntity barrel)
+                    || barrel.getLootTable() == null
+                    || !barrel.getLootTable().identifier().getPath().equals("chests/wreck_locker")) {
+                throw failure(helper, "the locker at %s has no loot table of the wreck locker", locker);
+            }
+            if (barrel.getLootTableSeed() != site.seed()) {
+                throw failure(
+                        helper,
+                        "the locker's loot seed is %s, the site's is %s",
+                        barrel.getLootTableSeed(),
+                        site.seed());
             }
         });
     }
