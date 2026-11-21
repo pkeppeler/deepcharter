@@ -1736,10 +1736,10 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 |---|---|---|---|
 | Gas blast, per pod hurt | `Gas blast: the hull took N` | `pod.explosion` | green gas cloud |
 | Hard landing, per landing that costs hull | `Hard landing: the hull took N. Brake with the rotor` | `pod.crash` | dust |
-| Overloaded lift, when the pilot presses jump with no lift | `Overloaded: the rotor can't lift this cargo. Dump some` | `cargo.full` | none |
+| Overloaded lift, when the pilot presses jump with no lift | `Pod overloaded: the rotor can't lift this cargo. Dump some` (or `...can't lift this load` when cargo is not the reason: towing takes the lift) | `cargo.full` | none |
 
 **Who is told.** The line goes to every player seated in the pod, because all of them are in the hull that was hit; the lift line goes to the pilot alone, the only one who presses jump. The sound is played at the pod, so everyone in earshot hears it.
 
-**Rate.** A blast and a landing cue each event, and say nothing when the hull took none (gas above sea level, a soft landing, a blast out of reach). The overloaded line cues on each new press of jump, and repeats every `PodCuesTuning.overloadRepeatTicks` (40) while it stays held, about as long as the line stays on the bar.
+**Rate.** A blast and a landing cue each event, and say nothing when the hull took under half a point (gas above sea level, a soft landing, a blast out of reach). A hit that empties the hull still reaches the riders it ejects. The overloaded line cues on each new press of jump, and repeats every `PodCuesTuning.overloadRepeatTicks` (40) while it stays held, a little under the 60 ticks the line stays on the bar.
 
 **Open.** A tiered sensor could name a hazard before it hurts (the ladder's second stage); this is only the by-hand stage, the cue after the fact.

@@ -6,9 +6,12 @@ import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
+import io.github.pkeppeler.deepcharter.pod.PodCues;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
+import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -16,9 +19,13 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -38,6 +45,7 @@ public class PodHazardCuesTest {
     private static final String GAS_KEY = "deepcharter.ore.gas_blast";
     private static final String LANDING_KEY = "deepcharter.pod.hard_landing";
     private static final String OVERLOAD_KEY = "deepcharter.pod.overloaded";
+    private static final String OVERLOAD_LOAD_KEY = "deepcharter.pod.overloaded_load";
 
     private static final Identifier GAS_SOUND = id("pod.explosion");
     private static final Identifier LANDING_SOUND = id("pod.crash");
@@ -127,15 +135,21 @@ public class PodHazardCuesTest {
         MockPlayer pilot = MockPlayers.join(helper, "Cue pilot gas " + xShift);
         pilot.player().setGameMode(GameType.SURVIVAL);
         pilot.teleportTo(level, new Vec3(x, GAS_FLOOR, GAS_Z), 0f, 0f);
+        MockPlayer passenger = MockPlayers.join(helper, "Cue passenger gas " + xShift);
+        passenger.player().setGameMode(GameType.SURVIVAL);
+        passenger.teleportTo(level, new Vec3(x, GAS_FLOOR, GAS_Z), 0f, 0f);
         Gas[] gas = {null};
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, GAS_FLOOR, GAS_Z), () -> {
-            PodEntity pod = TestEntities.create(PodRegistry.POD, level);
+            PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, level);
             pod.setPos(x, GAS_FLOOR, GAS_Z);
             level.addFreshEntity(pod);
             if (!pilot.player().startRiding(pod)) {
                 throw failure(helper, "the pilot could not mount the pod");
             }
-            gas[0] = new Gas(level, pod, pilot, new BlockPos(x, GAS_FLOOR - 1, GAS_Z + 1), pod.hull());
+            if (!passenger.player().startRiding(pod)) {
+                throw failure(helper, "the passenger could not mount the pod");
+            }
+            gas[0] = new Gas(level, pod, pilot, passenger, new BlockPos(x, GAS_FLOOR - 1, GAS_Z + 1), pod.hull());
         });
         int[] ticks = {0};
         TestTicks.each(helper, () -> {
@@ -152,13 +166,20 @@ public class PodHazardCuesTest {
                     helper.succeed();
                 } finally {
                     pilot.leave();
+                    passenger.leave();
                     gas[0].pod().discard();
                 }
             }
         });
     }
 
-    private record Gas(ServerLevel level, PodEntity pod, MockPlayer pilot, BlockPos pocket, float startHull) {}
+    private record Gas(
+            ServerLevel level,
+            PodEntity pod,
+            MockPlayer pilot,
+            MockPlayer passenger,
+            BlockPos pocket,
+            float startHull) {}
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
     public void aGasBlastTellsThePilotItWasGasAndSoundsAtThePod(GameTestHelper helper) {
@@ -174,6 +195,9 @@ public class PodHazardCuesTest {
                                 gas.pod().hull());
                     }
                     expectCue(helper, gas.pod(), gas.pilot(), GAS_KEY, GAS_SOUND, 1, "after one blast");
+                    if (messages(gas.passenger(), GAS_KEY) != 1) {
+                        throw failure(helper, "a passenger in the hit hull should be told too");
+                    }
                 },
                 5);
     }
@@ -369,6 +393,119 @@ public class PodHazardCuesTest {
                     throw failure(helper, "an empty pod should climb, rose %s", rig.pod.getY() - startY);
                 }
                 expectQuiet(helper, rig.pod, rig.pilot, "a pod with lift");
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 40)
+    public void aBlastThatEmptiesTheHullStillTellsTheEjectedCrew(GameTestHelper helper) {
+        gasSite(
+                helper,
+                144,
+                gas -> {
+                    gas.pod().setHull(1f);
+                    GasHazard.vent(gas.level(), gas.pocket());
+                },
+                gas -> {
+                    if (gas.pod().hull() != 0f || gas.pod().isVehicle()) {
+                        throw failure(helper, "the blast should wreck the pod and eject its crew");
+                    }
+                    expectCue(helper, gas.pod(), gas.pilot(), GAS_KEY, GAS_SOUND, 1, "after a lethal blast");
+                    if (messages(gas.passenger(), GAS_KEY) != 1) {
+                        throw failure(helper, "a lethal blast should tell the passenger too");
+                    }
+                },
+                5);
+    }
+
+    @GameTest(maxTicks = 100)
+    public void aLandingThatEmptiesTheHullStillTellsTheEjectedPilot(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 12);
+        rig.pod.setHull(1f);
+        helper.runAfterDelay(60, () -> {
+            try {
+                if (rig.pod.hull() != 0f) {
+                    throw failure(helper, "the landing should empty the hull, hull is %s", rig.pod.hull());
+                }
+                expectCue(helper, rig.pod, rig.pilot, LANDING_KEY, LANDING_SOUND, 1, "after a lethal landing");
+                helper.succeed();
+            } finally {
+                rig.finish();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = 40)
+    public void aHitUnderHalfAPointCostsHullAndSaysNothing(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0);
+        helper.runAfterDelay(10, () -> {
+            try {
+                float before = rig.pod.hull();
+                PodCues.hurtHull(rig.pod, 0.3f, GAS_KEY, DeepSound.POD_EXPLOSION, ParticleTypes.SNEEZE, 1);
+                if (Math.abs(before - rig.pod.hull() - 0.3f) > 1e-4f) {
+                    throw failure(helper, "the hit should cost 0.3 hull, hull went %s to %s", before, rig.pod.hull());
+                }
+                helper.runAfterDelay(5, () -> {
+                    try {
+                        expectQuiet(helper, rig.pod, rig.pilot, "a hit of 0.3 hull");
+                        helper.succeed();
+                    } finally {
+                        rig.finish();
+                    }
+                });
+            } catch (RuntimeException e) {
+                rig.finish();
+                throw e;
+            }
+        });
+    }
+
+    /** Pods the tow-mass listener loads, by UUID: a Fabric event cannot be unregistered, so the listener acts only on these. */
+    private static final Set<UUID> TOWING = ConcurrentHashMap.newKeySet();
+
+    static {
+        PodEvents.EXTRA_MASS.register(pod ->
+                TOWING.contains(pod.getUUID()) ? PodTuning.DEFAULT.movement().enginePower() : 0f);
+    }
+
+    @GameTest(maxTicks = 60)
+    public void whenTheLoadIsNotCargoTheOverloadLineDoesNotAskToDumpCargo(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0);
+        TOWING.add(rig.pod.getUUID());
+        rig.pilot.setInput(JUMP);
+        helper.runAfterDelay(20, () -> {
+            try {
+                expectCue(
+                        helper,
+                        rig.pod,
+                        rig.pilot,
+                        OVERLOAD_LOAD_KEY,
+                        OVERLOAD_SOUND,
+                        1,
+                        "an empty pod that tows too much");
+                if (messages(rig.pilot, OVERLOAD_KEY) != 0) {
+                    throw failure(helper, "an empty bay has no cargo to dump");
+                }
+                helper.succeed();
+            } finally {
+                TOWING.remove(rig.pod.getUUID());
+                rig.finish();
+            }
+        });
+    }
+
+    /** One unit of lift left is lift: the cue reads the same lift the rotor uses. */
+    @GameTest(maxTicks = 60)
+    public void aPodWithOneUnitOfLiftLeftSaysNothing(GameTestHelper helper) {
+        Rig rig = Rig.build(helper, 0);
+        rig.pod.setCargoMass(PodTuning.DEFAULT.movement().enginePower() - 1f);
+        rig.pilot.setInput(JUMP);
+        helper.runAfterDelay(20, () -> {
+            try {
+                expectQuiet(helper, rig.pod, rig.pilot, "a pod with one unit of lift");
                 helper.succeed();
             } finally {
                 rig.finish();

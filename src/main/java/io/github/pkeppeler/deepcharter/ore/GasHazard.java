@@ -10,7 +10,6 @@ import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
@@ -73,15 +72,8 @@ public final class GasHazard {
                 float radiator = PodComponents.radiatorRatio(pod);
                 float blast = damage(depthFeet, radiator);
                 float taken = pod == drilling ? PodSounder.drilledBlast(pod, blast * drillingShare) : blast;
-                pod.damageHull(taken);
-                if (taken > 0f) {
-                    PodCues.hullHit(
-                            pod,
-                            Component.translatable("deepcharter.ore.gas_blast", Math.round(taken)),
-                            DeepSound.POD_EXPLOSION,
-                            ParticleTypes.SNEEZE,
-                            24);
-                }
+                PodCues.hurtHull(
+                        pod, taken, "deepcharter.ore.gas_blast", DeepSound.POD_EXPLOSION, ParticleTypes.SNEEZE, 24);
             }
             // A blast at the edge of the loaded chunks clears the rock it can reach without loading one; the rest
             // stays.
