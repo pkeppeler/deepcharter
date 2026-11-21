@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
+import io.github.pkeppeler.deepcharter.test.support.HandBreakChecks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
@@ -38,6 +39,7 @@ public class HandBreakClientTest implements FabricClientGameTest {
     private static final int BITING_LIMIT_TICKS = 1500;
 
     private static final int CLUMSY_TICKS = 160;
+    private static final int MIDWAY_TICKS = 600;
     private static final int SETTLE_TICKS = 40;
     /** The pick left with 100 points shatters in about 55 ticks of mining; the rest is the client going on with none. */
     private static final int SHATTER_TICKS = 200;
@@ -51,13 +53,21 @@ public class HandBreakClientTest implements FabricClientGameTest {
 
             // A tool that cannot bite: the swing refuses on the client, and the block stays on both sides.
             hold(two, new ItemStack(Items.IRON_PICKAXE));
-            mine(context, target, CLUMSY_TICKS, false);
+            mine(context, target, CLUMSY_TICKS, false, true);
             require(clientHolds(context, target), "an iron pick broke the crust on the client");
             require(serverHolds(two, 1, target), "an iron pick broke the crust on the server");
 
             // A pick that bites: the client's prediction and the server's check agree.
             hold(two, new ItemStack(Items.DIAMOND_PICKAXE));
-            int ticks = mine(context, target, BITING_LIMIT_TICKS, true);
+            mine(context, target, MIDWAY_TICKS, false, true);
+            // Half way, the player must be able to SEE the work: the pick worn on the client, and the crack well along.
+            HandBreakChecks.requireWorkShows(
+                    context,
+                    MIDWAY_TICKS,
+                    () -> two.server()
+                            .computeOnServer(server ->
+                                    realPlayer(server).getMainHandItem().getDamageValue()));
+            int ticks = MIDWAY_TICKS + mine(context, target, BITING_LIMIT_TICKS - MIDWAY_TICKS, true, false);
             require(ticks >= 1000, "the crust broke after only " + ticks + " ticks, not about 1200");
             for (int tick = 0; tick < SETTLE_TICKS; tick++) {
                 context.waitTicks(1); // tick-wait: the server's correction of a ghost break arrives within a few ticks
@@ -74,7 +84,7 @@ public class HandBreakClientTest implements FabricClientGameTest {
             BlockPos deep = prepare(two, 2, X + 40);
             context.getInput().lookAt(deep);
             hold(two, damaged(Items.NETHERITE_PICKAXE, 100));
-            mine(context, deep, SHATTER_TICKS, false);
+            mine(context, deep, SHATTER_TICKS, false, true);
             require(clientHolds(context, deep), "a pick that could not pay broke the crust on the client");
             require(serverHolds(two, 2, deep), "a pick that could not pay broke the crust on the server");
             require(
@@ -113,11 +123,13 @@ public class HandBreakClientTest implements FabricClientGameTest {
 
     /**
      * Mines {@code target} as the attack button does: one start, then one continue a tick. Returns the ticks until the client
-     * saw the block gone, or {@code limit} when it never did; when {@code expectBreak} the block must go.
+     * saw the block gone, or {@code limit} when it never did; when {@code expectBreak} the block must go. {@code start} is false to go on with
+     * a swing that an earlier call began.
      */
-    private static int mine(ClientGameTestContext context, BlockPos target, int limit, boolean expectBreak) {
+    private static int mine(
+            ClientGameTestContext context, BlockPos target, int limit, boolean expectBreak, boolean start) {
         for (int tick = 0; tick < limit; tick++) {
-            boolean first = tick == 0;
+            boolean first = start && tick == 0;
             context.runOnClient(client -> {
                 if (first) {
                     ClientSession.gameMode(client).startDestroyBlock(target, Direction.SOUTH);

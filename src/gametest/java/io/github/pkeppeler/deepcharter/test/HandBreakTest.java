@@ -81,6 +81,8 @@ public class HandBreakTest {
     private static final int X_SWAP = 9500;
     private static final int X_RESET = 9600;
     private static final int X_READOUT = 9700;
+    private static final int X_SENT = 9800;
+    private static final int X_PACKET = 9900;
     private static final int X_CAMPAIGN = 21800;
     private static final int FULL_RUN_TICKS = 1200;
     /** A STOP this many ticks in is past the 0.7 of the break time that vanilla's check lets through. */
@@ -732,6 +734,91 @@ public class HandBreakTest {
                 }
                 helper.succeed();
             }
+        });
+    }
+
+    /** The packet a client sends, not a call into the game mode: the same wear, through the listener's own checks. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+    public void aStartPacketFromTheClientWearsThePickToo(GameTestHelper helper) {
+        Rig rig = rig(helper, 2, X_PACKET, "hb-packet");
+        BlockPos pos = rig.cell(0);
+        rig.level.setBlock(pos, LayerBlocks.BREACH_CRUST.defaultBlockState(), 3);
+        ItemStack pick = new ItemStack(Items.NETHERITE_PICKAXE);
+        hold(rig.player(), pick);
+        boolean[] ready = {false};
+        boolean[] sent = {false};
+        int[] sentAt = {0};
+        FarChunks.awaitEntityTicking(helper, rig.level, pos, () -> ready[0] = true);
+        TestTicks.each(helper, () -> {
+            if (!ready[0]) {
+                return;
+            }
+            if (!sent[0]) {
+                sent[0] = true;
+                sentAt[0] = (int) helper.getTick();
+                rig.player()
+                        .connection
+                        .handlePlayerAction(new ServerboundPlayerActionPacket(
+                                ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, pos, Direction.SOUTH, 0));
+            } else if (helper.getTick() - sentAt[0] == 60) {
+                if (pick.getDamageValue() <= 0) {
+                    throw failure(helper, "60 ticks after a START packet the pick is unworn");
+                }
+                if (!actionBarTold(rig.mock, "deepcharter.layer.pod_only.burning")) {
+                    throw failure(helper, "60 ticks after a START packet the action bar never said the pick burns");
+                }
+                helper.succeed();
+            }
+        });
+    }
+
+    /** The client goes on mining while the server wears the pick, so only wear alone is no change of tool. */
+    @GameTest
+    public void wearAloneIsNotANewTool(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        ItemStack began = new ItemStack(Items.DIAMOND_PICKAXE);
+        ItemStack worn = stack(Items.DIAMOND_PICKAXE, 300);
+        ItemStack enchanted = enchanted(level, new ItemStack(Items.DIAMOND_PICKAXE), Enchantments.EFFICIENCY, 1);
+        if (!HandBreak.sameButWorn(began, worn)) {
+            throw failure(helper, "a worn pick counts as a new tool");
+        }
+        if (HandBreak.sameButWorn(began, enchanted)) {
+            throw failure(helper, "an enchanted pick counts as the same tool");
+        }
+        if (HandBreak.sameButWorn(began, new ItemStack(Items.NETHERITE_PICKAXE))) {
+            throw failure(helper, "another pick counts as the same tool");
+        }
+        if (HandBreak.sameButWorn(began, ItemStack.EMPTY)) {
+            throw failure(helper, "an empty hand counts as the same tool");
+        }
+        helper.succeed();
+    }
+
+    /** What the player sees: the server sends the worn pick to the client while the player mines, not only when the block goes. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+    public void theWornPickIsSentToThePlayerWhileMining(GameTestHelper helper) {
+        Rig rig = rig(helper, 2, X_SENT, "hb-sent");
+        BlockPos pos = rig.cell(0);
+        rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+        hold(rig.player(), new ItemStack(Items.NETHERITE_PICKAXE));
+        drive(helper, rig, pos, mined -> {
+            if (mined < 100) {
+                return;
+            }
+            int worn = rig.mock.slotUpdates().stream()
+                    .filter(stack -> stack.is(Items.NETHERITE_PICKAXE))
+                    .mapToInt(ItemStack::getDamageValue)
+                    .max()
+                    .orElse(0);
+            if (worn <= 0) {
+                throw failure(
+                        helper,
+                        "after %d ticks of mining the player was sent no worn pick (held damage %d, %d slot updates)",
+                        mined,
+                        rig.player().getMainHandItem().getDamageValue(),
+                        rig.mock.slotUpdates().size());
+            }
+            helper.succeed();
         });
     }
 

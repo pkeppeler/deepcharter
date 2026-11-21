@@ -13,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
+import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
@@ -23,6 +24,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 
@@ -39,6 +41,7 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
+    private final List<ItemStack> slotUpdates = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
     private boolean loaded;
 
@@ -53,6 +56,11 @@ public final class MockPlayer {
         this.connection = connection;
         this.channel = channel;
         this.ownerDone = ownerDone;
+    }
+
+    /** Every item stack the server has sent this player for a container slot so far, oldest first, as copies. */
+    public List<ItemStack> slotUpdates() {
+        return List.copyOf(slotUpdates);
     }
 
     /** Every action-bar message the server has sent this player so far, oldest first. */
@@ -165,6 +173,9 @@ public final class MockPlayer {
             try {
                 if (outbound instanceof ClientboundSystemChatPacket packet) {
                     (packet.overlay() ? actionBar : chat).add(packet.content());
+                }
+                if (outbound instanceof ClientboundContainerSetSlotPacket packet) {
+                    slotUpdates.add(packet.getItem().copy());
                 }
                 if (outbound instanceof ClientboundSoundEntityPacket packet) {
                     sounds.add(packet.getSound().value().location());

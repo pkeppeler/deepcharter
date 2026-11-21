@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.test.support.BlockReadoutStage;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.HandBreakChecks;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.BlockPos;
@@ -74,6 +75,17 @@ public class HandBreakScenario extends EvidenceScenario {
                     frame(context);
                 }
                 if (!middle && tick >= MIDDLE_TICKS) {
+                    // The still must show the work, so the scenario fails, naming what is missing, when it does not.
+                    HandBreakChecks.requireWorkShows(
+                            context,
+                            tick,
+                            () -> singleplayer
+                                    .getServer()
+                                    .computeOnServer(server -> server.getPlayerList()
+                                            .getPlayers()
+                                            .getFirst()
+                                            .getMainHandItem()
+                                            .getDamageValue()));
                     screenshot(context, "middle");
                     middle = true;
                 }

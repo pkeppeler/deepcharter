@@ -114,6 +114,21 @@ public final class HandBreak {
                 : 0.0F;
     }
 
+    /**
+     * True when {@code now} is the stack {@code began} was, worn down: the same item and components but for the damage. The
+     * client uses it to go on mining while the server wears the pick, which vanilla would take for a new tool and restart.
+     */
+    public static boolean sameButWorn(ItemStack began, ItemStack now) {
+        if (!ItemStack.isSameItem(began, now)) {
+            return false;
+        }
+        ItemStack unworn = began.copy();
+        unworn.setDamageValue(0);
+        ItemStack other = now.copy();
+        other.setDamageValue(0);
+        return ItemStack.isSameItemSameComponents(unworn, other);
+    }
+
     private static InteractionResult onSwing(
             Player player, Level level, InteractionHand hand, BlockPos pos, Direction direction) {
         // The client decides for itself (HandBreakClient): its swing is only ever sent when the tool bites.
