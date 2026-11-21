@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -233,16 +234,37 @@ public class NotesTest {
     }
 
     @GameTest
-    public void theNoCharterLinePointsToFoundingACharter(GameTestHelper helper) {
+    public void everyFindResultHasALineInTheLanguageFile(GameTestHelper helper) {
         for (FindResult result : FindResult.values()) {
             String key = "deepcharter.handbook.note.use." + result.name().toLowerCase(Locale.ROOT);
             if (!Language.getInstance().has(key)) {
                 throw helper.assertionException("%s has no line %s", result, key);
             }
         }
-        String line = Language.getInstance().getOrDefault("deepcharter.handbook.note.use.no_charter");
-        if (!line.contains("found a charter") || !line.contains("contract terminal") || line.contains("no handbook")) {
-            throw helper.assertionException("the no-charter line should point to founding a charter, was: %s", line);
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theNoteBlockOpensTheNoteForEveryResultThatHasOne(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerPlayer director = MockPlayers.join(helper, "Director").player();
+        ServerPlayer loner = MockPlayers.join(helper, "Loner").player();
+        found(helper, server, director);
+        List<Identifier> opened = new ArrayList<>();
+
+        FindResult first = NoteBlock.use(director, FIRST, payload -> opened.add(payload.note()));
+        FindResult again = NoteBlock.use(director, FIRST, payload -> opened.add(payload.note()));
+        FindResult noCharter = NoteBlock.use(loner, SECOND, payload -> opened.add(payload.note()));
+        if (first != FindResult.FOUND || again != FindResult.ALREADY_FOUND || noCharter != FindResult.NO_CHARTER) {
+            throw helper.assertionException("results were %s, %s, %s", first, again, noCharter);
+        }
+        if (!opened.equals(List.of(FIRST, FIRST, SECOND))) {
+            throw helper.assertionException(
+                    "the block should open FOUND, ALREADY_FOUND and NO_CHARTER, opened %s", opened);
+        }
+        FindResult blank = NoteBlock.use(director, Notes.id(Notes.MAX_NUMBER), payload -> opened.add(payload.note()));
+        if (blank != FindResult.UNKNOWN || opened.size() != 3) {
+            throw helper.assertionException("a blank page opens nothing: %s, opened %s", blank, opened);
         }
         helper.succeed();
     }

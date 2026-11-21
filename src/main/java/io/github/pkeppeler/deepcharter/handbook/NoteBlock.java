@@ -1,8 +1,10 @@
 package io.github.pkeppeler.deepcharter.handbook;
 
 import java.util.Locale;
+import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -58,14 +60,23 @@ public final class NoteBlock extends Block {
     protected InteractionResult useWithoutItem(
             BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (player instanceof ServerPlayer serverPlayer) {
-            FindResult result = Notes.find(serverPlayer, Notes.id(state.getValue(NOTE)));
-            OpenNotePayload.after(result, Notes.id(state.getValue(NOTE)))
-                    .ifPresent(payload -> OpenNotePayload.send(serverPlayer, payload));
-            serverPlayer.sendSystemMessage(
-                    Component.translatable(
-                            "deepcharter.handbook.note.use." + result.name().toLowerCase(Locale.ROOT)),
-                    true);
+            use(serverPlayer, Notes.id(state.getValue(NOTE)), payload -> OpenNotePayload.send(serverPlayer, payload));
         }
         return InteractionResult.SUCCESS;
+    }
+
+    /**
+     * What using the Note {@code note} does: files it ({@link Notes#find}), hands {@code opener} the payload that opens it to read
+     * when there is one ({@link OpenNotePayload#after}), and tells the player in the action bar. The block passes the real send;
+     * a test passes a recorder, because a mock player cannot receive packets.
+     */
+    public static FindResult use(ServerPlayer player, Identifier note, Consumer<OpenNotePayload> opener) {
+        FindResult result = Notes.find(player, note);
+        OpenNotePayload.after(result, note).ifPresent(opener);
+        player.sendSystemMessage(
+                Component.translatable(
+                        "deepcharter.handbook.note.use." + result.name().toLowerCase(Locale.ROOT)),
+                true);
+        return result;
     }
 }

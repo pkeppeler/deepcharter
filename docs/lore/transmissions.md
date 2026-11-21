@@ -21,7 +21,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 ## Act 1: the Claim and the Old Workings
 
 **T01 · Event: charter founded · Personnel**
-> Welcome to H. Colom & Co., and congratulations on founding [CHARTER]! You'll find Prosperity a little quiet. Our terminals have been offline since the Night Shift, and we're counting on you to bring them back. Your Employee Handbook has been issued and bound to you. It can't be lost, so don't try! Chapter 1 will get you started.
+> Welcome to H. Colom & Co., and congratulations on founding [CHARTER]! You'll find Prosperity a little quiet. Our terminals have been offline since the Night Shift, and we're counting on you to bring them back. Your Employee Handbook is bound to you, as it has been since you arrived. It can't be lost, so don't try! Chapter 1 will get you started.
 >
 > We're so glad you're here. Have a productive shift!
 >
