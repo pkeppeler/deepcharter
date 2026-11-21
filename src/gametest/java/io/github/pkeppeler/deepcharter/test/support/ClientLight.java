@@ -120,7 +120,8 @@ public final class ClientLight {
             ServerLevel level = serverLevel(minecraftServer, dimension);
             emitters.putAll(LightMismatchEvidence.emitters(level, first));
             serverBlocks[0] = LightMismatchEvidence.surroundings(level, box);
-            return LightMismatchEvidence.server(level, box, first) + LightMismatchEvidence.serverChunks(level, box);
+            return LightMismatchEvidence.server(level, box, first, clientLights)
+                    + LightMismatchEvidence.serverChunks(level, box);
         });
         return Optional.of(context.computeOnClient(client -> {
             ClientLevel level = clientLevel(client);

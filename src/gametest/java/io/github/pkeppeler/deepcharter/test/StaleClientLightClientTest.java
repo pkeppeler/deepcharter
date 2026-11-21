@@ -178,6 +178,8 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             }
         });
         BlockPos stand = floor.above(HEIGHT + 3).offset(10, 0, 0);
+        LightTrace.clear();
+        LightTrace.watch(Level.OVERWORLD, room(floor));
         // The breach (sameTick): the pocket is carved and the player teleported in one server task.
         server.runOnServer(s -> {
             carveRoom(s.overworld(), floor);
@@ -327,6 +329,11 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             return found;
         });
         for (StructureSite site : sites) {
+            BoundingBox bounds = site.bounds();
+            Box box = new Box(
+                    new BlockPos(bounds.minX(), bounds.minY(), bounds.minZ()),
+                    new BlockPos(bounds.maxX(), bounds.maxY(), bounds.maxZ()));
+            LightTrace.watch(dimension, box);
             BlockPos stand = site.origin().above(2);
             server.runOnServer(s -> {
                 ServerPlayer player = player(s);
@@ -341,10 +348,6 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                         0,
                         true);
             });
-            BoundingBox bounds = site.bounds();
-            Box box = new Box(
-                    new BlockPos(bounds.minX(), bounds.minY(), bounds.minZ()),
-                    new BlockPos(bounds.maxX(), bounds.maxY(), bounds.maxZ()));
             ClientWait.until(
                     context,
                     "the client to hold the chunks of the " + site.kind() + " in layer " + layer,

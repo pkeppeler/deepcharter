@@ -42,9 +42,12 @@ final class LightMismatchEvidence {
         return found;
     }
 
-    /** What the server knows about {@code cells}, the emitters round them and the chunks of the box. */
-    static String server(ServerLevel level, Box box, List<BlockPos> cells) {
-        StringBuilder out = new StringBuilder("\n    oracle (server blocks alone):");
+    /**
+     * What the server knows about {@code cells}, the emitters round them and the chunks of the box. The oracle's verdict covers the whole
+     * box: how many cells the server's stored block light, and how many the client's, differ from the light the blocks give.
+     */
+    static String server(ServerLevel level, Box box, List<BlockPos> cells, int[] clientLights) {
+        StringBuilder out = new StringBuilder("\n    oracle (server blocks alone), block light over the whole box:");
         try {
             BlockLightOracle.Field field = BlockLightOracle.expected(
                     level,
@@ -55,15 +58,46 @@ final class LightMismatchEvidence {
                             box.max().getX(),
                             box.max().getY(),
                             box.max().getZ()));
-            for (BlockPos cell : cells) {
-                out.append(" ")
-                        .append(cell.toShortString())
-                        .append(" block ")
-                        .append(field.at(cell))
-                        .append(" (server stores ")
-                        .append(level.getBrightness(LightLayer.BLOCK, cell))
-                        .append(");");
+            List<BlockPos> all = box.cells().map(BlockPos::immutable).toList();
+            StringBuilder serverWrong = new StringBuilder();
+            StringBuilder clientWrong = new StringBuilder();
+            int serverOff = 0;
+            int clientOff = 0;
+            for (int i = 0; i < all.size(); i++) {
+                int expected = field.at(all.get(i));
+                int stored = level.getBrightness(LightLayer.BLOCK, all.get(i));
+                int client = clientLights[i] % 16;
+                if (stored != expected && serverOff++ < CELLS) {
+                    serverWrong
+                            .append(" ")
+                            .append(all.get(i).toShortString())
+                            .append(" stored ")
+                            .append(stored)
+                            .append(" expected ")
+                            .append(expected)
+                            .append(";");
+                }
+                if (client != expected && clientOff++ < CELLS) {
+                    clientWrong
+                            .append(" ")
+                            .append(all.get(i).toShortString())
+                            .append(" client ")
+                            .append(client)
+                            .append(" expected ")
+                            .append(expected)
+                            .append(";");
+                }
             }
+            out.append("\n      server stores other than the oracle in ")
+                    .append(serverOff)
+                    .append(" of ")
+                    .append(all.size())
+                    .append(serverWrong)
+                    .append("\n      client reads other than the oracle in ")
+                    .append(clientOff)
+                    .append(" of ")
+                    .append(all.size())
+                    .append(clientWrong);
         } catch (RuntimeException unavailable) {
             out.append(" unavailable: ").append(unavailable.getMessage());
         }
