@@ -133,6 +133,10 @@ def treatment_sha256():
     return hashlib.sha256(repr(parts).encode()).hexdigest()
 
 
+def bed_sha256(name, frames):
+    return hashlib.sha256(bed(name, frames).tobytes()).hexdigest()
+
+
 def bed(name, frames):
     """The crackle and hiss under a recording: 16-bit mono PCM of `frames` samples, the same for the same name every run."""
     rng = random.Random(f"first_sounds/{name}")
@@ -284,7 +288,7 @@ def build(source_dir, out, manifest):
             "credit": recording.credit,
             "duration_seconds": round(seconds, 3),
             "bed_frames": frames,
-            "bed_sha256": hashlib.sha256(bed(recording.name, frames).tobytes()).hexdigest(),
+            "bed_sha256": bed_sha256(recording.name, frames),
             "treatment_sha256": treatment_sha256(),
             "ogg_sha256": sha256(target),
         }
@@ -308,11 +312,11 @@ def check(out, manifest):
     for recording in RECORDINGS:
         entry = known.get(recording.name)
         target = out / recording.folder / f"{recording.name}.ogg"
-        if entry is not None and hashlib.sha256(bed(recording.name, entry["bed_frames"]).tobytes()).hexdigest() != entry["bed_sha256"]:
-            problems.append(f"{recording.name}: the bed the manifest names is not the one the script makes; run tools/sounds/first_sounds.py")
         if entry is None:
             problems.append(f"{recording.name}: {manifest.name} has no entry; run tools/sounds/first_sounds.py")
             continue
+        if bed_sha256(recording.name, entry["bed_frames"]) != entry["bed_sha256"]:
+            problems.append(f"{recording.name}: the bed the manifest names is not the one the script makes; run tools/sounds/first_sounds.py")
         if not target.is_file():
             problems.append(f"{recording.name}: {target} is missing; run tools/sounds/first_sounds.py")
         elif sha256(target) != entry["ogg_sha256"]:
