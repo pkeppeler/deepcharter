@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.game.ClientboundRecipeBookAddPacket;
@@ -21,6 +22,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.ServerRecipeBook;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
@@ -50,6 +52,7 @@ public final class KnownRecipes {
         CharterEvents.REVIVED.register((server, charter, director) -> syncCharter(server, charter));
         CharterEvents.JOINED.register((server, charter, player) -> syncCharter(server, charter));
         CharterEvents.LEFT.register((server, charter, player) -> syncPlayer(server, player));
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> RecipeIndex.clear());
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 if (player.tickCount % HandbookTuning.DEFAULT.progressPollTicks() == 0) {
@@ -102,27 +105,32 @@ public final class KnownRecipes {
         if (charter.isPresent()) {
             if (data.get().addToCharter(charter.get().id(), found)) {
                 syncCharter(server, charter.get());
+                return;
             }
-        } else if (data.get().addToPlayer(player.getUUID(), found)) {
-            reconcile(player, true);
+        } else {
+            data.get().addToPlayer(player.getUUID(), found);
         }
+        // Also undoes a recipe taken out of the book from outside (/recipe take).
+        reconcile(player, true);
     }
 
     /** The recipes the player's inventory and current step make known. */
     private static Set<Identifier> found(MinecraftServer server, ServerPlayer player) {
         RecipeIndex index = RecipeIndex.of(server);
         Set<Identifier> found = new LinkedHashSet<>();
+        Set<Item> held = new HashSet<>();
         Inventory inventory = player.getInventory();
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
             if (!stack.isEmpty()) {
-                found.addAll(index.touching(stack.getItem()));
+                held.add(stack.getItem());
             }
         }
         ItemStack carried = player.containerMenu.getCarried();
         if (!carried.isEmpty()) {
-            found.addAll(index.touching(carried.getItem()));
+            held.add(carried.getItem());
         }
+        held.forEach(item -> found.addAll(index.touching(item)));
         HandbookChapters.current(server, HandbookProgress.completedFor(server, player.getUUID()))
                 .ifPresent(step -> step.needs()
                         .forEach(need -> BuiltInRegistries.ITEM

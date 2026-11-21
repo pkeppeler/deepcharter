@@ -37,3 +37,6 @@ Builds on [ADR 0066](0066-we-build-our-own-parts-catalogue-and-the-server-sends-
 
 - A new recipe, including a datapack's, follows the rule with no change here. A recipe with no ingredient and no result item (a special recipe) is never known and never sent.
 - A tag ingredient makes every recipe that uses any item of the tag known when one item of it is held: holding oak planks teaches every recipe that takes any planks.
+- The poll also reconciles each player's book, so a recipe taken out of it from outside (`/recipe take`) comes back while the charter knows it.
+- A recipe a datapack removes on `/reload` leaves no display to remove, so its key stays in the server book until the next resend, which the mixin conforms. Every learnable recipe in 26.3 has at least one ingredient, so each can be known by an ingredient as well as by its result.
+- The index is dropped when the server stops, so it never keeps a stopped server's recipes alive.
