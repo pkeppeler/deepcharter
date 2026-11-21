@@ -79,7 +79,7 @@ public class CrtTerminalsScenario extends EvidenceScenario {
             }
             Vec3 plinths =
                     Vec3.atCenterOf(terminals.values().stream().findFirst().orElseThrow());
-            look(singleplayer, plinths.add(0, 3, 14), plinths.add(0, 0, 0));
+            look(singleplayer, plinths.add(0, 3, 14), plinths);
             context.waitTicks(SETTLE_TICKS);
             screenshot(context, "plinths");
         }

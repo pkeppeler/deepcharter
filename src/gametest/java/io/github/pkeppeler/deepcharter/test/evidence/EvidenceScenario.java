@@ -117,8 +117,7 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     }
 
     /**
-     * Puts the first player's feet at {@code feet} in the overworld, turned to look from {@code eye} at {@code target}. The two
-     * differ because some scenarios aim from the feet and others from the eyes; each keeps its own framing.
+     * Puts the first player's feet at {@code feet} in the overworld, turned to look from {@code eye} at {@code target}.
      */
     protected static void teleportLooking(TestSingleplayerContext singleplayer, Vec3 feet, Vec3 eye, Vec3 target) {
         Vec3 d = target.subtract(eye);

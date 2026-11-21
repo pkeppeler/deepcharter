@@ -39,10 +39,9 @@ public class TerminalShapeTest {
     }
 
     private static VoxelShape shape(GameTestHelper helper, BlockState state) {
-        helper.setBlock(BlockPos.ZERO.above(), state);
-        return helper.getLevel()
-                .getBlockState(helper.absolutePos(BlockPos.ZERO.above()))
-                .getShape(helper.getLevel(), helper.absolutePos(BlockPos.ZERO.above()));
+        BlockPos pos = BlockPos.ZERO.above();
+        helper.setBlock(pos, state);
+        return state.getShape(helper.getLevel(), helper.absolutePos(pos));
     }
 
     /** The point {@code front} pixels toward the terminal's front from the block's centre, {@code y} pixels up. */
