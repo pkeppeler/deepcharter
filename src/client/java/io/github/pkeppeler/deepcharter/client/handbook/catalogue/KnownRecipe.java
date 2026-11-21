@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -120,7 +121,7 @@ public record KnownRecipe(
         return items;
     }
 
-    /** The ingredients, cells that take the same items counted together, in grid order. */
+    /** The ingredients, cells that take the same items counted together, the most needed first and then in grid order. */
     public List<Need> needs() {
         Map<Set<Item>, List<List<ItemStack>>> groups = new LinkedHashMap<>();
         for (List<ItemStack> cell : cells) {
@@ -137,6 +138,8 @@ public record KnownRecipe(
         for (List<List<ItemStack>> group : groups.values()) {
             needs.add(new Need(group.getFirst(), group.size()));
         }
+        // The most needed first; the sort is stable, so equals keep their order in the grid.
+        needs.sort(Comparator.comparingInt(Need::count).reversed());
         return needs;
     }
 }

@@ -613,7 +613,8 @@ public final class CataloguePanel {
             dim(graphics, hint, textX, textY, panel);
             textX += termWidth(hint + " ");
         } else {
-            String tail = query;
+            // Shown in capitals like the rest of the terminal; the search itself ignores case.
+            String tail = query.toUpperCase(Locale.ROOT);
             while (termWidth(tail) > room && !tail.isEmpty()) {
                 tail = tail.substring(1);
             }

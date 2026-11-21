@@ -229,8 +229,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(
                 drill.needs().size() == 3
                         && drill.needs().getFirst().count() == 6
-                        && drill.needs().getFirst().choices().getFirst().is(Items.IRON_INGOT),
-                "six cells take iron, one redstone and one copper, got " + drill.needs());
+                        && drill.needs().getFirst().choices().getFirst().is(Items.IRON_INGOT)
+                        && drill.needs().get(1).choices().getFirst().is(Items.REDSTONE),
+                "six cells take iron, then one redstone and one copper in grid order, got " + drill.needs());
         var smelt = catalogue.recipesFor(Items.IRON_INGOT).getFirst();
         require(smelt.columns() == 1 && smelt.rows() == 1, "a smelting recipe is one cell");
     }
