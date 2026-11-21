@@ -12,6 +12,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -111,6 +112,42 @@ final class LightMismatchEvidence {
             }
         }
         return found;
+    }
+
+    /** The block state of every cell of {@code box} and the {@value #REACH} blocks round it, in x, y, z order, as {@code level} reads them. */
+    static BlockState[] surroundings(Level level, Box box) {
+        List<BlockState> states = new ArrayList<>();
+        for (BlockPos pos : BlockPos.betweenClosed(
+                box.min().offset(-REACH, -REACH, -REACH), box.max().offset(REACH, REACH, REACH))) {
+            states.add(level.getBlockState(pos));
+        }
+        return states.toArray(BlockState[]::new);
+    }
+
+    /**
+     * How many blocks within light's reach of the box the client reads as another state than the server, and the first few: a block
+     * the client never got, or got late, that light passes or stops at.
+     */
+    static String blockDifferences(Box box, BlockState[] server, BlockState[] client) {
+        List<BlockPos> cells = new ArrayList<>();
+        BlockPos.betweenClosed(
+                        box.min().offset(-REACH, -REACH, -REACH), box.max().offset(REACH, REACH, REACH))
+                .forEach(pos -> cells.add(pos.immutable()));
+        StringBuilder first = new StringBuilder();
+        int different = 0;
+        for (int i = 0; i < server.length; i++) {
+            if (!server[i].equals(client[i]) && different++ < 6) {
+                first.append(" ")
+                        .append(cells.get(i).toShortString())
+                        .append(" server ")
+                        .append(server[i])
+                        .append(" client ")
+                        .append(client[i])
+                        .append(";");
+            }
+        }
+        return "\n    blocks within " + REACH + " of the box that differ, server vs client: " + different + " of "
+                + server.length + first;
     }
 
     /** Per chunk of the box and its ring, the server's side: sendable, ticking, changes to broadcast, held. */

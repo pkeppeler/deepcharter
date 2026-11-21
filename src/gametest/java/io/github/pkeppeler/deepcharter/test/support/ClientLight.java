@@ -114,9 +114,11 @@ public final class ClientLight {
         });
         // The failure path only: what makes the server or the client wrong (LightMismatchEvidence).
         Map<BlockPos, BlockState> emitters = new LinkedHashMap<>();
+        BlockState[][] serverBlocks = new BlockState[1][];
         String serverSide = server.computeOnServer(minecraftServer -> {
             ServerLevel level = serverLevel(minecraftServer, dimension);
             emitters.putAll(LightMismatchEvidence.emitters(level, first));
+            serverBlocks[0] = LightMismatchEvidence.surroundings(level, box);
             return LightMismatchEvidence.server(level, box, first) + LightMismatchEvidence.serverChunks(level, box);
         });
         return Optional.of(context.computeOnClient(client -> {
@@ -124,6 +126,8 @@ public final class ClientLight {
             return cells + " client maxSky=" + maxSky(level, box) + " maxBlock=" + maxBlock(level, box) + " in "
                     + level.dimension().identifier() + ", server maxSky=" + serverSky + " maxBlock=" + serverBlock
                     + serverSide + LightMismatchEvidence.client(level, emitters)
+                    + LightMismatchEvidence.blockDifferences(
+                            box, serverBlocks[0], LightMismatchEvidence.surroundings(level, box))
                     + LightMismatchEvidence.clientChunks(level, box);
         }));
     }
