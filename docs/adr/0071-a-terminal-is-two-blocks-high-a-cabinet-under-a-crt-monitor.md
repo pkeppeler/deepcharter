@@ -20,5 +20,9 @@ The first model hung a small monitor on a one-block cabinet standing on a plinth
 
 ## Rejected
 
-- One tall model in one block: elements past 16 px would be clipped by chunk meshing, and the shape could not follow.
+- One tall model in one block: the shape and the outline could not follow a model hanging out of its block.
 - Scaling the front texture 2x: it blurs the glyphs the user chose.
+
+## Consequences
+
+- A terminal saved as one block (before this change) or set by a command or a structure is a lone lower half. When its chunk loads, `TerminalActivity` puts the upper half over it if the space is free; until then a neighbour update from above removes it. A lone lower half with no room above stays as it is.

@@ -21,6 +21,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -220,6 +221,34 @@ public class TerminalHalvesTest {
                 }
             }
         });
+        helper.succeed();
+    }
+
+    /** A terminal saved as one block (before it was two high), or set by a command, gets its monitor when its chunk loads. */
+    @GameTest
+    public void aLoneLowerHalfGetsItsUpperHalfWhenItsChunkLoads(GameTestHelper helper) {
+        BlockPos lower = helper.absolutePos(new BlockPos(1, 1, 1));
+        BlockState alone = TerminalTypes.REPAIR_STATION
+                .block()
+                .defaultBlockState()
+                .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.EAST);
+        helper.getLevel().setBlock(lower, alone, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+        if (!helper.getLevel().getBlockState(lower.above()).isAir()) {
+            throw helper.assertionException("the setup should leave air over the lone lower half");
+        }
+        TerminalActivity.sync(helper.getLevel(), helper.getLevel().getChunkAt(lower));
+        BlockState upper = helper.getLevel().getBlockState(lower.above());
+        if (!upper.is(TerminalTypes.REPAIR_STATION.block())
+                || upper.getValue(TerminalBlock.HALF) != DoubleBlockHalf.UPPER
+                || upper.getValue(BlockStateProperties.HORIZONTAL_FACING) != Direction.EAST) {
+            throw helper.assertionException("the chunk load should put the upper half over it, found %s", upper);
+        }
+        // A neighbour update from above no longer takes the terminal with it.
+        helper.getLevel().setBlock(lower.above(), upper, Block.UPDATE_ALL);
+        if (!helper.getLevel().getBlockState(lower).is(TerminalTypes.REPAIR_STATION.block())
+                || !(helper.getLevel().getBlockEntity(lower) instanceof TerminalBlockEntity)) {
+            throw helper.assertionException("the lower half and its block entity should survive");
+        }
         helper.succeed();
     }
 }
