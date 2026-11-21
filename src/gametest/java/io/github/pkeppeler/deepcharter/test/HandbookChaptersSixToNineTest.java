@@ -405,7 +405,8 @@ public class HandbookChaptersSixToNineTest {
                                 Items.STONE_AXE,
                                 HandbookChaptersOneToFiveTest.ours("scrap_iron"),
                                 Items.IRON_INGOT,
-                                HandbookChaptersOneToFiveTest.ours("scanner_unit"))) {
+                                HandbookChaptersOneToFiveTest.ours("scanner_unit"),
+                                Items.TORCH)) {
                             HandbookChaptersOneToFiveTest.give(first, item);
                         }
                         for (String directive : through(5)) {
