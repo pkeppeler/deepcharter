@@ -37,6 +37,20 @@ public final class M2SliceEndState {
 
     private M2SliceEndState() {}
 
+    /** The failure of {@link #require} when the descent changed a player's dimension; a test asks for this type, not for a word of its message. */
+    public static final class PlayerMoved extends AssertionError {
+        private static final long serialVersionUID = 1L;
+
+        PlayerMoved(String message) {
+            super(message);
+        }
+    }
+
+    /** Forgets the crossings recorded for {@code entity}, for a test that staged one on purpose. */
+    public static void forgetCrossings(UUID entity) {
+        MOVED.remove(entity);
+    }
+
     /**
      * Starts recording the crossings that change an entity's level, so {@link #require} can say the descent changed none. Call it before
      * the slice runs (a static initialiser of the test or the scenario does); calling it again does nothing.
@@ -60,7 +74,7 @@ public final class M2SliceEndState {
      * statue has its hands, and the descent never changed anyone's dimension: no player was moved by a crossing and the Prospector is in a
      * campaign level ({@link #watchCrossings} must have been called before the slice).
      *
-     * @throws AssertionError naming what is still open
+     * @throws AssertionError naming what is still open; a {@link PlayerMoved} when a crossing moved a player
      */
     public static void require(MinecraftServer server, CharterId charter, PodEntity prospector) {
         if (!WATCHING.get()) {
@@ -69,8 +83,8 @@ public final class M2SliceEndState {
         }
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (!MOVED.getOrDefault(player.getUUID(), List.of()).isEmpty()) {
-                throw new AssertionError("the descent changed "
-                        + player.getName().getString() + "'s dimension: " + MOVED.get(player.getUUID()));
+                throw new PlayerMoved("the descent changed " + player.getName().getString() + "'s dimension: "
+                        + MOVED.get(player.getUUID()));
             }
         }
         if (!LayerChain.isCampaign(prospector.level())) {

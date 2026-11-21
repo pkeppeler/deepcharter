@@ -97,30 +97,31 @@ public class M2SliceTest {
             mock.teleportTo(campaign, new Vec3(X, TestLayers.worldY(1, 40), Z), 0, 0);
             PodEntity pod = TestEntities.create(PodRegistry.POD, campaign);
             BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, campaign, 1, 2);
-            String inPlace = endStateFailure(server, pod);
-            if (inPlace.contains("dimension")) {
+            AssertionError inPlace = endStateFailure(server, pod);
+            if (inPlace instanceof M2SliceEndState.PlayerMoved) {
                 throw helper.assertionException(net.minecraft.network.chat.Component.literal(
-                        "a crossing in place counted as a move: " + inPlace));
+                        "a crossing in place counted as a move: " + inPlace.getMessage()));
             }
             BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, server.overworld(), 1, 2);
-            String moved = endStateFailure(server, pod);
-            if (!moved.contains("dimension")) {
+            AssertionError moved = endStateFailure(server, pod);
+            if (!(moved instanceof M2SliceEndState.PlayerMoved)) {
                 throw helper.assertionException(net.minecraft.network.chat.Component.literal(
                         "a crossing that moved a player passed: " + moved));
             }
         } finally {
+            M2SliceEndState.forgetCrossings(mock.player().getUUID());
             mock.leave();
         }
         helper.succeed();
     }
 
-    /** The message of the end state's failure for a world where nothing of the slice was done, empty when it does not fail. */
-    private static String endStateFailure(MinecraftServer server, PodEntity prospector) {
+    /** The end state's failure for a world where nothing of the slice was done; null when it does not fail. */
+    private static @Nullable AssertionError endStateFailure(MinecraftServer server, PodEntity prospector) {
         try {
             M2SliceEndState.require(server, CharterId.random(), prospector);
-            return "";
+            return null;
         } catch (AssertionError failure) {
-            return String.valueOf(failure.getMessage());
+            return failure;
         }
     }
 

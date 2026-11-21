@@ -33,10 +33,13 @@ addVmArgToRun("gameTest", gameTestHeap)
 // Client GameTest heap. It had none (a quarter of RAM: 4 GB on the 16 GB runner), and the first client run on the campaign overworld
 // (#803) died of OutOfMemoryError while a client test's world was saving on stop, 52 classes in. Every default-preset world is now
 // the 2352-tall campaign world, whose chunks hold six times the sections of the old surface's, and the integrated server and the client
-// each hold the chunks in view. 6 GB is a guess with that margin, not a measurement (the run cannot be repeated on a Mac without a
-// display): the first CI run on it must pass, and a lower figure needs a measured peak.
+// each hold the chunks in view. 6G was a guess; the run logs its collections (-Xlog:gc, build/client-gc.log) and the client-gametest
+// action prints the peak and the live set from it, so the figure below comes from a run, not a guess. A Mac with two client slots
+// (DEEPCHARTER_CLIENT_SLOTS, default 2) holds two of these JVMs beside the browser and the editor: the heap of two plus about 1.5 GB
+// of native memory each must stay well under its 16 GB.
 val clientGameTestHeap = "-Xmx6G"
 addVmArgToRun("clientGameTest", clientGameTestHeap)
+addVmArgToRun("clientGameTest", "-Xlog:gc:file=" + layout.buildDirectory.file("client-gc.log").get().asFile.path + ":uptime")
 
 // Proof the gate holds: every run carries the flag, and a JVM that catches its OutOfMemoryError exits non-zero with the flag and
 // 0 without it. The second half fails if the JVM ever stops honouring the flag; the first, if a run drops it.

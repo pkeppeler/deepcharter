@@ -26,6 +26,9 @@ import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerConnection;
@@ -100,8 +103,15 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
             require("the campaign overworld", server.computeOnServer(CampaignWorldClientTest::theOverworld));
             require("the colony", server.computeOnServer(CampaignWorldClientTest::theColony));
             require("the Conduit and the stamp", server.computeOnServer(CampaignWorldClientTest::theConduit));
-            // tick-wait: the player's view chunks come in over a few seconds after the join
-            context.waitTicks(100);
+            ClientWait.until(
+                    context,
+                    "the pad's chunks on the server",
+                    () -> server.computeOnServer(s -> padChunks()
+                            .allMatch(chunk -> s.overworld().getChunkSource().hasChunk(chunk.x(), chunk.z()))),
+                    () -> server.computeOnServer(s -> padChunks()
+                            .filter(chunk -> !s.overworld().getChunkSource().hasChunk(chunk.x(), chunk.z()))
+                            .toList()
+                            .toString()));
             require("the pad chunks' sites", server.computeOnServer(CampaignWorldClientTest::theSitesOfThePad));
             boolean clientSees = context.computeOnClient(client -> client.level != null
                     // level-height: the whole level against the issue's numbers, not one layer
@@ -257,6 +267,14 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
         return out.toString();
     }
 
+    /** The chunks of the pad. */
+    private static Stream<ChunkPos> padChunks() {
+        return IntStream.range(-PAD_CHUNK_RADIUS, PAD_CHUNK_RADIUS)
+                .boxed()
+                .flatMap(x ->
+                        IntStream.range(-PAD_CHUNK_RADIUS, PAD_CHUNK_RADIUS).mapToObj(z -> new ChunkPos(x, z)));
+    }
+
     /**
      * The sites of the chunks the build loaded are whole: each has its blocks, its Note and its candle. Those are every site of both
      * layers in the cells round the origin that touches the pad's chunks, and every such site whose chunks the world holds already (the
@@ -268,12 +286,7 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
         if (conduit == null) {
             return "the colony was not built";
         }
-        Set<ChunkPos> pad = new LinkedHashSet<>();
-        for (int x = -PAD_CHUNK_RADIUS; x < PAD_CHUNK_RADIUS; x++) {
-            for (int z = -PAD_CHUNK_RADIUS; z < PAD_CHUNK_RADIUS; z++) {
-                pad.add(new ChunkPos(x, z));
-            }
-        }
+        Set<ChunkPos> pad = padChunks().collect(Collectors.toCollection(LinkedHashSet::new));
         List<StructureSite> sites = new ArrayList<>();
         for (int layer = 1; layer <= CampaignBands.lastLayer(); layer++) {
             CampaignBands.Band band = CampaignBands.layer(layer);
