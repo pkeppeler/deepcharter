@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,12 +21,12 @@ public class ArrivalTest {
         } catch (IllegalStateException expected) {
             String message = String.valueOf(expected.getMessage());
             if (!message.contains("pod") || !message.contains("the far chunk ticks")) {
-                throw helper.assertionException("the message names neither the value nor the step: " + message);
+                throw failure(helper, "the message names neither the value nor the step: %s", message);
             }
             helper.succeed();
             return;
         }
-        throw helper.assertionException("get() before set() should throw IllegalStateException");
+        throw failure(helper, "get() before set() should throw IllegalStateException");
     }
 
     @GameTest
@@ -32,7 +34,7 @@ public class ArrivalTest {
         Arrival<String> arrival = pod();
         arrival.set("mole");
         if (!"mole".equals(arrival.get()) || !arrival.isPresent()) {
-            throw helper.assertionException("get() after set() did not return the value");
+            throw failure(helper, "get() after set() did not return the value");
         }
         helper.succeed();
     }
@@ -45,12 +47,12 @@ public class ArrivalTest {
             arrival.set("other");
         } catch (IllegalStateException expected) {
             if (!"mole".equals(arrival.get())) {
-                throw helper.assertionException("the failed second set replaced the value");
+                throw failure(helper, "the failed second set replaced the value");
             }
             helper.succeed();
             return;
         }
-        throw helper.assertionException("a second set() should throw IllegalStateException");
+        throw failure(helper, "a second set() should throw IllegalStateException");
     }
 
     @GameTest
@@ -63,12 +65,12 @@ public class ArrivalTest {
             threw = true;
         }
         if (!threw) {
-            throw helper.assertionException("replace() before set() should throw IllegalStateException");
+            throw failure(helper, "replace() before set() should throw IllegalStateException");
         }
         arrival.set("mole");
         arrival.replace("other");
         if (!"other".equals(arrival.get())) {
-            throw helper.assertionException("replace() did not overwrite the value");
+            throw failure(helper, "replace() did not overwrite the value");
         }
         helper.succeed();
     }
@@ -79,12 +81,12 @@ public class ArrivalTest {
         List<String> seen = new ArrayList<>();
         arrival.ifPresent(seen::add);
         if (arrival.isPresent() || !seen.isEmpty()) {
-            throw helper.assertionException("ifPresent() ran before the value arrived: " + seen);
+            throw failure(helper, "ifPresent() ran before the value arrived: %s", seen);
         }
         arrival.set("mole");
         arrival.ifPresent(seen::add);
         if (!List.of("mole").equals(seen)) {
-            throw helper.assertionException("ifPresent() should run once with the value, saw " + seen);
+            throw failure(helper, "ifPresent() should run once with the value, saw %s", seen);
         }
         helper.succeed();
     }

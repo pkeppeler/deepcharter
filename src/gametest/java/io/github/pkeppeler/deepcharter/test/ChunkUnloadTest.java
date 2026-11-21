@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.test.mixin.ChunkMapAccess;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -15,7 +17,7 @@ public class ChunkUnloadTest {
         chunkMap.deepcharter$unloadQueue().add(() -> ran.set(true));
         chunkMap.deepcharter$processUnloads(() -> false);
         if (!ran.get()) {
-            throw helper.assertionException("a queued unload tail did not run in a tick with no time left");
+            throw failure(helper, "a queued unload tail did not run in a tick with no time left");
         }
         helper.succeed();
     }

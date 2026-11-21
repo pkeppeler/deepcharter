@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -65,13 +67,13 @@ public class ContractTerminalTest {
 
     private static void expectDone(GameTestHelper helper, Optional<TerminalRefusal> refusal, String what) {
         if (refusal.isPresent()) {
-            throw helper.assertionException("%s should succeed, was refused: %s", what, refusal.get());
+            throw failure(helper, "%s should succeed, was refused: %s", what, refusal.get());
         }
     }
 
     private static void expectRefused(GameTestHelper helper, Optional<TerminalRefusal> refusal, String what) {
         if (!refusal.equals(Optional.of(TerminalRefusal.ACTION_REFUSED))) {
-            throw helper.assertionException("%s should be refused by the action, got %s", what, refusal);
+            throw failure(helper, "%s should be refused by the action, got %s", what, refusal);
         }
     }
 
@@ -83,7 +85,7 @@ public class ContractTerminalTest {
             GameTestHelper helper, MinecraftServer server, ServerPlayer player, Role role, String what) {
         Role actual = state(server, player).role();
         if (actual != role) {
-            throw helper.assertionException("%s: the state should be %s, was %s", what, role, actual);
+            throw failure(helper, "%s: the state should be %s, was %s", what, role, actual);
         }
     }
 
@@ -101,12 +103,11 @@ public class ContractTerminalTest {
         if (found.isEmpty()
                 || !found.get().name().equals(charter)
                 || !found.get().isDirector(player.getUUID())) {
-            throw helper.assertionException("the founder should direct the charter %s, got %s", charter, found);
+            throw failure(helper, "the founder should direct the charter %s, got %s", charter, found);
         }
         ContractState after = state(server, player);
         if (after.role() != Role.DIRECTOR || !after.charter().equals(charter)) {
-            throw helper.assertionException(
-                    "the state after founding should be Director of %s, got %s", charter, after);
+            throw failure(helper, "the state after founding should be Director of %s, got %s", charter, after);
         }
         helper.succeed();
     }
@@ -123,11 +124,11 @@ public class ContractTerminalTest {
         expectDone(helper, Terminals.act(applicant, pos, ContractActions.APPLY, name(charter)), "applying");
         ContractState waiting = state(server, applicant);
         if (waiting.role() != Role.APPLICANT || !waiting.charter().equals(charter)) {
-            throw helper.assertionException("the applicant should be waiting on %s, got %s", charter, waiting);
+            throw failure(helper, "the applicant should be waiting on %s, got %s", charter, waiting);
         }
         List<String> applicants = state(server, director).applicants();
         if (!applicants.equals(List.of("Applicant"))) {
-            throw helper.assertionException("the Director should see exactly Applicant, got %s", applicants);
+            throw failure(helper, "the Director should see exactly Applicant, got %s", applicants);
         }
 
         expectRefused(
@@ -138,7 +139,7 @@ public class ContractTerminalTest {
         expectDone(helper, Terminals.act(director, pos, ContractActions.APPROVE, name("Applicant")), "approving");
         expectRole(helper, server, applicant, Role.CREW, "after approval");
         if (!state(server, director).applicants().isEmpty()) {
-            throw helper.assertionException("an approved application leaves the Director's list");
+            throw failure(helper, "an approved application leaves the Director's list");
         }
 
         expectDone(helper, Terminals.act(applicant, pos, ContractActions.LEAVE, new CompoundTag()), "a member leaving");
@@ -157,21 +158,21 @@ public class ContractTerminalTest {
         expectDone(helper, Terminals.act(crew, pos, ContractActions.APPLY, name(charter)), "applying");
         expectDone(helper, Terminals.act(director, pos, ContractActions.APPROVE, name("Sharecrew")), "approving");
         if (state(server, director).outpostsShared() || state(server, crew).outpostsShared()) {
-            throw helper.assertionException("a new charter keeps its outposts to itself");
+            throw failure(helper, "a new charter keeps its outposts to itself");
         }
         expectRefused(
                 helper,
                 Terminals.act(crew, pos, ContractActions.SHARE_OUTPOSTS, new CompoundTag()),
                 "a crew member opening the outposts");
         if (state(server, crew).outpostsShared()) {
-            throw helper.assertionException("a refused crew member changes nothing");
+            throw failure(helper, "a refused crew member changes nothing");
         }
         expectDone(
                 helper,
                 Terminals.act(director, pos, ContractActions.SHARE_OUTPOSTS, new CompoundTag()),
                 "the Director opening the outposts");
         if (!state(server, director).outpostsShared() || !state(server, crew).outpostsShared()) {
-            throw helper.assertionException("the Director and the crew should both see the outposts open");
+            throw failure(helper, "the Director and the crew should both see the outposts open");
         }
         expectRefused(
                 helper,
@@ -182,7 +183,7 @@ public class ContractTerminalTest {
                 Terminals.act(director, pos, ContractActions.KEEP_OUTPOSTS, new CompoundTag()),
                 "the Director closing the outposts");
         if (state(server, director).outpostsShared()) {
-            throw helper.assertionException("the Director's own state should show the outposts closed");
+            throw failure(helper, "the Director's own state should show the outposts closed");
         }
         helper.succeed();
     }
@@ -203,7 +204,7 @@ public class ContractTerminalTest {
         expectDone(helper, Terminals.act(first, pos, ContractActions.LEAVE, new CompoundTag()), "withdrawing");
         expectRole(helper, server, first, Role.NONE, "after withdrawing");
         if (!state(server, director).applicants().isEmpty()) {
-            throw helper.assertionException("a withdrawn application leaves the Director's list");
+            throw failure(helper, "a withdrawn application leaves the Director's list");
         }
         helper.succeed();
     }
@@ -254,7 +255,7 @@ public class ContractTerminalTest {
                 "leaving with no charter");
         if (Charters.allOrThrow(server).size() != charters
                 || Charters.charterOfOrThrow(server, stranger.getUUID()).isPresent()) {
-            throw helper.assertionException("a refused request changes nothing");
+            throw failure(helper, "a refused request changes nothing");
         }
 
         expectDone(helper, Terminals.act(stranger, pos, ContractActions.APPLY, name(charter)), "applying");
@@ -285,14 +286,18 @@ public class ContractTerminalTest {
         int before = state(server, viewer).charterCount();
         for (int i = 0; i < cap + 2; i++) {
             if (Charters.found(server, UUID.randomUUID(), uniqueName("Listed")).isPresent()) {
-                throw helper.assertionException("founding a charter for a list test should succeed");
+                throw failure(helper, "founding a charter for a list test should succeed");
             }
         }
         ContractState seen = state(server, viewer);
         if (seen.charters().size() != cap || seen.charterCount() != before + cap + 2) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "the charters offered are capped at %s and counted in full, got %s of %s (was %s)",
-                    cap, seen.charters().size(), seen.charterCount(), before);
+                    cap,
+                    seen.charters().size(),
+                    seen.charterCount(),
+                    before);
         }
 
         expectDone(
@@ -300,14 +305,17 @@ public class ContractTerminalTest {
         Charter crowded = Charters.charterOfOrThrow(server, director.getUUID()).orElseThrow();
         for (int i = 0; i < cap + 2; i++) {
             if (Charters.apply(server, UUID.randomUUID(), crowded.id()).isPresent()) {
-                throw helper.assertionException("an application for a list test should succeed");
+                throw failure(helper, "an application for a list test should succeed");
             }
         }
         ContractState waiting = state(server, director);
         if (waiting.applicants().size() != cap || waiting.applicantCount() != cap + 2) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "the applicants listed are capped at %s and counted in full, got %s of %s",
-                    cap, waiting.applicants().size(), waiting.applicantCount());
+                    cap,
+                    waiting.applicants().size(),
+                    waiting.applicantCount());
         }
         helper.succeed();
     }
@@ -325,7 +333,7 @@ public class ContractTerminalTest {
 
         // Not through the terminal: the charter event alone must tell the Director.
         if (Charters.apply(server, applicant.getUUID(), charter.id()).isPresent()) {
-            throw helper.assertionException("the application should succeed");
+            throw failure(helper, "the application should succeed");
         }
         expectPushed(
                 helper,
@@ -376,7 +384,7 @@ public class ContractTerminalTest {
         PUSHED.clear();
 
         if (Charters.found(server, founder, charter).isPresent()) {
-            throw helper.assertionException("founding should succeed");
+            throw failure(helper, "founding should succeed");
         }
         expectPushed(
                 helper,
@@ -386,7 +394,7 @@ public class ContractTerminalTest {
 
         PUSHED.clear();
         if (Charters.leave(server, founder).isPresent()) {
-            throw helper.assertionException("the lone Director leaving should succeed");
+            throw failure(helper, "the lone Director leaving should succeed");
         }
         expectPushed(
                 helper,
@@ -421,7 +429,7 @@ public class ContractTerminalTest {
         Charter after = Charters.findOrThrow(server, a.id()).orElseThrow();
         if (!after.applications().equals(List.of(applicant.getUUID()))
                 || Charters.charterOfOrThrow(server, applicant.getUUID()).isPresent()) {
-            throw helper.assertionException("A's application must be untouched by B");
+            throw failure(helper, "A's application must be untouched by B");
         }
         helper.succeed();
     }
@@ -446,12 +454,14 @@ public class ContractTerminalTest {
                 || !offered.revivable().equals(List.of(charter))
                 || offered.revivableCount() != 1
                 || offered.charters().contains(charter)) {
-            throw helper.assertionException(
-                    "the former member is offered the dormant charter to revive and not to apply to, got %s", offered);
+            throw failure(
+                    helper,
+                    "the former member is offered the dormant charter to revive and not to apply to, got %s",
+                    offered);
         }
         ContractState seen = state(server, outsider);
         if (seen.role() != Role.NONE || !seen.revivable().isEmpty() || seen.revivableCount() != 0) {
-            throw helper.assertionException("a stranger is offered nothing to revive, got %s", seen);
+            throw failure(helper, "a stranger is offered nothing to revive, got %s", seen);
         }
 
         Charter before = Charters.findByName(server, charter).orElseThrow();
@@ -466,7 +476,7 @@ public class ContractTerminalTest {
                 state -> state.notice().equals(Optional.of(CharterRefusal.NOT_A_FORMER_MEMBER.translationKey())),
                 "the refusal says why");
         if (!Charters.findOrThrow(server, before.id()).orElseThrow().equals(before)) {
-            throw helper.assertionException("a refused revival changes nothing");
+            throw failure(helper, "a refused revival changes nothing");
         }
         expectRefused(
                 helper,
@@ -482,7 +492,7 @@ public class ContractTerminalTest {
                 "the former member reviving");
         ContractState directing = state(server, former);
         if (directing.role() != Role.DIRECTOR || !directing.charter().equals(charter)) {
-            throw helper.assertionException("the former member should direct the revived charter, got %s", directing);
+            throw failure(helper, "the former member should direct the revived charter, got %s", directing);
         }
         expectPushed(
                 helper,
@@ -511,7 +521,7 @@ public class ContractTerminalTest {
         PUSHED.clear();
 
         if (Charters.leave(server, viewer.getUUID()).isPresent()) {
-            throw helper.assertionException("leaving should succeed");
+            throw failure(helper, "leaving should succeed");
         }
         expectPushed(
                 helper,
@@ -536,9 +546,12 @@ public class ContractTerminalTest {
         }
         ContractState seen = state(server, viewer);
         if (seen.revivable().size() != cap || seen.revivableCount() != cap + 2) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "the charters to revive are capped at %s and counted in full, got %s of %s",
-                    cap, seen.revivable().size(), seen.revivableCount());
+                    cap,
+                    seen.revivable().size(),
+                    seen.revivableCount());
         }
         helper.succeed();
     }
@@ -554,9 +567,12 @@ public class ContractTerminalTest {
             GameTestHelper helper, ServerPlayer player, Predicate<ContractState> wanted, String what) {
         ContractState last = PUSHED.get(player.getUUID());
         if (last == null || !wanted.test(last)) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "%s: last state pushed to %s was %s",
-                    what, player.getGameProfile().name(), String.valueOf(last));
+                    what,
+                    player.getGameProfile().name(),
+                    String.valueOf(last));
         }
     }
 }

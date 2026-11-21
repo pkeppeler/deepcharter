@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.colony.ColonyRations;
@@ -100,7 +102,7 @@ public class CompanyRationsTest {
 
     private static void awaitStarters(GameTestHelper helper, ServerPlayer player) {
         if (rations(player) != STARTING_RATIONS) {
-            throw helper.assertionException("waiting for the starting rations, the player holds %s", rations(player));
+            throw failure(helper, "waiting for the starting rations, the player holds %s", rations(player));
         }
     }
 
@@ -127,23 +129,25 @@ public class CompanyRationsTest {
     public void theRationIsEdibleFoodWithSensibleNutrition(GameTestHelper helper) {
         FoodProperties food = new ItemStack(item("company_ration")).get(DataComponents.FOOD);
         if (food == null) {
-            throw helper.assertionException("the Company ration is not food");
+            throw failure(helper, "the Company ration is not food");
         }
         if (food.nutrition() < 4 || food.nutrition() > 8) {
-            throw helper.assertionException("a ration restores 4 to 8 hunger, it restores %s", food.nutrition());
+            throw failure(helper, "a ration restores 4 to 8 hunger, it restores %s", food.nutrition());
         }
         FoodProperties meal = new ItemStack(item("stalk_meal")).get(DataComponents.FOOD);
         if (meal == null) {
-            throw helper.assertionException("the stalk meal is not food");
+            throw failure(helper, "the stalk meal is not food");
         }
         if (meal.nutrition() >= food.nutrition() || meal.nutrition() < 2) {
-            throw helper.assertionException(
+            throw failure(
+                    helper,
                     "the poor meal restores 2 or more and less than a ration (%s), it restores %s",
-                    food.nutrition(), meal.nutrition());
+                    food.nutrition(),
+                    meal.nutrition());
         }
         if (new ItemStack(item("company_ration")).get(DataComponents.CONSUMABLE) == null
                 || new ItemStack(item("stalk_meal")).get(DataComponents.CONSUMABLE) == null) {
-            throw helper.assertionException("food that cannot be consumed cannot be eaten");
+            throw failure(helper, "food that cannot be consumed cannot be eaten");
         }
         helper.succeed();
     }
@@ -170,7 +174,8 @@ public class CompanyRationsTest {
             }
             found.ensure(helper);
             if (!said(mock, "colony.deepcharter.ore_car.found") || !said(mock, "colony.deepcharter.ore_car.empty")) {
-                throw helper.assertionException(
+                throw failure(
+                        helper,
                         "the car says what was found, then that it is empty; the player heard %s",
                         mock.actionBarMessages());
             }
@@ -230,8 +235,7 @@ public class CompanyRationsTest {
             found.ensure(helper);
             if (!said(mock, "colony.deepcharter.canteen.dispensed")
                     || !said(mock, "colony.deepcharter.canteen.refused")) {
-                throw helper.assertionException(
-                        "the canteen says what it did, the player heard %s", mock.actionBarMessages());
+                throw failure(helper, "the canteen says what it did, the player heard %s", mock.actionBarMessages());
             }
         });
     }
@@ -256,7 +260,7 @@ public class CompanyRationsTest {
         Versioned<RationLedger> value =
                 RationLedger.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
         if (!value.equals(Versioned.of(ledger))) {
-            throw helper.assertionException("the ledger %s came back as %s", ledger, value);
+            throw failure(helper, "the ledger %s came back as %s", ledger, value);
         }
         helper.succeed();
     }
@@ -271,25 +275,25 @@ public class CompanyRationsTest {
         SingleRecipeInput stalk = new SingleRecipeInput(new ItemStack(item("fungal_stalk")));
         var campfire = level.recipeAccess()
                 .getRecipeFor(RecipeType.CAMPFIRE_COOKING, stalk, level)
-                .orElseThrow(() -> helper.assertionException("no campfire recipe takes a fungal stalk"));
+                .orElseThrow(() -> failure(helper, "no campfire recipe takes a fungal stalk"));
         expectMeal(helper, campfire.value().assemble(stalk), "the campfire");
         var smoker = level.recipeAccess()
                 .getRecipeFor(RecipeType.SMOKING, stalk, level)
-                .orElseThrow(() -> helper.assertionException("no smoker recipe takes a fungal stalk"));
+                .orElseThrow(() -> failure(helper, "no smoker recipe takes a fungal stalk"));
         expectMeal(helper, smoker.value().assemble(stalk), "the smoker");
         var furnace = level.recipeAccess()
                 .getRecipeFor(RecipeType.SMELTING, stalk, level)
-                .orElseThrow(() -> helper.assertionException("no furnace recipe takes a fungal stalk"));
+                .orElseThrow(() -> failure(helper, "no furnace recipe takes a fungal stalk"));
         ItemStack smelted = furnace.value().assemble(stalk);
         if (!smelted.is(Items.CHARCOAL)) {
-            throw helper.assertionException("the furnace turns a stalk into %s, expected charcoal", smelted);
+            throw failure(helper, "the furnace turns a stalk into %s, expected charcoal", smelted);
         }
         helper.succeed();
     }
 
     private static void expectMeal(GameTestHelper helper, ItemStack result, String where) {
         if (!result.is(item("stalk_meal")) || result.getCount() != 1) {
-            throw helper.assertionException("%s cooks a stalk into %s, expected one stalk meal", where, result);
+            throw failure(helper, "%s cooks a stalk into %s, expected one stalk meal", where, result);
         }
     }
 

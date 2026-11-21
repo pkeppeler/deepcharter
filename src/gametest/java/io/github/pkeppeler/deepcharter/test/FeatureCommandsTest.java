@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.mojang.brigadier.CommandDispatcher;
 import io.github.pkeppeler.deepcharter.command.FeatureCommands;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -20,14 +22,14 @@ public class FeatureCommandsTest {
 
         var root = dispatcher.getRoot().getChild(FeatureCommands.ROOT);
         if (root == null || root.getChildren().size() != 2) {
-            throw helper.assertionException("expected one /deepcharter root with 2 features, got %s", root);
+            throw failure(helper, "expected one /deepcharter root with 2 features, got %s", root);
         }
         if (dispatcher.getRoot().getChildren().size() != 1) {
-            throw helper.assertionException("expected /deepcharter to be the only root literal");
+            throw failure(helper, "expected /deepcharter to be the only root literal");
         }
         var pod = root.getChild("pod");
         if (pod.getChild("spawn") == null || pod.getChild("dump") == null) {
-            throw helper.assertionException("both pod registrations should survive the merge");
+            throw failure(helper, "both pod registrations should survive the merge");
         }
         helper.succeed();
     }

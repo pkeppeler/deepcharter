@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.test.support.ClientTestWatchdog;
 import io.github.pkeppeler.deepcharter.test.support.ClientTestWatchdog.Timeout;
 import java.time.Duration;
@@ -32,14 +34,14 @@ public class ClientTestWatchdogTest {
             watchdog.arm("HungClientTest", Duration.ofMillis(300));
             Timeout timeout = reports.poll(10, TimeUnit.SECONDS);
             if (timeout == null) {
-                throw helper.assertionException("the watchdog did not fire within 10 s of a 300 ms limit");
+                throw failure(helper, "the watchdog did not fire within 10 s of a 300 ms limit");
             }
             String message = timeout.message();
             if (!timeout.test().equals("HungClientTest") || !message.contains("HungClientTest ran longer than")) {
-                throw helper.assertionException("the report does not name the class and its limit: " + message);
+                throw failure(helper, "the report does not name the class and its limit: %s", message);
             }
             if (!message.contains("watchdog-test-stuck-thread") || !message.contains("CountDownLatch")) {
-                throw helper.assertionException("the dump has no stack of the stuck thread: " + message);
+                throw failure(helper, "the dump has no stack of the stuck thread: %s", message);
             }
         } finally {
             stuck.interrupt();
@@ -55,16 +57,15 @@ public class ClientTestWatchdogTest {
         try {
             watchdog.arm("FirstClientTest", Duration.ofMillis(300));
             watchdog.arm("SecondClientTest", Duration.ofHours(1));
-            Timeout early = reports.poll(1, TimeUnit.SECONDS);
-            if (early != null) {
-                throw helper.assertionException(
-                        "the first class's clock ran on after the second class started: " + early.test());
+            Timeout hit = reports.poll(1, TimeUnit.SECONDS);
+            if (hit != null) {
+                throw failure(helper, "the first class's clock ran on after the second class started: %s", hit.test());
             }
             watchdog.arm("ThirdClientTest", Duration.ofMillis(300));
             watchdog.disarm();
             Timeout disarmed = reports.poll(1, TimeUnit.SECONDS);
             if (disarmed != null) {
-                throw helper.assertionException("a disarmed clock still fired for " + disarmed.test());
+                throw failure(helper, "a disarmed clock still fired for %s", disarmed.test());
             }
         } finally {
             watchdog.disarm();
