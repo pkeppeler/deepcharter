@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -97,10 +99,6 @@ public class ScannerFittingTest {
     private static InteractionResult useUnit(Scene scene, PodEntity pod) {
         scene.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ScannerRegistry.SCANNER_UNIT));
         return UseEntity.on(scene.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
-    }
-
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
-        return helper.assertionException(format, args);
     }
 
     /** The recipe is the real one, in the real recipe manager, and asks for the bootstrap's iron, copper and redstone and nothing else. */
