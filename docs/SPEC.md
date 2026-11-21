@@ -157,11 +157,11 @@ The **Employee Handbook** is a company-issued onboarding manual.
 
 - **Directives** are the handbook's objectives, shown as a **quest map**: chapter tabs down the side, and each chapter a flowchart sheet you can drag and zoom. They complete automatically from game events: item obtained, block placed or repaired, layer entered, item crafted, or a custom trigger from our code.
 - A step shows its instruction, the items it needs with counts and progress, a link to its chapter page and each item's recipe one click away. The chapter text pages stay as the manual.
-- A completed step shows a themed popup. Nothing is pinned on screen. The book opens where the player left it, and the L key opens it.
+- A completed step shows a themed popup. Nothing is pinned on screen. The book opens where the player left it, and L opens it as well as H.
 - Directives give no rewards. The employer's transmission bonuses still exist separately.
 - Progress is shared by the charter, with personal read marks for each player.
 - **Before a charter:** founding carries the founder's Directive progress, recipe discoveries and found Notes into the new charter. Joining takes the charter's Directive progress and adds the joiner's discoveries and Notes to it.
-- Terminals show the same map later, in CRT style.
+- Terminals might show the same map later, in CRT style (an idea).
 
 ### Three channels
 
@@ -181,13 +181,6 @@ There are no Directives after layer 2, only pencil paths. Each new mechanic is e
 - A one-time HUD or scanner warning on first exposure, such as "PRESSURE EXCEEDS HULL RATING".
 
 The story stays in Transmissions and Notes.
-
-### Parts catalogue
-
-Our own EMI-style viewer, styled as a Company parts catalogue ([ADR 0066](adr/0066-we-build-our-own-parts-catalogue-and-the-server-sends-each-player-only-their-charters-known-recipes.md)). It sits beside inventory screens. R on a hovered item shows its recipes, U its uses. It has search, favourites and a "craftable now" filter. Vanilla's recipe book is hidden.
-
-- A recipe is **known** per charter. It becomes known when a quest step that asks for its item becomes current, or when anyone in the charter obtains the item or one of its ingredients. Vanilla items follow the same rule.
-- Unknown recipes still craft. The server sends each player only their charter's known recipes.
 
 Implementation: [ADR 0005](adr/0005-build-our-own-handbook.md); research in [research/handbook-build-vs-reuse.md](research/handbook-build-vs-reuse.md).
 
@@ -414,3 +407,10 @@ Surface, repairing the colony, the Mole, the onboarding handbook (implied by the
 - A trimming tool for chunks nobody visits, if world size becomes a problem.
 - Exact "couple of component tiers" cadence for catalysts, and which layer supplies which catalyst. Names proposed in [LORE.md](LORE.md#6-motifs).
 - Exact component tier caps per chassis.
+
+### Parts catalogue
+
+Our own EMI-style viewer, styled as a Company parts catalogue ([ADR 0066](adr/0066-we-build-our-own-parts-catalogue-and-the-server-sends-each-player-only-their-charters-known-recipes.md)). It sits beside inventory screens. R on a hovered item shows its recipes, U its uses. It has search, favourites and a "craftable now" filter. Vanilla's recipe book is hidden.
+
+- A recipe is **known** per charter. It becomes known when a quest step that asks for its item becomes current, or when anyone in the charter obtains the item or one of its ingredients. Vanilla items follow the same rule.
+- Unknown recipes still craft. The server sends each player only their charter's known recipes.
