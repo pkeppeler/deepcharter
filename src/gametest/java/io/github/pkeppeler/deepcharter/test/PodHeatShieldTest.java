@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -24,13 +24,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the heat shield (#482): a pod with the part burns slag brick, the rack first and then the seated pilot's pack, in place of the hull
@@ -487,12 +485,5 @@ public class PodHeatShieldTest {
             return;
         }
         throw failure(helper, "a tuning with no tier should be refused");
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

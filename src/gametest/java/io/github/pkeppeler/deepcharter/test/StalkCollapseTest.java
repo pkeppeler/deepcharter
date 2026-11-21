@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.surface.GreatStalk;
 import io.github.pkeppeler.deepcharter.surface.SurfaceTuning;
@@ -20,7 +20,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -33,7 +32,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #855: breaking a segment of a fungal stalk brings everything above it down in a spore puff (a single column and a
@@ -81,12 +79,6 @@ public class StalkCollapseTest {
 
     private static Block ours(String path) {
         return BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     /** A flat stone floor under the test's whole area, and nothing above it. */

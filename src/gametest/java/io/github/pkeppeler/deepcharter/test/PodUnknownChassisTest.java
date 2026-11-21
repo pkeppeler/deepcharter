@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -13,7 +13,6 @@ import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
@@ -23,7 +22,6 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #405: the entity type decides a pod's chassis, so a saved chassis id that is unknown or missing is logged and the
@@ -54,12 +52,6 @@ public class PodUnknownChassisTest {
         PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.load(TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), saved));
         return pod;
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     /** Fails unless {@code loaded} is the pod {@link #savedPod} saved, on the chassis of its type. */
