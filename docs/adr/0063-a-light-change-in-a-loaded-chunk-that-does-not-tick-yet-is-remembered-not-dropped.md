@@ -20,4 +20,6 @@ Issue #824 (the cause of #494 on `main`).
 ## Consequences
 
 - Each full chunk that has a light section change while it does not tick sends one light update when it ticks: the changed sections only. Chunk generation raises a few such changes at a chunk's edge, where its neighbour's light stage spills in.
+- A chunk that never ticks keeps its marks until its holder unloads.
+- A chunk that ticks, stops, and ticks again gets a send each time it starts ticking.
 - A rename of `sectionLightChanged` or `getTickingChunk`, or a change to the signature, fails the game at startup (`defaultRequire: 1`).

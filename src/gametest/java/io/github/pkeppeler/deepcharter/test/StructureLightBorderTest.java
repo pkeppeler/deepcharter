@@ -9,11 +9,13 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.test.mixin.ChunkHolderAccess;
 import io.github.pkeppeler.deepcharter.test.support.BlockLightOracle;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -270,7 +272,10 @@ public class StructureLightBorderTest {
     private enum Sent {
         /** The lamp's chunk is drawn after its neighbour went out: the neighbour's light changes under it. */
         NEIGHBOUR,
-        /** The neighbour is generated after the lamp's chunk went out. */
+        /**
+         * The neighbour is generated after the lamp's chunk went out. Only a lamp whose light the neighbour's part of the structure
+         * changes in the lamp's chunk has this case: the sea lantern's and the candle's chunk is lit by its own blocks alone.
+         */
         LAMP_CHUNK
     }
 
@@ -428,32 +433,36 @@ public class StructureLightBorderTest {
             throw failure(helper, "%s: the held chunk ticks, so the case proves nothing", where);
         }
         int[] after = storedLight(level, held, placement);
+        int rows = placement.maxY() - placement.minY() + 1;
         int changed = 0;
+        BitSet unmarked = new BitSet();
+        BitSet marked = ((ChunkHolderAccess) holder).deepcharter$blockChangedLightSectionFilter();
+        int minLightSection = level.getLightEngine().getMinLightSection();
         for (int i = 0; i < after.length; i++) {
             if (after[i] != before[i]) {
                 changed++;
+                int section = ((placement.minY() + i % rows) >> 4) - minLightSection;
+                if (!marked.get(section)) {
+                    unmarked.set(section);
+                }
             }
         }
-        if (sent == Sent.NEIGHBOUR && changed == 0) {
+        if (changed == 0) {
             throw failure(helper, "%s: the draw changed no light in the held chunk, so the case proves nothing", where);
         }
-        if (changed > 0 && !holder.hasChangesToBroadcast()) {
+        if (!unmarked.isEmpty()) {
             throw failure(
                     helper,
-                    "%s: the block light stored in the held chunk changed in %d cells after it was sent, and nothing marks it for a light update, so its clients keep the old light",
+                    "%s: the block light stored in the held chunk changed in %d cells after it was sent, and nothing marks the sections %s (counted from the lowest light section) for a light update, so its clients keep the old light",
                     where,
-                    changed);
+                    changed,
+                    unmarked);
         }
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aSeaLanternDrawnAfterItsNeighbourWentOutLeavesTheNeighbourMarkedForALightUpdate(GameTestHelper helper) {
         run(helper, Lamp.SEA_LANTERN, Sent.NEIGHBOUR);
-    }
-
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aSeaLanternAtABorderLeavesTheLightRightWhenTheNeighbourIsGeneratedAfterIt(GameTestHelper helper) {
-        run(helper, Lamp.SEA_LANTERN, Sent.LAMP_CHUNK);
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
@@ -470,11 +479,6 @@ public class StructureLightBorderTest {
     public void aShaftCandleDrawnAfterItsNeighbourWentOutLeavesTheNeighbourMarkedForALightUpdate(
             GameTestHelper helper) {
         run(helper, Lamp.CANDLE, Sent.NEIGHBOUR);
-    }
-
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aShaftCandleAtABorderLeavesTheLightRightWhenTheNeighbourIsGeneratedAfterIt(GameTestHelper helper) {
-        run(helper, Lamp.CANDLE, Sent.LAMP_CHUNK);
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
