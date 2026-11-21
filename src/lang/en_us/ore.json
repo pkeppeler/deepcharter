@@ -12,6 +12,7 @@
   "container.deepcharter.cargo": "Cargo bay",
   "deepcharter.ore.company_rock_cutter_hot": "Company rock: the cutter runs hot, repair the hull first",
   "deepcharter.ore.company_rock_refused": "Company rock: can't drill",
+  "hint.deepcharter.company_rock": "Charges, or the best drill",
   "item.deepcharter.bronzium": "Bronzium",
   "item.deepcharter.cicatrium": "Cicatrium",
   "item.deepcharter.einsteinium": "Einsteinium",

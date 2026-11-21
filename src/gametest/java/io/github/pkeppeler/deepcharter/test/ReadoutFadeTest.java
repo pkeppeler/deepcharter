@@ -1,0 +1,94 @@
+package io.github.pkeppeler.deepcharter.test;
+
+import io.github.pkeppeler.deepcharter.client.layer.ReadoutFade;
+import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
+import io.github.pkeppeler.deepcharter.layer.BlockReadouts.Readout;
+import java.util.Optional;
+import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
+
+/**
+ * Server GameTests for how the block readout fades (#859). The state machine is plain Java over the crosshair's readout each tick, so no client is
+ * needed; {@code BlockReadoutClientTest} checks the real HUD.
+ */
+public class ReadoutFadeTest {
+    private static final ReadoutLook LOOK = new ReadoutLook(14, 2, 1.0, 0xFF00FF00, 0xFFFFFF00, 4, 6, 2);
+    private static final Optional<Readout> STONE =
+            Optional.of(new Readout(Component.literal("Stone"), Optional.empty()));
+    private static final Optional<Readout> DIRT = Optional.of(new Readout(Component.literal("Dirt"), Optional.empty()));
+    private static final Optional<Readout> NOTHING = Optional.empty();
+    private static final float EPSILON = 1e-4f;
+
+    private static void tick(ReadoutFade fade, Optional<Readout> looked, int times) {
+        for (int i = 0; i < times; i++) {
+            fade.tick(looked, LOOK);
+        }
+    }
+
+    @GameTest
+    public void aReadoutFadesInOverTheLooksTicks(GameTestHelper helper) {
+        ReadoutFade fade = new ReadoutFade();
+        tick(fade, STONE, 1);
+        require(helper, fade.alpha(1f) == 0f, "nothing shows before the crosshair has settled, got " + fade.alpha(1f));
+        tick(fade, STONE, 2);
+        require(helper, fade.shown().equals(STONE), "stone shows once settled, got " + fade.shown());
+        tick(fade, STONE, 4);
+        require(
+                helper,
+                Math.abs(fade.alpha(1f) - 1f) < EPSILON,
+                "fully opaque after the fade-in, got " + fade.alpha(1f));
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aReadoutFadesOutWhenTheCrosshairLeaves(GameTestHelper helper) {
+        ReadoutFade fade = new ReadoutFade();
+        tick(fade, STONE, 10);
+        tick(fade, NOTHING, 3);
+        float half = fade.alpha(1f);
+        require(helper, half > 0f && half < 1f, "half faded after 3 of 6 ticks, got " + half);
+        require(helper, fade.shown().equals(STONE), "the readout stays while it fades");
+        tick(fade, NOTHING, 3);
+        require(helper, fade.alpha(1f) == 0f && fade.shown().isEmpty(), "gone after the fade-out");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aSweepAcrossBlocksNeverShowsOneThatDidNotSettle(GameTestHelper helper) {
+        ReadoutFade fade = new ReadoutFade();
+        tick(fade, STONE, 10);
+        for (int i = 0; i < 6; i++) {
+            tick(fade, i % 2 == 0 ? DIRT : STONE, 1);
+            require(helper, !fade.shown().equals(DIRT), "dirt flashed after " + (i + 1) + " ticks of a sweep");
+        }
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aNewBlockReplacesTheOldOnceItHasSettledAndTheOldHasFaded(GameTestHelper helper) {
+        ReadoutFade fade = new ReadoutFade();
+        tick(fade, STONE, 10);
+        tick(fade, DIRT, 12);
+        require(helper, fade.shown().equals(DIRT), "dirt replaced stone, got " + fade.shown());
+        tick(fade, DIRT, 6);
+        require(helper, Math.abs(fade.alpha(1f) - 1f) < EPSILON, "dirt is opaque, got " + fade.alpha(1f));
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aBlinkOfNothingBetweenTwoLikeBlocksStillFadesRatherThanJumps(GameTestHelper helper) {
+        ReadoutFade fade = new ReadoutFade();
+        tick(fade, STONE, 10);
+        tick(fade, NOTHING, 1);
+        float dipped = fade.alpha(1f);
+        require(helper, dipped < 1f && dipped > 0.5f, "one tick of a miss dims a little, got " + dipped);
+        helper.succeed();
+    }
+
+    private static void require(GameTestHelper helper, boolean ok, String message) {
+        if (!ok) {
+            throw helper.assertionException("%s", message);
+        }
+    }
+}
