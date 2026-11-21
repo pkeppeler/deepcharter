@@ -222,7 +222,7 @@ The handbook's view of its Directives: chapter tabs, and for each chapter a flow
 _Avoid_: quest book, tech tree
 
 **Pencil path**:
-A route on the quest map drawn by earlier miners when a charter finds a Note. It completes when the charter reaches the place the Note points to. It is not a Directive.
+A route on the quest map, drawn by earlier miners when a charter finds a Note. It is not a Directive.
 _Avoid_: side quest, Directive
 
 **Parts catalogue**:
@@ -234,7 +234,7 @@ A recipe the charter has discovered, by a quest step that asks for its item beco
 _Avoid_: unlocked recipe
 
 **Spec sheet**:
-An item's page in the parts catalogue. It pops up the first time you craft or buy the item, such as a pad's power cost or a material's heat rating, and can be looked up any time after.
+An item's page in the parts catalogue, such as a pad's power cost or a material's heat rating. It pops up the first time you craft or buy the item.
 _Avoid_: tooltip, wiki
 
 **Note**:

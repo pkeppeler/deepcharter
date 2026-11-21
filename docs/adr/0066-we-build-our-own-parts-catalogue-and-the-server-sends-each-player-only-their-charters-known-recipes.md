@@ -16,12 +16,11 @@ Research, 2026-11-21:
 - JEI on 26.3 has public `hideRecipes` and `unhideRecipes`, but its builds there are mostly beta, it would add a mod to the modpack and it looks off-theme.
 - Our item count is dozens.
 
-## Shape
+## Decision
 
-- **Viewer**: our own, closely modelled on EMI. An item panel sits beside inventory screens. R on a hovered item shows its recipes, U its uses. It has search, favourites and a "craftable now" filter. The recipe tree comes later. It is styled as a Company parts catalogue, and vanilla's recipe book is hidden.
-- **Known recipes**: a recipe becomes known when a quest step that asks for its item becomes current ([ADR 0065](0065-the-handbooks-directives-are-a-quest-map-and-earlier-miners-pencil-paths-continue-it-past-layer-2.md)), or when anyone in the charter obtains the item or one of its ingredients. Every item, vanilla included, follows the rule. Unknown recipes still craft: crafting is not limited.
+- **Viewer and known recipes**: our own, closely modelled on EMI, with a recipe known per charter. Rules in [SPEC §5](../SPEC.md#parts-catalogue). A quest step makes a recipe known ([ADR 0065](0065-the-handbooks-directives-are-a-quest-map-and-earlier-miners-pencil-paths-continue-it-past-layer-2.md)).
 - **Server filter**: the server sends each player only their charter's known recipes. This should fit Minecraft's recipe sync since 1.21.2 (inferred, not yet built).
-- **Spec sheet**: each item's catalogue page. It pops up the first time a player crafts or buys the item, and can be looked up any time after.
+- **Spec sheet**: each item's catalogue page ([SPEC](../SPEC.md#the-world-is-a-mystery-the-rules-never-are)).
 - **Copied code**: EMI's search and recipe-tree code may be copied from the PF-EMI port (MIT, keeping EMI's notice), with an audit page in the PR that copies it. Never copy `com/unascribed/qdcss`: it has no licence header, and its source licence could not be confirmed.
 
 ## Considered Options
