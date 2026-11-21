@@ -65,7 +65,9 @@ public class LightSyncAfterHoldTest {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
         int simulationBefore = server.getPlayerList().getSimulationDistance();
+        int viewBefore = server.getPlayerList().getViewDistance();
         server.getPlayerList().setSimulationDistance(SIMULATION_DISTANCE);
+        server.getPlayerList().setViewDistance(VIEW_DISTANCE);
         MockPlayer mock = MockPlayers.join(helper, "after-hold");
         UUID id = mock.player().getUUID();
         ClientInformation info = mock.player().clientInformation();
@@ -95,6 +97,7 @@ public class LightSyncAfterHoldTest {
         Runnable finish = () -> {
             ended[0] = true;
             server.getPlayerList().setSimulationDistance(simulationBefore);
+            server.getPlayerList().setViewDistance(viewBefore);
             LightSyncSends.unwatch(id);
             mock.leave();
         };
