@@ -471,7 +471,7 @@ public final class CataloguePanel {
             drawCard(graphics, now, look, hit);
         }
         if (hit != null) {
-            drawNameStrip(graphics, look, hit);
+            drawNameStrip(graphics, now, look, hit);
         }
     }
 
@@ -589,19 +589,31 @@ public final class CataloguePanel {
 
     /**
      * The name of the hovered item in a strip of its own, in the terminal font on the phosphor black with a phosphor border, where the
-     * game's purple tooltip would clash with the panels. Under the cell, or over it when there is no room below, and kept inside the
-     * screen.
+     * game's purple tooltip would clash with the panels. Over the cell, or under it when there is no room above, and kept inside the glass
+     * of the panel the cell is on, off its bezel: a name wider than the glass is cut with an ellipsis.
      */
-    private void drawNameStrip(GuiGraphicsExtractor graphics, CatalogueLook look, Hit hit) {
+    private void drawNameStrip(GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look, Hit hit) {
         CrtTuning crt = CrtTuning.current();
+        Rect glass = now.catalogueGlass().contains(hit.cell().x(), hit.cell().y())
+                ? now.catalogueGlass()
+                : now.recipeGlass();
         String name = new ItemStack(hit.item()).getHoverName().getString().toUpperCase(Locale.ROOT);
         int inset = look.nameStripPad() + 1;
+        int room = glass.width() - 2 * look.pad() - 2 * inset;
+        if (termWidth(name) > room) {
+            String cut = name;
+            while (termWidth(cut + "...") > room && !cut.isEmpty()) {
+                cut = cut.substring(0, cut.length() - 1);
+            }
+            name = cut + "...";
+        }
         int width = termWidth(name) + 2 * inset;
         int height = font.lineHeight + 2 * inset;
-        int x = Math.clamp(hit.cell().x(), 0, Math.max(0, graphics.guiWidth() - width));
-        int y = hit.cell().bottom() + look.nameStripGap();
-        if (y + height > graphics.guiHeight()) {
-            y = hit.cell().y() - look.nameStripGap() - height;
+        int left = glass.x() + look.pad();
+        int x = Math.clamp(hit.cell().x(), left, Math.max(left, glass.right() - look.pad() - width));
+        int y = hit.cell().y() - look.nameStripGap() - height;
+        if (y < glass.y()) {
+            y = hit.cell().bottom() + look.nameStripGap();
         }
         graphics.nextStratum();
         graphics.fill(x, y, x + width, y + height, crt.backgroundColor());

@@ -30,8 +30,10 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -639,6 +641,36 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         return false;
     }
 
+    private static int nameLength(Item item) {
+        return item.getDefaultInstance().getHoverName().getString().length();
+    }
+
+    /** With an item hovered, the strip that names it (its text, or the text cut with an ellipsis) lies in the catalogue's glass. */
+    private static void theNameStripIsInsideTheCatalogueGlass(
+            ClientGameTestContext context,
+            AbstractContainerScreen<?> screen,
+            CataloguePanel panel,
+            CatalogueLayout layout) {
+        Item hovered = Objects.requireNonNull(
+                context.computeOnClient(client -> panel.hoveredItem()), "an item of the catalogue is hovered");
+        String name = hovered.getDefaultInstance().getHoverName().getString().toUpperCase(Locale.ROOT);
+        List<Drawn> drawn = context.computeOnClient(client -> drawn(client, screen));
+        Drawn strip = drawn.stream()
+                .filter(text -> text.text().equals(name) || text.text().endsWith("..."))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the hovered " + name + " is named in a strip, drew " + drawn));
+        require(
+                inside(
+                        new Rect(
+                                strip.box().x(),
+                                strip.box().y(),
+                                strip.box().width(),
+                                strip.box().height()),
+                        layout.catalogueGlass()),
+                "the name strip of " + name + " lies inside the catalogue glass " + layout.catalogueGlass() + ", at "
+                        + strip.box());
+    }
+
     private static void rAndUShowRecipesAndUsesOfAHoveredItem(
             ClientGameTestContext context, AbstractContainerScreen<?> screen, CataloguePanel panel) {
         // The server may have taught more recipes of these items meanwhile: the counters below count the fixtures
@@ -678,6 +710,22 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                                     text.box().height()),
                             new Rect(0, 0, WIDTH, HEIGHT)),
                     "text '" + text.shortText() + "' leaves the screen with the cursor on the last column");
+        }
+        // The strip belongs to the glass of its panel: the rightmost column, and the longest name on the page.
+        int columns = layout.shelf().columns();
+        CatalogueScene.hover(context, CatalogueScene.gridCell(layout, columns - 1));
+        theNameStripIsInsideTheCatalogueGlass(context, screen, panel, layout);
+        List<Item> page = context.computeOnClient(client -> panel.shownItems());
+        Item longest = page.subList(0, Math.min(page.size(), layout.shelf().perPage())).stream()
+                .max(Comparator.comparingInt(PartsCatalogueClientTest::nameLength))
+                .orElseThrow();
+        CatalogueScene.hover(context, CatalogueScene.gridCell(layout, page.indexOf(longest)));
+        theNameStripIsInsideTheCatalogueGlass(context, screen, panel, layout);
+        for (int row = 0;
+                (row + 1) * columns <= Math.min(page.size(), layout.shelf().perPage());
+                row++) {
+            CatalogueScene.hover(context, CatalogueScene.gridCell(layout, row * columns + columns - 1));
+            theNameStripIsInsideTheCatalogueGlass(context, screen, panel, layout);
         }
         CatalogueScene.hover(context, CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, DRILL)));
         require(!context.computeOnClient(client -> panel.showsRecipePanel()), "no recipe panel until R or U");
