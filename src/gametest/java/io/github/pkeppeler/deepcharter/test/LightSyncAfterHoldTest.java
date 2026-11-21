@@ -20,10 +20,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import org.jspecify.annotations.Nullable;
@@ -49,11 +51,17 @@ public class LightSyncAfterHoldTest {
     private static final int PLAYER_X = -40_000;
 
     private static final int PLAYER_Z = 40_000;
-    private static final int SIMULATION_DISTANCE = 2;
-    /** Chunks east of the player's chunk: a chunk that ticks at the simulation distance of the case is at most 1 chunk out. */
-    private static final int FAR_CHUNK_OFFSET = 2;
+    private static final int SIMULATION_DISTANCE = 1;
+    /** Chunks east of the player's chunk: the player's own ticket makes a chunk tick only within 1 chunk of it at the case's simulation distance. */
+    private static final int FAR_CHUNK_OFFSET = 3;
 
+    /** A chunk this far from the player is sent when the view distance is one more. */
     private static final int VIEW_DISTANCE = FAR_CHUNK_OFFSET + 1;
+
+    /** The chunks held loaded, in X and Z, round the player's chunk and the two of the case. */
+    private static final int HELD_X_FROM = -2;
+
+    private static final int HELD_X_TO = FAR_CHUNK_OFFSET + 2;
     /** Rows round the lamp that the oracle compares; light fades to nothing within 15 blocks. */
     private static final int ROWS = 8;
 
@@ -98,6 +106,7 @@ public class LightSyncAfterHoldTest {
             ended[0] = true;
             server.getPlayerList().setSimulationDistance(simulationBefore);
             server.getPlayerList().setViewDistance(viewBefore);
+            holdLoaded(level, home, false);
             LightSyncSends.unwatch(id);
             mock.leave();
         };
@@ -106,28 +115,62 @@ public class LightSyncAfterHoldTest {
                 return;
             }
             try {
+                if (phase[0] > 0) {
+                    holdLoaded(level, home, true);
+                }
                 switch (phase[0]) {
                     case 0 -> {
-                        mock.teleportTo(
-                                level, TestLayers.vec(TestLayers.SURFACE, PLAYER_X + 0.5, 100, PLAYER_Z + 0.5), 0f, 0f);
+                        // Every chunk of the case is loaded, and forced so that it ticks as far as its neighbours
+                        // allow.
+                        holdLoaded(level, home, true);
+                        forEach(home, chunk -> FarChunks.force(helper, level, chunk.x(), chunk.z()));
                         phase[0] = 1;
                     }
                     case 1 -> {
+                        boolean ticking = level.isPositionEntityTicking(home.getWorldPosition());
+                        deadline.await(helper, level, ticking, () -> "the chunk " + home + " did not tick");
+                        if (!ticking) {
+                            return;
+                        }
+                        mock.teleportTo(
+                                level, TestLayers.vec(TestLayers.SURFACE, PLAYER_X + 0.5, 100, PLAYER_Z + 0.5), 0f, 0f);
+                        phase[0] = 2;
+                    }
+                    case 2 -> {
                         boolean sent = mock.chunksSent().containsAll(pair) && ringLoaded(level, far, lampChunk);
-                        deadline.await(
-                                helper,
-                                level,
-                                sent,
-                                () -> "the player was not sent " + pair + ": server view distance "
-                                        + server.getPlayerList().getViewDistance() + ", the player's tracking view "
-                                        + mock.player().getChunkTrackingView() + ", sent "
-                                        + mock.chunksSent().size() + " chunks, ring loaded "
-                                        + ringLoaded(level, far, lampChunk));
+                        deadline.await(helper, level, sent, () -> "the player was not sent " + pair);
                         if (!sent) {
                             return;
                         }
-                        if (level.isPositionEntityTicking(far.getWorldPosition())) {
-                            throw failure(helper, "the chunk %s ticks, so the case proves nothing", far);
+                        // The far chunk stops ticking, as one does when its ticket level rises: it stays loaded, and
+                        // the player has it.
+                        // A ticket's level spreads one level a chunk, so the chunks beside it let go as well.
+                        for (int x = far.x() - 1; x <= far.x() + 1; x++) {
+                            for (int z = far.z() - 1; z <= far.z() + 1; z++) {
+                                FarChunks.release(helper, level, x, z);
+                            }
+                        }
+                        phase[0] = 3;
+                    }
+                    case 3 -> {
+                        boolean stopped = !level.getChunkSource().isPositionTicking(far.pack());
+                        deadline.await(
+                                helper,
+                                level,
+                                stopped,
+                                () -> "the chunk " + far + " kept ticking; forced "
+                                        + level.getForceLoadedChunks().contains(far.pack()) + ", entity ticking "
+                                        + level.isPositionEntityTicking(far.getWorldPosition()) + ", sim "
+                                        + server.getPlayerList().getSimulationDistance() + ", ticking row "
+                                        + java.util.stream.IntStream.rangeClosed(HELD_X_FROM, HELD_X_TO)
+                                                .mapToObj(dx -> level.getChunkSource()
+                                                                .isPositionTicking(
+                                                                        new ChunkPos(home.x() + dx, home.z()).pack())
+                                                        ? "Y"
+                                                        : "n")
+                                                .collect(java.util.stream.Collectors.joining()));
+                        if (!stopped) {
+                            return;
                         }
                         // A lamp on the chunk border, in the air above the ground, placed as a draw places blocks.
                         int x = lampChunk.getMaxBlockX() - 1;
@@ -135,9 +178,9 @@ public class LightSyncAfterHoldTest {
                         lamp[0] = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z) + 2, z);
                         level.setBlock(lamp[0], Blocks.SEA_LANTERN.defaultBlockState(), 3);
                         LightSync.holdSendUntilLit(level, lamp[0], lamp[0]);
-                        phase[0] = 2;
+                        phase[0] = 4;
                     }
-                    case 2 -> {
+                    case 4 -> {
                         boolean over =
                                 holdsEnded(pair) && !level.getLightEngine().hasLightWork();
                         deadline.await(helper, level, over, () -> "the hold of " + pair + " did not end");
@@ -151,9 +194,9 @@ public class LightSyncAfterHoldTest {
                         LightSyncSends.watch(id);
                         level.setBlock(lamp[0], Blocks.AIR.defaultBlockState(), 3);
                         waited[0] = 0;
-                        phase[0] = 3;
+                        phase[0] = 5;
                     }
-                    case 3 -> {
+                    case 5 -> {
                         boolean changed =
                                 changedSections(level, far, lamp[0], before[0]).cardinality() > 0;
                         deadline.await(helper, level, changed, () -> "the light of " + far + " did not change");
@@ -161,15 +204,15 @@ public class LightSyncAfterHoldTest {
                             return;
                         }
                         checkStoredLight(helper, level, far, lampChunk, lamp[0], "after the change");
-                        if (level.isPositionEntityTicking(far.getWorldPosition())) {
+                        if (level.getChunkSource().isPositionTicking(far.pack())) {
                             throw failure(helper, "the chunk %s ticked before the case let it", far);
                         }
-                        server.getPlayerList().setSimulationDistance(VIEW_DISTANCE + 4);
+                        FarChunks.force(helper, level, far.x(), far.z());
                         waited[0] = 0;
-                        phase[0] = 4;
+                        phase[0] = 6;
                     }
                     default -> {
-                        boolean ticking = level.isPositionEntityTicking(far.getWorldPosition());
+                        boolean ticking = level.getChunkSource().isPositionTicking(far.pack());
                         deadline.await(helper, level, ticking, () -> "the chunk " + far + " did not tick");
                         if (!ticking || waited[0]++ < SETTLE_TICKS) {
                             return;
@@ -193,6 +236,32 @@ public class LightSyncAfterHoldTest {
                 throw e;
             }
         });
+    }
+
+    private static void forEach(ChunkPos home, java.util.function.Consumer<ChunkPos> body) {
+        for (int x = home.x() + HELD_X_FROM; x <= home.x() + HELD_X_TO; x++) {
+            for (int z = home.z() - 2; z <= home.z() + 2; z++) {
+                body.accept(new ChunkPos(x, z));
+            }
+        }
+    }
+
+    /**
+     * Loads every chunk of the case to FULL and holds it with a ticket that loads and does not simulate, or lets it go. The ticket times out, so it
+     * is set again on every tick of the case.
+     */
+    private static void holdLoaded(ServerLevel level, ChunkPos home, boolean hold) {
+        for (int x = home.x() + HELD_X_FROM; x <= home.x() + HELD_X_TO; x++) {
+            for (int z = home.z() - 2; z <= home.z() + 2; z++) {
+                ChunkPos chunk = new ChunkPos(x, z);
+                if (hold) {
+                    level.getChunkSource().addTicketWithRadius(TicketType.PLAYER_LOADING, chunk, 0);
+                    level.getChunk(x, z, ChunkStatus.FULL);
+                } else {
+                    level.getChunkSource().removeTicketWithRadius(TicketType.PLAYER_LOADING, chunk, 0);
+                }
+            }
+        }
     }
 
     /** Every chunk within light's reach of the pair is loaded, as the oracle needs. */
