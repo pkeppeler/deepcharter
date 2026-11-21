@@ -38,7 +38,12 @@
       "id": "deepcharter:handbook/welcome/craft_scanner",
       "text": {
         "translate": "deepcharter.handbook.directive.welcome.craft_scanner"
-      }
+      },
+      "needs": [
+        { "item": "minecraft:iron_ingot", "count": 4 },
+        { "item": "minecraft:copper_ingot", "count": 2 },
+        { "item": "minecraft:redstone", "count": 2 }
+      ]
     }
   ]
 }

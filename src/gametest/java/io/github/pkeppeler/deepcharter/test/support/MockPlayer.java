@@ -4,6 +4,7 @@ import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.ReferenceCountUtil;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -14,6 +15,8 @@ import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
+import net.minecraft.network.protocol.game.ClientboundRecipeBookAddPacket;
+import net.minecraft.network.protocol.game.ClientboundRecipeBookRemovePacket;
 import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket;
@@ -23,6 +26,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 
@@ -40,6 +45,8 @@ public final class MockPlayer {
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
+    private final Set<RecipeDisplayId> recipeDisplays = new HashSet<>();
+    private int recipeToasts;
     private boolean loaded;
 
     MockPlayer(
@@ -81,6 +88,26 @@ public final class MockPlayer {
     /** How many times the server has sent this player the chunk; a chunk it already has is not sent again. */
     public int timesSent(ChunkPos chunk) {
         return chunksSent.getOrDefault(chunk, 0);
+    }
+
+    /**
+     * The id of every recipe the server has put in this player's recipe book, as a client would hold them: the add and remove
+     * packets applied in order. Read on the mock's tick, so it lags by one.
+     */
+    public Set<Identifier> recipesHeld() {
+        Set<Identifier> held = new HashSet<>();
+        for (RecipeDisplayId display : recipeDisplays) {
+            RecipeManager.ServerDisplayInfo info = server.getRecipeManager().getRecipeFromDisplay(display);
+            if (info != null) {
+                held.add(info.parent().id().identifier());
+            }
+        }
+        return held;
+    }
+
+    /** How many recipes the server has told this player to announce with a toast so far. Read on the mock's tick, so it lags by one. */
+    public int recipeToasts() {
+        return recipeToasts;
     }
 
     public ServerPlayer player() {
@@ -168,6 +195,18 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundSoundEntityPacket packet) {
                     sounds.add(packet.getSound().value().location());
+                }
+                if (outbound instanceof ClientboundRecipeBookAddPacket packet) {
+                    if (packet.replace()) {
+                        recipeDisplays.clear();
+                    }
+                    for (ClientboundRecipeBookAddPacket.Entry entry : packet.entries()) {
+                        recipeDisplays.add(entry.contents().id());
+                        recipeToasts += entry.notification() ? 1 : 0;
+                    }
+                }
+                if (outbound instanceof ClientboundRecipeBookRemovePacket packet) {
+                    packet.recipes().forEach(recipeDisplays::remove);
                 }
                 if (outbound instanceof ClientboundLevelChunkWithLightPacket packet) {
                     chunksSent.merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);

@@ -12,10 +12,10 @@ import net.minecraft.server.level.ServerPlayer;
 
 /**
  * What a player made before they had a charter goes into the charter they found or join (ADR 0065, #843). This is the one place
- * where that happens, so a later kind of personal knowledge (known recipes, #845) is carried by adding it to {@link #carry}.
+ * where that happens, so a later kind of personal knowledge is carried by adding it to {@link #carry}.
  *
- * <p>Founding takes the founder's directives and Notes into the new charter. Joining, and reviving a dormant charter, take the joiner's Notes into the
- * charter's, unread for the other members (ADR 0020); a joiner takes the charter's directive progress, so their own
+ * <p>Founding takes the founder's directives, Notes and known recipes into the new charter. Joining, and reviving a dormant charter, take the joiner's Notes and known recipes into
+ * the charter's, the Notes unread for the other members (ADR 0020); a joiner takes the charter's directive progress, so their own
  * completes none of its steps. The personal record stays, and is what the player has again if they leave.
  *
  * <p>The listeners run in {@link #EARLY}, before the ones that mirror advancements and sync clients, so those see the carried
@@ -51,14 +51,15 @@ final class ProgressCarry {
     }
 
     /**
-     * Carries {@code player}'s personal progress into {@code charter}: their Notes always, and their directives only when
-     * {@code founding}. A vanilla criterion the player met since the last poll counts. Does nothing while the saved progress,
+     * Carries {@code player}'s personal progress into {@code charter}: their Notes and known recipes always, and their
+     * directives only when {@code founding}. A vanilla criterion the player met since the last poll counts. Does nothing while the saved progress,
      * Notes or personal data are unreadable.
      */
     private static void carry(MinecraftServer server, Charter charter, ServerPlayer player, boolean founding) {
         if (!Charters.isReadable(server)) {
             return;
         }
+        KnownRecipes.carry(server, charter.id(), player);
         PersonalHandbookData personal = PersonalHandbookData.get(server);
         HandbookProgressData directives = HandbookProgressData.get(server);
         NotesData notes = NotesData.get(server);
