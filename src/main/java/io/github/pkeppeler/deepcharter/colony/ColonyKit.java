@@ -20,7 +20,7 @@ public final class ColonyKit {
     public static final Block GRATING =
             ColonyBlocks.register("grating", SoundType.METAL, properties -> new Block(properties.noOcclusion()));
 
-    /** A real window: clear panes in a frame, so the view and the light of the room behind it come through (#837). */
+    /** A real window: clear panes in a frame, so the view and the light of the room behind it come through. */
     public static final Block WINDOW_GLASS = ColonyBlocks.register(
             "window_glass",
             SoundType.GLASS,

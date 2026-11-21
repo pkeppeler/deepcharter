@@ -27,7 +27,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
 /**
- * #837: no vanilla monster spawns inside a colony building, because every cell of every colony interior has block light of at least
+ * No vanilla monster spawns inside a colony building, because every cell of every colony interior has block light of at least
  * 1 (a monster needs block light 0 in the overworld). An interior is a room the generator knows (tools/colony/town.py,
  * {@code rooms} in the layout file): the box of air inside a building's walls, from its floor row to the row under its roof. The
  * test reads each room from the layout, checks the room really is a covered box (a floor and a roof under and over every column of
