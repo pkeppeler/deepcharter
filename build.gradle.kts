@@ -234,6 +234,9 @@ val checkGeckoLib = tasks.register<CheckGeckoLib>("checkGeckoLib") {
 }
 tasks.named("jar") { dependsOn(checkGeckoLib) }
 
+// CREDITS.md ships beside LICENSE (which Loom adds as LICENSE_<archive name>): the recordings' licence asks for their credit to travel with them.
+tasks.jar { from("CREDITS.md") { rename { "${it}_${project.base.archivesName.get()}" } } }
+
 // The same check on the copy that ships: the jar nested in our mod jar must be the one jar there, with the pinned sha512 (audit
 // condition 4: Loom's include must not add a second jar or a different one).
 abstract class CheckNestedGeckoLib : DefaultTask() {
