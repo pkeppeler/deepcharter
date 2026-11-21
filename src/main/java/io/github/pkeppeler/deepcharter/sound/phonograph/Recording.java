@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.sound.phonograph;
 
-import com.mojang.serialization.Codec;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.netty.buffer.ByteBuf;
 import java.util.List;
@@ -28,11 +27,10 @@ public enum Recording implements StringRepresentable, TooltipProvider {
     JEUNE_JOUVENCELLE("jeune_jouvencelle", 1857, DeepSound.PHONOGRAPH_JEUNE_JOUVENCELLE, 320),
     OTHELLO("othello", 1860, DeepSound.PHONOGRAPH_OTHELLO, 356);
 
-    private static final StringRepresentable.EnumCodec<Recording> NAMES =
+    public static final StringRepresentable.EnumCodec<Recording> CODEC =
             StringRepresentable.fromEnum(Recording::values);
-    public static final Codec<Recording> CODEC = NAMES;
     public static final StreamCodec<ByteBuf, Recording> STREAM_CODEC = ByteBufCodecs.STRING_UTF8.map(
-            name -> Objects.requireNonNull(NAMES.byName(name), () -> "no recording named " + name),
+            name -> Objects.requireNonNull(CODEC.byName(name), () -> "no recording named " + name),
             Recording::getSerializedName);
 
     /** What the colony phonograph holds, in the order it plays them, wrapping round. */
@@ -78,7 +76,6 @@ public enum Recording implements StringRepresentable, TooltipProvider {
                 cylinder.get(PhonographRegistry.RECORDING), () -> "no recording on " + cylinder.getItem());
     }
 
-    /** A cylinder's tooltip is its title and year, nothing more. */
     @Override
     public void addToTooltip(
             Item.TooltipContext context,

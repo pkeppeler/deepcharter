@@ -44,7 +44,6 @@ public final class PhonographBlockEntity extends BlockEntity {
         super(PhonographRegistry.BLOCK_ENTITY, pos, state);
     }
 
-    /** True for the colony's phonograph. */
     public boolean isColony() {
         return getBlockState().getBlock() instanceof PhonographBlock block && block.isColony();
     }
