@@ -8,6 +8,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.util.ColorRGBA;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -21,10 +22,17 @@ import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntPr
  * looks are blockstate variants in the resource pack: how many textures a block has is data, not code.
  */
 public final class SurfaceBlocks {
-    /** Loose plains topsoil. */
+    /** The rust-brown dust a falling regolith block kicks up, the colour of its texture. */
+    private static final int REGOLITH_DUST = 0x8C5A3C;
+
+    /**
+     * Loose plains topsoil: it falls like sand when nothing holds it (#836). The packed layer and the rock under it do not, so a shaft's
+     * walls and the colony pad stay where they are; a shallow cut under the skin slumps, which the dig plays against.
+     */
     public static final Block REGOLITH = registerBlock(
             id("regolith"),
-            key -> new Block(
+            key -> new RegolithBlock(
+                    new ColorRGBA(REGOLITH_DUST),
                     BlockBehaviour.Properties.of().setId(key).strength(0.5F).sound(SoundType.GRAVEL)));
 
     /** The packed layer under the topsoil. */
