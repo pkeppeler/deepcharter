@@ -425,8 +425,7 @@ def op_ore(canvas: Canvas, layer: dict, ctx: Context) -> None:
         if halo & taken:
             continue
         reach = [(ox + dx, oy + dy) for dy, row in enumerate(shape) for dx, ch in enumerate(row) if ch != "."]
-        off_edge = all(margin <= x < size - margin and margin <= y < size - margin for x, y in reach)
-        if margin and not off_edge:
+        if margin and not all(margin <= x < size - margin and margin <= y < size - margin for x, y in reach):
             continue
         taken |= halo
         placed += 1
@@ -717,8 +716,8 @@ def op_rings(canvas: Canvas, layer: dict, ctx: Context) -> None:
 
 def op_strata(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """Horizontal rock beds: bands of the given ramp shades and thicknesses (summing to the texture size, so they tile), whose edges
-    wobble up and down by up to wobble pixels along a tiling seeded curve. Textures that share beds and curve (a seed, default seed) have
-    their band edges on the same rows, so stripes line up between blocks."""
+    wobble up and down by up to wobble pixels along a tiling seeded curve (seeded by curve, default seed), so textures sharing beds and
+    curve have their band edges on the same rows."""
     ctx.need(layer, "beds", "seed", "wobble")
     size = ctx.size
     beds = [(ctx.colour(name), thickness) for name, thickness in layer["beds"]]

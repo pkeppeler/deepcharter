@@ -1,9 +1,7 @@
 """Every texture of the surface's ground blocks tiles (#856): the seam check of tools/layer_concepts/seams.py on each one.
 
-The set is what the blockstates of the ground blocks of SurfaceBlocks.java name, by their models: regolith, regolith_packed, ochre_regolith,
-regolith_rock and basalt_outcrop. Not the salvage crate or the fungal stalk, which are built things with edges of their own. A new variant added
-to a ground block's blockstate is covered without an edit here; a new ground block is one name in GROUND_BLOCKS, and a test fails on a ground
-texture file that nothing names.
+The set is what the blockstates of GROUND_BLOCKS name, by their models, so a new variant is covered without an edit here. A test fails on a
+ground texture file that nothing names. The salvage crate and fungal stalk are built things with edges of their own, so they are not listed.
 """
 import json
 import sys
@@ -20,6 +18,7 @@ import seams  # noqa: E402
 ASSETS = TOOLS.parent / "src/main/resources/assets/deepcharter"
 GROUND_BLOCKS = ("regolith", "regolith_packed", "ochre_regolith", "regolith_rock", "basalt_outcrop")
 SIZE = 16
+RECIPES = TOOLS / "textures/recipes/blocks.json"
 
 
 def textures() -> dict[str, Path]:
@@ -55,7 +54,7 @@ class SurfaceStrataTest(unittest.TestCase):
     """The variants of a bedded block share their beds and the curve their edges wobble along, so a band meets the next block's band."""
 
     def test_variants_of_a_bedded_block_share_band_edges(self):
-        recipes = json.loads((TOOLS / "textures/recipes/blocks.json").read_text())["recipes"]
+        recipes = json.loads(RECIPES.read_text())["recipes"]
         for block in ("regolith_packed", "regolith_rock"):
             shared = {
                 name: (recipe["args"]["beds"], recipe["args"]["curve"])
@@ -66,7 +65,7 @@ class SurfaceStrataTest(unittest.TestCase):
             self.assertEqual(1, len({json.dumps(v) for v in shared.values()}), f"{block}: {shared}")
 
     def test_beds_start_and_end_in_one_shade_so_no_band_edge_lies_on_the_wrap(self):
-        recipes = json.loads((TOOLS / "textures/recipes/blocks.json").read_text())["recipes"]
+        recipes = json.loads(RECIPES.read_text())["recipes"]
         for name, recipe in recipes.items():
             if recipe.get("template") == "surface_beds":
                 beds = recipe["args"]["beds"]
