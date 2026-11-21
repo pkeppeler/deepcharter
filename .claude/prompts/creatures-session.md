@@ -23,3 +23,5 @@ Deliverables, drafted in chat first and written to files only after I approve:
 - docs/CREATURES.md: design principles, a per-layer bestiary, bosses, pod and on-foot combat, and uncharted remixes
 - updates to SPEC's creatures section and open questions
 - new terms in CONTEXT.md via domain-modeling
+
+Playtest note on mobs: in the first playtest, vanilla monsters spawned inside the colony's dark buildings and disrupted the start. The colony's interiors are lit now (every room has block light), but the surface still has the vanilla monsters. Reskin or replace them, and make sure none can break a new player's first minutes.

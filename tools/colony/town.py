@@ -377,7 +377,7 @@ def personnel_office(doors: list[Door]) -> Piece:
 
 
 def lamp_and_pick(doors: list[Door]) -> Piece:
-    """The miners' bar, burned out: its windows dark, a scorch of coal on its floor, a counter with stools and barrels, and its lit
+    """The miners' bar, burned out: no lamps lit inside, only a dim glow (parts.dim_glow), a scorch of coal on its floor, a counter with stools and barrels, the canteen dispenser, and its lit
     sign over a door that faces the square across the south street."""
     p = Piece("lamp_and_pick")
     walls = parts.cabin(p, -3, 14, 9, 24, 5, {"north": (0, 6), "south": (3,), "west": (19,), "east": (19,)}, dark=True)
@@ -390,6 +390,8 @@ def lamp_and_pick(doors: list[Door]) -> Piece:
         p.set(x, 1, 19, state("pipe", axis="y"))
     for x in (-1, 1, 3, 5, 7):
         p.set(x, 1, 23, state("minecraft:barrel", facing="up", open="false"))
+    # The canteen dispenser: one ration per player per in-game day (CanteenBlock). It gives no light, so the room stays dark.
+    p.set(8, 1, 20, state("canteen", facing=walls["east"].inward))
     parts.wall_sign(p, north, "bar", 3, 5)
     return p
 
@@ -425,6 +427,10 @@ class Town:
     later: list[tuple[str, Piece]]
     doors: list[Door]
     anchors: dict[str, tuple[int, int, int]]
+
+    def rooms(self) -> list[tuple[str, tuple[int, int, int], tuple[int, int, int], bool]]:
+        """Every room of every piece (the piece's path, the room's low corner and high corner, whether it is dark), in colony coordinates."""
+        return [(path, low, high, dark) for path, piece in self.pieces for low, high, dark in piece.rooms]
 
 
 def build() -> Town:

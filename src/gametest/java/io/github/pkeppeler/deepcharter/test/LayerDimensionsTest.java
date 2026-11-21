@@ -214,7 +214,7 @@ public class LayerDimensionsTest {
             mock.player().setPos(300_000.5, TestLayers.worldY(2, 80), 300_000.5);
             layer.getChunk(300_000 >> 4, 300_000 >> 4);
             BlockPos block = new BlockPos(300_000, TestLayers.band(layer, 2).maxY() - 2, 300_000);
-            layer.setBlockAndUpdate(block, SurfaceBlocks.REGOLITH.defaultBlockState());
+            layer.setBlockAndUpdate(block, SurfaceBlocks.REGOLITH_PACKED.defaultBlockState());
             var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
             server.getCommands().getDispatcher().execute("deepcharter layer goto 2", source);
             if (mock.player().blockPosition().getY() != block.getY() + 1) {
