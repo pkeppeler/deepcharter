@@ -22,9 +22,7 @@ final class RegolithBlock extends ColoredFallingBlock {
 
     @Override
     protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
-        // entity-query: the landing cell of a falling block, which is loaded; a pod missed would only be buried and the
-        // next
-        // bore frees it
+        // entity-query: runs once per landing, in a loaded cell
         return !(level instanceof Level world)
                 || world.getEntitiesOfClass(PodEntity.class, new AABB(pos)).isEmpty();
     }

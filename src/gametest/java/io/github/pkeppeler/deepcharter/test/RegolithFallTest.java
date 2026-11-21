@@ -20,6 +20,9 @@ public class RegolithFallTest {
 
     private static final BlockPos HIGH = new BlockPos(1, 4, 1);
 
+    /** The foot of a column on the structure's floor row. */
+    private static final BlockPos BASE = new BlockPos(1, 0, 1);
+
     /** Loose regolith with air under it falls, and lands as regolith on the floor. */
     @GameTest
     public void looseRegolithFallsWhenNothingHoldsIt(GameTestHelper helper) {
@@ -57,6 +60,63 @@ public class RegolithFallTest {
                 throw helper.assertionException("the refused regolith did not spill as an item");
             }
             helper.succeed();
+        });
+    }
+
+    /** A cut under the skin brings it down: the packed layer is broken as the drill breaks it, and the skin lands in the cut. */
+    @GameTest(maxTicks = 3 * SETTLE_TICKS)
+    public void cuttingThePackedLayerUnderTheSkinSlumpsIt(GameTestHelper helper) {
+        BlockPos floor = BASE;
+        BlockPos cut = BASE.above(2);
+        BlockPos skin = BASE.above(3);
+        helper.setBlock(floor, Blocks.STONE);
+        helper.setBlock(floor.above(), SurfaceBlocks.REGOLITH_PACKED);
+        helper.setBlock(cut, SurfaceBlocks.REGOLITH_PACKED);
+        helper.setBlock(skin, SurfaceBlocks.REGOLITH);
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            helper.assertBlockPresent(SurfaceBlocks.REGOLITH, skin);
+            helper.getLevel().destroyBlock(helper.absolutePos(cut), false);
+            helper.runAfterDelay(SETTLE_TICKS, () -> {
+                helper.assertBlockPresent(Blocks.AIR, skin);
+                helper.assertBlockPresent(SurfaceBlocks.REGOLITH, cut);
+                helper.assertBlockPresent(SurfaceBlocks.REGOLITH_PACKED, floor.above());
+                helper.succeed();
+            });
+        });
+    }
+
+    /**
+     * A pad of regolith on the layers the surface lays under it, with a shaft cut through its middle, stands: the skin round the shaft
+     * keeps its support, so nothing falls into the shaft.
+     */
+    @GameTest(maxTicks = 3 * SETTLE_TICKS)
+    public void aPadAndTheWallsOfAShaftThroughItHold(GameTestHelper helper) {
+        int half = 2;
+        BlockPos centre = BASE;
+        for (int dx = -half; dx <= half; dx++) {
+            for (int dz = -half; dz <= half; dz++) {
+                BlockPos column = centre.offset(dx, 0, dz);
+                helper.setBlock(column, SurfaceBlocks.REGOLITH_ROCK);
+                helper.setBlock(column.above(1), SurfaceBlocks.REGOLITH_PACKED);
+                helper.setBlock(column.above(2), SurfaceBlocks.REGOLITH_PACKED);
+                helper.setBlock(column.above(3), SurfaceBlocks.REGOLITH);
+            }
+        }
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            for (int y = 3; y >= 1; y--) {
+                helper.getLevel().destroyBlock(helper.absolutePos(centre.above(y)), false);
+            }
+            helper.runAfterDelay(SETTLE_TICKS, () -> {
+                for (int dx = -half; dx <= half; dx++) {
+                    for (int dz = -half; dz <= half; dz++) {
+                        boolean shaft = dx == 0 && dz == 0;
+                        helper.assertBlockPresent(
+                                shaft ? Blocks.AIR : SurfaceBlocks.REGOLITH, centre.offset(dx, 3, dz));
+                    }
+                }
+                helper.assertBlockPresent(Blocks.AIR, centre.above(1));
+                helper.succeed();
+            });
         });
     }
 

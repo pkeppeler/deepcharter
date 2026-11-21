@@ -22,8 +22,8 @@ import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntPr
  * looks are blockstate variants in the resource pack: how many textures a block has is data, not code.
  */
 public final class SurfaceBlocks {
-    /** The rust-brown dust a falling regolith block kicks up, the colour of its texture. */
-    private static final int REGOLITH_DUST = 0x8C5A3C;
+    /** The dust a falling regolith block kicks up: the average of the four regolith textures. */
+    private static final int REGOLITH_DUST = 0x94482F;
 
     /**
      * Loose plains topsoil: it falls like sand when nothing holds it (#836). The packed layer and the rock under it do not, so a shaft's
