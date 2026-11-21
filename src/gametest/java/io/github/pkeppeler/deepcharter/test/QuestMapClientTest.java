@@ -304,9 +304,10 @@ public class QuestMapClientTest implements FabricClientGameTest {
                 texts.stream().noneMatch(text -> text.contains("Do thing 4") || text.contains("Title 4")),
                 "a classified chapter shows no title and no step: " + texts);
         require(
-                texts.contains(Component.translatable("deepcharter.handbook.chapter.classified")
-                        .getString()),
-                "a classified chapter says so");
+                String.join(" ", texts)
+                        .contains(Component.translatable("deepcharter.handbook.chapter.classified")
+                                .getString()),
+                "a classified chapter says so (the line wraps, so the drawn lines are joined): " + texts);
     }
 
     private static void pickingAStepMovesTheCard() {
