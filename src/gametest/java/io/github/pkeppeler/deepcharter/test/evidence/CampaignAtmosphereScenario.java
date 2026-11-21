@@ -191,7 +191,7 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
     private void litRoomAndFigure(ClientGameTestContext context, TestServerContext server) {
         int x = SITE;
         ResourceKey<Level> layer1 = TestLayers.dimension(1);
-        BlockPos campaign = buildLitRoom(server, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE));
+        BlockPos campaign = buildLitRoom(server, CAMPAIGN, layer1Floor(x + 7 * SPACING), Optional.of(ZONE));
         BlockPos today = buildLitRoom(server, layer1, todayFloor(x + 4 * SPACING), Optional.empty());
         requireZone(server, layer1, today);
         requireZone(server, CAMPAIGN, campaign);
@@ -228,7 +228,7 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         }
         // The same room with the default shading, built last: it tells a difference of the shading from a difference of
         // place or time.
-        BlockPos late = buildLitRoom(server, CAMPAIGN, layer1Floor(SITE + 7 * SPACING), Optional.of(ZONE));
+        BlockPos late = buildLitRoom(server, CAMPAIGN, layer1Floor(SITE + 9 * SPACING), Optional.of(ZONE));
         requireZone(server, CAMPAIGN, late);
         still(context, server, CAMPAIGN, late, UP, "lit-room-ceiling-campaign-late");
         still(context, server, CAMPAIGN, late, DOWN, "lit-room-floor-campaign-late");
