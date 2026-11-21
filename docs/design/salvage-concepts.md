@@ -14,7 +14,7 @@ Issue [#245](https://github.com/pkeppeler/deepcharter/issues/245), PR [#465](htt
 | What a stalk makes | A log that burns and chars to charcoal; four stalk planks, which are planks to every recipe | `tags/{block,item}/logs.json`, `logs_that_burn.json`, `planks.json`, `recipe/stalk_planks.json` |
 | Metal | A furnace melts scrap iron and scrap copper into ingots one for one; cloth unpicks into four string | `recipe/scrap_iron.json`, `scrap_copper.json`, `string_from_cloth.json` |
 | Stone | Regolith rock is stone for the stone tools and the furnace | `tags/item/stone_tool_materials.json`, `stone_crafting_materials.json` |
-| Chapter 1 | `gather_wood` completes on any log or planks, `gather_scrap` on scrap, `smelt_iron` on an ingot | `advancement/handbook/welcome/`, `handbook_chapter/welcome.json` |
+| Chapter 1 | Each directive completes on holding its item: a log or planks, scrap, an ingot, a scanner unit, a torch or lantern | `handbook_chapter/welcome.json` lists them, `advancement/handbook/welcome/` completes them |
 
 Every number is a data value, so a pack or a later issue retunes it without Java. What the test pins is in `SalvageBootstrapTest`.
 
