@@ -1,4 +1,4 @@
-"""Tests the failure-copy gate in gradle/gametest.gradle.kts: a test class that declares its own `RuntimeException failure(...)` or `expect(GameTestHelper, boolean, ...)` fails the build, because test/support/Failures has them.
+"""Tests the failure-copy gate in gradle/gametest.gradle.kts: a test class that declares its own `failure(...)` or `fail(...)`, or an `expect(...)` or `require(...)` over a boolean, with or without a GameTestHelper, fails the build, because test/support/Failures has them.
 
 Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
 repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
@@ -39,11 +39,14 @@ public class OtherShapesTest {
         throw failure(helper, "from Failures: %s", 1);
     }
 
-    private static String failure(GameTestHelper helper, Runnable action) {
+    private static String messageOf(GameTestHelper helper, Runnable action) {
         return "returns the message it caught";
     }
 
     private static void expect(GameTestHelper helper, String what, Object expected, Object actual) {
+    }
+
+    private static void expectNear(boolean condition, String format, Object... args) {
     }
 }
 """,
@@ -61,8 +64,17 @@ VIOLATIONS = {
     "failure": "private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {\n        return null;\n    }",
     "failure wrapped": "private static RuntimeException failure(\n            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {\n        return null;\n    }",
     "failure package-private": "static RuntimeException failure(GameTestHelper helper, String message) {\n        return null;\n    }",
+    "failure returning a String": "private static String failure(GameTestHelper helper, Runnable action) {\n        return \"\";\n    }",
+    "fail": "private static RuntimeException fail(GameTestHelper helper, String message) {\n        return null;\n    }",
+    "fail over a list": "private static RuntimeException fail(GameTestHelper helper, List<String> problems) {\n        return null;\n    }",
     "expect": "private static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {\n    }",
     "expect wrapped": "private static void expect(\n            GameTestHelper helper, boolean ok, @FormatString String format, @Nullable Object... args) {\n    }",
+    "expect with a final helper": "private static void expect(final GameTestHelper helper, boolean condition, String format) {\n    }",
+    "expect with an annotated helper": "private static void expect(@Nullable GameTestHelper helper, boolean condition, String format) {\n    }",
+    "expect with an annotated condition": "private static void expect(GameTestHelper helper, final boolean condition, String format) {\n    }",
+    "expect without a helper": "private static void expect(boolean condition, @FormatString String format, Object... args) {\n    }",
+    "require": "private static void require(GameTestHelper helper, boolean condition, String message) {\n    }",
+    "require without a helper": "private static void require(boolean condition, String message) {\n    }",
 }
 
 
@@ -94,7 +106,7 @@ class FailureCopyGateTest(unittest.TestCase):
             with self.subTest(label):
                 result = gate_batch.result(f"{__name__}/{label}")
                 self.assertFalse(result.ok, f"the gate should fail the build for {label}")
-                self.assertIn("CopiesTest:3 declares its own failure or expect", result.message)
+                self.assertIn("CopiesTest:3 declares its own failure, fail, expect or require", result.message)
                 self.assertIn("Failures.failure", result.message)
                 self.assertNotIn("OtherShapesTest", result.message)
                 self.assertNotIn("MentionsTest", result.message)

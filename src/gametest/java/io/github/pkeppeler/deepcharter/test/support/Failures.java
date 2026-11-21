@@ -13,14 +13,12 @@ import org.jspecify.annotations.Nullable;
 public final class Failures {
     private Failures() {}
 
-    /** The exception to {@code throw}: a {@code GameTestAssertException} carrying {@code format} filled with {@code args}. */
     @FormatMethod
     public static RuntimeException failure(
             GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
         return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
-    /** Throws {@link #failure} unless {@code condition} holds. */
     @FormatMethod
     public static void expect(
             GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
