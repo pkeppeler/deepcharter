@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueFavourites;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
@@ -45,6 +46,7 @@ import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.entity.player.StackedItemContents;
@@ -136,9 +138,11 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                         .isEmpty(),
                 "an empty book lists nothing");
         require(
-                catalogue.items().getFirst().toString().contains("deepcharter")
-                        || catalogue.items().getFirst() == HangarParts.DRILL_HEAD
-                        || catalogue.items().getFirst() == HangarParts.ROTOR_HUB,
+                catalogue.items().subList(0, 2).stream()
+                        .allMatch(item -> BuiltInRegistries.ITEM
+                                .getKey(item)
+                                .getNamespace()
+                                .equals(DeepCharter.MOD_ID)),
                 "Company parts come first, got " + catalogue.items());
     }
 

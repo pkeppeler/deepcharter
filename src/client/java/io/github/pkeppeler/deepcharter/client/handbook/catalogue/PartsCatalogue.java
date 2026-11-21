@@ -59,10 +59,15 @@ public final class PartsCatalogue {
         return of(entries, context);
     }
 
-    /** The catalogue of {@code entries}, each resolved for display; one that makes nothing is left out. */
+    /** The catalogue of {@code entries}, each resolved for display, in id order; one that makes nothing is left out. */
     public static PartsCatalogue of(List<RecipeDisplayEntry> entries, ContextMap context) {
+        // By id, the order the server numbered the recipes in, so R steps through an item's recipes in the same order
+        // every time
+        // (the book is a hash map).
+        List<RecipeDisplayEntry> ordered = new ArrayList<>(entries);
+        ordered.sort(Comparator.comparingInt(shown -> shown.id().index()));
         List<KnownRecipe> recipes = new ArrayList<>();
-        for (RecipeDisplayEntry entry : entries) {
+        for (RecipeDisplayEntry entry : ordered) {
             KnownRecipe recipe = KnownRecipe.of(entry, context);
             if (!recipe.results().isEmpty()) {
                 recipes.add(recipe);

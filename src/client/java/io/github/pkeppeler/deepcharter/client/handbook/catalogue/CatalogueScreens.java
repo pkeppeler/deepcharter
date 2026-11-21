@@ -92,7 +92,11 @@ public final class CatalogueScreens {
         }
         // Fabric clears a screen's events when it is initialised again (a resize), so they are registered on every
         // init.
-        ScreenEvents.afterExtract(screen)
+        // After the screen's contents and before its carried item and tooltips, so a stack on the cursor is over the
+        // panels and a tooltip set
+        // here (the hovered item's) is shown by the screen's own deferred tooltip step; AFTER_EXTRACT comes after that
+        // step, too late for one.
+        ScreenEvents.afterForeground(screen)
                 .register((s, graphics, mouseX, mouseY, delta) -> panel.extract(graphics, mouseX, mouseY));
         ScreenEvents.afterTick(screen).register(s -> panel.tick());
         ScreenEvents.remove(screen).register(PANELS::remove);
