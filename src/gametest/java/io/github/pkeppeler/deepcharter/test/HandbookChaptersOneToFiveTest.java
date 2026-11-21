@@ -101,7 +101,8 @@ public class HandbookChaptersOneToFiveTest {
                             "deepcharter:handbook/welcome/craft_stone_tools",
                             "deepcharter:handbook/welcome/gather_scrap",
                             "deepcharter:handbook/welcome/smelt_iron",
-                            "deepcharter:handbook/welcome/craft_scanner"),
+                            "deepcharter:handbook/welcome/craft_scanner",
+                            "deepcharter:handbook/welcome/make_light"),
             "deepcharter:back_online",
                     List.of(
                             "deepcharter:handbook/back_online/repair_fuel_pump",
@@ -451,6 +452,20 @@ public class HandbookChaptersOneToFiveTest {
                                         directive("welcome", "gather_scrap"),
                                         directive("welcome", "smelt_iron")));
                         give(first, ours("scanner_unit"));
+                        expectCompleted(
+                                helper,
+                                server,
+                                "a scanner unit, before any light",
+                                both,
+                                Set.of(
+                                        directive("welcome", "gather_wood"),
+                                        directive("welcome", "craft_crafting_table"),
+                                        directive("welcome", "craft_stone_tools"),
+                                        directive("welcome", "gather_scrap"),
+                                        directive("welcome", "smelt_iron"),
+                                        directive("welcome", "craft_scanner")));
+                        expectRoadAt(helper, server, first, 0);
+                        give(second, Items.TORCH);
                         expectCompleted(helper, server, "chapter 1", both, through(1));
                         expectRoadAt(helper, server, first, 1);
 

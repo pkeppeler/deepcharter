@@ -1702,3 +1702,26 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Open questions.** Whether a decoy should squeeze less than a seam (it must not: a seam cannot be told from a decoy); whether the pulse should be heard from a distance (the warning creak is positional, so a player near a squeezed pod hears it too).
 
+
+## The regolith slump (#836, A)
+
+**Problem.** The user's first playtest: "regolith should fall like sand". Plain regolith is the surface's loose skin, one block thick over the packed layer, and a block that hangs in the air over a cut looks wrong. Making it fall also gives the surface a hazard of its own: a shallow bore under the skin brings the skin down into the tunnel.
+
+**What the material does.** `regolith` is a falling block, as sand is. `regolith_packed`, `regolith_rock` and the mesa's `ochre_regolith` are not, so a deep shaft's walls, the colony pad (its regolith always lies on dirt, packed regolith or rock) and anything placed on the pad hold. A fall is only started by an update to the block or the one under it, so generation, which writes blocks without updates, does not bring overhangs down.
+
+| Situation | What happens | Counterplay |
+|---|---|---|
+| A bore or a hand cut leaves the skin with air under it | The skin falls into the cut and lands on whatever is under it | Cut deeper, through the packed layer, where the walls hold; or leave the skin standing and cut under packed |
+| The skin falls where a pod sits | The pod refuses the block: it spills as a regolith item and never lands inside the pod | None needed: a slump cannot bury or trap a pod |
+| A shaft goes straight down from the surface | The skin round the shaft keeps its support, so it stands | None needed |
+
+**Ladder.** By hand: the pilot learns to bore below the skin, or shore a cut with packed regolith (a placed block does not fall). There is no upgrade, since the hazard is cheap: loose regolith in a tunnel is dust the drill clears like any block.
+
+**Decisions (A).**
+- Only `regolith` falls. Mesa topsoil (`ochre_regolith`) stays put: the issue named the plains' regolith only, and `ColonyBuilder` keeps the mesa's own surface. A test pins it. Making it fall is a one-line change.
+- A pod in the landing cell refuses the block, which spills as an item, rather than sitting inside it. Minecraft's falling block ignores entities when it lands, so a slump could otherwise leave the pod embedded.
+- The dust a falling block kicks up is the average colour of the four regolith textures (`0x94482F`).
+
+**Knobs.** None: the behaviour is the vanilla falling block's. `SurfaceBlocks.REGOLITH_DUST` is the dust colour.
+
+**Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.

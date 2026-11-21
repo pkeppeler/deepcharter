@@ -7,7 +7,9 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookReadPayload;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
+import io.github.pkeppeler.deepcharter.handbook.Notes;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -163,6 +165,28 @@ public final class HandbookScreen extends Screen {
     @Override
     public void onClose() {
         minecraft.gui.setScreen(parent);
+    }
+
+    /**
+     * Opens the handbook on {@code note}, because the player used its block in the world. The Note is listed even when the charter has
+     * not found it (a player on no charter files nothing), so it can be read all the same.
+     */
+    public static void openNoteFromWorld(Minecraft client, Identifier note) {
+        if (client.player == null || client.getConnection() == null || !Notes.exists(note)) {
+            return;
+        }
+        List<HandbookNote> listed = new ArrayList<>(ClientNotes.entries());
+        if (listed.stream().noneMatch(entry -> entry.id().equals(note))) {
+            listed.add(ClientNotes.entry(note));
+            listed.sort(Comparator.comparingInt(HandbookNote::number));
+        }
+        HandbookScreen screen = new HandbookScreen(
+                currentPages(client),
+                ClientReadMarks::isRead,
+                entry -> ClientPlayNetworking.send(new HandbookReadPayload(entry)),
+                listed);
+        client.gui.setScreen(screen);
+        screen.openNote(note);
     }
 
     /** The pages of the Handbook tab, from the chapters and progress the server synced. */
