@@ -1201,7 +1201,6 @@ public class DesignTourScenario extends EvidenceScenario {
                 BlockPos min = TestLayers.pos(1, x - 3, 3, z - 3);
                 BlockPos max = TestLayers.pos(1, x + 3, 8, z + 3);
                 RoomCarver.carve(one, min, max, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-                // The rows under the crust are layer 2's rock: a pocket in it, for the crossing below to land in.
                 RoomCarver.carvePocketBelow(one, 1, x - 2, x + 2, z - 2, z + 2);
             });
             litRooms.add(new LitRoom(

@@ -235,7 +235,6 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
     private static Rig setUp(MinecraftServer server, TwoPlayerServer two) {
         ServerLevel one = TestLayers.level(server, 1);
         box(one, TestLayers.worldY(1, 0), TestLayers.worldY(1, 2), LayerBlocks.BREACH_CRUST);
-        // The rows under the crust are layer 2's rock: a pocket in it, wide as the room, for the pods to fall into.
         RoomCarver.carvePocketBelow(one, 1, X - ROOM_WEST, X + ROOM_EAST, Z - ROOM_RADIUS_Z, Z + ROOM_RADIUS_Z);
         box(one, STONE_ROW_Y, STONE_ROW_Y, Blocks.STONE);
         shell(one);

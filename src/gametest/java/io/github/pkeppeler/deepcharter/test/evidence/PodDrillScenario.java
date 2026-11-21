@@ -109,8 +109,6 @@ public class PodDrillScenario extends EvidenceScenario {
                 Z + 5,
                 LayerBlocks.BREACH_CRUST);
         RoomCarver.carve(level, X - 5, X + 5, TestLayers.worldY(1, 3), FLOOR_Y - 1, Z - 5, Z + 5, Blocks.STONE);
-        // The rows under the crust are layer 2's rock: a pocket in it, for the pod to fall into once it has bored the
-        // crust.
         RoomCarver.carvePocketBelow(level, 1, X - 5, X + 5, Z - 5, Z + 5);
         // Worldgen scatters lava through layer 1's rock, and lava beside the room would flow in and into the shaft, so
         // carve it sealed.

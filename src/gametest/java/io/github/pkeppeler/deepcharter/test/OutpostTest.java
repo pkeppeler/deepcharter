@@ -834,7 +834,6 @@ public class OutpostTest {
                                 }
                             }
                         }
-                        // The rows under the crust are layer 2's rock: open a pocket for the pod to fall into.
                         RoomCarver.carvePocketBelow(
                                 stage.level(),
                                 1,

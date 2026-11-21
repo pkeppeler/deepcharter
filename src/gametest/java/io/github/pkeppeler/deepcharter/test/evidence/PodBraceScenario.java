@@ -182,8 +182,6 @@ public class PodBraceScenario extends EvidenceScenario {
                 Z - RADIUS,
                 Z + RADIUS,
                 LayerBlocks.BREACH_CRUST);
-        // The rows under the crust are layer 2's rock: a pocket in it, for the pod to fall into once it has bored the
-        // crust.
         RoomCarver.carvePocketBelow(level, 1, X - RADIUS, X + RADIUS, Z - RADIUS, Z + RADIUS);
         RoomCarver.carve(level, X - RADIUS, X + RADIUS, CRUST_TOP_Y, FLOOR_Y - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
         RoomCarver.carve(

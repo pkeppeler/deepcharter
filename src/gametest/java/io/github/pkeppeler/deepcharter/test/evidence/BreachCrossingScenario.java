@@ -55,7 +55,6 @@ public class BreachCrossingScenario extends EvidenceScenario {
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 BlockPos column = BlockPos.containing(X, 0, Z);
-                // The rows under the crust are layer 2's rock: a pocket in it, for the player to fall into.
                 RoomCarver.carvePocketBelow(one, 1, column.getX(), column.getX(), column.getZ(), column.getZ());
                 RoomCarver.carve(
                         one,

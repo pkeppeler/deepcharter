@@ -1718,8 +1718,6 @@ public class M2SliceScenario extends EvidenceScenario {
                     Z - ROOM_RADIUS_Z,
                     Z + ROOM_RADIUS_Z,
                     LayerBlocks.BREACH_CRUST);
-            // The rows under the crust are layer 2's rock: a pocket in it, for the Mole to fall into once it has bored
-            // the crust.
             RoomCarver.carvePocketBelow(level, 1, X - ROOM_WEST, X + ROOM_EAST, Z - ROOM_RADIUS_Z, Z + ROOM_RADIUS_Z);
             // The wall ores sit in this stone shell, so it is carved sealed as well: lava must not be one block behind
             // them.
