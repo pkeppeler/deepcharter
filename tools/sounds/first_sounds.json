@@ -1,0 +1,41 @@
+{
+  "gamme_de_la_voix": {
+    "bed_frames": 373010,
+    "bed_sha256": "8068a118da97c29abd1fc6d6e0590e372a45e2c7ab1e1e0efff5b8a6b6ae7ea8",
+    "credit": "Phonautogram by Édouard-Léon Scott de Martinville (May 17, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
+    "duration_seconds": 15.909,
+    "license": "CC BY",
+    "ogg_sha256": "69573ccc941856f1234c6b713c8462d317684a482b30042767cdc5fac0f2b0e4",
+    "recorded": "May 17, 1860",
+    "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
+    "source_url": "https://firstsounds.org/sounds/1860-Vocal-Scale-05-09.mp3",
+    "title": "Gamme de la Voix, vocal scale",
+    "treatment_sha256": "5519d5623a8c040ea9525e9765c96cfa01dc167fc4d73fe328ab811db18a0a39"
+  },
+  "jeune_jouvencelle": {
+    "bed_frames": 373355,
+    "bed_sha256": "21cf2444fd882ea9c135f89ac8edde9eca8629bde99e087756b32b3981d4ec5f",
+    "credit": "Phonautogram by Édouard-Léon Scott de Martinville (Aug. 17, 1857); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
+    "duration_seconds": 15.961,
+    "license": "CC BY",
+    "ogg_sha256": "dc0697fd24f7070eaaf947521d3ab1de2fd4e646a1362dbed996999f31f7203f",
+    "recorded": "Aug. 17, 1857",
+    "source_sha256": "c14c8de6c1258e54fcb55147593ad667d87d2a3af4434292ca3409c6ba1ff862",
+    "source_url": "https://firstsounds.org/sounds/Scott-Feaster-No-09.mp3",
+    "title": "Jeune Jouvencelle, vocal solo",
+    "treatment_sha256": "5519d5623a8c040ea9525e9765c96cfa01dc167fc4d73fe328ab811db18a0a39"
+  },
+  "othello": {
+    "bed_frames": 413008,
+    "bed_sha256": "3519aed85ee44a45865592ab81967be4cff5b4260c80d45a9c444d8b1d5e37e3",
+    "credit": "Phonautogram by Édouard-Léon Scott de Martinville (Apr. 17, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
+    "duration_seconds": 17.763,
+    "license": "CC BY",
+    "ogg_sha256": "82272bcdc69c5cf288a8524c1a34cfd3da68f14cf5bc92adcb46e1b4879ea682",
+    "recorded": "Apr. 17, 1860",
+    "source_sha256": "0e564635920b4457923e112f5dded4c36cd7fe604b906721768682ebf6e64012",
+    "source_url": "https://firstsounds.org/sounds/Scott-Feaster-No-38.mp3",
+    "title": "Excerpt from Ducis' Othello",
+    "treatment_sha256": "5519d5623a8c040ea9525e9765c96cfa01dc167fc4d73fe328ab811db18a0a39"
+  }
+}
