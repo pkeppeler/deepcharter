@@ -66,11 +66,12 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
     /** The whole class: five worlds, a reopened one and a dedicated server are a long test by design. */
     private static final Duration LIMIT = Duration.ofMinutes(15);
 
-    private static final int OVERWORLD_MIN_Y = -2032;
+    private static final int OVERWORLD_MIN_Y = -2032; // fixed-pos: the shipped overworld's floor, which this test pins
     private static final int OVERWORLD_HEIGHT = 2352;
-    private static final int PAD_GROUND_Y = 63;
+    private static final int PAD_GROUND_Y = 63; // fixed-pos: ADR 0036's pad ground, which this test pins
     private static final int STAMP = 2;
-    private static final int DEEPEST_CONDUIT_Y = -512;
+    private static final int DEEPEST_CONDUIT_Y =
+            -512; // fixed-pos: the Conduit's floor in the issue, which this test pins
     /** The columns read for the presets' fingerprint: on the pad, on its slope and far out. */
     private static final int[][] COLUMNS = {{0, 0}, {40, -25}, {-90, 60}, {300, 300}, {-700, 450}, {1200, -900}};
     /** Spacing cells either side of the origin whose sites touch the pad's chunks. */
@@ -103,6 +104,7 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
             require("the Conduit and the stamp", server.computeOnServer(CampaignWorldClientTest::theConduit));
             require("the pad chunks' sites", server.computeOnServer(CampaignWorldClientTest::theSitesOfThePad));
             boolean clientSees = context.computeOnClient(client -> client.level != null
+                    // level-height: the whole level against the issue's numbers, not one layer
                     && client.level.getMinY() == OVERWORLD_MIN_Y
                     && client.level.getHeight() == OVERWORLD_HEIGHT
                     && client.gui.screen() == null);
@@ -146,11 +148,13 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
     private static String theOverworld(MinecraftServer server) {
         StringBuilder out = new StringBuilder();
         ServerLevel overworld = server.overworld();
-        if (overworld.getMinY() != OVERWORLD_MIN_Y || overworld.getHeight() != OVERWORLD_HEIGHT) {
+        int minY = overworld.getMinY(); // level-height: the whole level against the issue's numbers, not one layer
+        int height = overworld.getHeight(); // level-height: the whole level against the issue's numbers, not one layer
+        if (minY != OVERWORLD_MIN_Y || height != OVERWORLD_HEIGHT) {
             out.append("the overworld runs from ")
-                    .append(overworld.getMinY())
+                    .append(minY)
                     .append(" and is ")
-                    .append(overworld.getHeight())
+                    .append(height)
                     .append(" tall; ");
         }
         if (!(overworld.getChunkSource().getGenerator().getBiomeSource() instanceof BandBiomeSource)) {
@@ -313,10 +317,12 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
     private static String fingerprint(MinecraftServer server) {
         ServerLevel level = server.overworld();
         RandomState random = level.getChunkSource().randomState();
+        int minY = level.getMinY(); // level-height: a fingerprint of the whole level, not one layer
+        int levelHeight = level.getHeight(); // level-height: a fingerprint of the whole level, not one layer
         StringBuilder out = new StringBuilder()
-                .append(level.getMinY())
+                .append(minY)
                 .append('/')
-                .append(level.getHeight())
+                .append(levelHeight)
                 .append(' ')
                 .append(level.getChunkSource()
                         .getGenerator()
