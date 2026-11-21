@@ -53,8 +53,8 @@ public class LayerDimensionsTest {
 
     /**
      * {@code TestLayers.band} of a level that does not hold the layer fails loud: the flat test overworld holds the surface only, and the
-     * Nether is no layer's level. ({@code TestLayers.dimension(server, n)} returns the overworld for a layer once the overworld is the
-     * campaign level (#803), so that branch has no test before then.)
+     * Nether is no layer's level. (The GameTest server's overworld is flat, so {@code TestLayers.dimension(server, n)} returns
+     * the sample here; its overworld branch is tested in {@code CampaignWorldClientTest}, in a default-preset world.)
      */
     @GameTest
     public void aLevelThatDoesNotHoldALayerHasNoBandForIt(GameTestHelper helper) {

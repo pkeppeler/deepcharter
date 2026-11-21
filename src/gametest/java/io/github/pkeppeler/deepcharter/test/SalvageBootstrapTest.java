@@ -46,6 +46,7 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
@@ -58,11 +59,11 @@ import org.slf4j.LoggerFactory;
  * Server GameTests for the bootstrap of #245 (art direction section 11): the colony's salvage crates lie within the yard radius and not
  * beyond it, fungal stalks grow only on the floors of craters and in caves, and a new player reaches the first crafting goals (tools, a
  * light, the first terminal repair) with the real recipes, starting from nothing but what crates and stalks drop. The surface runs in
- * {@code deepcharter:surface_sample}, a copy of the shipped overworld in the test mod's preset (see {@link SurfaceTerrainTest}).
+ * the surface band of {@code deepcharter:campaign_sample}, the test pack's copy of the shipped overworld (see {@link SurfaceTerrainTest}).
  */
 public class SalvageBootstrapTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(SalvageBootstrapTest.class);
-    private static final String SAMPLE = "deepcharter:surface_sample";
+    private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final String YARD = "deepcharter:salvage_yard";
     private static final int MAX_TICKS = 12_000;
     /** The survey covers the chunks within this many of the origin, a little past the yard so that its edge shows. */
@@ -159,6 +160,13 @@ public class SalvageBootstrapTest {
         return level.getBiome(pos).unwrapKey().orElseThrow().identifier().toString();
     }
 
+    /** The blocks of {@code wanted} in the surface band of {@code level}, the campaign level: the layers below hold stalks of their own. */
+    private static List<BlockPos> surface(ServerLevel level, int chunks, Block wanted) {
+        return BlockSurvey.find(level, chunks, wanted, ChunkStatus.FEATURES).stream()
+                .filter(pos -> TestLayers.isIn(level, pos, TestLayers.SURFACE))
+                .toList();
+    }
+
     private static double distance(BlockPos pos) {
         return Math.sqrt((double) pos.getX() * pos.getX() + (double) pos.getZ() * pos.getZ());
     }
@@ -167,7 +175,7 @@ public class SalvageBootstrapTest {
     public void cratesLieAroundTheColonyWithinTheYardRadiusAndNoFurther(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int radius = yardRadius();
-        List<BlockPos> crates = BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate"));
+        List<BlockPos> crates = surface(level, SURVEY_CHUNKS, block("salvage_crate"));
         List<BlockPos> beyondThePad =
                 crates.stream().filter(pos -> distance(pos) >= PAD_RADIUS).toList();
         double farthest = crates.stream()
@@ -252,7 +260,7 @@ public class SalvageBootstrapTest {
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void stalksStandOnlyInCraters(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        List<BlockPos> stalks = BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk"));
+        List<BlockPos> stalks = surface(level, SURVEY_CHUNKS, block("fungal_stalk"));
         List<BlockPos> bases = columnBases(stalks);
         LOGGER.info("[salvage] {} stalk blocks in {} columns", stalks.size(), bases.size());
         if (bases.size() < STALK_COLUMNS / 2) {
@@ -277,8 +285,8 @@ public class SalvageBootstrapTest {
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aStalkColumnIsAWalkFromEveryCrate(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        List<BlockPos> bases = columnBases(BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk")));
-        List<BlockPos> crates = BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate"));
+        List<BlockPos> bases = columnBases(surface(level, SURVEY_CHUNKS, block("fungal_stalk")));
+        List<BlockPos> crates = surface(level, SURVEY_CHUNKS, block("salvage_crate"));
         double[] nearest = crates.stream()
                 .mapToDouble(crate -> bases.stream()
                         .mapToDouble(base -> Math.sqrt(horizontalDistanceSqr(crate, base)))

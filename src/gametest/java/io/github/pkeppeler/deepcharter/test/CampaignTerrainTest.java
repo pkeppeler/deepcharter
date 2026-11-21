@@ -42,8 +42,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the campaign world's terrain (#742, ADR 0059): the bands, the rock of each, the crust at the floor of each layer, and
- * the biome of each band, on our own generator. The world is {@code deepcharter:campaign_sample}, a test data-pack dimension, as
- * {@code surface_sample} is for the surface; the shipped game does not use it yet. The band table is {@link CampaignBands}.
+ * the biome of each band, on our own generator. The world is {@code deepcharter:campaign_sample}, the test data pack's copy of the shipped overworld, which the GameTest server cannot use (it bakes its
+ * overworld from a flat preset). The band table is {@link CampaignBands}.
  */
 public class CampaignTerrainTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
@@ -216,6 +216,7 @@ public class CampaignTerrainTest {
                 .getAsJsonObject()
                 .getAsJsonObject("generator")
                 .getAsJsonObject("biome_source")
+                .getAsJsonObject("surface")
                 .getAsJsonArray("biomes")
                 .forEach(entry ->
                         surfaceBiomes.add(entry.getAsJsonObject().get("biome").getAsString()));
@@ -315,7 +316,12 @@ public class CampaignTerrainTest {
         JsonElement density = settings.getAsJsonObject("noise_router").get("final_density");
         List<String> ranges = new ArrayList<>();
         collectRanges(density, ranges);
-        List<String> expectedRanges = Collections.nCopies(3, range(CampaignBands.LAYER_1));
+        // The layers' terms are evaluated only below the surface band's floor (range_choice picks one branch), so a
+        // column of the surface
+        // band pays for none of their noise; the three after it are the layers' own.
+        List<String> expectedRanges = new ArrayList<>();
+        expectedRanges.add(CampaignBands.UNBUILT.minY() + ".." + CampaignBands.SURFACE.minY());
+        expectedRanges.addAll(Collections.nCopies(3, range(CampaignBands.LAYER_1)));
         expect(
                 helper,
                 ranges.equals(expectedRanges),
@@ -363,11 +369,11 @@ public class CampaignTerrainTest {
 
         JsonObject dimension =
                 read(helper, "/data/deepcharter/dimension/campaign_sample.json").getAsJsonObject();
-        JsonObject type = read(helper, "/data/deepcharter/dimension_type/campaign_sample.json")
-                .getAsJsonObject();
+        JsonObject type =
+                read(helper, "/data/minecraft/dimension_type/overworld.json").getAsJsonObject();
         expect(
                 helper,
-                dimension.get("type").getAsString().equals("deepcharter:campaign_sample")
+                dimension.get("type").getAsString().equals("minecraft:overworld")
                         && type.get("min_y").getAsInt() == worldMinY()
                         && type.get("height").getAsInt() == worldTopExclusive() - worldMinY(),
                 "the dimension type spans the bands");
@@ -394,15 +400,10 @@ public class CampaignTerrainTest {
                     "the biome source's layer %d is not the band table's",
                     i + 1);
         }
-        JsonElement shippedBiomes = read(helper, "/data/minecraft/dimension/overworld.json")
-                .getAsJsonObject()
-                .getAsJsonObject("generator")
-                .getAsJsonObject("biome_source")
-                .get("biomes");
         expect(
                 helper,
-                source.getAsJsonObject("surface").get("biomes").equals(shippedBiomes),
-                "the surface biomes are not the shipped overworld's");
+                read(helper, "/data/minecraft/dimension/overworld.json").equals(dimension),
+                "campaign_sample is not the shipped overworld");
         helper.succeed();
     }
 

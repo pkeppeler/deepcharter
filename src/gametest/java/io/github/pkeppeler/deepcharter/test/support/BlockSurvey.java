@@ -7,8 +7,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 
 /** Scans generated chunks for a block, as the salvage tests and the gather scenario do. */
 public final class BlockSurvey {
@@ -16,11 +17,20 @@ public final class BlockSurvey {
 
     /** Every position of {@code wanted} in the chunks within {@code chunks} of the origin, generating them. */
     public static List<BlockPos> find(ServerLevel level, int chunks, Block wanted) {
+        return find(level, chunks, wanted, ChunkStatus.FULL);
+    }
+
+    /**
+     * As {@link #find(ServerLevel, int, Block)}, generating each chunk only as far as {@code status}. A tall world's chunks are costly to
+     * take to {@link ChunkStatus#FULL} (light, promotion to a level chunk); a survey of what the features placed needs {@link
+     * ChunkStatus#FEATURES}.
+     */
+    public static List<BlockPos> find(ServerLevel level, int chunks, Block wanted, ChunkStatus status) {
         List<BlockPos> found = new ArrayList<>();
         Predicate<BlockState> isIt = state -> state.is(wanted);
         for (int chunkX = -chunks; chunkX <= chunks; chunkX++) {
             for (int chunkZ = -chunks; chunkZ <= chunks; chunkZ++) {
-                LevelChunk chunk = level.getChunk(chunkX, chunkZ);
+                ChunkAccess chunk = level.getChunk(chunkX, chunkZ, status);
                 LevelChunkSection[] sections = chunk.getSections();
                 for (int index = 0; index < sections.length; index++) {
                     if (!sections[index].maybeHas(isIt)) {

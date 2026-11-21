@@ -117,6 +117,10 @@ import org.jspecify.annotations.Nullable;
  * climbs and descents, the crafting of parts) is stated on screen as it happens. See the PR's list of shortcuts.
  */
 public class M2SliceScenario extends EvidenceScenario {
+    static {
+        M2SliceEndState.watchCrossings();
+    }
+
     private static final int TICKS_PER_FRAME = 3;
     private static final int HOLD_FRAMES = 6;
     private static final int WAIT_TICKS = 600;

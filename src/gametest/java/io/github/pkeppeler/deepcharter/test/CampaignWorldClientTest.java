@@ -1,0 +1,422 @@
+package io.github.pkeppeler.deepcharter.test;
+
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
+import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
+import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
+import io.github.pkeppeler.deepcharter.colony.WorldFormat;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
+import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.LayerStructures;
+import io.github.pkeppeler.deepcharter.layer.StructureKind;
+import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientTestWatchdog;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.OptionalInt;
+import java.util.Properties;
+import java.util.Set;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerConnection;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.fabric.api.client.gametest.v1.world.TestWorldSave;
+import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState.WorldTypeEntry;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.presets.WorldPreset;
+import net.minecraft.world.level.levelgen.presets.WorldPresets;
+import net.minecraft.world.phys.Vec3;
+
+/**
+ * Client GameTest for the cutover of #803 (slice 8 of #214): in a default-preset world the overworld is the campaign world. It checks the
+ * level (from -2032, 2352 tall, the {@code deepcharter:bands} biome source), the colony (at the origin, its pad at y 63, players
+ * respawn in the Continuity Office), the Conduit (from -512 up to its stack), the world-format stamp (2), the sites of the chunks the
+ * build loaded, that the presets give the same world (ADR 0036), that a saved world reopens with no experimental-settings screen, and
+ * that a dedicated server runs it. The one-argument {@code TestLayers.dimension} has no server and is gone; its server form returns the
+ * overworld here, the branch no server GameTest reaches (their overworld is flat).
+ */
+public class CampaignWorldClientTest implements FabricClientGameTest {
+    /** The whole class: five worlds, a reopened one and a dedicated server are a long test by design. */
+    private static final Duration LIMIT = Duration.ofMinutes(15);
+
+    private static final int OVERWORLD_MIN_Y = -2032;
+    private static final int OVERWORLD_HEIGHT = 2352;
+    private static final int PAD_GROUND_Y = 63;
+    private static final int STAMP = 2;
+    private static final int DEEPEST_CONDUIT_Y = -512;
+    /** The columns read for the presets' fingerprint: on the pad, on its slope and far out. */
+    private static final int[][] COLUMNS = {{0, 0}, {40, -25}, {-90, 60}, {300, 300}, {-700, 450}, {1200, -900}};
+    /** Spacing cells either side of the origin whose sites touch the pad's chunks. */
+    private static final int SITE_CELLS = 2;
+    /** The pad is 64 blocks across, centred on the origin: its chunks. */
+    private static final int PAD_CHUNK_RADIUS = 2;
+
+    /** The presets of the new-world screen, whose overworld the pack's dimension replaces (ADR 0036). */
+    private static final Map<String, ResourceKey<WorldPreset>> PRESETS = new LinkedHashMap<>();
+
+    static {
+        PRESETS.put("normal", WorldPresets.NORMAL);
+        PRESETS.put("amplified", WorldPresets.AMPLIFIED);
+        PRESETS.put("large_biomes", WorldPresets.LARGE_BIOMES);
+        PRESETS.put("single_biome_surface", WorldPresets.SINGLE_BIOME_SURFACE);
+    }
+
+    @Override
+    public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
+        ClientTestWatchdog.shared().arm(getClass().getSimpleName(), LIMIT);
+        TestWorldSave save;
+        String reference;
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            ClientWait.until(
+                    context, "the player in the world", client -> client.player != null && client.level != null);
+            TestServerContext server = singleplayer.getServer();
+            require("the campaign overworld", server.computeOnServer(CampaignWorldClientTest::theOverworld));
+            require("the colony", server.computeOnServer(CampaignWorldClientTest::theColony));
+            require("the Conduit and the stamp", server.computeOnServer(CampaignWorldClientTest::theConduit));
+            require("the pad chunks' sites", server.computeOnServer(CampaignWorldClientTest::theSitesOfThePad));
+            boolean clientSees = context.computeOnClient(client -> client.level != null
+                    && client.level.getMinY() == OVERWORLD_MIN_Y
+                    && client.level.getHeight() == OVERWORLD_HEIGHT
+                    && client.gui.screen() == null);
+            if (!clientSees) {
+                throw new AssertionError("the client's level should run from " + OVERWORLD_MIN_Y + ", "
+                        + OVERWORLD_HEIGHT + " tall, with no screen open");
+            }
+            reference = server.computeOnServer(CampaignWorldClientTest::fingerprint);
+            thePlayerRespawnsInTheContinuityOffice(context, server);
+            save = singleplayer.getWorldSave();
+        }
+
+        // A saved world opens again with no experimental-settings screen: the open waits for the world, so a warning
+        // screen that needs a
+        // click ends it at the Fabric runner's timeout.
+        try (TestSingleplayerContext reopened = save.open()) {
+            ClientWait.until(context, "the reopened world", client -> client.player != null && client.level != null);
+            if (context.computeOnClient(client -> client.gui.screen() != null)) {
+                throw new AssertionError("a screen stands over the reopened world");
+            }
+            require(
+                    "the reopened overworld",
+                    reopened.getServer().computeOnServer(CampaignWorldClientTest::theOverworld));
+        }
+
+        for (Map.Entry<String, ResourceKey<WorldPreset>> preset : PRESETS.entrySet()) {
+            thePresetGivesTheSameWorld(context, preset.getKey(), preset.getValue(), reference);
+        }
+        aDedicatedServerRunsTheCampaignWorld(context);
+    }
+
+    // ---------------------------------------------------------------------------------------------- server reads
+
+    private static void require(String what, String problems) {
+        if (!problems.isEmpty()) {
+            throw new AssertionError(what + ": " + problems);
+        }
+    }
+
+    /** From -2032, 2352 tall, on {@code deepcharter:bands}; and a layer's level is this one, which only a default-preset world can show. */
+    private static String theOverworld(MinecraftServer server) {
+        StringBuilder out = new StringBuilder();
+        ServerLevel overworld = server.overworld();
+        if (overworld.getMinY() != OVERWORLD_MIN_Y || overworld.getHeight() != OVERWORLD_HEIGHT) {
+            out.append("the overworld runs from ")
+                    .append(overworld.getMinY())
+                    .append(" and is ")
+                    .append(overworld.getHeight())
+                    .append(" tall; ");
+        }
+        if (!(overworld.getChunkSource().getGenerator().getBiomeSource() instanceof BandBiomeSource)) {
+            out.append("its biome source is ")
+                    .append(overworld.getChunkSource().getGenerator().getBiomeSource())
+                    .append(", not deepcharter:bands; ");
+        }
+        if (!LayerChain.isCampaign(overworld)) {
+            out.append("it is not a campaign level; ");
+        }
+        for (int layer = LayerChain.SURFACE; layer <= CampaignBands.lastLayer(); layer++) {
+            if (!TestLayers.dimension(server, layer).equals(Level.OVERWORLD)
+                    || TestLayers.level(server, layer) != overworld) {
+                out.append("TestLayers does not return the overworld for layer ")
+                        .append(layer)
+                        .append("; ");
+            }
+        }
+        return out.toString();
+    }
+
+    /** At the origin, its pad at y 63, and the Continuity Office its respawn point. */
+    private static String theColony(MinecraftServer server) {
+        StringBuilder out = new StringBuilder();
+        ColonySite.Placed colony = Colony.placed(server).orElse(null);
+        if (colony == null) {
+            return "the colony was not built";
+        }
+        if (colony.center().getX() != 0 || colony.center().getZ() != 0) {
+            out.append("the colony is centred on ")
+                    .append(colony.center().toShortString())
+                    .append(", not the origin; ");
+        }
+        if (colony.groundY() != PAD_GROUND_Y) {
+            out.append("the pad's ground is y ")
+                    .append(colony.groundY())
+                    .append(", not ")
+                    .append(PAD_GROUND_Y)
+                    .append("; ");
+        }
+        BlockPos office = ColonyAnchor.CONTINUITY_OFFICE.in(colony.anchors());
+        if (!Colony.respawnPoint(server).equals(java.util.Optional.of(GlobalPos.of(Level.OVERWORLD, office)))) {
+            out.append("the respawn point is ")
+                    .append(Colony.respawnPoint(server))
+                    .append(", not the office ")
+                    .append(office.toShortString())
+                    .append("; ");
+        }
+        ServerLevel overworld = server.overworld();
+        if (overworld.getBlockState(colony.center().below()).isAir()) {
+            out.append("there is no ground under the pad's centre; ");
+        }
+        return out.toString();
+    }
+
+    /** From -512 up to the stack, and not below or above it; the stamp is 2. */
+    private static String theConduit(MinecraftServer server) {
+        StringBuilder out = new StringBuilder();
+        ColonySite.Placed colony = Colony.placed(server).orElse(null);
+        if (colony == null) {
+            return "the colony was not built";
+        }
+        ServerLevel level = server.overworld();
+        BlockPos centre = ColonyAnchor.CONDUIT.in(colony.anchors());
+        int radius = ColonyTuning.DEFAULT.conduitRadius();
+        int top = colony.groundY() + ColonyTuning.DEFAULT.conduitStack();
+        int gaps = 0;
+        for (int x = centre.getX() - radius; x <= centre.getX() + radius; x++) {
+            for (int z = centre.getZ() - radius; z <= centre.getZ() + radius; z++) {
+                for (int y = DEEPEST_CONDUIT_Y; y <= top; y++) {
+                    gaps += level.getBlockState(new BlockPos(x, y, z)).is(ColonyBlocks.CONDUIT) ? 0 : 1;
+                }
+                boolean below = level.getBlockState(new BlockPos(x, DEEPEST_CONDUIT_Y - 1, z))
+                        .is(ColonyBlocks.CONDUIT);
+                boolean above = level.getBlockState(new BlockPos(x, top + 1, z)).is(ColonyBlocks.CONDUIT);
+                if (below || above) {
+                    out.append("the Conduit runs past its ends at ")
+                            .append(x)
+                            .append(" ")
+                            .append(z)
+                            .append("; ");
+                }
+            }
+        }
+        if (gaps != 0) {
+            out.append(gaps)
+                    .append(" blocks of the casing from ")
+                    .append(DEEPEST_CONDUIT_Y)
+                    .append(" to ")
+                    .append(top)
+                    .append(" are missing; ");
+        }
+        if (!WorldFormat.get(server).format().equals(OptionalInt.of(STAMP))) {
+            out.append("the world-format stamp is ")
+                    .append(WorldFormat.get(server).format())
+                    .append(", not ")
+                    .append(STAMP)
+                    .append("; ");
+        }
+        return out.toString();
+    }
+
+    /**
+     * The sites that touch the pad's chunks, which the build loaded before it finished, are whole: each has its blocks, its Note and its
+     * candle. The Prospector's bay is one of them by its place, and the rest are every site of both layers in the cells round the origin.
+     */
+    private static String theSitesOfThePad(MinecraftServer server) {
+        ServerLevel level = server.overworld();
+        BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT).orElse(null);
+        if (conduit == null) {
+            return "the colony was not built";
+        }
+        Set<ChunkPos> pad = new LinkedHashSet<>();
+        for (int x = -PAD_CHUNK_RADIUS; x < PAD_CHUNK_RADIUS; x++) {
+            for (int z = -PAD_CHUNK_RADIUS; z < PAD_CHUNK_RADIUS; z++) {
+                pad.add(new ChunkPos(x, z));
+            }
+        }
+        List<StructureSite> sites = new ArrayList<>();
+        LayerStructures.prospector(level).ifPresent(sites::add);
+        for (int layer = 1; layer <= CampaignBands.lastLayer(); layer++) {
+            CampaignBands.Band band = CampaignBands.layer(layer);
+            for (StructureKind kind : StructureKind.inLayer(layer)) {
+                for (int cellX = -SITE_CELLS; cellX < SITE_CELLS; cellX++) {
+                    for (int cellZ = -SITE_CELLS; cellZ < SITE_CELLS; cellZ++) {
+                        sites.add(StructureSite.in(
+                                level.getSeed(), kind, band.minY(), band.height(), cellX, cellZ, conduit));
+                    }
+                }
+            }
+        }
+        int checked = 0;
+        List<String> unmet = new ArrayList<>();
+        for (StructureSite site : sites) {
+            List<ChunkPos> chunks = LayerStructuresTest.chunksOf(site);
+            if (chunks.stream().noneMatch(pad::contains)) {
+                continue;
+            }
+            for (ChunkPos chunk : chunks) {
+                ChunkAccess loaded = level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                if (loaded == null) {
+                    return "chunk " + chunk + " did not load";
+                }
+            }
+            CampaignBands.Band band = CampaignBands.layer(site.kind().layer());
+            List<String> missing = LayerStructuresTest.unmet(
+                    level, band.minY(), band.height(), site, LayerStructuresTest.census(level, site));
+            checked++;
+            if (!missing.isEmpty()) {
+                unmet.add(site.kind() + " at " + site.origin().toShortString() + ": " + missing);
+            }
+        }
+        if (checked == 0) {
+            return "no site touches the pad's chunks, so the check proves nothing";
+        }
+        return unmet.isEmpty() ? "" : unmet.size() + " of " + checked + " sites are not whole: " + unmet;
+    }
+
+    /** What two worlds must share: the level's shape, its generator, and the ground at columns from the pad to far out. */
+    private static String fingerprint(MinecraftServer server) {
+        ServerLevel level = server.overworld();
+        RandomState random = level.getChunkSource().randomState();
+        StringBuilder out = new StringBuilder()
+                .append(level.getMinY())
+                .append('/')
+                .append(level.getHeight())
+                .append(' ')
+                .append(level.getChunkSource()
+                        .getGenerator()
+                        .getBiomeSource()
+                        .getClass()
+                        .getSimpleName());
+        for (int[] column : COLUMNS) {
+            int height = level.getChunkSource()
+                    .getGenerator()
+                    .getBaseHeight(column[0], column[1], Heightmap.Types.WORLD_SURFACE_WG, level, random);
+            String biome = level.getChunkSource()
+                    .getGenerator()
+                    .getBiomeSource()
+                    .createCachingResolver(random)
+                    .getNoiseBiome(column[0] >> 2, PAD_GROUND_Y >> 2, column[1] >> 2)
+                    .unwrapKey()
+                    .map(key -> key.identifier().toString())
+                    .orElse("?");
+            out.append(' ').append(height).append('@').append(biome);
+        }
+        return out.toString();
+    }
+
+    // ---------------------------------------------------------------------------------------------- client-driven
+
+    /**
+     * A wreck kills the crew, and the crew respawn in the Continuity Office wherever they died. The player is put far from the office
+     * first, so the move is seen, and a bed is not set, so this is the colony's respawn and not the world's.
+     */
+    private void thePlayerRespawnsInTheContinuityOffice(ClientGameTestContext context, TestServerContext server) {
+        BlockPos office = server.computeOnServer(s ->
+                ColonyAnchor.CONTINUITY_OFFICE.in(Colony.placed(s).orElseThrow().anchors()));
+        Vec3 away = new Vec3(office.getX() + 150.5, 150, office.getZ() + 150.5);
+        server.runOnServer(s -> {
+            ServerPlayer player = s.getPlayerList().getPlayers().getFirst();
+            player.setGameMode(GameType.SURVIVAL);
+            player.teleportTo(s.overworld(), away.x, away.y, away.z, Set.of(), 0f, 0f, true);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, s.overworld());
+            pod.setPos(away);
+            s.overworld().addFreshEntity(pod);
+            player.startRiding(pod, true, false);
+            pod.damageHull(pod.maxHull());
+            if (!player.isDeadOrDying()) {
+                throw new AssertionError("a wreck should have killed the pilot");
+            }
+            player.connection.handleClientCommand(
+                    new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
+        });
+        // The tick after the respawn moves the crew to the office.
+        context.waitTicks(10);
+        Vec3 at = server.computeOnServer(
+                s -> s.getPlayerList().getPlayers().getFirst().position());
+        if (at.distanceToSqr(Vec3.atBottomCenterOf(office)) >= 4) {
+            throw new AssertionError("the crew should respawn in the Continuity Office at " + office.toShortString()
+                    + ", respawned at " + at);
+        }
+    }
+
+    private void thePresetGivesTheSameWorld(
+            ClientGameTestContext context, String name, ResourceKey<WorldPreset> preset, String reference) {
+        try (TestSingleplayerContext singleplayer = context.worldBuilder()
+                .adjustSettings(state -> state.setWorldType(new WorldTypeEntry(state.getSettings()
+                        .worldgenLoadContext()
+                        .lookupOrThrow(Registries.WORLD_PRESET)
+                        .getOrThrow(preset))))
+                .create()) {
+            ClientWait.until(
+                    context, "the player in the world", client -> client.player != null && client.level != null);
+            TestServerContext server = singleplayer.getServer();
+            require(
+                    "the " + name + " preset's overworld",
+                    server.computeOnServer(CampaignWorldClientTest::theOverworld));
+            String print = server.computeOnServer(CampaignWorldClientTest::fingerprint);
+            if (!print.equals(reference)) {
+                throw new AssertionError(
+                        "the " + name + " preset gives another world:\n  " + print + "\n  not\n  " + reference);
+            }
+        }
+    }
+
+    private void aDedicatedServerRunsTheCampaignWorld(ClientGameTestContext context) {
+        Properties properties = new Properties();
+        properties.setProperty("max-players", "2");
+        TestDedicatedServerContext server = context.worldBuilder().createServer(properties);
+        try {
+            TestDedicatedServerConnection connection = server.connect();
+            try {
+                require(
+                        "the dedicated server's overworld",
+                        server.computeOnServer(CampaignWorldClientTest::theOverworld));
+                require("the dedicated server's colony", server.computeOnServer(CampaignWorldClientTest::theColony));
+                if (context.computeOnClient(client -> client.level == null || client.gui.screen() != null)) {
+                    throw new AssertionError(
+                            "the client should be in the dedicated server's world with no screen over it");
+                }
+            } finally {
+                connection.close();
+            }
+        } finally {
+            server.close();
+        }
+    }
+}

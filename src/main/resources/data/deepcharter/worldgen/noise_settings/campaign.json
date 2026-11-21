@@ -201,42 +201,35 @@
           "input": {
             "type": "minecraft:max",
             "left": {
-              "type": "minecraft:max",
-              "left": {
-                "type": "minecraft:range_choice",
-                "input": "minecraft:y",
-                "min_inclusive": -256.0,
-                "max_exclusive": -64.0,
-                "when_in_range": {
-                  "type": "minecraft:gradient",
-                  "axis": "y",
-                  "from_coordinate": -248,
-                  "from_value": 4.0,
-                  "to_coordinate": -236,
-                  "to_value": -4.0
-                },
-                "when_out_of_range": {
+              "type": "minecraft:range_choice",
+              "input": "minecraft:y",
+              "min_inclusive": -2032.0,
+              "max_exclusive": -64.0,
+              "when_in_range": {
+                "type": "minecraft:max",
+                "left": {
                   "type": "minecraft:range_choice",
                   "input": "minecraft:y",
-                  "min_inclusive": -2032.0,
+                  "min_inclusive": -256.0,
                   "max_exclusive": -64.0,
                   "when_in_range": {
+                    "type": "minecraft:gradient",
+                    "axis": "y",
+                    "from_coordinate": -248,
+                    "from_value": 4.0,
+                    "to_coordinate": -236,
+                    "to_value": -4.0
+                  },
+                  "when_out_of_range": {
                     "type": "minecraft:gradient",
                     "axis": "y",
                     "from_coordinate": -504,
                     "from_value": 4.0,
                     "to_coordinate": -492,
                     "to_value": -4.0
-                  },
-                  "when_out_of_range": -1000.0
-                }
-              },
-              "right": {
-                "type": "minecraft:range_choice",
-                "input": "minecraft:y",
-                "min_inclusive": -2032.0,
-                "max_exclusive": -64.0,
-                "when_in_range": {
+                  }
+                },
+                "right": {
                   "type": "minecraft:min",
                   "left": {
                     "type": "minecraft:add",
@@ -298,9 +291,9 @@
                       "right": 2.0
                     }
                   }
-                },
-                "when_out_of_range": -1000.0
-              }
+                }
+              },
+              "when_out_of_range": -1000.0
             },
             "right": {
               "type": "minecraft:min",

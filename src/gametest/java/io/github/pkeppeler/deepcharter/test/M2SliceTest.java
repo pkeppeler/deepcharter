@@ -75,10 +75,54 @@ import org.jspecify.annotations.Nullable;
  * added to the game fails this test until the slice covers it.
  */
 public class M2SliceTest {
+    static {
+        M2SliceEndState.watchCrossings();
+    }
+
     private static final double X = 9300.5;
     private static final double Z = 9300.5;
     private static final BlockPos TERMINAL = new BlockPos(0, 1, 0);
     private static final long FUNDS = 50_000;
+
+    /**
+     * The end state says whether a descent changed anyone's dimension: a crossing in place (both levels the same) passes it by, and one
+     * that moved a player fails it before it looks at anything else. In the campaign world no crossing moves anyone (ADR 0061).
+     */
+    @GameTest
+    public void theEndStateFailsWhenACrossingMovedAPlayer(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerLevel campaign = TestLayers.level(server, 1);
+        MockPlayer mock = MockPlayers.join(helper, "end-state-moved");
+        try {
+            mock.teleportTo(campaign, new Vec3(X, TestLayers.worldY(1, 40), Z), 0, 0);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, campaign);
+            BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, campaign, 1, 2);
+            String inPlace = endStateFailure(server, pod);
+            if (inPlace.contains("dimension")) {
+                throw helper.assertionException(net.minecraft.network.chat.Component.literal(
+                        "a crossing in place counted as a move: " + inPlace));
+            }
+            BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, server.overworld(), 1, 2);
+            String moved = endStateFailure(server, pod);
+            if (!moved.contains("dimension")) {
+                throw helper.assertionException(net.minecraft.network.chat.Component.literal(
+                        "a crossing that moved a player passed: " + moved));
+            }
+        } finally {
+            mock.leave();
+        }
+        helper.succeed();
+    }
+
+    /** The message of the end state's failure for a world where nothing of the slice was done, empty when it does not fail. */
+    private static String endStateFailure(MinecraftServer server, PodEntity prospector) {
+        try {
+            M2SliceEndState.require(server, CharterId.random(), prospector);
+            return "";
+        } catch (AssertionError failure) {
+            return String.valueOf(failure.getMessage());
+        }
+    }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theScriptedSliceReachesItsEndState(GameTestHelper helper) {
