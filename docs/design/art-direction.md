@@ -89,7 +89,9 @@ Rules for all areas:
   | Lit room floor | 18.8 | 21.4 (1.14x) |
   | Lit room ceiling | 24.9 | 14.0 (0.56x) |
   | Unlit wall | 9.7 | 9.9 |
-  | Bottom of a 21-block shaft under open sky | not possible | 21.8 at dusk and at night, as a sealed room (a surface biome: 64.2 at dusk, 24.0 at night) |
+  | Bottom of a 21-block shaft under open sky | not possible | 10.5 at dusk and at night; a sealed room of the same shape in the campaign type reads 9.3 (a surface biome: 29.0 at dusk, 10.2 at night) |
+
+  Every scene is cut in layer 1's packed shale (#798; the shaft was vanilla stone until then: 21.8, and 64.2 and 24.0 for the surface biome). The first four rows read the 80 x 80 pixels in the middle of the screen and did not change. The #798 stills (`CampaignAtmosphereScenario`) build their own rooms and read within 0.5 of these rows; they show today's sealed room at 10.5.
 
   - **Cardinal light.** The default has down 0.5 and up 1.0; the nether value has 0.9 for both. This explains the ceiling (0.56x). It predicts 1.11x for the floor; 1.14x was measured in `campaign_sample` (1.05x in #744's test type).
   - **Ambient light** has no visible effect on blocks. It feeds `Lightmap.getBrightness` (entity brightness, the HUD vignette) and the pathfinding light value: 0.06 at light 0 in layer 1 and 0.02 in layer 2, against 0. Read on the client by `LayerAtmosphereClientTest` (#761): `Lightmap.getBrightness` at light 0, layer 1 against the campaign type (a function read, not a rendered entity).

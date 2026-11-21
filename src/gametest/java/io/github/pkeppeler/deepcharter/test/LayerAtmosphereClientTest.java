@@ -1,13 +1,27 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import io.github.pkeppeler.deepcharter.layer.CampaignBands;
-import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.CAMPAIGN;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.MARGIN;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SITE;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_DUSK;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_NIGHT;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SPACING;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TEST_PRESET;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ZONE;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.build;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildRoom;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.fillBiome;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ground;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.layer1Floor;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.putOutTheLight;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.requireZone;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.stand;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.todayFloor;
+
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
-import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
-import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -26,19 +40,13 @@ import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState.Worl
 import net.minecraft.client.renderer.Lightmap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.LightBlock;
-import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,25 +63,6 @@ import org.slf4j.LoggerFactory;
  */
 public class LayerAtmosphereClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(LayerAtmosphereClientTest.class);
-    /** A zone of layer 1 whose biome sets the layer's atmosphere. */
-    private static final String ZONE = "deepcharter:stone_benches";
-    /** Far from the colony, in X and Z, with the three cases of one model this far apart so that no biome blend reaches another. */
-    private static final int SITE = 5_000;
-
-    /** The campaign world's test dimension: its type is the one the game will ship. */
-    private static final ResourceKey<Level> CAMPAIGN =
-            ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "campaign_sample"));
-
-    /** The client's default world has the shipped dimensions only; this preset adds {@code campaign_sample}. */
-    private static final ResourceKey<WorldPreset> TEST_PRESET =
-            ResourceKey.create(Registries.WORLD_PRESET, Identifier.withDefaultNamespace("flat_all_dimensions"));
-
-    /** The sky clock's values the test reads at: the start of the timeline (dusk) and the middle of its night. */
-    private static final long SKY_DUSK = 0;
-
-    private static final long SKY_NIGHT = 144_000;
-    /** Where the scenes of layer 1's band sit above the band's floor. */
-    private static final int LAYER_1_SCENE_HEIGHT = 96;
     /** The blend probe reads down to this many blocks under its edge. */
     private static final int BLEND_BELOW = 24;
     /** The ambient light of layer 1's type, which the campaign type lacks: an entity at light 0 is lit by it alone. */
@@ -81,19 +70,12 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
 
     private static final float AMBIENT_TOLERANCE = 0.001f;
 
-    private static final int SPACING = 96;
-    /** How far a biome is filled round a scene: the camera's attribute probe blends biomes over some blocks, and a margin short of it lets the next biome in. */
-    private static final int MARGIN = 32;
-
-    private static final int MASS = 6;
-    private static final int SHAFT_DEPTH = 20;
-    private static final int ROOM_HEIGHT = 5;
     /** Layer brightness is the sealed room's; a shaft that reads this close to it is at layer brightness. */
     private static final double SAME_LUMA = 3.0;
     /**
-     * The same shaft in a surface biome reads at least this many times brighter, so the test can tell the two apart. It was 4.0 (102.8
-     * against 21.8) in a type with no sky timeline; at dusk the campaign type's timeline sets a sky light factor of 0.62 and the surface
-     * shaft reads 64.2 (2.9x), so the bar is 2.0.
+     * The same shaft in a surface biome reads at least this many times brighter, so the test can tell the two apart. At dusk the campaign
+     * type's timeline sets a sky light factor of 0.62 and the surface shaft reads 29.0 against the sealed room's 9.3 (3.1x), so the bar is
+     * 2.0.
      */
     private static final double CONTROL_RATIO = 2.0;
 
@@ -146,9 +128,9 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
     private void theShaftReadsAsTheSealedRoomWhileTheSkyTimelineRuns(
             ClientGameTestContext context, TestServerContext server) {
         int x = SITE;
-        BlockPos shaftFloor = build(server, ground(server, x), Optional.of(ZONE), true);
-        BlockPos roomFloor = build(server, layer1Floor(x + SPACING), Optional.of(ZONE), false);
-        BlockPos controlFloor = build(server, ground(server, x + 2 * SPACING), Optional.empty(), true);
+        BlockPos shaftFloor = build(server, CAMPAIGN, ground(server, x), Optional.of(ZONE), true);
+        BlockPos roomFloor = build(server, CAMPAIGN, layer1Floor(x + SPACING), Optional.of(ZONE), false);
+        BlockPos controlFloor = build(server, CAMPAIGN, ground(server, x + 2 * SPACING), Optional.empty(), true);
         int shaftSky = serverSky(server, shaftFloor);
         int roomSky = serverSky(server, roomFloor);
         ClientChecks.require(roomSky == 0, "the sealed room has no sky light on the server, read " + roomSky);
@@ -205,7 +187,7 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
     private void theBlendAtABiomeEdge(ClientGameTestContext context, TestServerContext server) {
         BlockPos floor = ground(server, SITE + 5 * SPACING);
         int edge = floor.getY() - 40;
-        fillBiome(server, floor, ZONE, edge - BLEND_BELOW - MARGIN, edge);
+        fillBiome(server, CAMPAIGN, floor, ZONE, edge - BLEND_BELOW - MARGIN, edge);
         StringBuilder row = new StringBuilder(
                 "blend at an edge (layer biome at and below it), sky light factor by blocks below the edge:");
         for (int below : new int[] {-8, -4, 0, 2, 4, 6, 8, 12, 16, 24}) {
@@ -277,20 +259,10 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
     /** The same lit room as the campaign world will render a layer (a biome in the campaign type) and as today's layer dimension does. */
     private void whatTheCampaignWorldLoses(ClientGameTestContext context, TestServerContext server) {
         int x = SITE;
-        BlockPos campaign = buildLitRoom(server, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE));
-        BlockPos today = buildLitRoom(
-                server,
-                TestLayers.dimension(1),
-                TestLayers.pos(1, x + 4 * SPACING, LAYER_1_SCENE_HEIGHT, SITE),
-                Optional.empty());
-        String biome = server.computeOnServer(s -> TestLayers.level(s, 1)
-                .getBiome(today)
-                .unwrapKey()
-                .orElseThrow()
-                .identifier()
-                .toString());
-        ClientChecks.require(
-                biome.equals(ZONE), "the layer 1 room is in " + ZONE + " so both models use one biome, not " + biome);
+        BlockPos campaign = buildRoom(server, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE), true);
+        BlockPos today =
+                buildRoom(server, TestLayers.dimension(1), todayFloor(x + 4 * SPACING), Optional.empty(), true);
+        requireZone(server, TestLayers.dimension(1), today);
         record View(String name, float yaw, float pitch) {}
         for (View view : List.of(new View("wall", 180, 0), new View("floor", 180, 90), new View("ceiling", 180, -90))) {
             Reading now = look(
@@ -307,11 +279,8 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
                     .formatted(view.name(), now, campaignWorld, campaignWorld.luma() / Math.max(now.luma(), 0.01)));
         }
         // An unlit room shows the ambient floor alone.
-        server.runOnServer(s -> {
-            ClientLight.serverLevel(s, CAMPAIGN)
-                    .setBlock(campaign.above(ROOM_HEIGHT - 2), Blocks.AIR.defaultBlockState(), 3);
-            TestLayers.level(s, 1).setBlock(today.above(ROOM_HEIGHT - 2), Blocks.AIR.defaultBlockState(), 3);
-        });
+        putOutTheLight(server, CAMPAIGN, campaign);
+        putOutTheLight(server, TestLayers.dimension(1), today);
         Reading dark = look(context, server, TestLayers.dimension(1), today, 180, 0, "dark-room-today-wall");
         float entityToday = entityBrightnessAtLightZero(context);
         Reading darkCampaign = look(context, server, CAMPAIGN, campaign, 180, 0, "dark-room-campaign-wall");
@@ -332,111 +301,6 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
     private static float entityBrightnessAtLightZero(ClientGameTestContext context) {
         return context.computeOnClient(
                 client -> Lightmap.getBrightness(ClientLight.clientLevel(client).dimensionType(), 0));
-    }
-
-    // ---------------------------------------------------------------------------------------------- scenes
-
-    /**
-     * A stone mass with a 3 x 3 shaft in it, from {@code floor} up. {@code open}: the shaft runs to the top of the mass, so the sky reaches
-     * its floor (when the mass has open sky over it); otherwise it is a sealed room of the shaft's footprint. {@code biome}, when present,
-     * is filled over the mass. Returns {@code floor}, where the camera stands.
-     */
-    private BlockPos build(TestServerContext server, BlockPos floor, Optional<String> biome, boolean open) {
-        server.runOnServer(s -> {
-            ServerLevel level = ClientLight.serverLevel(s, CAMPAIGN);
-            RoomCarver.carve(
-                    level,
-                    floor.offset(-MASS, -1, -MASS),
-                    floor.offset(MASS, SHAFT_DEPTH, MASS),
-                    Blocks.STONE.defaultBlockState());
-            RoomCarver.carve(
-                    level,
-                    floor.offset(-1, 0, -1),
-                    floor.offset(1, open ? SHAFT_DEPTH : ROOM_HEIGHT - 1, 1),
-                    Blocks.AIR.defaultBlockState());
-        });
-        biome.ifPresent(name ->
-                fillBiome(server, floor, name, floor.getY() - MASS - 1 - MARGIN, floor.getY() + SHAFT_DEPTH + MARGIN));
-        return floor;
-    }
-
-    /** The floor of a scene in layer 1's band at {@code x}: the band's floor and {@link #LAYER_1_SCENE_HEIGHT}. */
-    private static BlockPos layer1Floor(int x) {
-        return new BlockPos(x, CampaignBands.layer(1).minY() + LAYER_1_SCENE_HEIGHT, SITE);
-    }
-
-    /** A 7 x 7 room, lit by a light block of level 8 under the ceiling, in a mass of layer 1's own rock or cut in the layer's rock, so that the two walls have one texture. */
-    private BlockPos buildLitRoom(
-            TestServerContext server, ResourceKey<Level> dimension, BlockPos floor, Optional<String> biome) {
-        boolean layer = dimension.equals(TestLayers.dimension(1));
-        server.runOnServer(s -> {
-            ServerLevel level = ClientLight.serverLevel(s, dimension);
-            if (!layer) {
-                RoomCarver.carve(
-                        level,
-                        floor.offset(-MASS, -1, -MASS),
-                        floor.offset(MASS, ROOM_HEIGHT, MASS),
-                        LayerBlocks.groundOf(TestLayers.level(s, 1), floor.getY())
-                                .defaultBlockState());
-            }
-            RoomCarver.carve(
-                    level,
-                    floor.offset(-3, 0, -3),
-                    floor.offset(3, ROOM_HEIGHT - 1, 3),
-                    Blocks.AIR.defaultBlockState());
-            level.setBlock(
-                    floor.above(ROOM_HEIGHT - 2),
-                    Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 8),
-                    3);
-        });
-        biome.ifPresent(name -> fillBiome(
-                server, dimension, floor, name, floor.getY() - MASS - 1 - MARGIN, floor.getY() + SHAFT_DEPTH + MARGIN));
-        return floor;
-    }
-
-    /**
-     * Fills {@code biome} over {@link #MARGIN} blocks round the scene, from {@code bottomY} to {@code topY}, in slabs (a command fills at
-     * most 32,768 blocks, counted in whole 4-block cells). The fill is bounded, not the world's whole height: the campaign world is 2,352 tall.
-     */
-    private static void fillBiome(TestServerContext server, BlockPos floor, String biome, int bottomY, int topY) {
-        fillBiome(server, CAMPAIGN, floor, biome, bottomY, topY);
-    }
-
-    private static void fillBiome(
-            TestServerContext server,
-            ResourceKey<Level> dimension,
-            BlockPos floor,
-            String biome,
-            int bottomY,
-            int topY) {
-        for (int y = bottomY; y <= topY; y += 4) {
-            server.runCommand("execute in %s run fillbiome %d %d %d %d %d %d %s"
-                    .formatted(
-                            dimension.identifier(),
-                            floor.getX() - MARGIN,
-                            y,
-                            floor.getZ() - MARGIN,
-                            floor.getX() + MARGIN,
-                            Math.min(y + 3, topY),
-                            floor.getZ() + MARGIN,
-                            biome));
-        }
-    }
-
-    /** The free block over the ground at {@code x}, {@link #SITE}, with the chunks round it loaded. */
-    private static BlockPos ground(TestServerContext server, int x) {
-        return server.computeOnServer(s -> {
-            ServerLevel level = ClientLight.serverLevel(s, CAMPAIGN);
-            for (int cx = (x - MARGIN) >> 4; cx <= (x + MARGIN) >> 4; cx++) {
-                for (int cz = (SITE - MARGIN) >> 4; cz <= (SITE + MARGIN) >> 4; cz++) {
-                    // force-ok: a client test has no GameTestHelper to release through; the world is discarded when the
-                    // test ends
-                    level.setChunkForced(cx, cz, true);
-                    level.getChunk(cx, cz);
-                }
-            }
-            return new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, SITE), SITE);
-        });
     }
 
     // ---------------------------------------------------------------------------------------------- reading
@@ -460,28 +324,7 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
             float yaw,
             float pitch,
             String shot) {
-        server.runOnServer(s -> player(s)
-                .teleportTo(
-                        ClientLight.serverLevel(s, dimension),
-                        floor.getX() + 0.5,
-                        floor.getY(),
-                        floor.getZ() + 0.5,
-                        Set.of(),
-                        yaw,
-                        pitch,
-                        true));
-        Box around = Box.around(floor, MASS, 1, SHAFT_DEPTH);
-        ClientWait.until(
-                context,
-                "the client in " + dimension.identifier() + " holding the chunks at " + floor.toShortString(),
-                client -> ClientLight.clientLevel(client).dimension().equals(dimension)
-                        && ClientLight.chunksPresent(ClientLight.clientLevel(client), around),
-                client -> "no chunks at " + floor.toShortString());
-        ClientChecks.requireNone(
-                "the light at " + shot, ClientLight.settledMismatch(context, server, dimension, around));
-        // tick-wait: the lightmap and the fog ease toward the new place over a few ticks, and nothing reports when they
-        // have
-        context.waitTicks(160);
+        stand(context, server, dimension, floor, yaw, pitch, shot);
         Reading[] reading = new Reading[1];
         ClientChecks.withHudHidden(context, () -> reading[0] = average(context.takeScreenshot(shot)));
         LOGGER.info(

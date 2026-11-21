@@ -21,6 +21,8 @@ public final class EvidencePins {
     public static volatile float breachFadeAlpha = -1f;
     /** Entities other than pods are drawn at rest: no arm sway, no walk cycle, whatever their age. */
     public static volatile boolean entitiesPosed;
+    /** Block faces are shaded as {@code cardinal_light: nether} shades them, whatever the dimension type says; set before the world opens, since sections are meshed with it. */
+    public static volatile boolean cardinalLightNether;
     /** No lampless figures spawn on the rails: one that spawned between the last wait and the shot would be in the still. */
     public static volatile boolean figureSpawningOff;
 
@@ -42,6 +44,7 @@ public final class EvidencePins {
         breachFadeAlpha = -1f;
         entitiesPosed = false;
         figureSpawningOff = false;
+        cardinalLightNether = false;
         figureAnimationAge = -1f;
     }
 }
