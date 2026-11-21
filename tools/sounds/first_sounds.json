@@ -1,4 +1,24 @@
 {
+  "dark": {
+    "artist": "Édouard-Léon Scott de Martinville",
+    "bed_frames": 154350,
+    "bed_sha256": "1d087a9df543806e5dc27bc3dd81c5f00ddd4cb0a07cc9161b5792bdb1106da8",
+    "credit": "Phonautogram by Édouard-Léon Scott de Martinville (Apr. 9, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
+    "cut": [
+      0.1,
+      4.1
+    ],
+    "duration_seconds": 8.4,
+    "folder": "song",
+    "license": "CC BY",
+    "ogg_sha256": "4746e14aa18b1a08ff71b81c069ec84415ba2b3432db23badfae41676cae654d",
+    "recorded": "Apr. 9, 1860",
+    "source_sha256": "73f6ed00612cc688fe8d4fca1e5ef0c03fb5aa72c27da4347d97bd075a1d2b37",
+    "source_url": "https://firstsounds.org/sounds/Scott-Feaster-No-36.mp3",
+    "title": "Au Clair de la Lune, vocal solo",
+    "treatment": "dark",
+    "treatment_sha256": "5c9d5c7c012873392f653d100f6b7124af54d29df50f554addefbbc9a4a74bce"
+  },
   "gamme_de_la_voix": {
     "artist": "Édouard-Léon Scott de Martinville",
     "bed_frames": 350784,
@@ -44,6 +64,22 @@
     "source_sha256": "0e564635920b4457923e112f5dded4c36cd7fe604b906721768682ebf6e64012",
     "source_url": "https://firstsounds.org/sounds/Scott-Feaster-No-38.mp3",
     "title": "Excerpt from Ducis' Othello",
+    "treatment": "cylinder",
+    "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
+  },
+  "wreck": {
+    "artist": "Édouard-Léon Scott de Martinville",
+    "bed_frames": 478656,
+    "bed_sha256": "ceb1cfbbad1239bb4d8a549993bfeb1d46366b19ec57e75fa43a4002e967bb6d",
+    "credit": "Phonautogram by Édouard-Léon Scott de Martinville (Apr. 9, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
+    "duration_seconds": 21.708,
+    "folder": "song",
+    "license": "CC BY",
+    "ogg_sha256": "bac860cb5646321ef1f5bd909ccb0c4327859e1a97864dd5b05175cdbd85bac8",
+    "recorded": "Apr. 9, 1860",
+    "source_sha256": "73f6ed00612cc688fe8d4fca1e5ef0c03fb5aa72c27da4347d97bd075a1d2b37",
+    "source_url": "https://firstsounds.org/sounds/Scott-Feaster-No-36.mp3",
+    "title": "Au Clair de la Lune, vocal solo",
     "treatment": "cylinder",
     "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
   }

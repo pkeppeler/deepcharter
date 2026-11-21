@@ -6,14 +6,17 @@ Usage:
   tools/py tools/sounds/first_sounds.py --check        verify the committed OGGs against the manifest (no sources, no ffmpeg)
 Options: --out DIR (default src/main/resources/assets/deepcharter/sounds), --manifest FILE (default tools/sounds/first_sounds.json).
 
-SOURCE_DIR holds the mp3s named in RECORDINGS (downloaded from the URL beside each; they are never committed). Each one's ID3
+SOURCE_DIR holds the mp3s named in ALL_RECORDINGS (downloaded from the URL beside each; they are never committed). Each one's ID3
 `copyright` or `comment` tag must say CC BY, and the script refuses a file whose tag says anything else or nothing. Treat the
 directory as untrusted data: nothing in it is run, only decoded by ffmpeg.
 
 The treatment: the recording's wow and flutter, a mix with a crackle and hiss bed (seeded from the recording's name, so a re-run makes
 the same bed, and its hash is in the manifest), a band-limit to what a horn carries (a 250 Hz high-pass and a 3.5 kHz low-pass), light
-compression, mono at 22.05 kHz (Minecraft positions mono sounds only) and libvorbis. A later recording of the same pipeline, such as
-the wreck's song (#861), is one more entry in RECORDINGS.
+compression, mono at 22.05 kHz (Minecraft positions mono sounds only) and libvorbis.
+
+"Au clair de la lune" (#861) is made here too, but is never a cylinder: SONGS holds its two variants, `wreck` (the cylinders' treatment, the
+whole recording) and `dark` (the `dark` treatment: the opening line, faint and filtered, with a long reverb tail), and RECORDINGS is the
+cylinder set alone. Both are read, built, checked and listed in the manifest as RECORDINGS' are (ALL_RECORDINGS).
 
 The manifest is `first_sounds.json`: per recording its source URL and sha256, the credit line, the length and hash of the bed, the hash of the
 committed OGG and the hash of the treatment. An encoder writes a random stream serial, so the OGG's bytes are not reproducible; a
@@ -78,7 +81,28 @@ class Treatment:
     bed_gain: float
 
 
-TREATMENTS = {"cylinder": Treatment(VOICE_FILTERS, BAND_FILTERS, BED_GAIN)}
+# The dark variant of "Au clair de la lune" (#861): faint, filtered and distant, with a long reverb tail, and no wow or flutter, so that
+# the tune stays as steady as the wreck's. The tail is silence the voice is padded with, and the reverb rings into it before the fade.
+DARK_CUT = (0.1, 4.1)  # seconds of the source: the opening line, ending in the first breath the singer takes
+DARK_TAIL_SECONDS = 3.0
+DARK_FADE_SECONDS = 1.5
+DARK_HIGH_PASS_HZ = 220
+DARK_LOW_PASS_HZ = 2200
+DARK_ECHO_MS = (140, 290, 470, 700, 1000, 1400)  # aecho runs on past the clip by its last delay
+DARK_REVERB = "aecho=0.8:0.7:" + "|".join(map(str, DARK_ECHO_MS)) + ":0.5|0.4|0.32|0.25|0.18|0.12"
+DARK_GAIN = 0.5  # of the filtered, reverbed clip, on top of the sound event's own volume
+DARK_BED_GAIN = 0.3
+DARK_VOICE_FILTERS = f"aresample={RATE},apad=pad_dur={DARK_TAIL_SECONDS}"
+DARK_BAND_FILTERS = (
+    f"highpass=f={DARK_HIGH_PASS_HZ},lowpass=f={DARK_LOW_PASS_HZ},{DARK_REVERB},volume={DARK_GAIN},alimiter={LIMITER},"
+    f"afade=t=in:d=0.1,afade=t=out:st={round(DARK_CUT[1] - DARK_CUT[0] + DARK_TAIL_SECONDS + DARK_ECHO_MS[-1] / 1000 - DARK_FADE_SECONDS, 3)}:d={DARK_FADE_SECONDS},"
+    "aformat=sample_fmts=s16:channel_layouts=mono"
+)
+
+TREATMENTS = {
+    "cylinder": Treatment(VOICE_FILTERS, BAND_FILTERS, BED_GAIN),
+    "dark": Treatment(DARK_VOICE_FILTERS, DARK_BAND_FILTERS, DARK_BED_GAIN),
+}
 
 
 @dataclass(frozen=True)
@@ -96,6 +120,7 @@ class Recording:
     artist: str = SCOTT
     folder: str = FOLDER
     treatment: str = "cylinder"
+    cut: tuple | None = None  # the start and end in seconds of the part of the source that is used; None for all of it
 
     @property
     def url(self):
@@ -115,6 +140,16 @@ RECORDINGS = (
     Recording("othello", "Scott-Feaster-No-38.mp3", "Excerpt from Ducis' Othello", "Apr. 17, 1860"),
 )
 
+# "Au clair de la lune" (#861): the wreck's song and the warning in the dark. Never a cylinder, so never in RECORDINGS.
+SONG_FILE = "Scott-Feaster-No-36.mp3"
+SONG_TITLE = "Au Clair de la Lune, vocal solo"
+SONG_RECORDED = "Apr. 9, 1860"
+SONGS = (
+    Recording("wreck", SONG_FILE, SONG_TITLE, SONG_RECORDED, folder="song"),
+    Recording("dark", SONG_FILE, SONG_TITLE, SONG_RECORDED, folder="song", treatment="dark", cut=DARK_CUT),
+)
+ALL_RECORDINGS = RECORDINGS + SONGS
+
 _CC_BY = re.compile(r"\bcc[- ]by\b(?![- ]?(?:nc|nd|sa)\b)|\battribution \(by\) licen[sc]e")
 _RESTRICTED = re.compile(r"\b(?:nc|nd|sa)\b|non-?commercial|no ?deriv|share ?alike")
 
@@ -125,11 +160,15 @@ def licensed(tags):
     return any(_CC_BY.search(text) for text in texts) and not any(_RESTRICTED.search(text) for text in texts)
 
 
-def treatment_sha256():
-    """A hash of every number and filter that shapes a recording, so a changed treatment shows in `check`."""
+def treatment_sha256(treatment="cylinder"):
+    """A hash of every number and filter that shapes a recording of the named treatment, so a changed treatment shows in `check`.
+
+    A treatment other than the cylinders' adds its own numbers, so adding one leaves the cylinders' hash, and their OGGs, as they were.
+    """
     parts = [VOICE_FILTERS, BAND_FILTERS, VORBIS_QUALITY, BED_GAIN, RATE]
     parts += [HISS, HISS_SMOOTHING, CRACKLE_PER_SECOND, CRACKLE_PEAK, POPS_PER_SECOND, POP_PEAK, CLICK_DECAY]
-    parts += [repr(treatment) for name, treatment in sorted(TREATMENTS.items()) if name != "cylinder"]
+    if treatment != "cylinder":
+        parts += [repr(TREATMENTS[treatment])]
     return hashlib.sha256(repr(parts).encode()).hexdigest()
 
 
@@ -203,8 +242,11 @@ def _render(recording, source, target):
     Returns the length of the bed in samples, which is the length of the recording.
     """
     treatment = TREATMENTS[recording.treatment]
+    voice_filters = treatment.voice
+    if recording.cut:
+        voice_filters = f"atrim=start={recording.cut[0]}:end={recording.cut[1]},asetpts=PTS-STARTPTS,{voice_filters}"
     decoded = subprocess.run(
-        ["ffmpeg", "-v", "error", "-nostdin", "-i", str(source), "-af", treatment.voice, "-ac", "1", "-f", "s16le", "-"],
+        ["ffmpeg", "-v", "error", "-nostdin", "-i", str(source), "-af", voice_filters, "-ac", "1", "-f", "s16le", "-"],
         check=True,
         capture_output=True,
     ).stdout
@@ -245,7 +287,7 @@ def build(source_dir, out, manifest):
     known = _load(manifest)
     entries = {}
     problems = []
-    for recording in RECORDINGS:
+    for recording in ALL_RECORDINGS:
         source = source_dir / recording.file
         if not source.is_file():
             problems.append(f"{recording.name}: {source} is missing; download {recording.url}")
@@ -263,7 +305,7 @@ def build(source_dir, out, manifest):
         target = out / recording.folder / f"{recording.name}.ogg"
         if (
             old
-            and old["treatment_sha256"] == treatment_sha256()
+            and old["treatment_sha256"] == treatment_sha256(recording.treatment)
             and target.is_file()
             and sha256(target) == old["ogg_sha256"]
         ):
@@ -272,6 +314,7 @@ def build(source_dir, out, manifest):
                 "artist": recording.artist,
                 "folder": recording.folder,
                 "treatment": recording.treatment,
+                **cut_entry(recording),
             }
             continue
         frames = _render(recording, source, target)
@@ -289,8 +332,9 @@ def build(source_dir, out, manifest):
             "duration_seconds": round(seconds, 3),
             "bed_frames": frames,
             "bed_sha256": bed_sha256(recording.name, frames),
-            "treatment_sha256": treatment_sha256(),
+            "treatment_sha256": treatment_sha256(recording.treatment),
             "ogg_sha256": sha256(target),
+            **cut_entry(recording),
         }
         print(f"built {recording.name}")
     if problems:
@@ -298,6 +342,11 @@ def build(source_dir, out, manifest):
         return 1
     manifest.write_text(json.dumps(entries, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
     return 0
+
+
+def cut_entry(recording):
+    """The manifest's `cut` field of a recording that uses part of its source, and nothing for one that uses all of it."""
+    return {"cut": list(recording.cut)} if recording.cut else {}
 
 
 def owned(manifest):
@@ -309,7 +358,7 @@ def check(out, manifest):
     """The problems of the committed recordings: none for a manifest and OGGs that agree. Needs neither sources nor ffmpeg."""
     known = _load(manifest)
     problems = []
-    for recording in RECORDINGS:
+    for recording in ALL_RECORDINGS:
         entry = known.get(recording.name)
         target = out / recording.folder / f"{recording.name}.ogg"
         if entry is None:
@@ -331,12 +380,13 @@ def check(out, manifest):
             or entry["recorded"] != recording.recorded
             or entry["folder"] != recording.folder
             or entry["treatment"] != recording.treatment
+            or entry.get("cut") != cut_entry(recording).get("cut")
         ):
-            problems.append(f"{recording.name}: the manifest's credit, artist, date, folder, treatment, source or licence is not the one RECORDINGS gives")
-        if entry["treatment_sha256"] != treatment_sha256():
+            problems.append(f"{recording.name}: the manifest's credit, artist, date, folder, treatment, cut, source or licence is not the one ALL_RECORDINGS gives")
+        if entry["treatment_sha256"] != treatment_sha256(recording.treatment):
             problems.append(f"{recording.name}: the treatment changed since it was made; run tools/sounds/first_sounds.py")
-    for name in sorted(set(known) - {recording.name for recording in RECORDINGS}):
-        problems.append(f"{name}: the manifest lists a recording that RECORDINGS does not")
+    for name in sorted(set(known) - {recording.name for recording in ALL_RECORDINGS}):
+        problems.append(f"{name}: the manifest lists a recording that ALL_RECORDINGS does not")
     return problems
 
 
@@ -352,7 +402,7 @@ def main(argv):
         if problems:
             print("\n".join(problems), file=sys.stderr)
             return 1
-        print(f"{len(RECORDINGS)} recordings match {args.manifest.name}")
+        print(f"{len(ALL_RECORDINGS)} recordings match {args.manifest.name}")
         return 0
     if args.source_dir is None:
         parser.error("give the directory of downloaded mp3s, or --check")

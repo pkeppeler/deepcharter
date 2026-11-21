@@ -18,3 +18,9 @@ Faint fragments of the same recordings (and of four more) are heard in the dark 
 - **Vole Petite Abeille, vocal solo (no. 6).** Phonautogram by Édouard-Léon Scott de Martinville (Sept. 15, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY. Source: https://firstsounds.org/sounds/1860-Scott-Vole-Petite-Abeille-no-6.mp3
 - **Excerpt from Torquato Tasso's Aminta.** Phonautogram by Édouard-Léon Scott de Martinville (ca. April-May 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY. Source: https://firstsounds.org/sounds/1860-Scott-Torquato-Tassos-Aminta.mp3
 - **Diapason at 435 Hz, at sequential stages of restoration.** Phonautogram by Édouard-Léon Scott de Martinville (deposited July 29, 1859); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY. Source: https://firstsounds.org/sounds/1859-Scott-Diapason-435-Hz.mp3
+
+## The wreck's song: First Sounds
+
+One more of the same playbacks is the song a wrecked pod's phonograph plays, and a faint, filtered line of it heard far off in the dark. It is never a wax cylinder and never one of the ambience's fragments. [tools/sounds/first_sounds.py](tools/sounds/first_sounds.py) makes both variants, the phonograph's treatment for the wreck and a faint, filtered one with a long reverb tail for the dark, and [tools/sounds/first_sounds.json](tools/sounds/first_sounds.json) records the source's hash and the cut.
+
+- **Au Clair de la Lune, vocal solo.** Phonautogram by Édouard-Léon Scott de Martinville (Apr. 9, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY. Source: https://firstsounds.org/sounds/Scott-Feaster-No-36.mp3

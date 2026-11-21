@@ -115,7 +115,7 @@ class CommittedRecordingsTest(unittest.TestCase):
 
     def test_the_credits_file_carries_every_credit_and_source(self):
         credits_text = (ROOT / "CREDITS.md").read_text()
-        for recording in first_sounds.RECORDINGS:
+        for recording in first_sounds.ALL_RECORDINGS:
             entry = self.manifest[recording.name]
             self.assertIn(entry["credit"], credits_text)
             self.assertIn(entry["source_url"], credits_text)
@@ -132,6 +132,101 @@ class CommittedRecordingsTest(unittest.TestCase):
             for text in (recording.name, recording.file, recording.title):
                 self.assertNotIn("clair", text.lower())
                 self.assertNotIn("no-36", text.lower())
+
+
+class AuClairDeLaLuneTest(unittest.TestCase):
+    """#861: the song has two variants, made by the pipeline, and is in the cylinder set and the random ambience nowhere."""
+
+    manifest = json.loads(first_sounds.MANIFEST.read_text())
+
+    def test_the_two_variants_exist_are_mono_credited_and_made_from_the_one_source(self):
+        self.assertEqual(("wreck", "dark"), tuple(song.name for song in first_sounds.SONGS))
+        for song in first_sounds.SONGS:
+            ogg = first_sounds.OUT / "song" / f"{song.name}.ogg"
+            self.assertEqual(1, first_sounds.ogg_channels(ogg), song.name)
+            entry = self.manifest[song.name]
+            self.assertEqual("https://firstsounds.org/sounds/Scott-Feaster-No-36.mp3", entry["source_url"])
+            self.assertEqual("CC BY", entry["license"])
+            self.assertEqual(song.credit, entry["credit"])
+            self.assertIn("co-produced by Patrick Feaster and David Giovannoni; CC BY.", entry["credit"])
+        self.assertEqual([], first_sounds.check(first_sounds.OUT, first_sounds.MANIFEST))
+
+    def test_the_wreck_wears_the_cylinders_treatment_whole_and_the_dark_is_the_opening_line_in_its_own(self):
+        wreck, dark = first_sounds.SONGS
+        self.assertEqual(("cylinder", None), (wreck.treatment, wreck.cut))
+        self.assertEqual(first_sounds.treatment_sha256(), self.manifest["wreck"]["treatment_sha256"])
+        self.assertEqual("dark", dark.treatment)
+        self.assertEqual(list(dark.cut), self.manifest["dark"]["cut"])
+        self.assertNotEqual(first_sounds.treatment_sha256("dark"), first_sounds.treatment_sha256())
+        # The wreck is the whole 21.7 s; the dark is its first line and a tail, well under half of it.
+        self.assertAlmostEqual(21.7, self.manifest["wreck"]["duration_seconds"], delta=0.1)
+        self.assertLess(self.manifest["dark"]["duration_seconds"], self.manifest["wreck"]["duration_seconds"] / 2)
+
+    def test_it_is_in_no_cylinder_and_no_ambience_pool(self):
+        for recording in first_sounds.RECORDINGS:
+            self.assertNotIn(recording, first_sounds.SONGS)
+            self.assertNotEqual("Scott-Feaster-No-36.mp3", recording.file)
+        self.assertFalse({song.name for song in first_sounds.SONGS} & {recording.name for recording in first_sounds.RECORDINGS})
+        ambience = json.loads((ROOT / "tools/sounds/ambience.json").read_text())
+        self.assertNotIn("Scott-Feaster-No-36", json.dumps(ambience))
+        for loot in (ROOT / "src/main/resources/data/deepcharter/loot_table").rglob("*.json"):
+            text = loot.read_text().lower()
+            self.assertNotIn("clair", text, loot.name)
+            self.assertNotIn("song/", text, loot.name)
+
+    def test_a_treatment_added_for_the_songs_leaves_the_cylinders_hash_alone(self):
+        for recording in first_sounds.RECORDINGS:
+            self.assertEqual(first_sounds.treatment_sha256(), self.manifest[recording.name]["treatment_sha256"])
+
+    def test_the_dark_numbers_are_part_of_its_hash_and_not_the_cylinders(self):
+        before_dark, before_cylinder = first_sounds.treatment_sha256("dark"), first_sounds.treatment_sha256()
+        changed = {**first_sounds.TREATMENTS, "dark": first_sounds.Treatment("anull", "anull", 0.9)}
+        with mock.patch.object(first_sounds, "TREATMENTS", changed):
+            self.assertNotEqual(before_dark, first_sounds.treatment_sha256("dark"))
+            self.assertEqual(before_cylinder, first_sounds.treatment_sha256())
+
+
+@unittest.skipUnless(all(TOOLS), "ffmpeg is needed to render")
+class DarkRenderTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.source = self.tmp / "tone.wav"
+        with wave.open(str(self.source), "wb") as out:
+            out.setnchannels(1)
+            out.setsampwidth(2)
+            out.setframerate(44100)
+            out.writeframes(
+                array.array("h", (int(12000 * math.sin(i * 0.05 * (1 + i / 400000))) for i in range(44100 * 6))).tobytes()
+            )
+
+    def pcm(self, name):
+        song = next(song for song in first_sounds.SONGS if song.name == name)
+        target = self.tmp / f"{name}.ogg"
+        first_sounds._render(song, self.source, target)
+        raw = subprocess.run(
+            ["ffmpeg", "-v", "error", "-nostdin", "-i", str(target), "-ac", "1", "-f", "s16le", "-"], check=True, capture_output=True
+        ).stdout
+        return target, raw
+
+    def test_a_render_is_mono_and_the_same_every_run(self):
+        for name in ("wreck", "dark"):
+            target, first = self.pcm(name)
+            _, second = self.pcm(name)
+            self.assertEqual(first, second, name)
+            self.assertEqual(1, first_sounds.ogg_channels(target), name)
+
+    def test_the_dark_is_the_cut_and_a_tail_and_is_quieter_than_the_wreck(self):
+        _, wreck = self.pcm("wreck")
+        _, dark = self.pcm("dark")
+        cut = first_sounds.DARK_CUT
+        seconds = len(dark) / 2 / first_sounds.RATE
+        self.assertAlmostEqual(
+            cut[1] - cut[0] + first_sounds.DARK_TAIL_SECONDS + first_sounds.DARK_ECHO_MS[-1] / 1000, seconds, delta=0.1
+        )
+        self.assertAlmostEqual(6.0, len(wreck) / 2 / first_sounds.RATE, delta=0.1)
+        peak = lambda raw: max(abs(v) for v in array.array("h", raw[: len(raw) // 2 * 2]))  # noqa: E731
+        self.assertLess(peak(dark), peak(wreck) / 2)
 
 
 @unittest.skipUnless(all(TOOLS), "ffmpeg is needed to render")
@@ -178,6 +273,7 @@ class CheckTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp)
         self.out = self.tmp / "sounds"
         shutil.copytree(first_sounds.OUT / "phonograph", self.out / "phonograph")
+        shutil.copytree(first_sounds.OUT / "song", self.out / "song")
         self.manifest = self.tmp / "first_sounds.json"
         shutil.copy(first_sounds.MANIFEST, self.manifest)
 
