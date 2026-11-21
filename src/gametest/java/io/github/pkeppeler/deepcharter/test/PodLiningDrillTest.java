@@ -40,7 +40,7 @@ import org.jspecify.annotations.Nullable;
 public class PodLiningDrillTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1000;
     private static final int Z = 3300;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int RADIUS = 4;
 
     /** A mock pilot, and the pod it sits in once the far chunk ticks entities. */

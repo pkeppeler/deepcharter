@@ -84,7 +84,7 @@ public class ProspectorChassisTest {
     private static final int DRILL_TICKS = FarChunks.AWAIT_BUDGET_TICKS + DRILL_MARGIN_TICKS;
     private static final int BORE_X = 3400;
     private static final int BORE_Z = 3000;
-    private static final int BORE_FLOOR = 60;
+    private static final int BORE_FLOOR = TestLayers.worldY(1, 60);
     private static final int BORE_DEPTH = 3;
     private static final int DRIVE_TICKS = 40;
     /** Ticks a pod needs, once its chunk ticks, to fall through the shaft and cross. */

@@ -40,6 +40,8 @@ public class ColonyInteriorLightTest {
      * (tools/colony/parts.py GLOW_LEVEL), so a lamp inside, which gives 14, fails the test. Light that leaks in through the door
      * from the lamp outside is not a block of the room and is not counted.
      */
+    // fixed-pos: a block-light level (tools/colony/parts.py GLOW_LEVEL, not in layout.json), not a world Y; the gate
+    // matches "CEILING" by name
     private static final int DIM_CEILING = 5;
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)

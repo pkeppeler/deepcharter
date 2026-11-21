@@ -230,7 +230,12 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                 "pod.engine_idle playing before leaving the overworld",
                 client -> heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
         long idleBefore = heard.count("pod.engine_idle");
-        teleportReal(two, TestLayers.dimension(1), 0.5, TestLayers.worldY(1, 100), 0.5);
+        teleportReal(
+                two,
+                two.server().computeOnServer(s -> TestLayers.dimension(s, 1)),
+                0.5,
+                TestLayers.worldY(1, 100),
+                0.5);
         await(context, heard, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
         teleportReal(two, Level.OVERWORLD, X + 3.5, FLOOR_Y, Z - 3.5);
         await(

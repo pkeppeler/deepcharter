@@ -42,9 +42,9 @@ public class BandStructuresTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final int MAX_TICKS = 400;
     /** The cell that a chunk loaded after the pad was chosen draws. */
-    private static final int PAD_CELL = 6;
+    private static final int PAD_CELL = -12;
     /** The cell that a chunk loaded before the pad was chosen draws, when the pad is. */
-    private static final int EARLY_CELL = 7;
+    private static final int EARLY_CELL = -13;
 
     @FormatMethod
     private static RuntimeException failure(
