@@ -116,6 +116,22 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
         });
     }
 
+    /**
+     * Puts the first player's feet at {@code feet} in the overworld, turned to look from {@code eye} at {@code target}. The two
+     * differ because some scenarios aim from the feet and others from the eyes; each keeps its own framing.
+     */
+    protected static void teleportLooking(TestSingleplayerContext singleplayer, Vec3 feet, Vec3 eye, Vec3 target) {
+        Vec3 d = target.subtract(eye);
+        float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
+        float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
+        singleplayer
+                .getServer()
+                .runOnServer(server -> server.getPlayerList()
+                        .getPlayers()
+                        .getFirst()
+                        .teleportTo(server.overworld(), feet.x, feet.y, feet.z, Set.of(), yaw, pitch, true));
+    }
+
     /** Waits for the client to have joined the world: a player and a level. */
     protected static void awaitWorld(ClientGameTestContext context) {
         ClientWait.until(

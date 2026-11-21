@@ -20,11 +20,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-/**
- * Server GameTests for #857: a terminal is a cabinet with a CRT monitor on top ({@code models/block/terminal.json}), not a full
- * cube, and its collision and outline shape follow the model in every facing. The pixel positions below are the model's: the
- * cabinet is 6 high, the monitor's casing runs to the top, and the glass stands out of its front by half a pixel and then a whole pixel more.
- */
+/** Server GameTests for #857: the shape of every terminal follows the model's cabinet and monitor in every facing. */
 public class TerminalShapeTest {
     private static final double PIXEL = 1.0 / 16;
 
@@ -104,12 +100,12 @@ public class TerminalShapeTest {
                 throw helper.assertionException(
                         "%s: the middle of the glass should stand 1 pixel proud of its rim", state);
             }
-            // y 14.5: the glass (to 15) is there in front, the tube taper (to 14) is not behind.
-            if (!filled(shape, point(facing, 5.7, 14.5))) {
+            // y 14.5: the glass rim (to 15) is there in front, the tube taper (to 14) is not behind.
+            if (!filled(shape, point(facing, 5.25, 14.5))) {
                 throw helper.assertionException(
                         "%s: the glass should stand out of the front, facing %s", state, facing);
             }
-            if (filled(shape, point(facing, -5.7, 14.5))) {
+            if (filled(shape, point(facing, -5.25, 14.5))) {
                 throw helper.assertionException(
                         "%s: the glass is on the wrong side, or the tube is too tall, facing %s", state, facing);
             }

@@ -33,10 +33,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * state has it true only for a type that needs no repair; {@link TerminalActivity} keeps it right from then on.
  */
 public final class TerminalBlock extends BaseEntityBlock {
-    /**
-     * The cabinet with its CRT monitor on top, facing north (the model {@code block/terminal}): the cabinet, the monitor's
-     * casing, its tube taper behind, and the two steps of the glass in front (the knobs are too small to count). Turned for the other facings.
-     */
+    /** The model's cabinet, monitor and glass, facing north; the knobs are too small to count. */
     private static final VoxelShape NORTH_SHAPE = Shapes.or(
             Block.box(0, 0, 0, 16, 6, 16),
             Block.box(1, 6, 3, 15, 16, 13),

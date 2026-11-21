@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
@@ -10,6 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.BlockPos;
@@ -56,6 +58,16 @@ public class CrtTerminalsScenario extends EvidenceScenario {
                 }
                 HangarConsole.find(server).ifPresent(pos -> terminals.put("hangar_console", pos));
             });
+            Set<String> missing = new TreeSet<>();
+            for (TerminalType type : TerminalTypes.all()) {
+                if (type.id().getNamespace().equals(DeepCharter.MOD_ID)
+                        && !terminals.containsKey(type.id().getPath())) {
+                    missing.add(type.id().getPath());
+                }
+            }
+            if (!missing.isEmpty()) {
+                throw new AssertionError("no terminal was found in the colony for " + missing);
+            }
             for (Map.Entry<String, BlockPos> terminal : terminals.entrySet()) {
                 Vec3 screen = Vec3.atCenterOf(terminal.getValue()).add(0, 0.25, 0);
                 look(singleplayer, screen.add(0, 0.2, 2.6), screen);
@@ -65,23 +77,16 @@ public class CrtTerminalsScenario extends EvidenceScenario {
                 context.waitTicks(SETTLE_TICKS);
                 screenshot(context, terminal.getKey() + "-three-quarter");
             }
-            Vec3 plinths = Vec3.atCenterOf(terminals.values().iterator().next());
+            Vec3 plinths =
+                    Vec3.atCenterOf(terminals.values().stream().findFirst().orElseThrow());
             look(singleplayer, plinths.add(0, 3, 14), plinths.add(0, 0, 0));
             context.waitTicks(SETTLE_TICKS);
             screenshot(context, "plinths");
         }
     }
 
-    /** Puts the player at eye position {@code eye} in the overworld, looking at {@code target}. */
+    /** Puts the player's eyes at {@code eye}, looking at {@code target}. */
     private static void look(TestSingleplayerContext singleplayer, Vec3 eye, Vec3 target) {
-        Vec3 d = target.subtract(eye);
-        float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
-        float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
-        singleplayer
-                .getServer()
-                .runOnServer(server -> server.getPlayerList()
-                        .getPlayers()
-                        .getFirst()
-                        .teleportTo(server.overworld(), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true));
+        teleportLooking(singleplayer, eye.subtract(0, EYE, 0), eye, target);
     }
 }
