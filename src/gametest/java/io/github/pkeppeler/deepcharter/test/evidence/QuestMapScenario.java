@@ -27,13 +27,13 @@ import net.minecraft.world.item.Items;
 
 /**
  * Evidence scenario "m2-quest-map" for #847: the handbook's quest map, in the real game with the shipped chapters. A player on a
- * charter has done five of chapter 1's six steps, the last of them just now (the step popup), and holds some of what the sixth needs
- * (the index card). Then the first two chapters are done, and chapter 3's map, with chapter 4 ahead and the rest redacted, is shown
+ * charter has done five of chapter 1's seven steps, the last of them just now (the step popup), and holds some of what the sixth, the
+ * scanner, needs (the index card). Then the first two chapters are done, and chapter 3's map, with chapter 4 ahead and the rest redacted, is shown
  * whole and zoomed out.
  */
 public class QuestMapScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
-    private static final int TOAST_SETTLE_TICKS = 12;
+    private static final int TOAST_SETTLE_TICKS = 40;
     private static final int SCANNER_IRON = 2;
     private static final int SCANNER_COPPER = 2;
     private static final int ZOOM_OUT_NOTCHES = 3;

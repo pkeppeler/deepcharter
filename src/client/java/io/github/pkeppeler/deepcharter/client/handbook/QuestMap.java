@@ -114,11 +114,30 @@ final class QuestMap {
         return current != null ? current : steps.getFirst();
     }
 
+    /** How much of the next chapter a map shows, from all of it to none; each is tried only if the one before is too tall. */
+    private enum Ahead {
+        ALL,
+        ONE_ROW,
+        TITLE,
+        NOTHING
+    }
+
     /**
-     * Lays {@code model} out in a map {@code mapWidth} wide, with {@code noteLines} lines of margin note under it. Steps run in rows
-     * of up to {@link QuestMapTuning#stepColumns()}, fewer on a narrow sheet.
+     * Lays {@code model} out in a map {@code mapWidth} wide, with {@code noteLines} lines of margin note under it, in at most
+     * {@code availableHeight} pixels when that can be done. Steps run in rows of up to {@link QuestMapTuning#stepColumns()}, fewer
+     * on a narrow sheet. A map that is too tall gives up, in order, the rows of the next chapter after its first, then its steps,
+     * then its title; the redaction bars with their stamp and the margin note always stay. Nothing is scaled.
      */
-    static Layout layout(int mapWidth, Model model, int lineHeight, int noteLines) {
+    static Layout layout(int mapWidth, int availableHeight, Model model, int lineHeight, int noteLines) {
+        Ahead[] tries = Ahead.values();
+        Layout layout = layout(mapWidth, model, lineHeight, noteLines, tries[0]);
+        for (int i = 1; i < tries.length && model.ahead() != null && layout.height() > availableHeight; i++) {
+            layout = layout(mapWidth, model, lineHeight, noteLines, tries[i]);
+        }
+        return layout;
+    }
+
+    private static Layout layout(int mapWidth, Model model, int lineHeight, int noteLines, Ahead shown) {
         QuestMapTuning q = QuestMapTuning.current();
         int columns =
                 Math.max(1, Math.min(q.stepColumns(), (mapWidth + q.stepGap()) / (q.stepMinWidth() + q.stepGap())));
@@ -127,32 +146,35 @@ final class QuestMap {
         int bottom = main.getLast().bottom();
         List<Rect> ahead = List.of();
         int aheadTitleY = -1;
-        if (model.ahead() != null) {
+        if (model.ahead() != null && shown != Ahead.NOTHING) {
             aheadTitleY = bottom + q.aheadGap();
-            ahead = grid(
-                    model.ahead().chapter().directives().size(), aheadTitleY + q.aheadLabelGap(), columns, boxWidth);
-            bottom = ahead.getLast().bottom();
+            bottom = aheadTitleY + lineHeight;
+            if (shown != Ahead.TITLE) {
+                int steps = model.ahead().chapter().directives().size();
+                ahead = grid(
+                        shown == Ahead.ONE_ROW ? Math.min(steps, columns) : steps,
+                        aheadTitleY + q.aheadLabelGap(),
+                        columns,
+                        boxWidth);
+                bottom = ahead.getLast().bottom();
+            }
         }
         List<Rect> bars = new ArrayList<>();
         int noteY = bottom + q.aheadGap();
+        int height = bottom;
         if (model.bars()) {
+            int barsY = bottom + q.aheadGap();
             int[] percents = {q.redactionBarPercent1(), q.redactionBarPercent2(), q.redactionBarPercent3()};
             for (int i = 0; i < Math.min(columns, percents.length); i++) {
-                bars.add(new Rect(
-                        i * (boxWidth + q.stepGap()), bottom + q.aheadGap(), boxWidth * percents[i] / 100, lineHeight));
+                bars.add(new Rect(i * (boxWidth + q.stepGap()), barsY, boxWidth * percents[i] / 100, lineHeight));
             }
-            noteY = bottom + q.aheadGap() + lineHeight + 3;
+            noteY = barsY + lineHeight + q.barsNoteGap();
+            height = Math.max(barsY + lineHeight, barsY + lineHeight / 2 + q.stampYOffset() + q.stampReach());
         }
-        return new Layout(
-                columns,
-                boxWidth,
-                main,
-                ahead,
-                aheadTitleY,
-                List.copyOf(bars),
-                noteY,
-                mapWidth,
-                noteY + noteLines * (lineHeight + 1));
+        if (noteLines > 0) {
+            height = Math.max(height, noteY + noteLines * (lineHeight + 1));
+        }
+        return new Layout(columns, boxWidth, main, ahead, aheadTitleY, List.copyOf(bars), noteY, mapWidth, height);
     }
 
     private static List<Rect> grid(int count, int top, int columns, int boxWidth) {
@@ -219,7 +241,7 @@ final class QuestMap {
                     Colors.opaque(t.inkColor()));
         }
         HandbookPage.Chapter ahead = model.ahead();
-        if (ahead != null) {
+        if (ahead != null && layout.aheadTitleY() >= 0) {
             graphics.text(
                     font,
                     PaperDraw.ink(aheadTitle, t.faintInkColor()),
@@ -228,7 +250,7 @@ final class QuestMap {
                     Colors.opaque(t.faintInkColor()),
                     false);
             List<HandbookChapter.Entry> aheadSteps = ahead.chapter().directives();
-            for (int i = 0; i < aheadSteps.size(); i++) {
+            for (int i = 0; i < layout.ahead().size(); i++) {
                 stepBox(
                         graphics,
                         font,
@@ -237,19 +259,22 @@ final class QuestMap {
                         t.faintInkColor());
             }
             connect(graphics, layout.ahead(), layout.columns(), t.faintInkColor());
-            Rect last = layout.main().getLast();
-            int x = last.right() - q.chapterLinkInset();
-            PaperDraw.arrow(
-                    graphics,
-                    new int[][] {
-                        {x, last.bottom() + 3}, {x, layout.ahead().getFirst().y() - 1}
-                    },
-                    Colors.opaque(t.faintInkColor()),
-                    q.arrowHeadSize(),
-                    q.dashOn(),
-                    q.dashOff());
+            if (!layout.ahead().isEmpty()) {
+                Rect last = layout.main().getLast();
+                int x = last.right() - q.chapterLinkInset();
+                PaperDraw.arrow(
+                        graphics,
+                        new int[][] {
+                            {x, last.bottom() + q.chapterLinkTop()},
+                            {x, layout.ahead().getFirst().y() - 1}
+                        },
+                        Colors.opaque(t.faintInkColor()),
+                        q.arrowHeadSize(),
+                        q.dashOn(),
+                        q.dashOff());
+            }
         }
-        drawBars(graphics, font, layout, classified, aheadFromBars(model, layout));
+        drawBars(graphics, font, layout, classified);
         if (note != null) {
             int right = layout.width() - q.noteInset();
             int y = layout.noteY();
@@ -262,13 +287,7 @@ final class QuestMap {
         graphics.disableScissor();
     }
 
-    /** The rows above the bars that the black link drops from: the next chapter's last row, or the main chapter's. */
-    private static List<Rect> aheadFromBars(Model model, Layout layout) {
-        return model.ahead() != null ? layout.ahead() : layout.main();
-    }
-
-    private static void drawBars(
-            GuiGraphicsExtractor graphics, Font font, Layout layout, Component classified, List<Rect> above) {
+    private static void drawBars(GuiGraphicsExtractor graphics, Font font, Layout layout, Component classified) {
         if (layout.bars().isEmpty()) {
             return;
         }
@@ -283,15 +302,20 @@ final class QuestMap {
             Rect b = bars.get(i);
             graphics.fill(a.right(), a.centerY(), b.x(), a.centerY() + 1, t.redactionColor());
         }
-        Rect last = above.getLast();
-        int dropX = last.x() + layout.boxWidth() / 3;
-        graphics.fill(dropX, last.bottom(), dropX + 1, bars.getFirst().y(), t.redactionColor());
+        // a title between the steps and the bars would be crossed by the link, so with only a title it is left out
+        if (layout.aheadTitleY() < 0 || !layout.ahead().isEmpty()) {
+            Rect last = layout.ahead().isEmpty()
+                    ? layout.main().getLast()
+                    : layout.ahead().getLast();
+            int dropX = last.x() + layout.boxWidth() * q.dropLinkPercent() / 100;
+            graphics.fill(dropX, last.bottom(), dropX + 1, bars.getFirst().y(), t.redactionColor());
+        }
         PaperDraw.stamp(
                 graphics,
                 font,
                 classified,
-                bars.getFirst().x() + layout.boxWidth() * 3 / 4,
-                bars.getFirst().centerY() + 1,
+                bars.getFirst().x() + layout.boxWidth() * q.stampXPercent() / 100,
+                bars.getFirst().centerY() + q.stampYOffset(),
                 q.classifiedStampDegrees(),
                 t.stampColor());
     }
@@ -383,7 +407,8 @@ final class QuestMap {
 
     /**
      * Lays out the card of {@code step}, the {@code number}th of its chapter, hanging off the top right corner of a sheet at
-     * ({@code paperRight}, {@code paperTop}). {@code have} counts what the player holds of an item.
+     * ({@code paperRight}, {@code paperTop}). {@code have} counts what the player holds of an item; a step that is {@code done}
+     * needs nothing more, since its items are spent doing it.
      */
     static Card card(
             Font font,
@@ -392,6 +417,7 @@ final class QuestMap {
             int paperRight,
             int paperTop,
             String link,
+            boolean done,
             java.util.function.ToIntFunction<Item> have) {
         QuestMapTuning q = QuestMapTuning.current();
         int w = q.cardWidth();
@@ -401,7 +427,7 @@ final class QuestMap {
         int lines = font.split(PaperDraw.ink(step.text(), 0), textWidth).size();
         List<CardItem> items = new ArrayList<>();
         int perRow = Math.max(1, (w - q.cardItemInset() + q.cardItemPitch() / 2) / q.cardItemPitch());
-        int itemsTop = y + q.cardTextTop() + lines * (font.lineHeight + 1) + 1;
+        int itemsTop = y + q.cardTextTop() + lines * (font.lineHeight + 1) + q.cardItemsGap();
         for (HandbookChapter.Need need : step.needs()) {
             Item item = BuiltInRegistries.ITEM.getOptional(need.item()).orElse(null);
             if (item == null) {
@@ -415,7 +441,7 @@ final class QuestMap {
                             itemsTop + index / perRow * q.cardItemRow(),
                             q.itemIconSize(),
                             q.itemIconSize()),
-                    have.applyAsInt(item),
+                    done ? need.count() : have.applyAsInt(item),
                     need.count()));
         }
         int rows = (items.size() + perRow - 1) / perRow;
@@ -488,7 +514,7 @@ final class QuestMap {
             int textX = icon.right() + q.itemCountGap();
             graphics.text(font, count, textX, icon.y() + q.itemCountTop(), Colors.opaque(color), false);
             if (met) {
-                int strikeY = icon.y() + q.itemCountTop() + font.lineHeight / 2 - 1;
+                int strikeY = icon.y() + q.itemCountTop() + font.lineHeight / 2 - q.strikeLift();
                 graphics.fill(icon.right() + 1, strikeY, textX + font.width(count), strikeY + 1, Colors.opaque(color));
             }
         }

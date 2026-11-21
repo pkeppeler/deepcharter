@@ -63,6 +63,25 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param toastHeight height of the step-done popup
  * @param toastMillis how long the step-done popup shows
  * @param toastInset space between the step-done popup's edge and its text
+ * @param barsNoteGap space between the redaction bars and the margin note under them
+ * @param chapterLinkTop space between the last step's bottom edge and the dashed link to the next chapter
+ * @param dropLinkPercent where the black link from the row above drops to the bars, in percent of a step box's width
+ * @param stampXPercent where the CLASSIFIED stamp's centre sits along the first bar, in percent of a step box's width
+ * @param stampYOffset how far below the first bar's middle the CLASSIFIED stamp's centre sits
+ * @param stampReach how far the turned CLASSIFIED stamp reaches below its centre
+ * @param strikeLift how far above the middle of its count a met count's strike-through runs
+ * @param loopTailStart how far in from the loop's right edge the pen's closing stroke begins
+ * @param loopTailMid how far in from the loop's right edge the closing stroke's bend is
+ * @param loopTailEnd how far in from the loop's right edge the closing stroke ends
+ * @param loopTailRise how far above the loop's top edge the closing stroke's bend rises
+ * @param loopTailEndRise how far above the loop's top edge the closing stroke ends
+ * @param headingMinWidth narrowest the chapter label and title wrap to beside the index card
+ * @param headingCardGap space between a wrapped chapter heading and the index card
+ * @param headingGap space between the chapter label and the title
+ * @param ruleGap space between the title and the first row below its rule
+ * @param windowMargin space kept between the sheet and the window's sides
+ * @param tabEdgeGap space kept between the chapter tabs and the window's right edge
+ * @param cardItemsGap space between the card's instruction and its first row of items
  */
 public record QuestMapTuning(
         int chapterTabWidth,
@@ -119,7 +138,26 @@ public record QuestMapTuning(
         int toastWidth,
         int toastHeight,
         int toastMillis,
-        int toastInset) {
+        int toastInset,
+        int barsNoteGap,
+        int chapterLinkTop,
+        int dropLinkPercent,
+        int stampXPercent,
+        int stampYOffset,
+        int stampReach,
+        int strikeLift,
+        int loopTailStart,
+        int loopTailMid,
+        int loopTailEnd,
+        int loopTailRise,
+        int loopTailEndRise,
+        int headingMinWidth,
+        int headingCardGap,
+        int headingGap,
+        int ruleGap,
+        int windowMargin,
+        int tabEdgeGap,
+        int cardItemsGap) {
     public static QuestMapTuning current() {
         return UiTheme.current().questMap();
     }
@@ -180,6 +218,25 @@ public record QuestMapTuning(
                 d.integer("toastWidth", 1),
                 d.integer("toastHeight", 1),
                 d.integer("toastMillis", 1),
-                d.integer("toastInset", 0));
+                d.integer("toastInset", 0),
+                d.integer("barsNoteGap", 0),
+                d.integer("chapterLinkTop", 0),
+                d.integer("dropLinkPercent", 0),
+                d.integer("stampXPercent", 0),
+                d.integer("stampYOffset", 0),
+                d.integer("stampReach", 0),
+                d.integer("strikeLift", 0),
+                d.integer("loopTailStart", 0),
+                d.integer("loopTailMid", 0),
+                d.integer("loopTailEnd", 0),
+                d.integer("loopTailRise", 0),
+                d.integer("loopTailEndRise", 0),
+                d.integer("headingMinWidth", 1),
+                d.integer("headingCardGap", 0),
+                d.integer("headingGap", 0),
+                d.integer("ruleGap", 0),
+                d.integer("windowMargin", 0),
+                d.integer("tabEdgeGap", 0),
+                d.integer("cardItemsGap", 0));
     }
 }

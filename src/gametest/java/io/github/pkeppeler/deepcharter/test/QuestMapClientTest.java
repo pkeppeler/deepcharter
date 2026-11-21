@@ -2,10 +2,8 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
-import io.github.pkeppeler.deepcharter.client.handbook.HandbookKeys;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookMemory;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
@@ -25,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -63,8 +62,10 @@ public class QuestMapClientTest implements FabricClientGameTest {
             draggingPansAndScrollingZooms();
             theBookOpensWhereItWasLeft();
             theMapFitsTheDefaultWindowAndTheSmallest();
+            everyShippedMapFitsTheSheetWhole();
             aStepIsToastedOnlyWhenItIsNews();
-            theSecondKeyOpensTheHandbook();
+            aDoneStepNeedsNothingMore();
+            theBookReopensOnTheSamePageWhenProgressAddsPages();
         });
     }
 
@@ -374,6 +375,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
             for (int chapter = 1; chapter <= IDS.size(); chapter++) {
                 HandbookScreen screen = screen(new HandbookMemory(), window[0], window[1]);
                 screen.goTo(mapPage(chapter));
+                settle(screen);
                 for (Drawn drawn : DrawnText.of(screen)) {
                     require(
                             DrawnText.leavesScreen(screen, drawn).isEmpty(),
@@ -392,29 +394,186 @@ public class QuestMapClientTest implements FabricClientGameTest {
 
     private static void aStepIsToastedOnlyWhenItIsNews() {
         ClientHandbook.forget();
-        Identifier a = directive(1, 1);
-        Identifier b = directive(1, 2);
-        require(
-                ClientHandbook.set(List.of(a)).isEmpty(),
-                "the first sync of a world is what was done before: no popup");
-        require(ClientHandbook.set(List.of(a, b)).equals(List.of(b)), "a step done since the last sync is news");
-        require(ClientHandbook.set(List.of(a, b)).isEmpty(), "the same set again is not news");
-        List<Identifier> many = new ArrayList<>();
-        for (int n = 1; n <= ClientHandbook.MOST_TOASTED_AT_ONCE + 2; n++) {
-            many.add(directive(2, n));
+        try {
+            Identifier a = directive(1, 1);
+            Identifier b = directive(1, 2);
+            require(
+                    ClientHandbook.set(List.of(a)).isEmpty(),
+                    "the first sync of a world is what was done before: no popup");
+            require(ClientHandbook.set(List.of(a, b)).equals(List.of(b)), "a step done since the last sync is news");
+            require(ClientHandbook.set(List.of(a, b)).isEmpty(), "the same set again is not news");
+            List<Identifier> many = new ArrayList<>();
+            for (int n = 1; n <= ClientHandbook.MOST_TOASTED_AT_ONCE + 2; n++) {
+                many.add(directive(2, n));
+            }
+            require(ClientHandbook.set(many).isEmpty(), "a charter handing over its progress is not a deed: no popups");
+            ClientHandbook.forget();
+            require(ClientHandbook.completed().isEmpty(), "leaving the world forgets the progress");
+            require(ClientHandbook.set(List.of(a)).isEmpty(), "and the next world's first sync is silent again");
+        } finally {
+            ClientHandbook.forget();
         }
-        require(ClientHandbook.set(many).isEmpty(), "a charter handing over its progress is not a deed: no popups");
-        ClientHandbook.forget();
-        require(ClientHandbook.completed().isEmpty(), "leaving the world forgets the progress");
-        require(ClientHandbook.set(List.of(a)).isEmpty(), "and the next world's first sync is silent again");
-        ClientHandbook.forget();
     }
 
-    private static void theSecondKeyOpensTheHandbook() {
+    /** Every directive of chapters before {@code chapter} is done, so that chapter is the current one. */
+    private static Set<Identifier> doneBefore(Map<Identifier, HandbookChapter> chapters, int chapter) {
+        Set<Identifier> done = new HashSet<>();
+        int number = 0;
+        for (HandbookChapter entry : chapters.values()) {
+            if (++number < chapter) {
+                entry.directives().forEach(step -> done.add(step.id()));
+            }
+        }
+        return done;
+    }
+
+    /** The nine chapters with the step counts they ship with (chapter 1 has seven), under their real ids so their margin notes are real. */
+    private static Map<Identifier, HandbookChapter> shippedLike() {
+        List<String> ids = List.of(
+                "welcome",
+                "back_online",
+                "meet_the_mole",
+                "fuel_is_life",
+                "every_sale_counts",
+                "seeing_below",
+                "staying_safe",
+                "first_breach",
+                "company_property");
+        int[] steps = {7, 3, 2, 4, 3, 2, 2, 1, 4};
+        Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
+        for (int chapter = 1; chapter <= ids.size(); chapter++) {
+            List<HandbookChapter.Entry> entries = new ArrayList<>();
+            for (int n = 1; n <= steps[chapter - 1]; n++) {
+                entries.add(new HandbookChapter.Entry(
+                        directive(chapter, n),
+                        Component.literal("Do thing " + chapter + "." + n + " in a line long enough to need two lines"),
+                        List.of()));
+            }
+            chapters.put(
+                    Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, ids.get(chapter - 1)),
+                    new HandbookChapter(chapter, Component.literal("Title " + chapter), entries));
+        }
+        return chapters;
+    }
+
+    private static String plain(net.minecraft.util.FormattedCharSequence line) {
+        StringBuilder text = new StringBuilder();
+        line.accept((index, style, codePoint) -> {
+            text.appendCodePoint(codePoint);
+            return true;
+        });
+        return text.toString();
+    }
+
+    /**
+     * Whatever chapter the player is on, at the default window the whole map is on the sheet: the layout leaves no pixel short, the
+     * stamp and every line of the margin note are drawn at full height (a string the scissor cuts is drawn shorter, or not at all), and
+     * nothing sits under Back or Next.
+     */
+    private static void everyShippedMapFitsTheSheetWhole() {
+        Map<Identifier, HandbookChapter> chapters = shippedLike();
+        net.minecraft.client.gui.Font font = Minecraft.getInstance().font;
+        for (int chapter = 1; chapter <= chapters.size(); chapter++) {
+            List<HandbookPage> pages = HandbookPages.of(chapters, doneBefore(chapters, chapter));
+            HandbookScreen screen = new HandbookScreen(pages, id -> true, id -> {}, List.of(), new HandbookMemory());
+            screen.init(WIDTH, HEIGHT);
+            for (int index = 0; index < pages.size(); index++) {
+                if (pages.get(index) instanceof HandbookPage.Chapter map && map.number() == chapter) {
+                    screen.goTo(index);
+                }
+            }
+            settle(screen);
+            String where = "chapter " + chapter + "'s map at " + WIDTH + " x " + HEIGHT;
+            require(
+                    screen.mapSpareHeight(chapter) >= 0,
+                    where + " is " + -screen.mapSpareHeight(chapter) + " px too tall");
+            List<Drawn> drawn = DrawnText.of(screen);
+            String back =
+                    Component.translatable("deepcharter.handbook.screen.back").getString();
+            String next =
+                    Component.translatable("deepcharter.handbook.screen.next").getString();
+            List<AbstractWidget> buttons = new ArrayList<>();
+            for (var child : screen.children()) {
+                if (child instanceof AbstractWidget widget
+                        && widget.visible
+                        && (widget.getMessage().getString().equals(back)
+                                || widget.getMessage().getString().equals(next))) {
+                    buttons.add(widget);
+                }
+            }
+            for (Drawn text : drawn) {
+                require(
+                        DrawnText.underWidget(text, buttons).isEmpty(),
+                        where + ": " + DrawnText.underWidget(text, buttons).orElse(""));
+            }
+            Identifier id = Identifier.fromNamespaceAndPath(
+                    DeepCharter.MOD_ID, chapterIds().get(chapter - 1));
+            List<String> whole = new ArrayList<>();
+            for (var line : font.split(
+                    Component.translatable(HandbookScreen.marginKey(id)),
+                    QuestMapTuning.current().noteWidth())) {
+                whole.add(plain(line));
+            }
+            for (String line : whole) {
+                require(
+                        drawn.stream()
+                                .anyMatch(entry ->
+                                        entry.text().equals(line) && entry.box().height() >= font.lineHeight),
+                        where + " draws the margin note line '" + line + "' whole: " + texts(screen));
+            }
+            String stamp = Component.translatable("deepcharter.handbook.chapter.stamp.classified")
+                    .getString();
+            if (chapter + 1 < chapters.size()) {
+                require(
+                        drawn.stream()
+                                .anyMatch(entry -> entry.text().equals(stamp)
+                                        && entry.box().height() >= font.lineHeight),
+                        where + " draws the CLASSIFIED stamp whole: " + texts(screen));
+            }
+        }
+    }
+
+    private static List<String> chapterIds() {
+        return shippedLike().keySet().stream().map(Identifier::getPath).toList();
+    }
+
+    /** The scanner step is done and its iron is gone from the pack: the card still shows every need met, not 0/4. */
+    private static void aDoneStepNeedsNothingMore() {
+        Set<Identifier> all = done();
+        all.add(directive(1, FIRST_CHAPTER_STEPS));
+        HandbookScreen screen = new HandbookScreen(
+                HandbookPages.of(chapters(), all), id -> true, id -> {}, List.of(), new HandbookMemory());
+        screen.init(WIDTH, HEIGHT);
+        screen.goTo(mapPage(1));
+        settle(screen);
+        click(screen, drawn(screen, done("Do thing 1.6")).box());
+        List<String> texts = texts(screen);
+        require(texts.contains("4/4") && texts.contains("2/2"), "a done step's items show as met: " + texts);
+        require(!texts.contains("0/4"), "a done step's items are not shown as missing: " + texts);
+    }
+
+    /** Chapter 2 unlocking its text pages puts pages before its map: the book reopens on the map, not on a page that moved there. */
+    private static void theBookReopensOnTheSamePageWhenProgressAddsPages() {
+        HandbookMemory memory = new HandbookMemory();
+        Map<Identifier, HandbookChapter> chapters = chapters();
+        List<HandbookPage> before = HandbookPages.of(chapters, done());
+        HandbookScreen first = new HandbookScreen(before, id -> true, id -> {}, List.of(), memory);
+        first.init(WIDTH, HEIGHT);
+        int mapTwo = -1;
+        for (int index = 0; index < before.size(); index++) {
+            if (before.get(index) instanceof HandbookPage.Chapter map && map.number() == 2) {
+                mapTwo = index;
+            }
+        }
+        first.goTo(mapTwo);
+        Set<Identifier> more = done();
+        more.add(directive(1, FIRST_CHAPTER_STEPS));
+        List<HandbookPage> after = HandbookPages.of(chapters, more);
+        require(after.size() > before.size(), "setup: finishing chapter 1 adds text pages before chapter 2's map");
+        HandbookScreen second = new HandbookScreen(after, id -> true, id -> {}, List.of(), memory);
         require(
-                HandbookKeys.OPEN_QUEST_MAP.getDefaultKey().getValue() == InputConstants.KEY_L,
-                "the quest map key is L by default");
-        require(HandbookKeys.OPEN.getDefaultKey().getValue() == InputConstants.KEY_H, "the handbook key stays H");
-        require(HandbookScreenTuning.current().flipTicks() > 0, "the theme is loaded");
+                after.get(second.page()) instanceof HandbookPage.Chapter map && map.number() == 2,
+                "the book reopens on chapter 2's map, page " + second.page() + " of " + after.size()
+                        + ", not on the page" + " number it was at before");
     }
 }

@@ -12,7 +12,8 @@ public final class ItemRecipeLink {
 
     private ItemRecipeLink() {}
 
-    // test-seam: the hook #846 wires; nothing in this build sets it, and a test proves a click reaches it
+    // test-seam: the hook #846 (parts catalogue) wires; nothing in this build sets it, a test proves a click reaches
+    // it, and #846 deletes this marker
     public static void handleWith(Consumer<Identifier> newHandler) {
         handler = newHandler;
     }

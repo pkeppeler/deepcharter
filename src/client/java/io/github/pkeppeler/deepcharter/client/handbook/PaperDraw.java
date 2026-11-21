@@ -196,7 +196,24 @@ final class PaperDraw {
                         color);
             }
         }
-        line(graphics, right - 14, top + 1, right - 6, top - 1, color, 1, 0);
-        line(graphics, right - 6, top - 1, right - 2, top - 2, color, 1, 0);
+        QuestMapTuning q = QuestMapTuning.current();
+        line(
+                graphics,
+                right - q.loopTailStart(),
+                top + 1,
+                right - q.loopTailMid(),
+                top - q.loopTailRise(),
+                color,
+                1,
+                0);
+        line(
+                graphics,
+                right - q.loopTailMid(),
+                top - q.loopTailRise(),
+                right - q.loopTailEnd(),
+                top - q.loopTailEndRise(),
+                color,
+                1,
+                0);
     }
 }
