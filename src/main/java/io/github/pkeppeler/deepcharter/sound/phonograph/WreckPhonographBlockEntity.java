@@ -19,8 +19,7 @@ import net.minecraft.world.level.storage.ValueOutput;
  * into range hears it from the top, and its stop reaches only those it was sent to.
  */
 public final class WreckPhonographBlockEntity extends BlockEntity {
-    private final WreckSongArming arming = new WreckSongArming(
-            SoundTuning.DEFAULT.wreckSongRearmTicks(), WreckSongArming.NEVER, WreckSongArming.NEVER);
+    private final WreckSongArming arming = new WreckSongArming(SoundTuning.DEFAULT.wreckSongRearmTicks());
     private boolean playing;
     private int ticksLeft;
     private Set<UUID> listeners = new HashSet<>();
@@ -31,11 +30,6 @@ public final class WreckPhonographBlockEntity extends BlockEntity {
 
     public boolean isPlaying() {
         return playing;
-    }
-
-    /** How many players the song has been sent to. */
-    public int listenerCount() {
-        return listeners.size();
     }
 
     /** Server only. A player's hand: stops the song if it plays, and starts it if it does not. Either way it is spent. */
@@ -60,11 +54,9 @@ public final class WreckPhonographBlockEntity extends BlockEntity {
     }
 
     private void silence(ServerLevel server) {
-        if (playing) {
-            PhonographSound.stop(server.getServer(), DeepSound.SONG_WRECK, listeners);
-            playing = false;
-            ticksLeft = 0;
-        }
+        PhonographSound.stop(server.getServer(), DeepSound.SONG_WRECK, listeners);
+        playing = false;
+        ticksLeft = 0;
         listeners = new HashSet<>();
     }
 

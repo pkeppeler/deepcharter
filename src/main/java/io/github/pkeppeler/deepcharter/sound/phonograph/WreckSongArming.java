@@ -11,13 +11,11 @@ public final class WreckSongArming {
     public static final long NEVER = -1;
 
     private final int rearmTicks;
-    private long spentAt;
-    private long lastNearAt;
+    private long spentAt = NEVER;
+    private long lastNearAt = NEVER;
 
-    public WreckSongArming(int rearmTicks, long spentAt, long lastNearAt) {
+    public WreckSongArming(int rearmTicks) {
         this.rearmTicks = rearmTicks;
-        this.spentAt = spentAt;
-        this.lastNearAt = lastNearAt;
     }
 
     /** The game time it was last spent, or {@link #NEVER}. */
