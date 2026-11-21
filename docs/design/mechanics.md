@@ -1714,6 +1714,8 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 - **Crates.** A salvage crate holds one ration one time in four.
 - **Stalk mash.** A fungal stalk cooks into stalk mash on a campfire (30 s) or in a smoker (5 s). It fills little (3 hunger, little saturation), so a ration is better, but it never runs out. The furnace still turns a stalk into charcoal (the campfire's fuel), so the recipes do not clash.
 
+**Daylight cycle off.** With the daylight cycle off the overworld clock stands still, so the canteen serves each player once until the clock moves.
+
 **Trade-offs.** The ration fills as much as bread (5 hunger, 4 saturation) and a stack of them keeps, so a dig is feedable. A crew cannot pool the canteen: it is one ration per player a day. Starvation is slow, so no one is forced to the canteen at once.
 
 **Knobs.** `ColonyRations.STARTING_RATIONS` (3), `OreCarBlock.TINS` (2), the crate's `p` (0.25) in `salvage_crate.json`, the food values in `ColonyRations`, the cooking times in `stalk_meal_*.json`.

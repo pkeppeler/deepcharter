@@ -6,6 +6,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidenceWorld;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -16,6 +18,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -24,14 +28,17 @@ import net.minecraft.world.phys.Vec3;
  * Evidence scenario "company-rations" for #838: a new player's food. At the ore cars on the track in front of the Works, the first use
  * finds the last shift's tins (the action bar says so and the hotbar fills) and the second finds the car empty. In the Lamp and Pick
  * the canteen dispenser gives today's ration, and the second use the same day is refused. The HUD stays on, because the action bar
- * line and the hotbar are the evidence. Positions are offsets from the colony's centre (X east, Z south), as in the colony walk.
+ * line and the hotbar are the evidence. The ore car and the canteen are found in the placed colony, and the player stands in front of each along its facing.
  */
 public class CompanyRationsScenario extends EvidenceScenario {
     private static final double EYE = 1.62;
-    /** The first ore car of the pair on the track out of the Works' bay (tools/colony/town.py, works). */
-    private static final BlockPos CAR = new BlockPos(13, 1, -8);
-    /** The canteen dispenser against the east wall of the Lamp and Pick (tools/colony/town.py, lamp_and_pick). */
-    private static final BlockPos CANTEEN = new BlockPos(8, 1, 20);
+    /** How far the colony is searched for its ore cars and canteen, in blocks each way from the pad's centre. */
+    private static final int SEARCH = 40;
+    /** How many rows above the pad's ground the search reads. */
+    private static final int SEARCH_HEIGHT = 3;
+    /** How far in front of the block, along its facing, the player stands. */
+    private static final int STAND_BACK = 3;
+
     /** Ticks the action bar line takes to show, and frames shown while it does. */
     private static final int MESSAGE_TICKS = 6;
 
@@ -67,28 +74,72 @@ public class CompanyRationsScenario extends EvidenceScenario {
             });
             context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
 
-            stand(context, singleplayer, centre, new Vec3(13.5, 1, -4.5), centre.offset(CAR));
-            use(singleplayer, centre.offset(CAR));
+            BlockPos car = singleplayer.getServer().computeOnServer(server -> endCar(server.overworld(), centre));
+            Stand carStand = standing(singleplayer, car);
+            stand(context, singleplayer, carStand, car);
+            use(singleplayer, car);
             showMessage(context, "ore-car-find");
-            use(singleplayer, centre.offset(CAR));
+            use(singleplayer, car);
             showMessage(context, "ore-car-empty");
 
-            stand(context, singleplayer, centre, new Vec3(4.5, 1, 17.5), centre.offset(CANTEEN));
-            use(singleplayer, centre.offset(CANTEEN));
+            BlockPos canteen = singleplayer
+                    .getServer()
+                    .computeOnServer(server ->
+                            find(server.overworld(), centre, ColonyKit.CANTEEN).getFirst());
+            Stand canteenStand = standing(singleplayer, canteen);
+            stand(context, singleplayer, canteenStand, canteen);
+            use(singleplayer, canteen);
             showMessage(context, "canteen-ration");
-            use(singleplayer, centre.offset(CANTEEN));
+            use(singleplayer, canteen);
             showMessage(context, "canteen-refused");
         }
     }
 
-    /** Puts the player's feet at {@code feet} from the centre, eyes on {@code target}, and waits for the client to stand there with the world drawn. */
+    /** Where the player's feet go: {@code feet}, in front of a block along the block's facing. */
+    private record Stand(Vec3 feet) {}
+
+    /** Every {@code wanted} block within {@link #SEARCH} of the pad's centre, by increasing X and then Z: the colony's own, wherever the world's spawn put it. */
+    private static List<BlockPos> find(ServerLevel level, BlockPos centre, Block wanted) {
+        List<BlockPos> found = new ArrayList<>();
+        for (int x = -SEARCH; x <= SEARCH; x++) {
+            for (int z = -SEARCH; z <= SEARCH; z++) {
+                for (int y = 0; y <= SEARCH_HEIGHT; y++) {
+                    BlockPos pos = centre.offset(x, y, z);
+                    if (level.getBlockState(pos).is(wanted)) {
+                        found.add(pos);
+                    }
+                }
+            }
+        }
+        if (found.isEmpty()) {
+            throw new AssertionError("the colony holds no " + wanted + " within " + SEARCH + " blocks of its centre");
+        }
+        return found;
+    }
+
+    /** The ore car at the open end of its train: the one the player faces without another car in the way. */
+    private static BlockPos endCar(ServerLevel level, BlockPos centre) {
+        return find(level, centre, ColonyKit.ORE_CAR).stream()
+                .filter(pos ->
+                        !level.getBlockState(pos.relative(facing(level, pos))).is(ColonyKit.ORE_CAR))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("every ore car of the colony has another in front of it"));
+    }
+
+    private static Direction facing(ServerLevel level, BlockPos pos) {
+        return level.getBlockState(pos).getValue(HorizontalDirectionalBlock.FACING);
+    }
+
+    private Stand standing(TestSingleplayerContext singleplayer, BlockPos block) {
+        Direction front = singleplayer.getServer().computeOnServer(server -> facing(server.overworld(), block));
+        BlockPos at = block.relative(front, STAND_BACK);
+        return new Stand(new Vec3(at.getX() + 0.5, at.getY(), at.getZ() + 0.5));
+    }
+
+    /** Puts the player's feet at {@code stand}, eyes on {@code target}, and waits for the client to stand there with the world drawn. */
     private void stand(
-            ClientGameTestContext context,
-            TestSingleplayerContext singleplayer,
-            BlockPos centre,
-            Vec3 feet,
-            BlockPos target) {
-        Vec3 at = Vec3.atLowerCornerOf(centre).add(feet);
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, Stand stand, BlockPos target) {
+        Vec3 at = stand.feet();
         Vec3 d = Vec3.atCenterOf(target).subtract(at.add(0, EYE, 0));
         float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
         float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));

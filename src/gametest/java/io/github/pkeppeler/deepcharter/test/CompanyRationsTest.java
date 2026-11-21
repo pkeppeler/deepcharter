@@ -4,10 +4,14 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.colony.ColonyRations;
+import io.github.pkeppeler.deepcharter.colony.OreCarBlock;
 import io.github.pkeppeler.deepcharter.colony.RationLedger;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestClocks;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import java.util.Map;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -32,7 +36,6 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -91,23 +94,8 @@ public class CompanyRationsTest {
                 && contents.getKey().equals(key);
     }
 
-    private static boolean looted(BlockState state) {
-        Property<?> property = state.getBlock().getStateDefinition().getProperty("looted");
-        if (property == null) {
-            throw new IllegalStateException("the ore car has no looted property");
-        }
-        return state.getValue(property).equals(true);
-    }
-
     private static BlockState freshCar() {
-        BlockState state = block("ore_car").defaultBlockState();
-        Property<?> property = state.getBlock().getStateDefinition().getProperty("looted");
-        return property == null ? state : with(state, property);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static BlockState with(BlockState state, Property<?> property) {
-        return state.setValue((Property<Boolean>) property, false);
+        return block("ore_car").defaultBlockState().setValue(OreCarBlock.LOOTED, false);
     }
 
     private static void awaitStarters(GameTestHelper helper, ServerPlayer player) {
@@ -120,6 +108,7 @@ public class CompanyRationsTest {
     public void aNewPlayerStartsWithRationsOnceAndNotOnEveryJoin(GameTestHelper helper) {
         ServerPlayer player = MockPlayers.join(helper, "Newhire").player();
         boolean[] rejoined = {false};
+        String[] problem = {null};
         helper.succeedWhen(() -> {
             if (!rejoined[0]) {
                 awaitStarters(helper, player);
@@ -128,7 +117,8 @@ public class CompanyRationsTest {
                 ServerPlayerEvents.JOIN.invoker().onJoin(player);
                 rejoined[0] = true;
             }
-            expect(helper, player, 0, "a player who was given the starting rations is given none on a later join");
+            expect(problem, player, 0, "a player who was given the starting rations is given none on a later join");
+            ensure(helper, problem);
         });
     }
 
@@ -163,19 +153,21 @@ public class CompanyRationsTest {
         ServerPlayer player = mock.player();
         BlockPos pos = helper.absolutePos(BLOCK);
         boolean[] used = {false};
+        String[] problem = {null};
         helper.succeedWhen(() -> {
             if (!used[0]) {
                 awaitStarters(helper, player);
                 used[0] = true;
                 helper.getLevel().setBlock(pos, freshCar(), 3);
                 use(helper, player, pos);
-                expect(helper, player, STARTING_RATIONS + CAR_RATIONS, "the first use of a car gives its tins");
-                if (!looted(helper.getLevel().getBlockState(pos))) {
-                    helper.fail("a car that gave its tins is marked looted");
+                expect(problem, player, STARTING_RATIONS + CAR_RATIONS, "the first use of a car gives its tins");
+                if (!helper.getLevel().getBlockState(pos).getValue(OreCarBlock.LOOTED) && problem[0] == null) {
+                    problem[0] = "a car that gave its tins is marked looted";
                 }
                 use(helper, player, pos);
-                expect(helper, player, STARTING_RATIONS + CAR_RATIONS, "a looted car gives nothing more");
+                expect(problem, player, STARTING_RATIONS + CAR_RATIONS, "a looted car gives nothing more");
             }
+            ensure(helper, problem);
             if (!said(mock, "colony.deepcharter.ore_car.found") || !said(mock, "colony.deepcharter.ore_car.empty")) {
                 throw helper.assertionException(
                         "the car says what was found, then that it is empty; the player heard %s",
@@ -190,6 +182,7 @@ public class CompanyRationsTest {
         ServerPlayer second = MockPlayers.join(helper, "Second").player();
         BlockPos pos = helper.absolutePos(BLOCK);
         boolean[] used = {false};
+        String[] problem = {null};
         helper.succeedWhen(() -> {
             awaitStartersOnce(helper, first, second, used);
             if (!used[0]) {
@@ -198,8 +191,9 @@ public class CompanyRationsTest {
                 use(helper, first, pos);
                 use(helper, second, pos);
             }
-            expect(helper, first, STARTING_RATIONS + CAR_RATIONS, "the car is one find for the whole crew");
-            expect(helper, second, STARTING_RATIONS, "the second player finds a car already emptied");
+            expect(problem, first, STARTING_RATIONS + CAR_RATIONS, "the car is one find for the whole crew");
+            expect(problem, second, STARTING_RATIONS, "the second player finds a car already emptied");
+            ensure(helper, problem);
         });
     }
 
@@ -219,6 +213,7 @@ public class CompanyRationsTest {
         MinecraftServer server = helper.getLevel().getServer();
         BlockPos pos = helper.absolutePos(BLOCK);
         boolean[] done = {false};
+        String[] problem = {null};
         helper.succeedWhen(() -> {
             if (!done[0]) {
                 awaitStarters(helper, player);
@@ -230,14 +225,15 @@ public class CompanyRationsTest {
                     use(helper, player, pos);
                     use(helper, other, pos);
                 });
-                expect(helper, player, STARTING_RATIONS + 1, "one ration a day, a second use refused");
-                expect(helper, other, STARTING_RATIONS + 1, "each player has a ration of their own each day");
+                expect(problem, player, STARTING_RATIONS + 1, "one ration a day, a second use refused");
+                expect(problem, other, STARTING_RATIONS + 1, "each player has a ration of their own each day");
                 TestClocks.paused(
                         server, overworldClock(server), 5 * DAY_TICKS + 20_000, () -> use(helper, player, pos));
-                expect(helper, player, STARTING_RATIONS + 1, "late the same day is the same day");
+                expect(problem, player, STARTING_RATIONS + 1, "late the same day is the same day");
                 TestClocks.paused(server, overworldClock(server), 6 * DAY_TICKS + 100, () -> use(helper, player, pos));
-                expect(helper, player, STARTING_RATIONS + 2, "the next day brings the next ration");
+                expect(problem, player, STARTING_RATIONS + 2, "the next day brings the next ration");
             }
+            ensure(helper, problem);
             if (!said(mock, "colony.deepcharter.canteen.dispensed")
                     || !said(mock, "colony.deepcharter.canteen.refused")) {
                 throw helper.assertionException(
@@ -250,10 +246,20 @@ public class CompanyRationsTest {
         return server.overworld().dimensionType().defaultClock().orElseThrow();
     }
 
-    private static void expect(GameTestHelper helper, ServerPlayer player, int expected, String why) {
-        if (rations(player) != expected) {
-            helper.fail(why + ": expected " + expected + " rations, "
-                    + player.getGameProfile().name() + " holds " + rations(player));
+    /**
+     * Notes the first thing that is wrong. A check that runs once, inside {@code succeedWhen}, cannot throw: the poll catches it and
+     * the next poll skips the check and passes. {@link #ensure} throws on every poll after, so the test fails at its limit.
+     */
+    private static void expect(String[] problem, ServerPlayer player, int expected, String why) {
+        if (rations(player) != expected && problem[0] == null) {
+            problem[0] = why + ": expected " + expected + " rations, "
+                    + player.getGameProfile().name() + " holds " + rations(player);
+        }
+    }
+
+    private static void ensure(GameTestHelper helper, String[] problem) {
+        if (problem[0] != null) {
+            throw helper.assertionException("%s", problem[0]);
         }
     }
 
@@ -300,5 +306,41 @@ public class CompanyRationsTest {
         if (!result.is(item("stalk_meal")) || result.getCount() != 1) {
             throw helper.assertionException("%s cooks a stalk into %s, expected one stalk meal", where, result);
         }
+    }
+
+    /** A ledger this build cannot read: the join and the canteen never throw, give nothing, and leave the data as it was. */
+    @GameTest(maxTicks = 100)
+    public void anUnreadableLedgerGivesNothingAndNeverThrows(GameTestHelper helper) {
+        ServerPlayer player = MockPlayers.join(helper, "Stranger").player();
+        BlockPos pos = helper.absolutePos(BLOCK);
+        boolean[] done = {false};
+        String[] problem = {null};
+        helper.succeedWhen(() -> {
+            if (!done[0]) {
+                awaitStarters(helper, player);
+                done[0] = true;
+                clearRations(player);
+                UnreadableChecks.makeUnreadable(player, ColonyRations.LEDGER);
+                helper.getLevel().setBlock(pos, block("canteen").defaultBlockState(), 3);
+                try {
+                    UnreadableChecks.assertNoThrow(
+                            helper,
+                            "rations",
+                            Map.of(
+                                    "join",
+                                            () -> ServerPlayerEvents.JOIN
+                                                    .invoker()
+                                                    .onJoin(player),
+                                    "canteen", () -> use(helper, player, pos)));
+                } catch (RuntimeException e) {
+                    problem[0] = String.valueOf(e.getMessage());
+                }
+            }
+            expect(problem, player, 0, "an unreadable ledger gives no starting ration and the canteen refuses");
+            if (!(player.getAttached(ColonyRations.LEDGER) instanceof Versioned.Unreadable<?>) && problem[0] == null) {
+                problem[0] = "unreadable saved data must be left as it is";
+            }
+            ensure(helper, problem);
+        });
     }
 }

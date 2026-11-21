@@ -171,6 +171,27 @@ public class LootTableDropsTest {
         helper.succeed();
     }
 
+    /** The ration pool: one at most per crate, and over the seeds some crate holds one. */
+    @GameTest
+    public void theSalvageCrateSometimesHoldsOneCompanyRation(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        int holding = 0;
+        for (long seed = 1; seed <= SEEDS; seed++) {
+            int rations = roll(level, "salvage_crate", seed, null).stream()
+                    .filter(stack -> id(stack).equals("deepcharter:company_ration"))
+                    .mapToInt(ItemStack::getCount)
+                    .sum();
+            if (rations > 1) {
+                throw helper.assertionException("salvage_crate seed %s holds %s rations, at most 1", seed, rations);
+            }
+            holding += rations;
+        }
+        if (holding == 0) {
+            throw helper.assertionException("no salvage crate of %s seeds holds a Company ration", SEEDS);
+        }
+        helper.succeed();
+    }
+
     @GameTest
     public void aFarBlastLosesTheWholeSalvageCrate(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
