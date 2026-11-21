@@ -83,8 +83,7 @@ public final class LightSync {
     /**
      * Holds the sending of the chunk, and of each of its eight neighbours that has a loaded holder (light spreads at most 15 blocks, so
      * one ring is enough), until the light tasks queued so far are done: vanilla's {@code ChunkMap.waitForLightBeforeSending}, which
-     * takes the radius and holds only the chunks within it. A neighbour that is sendable already gets a hold of its own here, and its
-     * players that have it are sent its settled light when the hold ends.
+     * takes the radius and holds only the chunks within it.
      */
     public static void holdSendUntilLit(ServerLevel level, ChunkPos chunk) {
         List<ChunkPos> sendable = new ArrayList<>();

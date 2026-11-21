@@ -18,7 +18,6 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
@@ -72,6 +71,9 @@ public class StructureLightBorderTest {
     /** Distance east of the wreck site to put a faked Conduit, clear of the site's shell and the casing. */
     private static final int FAKE_CONDUIT_OFFSET = 48;
 
+    /** Server ticks that the callbacks of the light engine's last update get to run on the main thread. */
+    private static final int SETTLE_TICKS = 20;
+
     /** Which lamp the case is about. */
     private enum Lamp {
         /** The Punch Clock hall's sea lantern. */
@@ -101,6 +103,10 @@ public class StructureLightBorderTest {
             ChunkPos neighbour,
             int minY,
             int maxY) {
+        List<ChunkPos> pair() {
+            return List.of(lampChunk, neighbour);
+        }
+
         /** The chunks of the pair and the ring of 8 round each. */
         List<ChunkPos> withRing() {
             int minX = Math.min(lampChunk.x(), neighbour.x()) - 1;
@@ -250,19 +256,16 @@ public class StructureLightBorderTest {
         return ColonySite.CODEC.parse(NbtOps.INSTANCE, moved).getOrThrow();
     }
 
-    /** Server ticks that the callbacks of the light engine's last update get to run on the main thread. */
-    private static final int SETTLE_TICKS = 20;
-
-    private static boolean holdsEnded(ChunkPos... chunks) {
+    private static boolean holdsEnded(List<ChunkPos> chunks) {
         return LightSync.heldChunks().stream()
-                .noneMatch(line -> Arrays.stream(chunks).anyMatch(chunk -> line.contains(chunk.toString())));
+                .noneMatch(line -> chunks.stream().anyMatch(chunk -> line.contains(chunk.toString())));
     }
 
     private static void run(GameTestHelper helper, Lamp lamp) {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
         Placement placement = place(helper, lamp, lamp.ordinal());
-        List<ChunkPos> pair = List.of(placement.lampChunk(), placement.neighbour());
+        List<ChunkPos> pair = placement.pair();
         MockPlayer player = MockPlayers.join(helper, "border-" + lamp.ordinal());
         player.player().setGameMode(GameType.SPECTATOR);
         UUID id = player.player().getUUID();
@@ -303,7 +306,7 @@ public class StructureLightBorderTest {
                         phase[0] = 2;
                     }
                     case 2 -> {
-                        if (!player.chunksSent().containsAll(pair) || !holdsEnded(pair.toArray(ChunkPos[]::new))) {
+                        if (!player.chunksSent().containsAll(pair) || !holdsEnded(pair)) {
                             deadline.await(helper, level, false, () -> "the player was not sent " + pair + " in time");
                             return;
                         }
@@ -319,7 +322,7 @@ public class StructureLightBorderTest {
                         phase[0] = 3;
                     }
                     default -> {
-                        if (!holdsEnded(pair.toArray(ChunkPos[]::new))) {
+                        if (!holdsEnded(pair)) {
                             deadline.await(helper, level, false, () -> "the hold of " + pair + " did not end");
                             return;
                         }
@@ -404,7 +407,7 @@ public class StructureLightBorderTest {
         // The case proves nothing unless light crosses the border: a chunk of the pair must hold light that comes from
         // the other.
         long crossed = 0;
-        for (ChunkPos chunk : List.of(placement.lampChunk(), placement.neighbour())) {
+        for (ChunkPos chunk : placement.pair()) {
             BlockLightOracle.Field own = BlockLightOracle.expected(
                     level, box, pos -> ChunkPos.containing(pos).equals(chunk));
             for (int x = chunk.getMinBlockX(); x <= chunk.getMaxBlockX(); x++) {
@@ -435,7 +438,7 @@ public class StructureLightBorderTest {
     /** {@link LightSync} sent the player every section of each chunk of the pair whose stored light changed since {@code before}. */
     private static void checkSent(
             GameTestHelper helper, ServerLevel level, Placement placement, UUID player, int[][] before, Lamp lamp) {
-        List<ChunkPos> pair = List.of(placement.lampChunk(), placement.neighbour());
+        List<ChunkPos> pair = placement.pair();
         int rows = placement.maxY() - placement.minY() + 1;
         int minLightSection = level.getLightEngine().getMinLightSection();
         for (int c = 0; c < pair.size(); c++) {
