@@ -407,21 +407,24 @@ public class HandBreakTest {
                         .interact(rig.player(), rig.level, InteractionHand.MAIN_HAND, rig.cell(0), Direction.UP);
             }
         }
-        String firstTry = "deepcharter.layer.pod_only.first_try";
-        String cannotBite = "deepcharter.layer.pod_only.cannot_bite";
-        if (toldCount(biting.mock, firstTry) != 1 || toldCount(biting.mock, cannotBite) != 0) {
-            throw failure(
-                    helper,
-                    "a tool that bites was told %s, expected the first-try line once",
-                    biting.mock.chatMessages());
-        }
-        if (toldCount(clumsy.mock, cannotBite) != 1 || toldCount(clumsy.mock, firstTry) != 0) {
-            throw failure(
-                    helper,
-                    "a tool that cannot bite was told %s, expected the cannot-bite line once",
-                    clumsy.mock.chatMessages());
-        }
-        helper.succeed();
+        // The mock reads its connection at the end of a tick, so the lines are there a tick later.
+        helper.runAfterDelay(3, () -> {
+            String firstTry = "deepcharter.layer.pod_only.first_try";
+            String cannotBite = "deepcharter.layer.pod_only.cannot_bite";
+            if (toldCount(biting.mock, firstTry) != 1 || toldCount(biting.mock, cannotBite) != 0) {
+                throw failure(
+                        helper,
+                        "a tool that bites was told %s, expected the first-try line once",
+                        biting.mock.chatMessages());
+            }
+            if (toldCount(clumsy.mock, cannotBite) != 1 || toldCount(clumsy.mock, firstTry) != 0) {
+                throw failure(
+                        helper,
+                        "a tool that cannot bite was told %s, expected the cannot-bite line once",
+                        clumsy.mock.chatMessages());
+            }
+            helper.succeed();
+        });
     }
 
     /**
@@ -440,21 +443,24 @@ public class HandBreakTest {
         hold(rig.player(), pick);
         rig.player().addEffect(new MobEffectInstance(MobEffects.HASTE, MobEffectInstance.INFINITE_DURATION, 1));
         int expected = expectedCost(2, pick.getMaxDamage());
+        boolean[] ready = {false};
         int[] startedAt = {-1};
         boolean[] stopped = {false};
-        FarChunks.awaitEntityTicking(helper, rig.level, pos, () -> startedAt[0] = (int) helper.getTick());
+        FarChunks.awaitEntityTicking(helper, rig.level, pos, () -> ready[0] = true);
         TestTicks.each(helper, () -> {
-            if (startedAt[0] < 0) {
+            if (!ready[0]) {
                 return;
             }
-            int mined = (int) helper.getTick() - startedAt[0];
-            if (mined == 0) {
+            // Start on this body's own first tick: the order of the two bodies in a tick is not fixed.
+            if (startedAt[0] < 0) {
+                startedAt[0] = (int) helper.getTick();
                 rig.player()
                         .gameMode
                         .handleBlockBreakAction(
                                 pos, ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, Direction.UP, 319, 0);
                 return;
             }
+            int mined = (int) helper.getTick() - startedAt[0];
             if (!stopped[0]) {
                 if (!rig.level.getBlockState(pos).is(Blocks.STONE)) {
                     throw failure(helper, "the block went after %d ticks of mining", mined);
@@ -491,20 +497,23 @@ public class HandBreakTest {
         BlockPos pos = rig.cell(0);
         rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
         hold(rig.player(), stack(Items.NETHERITE_PICKAXE, maxDamage(Items.NETHERITE_PICKAXE) - 100));
+        boolean[] ready = {false};
         int[] startedAt = {-1};
-        FarChunks.awaitEntityTicking(helper, rig.level, pos, () -> startedAt[0] = (int) helper.getTick());
+        FarChunks.awaitEntityTicking(helper, rig.level, pos, () -> ready[0] = true);
         TestTicks.each(helper, () -> {
-            if (startedAt[0] < 0) {
+            if (!ready[0]) {
                 return;
             }
-            int mined = (int) helper.getTick() - startedAt[0];
-            if (mined == 0) {
+            // Start on this body's own first tick: the order of the two bodies in a tick is not fixed.
+            if (startedAt[0] < 0) {
+                startedAt[0] = (int) helper.getTick();
                 rig.player()
                         .gameMode
                         .handleBlockBreakAction(
                                 pos, ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, Direction.UP, 319, 0);
                 return;
             }
+            int mined = (int) helper.getTick() - startedAt[0];
             if (!rig.level.getBlockState(pos).is(Blocks.STONE)) {
                 throw failure(helper, "the block went while the pick ran out");
             }
@@ -518,7 +527,12 @@ public class HandBreakTest {
                 }
                 helper.succeed();
             } else if (mined > 300) {
-                throw failure(helper, "the pick had not shattered after %d ticks of mining", mined);
+                throw failure(
+                        helper,
+                        "the pick had not shattered after %d ticks of mining: %s damage %d",
+                        mined,
+                        rig.player().getMainHandItem(),
+                        rig.player().getMainHandItem().getDamageValue());
             }
         });
     }
