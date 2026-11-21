@@ -50,8 +50,21 @@ public class TransmissionsClientTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
+        theDirectorFieldIsFilledWithTheDirectorsName();
         aCrossingShowsItsTransmissionOverTheFade(context);
         transmissionsReachTheClientInOrderAndOnLogin(context);
+    }
+
+    /**
+     * No placeholder text names the Director any more, but the finale's text will: the overlay's field replacement fills
+     * {@code [DIRECTOR]} with the name the server sent and leaves no literal field behind.
+     */
+    private static void theDirectorFieldIsFilledWithTheDirectorsName() {
+        String filled = TransmissionOverlay.fill(
+                "[CHARTER] signs. [DIRECTOR] signs. [DIRECTOR] again.", CREW_NAME, "Test Director");
+        require(
+                filled.equals(CREW_NAME + " signs. Test Director signs. Test Director again."),
+                "The charter and Director fields should be filled, the text is: " + filled);
     }
 
     /** The overlay's state, for a wait's failure message. */

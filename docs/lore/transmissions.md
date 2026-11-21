@@ -9,7 +9,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
   - Terminal repairs are world-wide, so a charter founded after a repair receives that repair's transmission when it is founded, queued in order.
   - Finale events are per charter.
 - **Delivery:** every transmission goes to the whole charter. When several fire at once, they queue in ID order.
-- **Template fields** are filled from the charter: `[CHARTER]`, `[DIRECTOR]`, `[CREW]` (a member's name; the Lattice cycles through all of them), `[DEATHS]` (the charter's Continuity Events).
+- **Template fields** are filled from the charter: `[CHARTER]`, `[DIRECTOR]` (finale only), `[CREW]` (a member's name; the Lattice cycles through all of them), `[DEATHS]` (the charter's Continuity Events).
 - **Bonuses** are tiers B1–B4, priced in the numbers pass. Only Personnel pays bonuses, and a misfiring template still pays. The Chairman's receipts are flavour text, not money.
 - **The echo rule:** in layer 5, every Company header gets a second line with the sender reversed: `▌ECHO — .OC & MOLOC .H`.
 - **Framing:**
