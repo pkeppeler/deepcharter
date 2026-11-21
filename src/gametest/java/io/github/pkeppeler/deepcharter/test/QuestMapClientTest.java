@@ -548,6 +548,25 @@ public class QuestMapClientTest implements FabricClientGameTest {
                     }
                 }
             }
+            for (Drawn mark : drawn) {
+                if (!mark.text().equals(stampText)) {
+                    continue;
+                }
+                // the drawn box is the turned lettering; the double frame stands out 5 across and 3 up and down beyond
+                // it
+                Box frame = new Box(
+                        mark.box().x() - 5,
+                        mark.box().y() - 3,
+                        mark.box().width() + 10,
+                        mark.box().height() + 6);
+                for (Drawn other : drawn) {
+                    if (other != mark) {
+                        require(
+                                !io.github.pkeppeler.deepcharter.test.support.ClientChecks.overlaps(frame, other.box()),
+                                where + ": the CLASSIFIED stamp overlaps the text '" + other.shortText() + "'");
+                    }
+                }
+            }
             String stamp = Component.translatable("deepcharter.handbook.chapter.stamp.classified")
                     .getString();
             if (chapter + 1 < chapters.size()) {
