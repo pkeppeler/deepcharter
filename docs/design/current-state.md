@@ -632,7 +632,7 @@ The CRT glow is made by drawing the font in green with a 1-pixel halo (`client/u
 ### Advancements and toasts
 
 The handbook's directive advancements (`data/deepcharter/advancement/handbook/`) have no display, so nothing draws them: they drive the handbook's chapters and show no toast. Vanilla's own
-advancements are not loaded (`handbook/mixin/ServerAdvancementManagerMixin`, ADR 0064), so there are no advancement toasts and no recipe unlocks from them. The advancements key (L) and the pause menu's
+advancements are not loaded (`handbook/mixin/ServerAdvancementManagerMixin`, ADR 0067), so there are no advancement toasts and no recipe unlocks from them. The advancements key (L) and the pause menu's
 Advancements button open the handbook screen (`client/handbook/HandbookKeys`). The locator bar is off (`surface/SurfaceWorldRules`). Nothing here to restyle.
 
 ### Not there at all

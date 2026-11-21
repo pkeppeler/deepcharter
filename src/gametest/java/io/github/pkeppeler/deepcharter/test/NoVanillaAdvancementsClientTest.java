@@ -75,12 +75,17 @@ public class NoVanillaAdvancementsClientTest implements FabricClientGameTest {
             context.runOnClient(client -> require(
                     !(client.gui.screen() instanceof AdvancementsScreen),
                     "the advancements key opened vanilla's advancements screen"));
-            context.setScreen(() -> null);
+            context.runOnClient(
+                    client -> ClientSession.screen(client, HandbookScreen.class).onClose());
+            ClientWait.until(context, "the game after the handbook closed", client -> client.gui.screen() == null);
 
             context.setScreen(() -> new PauseScreen(true));
             ClientWait.screen(context, PauseScreen.class);
             context.clickScreenButton("gui.advancements");
             ClientWait.screen(context, HandbookScreen.class);
+            context.runOnClient(
+                    client -> ClientSession.screen(client, HandbookScreen.class).onClose());
+            ClientWait.screen(context, PauseScreen.class);
             context.setScreen(() -> null);
         }
     }

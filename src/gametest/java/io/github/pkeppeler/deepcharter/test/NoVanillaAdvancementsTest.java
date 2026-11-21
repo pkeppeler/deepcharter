@@ -20,7 +20,7 @@ import net.minecraft.world.level.gamerules.GameRules;
 
 /**
  * Server GameTests for #835: vanilla's advancements are not loaded, so nothing grants one or unlocks a recipe from one, while the
- * mod's directive advancements still complete, and the locator bar is off in a fresh world (ADR 0064).
+ * mod's directive advancements still complete, and the locator bar is off in a fresh world (ADR 0067).
  */
 public class NoVanillaAdvancementsTest {
     private static final Identifier GATHER_WOOD =

@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
  * Drops vanilla's advancements from the set the server loads, so none is tracked, granted or toasted and none unlocks a recipe.
- * The mod's directive advancements, and any other mod's, stay (ADR 0064).
+ * The mod's directive advancements, and any other mod's, stay (ADR 0067).
  */
 @Mixin(ServerAdvancementManager.class)
 public abstract class ServerAdvancementManagerMixin {

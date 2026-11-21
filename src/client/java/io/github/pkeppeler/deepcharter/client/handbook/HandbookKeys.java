@@ -9,13 +9,16 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.PauseScreen;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionResult;
+import org.jspecify.annotations.Nullable;
 
 /**
  * What opens the handbook screen: the key (H by default), use of the handbook item, and anything that would open vanilla's advancements
- * screen, which the handbook replaces: the advancements key (L) and the pause menu's Advancements button (ADR 0064).
+ * screen, which the handbook replaces: the advancements key (L) and the pause menu's Advancements button (ADR 0067).
  */
 public final class HandbookKeys {
     public static final KeyMapping OPEN = new KeyMapping(
@@ -23,6 +26,8 @@ public final class HandbookKeys {
             InputConstants.Type.KEYBOARD,
             InputConstants.KEY_H,
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "main")));
+
+    private static @Nullable Screen closedPauseScreen;
 
     private HandbookKeys() {}
 
@@ -35,9 +40,17 @@ public final class HandbookKeys {
                 }
             }
         });
+        // The pause menu closes into the advancements screen within one call, so the pause screen it removed is the one
+        // to return to.
+        // A pause screen closed any other way is forgotten at the next tick, before the advancements key can read it.
+        ClientTickEvents.START_CLIENT_TICK.register(client -> closedPauseScreen = null);
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
-            if (screen instanceof AdvancementsScreen) {
-                HandbookScreen.open(client);
+            if (screen instanceof PauseScreen) {
+                ScreenEvents.remove(screen).register(removed -> closedPauseScreen = removed);
+            } else if (screen instanceof AdvancementsScreen) {
+                Screen parent = closedPauseScreen;
+                closedPauseScreen = null;
+                HandbookScreen.open(client, parent);
             }
         });
         UseItemCallback.EVENT.register((player, level, hand) -> {
