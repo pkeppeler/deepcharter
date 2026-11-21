@@ -219,13 +219,13 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
             boolean lit,
             float pitch,
             String name) {
-        BlockPos room = nextRoom(server, dimension, lit);
+        BlockPos room = nextRoom(context, server, dimension, lit);
         still(context, server, dimension, room, pitch, name);
     }
 
     private void figureStill(
             ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, String name) {
-        BlockPos room = nextRoom(server, dimension, false);
+        BlockPos room = nextRoom(context, server, dimension, false);
         stillWithFigure(context, server, dimension, room, name);
     }
 
@@ -235,12 +235,14 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
     }
 
     /** The next room: a room of today's layer 1 or of the campaign type, at a place of its own, and in the zone's biome in both. */
-    private BlockPos nextRoom(TestServerContext server, ResourceKey<Level> dimension, boolean lit) {
+    private BlockPos nextRoom(
+            ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, boolean lit) {
         int x = nextRoomX();
         boolean campaign = dimension.equals(CAMPAIGN);
         BlockPos floor = campaign ? layer1Floor(x) : todayFloor(x);
         BlockPos room = buildRoom(server, dimension, floor, campaign ? Optional.of(ZONE) : Optional.empty(), lit);
         requireZone(server, dimension, room);
+        awaitLight(context, server);
         return room;
     }
 
@@ -253,6 +255,7 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         try {
             BlockPos room = buildLitRoom(server, CAMPAIGN, layer1Floor(nextRoomX()), Optional.of(ZONE));
             requireZone(server, CAMPAIGN, room);
+            awaitLight(context, server);
             still(context, server, CAMPAIGN, room, UP, "lit-room-ceiling-campaign-nether");
             still(context, server, CAMPAIGN, room, DOWN, "lit-room-floor-campaign-nether");
             still(context, server, CAMPAIGN, room, 0, "lit-room-wall-campaign-nether");
@@ -268,6 +271,7 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         ResourceKey<Level> layer1 = TestLayers.dimension(1);
         BlockPos shaft = build(server, CAMPAIGN, ground(server, x), Optional.of(ZONE), true);
         BlockPos room = build(server, layer1, todayFloor(x + SPACING), Optional.empty(), false);
+        awaitLight(context, server);
         requireZone(server, CAMPAIGN, shaft);
         requireZone(server, layer1, room);
         record SkyTime(String name, long ticks) {}
@@ -306,6 +310,7 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
                     new BlockPos(x + SHAFT_HALF, top.getY() + 1, SITE + SHAFT_HALF),
                     Blocks.AIR.defaultBlockState());
         });
+        awaitLight(context, server);
         int step = 0;
         for (int offset : DESCENT_OFFSETS) {
             step++;
@@ -315,6 +320,19 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
                     : Math.abs(offset) + (offset > 0 ? "-above-the-edge" : "-below-the-edge");
             still(context, server, CAMPAIGN, at, 0, "descent-" + step + "-" + where);
         }
+    }
+
+    /**
+     * Waits until the server's light engine is idle after a scene is built. A room that nobody is in is unloaded and saved at once, and one
+     * saved before the engine has used its light block is read back dark, on the server too: the same lit room read 14.0 in one run and
+     * 9.7, the unlit room's value, in the next.
+     */
+    private static void awaitLight(ClientGameTestContext context, TestServerContext server) {
+        ClientWait.until(
+                context,
+                "the server's light engine to be idle",
+                () -> ClientLight.serverLightIdle(context, server),
+                () -> "light work pending");
     }
 
     /** Both scenes of a pair are in one biome, so that the biome is not what the pair compares. */
