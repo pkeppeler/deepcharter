@@ -43,9 +43,14 @@ public final class DrawnText {
 
     /** Renders {@code screen} into a recorder and returns the strings it drew outside any widget. Client thread. */
     public static List<Drawn> of(Screen screen) {
+        return of(screen, -1, -1);
+    }
+
+    /** Like {@link #of(Screen)} with the mouse at ({@code mouseX}, {@code mouseY}), for what only a hovered thing draws. */
+    public static List<Drawn> of(Screen screen, int mouseX, int mouseY) {
         Minecraft client = Minecraft.getInstance();
         Recorder recorder = new Recorder(client);
-        screen.extractRenderStateWithTooltipAndSubtitles(recorder, -1, -1, 0f);
+        screen.extractRenderStateWithTooltipAndSubtitles(recorder, mouseX, mouseY, 0f);
         return List.copyOf(recorder.drawn);
     }
 

@@ -128,8 +128,12 @@ public final class CrtDraw {
 
     /** Text with a halo: a dim copy one pixel out in each direction, then the bright text on top. */
     public static void glowText(GuiGraphicsExtractor graphics, Font font, String text, int x, int y, int color) {
+        glowText(graphics, font, CrtText.of(text), x, y, color);
+    }
+
+    /** {@link #glowText(GuiGraphicsExtractor, Font, String, int, int, int)} for text already styled, such as {@link CrtText#terminal}. */
+    public static void glowText(GuiGraphicsExtractor graphics, Font font, Component styled, int x, int y, int color) {
         int halo = CrtTuning.current().glowColor();
-        Component styled = CrtText.of(text);
         graphics.text(font, styled, x - 1, y, halo, false);
         graphics.text(font, styled, x + 1, y, halo, false);
         graphics.text(font, styled, x, y - 1, halo, false);
@@ -150,6 +154,11 @@ public final class CrtDraw {
      * which runs from {@code margin} to {@code right}.
      */
     public static void header(GuiGraphicsExtractor graphics, Font font, String title, int left, int top, int right) {
+        header(graphics, font, CrtText.of(title), left, top, right);
+    }
+
+    /** {@link #header(GuiGraphicsExtractor, Font, String, int, int, int)} for a title already styled, such as {@link CrtText#terminal}. */
+    public static void header(GuiGraphicsExtractor graphics, Font font, Component title, int left, int top, int right) {
         CrtTuning tuning = CrtTuning.current();
         glowText(graphics, font, title, left, top, tuning.phosphorColor());
         int ruleTop = top + font.lineHeight + tuning.headerRuleGap();

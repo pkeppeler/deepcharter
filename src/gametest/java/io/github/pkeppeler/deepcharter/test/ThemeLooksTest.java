@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.client.theme.BeamLook;
 import io.github.pkeppeler.deepcharter.client.theme.BeamStyle;
 import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CargoLook;
+import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
@@ -502,7 +503,8 @@ public class ThemeLooksTest {
                 "panel",
                 "cockpit",
                 "tow",
-                "beam")) {
+                "beam",
+                "catalogue")) {
             areas.put(name, area(name, null));
         }
         return areas;
@@ -515,6 +517,30 @@ public class ThemeLooksTest {
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"lettersPerSecond\": 0 }")), "lettersPerSecond");
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"lettersPerSecond\": -5 }")), "lettersPerSecond");
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"scanlineSpacing\": 0 }")), "scanlineSpacing");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theCatalogueLooksAreTheMockupsSizesAndKeepTheirBounds(GameTestHelper helper) {
+        CatalogueLook look = CatalogueLook.of(area("catalogue", null));
+        expect(
+                helper,
+                "catalogue panel widths",
+                List.of(123, 122),
+                List.of(look.maxPanelWidth(), look.minPanelWidth()));
+        expect(
+                helper,
+                "catalogue panel heights",
+                List.of(232, 196),
+                List.of(look.catalogueHeight(), look.recipeHeight()));
+        expect(
+                helper,
+                "catalogue grid",
+                List.of(5, 5, 19),
+                List.of(look.gridColumns(), look.gridRows(), look.gridCell()));
+        rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"minPanelWidth\": 200 }")), "minPanelWidth");
+        rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"gridColumns\": 0 }")), "gridColumns");
+        rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"cycleMillis\": 5 }")), "cycleMillis");
         helper.succeed();
     }
 
