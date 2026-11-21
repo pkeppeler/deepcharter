@@ -24,6 +24,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -333,6 +334,36 @@ public class ThemeLooksTest {
         if (PanelLook.of(area("panel", "{ \"enabled\": 0 }")).fits(854, 480)) {
             throw fail(helper, "a panel that is off fits nowhere");
         }
+        helper.succeed();
+    }
+
+    /**
+     * The glass is cut to the corner of the frame's porthole (#907): the mod ships radius 18, a pack can name another, and a radius out of range is
+     * refused. The inset table is the one {@code tools/tests/test_terminal_concepts.py} reads off the frame sprite's own porthole, so the scanlines
+     * end where the bezel's curve does.
+     */
+    @GameTest
+    public void theGlassCornerHasTheBezelsRadius(GameTestHelper helper) {
+        PanelLook look = PanelLook.of(area("panel", null));
+        if (look.glassRadius() != 18) {
+            throw fail(helper, "the mod's glass corner is the porthole's 18 pixels, got " + look.glassRadius());
+        }
+        List<Integer> insets = new ArrayList<>();
+        for (int row = 0; row < 20; row++) {
+            insets.add(PanelLook.cornerInset(look.glassRadius(), row));
+        }
+        List<Integer> porthole = List.of(14, 11, 9, 7, 6, 5, 4, 3, 3, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0);
+        if (!insets.equals(porthole)) {
+            throw fail(helper, "the corner insets of radius 18 are " + porthole + ", got " + insets);
+        }
+        if (PanelLook.cornerInset(0, 0) != 0) {
+            throw fail(helper, "a radius of 0 is a square corner");
+        }
+        if (PanelLook.of(area("panel", "{ \"glassRadius\": 24 }")).glassRadius() != 24) {
+            throw fail(helper, "a pack names its own glass radius");
+        }
+        rejected(helper, () -> PanelLook.of(area("panel", "{ \"glassRadius\": 65 }")), "glassRadius");
+        rejected(helper, () -> PanelLook.of(area("panel", "{ \"glassRadius\": -1 }")), "glassRadius");
         helper.succeed();
     }
 

@@ -60,7 +60,21 @@ public final class CrtDraw {
         int right = width - glass.right();
         int bottom = height - glass.bottom();
         sprite(graphics, PanelLook.GLASS, glass.left(), glass.top(), right - glass.left(), bottom - glass.top());
-        scanlines(graphics, glass.left(), glass.top(), right, bottom);
+        roundedScanlines(graphics, glass.left(), glass.top(), right, bottom, panel.glassRadius());
+    }
+
+    /**
+     * The scanlines in a rectangle whose four corners are rounded by {@code radius}: each line in a corner starts and ends where the glass does
+     * ({@link PanelLook#cornerInset}), so no line runs out over the bezel.
+     */
+    public static void roundedScanlines(
+            GuiGraphicsExtractor graphics, int left, int top, int right, int bottom, int radius) {
+        CrtTuning tuning = CrtTuning.current();
+        int corner = Math.min(radius, Math.min(right - left, bottom - top) / 2);
+        for (int y = top; y < bottom; y += tuning.scanlineSpacing()) {
+            int inset = Math.max(PanelLook.cornerInset(corner, y - top), PanelLook.cornerInset(corner, bottom - 1 - y));
+            graphics.fill(left + inset, y, right - inset, y + 1, tuning.scanlineColor());
+        }
     }
 
     /**

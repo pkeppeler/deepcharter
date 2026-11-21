@@ -18,6 +18,8 @@ import org.jspecify.annotations.Nullable;
  * @param wallColor what shows behind the frame where it is see-through
  * @param content where a screen puts its text and widgets: the screen's rectangle less these insets
  * @param glass the CRT glass: the screen's rectangle less these insets gets the phosphor backdrop, the glass sprite and the scanlines
+ * @param glassRadius the corner radius of the glass, which is the radius of the frame's porthole: the glass sprite and the scanlines are cut to it, so
+ *     they follow the bezel's curve (a pack that changes the frame's corner changes this to match, and a glass sprite with a border of at least this)
  * @param nameplate the Company nameplate
  * @param dressA a decal of dressing: toggles, keys, labels, vents, serial plates
  * @param dressB another decal
@@ -39,6 +41,7 @@ public record PanelLook(
         int wallColor,
         Insets content,
         Insets glass,
+        int glassRadius,
         Decal nameplate,
         Decal dressA,
         Decal dressB,
@@ -76,6 +79,20 @@ public record PanelLook(
     public static final Identifier PIP = sprite("panel/pip");
     public static final Identifier PIP_HOT = sprite("panel/pip_hot");
     public static final Identifier PIP_OFF = sprite("panel/pip_off");
+
+    /**
+     * How far in from the edge of a rounded rectangle of corner {@code radius} the first pixel of {@code row} is inside, for {@code row} counted from the
+     * edge (0 is the outermost row). A pixel is inside when its centre is within {@code radius} of the corner's centre, which is the test the generator
+     * ({@code tools/terminal_concepts.py}) makes when it cuts the frame's porthole and the glass sprite, so the scanlines end where the glass does.
+     * A row past the arc is 0.
+     */
+    public static int cornerInset(int radius, int row) {
+        if (row >= radius) {
+            return 0;
+        }
+        double across = radius - row - 0.5;
+        return (int) Math.floor(radius - 0.5 - Math.sqrt(radius * (double) radius - across * across)) + 1;
+    }
 
     /** Distances from the four edges of the screen to a rectangle inside it. */
     public record Insets(int left, int top, int right, int bottom) {
@@ -193,6 +210,7 @@ public record PanelLook(
                 d.color("wallColor"),
                 Insets.of(d, "inset"),
                 Insets.of(d, "glass"),
+                d.integer("glassRadius", 0, 64),
                 Decal.of(d, "nameplate"),
                 Decal.of(d, "dressA"),
                 Decal.of(d, "dressB"),
