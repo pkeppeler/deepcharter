@@ -107,21 +107,31 @@ public class PodHazardCuesScenario extends EvidenceScenario {
             cue(context, "hazard-cues-gas");
             context.waitTicks(60);
 
-            // Hard landing: the pod drops from a height onto the floor.
+            // Hard landing: the pod drops from a height onto the floor. The gas left the hull part spent, so it is
+            // refitted first: the landing
+            // must not be the fatal one. setPos leaves onGround true until the pod's next tick, so the landing is
+            // waited for by its own cost: the
+            // hull drops on the tick the pod lands.
             singleplayer.getServer().runOnServer(server -> {
                 PodEntity pod = pod(server);
+                pod.setHull(pod.maxHull());
+                pod.setDeltaMovement(0, 0, 0);
                 pod.setPos(X + 0.5, FLOOR_Y + 1 + DROP_BLOCKS, Z + 0.5);
             });
             int ticks = 0;
             while (!singleplayer
                             .getServer()
-                            .computeOnServer(server -> pod(server).onGround())
+                            .computeOnServer(
+                                    server -> pod(server).hull() < pod(server).maxHull())
                     && ticks < LAND_TICKS) {
-                context.waitTicks(2);
-                ticks += 2;
+                context.waitTicks(1);
+                ticks++;
+                if (ticks % 2 == 0) {
+                    frame(context);
+                }
             }
             if (ticks >= LAND_TICKS) {
-                throw new AssertionError("The dropped pod did not land within " + LAND_TICKS + " ticks");
+                throw new AssertionError("The dropped pod did not land hard within " + LAND_TICKS + " ticks");
             }
             cue(context, "hazard-cues-landing");
         }
