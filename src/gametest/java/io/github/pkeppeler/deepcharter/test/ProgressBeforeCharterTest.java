@@ -10,10 +10,12 @@ import io.github.pkeppeler.deepcharter.handbook.FindResult;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgress;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
 import io.github.pkeppeler.deepcharter.handbook.HandbookSyncPayload;
+import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.NotesData;
 import io.github.pkeppeler.deepcharter.handbook.PersonalHandbookData;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import java.util.LinkedHashMap;
@@ -25,13 +27,18 @@ import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.triggers.CriteriaTriggers;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for #843: what a player did before they had a charter is theirs, is kept, and carries into a charter they found
@@ -248,5 +255,56 @@ public class ProgressBeforeCharterTest {
             throw helper.assertionException("the saved progress should load as it was saved");
         }
         helper.succeed();
+    }
+
+    @GameTest
+    public void revivingADormantCharterIsAJoin(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerPlayer director = MockPlayers.join(helper, "Director").player();
+        CharterId id = found(helper, server, director);
+        Directives.fire(director, CUSTOM_DIRECTIVE);
+        Notes.find(director, SECOND);
+        expectDone(helper, Charters.leave(server, director.getUUID()), "the last person leaving");
+        // On no charter again, the former Director makes progress of their own.
+        CriteriaTriggers.SLEPT_IN_BED.trigger(director);
+        HandbookProgress.sweep(director);
+        Notes.find(director, FIRST);
+
+        expectDone(helper, Charters.revive(server, director.getUUID(), id), "reviving");
+
+        Set<Identifier> charterDirectives = HandbookProgressData.get(server).completed(id);
+        if (!charterDirectives.equals(Set.of(CUSTOM_DIRECTIVE))) {
+            throw helper.assertionException(
+                    "the charter keeps its own directives and takes none of the reviver's, has %s", charterDirectives);
+        }
+        expectComplete(helper, server, director, CUSTOM_DIRECTIVE, true);
+        expectComplete(helper, server, director, VANILLA_DIRECTIVE, false);
+        expectNotes(helper, server, director, List.of(FIRST, SECOND));
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 40)
+    public void usingANoteBlockOnNoCharterSaysTheNoteIsFiledOnFoundingOrJoining(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        MockPlayer loner = MockPlayers.join(helper, "Loner");
+        BlockPos pos = helper.absolutePos(new BlockPos(1, 1, 1));
+        helper.getLevel().setBlock(pos, NoteBlock.stateOf(1), 3);
+
+        helper.getLevel()
+                .getBlockState(pos)
+                .useWithoutItem(
+                        helper.getLevel(),
+                        loner.player(),
+                        new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
+
+        expectNotes(helper, server, loner.player(), List.of(FIRST));
+        helper.succeedWhen(() -> {
+            boolean said = loner.actionBarMessages().stream()
+                    .anyMatch(line -> line.getContents() instanceof TranslatableContents contents
+                            && contents.getKey().equals("deepcharter.handbook.note.use.no_charter"));
+            if (!said) {
+                throw helper.assertionException("the no-charter line should show, got %s", loner.actionBarMessages());
+            }
+        });
     }
 }

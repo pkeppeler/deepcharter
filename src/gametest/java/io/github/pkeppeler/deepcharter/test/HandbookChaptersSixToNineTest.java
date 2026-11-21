@@ -639,6 +639,14 @@ public class HandbookChaptersSixToNineTest {
                         Set<String> restored = with(towed, directive("company_property", "restore_prospector"));
                         HandbookChaptersOneToFiveTest.expectCompleted(
                                 helper, server, "restoring the Prospector", both, restored);
+                        expect(
+                                helper,
+                                completed(server, drifter)
+                                        .equals(Set.of(
+                                                id(directive("company_property", "restore_prospector")),
+                                                id(directive("first_breach", "breach_workings")))),
+                                "a player on no charter earns only their own credit, got %s",
+                                completed(server, drifter));
 
                         // The floor of the Workings counts only from a Prospector's seat.
                         director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2, 2), 9100.5), 0, 0);
@@ -758,6 +766,17 @@ public class HandbookChaptersSixToNineTest {
             expect(helper, drifter.player().startRiding(pod, true, false), "the drifter should board the pod");
             poll(pod);
             expectNothingNew(helper, server, "a drifter on no charter", member, memberBefore);
+            expect(
+                    helper,
+                    completed(server, drifter)
+                            .equals(Set.of(
+                                    id(directive("seeing_below", "install_scanner")),
+                                    id(directive("seeing_below", "find_ore")),
+                                    id(directive("first_breach", "breach_workings")),
+                                    id(directive("meet_the_mole", "board_mole")),
+                                    id(directive("staying_safe", "repair_hull")))),
+                    "a player on no charter earns only their own credit, got %s",
+                    completed(server, drifter));
             drifter.player().stopRiding();
 
             // A scanner that another charter stamped does nothing on the member's pod, so the member finds no ore with

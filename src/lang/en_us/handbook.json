@@ -12,7 +12,7 @@
   "deepcharter.handbook.chapter.stamp.classified": "CLASSIFIED",
   "deepcharter.handbook.chapter.stamp.coming": "COMING SOON",
   "deepcharter.handbook.chapter.stamp.complete": "COMPLETE",
-  "deepcharter.handbook.complete.no_charter": "%s was not completed: you are on no charter",
+  "deepcharter.handbook.complete.unreadable": "%s was not completed: the handbook cannot be read right now",
   "deepcharter.handbook.complete.success": "Completed %s for your charter",
   "deepcharter.handbook.complete.unknown": "No handbook chapter defines the directive %s",
   "deepcharter.handbook.contents.done": "DONE",

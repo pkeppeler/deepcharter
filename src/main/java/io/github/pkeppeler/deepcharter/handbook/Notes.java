@@ -96,8 +96,9 @@ public final class Notes {
             if (personal.isEmpty()) {
                 return FindResult.UNREADABLE;
             }
-            personal.get().addNote(finder.getUUID(), note);
-            NotesSyncPayload.send(server, finder);
+            if (personal.get().addNote(finder.getUUID(), note)) {
+                NotesSyncPayload.send(server, finder);
+            }
             return FindResult.NO_CHARTER;
         }
         if (!data.get().add(charter.get().id(), note)) {
