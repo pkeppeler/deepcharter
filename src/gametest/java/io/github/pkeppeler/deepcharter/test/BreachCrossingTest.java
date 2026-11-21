@@ -33,7 +33,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Server GameTests for breach crossing for players and vehicles. Each test uses its own X/Z so
+ * Server GameTests for breach crossing in place (ADR 0061) for players and vehicles, in the campaign level. Each test uses its own X/Z so
  * the columns it carves do not touch another test's.
  */
 public class BreachCrossingTest {
@@ -50,64 +50,7 @@ public class BreachCrossingTest {
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
-    public void fallingPlayerArrivesAtTheSameXZ(GameTestHelper helper) {
-        double x = 1000.5;
-        double z = 1000.5;
-        openShaft(TestLayers.level(helper, 1), x, z);
-        MockPlayer mock = MockPlayers.join(helper, "breach-falls");
-        mock.teleportTo(TestLayers.level(helper, 1), TestLayers.vec(1, x, 8, z), 0, 0);
-        fallWhileInLayerOne(helper, mock);
-        helper.succeedWhen(() -> {
-            ServerPlayer player = mock.player();
-            expectIn(helper, player, 2);
-            if (Math.abs(player.getX() - x) > 0.5 || Math.abs(player.getZ() - z) > 0.5) {
-                throw failure(helper, "arrived at x=%s z=%s, expected %s %s", player.getX(), player.getZ(), x, z);
-            }
-            ServerLevel two = TestLayers.level(helper, 2);
-            LayerChain.Band twoBand = TestLayers.band(two, 2);
-            if (player.getY() > twoBand.maxY()
-                    || player.getY() < twoBand.maxY() - LayerTuning.DEFAULT.pocketHeight() - 1) {
-                throw failure(helper, "arrived at y=%s, not just under the ceiling %s", player.getY(), twoBand.maxY());
-            }
-        });
-    }
-
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
-    public void crossingCarvesAPocketUnderTheCeiling(GameTestHelper helper) {
-        double x = 1100.5;
-        double z = 1100.5;
-        ServerLevel two = TestLayers.level(helper, 2);
-        LayerChain.Band twoBand = TestLayers.band(two, 2);
-        openShaft(TestLayers.level(helper, 1), x, z);
-        // Fill the whole top of layer 2 so only a carved pocket can hold the arriving player.
-        BlockPos column = BlockPos.containing(x, 0, z);
-        int radius = LayerTuning.DEFAULT.pocketRadius() + 1;
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dz = -radius; dz <= radius; dz++) {
-                for (int y = twoBand.maxY() - 12; y <= twoBand.maxY(); y++) {
-                    two.setBlock(column.offset(dx, 0, dz).atY(y), Blocks.STONE.defaultBlockState(), 3);
-                }
-            }
-        }
-        MockPlayer mock = MockPlayers.join(helper, "breach-pocket");
-        mock.teleportTo(TestLayers.level(helper, 1), TestLayers.vec(1, x, 8, z), 0, 0);
-        fallWhileInLayerOne(helper, mock);
-        helper.succeedWhen(() -> {
-            expectIn(helper, mock.player(), 2);
-            BlockPos feet = mock.player().blockPosition();
-            for (int dy = 0; dy < LayerTuning.DEFAULT.pocketHeight(); dy++) {
-                if (!two.getBlockState(feet.above(dy)).isAir()) {
-                    throw failure(helper, "pocket is not clear at %s", feet.above(dy));
-                }
-            }
-            if (!two.getBlockState(feet.atY(twoBand.maxY())).is(Blocks.STONE)) {
-                throw failure(helper, "the ceiling itself was carved");
-            }
-        });
-    }
-
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
-    public void playerInAMinecartCrossesStillRiding(GameTestHelper helper) {
+    public void playerInAMinecartCrossesInPlaceStillRiding(GameTestHelper helper) {
         double x = 1200.5;
         double z = 1200.5;
         ServerLevel one = TestLayers.level(helper, 1);
@@ -143,29 +86,36 @@ public class BreachCrossingTest {
         });
     }
 
+    /** A crossing up is seen from the layer last seen, so the player is first put in layer 2 and then raised past the crust of layer 1. */
     @GameTest(maxTicks = 200)
-    public void risingAboveTheTopGoesBackUp(GameTestHelper helper) {
+    public void risingAboveTheCrustOfLayerOneGoesBackUpInPlace(GameTestHelper helper) {
         double x = 1300.5;
         double z = 1300.5;
         ServerLevel two = TestLayers.level(helper, 2);
         MockPlayer mock = MockPlayers.join(helper, "breach-rises");
-        mock.teleportTo(two, new Vec3(x, TestLayers.band(two, 2).maxY() + 2, z), 0, 0);
+        mock.player().setNoGravity(true);
+        mock.teleportTo(two, TestLayers.vec(2, x, 100, z), 0, 0);
+        int floor = TestLayers.band(TestLayers.level(helper, 1), 1).minY();
+        helper.runAfterDelay(
+                20, () -> mock.teleportTo(two, new Vec3(x, floor + LayerTuning.DEFAULT.crustThickness() + 1, z), 0, 0));
         helper.succeedWhen(() -> {
             ServerPlayer player = mock.player();
-            expectIn(helper, player, 1);
-            ServerLevel one = TestLayers.level(helper, 1);
-            if (Math.abs(player.getX() - x) > 0.5 || Math.abs(player.getZ() - z) > 0.5) {
-                throw failure(helper, "arrived at x=%s z=%s, expected %s %s", player.getX(), player.getZ(), x, z);
+            if (helper.getTick() < 21) {
+                throw failure(helper, "waiting for the player to be raised");
             }
-            int floor = TestLayers.band(one, 1).minY() + LayerTuning.DEFAULT.crustThickness();
-            if (player.getY() < floor || player.getY() > floor + LayerTuning.DEFAULT.pocketHeight()) {
-                throw failure(helper, "arrived at y=%s, not just above the crust (floor %s)", player.getY(), floor);
+            expectIn(helper, player, 1);
+            if (player.level() != two) {
+                throw failure(
+                        helper, "the player left the level: %s", player.level().dimension());
+            }
+            if (CROSSINGS.getOrDefault(player.getUUID(), 0) != 1) {
+                throw failure(helper, "expected one crossing up, saw %s", CROSSINGS.get(player.getUUID()));
             }
         });
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + NO_BOUNCE_TICKS)
-    public void noBouncingOverOneHundredTicks(GameTestHelper helper) {
+    public void noBouncingInPlaceOverOneHundredTicks(GameTestHelper helper) {
         double x = 1400.5;
         double z = 1400.5;
         openShaft(TestLayers.level(helper, 1), x, z);
@@ -184,7 +134,7 @@ public class BreachCrossingTest {
                 if (y - twoBand.minY() < 1 || twoBand.maxY() - y < 1) {
                     throw failure(
                             helper,
-                            "arrival y=%s is not at least 1 block inside layer_2 [%s, %s]",
+                            "arrival y=%s is not at least 1 block inside layer 2 [%s, %s]",
                             y,
                             twoBand.minY(),
                             twoBand.maxY());
@@ -193,7 +143,7 @@ public class BreachCrossingTest {
             if (arrivedAt[0] >= 0) {
                 if (!inTwo) {
                     throw failure(
-                            helper, "the player left layer_2 %d ticks after arriving", helper.getTick() - arrivedAt[0]);
+                            helper, "the player left layer 2 %d ticks after arriving", helper.getTick() - arrivedAt[0]);
                 }
                 if (helper.getTick() - arrivedAt[0] >= 100) {
                     if (CROSSINGS.getOrDefault(mock.player().getUUID(), 0) != 1) {
@@ -213,21 +163,21 @@ public class BreachCrossingTest {
         ServerLevel two = TestLayers.level(helper, 2);
         LayerChain.Band twoBand = TestLayers.band(two, 2);
         MockPlayer mock = MockPlayers.join(helper, "breach-last-floor");
-        mock.teleportTo(two, new Vec3(1500.5, twoBand.minY() - 2, 1500.5), 0, 0);
-        helper.runAfterDelay(20, () -> {
+        mock.player().setNoGravity(true);
+        mock.teleportTo(two, new Vec3(1500.5, twoBand.minY() + 10, 1500.5), 0, 0);
+        helper.runAfterDelay(10, () -> mock.teleportTo(two, new Vec3(1500.5, twoBand.minY() - 2, 1500.5), 0, 0));
+        helper.runAfterDelay(30, () -> {
             if (CROSSINGS.containsKey(mock.player().getUUID())) {
                 throw failure(helper, "the last layer's floor crossed");
             }
-            // Below the last layer's band is no layer: the player stays in layer 2's level, under its floor.
-            if (!mock.player().level().dimension().equals(TestLayers.dimension(2))
-                    || mock.player().getY() >= twoBand.minY()) {
+            // Below the last layer's band is no layer: the player stays in the level, under its floor.
+            if (mock.player().level() != two || mock.player().getY() >= twoBand.minY()) {
                 throw failure(
                         helper,
-                        "the player is at y=%s in %s, expected under the floor %s of %s",
+                        "the player is at y=%s in %s, expected under the floor %s of layer 2",
                         mock.player().getY(),
                         mock.player().level().dimension(),
-                        twoBand.minY(),
-                        TestLayers.dimension(2));
+                        twoBand.minY());
             }
             helper.succeed();
         });
@@ -271,45 +221,7 @@ public class BreachCrossingTest {
         helper.succeed();
     }
 
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
-    public void arrivalPocketHasASolidFloor(GameTestHelper helper) {
-        double x = 1700.5;
-        double z = 1700.5;
-        ServerLevel two = TestLayers.level(helper, 2);
-        openShaft(TestLayers.level(helper, 1), x, z);
-        MockPlayer mock = MockPlayers.join(helper, "breach-floor");
-        mock.teleportTo(TestLayers.level(helper, 1), TestLayers.vec(1, x, 8, z), 0, 0);
-        fallWhileInLayerOne(helper, mock);
-        helper.succeedWhen(() -> {
-            expectIn(helper, mock.player(), 2);
-            BlockPos floor = mock.player().blockPosition().below();
-            if (two.getBlockState(floor).isAir()) {
-                throw failure(helper, "no floor under the arrival at %s", floor);
-            }
-        });
-    }
-
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
-    public void crossingKeepsBlockEntities(GameTestHelper helper) {
-        double x = 1800.5;
-        double z = 1800.5;
-        ServerLevel two = TestLayers.level(helper, 2);
-        BlockPos chest =
-                BlockPos.containing(x, TestLayers.band(two, 2).maxY() - LayerTuning.DEFAULT.pocketHeight() + 1, z);
-        two.setBlock(chest, Blocks.CHEST.defaultBlockState(), 3);
-        openShaft(TestLayers.level(helper, 1), x, z);
-        MockPlayer mock = MockPlayers.join(helper, "breach-chest");
-        mock.teleportTo(TestLayers.level(helper, 1), TestLayers.vec(1, x, 8, z), 0, 0);
-        fallWhileInLayerOne(helper, mock);
-        helper.succeedWhen(() -> {
-            expectIn(helper, mock.player(), 2);
-            if (!two.getBlockState(chest).is(Blocks.CHEST) || two.getBlockEntity(chest) == null) {
-                throw failure(helper, "the crossing deleted the chest at %s", chest);
-            }
-        });
-    }
-
-    /** A mock has no client gravity, so drop it a block a tick while in layer_1, once its chunk ticks. */
+    /** A mock has no client gravity, so drop it a block a tick while in layer 1, once its chunk ticks. */
     private static void fallWhileInLayerOne(GameTestHelper helper, MockPlayer mock) {
         boolean[] ticking = {false};
         FarChunks.awaitEntityTicking(
@@ -322,9 +234,10 @@ public class BreachCrossingTest {
         });
     }
 
-    /** Clear the floor of {@code level} at one column, so an entity above it falls straight out of the layer. */
+    /** Clear the floor of layer 1 at one column, over a pocket in the top of layer 2, so an entity above it falls straight out of the layer. */
     private static void openShaft(ServerLevel level, double x, double z) {
         BlockPos column = BlockPos.containing(x, 0, z);
+        RoomCarver.carvePocketBelow(level, 1, column.getX(), column.getX(), column.getZ(), column.getZ());
         RoomCarver.carve(
                 level,
                 column.atY(TestLayers.band(level, 1).minY()),

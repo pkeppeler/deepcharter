@@ -64,7 +64,7 @@ public class PodDrillTest {
 
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + DRILL_MARGIN_TICKS;
     private static final int Z = 3000;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final float EAST = -90f;
 
     /**
@@ -214,7 +214,8 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aWallUnderTheCeilingIsNeverBored(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 1);
-        int ceiling = TestLayers.band(level, 1).maxY();
+        // A layer's top is the surface band's floor, which a pod may bore; the ceiling row is the top of the world.
+        int ceiling = TestLayers.band(level, TestLayers.SURFACE).maxY();
         int x = 3128;
         int floor = ceiling - 1;
         room(level, x, floor, 4);
@@ -249,7 +250,7 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aWallOneRowBelowTheCeilingIsBored(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 1);
-        int top = TestLayers.band(level, 1).maxY() - 1;
+        int top = TestLayers.band(level, TestLayers.SURFACE).maxY() - 1;
         int x = 3192;
         // The slab is as tall as the Mole's box, and its top row is the last row under the ceiling.
         int height = Chassis.MOLE.boreHeight();
@@ -566,14 +567,16 @@ public class PodDrillTest {
     }
 
     @GameTest(maxTicks = MAX_TICKS)
-    public void theLastCrustRowCrossesThePodAndItsPilotIntoTheNextLayer(GameTestHelper helper) {
+    public void theLastCrustRowCrossesThePodAndItsPilotIntoTheNextLayerInPlace(GameTestHelper helper) {
         int x = 3512;
         ServerLevel one = TestLayers.level(helper, 1);
-        RoomCarver.carve(one, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-        RoomCarver.carve(one, x - 2, x + 2, 1, 8, Z - 2, Z + 2, Blocks.AIR);
+        int floor = TestLayers.band(one, 1).minY();
+        RoomCarver.carve(one, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(one, x - 2, x + 2, floor + 1, floor + 8, Z - 2, Z + 2, Blocks.AIR);
+        RoomCarver.carvePocketBelow(one, 1, x - 2, x + 2, Z - 2, Z + 2);
         float[] hullBefore = {Float.NaN};
-        Rig rig =
-                Rig.await(helper, one, new Vec3(x, 1, Z), 0f, "drill-crust", SPRINT, pod -> hullBefore[0] = pod.hull());
+        Rig rig = Rig.await(
+                helper, one, new Vec3(x, floor + 1, Z), 0f, "drill-crust", SPRINT, pod -> hullBefore[0] = pod.hull());
         TestTicks.each(helper, () -> {
             if (!rig.pod.isPresent()) {
                 return;
@@ -600,10 +603,10 @@ public class PodDrillTest {
             if (Math.abs(crossed.getX() - x) > 1 || Math.abs(crossed.getZ() - Z) > 1) {
                 throw failure(helper, "the pod arrived at %s, expected near (%d, %d)", crossed.position(), x, Z);
             }
-            if (count(one, x - 1, x, 0, 0, Z - 1, Z, Blocks.AIR) != 4) {
+            if (count(one, x - 1, x, floor, floor, Z - 1, Z, Blocks.AIR) != 4) {
                 throw failure(helper, "the crust under the pod was not broken");
             }
-            if (!one.getBlockState(new BlockPos(x + 1, 0, Z)).is(LayerBlocks.BREACH_CRUST)) {
+            if (!one.getBlockState(new BlockPos(x + 1, floor, Z)).is(LayerBlocks.BREACH_CRUST)) {
                 throw failure(helper, "the bore took crust outside the pod's 2 x 2");
             }
             crossed.discard();
@@ -615,9 +618,10 @@ public class PodDrillTest {
     public void theLastLayersCrustIsNotDrilled(GameTestHelper helper) {
         int x = 3576;
         ServerLevel two = TestLayers.level(helper, 2);
-        RoomCarver.carve(two, x - 2, x + 2, 0, 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-        RoomCarver.carve(two, x - 2, x + 2, 3, 10, Z - 2, Z + 2, Blocks.AIR);
-        Rig rig = Rig.await(helper, two, new Vec3(x, 3, Z), 0f, "drill-last-crust", SPRINT);
+        int floor = TestLayers.band(two, 2).minY();
+        RoomCarver.carve(two, x - 2, x + 2, floor, floor + 2, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(two, x - 2, x + 2, floor + 3, floor + 10, Z - 2, Z + 2, Blocks.AIR);
+        Rig rig = Rig.await(helper, two, new Vec3(x, floor + 3, Z), 0f, "drill-last-crust", SPRINT);
         TestTicks.each(helper, () -> {
             if (!rig.pod.isPresent()) {
                 return;
@@ -629,7 +633,8 @@ public class PodDrillTest {
             if (pod.tickCount < 100) {
                 return;
             }
-            if (!pod.onGround() || !two.getBlockState(new BlockPos(x, 2, Z)).is(LayerBlocks.BREACH_CRUST)) {
+            if (!pod.onGround()
+                    || !two.getBlockState(new BlockPos(x, floor + 2, Z)).is(LayerBlocks.BREACH_CRUST)) {
                 throw failure(helper, "the pod should be standing on intact crust, it is at %s", pod.position());
             }
             pod.discard();
