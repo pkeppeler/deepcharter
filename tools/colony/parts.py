@@ -56,7 +56,7 @@ def box_walls(x0: int, z0: int, x1: int, z1: int) -> dict[str, Wall]:
 
 
 def works_hall(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dict[str, tuple[int, ...]],
-               dark: bool = False) -> dict[str, Wall]:
+               dark: bool) -> dict[str, Wall]:
     """A hall in the Works' language: riveted plate walls from Y 1 to top, red pilasters at the corners and at the given places
     along each wall, each of those with a sodium lamp at the top of the ground floor outside and another inside, a brass band on the
     upper floor's line, glass windows on the upper floor, a row of glowing crusher hatches on the ground floor, a hazard parapet and
@@ -118,7 +118,7 @@ def machine_house(p: Piece, x0: int, z0: int, x1: int, z1: int, y0: int, y1: int
 
 
 def cabin(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dict[str, tuple[int, ...]],
-          dark: bool = False) -> dict[str, Wall]:
+          dark: bool) -> dict[str, Wall]:
     """A one-storey house in the Works' language, smaller than a hall: riveted plate with red pilasters at its corners and at the
     given places (each with a sodium lamp outside and another inside), a row of glass windows on the two floors under a brass band at
     top - 1, a hazard parapet round a flat roof. dark leaves the lamps inside out (a burnt-out bar), a dim glow in their place
