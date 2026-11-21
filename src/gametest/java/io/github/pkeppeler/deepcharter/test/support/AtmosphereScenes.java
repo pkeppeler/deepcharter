@@ -74,6 +74,7 @@ public final class AtmosphereScenes {
             boolean open) {
         server.runOnServer(s -> {
             ServerLevel level = ClientLight.serverLevel(s, dimension);
+            holdLoaded(level, floor);
             RoomCarver.carve(
                     level,
                     floor.offset(-MASS, -1, -MASS),
@@ -88,6 +89,22 @@ public final class AtmosphereScenes {
         biome.ifPresent(name -> fillBiome(
                 server, dimension, floor, name, floor.getY() - MASS - 1 - MARGIN, floor.getY() + SHAFT_DEPTH + MARGIN));
         return floor;
+    }
+
+    /**
+     * Holds the chunks of a scene loaded for the rest of the run. A scene that is built and looked at some stills later would otherwise be
+     * unloaded and saved on the way, and a room read back without the light of its light block reads unlit (the same room measured 14.0
+     * and 6.2 in two runs).
+     */
+    private static void holdLoaded(ServerLevel level, BlockPos floor) {
+        for (int cx = (floor.getX() - MASS) >> 4; cx <= (floor.getX() + MASS) >> 4; cx++) {
+            for (int cz = (floor.getZ() - MASS) >> 4; cz <= (floor.getZ() + MASS) >> 4; cz++) {
+                // force-ok: a client test and an evidence scenario have no GameTestHelper to release through; the world
+                // is discarded when
+                // the run ends
+                level.setChunkForced(cx, cz, true);
+            }
+        }
     }
 
     /** The floor of a scene in layer 1's band of the campaign type at {@code x}: the band's floor and {@link #LAYER_1_SCENE_HEIGHT}. */
@@ -109,6 +126,7 @@ public final class AtmosphereScenes {
             TestServerContext server, ResourceKey<Level> dimension, BlockPos floor, Optional<String> biome) {
         server.runOnServer(s -> {
             ServerLevel level = ClientLight.serverLevel(s, dimension);
+            holdLoaded(level, floor);
             RoomCarver.carve(
                     level,
                     floor.offset(-MASS, -1, -MASS),
