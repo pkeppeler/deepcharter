@@ -89,6 +89,12 @@ public class QuestMapScenario extends EvidenceScenario {
             });
             hold(context);
             screenshot(context, "quest-map-zoomed-out");
+            // chapter 4 has the most steps ahead of it of any current chapter: the tightest fit
+            complete(context, singleplayer, 3, Integer.MAX_VALUE);
+            open(context, 4);
+            context.runOnClient(client -> client.gui.toastManager().clear());
+            hold(context);
+            screenshot(context, "quest-map-chapter-4");
             context.setScreen(() -> null);
         }
     }
