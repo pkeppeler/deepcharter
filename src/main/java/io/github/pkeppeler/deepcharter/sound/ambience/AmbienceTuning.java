@@ -50,7 +50,7 @@ public record AmbienceTuning(
             400,
             1_800,
             200,
-            List.of("hymn.", "phonograph.", "transmission.", "ambience."),
+            List.of("hymn.", "phonograph.", "transmission.", "ambience.", "song."),
             24,
             3_600,
             9_600,

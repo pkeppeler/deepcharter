@@ -1,14 +1,20 @@
 package io.github.pkeppeler.deepcharter.client.sound;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceFragments;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceScheduler;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceTuning;
 import io.github.pkeppeler.deepcharter.sound.ambience.QuietTracker;
+import io.github.pkeppeler.deepcharter.sound.ambience.RetainedWarning;
+import io.github.pkeppeler.deepcharter.sound.ambience.WarningTuning;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.SplittableRandom;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -22,6 +28,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.LightLayer;
@@ -35,7 +42,11 @@ import org.jspecify.annotations.Nullable;
  * 12 to 28 blocks away, or, near a Company horn ({@link HornFinder}), from the horn after a crackle of warm-up. Per player and client
  * only: it is atmosphere and carries no rule, so the server knows nothing of it. Nothing starts while the Lamp Hymn, a phonograph, a
  * transmission or another fragment sounds, or just after ({@link AmbienceTuning#quietAfterTicks()}); the tracker learns of them from the
- * sound manager's own listener, which the subtitles use. A later speaker in a wreck (#861) is one more source for the same scheduler.
+ * sound manager's own listener, which the subtitles use.
+ *
+ * <p>The warning in the dark (#861) is one more source of the same ticker, with the same quiet rule and the same way of playing a sound:
+ * when a Retained is near and unseen, {@link RetainedWarning} says so, and the dark's variant of "Au clair de la lune" comes from the
+ * figure. It never comes from the scheduler's timers, and not near a wreck's phonograph, where the tune is learnt.
  */
 public final class AmbienceTicker {
     private static final AmbienceTuning TUNING = AmbienceTuning.DEFAULT;
@@ -44,11 +55,15 @@ public final class AmbienceTicker {
     private static final AmbienceScheduler SCHEDULER =
             new AmbienceScheduler(TUNING, AmbienceFragments.pools(), RANDOM.split());
     private static final HornFinder HORNS = new HornFinder();
+    private static final WarningTuning WARNING_TUNING = WarningTuning.DEFAULT;
+    private static final RetainedWarning WARNING = new RetainedWarning(WARNING_TUNING);
 
     /** A tick count that only goes forward, in this class's own time: the game's clock stops when the world is left. */
     private static long now;
 
     private static @Nullable QuietTracker<SoundInstance> quiet;
+    /** The wreck phonograph's song alone, and for longer after it than the rest: the warning keeps away from it. */
+    private static @Nullable QuietTracker<SoundInstance> wreckSong;
 
     private AmbienceTicker() {}
 
@@ -59,9 +74,14 @@ public final class AmbienceTicker {
         }
         QuietTracker<SoundInstance> tracker = new QuietTracker<>(sounds::isActive, TUNING.quietAfterTicks());
         quiet = tracker;
+        QuietTracker<SoundInstance> wreck = new QuietTracker<>(sounds::isActive, WARNING_TUNING.wreckQuietTicks());
+        wreckSong = wreck;
         sounds.addListener((SoundInstance sound, WeighedSoundEvents events, float range) -> {
             if (holdsBack(sound)) {
                 tracker.started(sound, now);
+            }
+            if (isWreckSong(sound)) {
+                wreck.started(sound, now);
             }
         });
     }
@@ -73,9 +93,13 @@ public final class AmbienceTicker {
 
     private static void reset() {
         SCHEDULER.reset();
+        WARNING.reset();
         HORNS.clear();
         if (quiet != null) {
             quiet.clear();
+        }
+        if (wreckSong != null) {
+            wreckSong.clear();
         }
     }
 
@@ -86,6 +110,10 @@ public final class AmbienceTicker {
         }
         String path = sound.getIdentifier().getPath();
         return TUNING.quietPrefixes().stream().anyMatch(path::startsWith);
+    }
+
+    private static boolean isWreckSong(SoundInstance sound) {
+        return sound.getIdentifier().equals(DeepSound.SONG_WRECK.event().location());
     }
 
     private static void tick(Minecraft client) {
@@ -103,10 +131,11 @@ public final class AmbienceTicker {
                 .map(LayerChain.Band::layer)
                 .orElse(LayerChain.SURFACE);
         Optional<BlockPos> horn = layer == LayerChain.SURFACE ? Optional.empty() : HORNS.nearest(level, feet, now);
-        Optional<AmbienceScheduler.Pick> pick = SCHEDULER.tick(
-                layer,
-                horn.isPresent(),
-                Objects.requireNonNull(quiet, "set by listen() above").quiet(now));
+        boolean quietNow =
+                Objects.requireNonNull(quiet, "set by listen() above").quiet(now);
+        boolean warned = warn(client, level, quietNow);
+        // A fragment due on the tick the song sounds waits, as it does for any sound.
+        Optional<AmbienceScheduler.Pick> pick = SCHEDULER.tick(layer, horn.isPresent(), quietNow || warned);
         if (pick.isEmpty()) {
             return;
         }
@@ -120,6 +149,53 @@ public final class AmbienceTicker {
         } else {
             sounds.play(at(fragment, spotFor(level, client.player)));
         }
+    }
+
+    /**
+     * The warning in the dark: tells {@link RetainedWarning} of each Retained within {@link WarningTuning#forgetRange()} and whether the
+     * player sees it, and plays the song from the figure it names. Returns whether it played.
+     */
+    private static boolean warn(Minecraft client, ClientLevel level, boolean quietNow) {
+        Player player = Objects.requireNonNull(client.player);
+        List<RetainedWarning.Figure> figures = new ArrayList<>();
+        for (Entity entity : level.entitiesForRendering()) {
+            if (entity instanceof LamplessFigure figure && figure.isAlive()) {
+                double distance = figure.position().distanceTo(player.position());
+                if (distance <= WARNING_TUNING.forgetRange()) {
+                    figures.add(new RetainedWarning.Figure(figure.getId(), distance, sees(level, player, figure)));
+                }
+            }
+        }
+        OptionalInt from = WARNING.tick(
+                figures,
+                quietNow,
+                Objects.requireNonNull(wreckSong, "set by listen()").quiet(now));
+        @Nullable Entity figure = from.isPresent() ? level.getEntity(from.getAsInt()) : null;
+        if (figure == null) {
+            return false;
+        }
+        client.getSoundManager().play(at(DeepSound.SONG_DARK.event(), figure.getEyePosition()));
+        return true;
+    }
+
+    /** Whether the player sees the figure: inside the view cone, and nothing solid between the eyes and the figure's head. */
+    private static boolean sees(ClientLevel level, Player player, Entity figure) {
+        Vec3 eyes = player.getEyePosition();
+        Vec3 head = figure.getEyePosition();
+        Vec3 look = player.getLookAngle();
+        if (!RetainedWarning.inCone(
+                look.x,
+                look.y,
+                look.z,
+                head.x - eyes.x,
+                head.y - eyes.y,
+                head.z - eyes.z,
+                WARNING_TUNING.viewHalfAngle())) {
+            return false;
+        }
+        return level.clip(new ClipContext(eyes, head, ClipContext.Block.VISUAL, ClipContext.Fluid.NONE, player))
+                        .getType()
+                == HitResult.Type.MISS;
     }
 
     private static SimpleSoundInstance at(SoundEvent event, Vec3 at) {
