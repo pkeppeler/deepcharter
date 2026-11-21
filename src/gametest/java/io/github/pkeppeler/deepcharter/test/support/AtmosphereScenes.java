@@ -191,16 +191,22 @@ public final class AtmosphereScenes {
                 floor.getY() + SHAFT_DEPTH + MARGIN);
     }
 
-    /** A chunk this scene forced, and the level it is in. */
-    public record Held(ResourceKey<Level> dimension, ChunkPos chunk) {}
-
     /**
      * The chunks the fills of one scene forced and nothing else held, kept until the scene is done so that they do not unload and regenerate
      * before the camera arrives. Close it at the end of the scene, also when it throws.
      */
-    public record Holds(TestServerContext server, List<Held> held) implements AutoCloseable {
+    public static final class Holds implements AutoCloseable {
+        private record Held(ResourceKey<Level> dimension, ChunkPos chunk) {}
+
+        private final TestServerContext server;
+        private final List<Held> held = new ArrayList<>();
+
+        private Holds(TestServerContext server) {
+            this.server = server;
+        }
+
         public static Holds of(TestServerContext server) {
-            return new Holds(server, new ArrayList<>());
+            return new Holds(server);
         }
 
         @Override
@@ -241,7 +247,7 @@ public final class AtmosphereScenes {
                 for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) {
                     ChunkPos chunk = new ChunkPos(cx, cz);
                     if (!level.getForceLoadedChunks().contains(chunk.pack())) {
-                        holds.held().add(new Held(dimension, chunk));
+                        holds.held.add(new Holds.Held(dimension, chunk));
                     }
                     // force-ok: a client test and an evidence scenario have no GameTestHelper to release through;
                     // Holds releases what this forces
