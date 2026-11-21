@@ -45,7 +45,7 @@ public final class BlockReadoutHud {
         return BlockReadouts.SHARED.resolve(client.level, client.hitResult);
     }
 
-    /** The readout on screen, whatever its opacity. Public so a client test can read it without reading pixels. */
+    /** The readout on screen, whatever its opacity: what a client test reads instead of pixels. */
     public static Optional<Readout> shown() {
         return FADE.shown();
     }
@@ -60,7 +60,7 @@ public final class BlockReadoutHud {
 
     private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
-        Optional<Readout> shown = FADE.shown();
+        Optional<Readout> shown = shown();
         if (shown.isEmpty() || !visible(client)) {
             return;
         }
