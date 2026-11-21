@@ -25,11 +25,7 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
-/**
- * Evidence scenario "pod-hazard-cues" (#854): the three things that hurt or block a pod each name their cause on the action bar and
- * play a sound. An overloaded pod's pilot presses jump and is told the rotor cannot lift the cargo; a gas pocket is mined beside the pod
- * and the blast is named with the hull it cost; the pod then drops from a height and the hard landing is named.
- */
+/** Evidence scenario "pod-hazard-cues" (#854): an overloaded lift, a gas blast and a hard landing each name their cause. */
 public class PodHazardCuesScenario extends EvidenceScenario {
     private static final int X = 5400;
     private static final int Z = 5400;

@@ -1,9 +1,9 @@
 package io.github.pkeppeler.deepcharter.pod;
 
 /**
- * Tunables for the pod's hazard cues (#854), read as {@code PodCuesTuning.DEFAULT.thing()}.
+ * Tunables for the pod hazard cues (#854).
  *
- * @param overloadRepeatTicks ticks between repeats of the overloaded-lift cue while the jump key stays held, above 0
+ * @param overloadRepeatTicks ticks between repeats of the overloaded-lift cue while jump stays held
  */
 public record PodCuesTuning(int overloadRepeatTicks) {
     /** (A) 40 ticks, 2 s: a held key repeats about as often as the action bar line fades, a tap on a new press cues at once. */

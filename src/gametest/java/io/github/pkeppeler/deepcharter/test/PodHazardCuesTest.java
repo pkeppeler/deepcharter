@@ -36,11 +36,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
-/**
- * Server GameTests for #854: a gas blast, a hard landing and an overloaded lift each tell the pod's pilot their cause on the action bar and
- * play a sound at the pod, and say nothing when nothing hurt or blocked the pod. The mock pilot records the action bar and the sounds the
- * server plays to it.
- */
+/** Server GameTests for #854: each pod hazard names its cause on the pilot's action bar and plays a sound; no hurt, no cue. */
 public class PodHazardCuesTest {
     private static final String GAS_KEY = "deepcharter.ore.gas_blast";
     private static final String LANDING_KEY = "deepcharter.pod.hard_landing";

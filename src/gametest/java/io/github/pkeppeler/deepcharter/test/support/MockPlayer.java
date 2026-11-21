@@ -72,10 +72,7 @@ public final class MockPlayer {
         return List.copyOf(sounds);
     }
 
-    /**
-     * As {@link #soundsHeard}, only the sounds played at {@code source} (a sound entity packet names its entity), so a test is not heard by another test
-     * whose entities stand within earshot.
-     */
+    /** As {@link #soundsHeard}, only sounds played at {@code source}, so nearby tests do not hear each other. */
     public List<Identifier> soundsHeardFrom(Entity source) {
         return List.copyOf(soundsByEntity.getOrDefault(source.getId(), List.of()));
     }
