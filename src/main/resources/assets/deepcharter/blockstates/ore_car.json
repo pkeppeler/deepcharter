@@ -1,18 +1,33 @@
 {
   "variants": {
-    "facing=north": {
-      "model": "deepcharter:block/colony/ore_car"
-    },
-    "facing=east": {
+    "facing=east,looted=false": {
       "model": "deepcharter:block/colony/ore_car",
       "y": 90
     },
-    "facing=south": {
+    "facing=east,looted=true": {
+      "model": "deepcharter:block/colony/ore_car_looted",
+      "y": 90
+    },
+    "facing=north,looted=false": {
+      "model": "deepcharter:block/colony/ore_car"
+    },
+    "facing=north,looted=true": {
+      "model": "deepcharter:block/colony/ore_car_looted"
+    },
+    "facing=south,looted=false": {
       "model": "deepcharter:block/colony/ore_car",
       "y": 180
     },
-    "facing=west": {
+    "facing=south,looted=true": {
+      "model": "deepcharter:block/colony/ore_car_looted",
+      "y": 180
+    },
+    "facing=west,looted=false": {
       "model": "deepcharter:block/colony/ore_car",
+      "y": 270
+    },
+    "facing=west,looted=true": {
+      "model": "deepcharter:block/colony/ore_car_looted",
       "y": 270
     }
   }
