@@ -15,5 +15,6 @@ public final class ColonyInit {
         Conduit.init();
         FounderStatue.init();
         ColonyDisplays.init();
+        ColonyRations.init();
     }
 }
