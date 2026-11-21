@@ -15,6 +15,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
@@ -89,7 +90,7 @@ public class WreckPhonographTest {
         SoundTuning tuning = SoundTuning.DEFAULT;
         MockPlayer far = joinAt(helper, "wreck-far", tuning.wreckSongRange() + 8);
         MockPlayer middle = joinAt(helper, "wreck-middle", tuning.wreckSongTriggerRange() + 1);
-        expect(helper, phonograph.isArmed() && !phonograph.isPlaying(), "it starts armed and silent");
+        expect(helper, !phonograph.isPlaying(), "it starts silent");
         helper.runAfterDelay(tuning.phonographListenTicks() * 2L, () -> {
             expect(
                     helper,
@@ -98,7 +99,7 @@ public class WreckPhonographTest {
                     tuning.wreckSongTriggerRange());
             MockPlayer near = joinAt(helper, "wreck-near", 4);
             helper.runAfterDelay(tuning.phonographListenTicks() + DRAIN_TICKS, () -> {
-                expect(helper, phonograph.isPlaying() && !phonograph.isArmed(), "a player close by started it");
+                expect(helper, phonograph.isPlaying(), "a player close by started it");
                 expect(
                         helper,
                         startsAtMine(helper, near).equals(List.of(song())),
@@ -122,7 +123,6 @@ public class WreckPhonographTest {
             expect(helper, phonograph.isPlaying(), "it plays for the visitor");
             use(helper, player, ItemStack.EMPTY);
             expect(helper, !phonograph.isPlaying(), "a right click switches it off");
-            expect(helper, !phonograph.isArmed(), "and it is spent, not armed to start again");
         });
         helper.runAfterDelay(
                 listen + DRAIN_TICKS * 2,
@@ -144,7 +144,7 @@ public class WreckPhonographTest {
         // Two right clicks in the tick the player arrives, before the block has looked for anyone: on, then off.
         use(helper, player, ItemStack.EMPTY);
         use(helper, player, ItemStack.EMPTY);
-        expect(helper, !phonograph.isPlaying() && !phonograph.isArmed(), "switched off by hand it is still armed");
+        expect(helper, !phonograph.isPlaying(), "two right clicks left it playing");
         helper.runAfterDelay(listen * 2L + DRAIN_TICKS, () -> {
             expect(helper, !phonograph.isPlaying(), "it started on its own after the visitor switched it off");
             helper.succeed();
@@ -162,7 +162,6 @@ public class WreckPhonographTest {
         helper.runAfterDelay(tuning.wreckSongTicks() + tuning.phonographListenTicks() * 4, () -> {
             expect(helper, !phonograph.isPlaying(), "the song did not end by itself");
             expect(helper, startsAtMine(helper, player).size() == 1, "a lingering player was sent the song again");
-            expect(helper, !phonograph.isArmed(), "a song that ended re-armed with the player still near");
             helper.succeed();
         });
     }
@@ -212,48 +211,105 @@ public class WreckPhonographTest {
         helper.succeed();
     }
 
+    @GameTest(maxTicks = 300)
+    public void aSwitchOffSurvivesTheChunkLeavingAndComingBackAndRearmsOnceTimeHasPassedWithNobodyNear(
+            GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        WreckPhonographBlockEntity phonograph = place(helper);
+        int listen = SoundTuning.DEFAULT.phonographListenTicks();
+        MockPlayer player = joinAt(helper, "wreck-leaver", 4);
+        helper.runAfterDelay(listen + DRAIN_TICKS, () -> {
+            expect(helper, phonograph.isPlaying(), "it plays for the visitor");
+            use(helper, player, ItemStack.EMPTY);
+            expect(helper, !phonograph.isPlaying(), "a right click switches it off");
+            // The chunk unloads and loads: the block entity is read back from its save data, with the player still
+            // beside it.
+            BlockPos pos = helper.absolutePos(PLACE);
+            CompoundTag saved = phonograph.saveWithFullMetadata(level.registryAccess());
+            BlockEntity loaded = BlockEntity.loadStatic(pos, level.getBlockState(pos), saved, level.registryAccess());
+            if (!(loaded instanceof WreckPhonographBlockEntity reloaded)) {
+                throw helper.assertionException("the save data loaded as %s", String.valueOf(loaded));
+            }
+            level.setBlockEntity(reloaded);
+            helper.runAfterDelay(listen * 3L, () -> {
+                expect(helper, !reloaded.isPlaying(), "a reloaded switched-off phonograph sang at once");
+                expect(helper, startsAtMine(helper, player).size() == 1, "the visitor was sent the song again");
+                // Time passes with nobody near: the saved time is an old one, and the player has gone.
+                player.teleportTo(level, at(helper).add(40, 1, 0), 0f, 0f);
+                CompoundTag old = reloaded.saveWithFullMetadata(level.registryAccess());
+                old.putLong("spent_at", level.getGameTime() - SoundTuning.DEFAULT.wreckSongRearmTicks());
+                BlockEntity aged = BlockEntity.loadStatic(pos, level.getBlockState(pos), old, level.registryAccess());
+                if (!(aged instanceof WreckPhonographBlockEntity rearmed)) {
+                    throw helper.assertionException("the aged save data loaded as %s", String.valueOf(aged));
+                }
+                level.setBlockEntity(rearmed);
+                helper.runAfterDelay(listen + DRAIN_TICKS, () -> {
+                    expect(helper, !rearmed.isPlaying(), "it sang for nobody");
+                    player.teleportTo(level, at(helper).add(4, 1, 0), 0f, 0f);
+                    helper.runAfterDelay(listen + DRAIN_TICKS, () -> {
+                        expect(
+                                helper,
+                                rearmed.isPlaying(),
+                                "the next visitor, after the long absence, did not start it");
+                        helper.succeed();
+                    });
+                });
+            });
+        });
+    }
+
     @GameTest
-    public void theArmingStartsOnTheFirstVisitOnlyAndAgainAfterALongAbsence(GameTestHelper helper) {
-        int rearm = SoundTuning.DEFAULT.wreckSongRearmTicks();
-        int step = SoundTuning.DEFAULT.phonographListenTicks();
-        WreckSongArming arming = new WreckSongArming(rearm);
-        expect(helper, !arming.look(false, step), "it starts with nobody near");
-        expect(helper, arming.look(true, step), "a player came near and it did not start");
-        for (int i = 0; i < 100; i++) {
-            expect(helper, !arming.look(true, step), "it started again with the player still near (look %s)", i);
-        }
-        // Away for almost the whole absence, then back: the count starts again.
-        for (int ticks = 0; ticks < rearm - step; ticks += step) {
-            arming.look(false, step);
-        }
-        expect(helper, !arming.look(true, step), "it started after an absence shorter than %s ticks", rearm);
-        for (int ticks = 0; ticks < rearm - step; ticks += step) {
-            arming.look(false, step);
-        }
-        expect(helper, !arming.isArmed(), "armed before the long absence ended");
-        arming.look(false, step);
-        expect(helper, arming.isArmed(), "not armed after %s ticks away", rearm);
-        expect(helper, arming.look(true, step), "the next visitor did not start it");
+    public void theSpentTimeIsTheOnlyThingSaved(GameTestHelper helper) {
+        WreckPhonographBlockEntity phonograph = place(helper);
+        ServerLevel level = helper.getLevel();
+        CompoundTag saved = phonograph.saveWithFullMetadata(level.registryAccess());
+        expect(
+                helper,
+                saved.getLongOr("spent_at", 0L) == WreckSongArming.NEVER,
+                "a phonograph never spent saves %s",
+                saved.getLongOr("spent_at", 0L));
+        expect(helper, !saved.contains("playing"), "a playback was saved");
         helper.succeed();
     }
 
     @GameTest
-    public void aSwitchOffIsSpentUntilTheLongAbsenceToo(GameTestHelper helper) {
+    public void theArmingStartsOnTheFirstVisitOnlyAndAgainAfterALongAbsenceWithNobodyNear(GameTestHelper helper) {
         int rearm = SoundTuning.DEFAULT.wreckSongRearmTicks();
-        int step = SoundTuning.DEFAULT.phonographListenTicks();
-        WreckSongArming arming = new WreckSongArming(rearm);
-        expect(helper, arming.look(true, step), "it starts");
-        arming.byHand();
-        for (int i = 0; i < 50; i++) {
-            expect(helper, !arming.look(true, step), "it started with the visitor who switched it off still near");
+        WreckSongArming arming = new WreckSongArming(rearm, WreckSongArming.NEVER);
+        expect(helper, !arming.look(false, 100), "it starts with nobody near");
+        expect(helper, arming.look(true, 120), "a player came near and it did not start");
+        expect(helper, arming.spentAt() == 120, "it was spent at %s", arming.spentAt());
+        for (int tick = 140; tick < 140 + 2 * rearm; tick += 20) {
+            expect(helper, !arming.look(true, tick), "it started again with the player still near (tick %s)", tick);
         }
-        // The visitor leaves by a step and comes back: that is not an absence.
-        arming.look(false, step);
-        expect(helper, !arming.look(true, step), "a step away re-armed it");
-        for (int ticks = 0; ticks < rearm; ticks += step) {
-            arming.look(false, step);
+        // Nobody near, but not long enough since it was spent: still spent.
+        expect(helper, !arming.look(false, 120 + rearm - 1) && arming.spentAt() == 120, "armed early");
+        expect(
+                helper,
+                !arming.look(false, 120 + rearm) && arming.spentAt() == WreckSongArming.NEVER,
+                "not armed after the time");
+        expect(helper, arming.look(true, 120 + rearm + 20), "the next visitor did not start it");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aHandSpendsItAtOnceAndItsSavedTimeCarriesThroughAReload(GameTestHelper helper) {
+        int rearm = SoundTuning.DEFAULT.wreckSongRearmTicks();
+        WreckSongArming arming = new WreckSongArming(rearm, WreckSongArming.NEVER);
+        arming.byHand(500);
+        for (int tick = 520; tick < 520 + 50 * 20; tick += 20) {
+            expect(helper, !arming.look(true, tick), "it started with the visitor who switched it off still near");
         }
-        expect(helper, arming.look(true, step), "the next visitor, long after, did not start it");
+        // Read back from the saved time, as a block entity loads: still spent, and rearmed on the same clock.
+        WreckSongArming reloaded = new WreckSongArming(rearm, arming.spentAt());
+        expect(helper, !reloaded.look(true, 600), "a reloaded spent phonograph started");
+        expect(helper, !reloaded.look(false, 500 + rearm - 1), "a reloaded one armed early");
+        expect(helper, !reloaded.look(false, 500 + rearm), "a reloaded one started with nobody near");
+        expect(helper, reloaded.look(true, 500 + rearm + 20), "the next visitor did not start it");
+        // A clock that went back (a copied world) does not leave it spent for ever.
+        WreckSongArming copied = new WreckSongArming(rearm, 1_000_000);
+        copied.look(false, 10);
+        expect(helper, copied.spentAt() == WreckSongArming.NEVER, "a spent time in the future kept it spent");
         helper.succeed();
     }
 }

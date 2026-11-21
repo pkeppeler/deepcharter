@@ -10,16 +10,17 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 /**
- * What a wreck's phonograph is doing: playing its song or not, and whether the next player who comes close will start it. It looks for
- * players every {@link SoundTuning#phonographListenTicks()} ticks. {@link WreckSongArming} decides when it starts; a player's right click
- * stops it, or starts it again, and either way spends it until the long absence. Nothing here is saved: a restart cuts the sound off, and
- * the block comes back armed. A playback keeps its listeners, as the other phonographs' do, so a player who walks into range while it
- * plays hears it from the top, and its stop reaches only those it was sent to.
+ * What a wreck's phonograph is doing: playing its song or not, and when it was last spent ({@link WreckSongArming}). Only that time is saved;
+ * a playback is not, since a restart cuts the sound off. A playback keeps its listeners, as the other phonographs' do, so a player who walks
+ * into range hears it from the top, and its stop reaches only those it was sent to.
  */
 public final class WreckPhonographBlockEntity extends BlockEntity {
-    private final WreckSongArming arming = new WreckSongArming(SoundTuning.DEFAULT.wreckSongRearmTicks());
+    private final WreckSongArming arming =
+            new WreckSongArming(SoundTuning.DEFAULT.wreckSongRearmTicks(), WreckSongArming.NEVER);
     private boolean playing;
     private int ticksLeft;
     private Set<UUID> listeners = new HashSet<>();
@@ -32,12 +33,6 @@ public final class WreckPhonographBlockEntity extends BlockEntity {
         return playing;
     }
 
-    /** Whether the next player to come close starts the song. */
-    // test-seam: the off rule (a switch-off or an ended song is spent until the long absence) is observable only here
-    public boolean isArmed() {
-        return arming.isArmed();
-    }
-
     /** How many players the song has been sent to. */
     public int listenerCount() {
         return listeners.size();
@@ -48,7 +43,8 @@ public final class WreckPhonographBlockEntity extends BlockEntity {
         if (!(level instanceof ServerLevel server)) {
             return;
         }
-        arming.byHand();
+        arming.byHand(server.getGameTime());
+        setChanged();
         if (isPlaying()) {
             silence(server);
         } else {
@@ -90,8 +86,25 @@ public final class WreckPhonographBlockEntity extends BlockEntity {
         }
         boolean near = !PhonographSound.audience(server, pos, tuning.wreckSongTriggerRange())
                 .isEmpty();
-        if (phonograph.arming.look(near, tuning.phonographListenTicks()) && !phonograph.playing) {
+        long before = phonograph.arming.spentAt();
+        boolean startNow = phonograph.arming.look(near, server.getGameTime());
+        if (phonograph.arming.spentAt() != before) {
+            phonograph.setChanged();
+        }
+        if (startNow && !phonograph.playing) {
             phonograph.start(server);
         }
+    }
+
+    @Override
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        output.putLong("spent_at", arming.spentAt());
+    }
+
+    @Override
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        arming.restore(input.getLongOr("spent_at", WreckSongArming.NEVER));
     }
 }

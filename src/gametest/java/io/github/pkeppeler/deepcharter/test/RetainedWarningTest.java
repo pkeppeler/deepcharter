@@ -210,24 +210,41 @@ public class RetainedWarningTest {
     public void aFigureIsSeenOnlyInsideTheViewConeWithNoRockBetween(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Vec3 eyes = Vec3.atCenterOf(helper.absolutePos(new BlockPos(1, 3, 3)));
-        Vec3 head = eyes.add(5, 0, 0);
+        // The head is two blocks above the eyes' line and the body centre on it, five blocks off.
+        Vec3 head = eyes.add(5, 2, 0);
+        Vec3 body = eyes.add(5, 0, 0);
         Vec3 ahead = new Vec3(1, 0, 0);
         double half = TUNING.viewHalfAngle();
-        expect(helper, RetainedSight.sees(level, eyes, ahead, head, half), "a figure ahead in the open was not seen");
         expect(
                 helper,
-                !RetainedSight.sees(level, eyes, ahead.scale(-1), head, half),
-                "a figure behind the player was seen");
+                RetainedSight.sees(level, eyes, ahead, head, body, half),
+                "a figure ahead in the open was not seen");
+        expect(helper, !RetainedSight.sees(level, eyes, ahead.scale(-1), head, body, half), "a figure behind was seen");
         expect(
                 helper,
-                !RetainedSight.sees(level, eyes, new Vec3(0, 0, 1), head, half),
-                "a figure square to the side was seen");
+                !RetainedSight.sees(level, eyes, new Vec3(0, 0, 1), head, body, half),
+                "a figure to the side was seen");
+        // Rock across the head's line only (a ceiling lip): the body shows, so the figure is seen.
+        helper.setBlock(new BlockPos(4, 4, 3), Blocks.STONE);
+        expect(
+                helper,
+                RetainedSight.sees(level, eyes, ahead, head, body, half),
+                "a figure in view with its head behind a lip was not seen");
+        // Rock across the body's line too: unseen.
         helper.setBlock(new BlockPos(4, 3, 3), Blocks.STONE);
-        expect(helper, !RetainedSight.sees(level, eyes, ahead, head, half), "a figure behind rock was seen");
+        expect(
+                helper,
+                !RetainedSight.sees(level, eyes, ahead, head, body, half),
+                "a figure behind rock, head and body, was seen");
+        helper.setBlock(new BlockPos(4, 4, 3), Blocks.AIR);
+        expect(
+                helper,
+                RetainedSight.sees(level, eyes, ahead, head, body, half),
+                "a figure with only its head in view was not seen");
         helper.setBlock(new BlockPos(4, 3, 3), Blocks.AIR);
         expect(
                 helper,
-                RetainedSight.sees(level, eyes, ahead, head, half),
+                RetainedSight.sees(level, eyes, ahead, head, body, half),
                 "a figure was not seen once the rock was gone");
         helper.succeed();
     }

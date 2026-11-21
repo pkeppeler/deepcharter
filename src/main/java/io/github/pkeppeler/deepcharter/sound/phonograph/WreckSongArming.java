@@ -1,51 +1,51 @@
 package io.github.pkeppeler.deepcharter.sound.phonograph;
 
 /**
- * When a wreck's phonograph starts its song: the one decision it makes at each look for a player, with no world in it.
- *
- * <p>It starts when a player comes within range while it is armed, and is then spent. A song that has ended, and a phonograph a player
- * switched off, stay quiet however long the player lingers (a right click starts it again by hand). It is armed again once no player has
- * been within range for {@code rearmTicks}, so a visitor who turns it off is not sung to again on the way out of the bay, and the next visitor
- * (or the same one, much later) still hears the tune. A restart finds it armed, as the state is not saved.
+ * When a wreck's phonograph starts its song, from the game time it was last spent (by a start, a switch-off or a hand): it starts for a
+ * player in range while armed, and is armed again once no player is in range and {@code rearmTicks} have passed since. The time is saved,
+ * so leaving the chunk's simulation and coming back does not make a switched-off phonograph sing at once.
  */
 public final class WreckSongArming {
-    private final int rearmTicks;
-    private boolean armed = true;
-    private int awayTicks;
+    /** The saved value for a phonograph that has never been spent: armed. */
+    public static final long NEVER = -1;
 
-    public WreckSongArming(int rearmTicks) {
+    private final int rearmTicks;
+    private long spentAt;
+
+    public WreckSongArming(int rearmTicks, long spentAt) {
         this.rearmTicks = rearmTicks;
+        this.spentAt = spentAt;
     }
 
-    public boolean isArmed() {
-        return armed;
+    /** The game time it was last spent, or {@link #NEVER}. */
+    public long spentAt() {
+        return spentAt;
     }
 
     /**
-     * One look, {@code elapsed} ticks after the last. Returns true when the song starts now.
+     * One look. Returns true when the song starts now.
      *
      * @param playerNear whether any player is within the trigger range
+     * @param now the game time
      */
-    public boolean look(boolean playerNear, int elapsed) {
-        if (playerNear) {
-            awayTicks = 0;
-            boolean start = armed;
-            armed = false;
-            return start;
+    public boolean look(boolean playerNear, long now) {
+        if (spentAt != NEVER && !playerNear && (now < spentAt || now - spentAt >= rearmTicks)) {
+            spentAt = NEVER;
         }
-        if (!armed) {
-            awayTicks += elapsed;
-            if (awayTicks >= rearmTicks) {
-                armed = true;
-                awayTicks = 0;
-            }
+        if (playerNear && spentAt == NEVER) {
+            spentAt = now;
+            return true;
         }
         return false;
     }
 
-    /** A player started or stopped the song by hand: it is spent, and re-arms only after the long absence. */
-    public void byHand() {
-        armed = false;
-        awayTicks = 0;
+    /** Sets the saved time back, when the block entity loads. */
+    public void restore(long saved) {
+        spentAt = saved;
+    }
+
+    /** A player started or stopped the song by hand at game time {@code now}. */
+    public void byHand(long now) {
+        spentAt = now;
     }
 }

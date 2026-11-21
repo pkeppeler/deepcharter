@@ -132,7 +132,7 @@ public final class AmbienceTicker {
         return sound.getIdentifier().equals(DeepSound.SONG_WRECK.event().location());
     }
 
-    /** True for a sound of ours that the ambience gives way to: a hymn, a phonograph, a transmission, or an ambience fragment. */
+    /** True for a sound of ours that the ambience gives way to: a hymn, a phonograph, a transmission, an ambience fragment or a song. */
     private static boolean holdsBack(SoundInstance sound) {
         if (!sound.getIdentifier().getNamespace().equals(DeepCharter.MOD_ID)) {
             return false;
@@ -195,6 +195,7 @@ public final class AmbienceTicker {
                             player.getEyePosition(),
                             player.getLookAngle(),
                             figure.getEyePosition(),
+                            figure.position().add(0, figure.getBbHeight() / 2, 0),
                             WARNING_TUNING.viewHalfAngle());
                     figures.add(new RetainedWarning.Figure(figure.getId(), distance, seen));
                     known.put(figure.getId(), figure);
@@ -205,7 +206,10 @@ public final class AmbienceTicker {
                 figures,
                 quietNow,
                 Objects.requireNonNull(wreckSong, "set by listen()").quiet(now));
-        @Nullable Entity figure = from.isPresent() ? known.get(from.getAsInt()) : null;
+        if (from.isEmpty()) {
+            return false;
+        }
+        @Nullable Entity figure = known.get(from.getAsInt());
         if (figure == null) {
             return false;
         }

@@ -5,7 +5,7 @@ package io.github.pkeppeler.deepcharter.sound.ambience;
  *
  * @param minRange        a Retained nearer than this (blocks) is too close to be a warning: the player is meeting it
  * @param maxRange        and one farther than this is not near yet
- * @param forgetRange    a figure farther than this is forgotten, so one that wanders at the edge of the range is not cued twice
+ * @param forgetRange     a figure farther than this is forgotten, so one that wanders at the edge of the range is not cued twice
  * @param cooldownTicks   after a cue, the next is not sooner than this, for any figure: several minutes, so it stays rare
  * @param confirmTicks    a figure must have been in range and unseen this long, without a break, before it is cued
  * @param viewHalfAngle   a figure within this many degrees of where the player looks, with nothing solid between, is seen

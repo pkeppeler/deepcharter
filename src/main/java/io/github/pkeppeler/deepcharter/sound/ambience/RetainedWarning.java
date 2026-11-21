@@ -8,21 +8,9 @@ import java.util.OptionalInt;
 import java.util.Set;
 
 /**
- * When the dark sings the song as a warning (#861): the one decision the client's ticker makes about it each tick, with no client in it.
- * It is told the Retained near the player (each figure's id, distance, and whether the player sees it), whether anything else sounds, and
- * whether a wreck's phonograph has sounded lately. It answers with the figure the song should come from, or nothing.
- *
- * <ul>
- *   <li>It plays only for a real figure: one in range, {@link WarningTuning#minRange()} to {@link WarningTuning#maxRange()}, that the player
- *       does not see. With no figure it never plays, whatever else has happened, and it is never random.
- *   <li>A figure must have stayed in range and unseen for {@link WarningTuning#confirmTicks()}, so a glance away does not cue it. Being
- *       seen, or leaving the range, starts that count again.
- *   <li>At most once per figure encounter: a figure that has been cued is not cued again until it has left the figures it is told of (it was
- *       out of reach or gone), and a later one needs the cooldown to have run as well.
- *   <li>At most once in {@link WarningTuning#cooldownTicks()}, for any figure.
- *   <li>It waits while something holds the ambience back ({@code quiet}: the hymn, a phonograph, a transmission, a fragment or the song
- *       itself, or just after), and does not play at all near a wreck's phonograph, where the song is learnt: there the count starts again.
- * </ul>
+ * When the dark sings the song as a warning (#861), with no client in it. It plays only for a real Retained: in range, unseen for
+ * {@link WarningTuning#confirmTicks()}, once per figure encounter and once per {@link WarningTuning#cooldownTicks()}, never over another
+ * sound or near a wreck's phonograph, where the tune is learnt. A false positive would teach the wrong thing.
  */
 public final class RetainedWarning {
     /** A Retained the client knows of: its entity id, its distance in blocks, and whether the player sees it. */
