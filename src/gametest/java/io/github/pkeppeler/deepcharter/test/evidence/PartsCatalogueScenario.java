@@ -69,6 +69,10 @@ public class PartsCatalogueScenario extends EvidenceScenario {
                 hold(context);
                 screenshot(context, "catalogue-recipe");
 
+                CatalogueScene.hover(context, CatalogueScene.gridCell(layout, index - 1));
+                hold(context);
+                screenshot(context, "catalogue-hover");
+
                 CatalogueScene.hover(context, layout.shelf().search());
                 context.getInput().pressMouse(LEFT_MOUSE);
                 context.getInput().typeChars("iron");
