@@ -49,7 +49,7 @@ public final class CatalogueFavourites {
         CatalogueFavourites favourites = shared;
         if (favourites == null) {
             Path config = Minecraft.getInstance().gameDirectory.toPath().resolve("config");
-            favourites = new CatalogueFavourites(config.resolve(DeepCharter.MOD_ID + "-parts-catalogue.json"));
+            favourites = in(config.resolve(DeepCharter.MOD_ID + "-parts-catalogue.json"));
             shared = favourites;
         }
         return favourites;
@@ -67,10 +67,6 @@ public final class CatalogueFavourites {
             BuiltInRegistries.ITEM.getOptional(id).ifPresent(items::add);
         }
         return items;
-    }
-
-    public synchronized boolean contains(UUID player, Item item) {
-        return players.getOrDefault(player, List.of()).contains(BuiltInRegistries.ITEM.getKey(item));
     }
 
     /** Stars {@code item} for {@code player}, or takes the star off; returns whether it is a favourite now. */

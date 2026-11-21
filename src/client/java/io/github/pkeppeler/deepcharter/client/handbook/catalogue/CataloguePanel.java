@@ -78,15 +78,18 @@ public final class CataloguePanel {
     }
 
     /** The layout, or null while the screen is too narrow to hold the panels and they are hidden. */
+    // test-seam: where the panels are, which the client test and the evidence scenario hover and click
     public @Nullable CatalogueLayout layout() {
         return layout;
     }
 
+    // test-seam: what the catalogue is set to, which the client test reads
     public CatalogueState state() {
         return state;
     }
 
     /** What the charter knows now, as of the last tick. */
+    // test-seam: what the charter knows now, which the client test reads
     public PartsCatalogue catalogue() {
         return catalogue;
     }
@@ -96,6 +99,7 @@ public final class CataloguePanel {
         return layout != null && state.lookup() != null;
     }
 
+    // test-seam: whether the search field has the keyboard, which the client test reads
     public boolean searchFocused() {
         return searchFocused;
     }
@@ -605,9 +609,9 @@ public final class CataloguePanel {
         String query = state.query();
         boolean caretOn = !searchFocused || (ticks / crt.cursorBlinkTicks()) % 2 == 0;
         if (query.isEmpty() && !searchFocused) {
-            String hint = fit(text("search") + " ", room);
+            String hint = fit(text("search"), room);
             dim(graphics, hint, textX, textY, panel);
-            textX += termWidth(hint);
+            textX += termWidth(hint + " ");
         } else {
             String tail = query;
             while (termWidth(tail) > room && !tail.isEmpty()) {

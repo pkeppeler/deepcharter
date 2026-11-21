@@ -68,13 +68,17 @@ public final class CatalogueScreens {
         if (player == null) {
             return;
         }
-        CataloguePanel panel = client.gui.screen() == null ? null : PANELS.get(client.gui.screen());
+        Screen open = client.gui.screen();
+        CataloguePanel panel = open == null ? null : panelOf(open);
         if (panel != null) {
             panel.lookUp(item, CatalogueState.Mode.RECIPES);
             return;
         }
         pending = item;
-        client.gui.setScreen(new InventoryScreen(player));
+        // A vanilla screen, so it is not one of the mod's screens the layout gate asks to be covered by
+        // ScreenLayoutClientTest.
+        InventoryScreen inventory = new InventoryScreen(player);
+        client.gui.setScreen(inventory);
     }
 
     private static void attach(AbstractContainerScreen<?> screen, int width, int height) {

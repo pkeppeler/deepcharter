@@ -27,13 +27,11 @@ public final class PartsCatalogue {
     private static final Comparator<Item> ORDER = Comparator.comparing((Item item) -> !isOurs(item))
             .thenComparing(item -> BuiltInRegistries.ITEM.getKey(item).toString());
 
-    private final List<KnownRecipe> recipes;
     private final List<Item> items;
     private final Map<Item, List<KnownRecipe>> making = new HashMap<>();
     private final Map<Item, List<KnownRecipe>> using = new HashMap<>();
 
     private PartsCatalogue(List<KnownRecipe> recipes) {
-        this.recipes = recipes;
         Set<Item> known = new LinkedHashSet<>();
         for (KnownRecipe recipe : recipes) {
             for (Item item : recipe.resultItems()) {
@@ -76,11 +74,6 @@ public final class PartsCatalogue {
     /** Every known item, Company parts first. */
     public List<Item> items() {
         return items;
-    }
-
-    /** The known recipes, in the order the book gave them. */
-    public List<KnownRecipe> recipes() {
-        return recipes;
     }
 
     /** The known recipes that make {@code item}. */

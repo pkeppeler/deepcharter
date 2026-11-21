@@ -207,9 +207,4 @@ public record CatalogueLayout(
         int needRows = Math.max(0, (spec.y() - look.searchGap() - needTop) / look.needRow());
         return new Card(left, right, titleY, stationY, left, gridY, needTop, needRows, spec);
     }
-
-    /** Whether the point is on either panel. */
-    public boolean covers(double x, double y) {
-        return catalogue.contains(x, y) || recipe.contains(x, y);
-    }
 }

@@ -10,12 +10,14 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueSearch;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.KnownRecipe;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.PartsCatalogue;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetHook;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueFixtures;
-import io.github.pkeppeler.deepcharter.test.support.ClientCursor;
+import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields;
@@ -43,7 +45,6 @@ import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
-import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.entity.player.StackedItemContents;
@@ -266,7 +267,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             require(
                     again.items(alex).equals(List.of(DRILL, Items.IRON_INGOT)),
                     "a new reading of the file keeps them, in the order starred, got " + again.items(alex));
-            require(again.contains(alex, DRILL) && !again.contains(steve, DRILL), "the file is per player");
+            require(again.items(alex).contains(DRILL) && !again.items(steve).contains(DRILL), "the file is per player");
             require(!again.toggle(alex, DRILL), "the second toggle takes the star off");
             require(
                     CatalogueFavourites.in(file).items(alex).equals(List.of(Items.IRON_INGOT)),
@@ -286,7 +287,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 CatalogueFavourites favourites = CatalogueFavourites.in(file);
                 UUID alex = UUID.randomUUID();
                 require(favourites.toggle(alex, DRILL), "a favourite still works in memory over: " + content);
-                require(favourites.contains(alex, DRILL), "and is held in memory over: " + content);
+                require(favourites.items(alex).contains(DRILL), "and is held in memory over: " + content);
                 require(
                         Files.readString(file).equals(content),
                         "the file is left as another build wrote it: " + content);
@@ -380,9 +381,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                     context, "the player's inventory", client -> client.player != null && client.level != null);
             context.runOnClient(client ->
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
-            openInventory(context);
+            CatalogueScene.openInventory(context);
             AbstractContainerScreen<?> screen = screen(context);
-            CataloguePanel panel = panel(context, screen);
+            CataloguePanel panel = CatalogueScene.panel(context);
 
             theRecipeBookButtonIsGone(context);
             theCatalogueListsOnlyWhatTheBookKnows(context, panel);
@@ -390,6 +391,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             rAndUShowRecipesAndUsesOfAHoveredItem(context, screen, panel);
             everyStringIsInsideItsGlass(context, screen, "with a recipe shown");
             hoveringAnInventorySlotWorksToo(context, singleplayer, screen, panel);
+            theSpecSheetButtonCallsItsHook(context, panel);
             theSearchFiltersAndKeepsItsKeys(context, screen, panel);
             favouritesStarAndPersist(context, screen, panel);
             craftableNowFiltersByWhatIsHeld(context, singleplayer, screen, panel);
@@ -402,47 +404,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         }
     }
 
-    private static void openInventory(ClientGameTestContext context) {
-        context.setScreen(() -> new InventoryScreen(ClientSession.player(Minecraft.getInstance())));
-        ClientWait.screen(context, InventoryScreen.class);
-        context.waitTicks(3);
-    }
-
     private static AbstractContainerScreen<?> screen(ClientGameTestContext context) {
         return context.computeOnClient(client -> (AbstractContainerScreen<?>) client.gui.screen());
-    }
-
-    private static CataloguePanel panel(ClientGameTestContext context, AbstractContainerScreen<?> screen) {
-        return context.computeOnClient(client -> panelOf(screen));
-    }
-
-    private static CatalogueLayout layout(ClientGameTestContext context, CataloguePanel panel) {
-        return Objects.requireNonNull(
-                context.computeOnClient(client -> panel.layout()), "the panels are laid out at the window's size");
-    }
-
-    /** Moves the cursor onto the centre of {@code cell}. */
-    private static void hover(ClientGameTestContext context, Rect cell) {
-        ClientCursor.moveTo(context, cell.x() + cell.width() / 2.0, cell.y() + cell.height() / 2.0);
-    }
-
-    /** The cell of grid position {@code index} on the page shown. */
-    private static Rect gridCell(CatalogueLayout layout, int index) {
-        CatalogueLayout.Shelf shelf = layout.shelf();
-        CatalogueLook look = CatalogueLook.current();
-        return new Rect(
-                shelf.gridX() + (index % shelf.columns()) * look.gridCell(),
-                shelf.gridY() + (index / shelf.columns()) * look.gridCell(),
-                look.slotSize(),
-                look.slotSize());
-    }
-
-    private static int indexOf(ClientGameTestContext context, CataloguePanel panel, Item item) {
-        List<Item> shown =
-                context.computeOnClient(client -> panel.state().shown(panel.catalogue(), new StackedItemContents()));
-        int index = shown.indexOf(item);
-        require(index >= 0, "the catalogue lists " + item + ", it lists " + shown);
-        return index;
     }
 
     private static void theRecipeBookButtonIsGone(ClientGameTestContext context) {
@@ -461,7 +424,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.runOnClient(
                 client -> ClientSession.player(client).getRecipeBook().setOpen(RecipeBookType.CRAFTING, true));
         context.setScreen(() -> null);
-        openInventory(context);
+        CatalogueScene.openInventory(context);
         context.runOnClient(client -> {
             AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) shown(client);
             Rect inventory = Objects.requireNonNull(panelOf(screen).layout()).inventory();
@@ -513,8 +476,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.runOnClient(client -> {
             CataloguePanel panel = panelOf(screen);
             CatalogueLayout layout = Objects.requireNonNull(panel.layout(), () -> "the panels are laid out " + when);
-            List<Drawn> drawn = DrawnText.of(screen);
+            List<Drawn> drawn = drawn(client, screen);
             List<String> texts = drawn.stream().map(Drawn::text).toList();
+            boolean hintShown = panel.state().query().isEmpty() && !panel.searchFocused();
             Rect catalogue = layout.catalogueGlass();
             Rect recipe = layout.recipeGlass();
             Rect inventory = layout.inventory();
@@ -534,6 +498,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                         texts.contains(expected),
                         "the catalogue draws '" + expected + "' " + when + ", it draws " + texts);
             }
+            require(texts.contains("SEARCH") == hintShown, "the search field shows its hint only while empty " + when);
             CatalogueLayout.Shelf shelf = layout.shelf();
             require(
                     labelInside(drawn, "CRAFTABLE NOW", shelf.craftable()),
@@ -548,13 +513,28 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 require(
                         labelInside(drawn, "SPEC SHEET", layout.card().spec()),
                         "the spec sheet label lies inside its button " + when);
-                require(
-                        texts.contains("CRAFTING TABLE") || texts.contains("FURNACE"),
-                        "the recipe panel names the station " + when);
+                KnownRecipe shownRecipe = panel.state().shownRecipe(panel.catalogue());
+                if (shownRecipe != null) {
+                    require(
+                            texts.contains(shownRecipe.station()),
+                            "the recipe panel names the station '" + shownRecipe.station() + "' " + when + ", it draws "
+                                    + texts);
+                }
             } else {
                 require(!texts.contains("SPEC SHEET"), "no recipe panel is drawn before an item is looked up");
             }
         });
+    }
+
+    /** What the screen draws with the mouse where it really is, so the catalogue keeps the hover it has. */
+    private static List<Drawn> drawn(Minecraft client, Screen screen) {
+        var window = client.getWindow();
+        return DrawnText.of(screen, (int) client.mouseHandler.getScaledXPos(window), (int)
+                client.mouseHandler.getScaledYPos(window));
+    }
+
+    private static List<String> texts(Minecraft client, Screen screen) {
+        return drawn(client, screen).stream().map(Drawn::text).toList();
     }
 
     private static boolean labelInside(List<Drawn> drawn, String label, Rect button) {
@@ -575,8 +555,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
 
     private static void rAndUShowRecipesAndUsesOfAHoveredItem(
             ClientGameTestContext context, AbstractContainerScreen<?> screen, CataloguePanel panel) {
-        CatalogueLayout layout = layout(context, panel);
-        hover(context, gridCell(layout, indexOf(context, panel, DRILL)));
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
+        CatalogueScene.hover(context, CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, DRILL)));
         require(
                 context.computeOnClient(client -> panel.hoveredItem()) == DRILL,
                 "the cursor is on the drill head's cell");
@@ -590,22 +570,17 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 "R on a hovered cell shows the recipes of its item, got " + lookup);
         require(context.computeOnClient(client -> panel.showsRecipePanel()), "the recipe panel is drawn");
         require(
-                context.computeOnClient(client ->
-                                DrawnText.of(screen).stream().map(Drawn::text).toList())
-                        .contains("R 1/2"),
+                context.computeOnClient(client -> texts(client, screen)).contains("R 1/2"),
                 "the panel says it shows the first of two recipes");
         context.getInput().pressKey(InputConstants.KEY_R);
         context.waitTicks(1);
         require(
                 context.computeOnClient(client -> lookedAt(panel.state()).index()) == 1,
                 "R again steps to the second recipe");
-        require(
-                context.computeOnClient(client ->
-                                DrawnText.of(screen).stream().map(Drawn::text).toList())
-                        .contains("R 2/2"),
-                "and the counter follows");
+        require(context.computeOnClient(client -> texts(client, screen)).contains("R 2/2"), "and the counter follows");
 
-        hover(context, gridCell(layout, indexOf(context, panel, Items.IRON_INGOT)));
+        CatalogueScene.hover(
+                context, CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, Items.IRON_INGOT)));
         context.getInput().pressKey(InputConstants.KEY_U);
         context.waitTicks(1);
         lookup = context.computeOnClient(client -> panel.state().lookup());
@@ -613,9 +588,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 lookup != null && lookup.item() == Items.IRON_INGOT && lookup.mode() == CatalogueState.Mode.USES,
                 "U shows the uses of the hovered item, got " + lookup);
         require(
-                context.computeOnClient(client ->
-                                DrawnText.of(screen).stream().map(Drawn::text).toList())
-                        .contains("U 1/3"),
+                context.computeOnClient(client -> texts(client, screen)).contains("U 1/3"),
                 "the iron ingot is used by three known recipes");
 
         // The recipe panel's own cells hover too: the redstone in a recipe shows its recipes (none known) on R.
@@ -623,7 +596,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.waitTicks(1);
         CatalogueLayout.Card card = layout.card();
         Rect firstCell = new Rect(card.gridX(), card.gridY(), 18, 18);
-        hover(context, firstCell);
+        CatalogueScene.hover(context, firstCell);
         require(
                 context.computeOnClient(client -> panel.hoveredItem()) == Items.IRON_INGOT,
                 "hovering a cell of the shown recipe finds its item");
@@ -633,13 +606,16 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 context.computeOnClient(client -> lookedAt(panel.state()).item()) == Items.IRON_INGOT,
                 "U on a cell of the recipe panel looks that item up");
         // A click does the same without the keys: left for recipes, right for uses.
-        hover(context, gridCell(layout, indexOf(context, panel, HangarParts.ROTOR_HUB)));
+        CatalogueScene.hover(
+                context,
+                CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, HangarParts.ROTOR_HUB)));
         context.getInput().pressMouse(LEFT_MOUSE);
         context.waitTicks(1);
         require(
                 context.computeOnClient(client -> lookedAt(panel.state()).item()) == HangarParts.ROTOR_HUB,
                 "a left click on a cell shows its recipes");
-        hover(context, gridCell(layout, indexOf(context, panel, Items.COPPER_INGOT)));
+        CatalogueScene.hover(
+                context, CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, Items.COPPER_INGOT)));
         context.getInput().pressMouse(RIGHT_MOUSE);
         context.waitTicks(1);
         CatalogueState.Lookup clicked = context.computeOnClient(client -> lookedAt(panel.state()));
@@ -650,15 +626,29 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 client -> panel.state().look(panel.catalogue(), Items.DIAMOND_SWORD, CatalogueState.Mode.RECIPES));
         context.waitTicks(1);
         require(
-                context.computeOnClient(client ->
-                                DrawnText.of(screen).stream().map(Drawn::text).toList())
-                        .contains("NO KNOWN RECIPE"),
+                context.computeOnClient(client -> texts(client, screen)).contains("NO KNOWN RECIPE"),
                 "an item with no known recipe says so");
         require(
-                context.computeOnClient(client ->
-                                DrawnText.of(screen).stream().map(Drawn::text).toList())
-                        .contains("DIAMOND SWORD"),
+                context.computeOnClient(client -> texts(client, screen)).contains("DIAMOND SWORD"),
                 "and the panel is titled with the item");
+    }
+
+    private static void theSpecSheetButtonCallsItsHook(ClientGameTestContext context, CataloguePanel panel) {
+        List<Item> opened = new ArrayList<>();
+        context.runOnClient(client -> {
+            SpecSheetHook.set(opened::add);
+            panel.state().look(panel.catalogue(), DRILL, CatalogueState.Mode.RECIPES);
+        });
+        context.waitTicks(1);
+        try {
+            CatalogueLayout layout = CatalogueScene.layout(context, panel);
+            CatalogueScene.hover(context, layout.card().spec());
+            context.getInput().pressMouse(LEFT_MOUSE);
+            context.waitTicks(1);
+            require(opened.equals(List.of(DRILL)), "SPEC SHEET calls its hook with the item looked up, got " + opened);
+        } finally {
+            context.runOnClient(client -> SpecSheetHook.set(item -> {}));
+        }
     }
 
     private static void hoveringAnInventorySlotWorksToo(
@@ -672,7 +662,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 "an iron ingot in the inventory",
                 client -> ClientSession.player(client).getInventory().contains(new ItemStack(Items.IRON_INGOT)));
         context.waitTicks(2);
-        CatalogueLayout layout = layout(context, panel);
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
         Rect slot = context.computeOnClient(client -> {
             for (var candidate : screen.getMenu().slots) {
                 if (candidate.hasItem() && candidate.getItem().is(Items.IRON_INGOT)) {
@@ -685,7 +675,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             }
             throw new AssertionError("no slot holds the iron ingot");
         });
-        hover(context, slot);
+        CatalogueScene.hover(context, slot);
         require(
                 context.computeOnClient(client -> panel.hoveredItem()) == Items.IRON_INGOT,
                 "the cursor on an inventory slot finds its item");
@@ -703,9 +693,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
 
     private static void theSearchFiltersAndKeepsItsKeys(
             ClientGameTestContext context, AbstractContainerScreen<?> screen, CataloguePanel panel) {
-        CatalogueLayout layout = layout(context, panel);
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
         Rect search = layout.shelf().search();
-        hover(context, search);
+        CatalogueScene.hover(context, search);
         context.getInput().pressMouse(LEFT_MOUSE);
         context.waitTicks(1);
         require(context.computeOnClient(client -> panel.searchFocused()), "a click on the search field focuses it");
@@ -735,7 +725,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(context.computeOnClient(client -> client.gui.screen()) == screen, "and does not close the inventory");
         // A search too long to show is cut from the front, so the end that is typed stays on screen.
         context.getInput().pressMouse(LEFT_MOUSE);
-        hover(context, search);
+        CatalogueScene.hover(context, search);
         context.getInput().pressMouse(LEFT_MOUSE);
         context.getInput().typeChars("a very long search that cannot fit the field");
         context.waitTicks(1);
@@ -762,29 +752,30 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             ClientGameTestContext context, AbstractContainerScreen<?> screen, CataloguePanel panel) {
         UUID player =
                 context.computeOnClient(client -> ClientSession.player(client).getUUID());
-        CatalogueLayout layout = layout(context, panel);
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
         try {
-            hover(context, gridCell(layout, indexOf(context, panel, DRILL)));
+            CatalogueScene.hover(
+                    context, CatalogueScene.gridCell(layout, CatalogueScene.indexOf(context, panel, DRILL)));
             context.getInput().pressKey(InputConstants.KEY_A);
             context.waitTicks(1);
             require(
-                    CatalogueFavourites.shared().contains(player, DRILL),
+                    CatalogueFavourites.shared().items(player).contains(DRILL),
                     "A on a hovered cell stars its item for this player");
             Rect first = new Rect(layout.shelf().gridX(), layout.shelf().favouritesY(), 18, 18);
-            hover(context, first);
+            CatalogueScene.hover(context, first);
             require(
                     context.computeOnClient(client -> panel.hoveredItem()) == DRILL,
                     "the favourites row shows the starred item and hovering it finds it");
             context.getInput().pressKey(InputConstants.KEY_A);
             context.waitTicks(1);
-            require(!CatalogueFavourites.shared().contains(player, DRILL), "A on a favourite takes the star off");
+            require(!CatalogueFavourites.shared().items(player).contains(DRILL), "A on a favourite takes the star off");
             context.getInput().pressKey(InputConstants.KEY_A);
             context.waitTicks(1);
             require(
                     CatalogueFavourites.shared().items(player).isEmpty(),
                     "with the cursor off the row, A does nothing");
         } finally {
-            if (CatalogueFavourites.shared().contains(player, DRILL)) {
+            if (CatalogueFavourites.shared().items(player).contains(DRILL)) {
                 CatalogueFavourites.shared().toggle(player, DRILL);
             }
         }
@@ -804,8 +795,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 "an iron and two copper in the inventory",
                 client -> ClientSession.player(client).getInventory().contains(new ItemStack(Items.COPPER_INGOT, 2)));
         context.waitTicks(2);
-        CatalogueLayout layout = layout(context, panel);
-        hover(context, layout.shelf().craftable());
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
+        CatalogueScene.hover(context, layout.shelf().craftable());
         context.getInput().pressMouse(LEFT_MOUSE);
         context.waitTicks(1);
         List<Item> shown =
@@ -842,8 +833,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             context.runOnClient(client -> screen.resize(width, HEIGHT));
             context.waitTicks(2);
             require(context.computeOnClient(client -> panel.layout() == null), "the panels are hidden at " + width);
-            List<String> texts = context.computeOnClient(
-                    client -> DrawnText.of(screen).stream().map(Drawn::text).toList());
+            List<String> texts = context.computeOnClient(client -> texts(client, screen));
             require(
                     !texts.contains("PARTS CATALOGUE") && !texts.contains("SPEC SHEET"),
                     "a hidden catalogue draws nothing, drew " + texts);
@@ -866,7 +856,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         ClientWait.screen(context, CraftingScreen.class);
         context.waitTicks(3);
         AbstractContainerScreen<?> table = screen(context);
-        CataloguePanel panel = panel(context, table);
+        CataloguePanel panel = CatalogueScene.panel(context);
         context.runOnClient(client -> panel.state().look(panel.catalogue(), DRILL, CatalogueState.Mode.RECIPES));
         context.waitTicks(1);
         require(context.computeOnClient(client -> panel.layout() != null), "the crafting table has the panels");

@@ -8,11 +8,12 @@ import net.minecraft.world.item.Item;
  * then the button is drawn, as in the mockup, and does nothing.
  */
 public final class SpecSheetHook {
-    private static Consumer<Item> opener = item -> {};
+    private static volatile Consumer<Item> opener = item -> {};
 
     private SpecSheetHook() {}
 
     /** Makes the SPEC SHEET button open the spec sheet of an item through {@code opener}. */
+    // test-seam: #848 registers its spec sheet screen here; the catalogue test registers a probe
     public static void set(Consumer<Item> opener) {
         SpecSheetHook.opener = opener;
     }
