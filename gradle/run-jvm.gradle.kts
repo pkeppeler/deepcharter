@@ -22,8 +22,7 @@ addVmArgToRuns(exitOnOom)
 // case each generate a tall world).
 // Carry-over traced 2026-11-21 (#807; numbers from a 4 vCPU VM, -Xlog:gc and a forced GC at each batch start). Holder: not a leak.
 // Chunks of a finished batch sat in ChunkMap.pendingUnloads of each level (9,300 proto chunks, 870 MB live at the next batch start,
-// no ticket left). Vanilla ChunkMap.processUnloads runs the queued unload tails only while the tick has time left, and the GameTest
-// server ticks over budget while chunks generate. Fix: ChunkMapUnloadMixin (gametest mod) gives it unlimited time every tick.
+// no ticket left). Fix: ChunkMapUnloadMixin (gametest mod; its Javadoc has the mechanism).
 // Highest sample, always at the batch after the campaign batch: 1039, 1189, 1382 MB before (3 runs), 1022 MB after (1 run); next-batch
 // carry-over 816 to 899 MB -> 510 to 594 MB. `./gradlew build` at 3G: 1 Full GC, live 930 MB (the #805 run: 2, 1093 MB).
 // 3G stays: a lower heap needs a measured peak below 1 GB, and one run is not that. The remaining 1 GB there is #816.

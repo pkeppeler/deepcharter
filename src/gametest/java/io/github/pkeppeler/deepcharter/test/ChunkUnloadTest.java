@@ -7,10 +7,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 
 /** Server GameTests for {@code ChunkMapUnloadMixin} (#807). */
 public class ChunkUnloadTest {
-    /**
-     * Vanilla runs a queued unload tail only while the tick has time left, so a server that ticks over budget keeps the chunks of a
-     * finished batch. The mixin must run it when told there is no time.
-     */
+    /** The mixin must run a queued unload tail when told there is no time. */
     @GameTest
     public void aQueuedUnloadFinishesWhenTheTickHasNoTimeLeft(GameTestHelper helper) {
         ChunkMapAccess chunkMap = (ChunkMapAccess) helper.getLevel().getChunkSource().chunkMap;
