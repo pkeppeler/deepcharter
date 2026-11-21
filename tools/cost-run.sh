@@ -10,26 +10,26 @@
 #             tall_baseline in the same run); no worlds means the test's three. At least 4 rounds.
 #
 # --runs N repeats the whole measurement N times (default 1). A campaign run alternates the order
-# the worlds start in (DEEPCHARTER_COST_REVERSE, set to 1 on even runs), because the rounds alternate
-# it only inside a run. With N above 1 it ends with the rounds of every run pooled per world and the
-# ratio of the pooled medians, which is what the ADR 0029 follow-ups judge on: one run of a few
-# rounds is too noisy for a 1.15x bar. The pooled line says how many runs were LOADED and pools them
-# anyway; --quiet-only leaves LOADED runs out of the pool. The bar is read from the campaign test's
-# own output ("at most <bar>x"), and a log without it is an error.
+# the worlds start in (DEEPCHARTER_COST_REVERSE, 1 on even runs), because the rounds alternate it
+# only inside a run. With N above 1 it ends with the rounds of every run pooled per world and the
+# ratio of the pooled medians, which the ADR 0029 follow-ups judge on: one run of a few rounds is
+# too noisy for a 1.15x bar. The pooled line says how many runs were LOADED and pools them anyway;
+# --quiet-only leaves LOADED runs out. The bar is read from the campaign test's own output
+# ("at most <bar>x"); a log without it is an error.
 #
 # Before a run: refuses to start while the 1-minute load average is above
 # DEEPCHARTER_COST_MAX_LOAD (default 2, may be fractional), after waiting up to
-# DEEPCHARTER_COST_WAIT seconds (default 0, or 600 with --runs above 1) for it to fall. A run raises
-# the average itself, so repeated runs need a wait between them. A refusal after some runs finished
-# still prints the pooled lines of those runs, then exits 3.
+# DEEPCHARTER_COST_WAIT seconds (default 0, or 600 with --runs above 1, since a run raises the
+# average itself) for it to fall. A refusal after some runs finished still prints their pooled
+# lines, then exits 3.
 #
-# During a run: the run's own world generation fills the cores, so the load average between
-# start and end says little. Instead, every DEEPCHARTER_COST_SAMPLE seconds (default 10) and once
-# more at the end, the script sums the CPU of every process that is not a descendant of this
-# script (100 = one core), Java included, and marks the run LOADED when the peak goes above
-# MAX_LOAD cores. Gradle runs with its daemon off (GRADLE_OPTS=-Dorg.gradle.daemon=false), so the
-# build JVM and the forked test JVM are descendants and every other Java is foreign. `ps pcpu` is
-# a decayed average on macOS, so a short burst is seen late and a quiet verdict is not proof.
+# During a run: world generation fills the cores, so the load average says little. Instead, every
+# DEEPCHARTER_COST_SAMPLE seconds (default 10) and once more at the end, the script sums the CPU of
+# every process that is not a descendant of this script (100 = one core), Java included, and marks
+# the run LOADED when the peak goes above MAX_LOAD cores. Gradle runs with its daemon off
+# (GRADLE_OPTS=-Dorg.gradle.daemon=false), so the build JVM and the forked test JVM are
+# descendants and every other Java is foreign. `ps pcpu` is a decayed average on macOS, so a short
+# burst is seen late and a quiet verdict is not proof.
 #
 # After a run: one `[cost-run]` line (load at start and end, peak foreign CPU and its top process,
 # verdict, time, exit status), the test's own log lines, each world's per-round CPU ms per column
@@ -47,10 +47,9 @@
 # Drift line per world and run: the median CPU of the first half of the rounds against the second
 # half, and the same with the JVM's GC time per column taken off, with the halves' GC time and
 # count. A rise that goes away without the GC time is the collector working on what the world
-# keeps; one that stays is real cost growing with the world's age. GC time is wall time of the
-# collectors while CPU adds up every GC thread, so the "without" figure takes off too little: it can
-# only overstate the drift that is left. Only
-# the campaign test prints GC per round; a surface world's drift line has no GC series.
+# keeps; one that stays is real cost growing with the world's age. GC time is wall time while CPU
+# adds up every GC thread, so the "without" figure takes off too little and can only overstate the
+# drift that is left. Only the campaign test prints GC per round; a surface world has no GC series.
 set -euo pipefail
 
 usage() {

@@ -15,6 +15,8 @@ check() { # check <description> <condition-result: 0 = ok>
   if [[ $2 -eq 0 ]]; then echo "ok   $1"; else echo "FAIL $1"; failures=$((failures + 1)); fi
 }
 
+lines() { wc -l <"$1" | tr -d ' '; }
+
 same() { # same <description> <actual> <expected>
   if [[ $2 == "$3" ]]; then check "$1" 0; else check "$1 (got '$2', want '$3')" 1; fi
 }
@@ -129,7 +131,7 @@ contains "min and median of a" "$work/out" "a: CPU ms per column, min 10, median
 contains "median of b" "$work/out" "b: CPU ms per column, min 20, median 22"
 contains "ratio of the second over the first" "$work/out" "b over a: 1.833x on the medians, 2.000x on the minimums"
 contains "keeps Gradle's daemon off" "$work/gradle-opts" "-Dorg.gradle.daemon=false"
-same "runs once per world" "$(wc -l <"$work/gametest-args" | tr -d ' ')" 2
+same "runs once per world" "$(lines "$work/gametest-args")" 2
 
 STUB_CPU=450 run 4 a b
 same "a loaded machine still succeeds" "$status" 0
@@ -173,7 +175,7 @@ same "campaign starts no run when refused" "$(wc -c <"$work/gametest-args" | tr 
 
 run campaign 6 tall_baseline campaign_sample
 same "a campaign run succeeds" "$status" 0
-same "campaign runs once, for every world" "$(wc -l <"$work/gametest-args" | tr -d ' ')" 1
+same "campaign runs once, for every world" "$(lines "$work/gametest-args")" 1
 contains "campaign runs the campaign test" "$work/gametest-args" "campaign_cost_test*"
 contains "campaign passes the rounds and worlds" "$work/campaign-env" "rounds 6 worlds $cw"
 contains "campaign keeps Gradle's daemon off" "$work/gradle-opts" "-Dorg.gradle.daemon=false"
@@ -190,7 +192,7 @@ same "a single run keeps the default order" "$(cat "$work/reverse")" 0
 : >"$work/campaign-env"
 run --runs 2 campaign 6 tall_baseline campaign_sample
 same "two campaign runs succeed" "$status" 0
-same "two runs run twice" "$(wc -l <"$work/gametest-args" | tr -d ' ')" 2
+same "two runs run twice" "$(lines "$work/gametest-args")" 2
 same "the world order alternates between runs" "$(tr '\n' ' ' <"$work/reverse")" "0 1 "
 contains "run 1 verdict" "$work/out" "run 1: campaign_sample over tall_baseline: 1.500x"
 contains "run 2 verdict" "$work/out" "run 2: campaign_sample over tall_baseline: 1.100x on the medians, 1.100x on the minimums, 0.958x per block of height"
@@ -224,12 +226,12 @@ printf '%s\n%s\n' "12, 12, 12, 18, 18, 18" "11, 11, 11, 11, 11, 11" >"$work/cpu-
 # --runs waits by default: run 1 leaves the load high, run 2 starts after the stub wait
 STUB_RAISE=1 run --runs 2 campaign 6 tall_baseline campaign_sample
 same "--runs waits for the load to fall by default" "$status" 0
-same "both runs ran" "$(wc -l <"$work/gametest-args" | tr -d ' ')" 2
+same "both runs ran" "$(lines "$work/gametest-args")" 2
 check "it waited" "$([[ -s $work/waits ]] && echo 0 || echo 1)"
 # a refusal after finished runs still pools them
 STUB_RAISE=1 DEEPCHARTER_COST_WAIT=0 run --runs 2 campaign 6 tall_baseline campaign_sample
 same "a refusal after a finished run exits 3" "$status" 3
-same "only run 1 ran" "$(wc -l <"$work/gametest-args" | tr -d ' ')" 1
+same "only run 1 ran" "$(lines "$work/gametest-args")" 1
 STUB_RAISE=1 DEEPCHARTER_COST_WAIT=0 run --runs 3 campaign 6 tall_baseline campaign_sample
 same "a refusal in run 2 of 3 exits 3" "$status" 3
 contains "the refusal still prints the pooled verdict of the finished runs" "$work/out" "pooled over 1 runs (6 rounds, 0 of 1 runs LOADED)"
@@ -245,7 +247,7 @@ printf '%s\n%s\n' "10, 14, 12, 11, 13" "30, 34, 32, 31, 33" >"$work/rounds-a"
 printf '%s\n%s\n' "20, 24, 22, 21, 23" "20, 24, 22, 21, 23" >"$work/rounds-b"
 run --runs 2 surface 5 a b
 same "surface with two runs succeeds" "$status" 0
-same "surface runs once per world and run" "$(wc -l <"$work/gametest-args" | tr -d ' ')" 4
+same "surface runs once per world and run" "$(lines "$work/gametest-args")" 4
 same "surface has no order switch" "$(sort -u "$work/reverse")" unset
 contains "surface pooled median" "$work/out" "pooled over 2 runs (10 rounds, 0 of 2 runs LOADED): a: CPU ms per column, min 10, median 22"
 contains "surface pooled ratio" "$work/out" "pooled b over a: 1.000x on the medians, 2.000x on the minimums"
