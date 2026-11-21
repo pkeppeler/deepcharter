@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.colony;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
-import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographBlock;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographBlockEntity;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
 import java.util.Map;
@@ -109,10 +108,5 @@ public final class ColonyPhonograph {
             }
         }
         return false;
-    }
-
-    /** True for a colony block that is a phonograph: for a test that reads the build. */
-    public static boolean isColonyPhonograph(BlockState state) {
-        return state.getBlock() instanceof PhonographBlock && state.is(PhonographRegistry.COLONY_PHONOGRAPH);
     }
 }

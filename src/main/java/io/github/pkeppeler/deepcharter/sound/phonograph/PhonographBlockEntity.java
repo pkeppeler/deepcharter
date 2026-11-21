@@ -47,7 +47,7 @@ public final class PhonographBlockEntity extends BlockEntity {
     }
 
     public boolean isPlaying() {
-        return playing != null;
+        return playing().isPresent();
     }
 
     /** The cylinder in it (a copy), empty when none. The colony's holds none. */
@@ -95,7 +95,7 @@ public final class PhonographBlockEntity extends BlockEntity {
             return;
         }
         silence(server);
-        ItemStack out = cylinder;
+        ItemStack out = cylinder();
         cylinder = ItemStack.EMPTY;
         setChanged();
         showLoaded();
@@ -176,7 +176,7 @@ public final class PhonographBlockEntity extends BlockEntity {
         if (level instanceof ServerLevel server) {
             silence(server);
             if (!cylinder.isEmpty()) {
-                Block.popResource(server, pos, cylinder);
+                Block.popResource(server, pos, cylinder());
                 cylinder = ItemStack.EMPTY;
             }
         }
