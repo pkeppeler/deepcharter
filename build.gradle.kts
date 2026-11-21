@@ -296,6 +296,11 @@ checkstyle {
 	maxWarnings = 0
 }
 
+// The gametest source set outgrew Checkstyle's default worker heap: CI crashed with OutOfMemoryError (#899).
+tasks.withType<Checkstyle>().configureEach {
+	maxHeapSize = "1g"
+}
+
 // palantir-java-format owns Java formatting (run `just fmt`); spotlessCheck is part of check. tooling/ is third-party code and is not
 // ours to reformat. The two single-file programs outside src/ are Java too. The gate fixtures in tools/tests are strings inside
 // Python, not files, so no target here touches them.
