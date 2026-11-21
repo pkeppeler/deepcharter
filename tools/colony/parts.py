@@ -229,7 +229,7 @@ def track(p: Piece, x: int, z0: int, z1: int, facing: str = "south") -> None:
 def ore_cars(p: Piece, x: int, z: int, count: int) -> None:
     """A train of ore cars on the track along Z, coupled end to end from x, z."""
     for i in range(count):
-        p.set(x, 1, z + i, state("ore_car", facing="south"))
+        p.set(x, 1, z + i, state("ore_car", facing="south", looted="false"))
 
 
 def lattice_post(p: Piece, x: int, z: int, y0: int, y1: int, girder: str) -> None:
