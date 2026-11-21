@@ -4,8 +4,13 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.minecraft.core.BlockPos;
@@ -57,6 +62,12 @@ public final class AtmosphereScenes {
 
     /** The camera waits this many ticks after it is placed: the lightmap and the fog ease toward the new place, and nothing reports when they have. */
     private static final int SETTLE_TICKS = 160;
+
+    private static final int HALF_PATCH = 40;
+    private static final int STEADY_SAMPLES = 3;
+    private static final int MAX_SAMPLES = 60;
+    private static final int SAMPLE_GAP_TICKS = 10;
+    private static final double STEADY_TOLERANCE = 0.05;
 
     private AtmosphereScenes() {}
 
@@ -246,5 +257,46 @@ public final class AtmosphereScenes {
         // tick-wait: the lightmap and the fog ease toward the new place over a few ticks, and nothing reports when they
         // have
         context.waitTicks(SETTLE_TICKS);
+        awaitSteadyPicture(context, shot);
+    }
+
+    /**
+     * Waits until the picture stops changing: ticks run faster than frames on a slow renderer, and the lightmap eases frame by frame, so a
+     * fixed wait read the same room at two brightnesses in two runs (11.2 and 24.9 at the ceiling). The picture is steady when the
+     * middle of the screen reads the same mean luminance in {@link #STEADY_SAMPLES} samples in a row.
+     */
+    private static void awaitSteadyPicture(ClientGameTestContext context, String shot) {
+        double last = -1;
+        int steady = 0;
+        for (int sample = 0; sample < MAX_SAMPLES && steady < STEADY_SAMPLES; sample++) {
+            double now = centreLuma(context.takeScreenshot("settle"));
+            steady = Math.abs(now - last) <= STEADY_TOLERANCE ? steady + 1 : 0;
+            last = now;
+            // tick-wait: the next sample is a few frames later; nothing reports that the lightmap has stopped easing
+            context.waitTicks(SAMPLE_GAP_TICKS);
+        }
+        ClientChecks.require(
+                steady >= STEADY_SAMPLES,
+                "the picture at " + shot + " was still changing after " + MAX_SAMPLES + " samples, last " + last);
+    }
+
+    /** The mean luminance (0 to 255) of the 80 x 80 pixels in the middle of the picture in {@code file}. */
+    private static double centreLuma(Path file) {
+        BufferedImage image;
+        try {
+            image = ImageIO.read(file.toFile());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        double sum = 0;
+        int count = 0;
+        for (int y = image.getHeight() / 2 - HALF_PATCH; y < image.getHeight() / 2 + HALF_PATCH; y++) {
+            for (int x = image.getWidth() / 2 - HALF_PATCH; x < image.getWidth() / 2 + HALF_PATCH; x++) {
+                int rgb = image.getRGB(x, y);
+                sum += 0.299 * ((rgb >> 16) & 0xFF) + 0.587 * ((rgb >> 8) & 0xFF) + 0.114 * (rgb & 0xFF);
+                count++;
+            }
+        }
+        return sum / count;
     }
 }
