@@ -103,6 +103,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 layerStructuresOnArrival(context, server, 2, CELL + TRIALS + trial);
             }
         }
+        LOGGER.info("light trace counts since the start: " + LightTrace.counts());
         StringBuilder table = new StringBuilder("stale client light, per path:");
         results.forEach(result -> table.append("\n  ")
                 .append(result.mismatch().isPresent() ? "STALE " : "ok    ")
