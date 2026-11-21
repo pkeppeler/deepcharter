@@ -19,7 +19,7 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
-import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -460,17 +460,16 @@ public class PodHazardCuesTest {
     }
 
     /** Pods the tow-mass listener loads, by UUID: a Fabric event cannot be unregistered, so the listener acts only on these. */
-    private static final Set<UUID> TOWING = ConcurrentHashMap.newKeySet();
+    private static final Map<UUID, Float> TOWING = new ConcurrentHashMap<>();
 
     static {
-        PodEvents.EXTRA_MASS.register(pod ->
-                TOWING.contains(pod.getUUID()) ? PodTuning.DEFAULT.movement().enginePower() : 0f);
+        PodEvents.EXTRA_MASS.register(pod -> TOWING.getOrDefault(pod.getUUID(), 0f));
     }
 
     @GameTest(maxTicks = 60)
     public void whenTheLoadIsNotCargoTheOverloadLineDoesNotAskToDumpCargo(GameTestHelper helper) {
         Rig rig = Rig.build(helper, 0);
-        TOWING.add(rig.pod.getUUID());
+        TOWING.put(rig.pod.getUUID(), PodTuning.DEFAULT.movement().enginePower());
         rig.pilot.setInput(JUMP);
         helper.runAfterDelay(20, () -> {
             try {
@@ -493,20 +492,60 @@ public class PodHazardCuesTest {
         });
     }
 
-    /** One unit of lift left is lift: the cue reads the same lift the rotor uses. */
-    @GameTest(maxTicks = 60)
-    public void aPodWithOneUnitOfLiftLeftSaysNothing(GameTestHelper helper) {
+    /**
+     * The cue and the rotor read the same lift: with the load that leaves {@code lift} units, the rotor thrusts (the pod is flying) exactly when
+     * the cue stays silent, so a drift of either formula fails here.
+     */
+    private void cueAgreesWithTheRotor(GameTestHelper helper, float cargo, float extra, float lift) {
+        float engine = PodTuning.DEFAULT.movement().enginePower();
+        if (engine - cargo - extra != lift) {
+            throw failure(helper, "the case is wrong: engine %s less %s and %s is not %s", engine, cargo, extra, lift);
+        }
         Rig rig = Rig.build(helper, 0);
-        rig.pod.setCargoMass(PodTuning.DEFAULT.movement().enginePower() - 1f);
+        rig.pod.setCargoMass(cargo);
+        TOWING.put(rig.pod.getUUID(), extra);
         rig.pilot.setInput(JUMP);
+        boolean[] flying = {false};
+        helper.runAfterDelay(10, () -> flying[0] = rig.pod.flying());
         helper.runAfterDelay(20, () -> {
             try {
-                expectQuiet(helper, rig.pod, rig.pilot, "a pod with one unit of lift");
+                long cues = messages(rig.pilot, OVERLOAD_KEY) + messages(rig.pilot, OVERLOAD_LOAD_KEY);
+                if (flying[0] != (lift > 0f) || cues != (lift > 0f ? 0 : 1)) {
+                    throw failure(
+                            helper,
+                            "with %s lift the rotor should %s and the cue should %s, flying %s and %s cues",
+                            lift,
+                            lift > 0f ? "thrust" : "not thrust",
+                            lift > 0f ? "stay silent" : "fire once",
+                            flying[0],
+                            cues);
+                }
                 helper.succeed();
             } finally {
+                TOWING.remove(rig.pod.getUUID());
                 rig.finish();
             }
         });
+    }
+
+    @GameTest(maxTicks = 60)
+    public void cargoLeavingNoLiftStopsTheRotorAndCues(GameTestHelper helper) {
+        cueAgreesWithTheRotor(helper, PodTuning.DEFAULT.movement().enginePower(), 0f, 0f);
+    }
+
+    @GameTest(maxTicks = 60)
+    public void cargoLeavingOneUnitOfLiftThrustsAndStaysSilent(GameTestHelper helper) {
+        cueAgreesWithTheRotor(helper, PodTuning.DEFAULT.movement().enginePower() - 1f, 0f, 1f);
+    }
+
+    @GameTest(maxTicks = 60)
+    public void towMassLeavingNoLiftStopsTheRotorAndCues(GameTestHelper helper) {
+        cueAgreesWithTheRotor(helper, 0f, PodTuning.DEFAULT.movement().enginePower(), 0f);
+    }
+
+    @GameTest(maxTicks = 60)
+    public void towMassLeavingOneUnitOfLiftThrustsAndStaysSilent(GameTestHelper helper) {
+        cueAgreesWithTheRotor(helper, 0f, PodTuning.DEFAULT.movement().enginePower() - 1f, 1f);
     }
 
     @FormatMethod
