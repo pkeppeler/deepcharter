@@ -49,11 +49,11 @@ public class LightSyncAfterHoldTest {
     private static final int PLAYER_X = -40_000;
 
     private static final int PLAYER_Z = 40_000;
-    private static final int SIMULATION_DISTANCE = 3;
-    /** Chunks east of the player's chunk: beyond the simulation distance and inside the view distance the player asks for. */
-    private static final int LAMP_CHUNK_OFFSET = 5;
+    private static final int SIMULATION_DISTANCE = 2;
+    /** Chunks east of the player's chunk: a chunk that ticks at the simulation distance of the case is at most 1 chunk out. */
+    private static final int FAR_CHUNK_OFFSET = 2;
 
-    private static final int VIEW_DISTANCE = LAMP_CHUNK_OFFSET + 2;
+    private static final int VIEW_DISTANCE = FAR_CHUNK_OFFSET + 1;
     /** Rows round the lamp that the oracle compares; light fades to nothing within 15 blocks. */
     private static final int ROWS = 8;
 
@@ -84,8 +84,8 @@ public class LightSyncAfterHoldTest {
                         info.particleStatus()));
         mock.player().setGameMode(GameType.SPECTATOR);
         ChunkPos home = new ChunkPos(PLAYER_X >> 4, PLAYER_Z >> 4);
-        ChunkPos far = new ChunkPos(home.x() + LAMP_CHUNK_OFFSET, home.z());
-        ChunkPos lampChunk = new ChunkPos(far.x() + 1, far.z());
+        ChunkPos far = new ChunkPos(home.x() + FAR_CHUNK_OFFSET, home.z());
+        ChunkPos lampChunk = new ChunkPos(far.x() - 1, far.z());
         List<ChunkPos> pair = List.of(far, lampChunk);
         LightSyncSends.watch(id);
         FarChunks.Deadline deadline = FarChunks.deadline(120);
@@ -130,7 +130,7 @@ public class LightSyncAfterHoldTest {
                             throw failure(helper, "the chunk %s ticks, so the case proves nothing", far);
                         }
                         // A lamp on the chunk border, in the air above the ground, placed as a draw places blocks.
-                        int x = lampChunk.getMinBlockX() + 1;
+                        int x = lampChunk.getMaxBlockX() - 1;
                         int z = lampChunk.getMiddleBlockZ();
                         lamp[0] = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z) + 2, z);
                         level.setBlock(lamp[0], Blocks.SEA_LANTERN.defaultBlockState(), 3);
@@ -164,7 +164,7 @@ public class LightSyncAfterHoldTest {
                         if (level.isPositionEntityTicking(far.getWorldPosition())) {
                             throw failure(helper, "the chunk %s ticked before the case let it", far);
                         }
-                        server.getPlayerList().setSimulationDistance(VIEW_DISTANCE + 3);
+                        server.getPlayerList().setSimulationDistance(VIEW_DISTANCE + 4);
                         waited[0] = 0;
                         phase[0] = 4;
                     }
@@ -197,7 +197,7 @@ public class LightSyncAfterHoldTest {
 
     /** Every chunk within light's reach of the pair is loaded, as the oracle needs. */
     private static boolean ringLoaded(ServerLevel level, ChunkPos far, ChunkPos lampChunk) {
-        for (int x = far.x() - 1; x <= lampChunk.x() + 1; x++) {
+        for (int x = lampChunk.x() - 1; x <= far.x() + 1; x++) {
             for (int z = far.z() - 1; z <= far.z() + 1; z++) {
                 if (level.getChunkSource().getChunkNow(x, z) == null) {
                     return false;
@@ -215,10 +215,10 @@ public class LightSyncAfterHoldTest {
     /** The rows the case compares, round the lamp. */
     private static BoundingBox box(ChunkPos far, ChunkPos lampChunk, BlockPos lamp) {
         return new BoundingBox(
-                far.getMinBlockX(),
+                lampChunk.getMinBlockX(),
                 lamp.getY() - ROWS,
                 far.getMinBlockZ(),
-                lampChunk.getMaxBlockX(),
+                far.getMaxBlockX(),
                 lamp.getY() + ROWS,
                 far.getMaxBlockZ());
     }
