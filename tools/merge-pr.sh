@@ -212,9 +212,9 @@ check_demo
 check_map_change
 check_map_fresh
 
-# A PR whose changed paths (a rename's old path too) or `gameplay` label make tools/ci-client-needed.sh print
-# true needs a passing `client-gametest` run: a PR pushed while draft can end with only skipped CI on its head,
-# and would otherwise merge with no client run (#885). $checks holds the newest non-skipped verdict per name.
+# A PR that tools/ci-client-needed.sh says needs the client suite (changed paths, a rename's old path too, or
+# the `gameplay` label) needs a passing `client-gametest` run: a draft push can end with only skipped CI on its
+# head (#885). $checks holds the newest non-skipped verdict per name.
 gameplay_flag=0
 has_label gameplay && gameplay_flag=1
 client_needed=$(cut -f2,3 <<<"$pr_files" | tr '\t' '\n' | tools/ci-client-needed.sh "$gameplay_flag") \
