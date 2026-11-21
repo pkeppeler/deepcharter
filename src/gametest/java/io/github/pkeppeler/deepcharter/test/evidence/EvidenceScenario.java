@@ -54,6 +54,9 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
 
     private int frame;
 
+    /** Pass as {@code ticksPerFrame} to {@link #mineBlock} to mine without recording a frame. */
+    protected static final int NO_FRAMES = 0;
+
     /** The scenario name: also the output directory name and the argument to record-evidence.sh. */
     protected abstract String name();
 
@@ -140,7 +143,7 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
                 ClientSession.player(client).swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
             });
             context.waitTicks(1); // tick-wait: the mining is one call a tick
-            if (tick % ticksPerFrame == 1) {
+            if (ticksPerFrame != NO_FRAMES && tick % ticksPerFrame == 1) {
                 frame(context);
             }
             if (singleplayer
