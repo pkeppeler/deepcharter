@@ -24,15 +24,16 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Evidence scenario "crt-terminals" for #857: every colony terminal, the Company cabinet with its CRT monitor, close up from the
- * square it faces (south) and then from three quarters, and the plinths in a row. Positions come from the colony's anchors and the
+ * Evidence scenario "crt-terminals" for #857: every colony terminal, the two-block Company cabinet with its CRT monitor, close up from
+ * the square it faces and then from three quarters, and the row of them standing on the ground. Positions come from the colony's anchors and the
  * placed hangar console.
  */
 public class CrtTerminalsScenario extends EvidenceScenario {
     private static final int SETTLE_TICKS = 60;
     private static final double EYE = 1.62;
-    private static final double FRONT_DISTANCE = 1.8;
-    private static final double QUARTER_DISTANCE = 2.1;
+    private static final double FRONT_DISTANCE = 2.6;
+    private static final double QUARTER_DISTANCE = 3.0;
+    private static final double ROW_DISTANCE = 15;
     private static final double QUARTER_DEGREES = 40;
     private static final int SWING_FRAMES = 8;
     private static final int TICKS_PER_FRAME = 2;
@@ -93,13 +94,14 @@ public class CrtTerminalsScenario extends EvidenceScenario {
         for (Map.Entry<String, Spot> terminal : terminals.entrySet()) {
             Spot spot = terminal.getValue();
             Vec3 centre = Vec3.atCenterOf(spot.pos());
-            Vec3 screen = centre.add(0, 0.1, 0);
+            // Both halves are in the frame: the aim is the seam between the cabinet and the monitor, a little above.
+            Vec3 screen = centre.add(0, 0.9, 0);
             // The terminal's own facing says which side the screen is on.
             Vec3 out = new Vec3(spot.facing().getStepX(), 0, spot.facing().getStepZ());
-            Vec3 front = centre.add(out.scale(FRONT_DISTANCE)).add(0, 0.25, 0);
+            Vec3 front = centre.add(out.scale(FRONT_DISTANCE)).add(0, 1.2, 0);
             Vec3 threeQuarter = centre.add(
                             out.yRot((float) Math.toRadians(QUARTER_DEGREES)).scale(QUARTER_DISTANCE))
-                    .add(0, 0.6, 0);
+                    .add(0, 1.7, 0);
             look(singleplayer, front, screen);
             context.waitTicks(SETTLE_TICKS);
             screenshot(context, terminal.getKey() + "-front");
@@ -112,12 +114,14 @@ public class CrtTerminalsScenario extends EvidenceScenario {
             context.waitTicks(SETTLE_TICKS);
             screenshot(context, terminal.getKey() + "-three-quarter");
         }
-        Spot first = terminals.values().stream().findFirst().orElseThrow();
-        Vec3 plinths = Vec3.atCenterOf(first.pos());
-        Vec3 out = new Vec3(first.facing().getStepX(), 0, first.facing().getStepZ());
-        look(singleplayer, plinths.add(out.scale(14)).add(0, 3, 0), plinths);
+        // The row from a distance, standing on the ground, aimed at the middle terminal.
+        Spot middle = terminals.getOrDefault(
+                "upgrade_terminal", terminals.values().iterator().next());
+        Vec3 row = Vec3.atCenterOf(middle.pos()).add(0, 0.9, 0);
+        Vec3 away = new Vec3(middle.facing().getStepX(), 0, middle.facing().getStepZ());
+        look(singleplayer, row.add(away.scale(ROW_DISTANCE)).add(0, 0.7, 0), row);
         context.waitTicks(SETTLE_TICKS);
-        screenshot(context, "plinths");
+        screenshot(context, "terminal-row");
         frame(context);
     }
 

@@ -49,8 +49,19 @@ public final class TerminalActivity {
         TerminalEvents.REPAIRED.register((server, type, charter, player) -> syncLoaded(type));
     }
 
-    /** Sets the terminal at {@code pos} to show whether its type is online. A block that is no terminal is left alone. */
+    /**
+     * Sets the terminal at {@code pos}, both its halves, to show whether its type is online. A block that is no terminal is left
+     * alone.
+     */
     public static void sync(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        syncBlock(level, pos);
+        if (state.getBlock() instanceof TerminalBlock) {
+            syncBlock(level, TerminalBlock.otherHalf(state, pos));
+        }
+    }
+
+    private static void syncBlock(ServerLevel level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
         BlockState right = corrected(level.getServer(), state);
         if (right != state) {
