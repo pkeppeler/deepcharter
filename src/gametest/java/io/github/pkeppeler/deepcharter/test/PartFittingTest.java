@@ -115,7 +115,7 @@ public class PartFittingTest {
                                 player.getUUID(),
                                 "Unit " + UUID.randomUUID().toString().substring(0, 8))
                         .isPresent()) {
-            throw helper.assertionException("founding a charter should succeed");
+            throw failure(helper, "founding a charter should succeed");
         }
         return new Scene(mock, player, new ArrayList<>());
     }
@@ -141,7 +141,7 @@ public class PartFittingTest {
                         founder,
                         "Other " + UUID.randomUUID().toString().substring(0, 8))
                 .isPresent()) {
-            throw helper.assertionException("founding the other charter should succeed");
+            throw failure(helper, "founding the other charter should succeed");
         }
         return Charters.charterOfOrThrow(helper.getLevel().getServer(), founder)
                 .orElseThrow()
