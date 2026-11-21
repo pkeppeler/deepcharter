@@ -43,6 +43,7 @@ H. Colom & Company has reopened Prosperity, a mining colony that emptied in one 
 7. **No gore** (the default; the user may lift it). Horror comes from wrongness and absence: an empty cab, a loop counter, a punch clock still ticking.
 8. Every story change after the finale is presentation for that charter only, never a world edit.
 9. Homage, not copy. Beats may echo the original game (a retiring miner, an altimeter's rating, a strike that goes wrong), but no line or distinctive phrase is reused. No Natas, no Mars.
+10. **The Company addresses the whole charter.** Lore is for every player, whoever finds the note. The Company speaks to the charter and its crew, in the second person plural or by the charter's name (`[CHARTER]`). It names the Director only where the role acts: approving applicants, outposts, and the finale's deed (signing, and the Chairman beat).
 
 ## 3. The spine
 

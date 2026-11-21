@@ -109,7 +109,7 @@ The full script, settled 2026-10-07. Canon and context: [LORE.md](../LORE.md). T
 > `▌END OF MESSAGE`
 
 **T23 · Breach 3→4 · Personnel · B3**
-> You've reached the Drowned Deep! Our records show some flooding at this depth, but pressure readings are within acceptable limits. If water enters your pod, please report it to your Director.
+> You've reached the Drowned Deep! Our records show some flooding at this depth, but pressure readings are within acceptable limits. If water enters your pod, please report it to Personnel.
 
 **T24 · L4 the Seep · Personnel**
 > A reminder from Personnel: Company altimeters are certified to Layer 5. Readings below Layer 5 are provided for entertainment purposes only.
