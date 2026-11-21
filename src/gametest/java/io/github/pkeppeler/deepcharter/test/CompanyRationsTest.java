@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.colony.ColonyRations;
 import io.github.pkeppeler.deepcharter.colony.OreCarBlock;
 import io.github.pkeppeler.deepcharter.colony.RationLedger;
+import io.github.pkeppeler.deepcharter.test.support.Findings;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestClocks;
@@ -37,7 +38,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Company rations (#838): the starting tins, the ore cars' last-shift tins, the canteen dispenser's one ration a day, and the
@@ -117,7 +117,8 @@ public class CompanyRationsTest {
                 ServerPlayerEvents.JOIN.invoker().onJoin(player);
                 rejoined[0] = true;
             }
-            found.expect(player, 0, "a player who was given the starting rations is given none on a later join");
+            expectRations(
+                    found, player, 0, "a player who was given the starting rations is given none on a later join");
             found.ensure(helper);
         });
     }
@@ -160,12 +161,12 @@ public class CompanyRationsTest {
                 used[0] = true;
                 helper.getLevel().setBlock(pos, freshCar(), 3);
                 use(helper, player, pos);
-                found.expect(player, STARTING_RATIONS + CAR_RATIONS, "the first use of a car gives its tins");
+                expectRations(found, player, STARTING_RATIONS + CAR_RATIONS, "the first use of a car gives its tins");
                 if (!helper.getLevel().getBlockState(pos).getValue(OreCarBlock.LOOTED)) {
                     found.note("a car that gave its tins is marked looted");
                 }
                 use(helper, player, pos);
-                found.expect(player, STARTING_RATIONS + CAR_RATIONS, "a looted car gives nothing more");
+                expectRations(found, player, STARTING_RATIONS + CAR_RATIONS, "a looted car gives nothing more");
             }
             found.ensure(helper);
             if (!said(mock, "colony.deepcharter.ore_car.found") || !said(mock, "colony.deepcharter.ore_car.empty")) {
@@ -192,8 +193,8 @@ public class CompanyRationsTest {
                 use(helper, first, pos);
                 use(helper, second, pos);
             }
-            found.expect(first, STARTING_RATIONS + CAR_RATIONS, "the car is one find for the whole crew");
-            found.expect(second, STARTING_RATIONS, "the second player finds a car already emptied");
+            expectRations(found, first, STARTING_RATIONS + CAR_RATIONS, "the car is one find for the whole crew");
+            expectRations(found, second, STARTING_RATIONS, "the second player finds a car already emptied");
             found.ensure(helper);
         });
     }
@@ -218,13 +219,13 @@ public class CompanyRationsTest {
                     use(helper, player, pos);
                     use(helper, other, pos);
                 });
-                found.expect(player, STARTING_RATIONS + 1, "one ration a day, a second use refused");
-                found.expect(other, STARTING_RATIONS + 1, "each player has a ration of their own each day");
+                expectRations(found, player, STARTING_RATIONS + 1, "one ration a day, a second use refused");
+                expectRations(found, other, STARTING_RATIONS + 1, "each player has a ration of their own each day");
                 TestClocks.paused(
                         server, overworldClock(server), 5 * DAY_TICKS + 20_000, () -> use(helper, player, pos));
-                found.expect(player, STARTING_RATIONS + 1, "late the same day is the same day");
+                expectRations(found, player, STARTING_RATIONS + 1, "late the same day is the same day");
                 TestClocks.paused(server, overworldClock(server), 6 * DAY_TICKS + 100, () -> use(helper, player, pos));
-                found.expect(player, STARTING_RATIONS + 2, "the next day brings the next ration");
+                expectRations(found, player, STARTING_RATIONS + 2, "the next day brings the next ration");
             }
             found.ensure(helper);
             if (!said(mock, "colony.deepcharter.canteen.dispensed")
@@ -239,30 +240,10 @@ public class CompanyRationsTest {
         return server.overworld().dimensionType().defaultClock().orElseThrow();
     }
 
-    /**
-     * Notes the first thing that is wrong. A check that runs once, inside {@code succeedWhen}, cannot throw: the poll catches it and
-     * the next poll skips the check and passes. {@link #ensure} throws on every poll after, so the test fails at its limit.
-     */
-    private static final class Findings {
-        private @Nullable String first;
-
-        void note(String problem) {
-            if (first == null) {
-                first = problem;
-            }
-        }
-
-        void expect(ServerPlayer player, int expected, String why) {
-            if (rations(player) != expected) {
-                note(why + ": expected " + expected + " rations, "
-                        + player.getGameProfile().name() + " holds " + rations(player));
-            }
-        }
-
-        void ensure(GameTestHelper helper) {
-            if (first != null) {
-                throw helper.assertionException("%s", first);
-            }
+    private static void expectRations(Findings found, ServerPlayer player, int expected, String why) {
+        if (rations(player) != expected) {
+            found.note(why + ": expected " + expected + " rations, "
+                    + player.getGameProfile().name() + " holds " + rations(player));
         }
     }
 
@@ -327,6 +308,7 @@ public class CompanyRationsTest {
                 UnreadableChecks.makeUnreadable(player, ColonyRations.LEDGER);
                 helper.getLevel().setBlock(pos, block("canteen").defaultBlockState(), 3);
                 try {
+                    // one-shot-ok: caught below and noted in found, which every poll ensures
                     UnreadableChecks.assertNoThrow(
                             helper,
                             "rations",
@@ -340,7 +322,7 @@ public class CompanyRationsTest {
                     found.note(String.valueOf(e.getMessage()));
                 }
             }
-            found.expect(player, 0, "an unreadable ledger gives no starting ration and the canteen refuses");
+            expectRations(found, player, 0, "an unreadable ledger gives no starting ration and the canteen refuses");
             if (!(player.getAttached(ColonyRations.LEDGER) instanceof Versioned.Unreadable<?>)) {
                 found.note("unreadable saved data must be left as it is");
             }

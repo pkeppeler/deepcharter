@@ -302,10 +302,7 @@ checkstyle {
 	maxWarnings = 0
 }
 
-// Checkstyle's ANTLR parser keeps its prediction DFA for the life of the worker, so what it holds grows with the Java it has read: about
-// 370 MB live by the end of checkstyleGametest (measured with a heap histogram, #878), against the 512 MB default. A task that runs out
-// fails with "Error was thrown while processing <the file it was on>", a different file each run. This is headroom, not a rule: no check is
-// changed.
+// The gametest source set outgrew Checkstyle's default worker heap: CI crashed with OutOfMemoryError (#899).
 tasks.withType<Checkstyle>().configureEach {
 	maxHeapSize = "1g"
 }
