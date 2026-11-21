@@ -10,9 +10,9 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ZONE
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.biomeAt;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.build;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildLitRoom;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildRoom;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ground;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.layer1Floor;
-import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.putOutTheLight;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.stand;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.todayFloor;
 
@@ -129,6 +129,11 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
     /** Ticks between two looks at whether the surface is ready for a still. */
     private static final int READY_POLL_TICKS = 10;
 
+    private static final int ROOMS_FROM = 10;
+
+    /** How many rooms the scenario has built: each has a place of its own. */
+    private int rooms;
+
     /** Where the colony and the mesa are, to check that the two surface worlds show the same places. */
     private record Places(BlockPos colony, BlockPos mesa) {}
 
@@ -187,28 +192,56 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         }
     }
 
-    /** The lit room in both, three views of it lit, the unlit wall, and a figure in the dark room. */
+    /**
+     * The lit room in both, three views of it lit, the unlit wall, and a figure in the dark room. Each still has a room of its own, built
+     * just before the camera goes to it: a room that waits unloaded for some stills was read back with the wrong light in some runs.
+     */
     private void litRoomAndFigure(ClientGameTestContext context, TestServerContext server) {
-        int x = SITE;
         ResourceKey<Level> layer1 = TestLayers.dimension(1);
-        BlockPos campaign = buildLitRoom(server, CAMPAIGN, layer1Floor(x + 7 * SPACING), Optional.of(ZONE));
-        BlockPos today = buildLitRoom(server, layer1, todayFloor(x + 4 * SPACING), Optional.empty());
-        requireZone(server, layer1, today);
-        requireZone(server, CAMPAIGN, campaign);
         record View(String name, float pitch) {}
         for (View view : List.of(new View("wall", 0), new View("floor", DOWN), new View("ceiling", UP))) {
-            still(context, server, layer1, today, view.pitch(), "lit-room-" + view.name() + "-today");
-            still(context, server, CAMPAIGN, campaign, view.pitch(), "lit-room-" + view.name() + "-campaign");
+            roomStill(context, server, layer1, true, view.pitch(), "lit-room-" + view.name() + "-today");
+            roomStill(context, server, CAMPAIGN, true, view.pitch(), "lit-room-" + view.name() + "-campaign");
         }
-        putOutTheLight(server, layer1, today);
-        putOutTheLight(server, CAMPAIGN, campaign);
-        still(context, server, layer1, today, 0, "unlit-room-wall-today");
-        still(context, server, CAMPAIGN, campaign, 0, "unlit-room-wall-campaign");
-
+        roomStill(context, server, layer1, false, 0, "unlit-room-wall-today");
+        roomStill(context, server, CAMPAIGN, false, 0, "unlit-room-wall-campaign");
         // A lampless figure, whole, in each dark room: at light 0 it is lit by the dimension type's ambient light
         // alone.
-        stillWithFigure(context, server, layer1, today, "figure-light-0-today");
-        stillWithFigure(context, server, CAMPAIGN, campaign, "figure-light-0-campaign");
+        figureStill(context, server, layer1, "figure-light-0-today");
+        figureStill(context, server, CAMPAIGN, "figure-light-0-campaign");
+    }
+
+    /** Builds a room in {@code dimension} at the next place, in the zone's biome, and takes the still of it. */
+    private void roomStill(
+            ClientGameTestContext context,
+            TestServerContext server,
+            ResourceKey<Level> dimension,
+            boolean lit,
+            float pitch,
+            String name) {
+        BlockPos room = nextRoom(server, dimension, lit);
+        still(context, server, dimension, room, pitch, name);
+    }
+
+    private void figureStill(
+            ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, String name) {
+        BlockPos room = nextRoom(server, dimension, false);
+        stillWithFigure(context, server, dimension, room, name);
+    }
+
+    /** The X of the next room: past the shaft and the descent, a place of its own for each. */
+    private int nextRoomX() {
+        return SITE + (ROOMS_FROM + ++rooms) * SPACING;
+    }
+
+    /** The next room: a room of today's layer 1 or of the campaign type, at a place of its own, and in the zone's biome in both. */
+    private BlockPos nextRoom(TestServerContext server, ResourceKey<Level> dimension, boolean lit) {
+        int x = nextRoomX();
+        boolean campaign = dimension.equals(CAMPAIGN);
+        BlockPos floor = campaign ? layer1Floor(x) : todayFloor(x);
+        BlockPos room = buildRoom(server, dimension, floor, campaign ? Optional.of(ZONE) : Optional.empty(), lit);
+        requireZone(server, dimension, room);
+        return room;
     }
 
     /**
@@ -218,7 +251,7 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
     private void netherShadedRoom(ClientGameTestContext context, TestServerContext server) {
         EvidencePins.cardinalLightNether = true;
         try {
-            BlockPos room = buildLitRoom(server, CAMPAIGN, layer1Floor(SITE + 5 * SPACING), Optional.of(ZONE));
+            BlockPos room = buildLitRoom(server, CAMPAIGN, layer1Floor(nextRoomX()), Optional.of(ZONE));
             requireZone(server, CAMPAIGN, room);
             still(context, server, CAMPAIGN, room, UP, "lit-room-ceiling-campaign-nether");
             still(context, server, CAMPAIGN, room, DOWN, "lit-room-floor-campaign-nether");

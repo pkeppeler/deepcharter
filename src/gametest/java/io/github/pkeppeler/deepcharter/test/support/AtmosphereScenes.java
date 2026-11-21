@@ -74,7 +74,6 @@ public final class AtmosphereScenes {
             boolean open) {
         server.runOnServer(s -> {
             ServerLevel level = ClientLight.serverLevel(s, dimension);
-            holdLoaded(level, floor);
             RoomCarver.carve(
                     level,
                     floor.offset(-MASS, -1, -MASS),
@@ -89,22 +88,6 @@ public final class AtmosphereScenes {
         biome.ifPresent(name -> fillBiome(
                 server, dimension, floor, name, floor.getY() - MASS - 1 - MARGIN, floor.getY() + SHAFT_DEPTH + MARGIN));
         return floor;
-    }
-
-    /**
-     * Holds the chunks of a scene loaded for the rest of the run. A scene that is built and looked at some stills later would otherwise be
-     * unloaded and saved on the way, and a room read back without the light of its light block reads unlit (the same room measured 14.0
-     * and 6.2 in two runs).
-     */
-    private static void holdLoaded(ServerLevel level, BlockPos floor) {
-        for (int cx = (floor.getX() - MASS) >> 4; cx <= (floor.getX() + MASS) >> 4; cx++) {
-            for (int cz = (floor.getZ() - MASS) >> 4; cz <= (floor.getZ() + MASS) >> 4; cz++) {
-                // force-ok: a client test and an evidence scenario have no GameTestHelper to release through; the world
-                // is discarded when
-                // the run ends
-                level.setChunkForced(cx, cz, true);
-            }
-        }
     }
 
     /** The floor of a scene in layer 1's band of the campaign type at {@code x}: the band's floor and {@link #LAYER_1_SCENE_HEIGHT}. */
@@ -124,9 +107,21 @@ public final class AtmosphereScenes {
      */
     public static BlockPos buildLitRoom(
             TestServerContext server, ResourceKey<Level> dimension, BlockPos floor, Optional<String> biome) {
+        return buildRoom(server, dimension, floor, biome, true);
+    }
+
+    /**
+     * As {@link #buildLitRoom}, with the light block only if {@code lit}. A room that is to be dark is built dark: a light block that is
+     * taken out of a room whose chunk stays loaded leaves the client reading its light.
+     */
+    public static BlockPos buildRoom(
+            TestServerContext server,
+            ResourceKey<Level> dimension,
+            BlockPos floor,
+            Optional<String> biome,
+            boolean lit) {
         server.runOnServer(s -> {
             ServerLevel level = ClientLight.serverLevel(s, dimension);
-            holdLoaded(level, floor);
             RoomCarver.carve(
                     level,
                     floor.offset(-MASS, -1, -MASS),
@@ -137,10 +132,12 @@ public final class AtmosphereScenes {
                     floor.offset(-3, 0, -3),
                     floor.offset(3, ROOM_HEIGHT - 1, 3),
                     Blocks.AIR.defaultBlockState());
-            level.setBlock(
-                    floor.above(ROOM_HEIGHT - 2),
-                    Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 8),
-                    3);
+            if (lit) {
+                level.setBlock(
+                        floor.above(ROOM_HEIGHT - 2),
+                        Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 8),
+                        3);
+            }
             BlockState ore = OreBlocks.of(OreType.IRONIUM).defaultBlockState();
             level.setBlock(floor.offset(1, ROOM_HEIGHT, 0), ore, 3);
             level.setBlock(floor.offset(1, 1, -4), ore, 3);
