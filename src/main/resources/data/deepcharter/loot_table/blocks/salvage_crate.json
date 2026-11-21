@@ -133,6 +133,59 @@
           ]
         }
       ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:survives_explosion"
+          },
+          {
+            "type": "minecraft:random_chance",
+            "chance": 0.04
+          }
+        ]
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "gamme_de_la_voix"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "jeune_jouvencelle"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:wax_cylinder",
+          "modifier": [
+            {
+              "type": "minecraft:set_components",
+              "components": {
+                "deepcharter:recording": "othello"
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -106,6 +106,11 @@ class CommittedRecordingsTest(unittest.TestCase):
             self.assertIn(entry["source_url"], credits_text)
             self.assertIn(recording.title, credits_text)
 
+    def test_no_recipe_makes_a_wax_cylinder(self):
+        # A cylinder is found in a wreck or a crate, never crafted.
+        for recipe in (ROOT / "src/main/resources/data/deepcharter/recipe").glob("*.json"):
+            self.assertNotIn("wax_cylinder", json.loads(recipe.read_text())["result"]["id"], recipe.name)
+
     def test_au_clair_de_la_lune_is_not_among_them(self):
         # The wreck's song (#861) is never a cylinder: it keeps its meaning.
         for recording in first_sounds.RECORDINGS:

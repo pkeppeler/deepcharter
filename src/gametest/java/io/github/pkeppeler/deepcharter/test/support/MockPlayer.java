@@ -15,6 +15,8 @@ import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
+import net.minecraft.network.protocol.game.ClientboundStopSoundPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
@@ -39,6 +41,8 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
+    private final List<Identifier> soundsAtPlaces = new ArrayList<>();
+    private final List<Identifier> soundsStopped = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
     private boolean loaded;
 
@@ -68,6 +72,16 @@ public final class MockPlayer {
     /** The id of every sound the server has played to this player alone (a sound entity packet) so far, oldest first. Read on the mock's tick, so it lags by one. */
     public List<Identifier> soundsHeard() {
         return List.copyOf(sounds);
+    }
+
+    /** The id of every sound the server has played to this player at a place in the world (a sound packet) so far, oldest first. Read on the mock's tick, so it lags by one. */
+    public List<Identifier> soundsHeardAtPlaces() {
+        return List.copyOf(soundsAtPlaces);
+    }
+
+    /** The id of every sound the server has told this player's client to stop so far, oldest first. Read on the mock's tick, so it lags by one. */
+    public List<Identifier> soundsStopped() {
+        return List.copyOf(soundsStopped);
     }
 
     /**
@@ -168,6 +182,12 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundSoundEntityPacket packet) {
                     sounds.add(packet.getSound().value().location());
+                }
+                if (outbound instanceof ClientboundSoundPacket packet) {
+                    soundsAtPlaces.add(packet.getSound().value().location());
+                }
+                if (outbound instanceof ClientboundStopSoundPacket packet) {
+                    soundsStopped.add(packet.getName());
                 }
                 if (outbound instanceof ClientboundLevelChunkWithLightPacket packet) {
                     chunksSent.merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);

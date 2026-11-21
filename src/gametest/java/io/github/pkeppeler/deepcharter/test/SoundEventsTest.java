@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
+import io.github.pkeppeler.deepcharter.sound.phonograph.Recording;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -41,6 +42,9 @@ public class SoundEventsTest {
             "hymn.colony",
             "hymn.layer_1",
             "hymn.layer_2",
+            "phonograph.gamme_de_la_voix",
+            "phonograph.jeune_jouvencelle",
+            "phonograph.othello",
             "pod.engine_idle",
             "pod.engine_drive",
             "pod.engine_drill_side",
@@ -171,10 +175,60 @@ public class SoundEventsTest {
         helper.succeed();
     }
 
-    /** The drone beds and the Lamp Hymn (#249) are ours alone: the original game has nothing to map them to. */
+    /**
+     * The drone beds, the Lamp Hymn (#249) and the wax cylinders' recordings (#864, made by tools/sounds/first_sounds.py) are ours alone: the
+     * original game has nothing to map them to.
+     */
     private static boolean hasNoOriginal(DeepSound sound) {
         String path = sound.event().location().getPath();
-        return path.startsWith("ambient.") || path.startsWith("hymn.");
+        return path.startsWith("ambient.") || path.startsWith("hymn.") || path.startsWith("phonograph.");
+    }
+
+    /**
+     * Each recording's file is mono (Minecraft positions only mono sounds), is in the manifest that the audio gate checks, and lasts as long
+     * as the game thinks: the length in ticks that {@link Recording} plays for is the file's, rounded up.
+     */
+    @GameTest
+    public void everyRecordingIsMonoAndAsLongAsTheGameCounts(GameTestHelper helper) throws IOException {
+        Path root = repoRoot(helper);
+        JsonObject manifest;
+        try (Reader reader = Files.newBufferedReader(root.resolve("tools/sounds/first_sounds.json"))) {
+            manifest = JsonParser.parseReader(reader).getAsJsonObject();
+        }
+        Set<String> names = new TreeSet<>();
+        for (Recording recording : Recording.values()) {
+            String name = recording.getSerializedName();
+            names.add(name);
+            Path file = root.resolve("src/main/resources/assets/deepcharter/sounds/phonograph/" + name + ".ogg");
+            byte[] head = Arrays.copyOf(Files.readAllBytes(file), 256);
+            int identification = indexOf(head, new byte[] {1, 'v', 'o', 'r', 'b', 'i', 's'});
+            if (identification < 0 || head[identification + 11] != 1) {
+                throw failure(helper, "%s is not a mono Vorbis file", file);
+            }
+            JsonObject entry = manifest.getAsJsonObject(name);
+            int ticks = (int) Math.ceil(entry.get("duration_seconds").getAsDouble() * 20);
+            if (ticks != recording.lengthTicks()) {
+                throw failure(
+                        helper,
+                        "%s lasts %s ticks by the manifest and Recording plays it for %s",
+                        name,
+                        ticks,
+                        recording.lengthTicks());
+            }
+        }
+        if (!manifest.keySet().equals(names)) {
+            throw failure(helper, "the manifest holds %s and Recording %s", manifest.keySet(), names);
+        }
+        helper.succeed();
+    }
+
+    private static int indexOf(byte[] bytes, byte[] needle) {
+        for (int i = 0; i + needle.length <= bytes.length; i++) {
+            if (Arrays.equals(Arrays.copyOfRange(bytes, i, i + needle.length), needle)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private static JsonObject soundsJson(GameTestHelper helper) throws IOException {

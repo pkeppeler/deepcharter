@@ -12,8 +12,14 @@ import java.util.List;
  *                                  swap its engine loop every tick
  * @param hymnTicks                 how long each version of the Lamp Hymn plays, in ticks, the colony first (the length of its file, rounded up);
  *                                  a player is not given a hymn while their last one is still playing
+ * @param phonographRange           a phonograph's playback starts for the players within this many blocks of it (the sound's own
+ *                                  {@code attenuation_distance} in sounds.json is the same number)
  */
 public record SoundTuning(
-        int typewriterLettersPerClick, double movingSpeed, int movingHoldTicks, List<Integer> hymnTicks) {
-    public static final SoundTuning DEFAULT = new SoundTuning(2, 0.02, 10, List.of(218, 322, 468));
+        int typewriterLettersPerClick,
+        double movingSpeed,
+        int movingHoldTicks,
+        List<Integer> hymnTicks,
+        int phonographRange) {
+    public static final SoundTuning DEFAULT = new SoundTuning(2, 0.02, 10, List.of(218, 322, 468), 24);
 }
