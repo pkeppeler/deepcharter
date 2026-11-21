@@ -124,46 +124,35 @@ CLEAN = {
         helper.succeedWhen(() -> check(helper));
 """,
 }
+def latched(check: str, poll: str = "helper.succeedWhen") -> str:
+    """A poll that runs `check` on its first poll only, behind a boolean[] flag it sets itself."""
+    return f"""
+        boolean[] checked = {{false}};
+        {poll}(() -> {{
+            if (!checked[0]) {{
+                checked[0] = true;
+{check}
+            }}
+        }});
+"""
+
+
+def at(code: str, indent: int = 16) -> str:
+    return " " * indent + code
+
+
 # label: (statement block, using the here token on the line the gate reports)
 FLAGGED = {
-    "fail after a flag": f"""
-        boolean[] checked = {{false}};
-        helper.succeedWhen(() -> {{
-            if (!checked[0]) {{
-                checked[0] = true;
-                helper.fail("bad"); {HERE}
-            }}
-        }});
-""",
-    "throw after a flag": f"""
-        boolean[] checked = {{false}};
-        helper.succeedWhen(() -> {{
-            if (!checked[0]) {{
-                checked[0] = true;
-                if (bad()) {{
-                    throw helper.assertionException("bad"); {HERE}
-                }}
-            }}
-        }});
-""",
-    "assertion after a flag": f"""
-        boolean[] checked = {{false}};
-        helper.succeedWhen(() -> {{
-            if (!checked[0]) {{
-                checked[0] = true;
-                helper.assertBlockPresent(Blocks.AIR, pos); {HERE}
-            }}
-        }});
-""",
-    "expect with the helper after a flag": f"""
-        boolean[] checked = {{false}};
-        helper.succeedWhen(() -> {{
-            if (!checked[0]) {{
-                checked[0] = true;
-                expect(helper, ok(), "bad"); {HERE}
-            }}
-        }});
-""",
+    "fail after a flag": latched(at(f'helper.fail("bad"); {HERE}')),
+    "throw after a flag": latched(
+        at("if (bad()) {")
+        + "\n"
+        + at(f'throw helper.assertionException("bad"); {HERE}', 20)
+        + "\n"
+        + at("}")
+    ),
+    "assertion after a flag": latched(at(f"helper.assertBlockPresent(Blocks.AIR, pos); {HERE}")),
+    "expect with the helper after a flag": latched(at(f'expect(helper, ok(), "bad"); {HERE}')),
     "set(true) latch": f"""
         AtomicBoolean checked = new AtomicBoolean();
         helper.succeedWhen(() -> {{
@@ -181,15 +170,7 @@ FLAGGED = {
             }}
         }});
 """,
-    "thenWaitUntil body": f"""
-        boolean[] checked = {{false}};
-        helper.startSequence().thenWaitUntil(() -> {{
-            if (!checked[0]) {{
-                checked[0] = true;
-                helper.fail("bad"); {HERE}
-            }}
-        }});
-""",
+    "thenWaitUntil body": latched(at(f'helper.fail("bad"); {HERE}'), "helper.startSequence().thenWaitUntil"),
     "flag in a loop block": f"""
         boolean[] checked = {{false}};
         helper.succeedWhen(() -> {{
@@ -199,35 +180,9 @@ FLAGGED = {
             }}
         }});
 """,
-    "marker without a reason": f"""
-        boolean[] checked = {{false}};
-        helper.succeedWhen(() -> {{
-            if (!checked[0]) {{
-                checked[0] = true;
-                // one-shot-ok:
-                helper.fail("bad"); {HERE}
-            }}
-        }});
-""",
-    "marker in a string": f"""
-        boolean[] checked = {{false}};
-        helper.succeedWhen(() -> {{
-            if (!checked[0]) {{
-                checked[0] = true;
-                helper.fail("// one-shot-ok: not a comment"); {HERE}
-            }}
-        }});
-""",
-    "wrapped fail reports its first line": f"""
-        boolean[] checked = {{false}};
-        helper.succeedWhen(() -> {{
-            if (!checked[0]) {{
-                checked[0] = true;
-                helper.fail( {HERE}
-                        "bad");
-            }}
-        }});
-""",
+    "marker without a reason": latched(at("// one-shot-ok:") + "\n" + at(f'helper.fail("bad"); {HERE}')),
+    "marker in a string": latched(at(f'helper.fail("// one-shot-ok: not a comment"); {HERE}')),
+    "wrapped fail reports its first line": latched(at(f"helper.fail( {HERE}") + "\n" + at('"bad");', 24)),
 }
 
 
