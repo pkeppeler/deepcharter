@@ -212,7 +212,6 @@ for name in $required; do
   default_specs+=("$name:2:success")
   skipped_required_specs+=("$name:2:skipped")
 done
-skipped_required_specs+=(client-gametest:3:skipped)
 DEFAULT_RUNS=$(runs "${default_specs[@]}")
 export DEFAULT_RUNS
 

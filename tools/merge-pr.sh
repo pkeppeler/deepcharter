@@ -220,7 +220,7 @@ has_label gameplay && gameplay_flag=1
 client_needed=$(cut -f2,3 <<<"$pr_files" | tr '\t' '\n' | tools/ci-client-needed.sh "$gameplay_flag") \
   || refuse "could not decide whether the client suite is needed"
 if [[ $client_needed == true ]] && ! grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then
-  refuse "changes game code or is labelled gameplay but has no passing client-gametest run on $sha (a draft push or a skipped run does not count): push or re-run CI" # pipe-grep-q: fail-closed
+  refuse "changes game code or is labelled gameplay but has no passing client-gametest run on $sha (a draft push or a skipped run does not count): push, or close and reopen the PR" # pipe-grep-q: fail-closed
 fi
 
 # Read the closing set again: a body edit may have reached GitHub's parse after the first read.
