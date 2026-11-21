@@ -35,9 +35,8 @@ import net.minecraft.world.level.lighting.LevelLightEngine;
  * neighbour's draw changes the light of that chunk, and vanilla drops a light change for a chunk that does not tick (issue 427), so
  * the player's client keeps the old light.
  *
- * <p>The safety net (#863, ADR 0068): a client was left with the light a chunk had at its send, because the light settled after
- * the send and no light packet followed, and the cause was not found. {@code LightSync} records the light each player holds of a
- * chunk in a hold's 3x3, and for a window after the hold ends sends a player whose chunk's published light differs from it.
+ * <p>The safety net (#863, ADR 0068): {@code LightSync} records the light each player was sent of a chunk in a hold's 3x3, and for
+ * a window after the hold ends sends a player whose chunk's published light differs from it.
  */
 public final class LightSync {
     /** Server ticks a hold may last before it is reported as stuck (30 s). */
@@ -69,9 +68,8 @@ public final class LightSync {
     /** Server ticks between two comparisons. */
     private static final int NET_INTERVAL_TICKS = 10;
 
-    /** The safety net's record of a chunk: the light each player holds of it, and when to compare next and to stop. */
     private static final class NetWatch {
-        /** The print of the published light that each player was last sent for the chunk, by the chunk packet or a light packet. */
+        /** The print of the light each player was last sent for the chunk, by its chunk packet or a light packet. */
         final Map<UUID, Integer> held = new HashMap<>();
 
         int nextCheck;
@@ -83,7 +81,7 @@ public final class LightSync {
         }
     }
 
-    /** The chunks in the 3x3 of a hold, from its request to the end of its window (#863). Server thread only. */
+    /** The chunks in the 3x3 of a hold, from its request to the end of its window. Server thread only. */
     private static final Map<Key, NetWatch> NET = new HashMap<>();
 
     private LightSync() {}
@@ -223,9 +221,8 @@ public final class LightSync {
     }
 
     /**
-     * One number for the published light of every section of the chunk, both layers: the data the light engine publishes, which is
-     * what a chunk or light packet carries. An empty layer, which holds one value throughout, counts as a fixed number, and its
-     * {@code getData()} is not called (it allocates). A published layer is replaced, not written in place, so reading it is safe.
+     * One number for the published light of every section of the chunk, both layers. An empty layer counts as 0 and its
+     * {@code getData()} is not called (it allocates). A published layer is replaced, never written in place.
      */
     private static int lightPrint(ServerLevel level, ChunkPos chunk) {
         LevelLightEngine engine = level.getLightEngine();
@@ -239,10 +236,7 @@ public final class LightSync {
         return print;
     }
 
-    /**
-     * Starts or extends the net's watch of a chunk in a hold's 3x3, and records that the players who were sent it hold its published
-     * light. A chunk that cannot be sent yet has no such player: a player is recorded when the chunk is sent ({@link #chunkSent}).
-     */
+    /** Starts or extends the watch of a chunk and records the light of the players already sent it; the others are recorded at their send. */
     private static void watchNet(ServerLevel level, ChunkPos chunk, int now) {
         Key key = new Key(level, chunk);
         NetWatch watch = NET.computeIfAbsent(key, k -> new NetWatch(now + NET_INTERVAL_TICKS, 0));
@@ -251,11 +245,8 @@ public final class LightSync {
             return;
         }
         int print = lightPrint(level, chunk);
-        for (ServerPlayer player : level.players()) {
-            if (player.getChunkTrackingView().contains(chunk)
-                    && !player.connection.chunkSender.isPending(chunk.pack())) {
-                watch.held.putIfAbsent(player.getUUID(), print);
-            }
+        for (UUID sent : sentTo(level, chunk)) {
+            watch.held.putIfAbsent(sent, print);
         }
     }
 
@@ -268,10 +259,8 @@ public final class LightSync {
     }
 
     /**
-     * The safety net: for {@value #NET_WINDOW_TICKS} ticks after a hold ended, every {@value #NET_INTERVAL_TICKS} ticks, sends each
-     * player whose recorded light of the chunk differs from its published light one light packet. It compares with what the player
-     * was sent, not with an earlier sample, so a light that moved and came back between two samples is still caught. It does not look
-     * at why the light changed or why vanilla did not send it. A player vanilla also served gets a duplicate, which does no harm.
+     * For {@value #NET_WINDOW_TICKS} ticks after a hold ended, every {@value #NET_INTERVAL_TICKS} ticks, sends each player whose
+     * recorded light of the chunk differs from its published light one light packet. A player vanilla also served gets a duplicate.
      */
     private static void compareLight(MinecraftServer server) {
         int now = server.getTickCount();

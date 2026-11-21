@@ -8,19 +8,19 @@ Issue #863. Amends [ADR 0063](0063-a-hold-sends-the-players-who-have-a-chunk-its
 
 ## Decision
 
-- **`LightSync` records the light each player holds of a chunk, and sends a player whose chunk's published light differs.**
-  - A hold request starts a watch of every loaded chunk in its 3x3, whether or not the chunk can be sent yet. The watch lasts until 100 ticks after the hold of that chunk ends (or, for a chunk with no hold, 700 ticks).
-  - A watched chunk has a record per player: a fingerprint of the published light the player was sent, that is, a hash of the data of every light section, both layers. A player who holds the chunk when the watch starts is recorded with the light published then. A chunk packet records the light published at the moment it is built, through a mixin on `PlayerChunkSender.sendChunk` (no Fabric event reaches that point). A light packet that `LightSync` sends records the light it carries.
+- **`LightSync` records the light each player was sent of a chunk, and sends a player whose chunk's published light differs.**
+  - A hold request starts a watch of every loaded chunk in its 3x3, whether or not the chunk can be sent yet. The watch lasts until 100 ticks after the hold of that chunk ends (700 ticks for a chunk with no hold).
+  - A watched chunk has a record per player: a hash of the data of every light section, both layers, of the light the player was sent. It is set when the watch starts for a player who already holds the chunk, by a mixin on `PlayerChunkSender.sendChunk` when a chunk packet is built (no Fabric event reaches that point), and by each light packet `LightSync` sends.
   - After the hold, every 10 ticks, each tracking player whose record differs from the published light gets one `ClientboundLightUpdatePacket` for every section, and the record is updated.
-- **It compares with what the player was sent, not with an earlier sample.** A light that moves and comes back between two samples is still caught: the player holds the state at the send, and the published light is another.
+- **It compares with what the player was sent, not with an earlier sample.** A light that moves and comes back between two samples is still caught.
 - **It does not look at why the light changed, or why vanilla did not send it.** A player vanilla also served gets a duplicate, which does no harm (ADR 0063).
-- **Only chunks in the 3x3 of a hold.** No change to vanilla for any other chunk. ADR 0063's finding about a global redirect stands.
+- **Only the 3x3 of a hold.** ADR 0063's finding about a global redirect stands.
 
 ## Why
 
-- A client was left with the light a chunk had when it was sent. The server's stored light, which `BlockLightOracle` checks, was right (`StaleClientLightClientTest` on #818, job 136930289206): the chunk was sent while its published light was still settling, the light went back to its settled state 211 ms later, and no light packet followed.
-- The cause is not found. A first reading, that the chunk did not tick, is wrong: `ChunkHolder.getChunkToSend` returns the ticking chunk, so a chunk that is sent ticked at the send, and `LightSync` cannot hold a chunk that does not tick. The pending-player gap (`ChunkMap.isChunkTracked` skips a pending player, and `broadcastChanges` clears the light bits either way) loses nothing, because the packet that sends the chunk is built later from the published light.
-- A first version compared the published light with its own last sample. A light that moves and returns inside one interval, as the one in the trace did (about 4 ticks), passes it. Recording what each player was sent removes that.
+- A client was left with the light a chunk had when it was sent. The server's stored light, which `BlockLightOracle` checks, was right (`StaleClientLightClientTest` on #818, job 136930289206): the chunk was sent while its published light was still settling, the light went back 211 ms later, and no light packet followed.
+- The cause is not found. A chunk that is sent ticked at the send (`ChunkHolder.getChunkToSend`), so "it did not tick" is wrong. The pending-player gap (`ChunkMap.isChunkTracked` skips a pending player) loses nothing, because the chunk packet is built later from the published light.
+- A first version compared the light with its own last sample, which a light that moves and returns inside one interval (about 4 ticks in the trace) passes.
 - A fix for a named cause can replace or narrow this one.
 
 ## Cost
@@ -36,6 +36,6 @@ The runs are noisy: the spread within each row, 0.07x to 0.16x, is as large as t
 
 ## Consequences
 
-- A hold costs a fingerprint per watched chunk when its watch starts, one per chunk packet sent for a watched chunk, and one per comparison of a chunk that has a recorded player, and one light packet per player whose record differs.
-- A mixin on `PlayerChunkSender.sendChunk` (`layer/mixin/PlayerChunkSenderMixin`) reads the light at the send. It fails the launch if the method changes.
+- A hold costs a hash per watched chunk when its watch starts, per chunk packet sent for a watched chunk, and per comparison of a chunk with a recorded player, and one light packet per player whose record differs.
+- `layer/mixin/PlayerChunkSenderMixin` fails the launch if `sendChunk` changes.
 - `LightSyncSafetyNetTest` pins the contract with a test-only mixin that switches off vanilla's light broadcast for a chunk: a change after the hold, a light that moved and came back after a send, a neighbour that could not be sent when the hold was requested, and no light packet when nothing changed.

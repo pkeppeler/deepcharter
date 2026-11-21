@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.UUID;
@@ -24,6 +25,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ThreadedLevelLightEngine;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
@@ -125,17 +127,9 @@ public class LightSyncSafetyNetTest {
                         phase[0] = 1;
                     }
                     case 1 -> {
-                        boolean ticking = level.isPositionEntityTicking(home.getWorldPosition());
-                        deadline.await(helper, level, ticking, () -> "the chunk " + home + " did not tick");
-                        if (!ticking) {
+                        if (!teleportOnceTicking(helper, level, mock, home, deadline)) {
                             return;
                         }
-                        mock.teleportTo(
-                                level,
-                                TestLayers.vec(
-                                        TestLayers.SURFACE, home.getMiddleBlockX() + 0.5, 100, home.getMiddleBlockZ()),
-                                0f,
-                                0f);
                         phase[0] = 2;
                     }
                     case 2 -> {
@@ -171,7 +165,7 @@ public class LightSyncSafetyNetTest {
                         phase[0] = 5;
                         keepHeld(level, lamp[0]);
                         // The player is sent the lit chunk.
-                        net.minecraft.server.level.ServerPlayer player = mock.player();
+                        ServerPlayer player = mock.player();
                         player.connection.chunkSender.dropChunk(player, home);
                         player.connection.chunkSender.markChunkPendingToSend(level.getChunk(home.x(), home.z()));
                     }
@@ -300,17 +294,9 @@ public class LightSyncSafetyNetTest {
                         phase[0] = 1;
                     }
                     case 1 -> {
-                        boolean ticking = level.isPositionEntityTicking(home.getWorldPosition());
-                        deadline.await(helper, level, ticking, () -> "the chunk " + home + " did not tick");
-                        if (!ticking) {
+                        if (!teleportOnceTicking(helper, level, mock, home, deadline)) {
                             return;
                         }
-                        mock.teleportTo(
-                                level,
-                                TestLayers.vec(
-                                        TestLayers.SURFACE, home.getMiddleBlockX() + 0.5, 100, home.getMiddleBlockZ()),
-                                0f,
-                                0f);
                         phase[0] = 2;
                     }
                     case 2 -> {
@@ -390,6 +376,21 @@ public class LightSyncSafetyNetTest {
         });
     }
 
+    /** Moves the player to the chunk once it ticks; false until then. */
+    private static boolean teleportOnceTicking(
+            GameTestHelper helper, ServerLevel level, MockPlayer mock, ChunkPos home, FarChunks.Deadline deadline) {
+        boolean ticking = level.isPositionEntityTicking(home.getWorldPosition());
+        deadline.await(helper, level, ticking, () -> "the chunk " + home + " did not tick");
+        if (ticking) {
+            mock.teleportTo(
+                    level,
+                    TestLayers.vec(TestLayers.SURFACE, home.getMiddleBlockX() + 0.5, 100, home.getMiddleBlockZ()),
+                    0f,
+                    0f);
+        }
+        return ticking;
+    }
+
     private static void releaseAround(ServerLevel level, ChunkPos home) {
         for (int x = home.x() - 2; x <= home.x() + 4; x++) {
             for (int z = home.z() - 2; z <= home.z() + 2; z++) {
@@ -426,7 +427,7 @@ public class LightSyncSafetyNetTest {
             return false;
         }
         int[] now = storedLight(level, chunk, lamp);
-        if (last[0] != null && java.util.Arrays.equals(last[0], now)) {
+        if (last[0] != null && Arrays.equals(last[0], now)) {
             same[0]++;
         } else {
             same[0] = 0;
@@ -478,17 +479,9 @@ public class LightSyncSafetyNetTest {
                         phase[0] = 1;
                     }
                     case 1 -> {
-                        boolean ticking = level.isPositionEntityTicking(home.getWorldPosition());
-                        deadline.await(helper, level, ticking, () -> "the chunk " + home + " did not tick");
-                        if (!ticking) {
+                        if (!teleportOnceTicking(helper, level, mock, home, deadline)) {
                             return;
                         }
-                        mock.teleportTo(
-                                level,
-                                TestLayers.vec(
-                                        TestLayers.SURFACE, home.getMiddleBlockX() + 0.5, 100, home.getMiddleBlockZ()),
-                                0f,
-                                0f);
                         phase[0] = 2;
                     }
                     case 2 -> {
