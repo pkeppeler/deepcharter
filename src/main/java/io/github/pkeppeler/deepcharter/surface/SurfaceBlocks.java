@@ -25,10 +25,7 @@ public final class SurfaceBlocks {
     /** The dust a falling regolith block kicks up: the average of the four regolith textures. */
     private static final int REGOLITH_DUST = 0x94482F;
 
-    /**
-     * Loose plains topsoil: it falls like sand when nothing holds it (#836). The packed layer and the rock under it do not, so a shaft's
-     * walls and the colony pad stay where they are; a shallow cut under the skin slumps, which the dig plays against.
-     */
+    /** Loose plains topsoil: it falls like sand when nothing holds it (#836). The packed layer and the rock under it do not. */
     public static final Block REGOLITH = registerBlock(
             id("regolith"),
             key -> new RegolithBlock(

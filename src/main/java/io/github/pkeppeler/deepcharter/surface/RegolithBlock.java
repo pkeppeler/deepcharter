@@ -10,11 +10,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
-/**
- * Loose regolith (#836): it falls like sand. A shallow bore under the skin slumps into the tunnel, and the slump must not bury the
- * pod that cut it: a falling block lands inside the cells of an entity without noticing it, so the pod would sit inside a block.
- * A pod in the landing cell refuses the block, which spills as loose regolith items instead.
- */
+/** Loose regolith (#836): falls like sand, but a pod in the landing cell refuses the block, which spills as an item. */
 final class RegolithBlock extends ColoredFallingBlock {
     RegolithBlock(ColorRGBA dustColor, BlockBehaviour.Properties properties) {
         super(dustColor, properties);
