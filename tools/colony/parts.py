@@ -134,7 +134,7 @@ def cabin(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dic
                 else:
                     s = state("riveted_plate")
                 p.set(*wall.cell(a, y), s)
-    p.room(x0 + 1, 1, z0 + 1, x1 - 1, top, z1 - 1)
+    p.room(x0 + 1, 1, z0 + 1, x1 - 1, top, z1 - 1, dark)
     if dark:
         dim_glow(p, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 3)
     p.fill(x0 + 1, top + 1, z0 + 1, x1 - 1, top + 1, z1 - 1, state("riveted_plate"))
@@ -158,8 +158,10 @@ def dim_glow(p: Piece, x0: int, z0: int, x1: int, z1: int, y: int) -> None:
         return [min(lo + 1 + GLOW_SPACING * i, hi) for i in range(count)]
     for x in spread(x0, x1):
         for z in spread(z0, z1):
-            if p.get(x, y, z) is None:
-                p.set(x, y, z, state("minecraft:light", level=GLOW_LEVEL, waterlogged="false"))
+            # A block on a grid point would leave its neighbours dark; furniture is added after the glow, below y.
+            if p.get(x, y, z) is not None:
+                raise ValueError(f"{p.name}: a block stands on the dim glow's grid point {(x, y, z)}")
+            p.set(x, y, z, state("minecraft:light", level=GLOW_LEVEL, waterlogged="false"))
 
 
 def floor(p: Piece, x0: int, z0: int, x1: int, z1: int, block: str = "concrete_footing") -> None:

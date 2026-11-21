@@ -93,8 +93,8 @@ def outputs() -> dict[Path, bytes]:
     files[DATA / "colony/layout.json"] = _json({"pieces": pieces, "later": later,
                                                 "anchors": {name: list(at) for name, at in sorted(built.anchors.items())},
                                                 "doors": [door.json() for door in built.doors],
-                                                "rooms": [{"piece": path, "from": list(low), "to": list(high)}
-                                                          for path, low, high in built.rooms()]})
+                                                "rooms": [{"piece": path, "from": list(low), "to": list(high), "dark": dark}
+                                                          for path, low, high, dark in built.rooms()]})
     return files
 
 

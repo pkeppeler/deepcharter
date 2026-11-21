@@ -292,7 +292,7 @@ class TownTest(unittest.TestCase):
         and a roof over it."""
         rooms = self.built.rooms()
         self.assertGreaterEqual(len(rooms), 10)
-        for path, (x0, y0, z0), (x1, y1, z1) in rooms:
+        for path, (x0, y0, z0), (x1, y1, z1), _ in rooms:
             with self.subTest(room=path, at=(x0, z0)):
                 for x in range(x0, x1 + 1):
                     for z in range(z0, z1 + 1):
@@ -301,6 +301,20 @@ class TownTest(unittest.TestCase):
                         for y in range(y0, y1 + 1):
                             block = self.cells.get((x, y, z))
                             self.assertTrue(block is None or "window" not in block[0], f"a window stands inside the room at {(x, y, z)}")
+
+    def test_every_building_with_a_door_or_bay_has_a_room(self):
+        """ColonyInteriorLightTest checks only the rooms a piece records, so a building that bypasses works_hall, cabin and
+        machine_house must still record its own (Piece.room). A door's lintel is the block over its opening, one step inside from
+        the cell outside it: the piece that holds it is the building."""
+        roomed = {path for path, _, _, _ in self.built.rooms()}
+        for door in self.built.doors:
+            with self.subTest(door=door.building):
+                dx, dz = FACING[door.facing]
+                x, y, z = door.outside
+                lintel = (x - dx, y + door.height, z - dz)
+                owners = [path for path, piece in self.built.pieces if lintel in piece.blocks]
+                self.assertEqual(len(owners), 1, f"the lintel of {door.building} at {lintel} is in {owners}")
+                self.assertIn(owners[0], roomed, f"{owners[0]} has a door but records no room (Piece.room)")
 
     def test_every_door_and_bay_is_open_to_its_height_with_a_clear_line_of_sight_out(self):
         self.assertGreaterEqual(len(self.built.doors), 10)

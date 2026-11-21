@@ -428,9 +428,9 @@ class Town:
     doors: list[Door]
     anchors: dict[str, tuple[int, int, int]]
 
-    def rooms(self) -> list[tuple[str, tuple[int, int, int], tuple[int, int, int]]]:
-        """Every room of every piece (the piece's path, the room's low corner and high corner), in colony coordinates."""
-        return [(path, low, high) for path, piece in self.pieces for low, high in piece.rooms]
+    def rooms(self) -> list[tuple[str, tuple[int, int, int], tuple[int, int, int], bool]]:
+        """Every room of every piece (the piece's path, the room's low corner and high corner, whether it is dark), in colony coordinates."""
+        return [(path, low, high, dark) for path, piece in self.pieces for low, high, dark in piece.rooms]
 
 
 def build() -> Town:

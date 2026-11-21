@@ -35,6 +35,13 @@ import org.jspecify.annotations.Nullable;
  * a block does not fill.
  */
 public class ColonyInteriorLightTest {
+    /**
+     * The brightest block a dark room (the Lamp and Pick) may hold: its dim glow is invisible light blocks of level 5
+     * (tools/colony/parts.py GLOW_LEVEL), so a lamp inside, which gives 14, fails the test. Light that leaks in through the door
+     * from the lamp outside is not a block of the room and is not counted.
+     */
+    private static final int DIM_CEILING = 5;
+
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void noCellInsideAColonyBuildingIsAtBlockLightZero(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
@@ -54,9 +61,16 @@ public class ColonyInteriorLightTest {
             }
             List<String> problems = new ArrayList<>();
             int cells = 0;
+            int dark = 0;
             for (JsonElement element : rooms) {
                 JsonObject room = element.getAsJsonObject();
                 cells += check(level, colony.center(), room, problems);
+                if (room.get("dark").getAsBoolean()) {
+                    dark++;
+                }
+            }
+            if (dark == 0) {
+                throw failure(helper, "the layout marks no room dark, so nothing says which buildings stay dim");
             }
             if (cells == 0) {
                 throw failure(helper, "no room of the layout holds a cell a block does not fill");
@@ -77,8 +91,10 @@ public class ColonyInteriorLightTest {
         String name = room.get("piece").getAsString();
         BlockPos from = centre.offset(corner(room.getAsJsonArray("from")));
         BlockPos to = centre.offset(corner(room.getAsJsonArray("to")));
+        boolean stayDark = room.get("dark").getAsBoolean();
         int open = 0;
         int dark = 0;
+        int brightest = 0;
         String first = "";
         for (int x = from.getX(); x <= to.getX(); x++) {
             for (int z = from.getZ(); z <= to.getZ(); z++) {
@@ -91,6 +107,7 @@ public class ColonyInteriorLightTest {
                 for (int y = from.getY(); y <= to.getY(); y++) {
                     BlockPos pos = new BlockPos(x, y, z);
                     BlockState state = level.getBlockState(pos);
+                    brightest = Math.max(brightest, state.getLightEmission());
                     if (state.isSolidRender()) {
                         continue;
                     }
@@ -110,6 +127,10 @@ public class ColonyInteriorLightTest {
         if (dark > 0) {
             problems.add(
                     name + ": " + dark + " of " + open + " open cell(s) are at block light 0, the first at " + first);
+        }
+        if (stayDark && brightest > DIM_CEILING) {
+            problems.add(
+                    name + ": a dark room holds a light of " + brightest + ", over its dim glow of " + DIM_CEILING);
         }
         return open;
     }
