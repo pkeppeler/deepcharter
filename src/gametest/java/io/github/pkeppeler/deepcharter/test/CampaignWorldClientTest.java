@@ -105,13 +105,13 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
             require("the Conduit and the stamp", server.computeOnServer(CampaignWorldClientTest::theConduit));
             ClientWait.until(
                     context,
-                    "the pad's chunks on the server",
+                    "a site in a loaded chunk, and the pad's chunks, on the server",
                     () -> server.computeOnServer(s -> padChunks()
-                            .allMatch(chunk -> s.overworld().getChunkSource().hasChunk(chunk.x(), chunk.z()))),
-                    () -> server.computeOnServer(s -> padChunks()
-                            .filter(chunk -> !s.overworld().getChunkSource().hasChunk(chunk.x(), chunk.z()))
-                            .toList()
-                            .toString()));
+                                    .allMatch(chunk ->
+                                            s.overworld().getChunkSource().hasChunk(chunk.x(), chunk.z()))
+                            && !sitesToCheck(s).isEmpty()),
+                    () -> "the sites to check: "
+                            + server.computeOnServer(s -> sitesToCheck(s).size()));
             require("the pad chunks' sites", server.computeOnServer(CampaignWorldClientTest::theSitesOfThePad));
             boolean clientSees = context.computeOnClient(client -> client.level != null
                     // level-height: the whole level against the issue's numbers, not one layer
@@ -275,6 +275,35 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
                         IntStream.range(-PAD_CHUNK_RADIUS, PAD_CHUNK_RADIUS).mapToObj(z -> new ChunkPos(x, z)));
     }
 
+    /** Every site of both layers in the cells round the origin that touches the pad's chunks or lies whole in chunks the world holds. */
+    private static List<StructureSite> sitesToCheck(MinecraftServer server) {
+        ServerLevel level = server.overworld();
+        BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT).orElse(null);
+        if (conduit == null) {
+            return List.of();
+        }
+        Set<ChunkPos> pad = padChunks().collect(Collectors.toCollection(LinkedHashSet::new));
+        List<StructureSite> found = new ArrayList<>();
+        for (int layer = 1; layer <= CampaignBands.lastLayer(); layer++) {
+            CampaignBands.Band band = CampaignBands.layer(layer);
+            for (StructureKind kind : StructureKind.inLayer(layer)) {
+                for (int cellX = -SITE_CELLS; cellX < SITE_CELLS; cellX++) {
+                    for (int cellZ = -SITE_CELLS; cellZ < SITE_CELLS; cellZ++) {
+                        StructureSite site = StructureSite.in(
+                                level.getSeed(), kind, band.minY(), band.height(), cellX, cellZ, conduit);
+                        List<ChunkPos> chunks = LayerStructuresTest.chunksOf(site);
+                        boolean loaded = chunks.stream()
+                                .allMatch(chunk -> level.getChunkSource().hasChunk(chunk.x(), chunk.z()));
+                        if (loaded || chunks.stream().anyMatch(pad::contains)) {
+                            found.add(site);
+                        }
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
     /**
      * The sites of the chunks the build loaded are whole: each has its blocks, its Note and its candle. Those are every site of both
      * layers in the cells round the origin that touches the pad's chunks, and every such site whose chunks the world holds already (the
@@ -282,34 +311,14 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
      */
     private static String theSitesOfThePad(MinecraftServer server) {
         ServerLevel level = server.overworld();
-        BlockPos conduit = Colony.anchor(server, ColonyAnchor.CONDUIT).orElse(null);
-        if (conduit == null) {
-            return "the colony was not built";
-        }
-        Set<ChunkPos> pad = padChunks().collect(Collectors.toCollection(LinkedHashSet::new));
-        List<StructureSite> sites = new ArrayList<>();
-        for (int layer = 1; layer <= CampaignBands.lastLayer(); layer++) {
-            CampaignBands.Band band = CampaignBands.layer(layer);
-            for (StructureKind kind : StructureKind.inLayer(layer)) {
-                for (int cellX = -SITE_CELLS; cellX < SITE_CELLS; cellX++) {
-                    for (int cellZ = -SITE_CELLS; cellZ < SITE_CELLS; cellZ++) {
-                        sites.add(StructureSite.in(
-                                level.getSeed(), kind, band.minY(), band.height(), cellX, cellZ, conduit));
-                    }
-                }
-            }
+        List<StructureSite> sites = sitesToCheck(server);
+        if (sites.isEmpty()) {
+            return "no site lies in a chunk the build or the player's view loaded, so the check proves nothing";
         }
         int checked = 0;
         List<String> unmet = new ArrayList<>();
         for (StructureSite site : sites) {
-            List<ChunkPos> chunks = LayerStructuresTest.chunksOf(site);
-            boolean loaded =
-                    chunks.stream().allMatch(chunk -> level.getChunkSource().hasChunk(chunk.x(), chunk.z()));
-            boolean touchesPad = chunks.stream().anyMatch(pad::contains);
-            if (!touchesPad && !loaded) {
-                continue;
-            }
-            for (ChunkPos chunk : chunks) {
+            for (ChunkPos chunk : LayerStructuresTest.chunksOf(site)) {
                 level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
             }
             CampaignBands.Band band = CampaignBands.layer(site.kind().layer());
@@ -319,9 +328,6 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
             if (!missing.isEmpty()) {
                 unmet.add(site.kind() + " at " + site.origin().toShortString() + ": " + missing);
             }
-        }
-        if (checked == 0) {
-            return "no site lies in a chunk the build or the player's view loaded, so the check proves nothing";
         }
         return unmet.isEmpty() ? "" : unmet.size() + " of " + checked + " sites are not whole: " + unmet;
     }

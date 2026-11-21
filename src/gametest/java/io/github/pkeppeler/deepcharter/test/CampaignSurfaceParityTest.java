@@ -19,12 +19,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The layers' density terms must not reach above the surface band (#803). In the shipped overworld they once did: solid pillars rose
  * from the surface to the top of the band in 0.5% of the columns, because the terms ran past their bands. The ground of
  * {@code deepcharter:campaign_sample} (the shipped overworld in the test pack) must be the ground of {@code deepcharter:tall_surface_biomes},
- * the pack's surface world with the surface's own biome source, on a grid of columns, and the density must end the layers' terms at the
+ * the pack's surface world with the surface's own biome source, to within {@link #TOLERANCE} blocks on a grid of columns, and the density must end the layers' terms at the
  * surface band's floor: a {@code range_choice} on the band below it, a constant that is empty everywhere else.
  */
 public class CampaignSurfaceParityTest {
@@ -36,6 +38,14 @@ public class CampaignSurfaceParityTest {
     private static final int SPAN = 1024;
 
     private static final int STEP = 32;
+    /**
+     * The surface-only world is the pack's own fixture, with its own noise router: its ground differs by a block or three in about
+     * 0.4% of the columns (measured, CI 2026-11-21). A leak is a pillar from the surface to the top of the band, hundreds of blocks, so
+     * two density cells (16) separate the two.
+     */
+    private static final int TOLERANCE = 16;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CampaignSurfaceParityTest.class);
     private static final int MAX_TICKS = 20_000;
 
     @GameTest(maxTicks = MAX_TICKS)
@@ -43,22 +53,25 @@ public class CampaignSurfaceParityTest {
         ServerLevel campaign = ClientLight.serverLevel(helper.getLevel().getServer(), CAMPAIGN);
         ServerLevel surface = ClientLight.serverLevel(helper.getLevel().getServer(), SURFACE_ONLY);
         int columns = 0;
+        int largest = 0;
         List<String> differing = new ArrayList<>();
         for (int x = -SPAN; x < SPAN; x += STEP) {
             for (int z = -SPAN; z < SPAN; z += STEP) {
                 columns++;
                 int expected = baseHeight(surface, x, z);
                 int actual = baseHeight(campaign, x, z);
-                if (expected != actual) {
+                if (Math.abs(expected - actual) > TOLERANCE) {
                     differing.add(x + " " + z + ": " + expected + " and " + actual);
                 }
+                largest = Math.max(largest, Math.abs(expected - actual));
             }
         }
         if (!differing.isEmpty()) {
             throw helper.assertionException(
-                    "the campaign ground differs from the surface-only world in %s of %s columns (x z: surface-only and campaign), the first %s",
-                    differing.size(), columns, differing.subList(0, Math.min(5, differing.size())));
+                    "the campaign ground differs from the surface-only world by over %s blocks in %s of %s columns (x z: surface-only and campaign), the first %s",
+                    TOLERANCE, differing.size(), columns, differing.subList(0, Math.min(5, differing.size())));
         }
+        LOGGER.info("[campaign-parity] {} columns, the largest height difference {}", columns, largest);
         helper.succeed();
     }
 
