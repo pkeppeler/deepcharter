@@ -10,6 +10,7 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TEST
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ZONE;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.build;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildRoom;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.face;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.fillBiome;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ground;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.layer1Floor;
@@ -18,7 +19,6 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.requ
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.stand;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.todayFloor;
 
-import io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -79,6 +79,11 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
      * 2.0.
      */
     private static final double CONTROL_RATIO = 2.0;
+
+    private record View(String name, float yaw, float pitch) {}
+
+    private static final List<View> VIEWS =
+            List.of(new View("wall", 180, 0), new View("floor", 180, 90), new View("ceiling", 180, -90));
 
     private final List<String> table = new ArrayList<>();
 
@@ -264,8 +269,6 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         BlockPos today =
                 buildRoom(server, TestLayers.dimension(1), todayFloor(x + 4 * SPACING), Optional.empty(), true);
         requireZone(server, TestLayers.dimension(1), today);
-        // One room at a time: the camera turns inside a room whose light has settled, and only a change of room
-        // pays the settle.
         List<Reading> now = lookAround(context, server, TestLayers.dimension(1), today, "lit-room-today-");
         List<Reading> campaignWorld = lookAround(context, server, CAMPAIGN, campaign, "lit-room-campaign-");
         for (int i = 0; i < VIEWS.size(); i++) {
@@ -337,12 +340,7 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         return reading[0];
     }
 
-    private record View(String name, float yaw, float pitch) {}
-
-    private static final List<View> VIEWS =
-            List.of(new View("wall", 180, 0), new View("floor", 180, 90), new View("ceiling", 180, -90));
-
-    /** Reads each of {@link #VIEWS} of the room at {@code floor}: the first view settles the light, the others turn in place. */
+    /** Reads each of {@link #VIEWS} of one room: the first view stands, the others turn in place. */
     private static List<Reading> lookAround(
             ClientGameTestContext context,
             TestServerContext server,
@@ -360,7 +358,7 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         return readings;
     }
 
-    /** Turns the spectator in the room it already stands in and reads the middle of the screen: the light is settled, the camera has not moved. */
+    /** Turns in the room the spectator stands in, and reads the middle of the screen. */
     private static Reading turn(
             ClientGameTestContext context,
             TestServerContext server,
@@ -369,7 +367,7 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
             float yaw,
             float pitch,
             String shot) {
-        AtmosphereScenes.face(context, server, dimension, floor, yaw, pitch, shot);
+        face(context, server, dimension, floor, yaw, pitch, shot);
         return read(context, floor, shot);
     }
 

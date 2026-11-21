@@ -219,9 +219,9 @@ public final class AtmosphereScenes {
     }
 
     /**
-     * Stands the first player, a spectator, on {@code floor} in {@code dimension} facing {@code yaw} and {@code pitch}, waits for the
-     * client to be there, to hold the chunks round the scene and for its light to match the server's, and for the picture to stop changing. {@code shot} names
-     * the view in a failure.
+     * Stands the first player, a spectator, on {@code floor} in {@code dimension} facing {@code yaw} and {@code pitch}. Waits for the
+     * client to be there, to hold the chunks round the scene, to have meshed every section and for its light to match the server's, then
+     * for the picture to stop changing. {@code shot} names the view in a failure.
      */
     public static void stand(
             ClientGameTestContext context,
@@ -235,12 +235,14 @@ public final class AtmosphereScenes {
         Box around = Box.around(floor, MASS, 1, SHAFT_DEPTH);
         ClientWait.until(
                 context,
-                "the client in " + dimension.identifier() + " holding the chunks at " + floor.toShortString(),
+                "the client in " + dimension.identifier() + " holding and meshing the chunks at "
+                        + floor.toShortString(),
                 client -> ClientLight.clientLevel(client).dimension().equals(dimension)
                         && client.player != null
                         && client.player.blockPosition().equals(floor)
-                        && ClientLight.chunksPresent(ClientLight.clientLevel(client), around),
-                client -> "no chunks at " + floor.toShortString());
+                        && ClientLight.chunksPresent(ClientLight.clientLevel(client), around)
+                        && client.levelRenderer.hasRenderedAllSections(),
+                client -> "no chunks or unmeshed sections at " + floor.toShortString());
         ClientChecks.requireNone(
                 "the light at " + shot, ClientLight.settledMismatch(context, server, dimension, around));
         awaitSteadyPicture(context, shot);
