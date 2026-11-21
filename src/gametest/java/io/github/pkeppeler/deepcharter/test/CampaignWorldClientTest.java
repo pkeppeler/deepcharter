@@ -8,7 +8,6 @@ import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.colony.WorldFormat;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
@@ -46,7 +45,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
@@ -102,6 +100,8 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
             require("the campaign overworld", server.computeOnServer(CampaignWorldClientTest::theOverworld));
             require("the colony", server.computeOnServer(CampaignWorldClientTest::theColony));
             require("the Conduit and the stamp", server.computeOnServer(CampaignWorldClientTest::theConduit));
+            // tick-wait: the player's view chunks come in over a few seconds after the join
+            context.waitTicks(100);
             require("the pad chunks' sites", server.computeOnServer(CampaignWorldClientTest::theSitesOfThePad));
             boolean clientSees = context.computeOnClient(client -> client.level != null
                     // level-height: the whole level against the issue's numbers, not one layer
@@ -258,8 +258,9 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The sites that touch the pad's chunks, which the build loaded before it finished, are whole: each has its blocks, its Note and its
-     * candle. The Prospector's bay is one of them by its place, and the rest are every site of both layers in the cells round the origin.
+     * The sites of the chunks the build loaded are whole: each has its blocks, its Note and its candle. Those are every site of both
+     * layers in the cells round the origin that touches the pad's chunks, and every such site whose chunks the world holds already (the
+     * build and the player's view loaded them, so they were drawn as the chunks came in, not asked for here).
      */
     private static String theSitesOfThePad(MinecraftServer server) {
         ServerLevel level = server.overworld();
@@ -274,7 +275,6 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
             }
         }
         List<StructureSite> sites = new ArrayList<>();
-        LayerStructures.prospector(level).ifPresent(sites::add);
         for (int layer = 1; layer <= CampaignBands.lastLayer(); layer++) {
             CampaignBands.Band band = CampaignBands.layer(layer);
             for (StructureKind kind : StructureKind.inLayer(layer)) {
@@ -290,14 +290,14 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
         List<String> unmet = new ArrayList<>();
         for (StructureSite site : sites) {
             List<ChunkPos> chunks = LayerStructuresTest.chunksOf(site);
-            if (chunks.stream().noneMatch(pad::contains)) {
+            boolean loaded =
+                    chunks.stream().allMatch(chunk -> level.getChunkSource().hasChunk(chunk.x(), chunk.z()));
+            boolean touchesPad = chunks.stream().anyMatch(pad::contains);
+            if (!touchesPad && !loaded) {
                 continue;
             }
             for (ChunkPos chunk : chunks) {
-                ChunkAccess loaded = level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
-                if (loaded == null) {
-                    return "chunk " + chunk + " did not load";
-                }
+                level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
             }
             CampaignBands.Band band = CampaignBands.layer(site.kind().layer());
             List<String> missing = LayerStructuresTest.unmet(
@@ -308,7 +308,7 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
             }
         }
         if (checked == 0) {
-            return "no site touches the pad's chunks, so the check proves nothing";
+            return "no site lies in a chunk the build or the player's view loaded, so the check proves nothing";
         }
         return unmet.isEmpty() ? "" : unmet.size() + " of " + checked + " sites are not whole: " + unmet;
     }
