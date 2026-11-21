@@ -7,10 +7,13 @@
     "ChunkMapUnloadMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",
-    "LightSyncSendMixin"
+    "LightSyncSendMixin",
+    "LightTraceServerMixin",
+    "PlayerChunkSenderTraceMixin"
   ],
   "client": [
     "CardinalLightingMixin",
+    "ClientLightTraceMixin",
     "ClientGameTestImplMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",

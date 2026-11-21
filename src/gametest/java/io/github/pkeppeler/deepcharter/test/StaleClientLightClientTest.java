@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientTestWatchdog;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
+import io.github.pkeppeler.deepcharter.test.support.LightTrace;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.time.Duration;
@@ -312,6 +313,8 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
     private void layerStructuresOnArrival(
             ClientGameTestContext context, TestServerContext server, int layer, int cell) {
         ResourceKey<Level> dimension = server.computeOnServer(s -> TestLayers.dimension(s, layer));
+        // The timeline of a stale report covers this cell: its sites share chunks.
+        LightTrace.clear();
         List<StructureSite> sites = server.computeOnServer(s -> {
             BlockPos conduit = Colony.anchor(s, ColonyAnchor.CONDUIT).orElseThrow();
             ServerLevel level = ClientLight.serverLevel(s, dimension);

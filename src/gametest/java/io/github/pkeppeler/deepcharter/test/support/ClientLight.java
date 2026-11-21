@@ -128,7 +128,7 @@ public final class ClientLight {
                     + serverSide + LightMismatchEvidence.client(level, emitters)
                     + LightMismatchEvidence.blockDifferences(
                             box, serverBlocks[0], LightMismatchEvidence.surroundings(level, box))
-                    + LightMismatchEvidence.clientChunks(level, box);
+                    + LightMismatchEvidence.clientChunks(level, box) + LightMismatchEvidence.timeline(box);
         }));
     }
 
