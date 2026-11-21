@@ -16,5 +16,6 @@ public final class ColonyInit {
         FounderStatue.init();
         ColonyDisplays.init();
         ColonyPhonograph.init();
+        ColonyRations.init();
     }
 }

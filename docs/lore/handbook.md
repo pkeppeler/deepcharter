@@ -173,7 +173,7 @@ Each revision arrives with a notice at the top of the handbook (*"Your Employee 
 ### Rev. 3: Notice of Disciplinary Action
 
 > NOTICE OF DISCIPLINARY ACTION
-> To: [CHARTER], Director [DIRECTOR]
+> To: [CHARTER]
 >
 > Your charter has been observed working below its authorised depth. This is a serious breach of your Employment Contract (see §21). You are directed to return to the surface and await further instruction.
 >

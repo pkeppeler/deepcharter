@@ -278,18 +278,49 @@ class TownTest(unittest.TestCase):
         block that does, by a face or along an edge (a lattice brace runs diagonally from girder to girder): nothing hangs in the
         air or overhangs the pad."""
         x0, z0, x1, z1 = town.CONDUIT
-        supported = {pos for pos in self.cells if pos[1] <= 1}
-        supported |= {(x, y, z) for (x, y, z) in self.cells if x0 <= x <= x1 and z0 <= z <= z1 and y == town.CONDUIT_TOP + 1}
+        # A light block is invisible and holds no place in the air: the dim glow of a dark room (parts.dim_glow).
+        cells = {pos: s for pos, s in self.cells.items() if s[0] != "minecraft:light"}
+        supported = {pos for pos in cells if pos[1] <= 1}
+        supported |= {(x, y, z) for (x, y, z) in cells if x0 <= x <= x1 and z0 <= z <= z1 and y == town.CONDUIT_TOP + 1}
         frontier = list(supported)
         while frontier:
             x, y, z = frontier.pop()
             for dx, dy, dz in TOUCHING:
                 near = (x + dx, y + dy, z + dz)
-                if near in self.cells and near not in supported:
+                if near in cells and near not in supported:
                     supported.add(near)
                     frontier.append(near)
-        floating = sorted(set(self.cells) - supported)
+        floating = sorted(set(cells) - supported)
         self.assertEqual(floating, [], f"{len(floating)} block(s) hang in the air, the first at {floating[:1]}: join them to a wall or a post")
+
+    def test_every_room_is_a_box_of_air_under_a_roof_and_over_a_floor(self):
+        """The rooms the layout lists (ColonyInteriorLightTest reads their light) hold no window, and have a floor under every column
+        and a roof over it."""
+        rooms = self.built.rooms()
+        self.assertGreaterEqual(len(rooms), 10)
+        for path, (x0, y0, z0), (x1, y1, z1), _ in rooms:
+            with self.subTest(room=path, at=(x0, z0)):
+                for x in range(x0, x1 + 1):
+                    for z in range(z0, z1 + 1):
+                        self.assertIn((x, y0 - 1, z), self.cells, f"no floor under {(x, y0, z)}")
+                        self.assertIn((x, y1 + 1, z), self.cells, f"no roof over {(x, y1, z)}")
+                        for y in range(y0, y1 + 1):
+                            block = self.cells.get((x, y, z))
+                            self.assertTrue(block is None or "window" not in block[0], f"a window stands inside the room at {(x, y, z)}")
+
+    def test_every_building_with_a_door_or_bay_has_a_room(self):
+        """ColonyInteriorLightTest checks only the rooms a piece records, so a building that bypasses works_hall, cabin and
+        machine_house must still record its own (Piece.room). A door's lintel is the block over its opening, one step inside from
+        the cell outside it: the piece that holds it is the building."""
+        roomed = {path for path, _, _, _ in self.built.rooms()}
+        for door in self.built.doors:
+            with self.subTest(door=door.building):
+                dx, dz = FACING[door.facing]
+                x, y, z = door.outside
+                lintel = (x - dx, y + door.height, z - dz)
+                owners = [path for path, piece in self.built.pieces if lintel in piece.blocks]
+                self.assertEqual(len(owners), 1, f"the lintel of {door.building} at {lintel} is in {owners}")
+                self.assertIn(owners[0], roomed, f"{owners[0]} has a door but records no room (Piece.room)")
 
     def test_every_door_and_bay_is_open_to_its_height_with_a_clear_line_of_sight_out(self):
         self.assertGreaterEqual(len(self.built.doors), 10)

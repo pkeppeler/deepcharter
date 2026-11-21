@@ -1734,3 +1734,45 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Knobs.** `AmbienceTuning` (rates, retry, quiet, horn range and timer, distances); the volume and `attenuation_distance` of each event in `sounds.json`; each wear's numbers in `tools/sounds/ambience.py`.
 
 **Open.** #861's wreck speaker is one more source for the same scheduler: a `Source.WRECK` beside `DARK` and `HORN`, and the same quiet rule. The ticker finds horns by block, so a speaker block of any structure reuses `HornFinder` as it is.
+
+## Company rations (#838, A)
+
+**Problem.** A new player's first playtest found no food anywhere and starved before reaching the first crop. The surface has no animals or plants, and the first terminal repair takes real time.
+
+**The answer.** The Company feeds its hands, in four sources and one renewable one. All of it is free: no money, no charter state.
+- **Starting tins.** Every player is given 3 Company rations once, with the handbook on first join. A ledger on the player (`ColonyRations.LEDGER`, kept on death) records it, so a later join, a death or a respawn gives none.
+- **Ore cars.** Each ore car on the colony's track holds 2 tins, a one-time find for whoever opens it first. The car's block state `looted` stores it (the world holds only the block), and a looted car is drawn without its heaped ore. A later use says it is empty. Per car, not per charter or per player: it is a find, the cars are few, and the crew shares it.
+- **The canteen.** A dispenser in the Lamp and Pick gives each player 1 ration per in-game day (the overworld clock over 24,000 ticks), tracked per player in the ledger, so it holds across restarts. A second use the same day is refused. It gives no light, so the bar stays a dark room.
+- **Crates.** A salvage crate holds one ration one time in four.
+- **Stalk mash.** A fungal stalk cooks into stalk mash on a campfire (30 s) or in a smoker (5 s). It fills little (3 hunger, little saturation), so a ration is better, but it never runs out. The furnace still turns a stalk into charcoal (the campfire's fuel), so the recipes do not clash.
+
+**Daylight cycle off.** With the daylight cycle off the overworld clock stands still, so the canteen serves each player once until the clock moves.
+
+**Trade-offs.** The ration fills as much as bread (5 hunger, 4 saturation) and a stack of them keeps, so a dig is feedable. A crew cannot pool the canteen: it is one ration per player a day. Starvation is slow, so no one is forced to the canteen at once.
+
+**Knobs.** `ColonyRations.STARTING_RATIONS` (3), `OreCarBlock.TINS` (2), the crate's `p` (0.25) in `salvage_crate.json`, the food values in `ColonyRations`, the cooking times in `stalk_meal_*.json`.
+
+**Open questions.** Should a charter's hangar or an outpost have its own canteen? Should a ration spoil, so a stockpile is not free? Not now: both add a system for no problem seen yet.
+
+## The regolith slump (#836, A)
+
+**Problem.** The user's first playtest: "regolith should fall like sand". Plain regolith is the surface's loose skin, one block thick over the packed layer, and a block that hangs in the air over a cut looks wrong. Making it fall also gives the surface a hazard of its own: a shallow bore under the skin brings the skin down into the tunnel.
+
+**What the material does.** `regolith` is a falling block, as sand is. `regolith_packed`, `regolith_rock` and the mesa's `ochre_regolith` are not, so a deep shaft's walls, the colony pad (its regolith always lies on dirt, packed regolith or rock) and anything placed on the pad hold. A fall is only started by an update to the block or the one under it, so generation, which writes blocks without updates, does not bring overhangs down.
+
+| Situation | What happens | Counterplay |
+|---|---|---|
+| A bore or a hand cut leaves the skin with air under it | The skin falls into the cut and lands on whatever is under it | Cut deeper, through the packed layer, where the walls hold; or leave the skin standing and cut under packed |
+| The skin falls where a pod sits | The pod refuses the block: it spills as a regolith item and never lands inside the pod | None needed: a slump cannot bury or trap a pod |
+| A shaft goes straight down from the surface | The skin round the shaft keeps its support, so it stands | None needed |
+
+**Ladder.** By hand: the pilot learns to bore below the skin, or shore a cut with packed regolith (a placed block does not fall). There is no upgrade, since the hazard is cheap: loose regolith in a tunnel is dust the drill clears like any block.
+
+**Decisions (A).**
+- Only `regolith` falls. Mesa topsoil (`ochre_regolith`) stays put: the issue named the plains' regolith only, and `ColonyBuilder` keeps the mesa's own surface. A test pins it. Making it fall is a one-line change.
+- A pod in the landing cell refuses the block, which spills as an item, rather than sitting inside it. Minecraft's falling block ignores entities when it lands, so a slump could otherwise leave the pod embedded.
+- The dust a falling block kicks up is the average colour of the four regolith textures (`0x94482F`).
+
+**Knobs.** None: the behaviour is the vanilla falling block's. `SurfaceBlocks.REGOLITH_DUST` is the dust colour.
+
+**Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
