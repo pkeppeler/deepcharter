@@ -108,15 +108,11 @@ def framed_cube(front: str, glow: str | None = None, halo_colour: str | None = N
     return Model(textures, boxes)
 
 
-def window(glass: str, side: str, glow: str | None) -> Model:
-    """A window in a wall: the glazing on the north and south faces (the outside and the inside), the frame on the other four; a
-    lit window has a glow layer over both glazed faces."""
+def window(glass: str, side: str) -> Model:
+    """A window in a wall: the glazing (a frame round clear panes, a cutout) on the north and south faces (the outside and the
+    inside), the plain frame on the other four."""
     textures = {"glass": tex(glass), "side": tex(side), "particle": tex(side)}
     boxes = [Box((0, 0, 0), (16, 16, 16), {"north": "#glass", "south": "#glass", "*": "#side"}, cull=True)]
-    if glow:
-        textures["glow"] = tex(glow)
-        boxes.append(Box((0, 0, -0.01), (16, 16, 0), {"north": "#glow"}, glow=True))
-        boxes.append(Box((0, 0, 16), (16, 16, 16.01), {"south": "#glow"}, glow=True))
     return Model(textures, boxes)
 
 
@@ -316,8 +312,7 @@ CATALOGUE: dict[str, KitBlock] = {block.name: block for block in [
     cube("concrete_footing", "Concrete Footing", (("", 6), ("_cracked", 2))),
     cube("grating", "Steel Grating"),
     cube("brass_trim", "Brass Trim"),
-    facing("window_ribbon_lit", "Lit Ribbon Window", lambda: window("window_ribbon", "riveted_plate", "window_ribbon_glow")),
-    facing("window_ribbon_dark", "Dark Ribbon Window", lambda: window("window_ribbon_dark", "riveted_plate", None)),
+    facing("window_glass", "Company Window", lambda: window("window_glass", "riveted_plate")),
     facing("furnace_hatch", "Crusher Hatch", lambda: framed_cube("furnace_hatch", "furnace_hatch_glow")),
     facing("gauge_panel", "Gauge Panel", lambda: framed_cube("gauge_panel", "gauge_panel_glow", "sodium")),
     facing("wall_lamp", "Company Wall Lamp", wall_lamp),

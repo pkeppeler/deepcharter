@@ -20,8 +20,12 @@ public final class ColonyKit {
     public static final Block GRATING =
             ColonyBlocks.register("grating", SoundType.METAL, properties -> new Block(properties.noOcclusion()));
 
-    public static final Block WINDOW_RIBBON_LIT = window("window_ribbon_lit", 10);
-    public static final Block WINDOW_RIBBON_DARK = window("window_ribbon_dark", 0);
+    /** A real window: clear panes in a frame, so the view and the light of the room behind it come through (#837). */
+    public static final Block WINDOW_GLASS = ColonyBlocks.register(
+            "window_glass",
+            SoundType.GLASS,
+            properties -> new KitFacingBlock(properties.noOcclusion(), Block.box(0, 0, 0, 16, 16, 16)));
+
     public static final Block FURNACE_HATCH = window("furnace_hatch", 9);
     public static final Block GAUGE_PANEL = window("gauge_panel", 3);
 

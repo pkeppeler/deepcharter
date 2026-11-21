@@ -379,7 +379,7 @@ def personnel_office(doors: list[Door]) -> Piece:
 
 
 def lamp_and_pick(doors: list[Door]) -> Piece:
-    """The miners' bar, burned out: its windows dark, a scorch of coal on its floor, a counter with stools and barrels, and its lit
+    """The miners' bar, burned out: no lamps lit inside, only a dim glow (parts.dim_glow), a scorch of coal on its floor, a counter with stools and barrels, and its lit
     sign over a door that faces the square across the south street."""
     p = Piece("lamp_and_pick")
     walls = parts.cabin(p, -3, 14, 9, 24, 5, {"north": (0, 6), "south": (3,), "west": (19,), "east": (19,)}, dark=True)
@@ -427,6 +427,10 @@ class Town:
     later: list[tuple[str, Piece]]
     doors: list[Door]
     anchors: dict[str, tuple[int, int, int]]
+
+    def rooms(self) -> list[tuple[str, tuple[int, int, int], tuple[int, int, int]]]:
+        """Every room of every piece (the piece's path, the room's low corner and high corner), in colony coordinates."""
+        return [(path, low, high) for path, piece in self.pieces for low, high in piece.rooms]
 
 
 def build() -> Town:

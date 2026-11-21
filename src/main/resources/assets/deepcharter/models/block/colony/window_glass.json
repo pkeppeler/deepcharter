@@ -1,7 +1,7 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "glass": "deepcharter:block/colony/window_ribbon_dark",
+    "glass": "deepcharter:block/colony/window_glass",
     "side": "deepcharter:block/colony/riveted_plate",
     "particle": "deepcharter:block/colony/riveted_plate"
   },
