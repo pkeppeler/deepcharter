@@ -27,8 +27,6 @@ import net.minecraft.world.phys.Vec3;
  * sound is gone as well.
  */
 final class PhonographSound {
-    // Nothing here knows a wax cylinder: a sound, a place and a range are all it takes, so any speaker can play a sound
-    // of its own.
     private PhonographSound() {}
 
     /** The players of {@code level} within {@code range} blocks of {@code pos}. */
@@ -43,6 +41,8 @@ final class PhonographSound {
         return inRange;
     }
 
+    // Takes a DeepSound, a place and a range, not a Recording: #861's wreck phonograph plays its own sound through this
+    // call.
     /** Sends the start to every player in range and returns them: the playback's first listeners. */
     static Set<UUID> start(ServerLevel level, BlockPos pos, DeepSound sound, double range) {
         Set<UUID> listeners = new HashSet<>();

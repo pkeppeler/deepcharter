@@ -216,7 +216,7 @@ class DarkRenderTest(unittest.TestCase):
             self.assertEqual(first, second, name)
             self.assertEqual(1, first_sounds.ogg_channels(target), name)
 
-    def test_the_dark_is_the_cut_and_a_tail_and_is_quieter_than_the_wreck(self):
+    def test_the_dark_is_the_cut_and_a_tail_and_no_louder_than_the_wreck(self):
         _, wreck = self.pcm("wreck")
         _, dark = self.pcm("dark")
         cut = first_sounds.DARK_CUT
@@ -226,7 +226,7 @@ class DarkRenderTest(unittest.TestCase):
         )
         self.assertAlmostEqual(6.0, len(wreck) / 2 / first_sounds.RATE, delta=0.1)
         peak = lambda raw: max(abs(v) for v in array.array("h", raw[: len(raw) // 2 * 2]))  # noqa: E731
-        self.assertLess(peak(dark), peak(wreck) / 2)
+        self.assertLessEqual(peak(dark), peak(wreck))
 
 
 @unittest.skipUnless(all(TOOLS), "ffmpeg is needed to render")

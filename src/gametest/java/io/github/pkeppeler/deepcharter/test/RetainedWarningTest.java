@@ -4,20 +4,26 @@ import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceTuning;
 import io.github.pkeppeler.deepcharter.sound.ambience.QuietTracker;
+import io.github.pkeppeler.deepcharter.sound.ambience.RetainedSight;
 import io.github.pkeppeler.deepcharter.sound.ambience.RetainedWarning;
 import io.github.pkeppeler.deepcharter.sound.ambience.RetainedWarning.Figure;
 import io.github.pkeppeler.deepcharter.sound.ambience.WarningTuning;
 import java.util.List;
 import java.util.OptionalInt;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #861's warning in the dark: when the song drifts from a Retained. The decision is pure (no client), so each rule is
  * run for as many ticks as it needs in a moment: no cue without a figure, none for a seen one, a cue for one in range and unseen, once per
- * encounter, a cooldown, and silence while something sounds or near a wreck's phonograph.
+ * encounter, a cooldown, and silence while something sounds or near a wreck's phonograph. Whether a figure is seen (the view cone and the
+ * ray against rock) runs on a level here, as the client's does.
  */
 public class RetainedWarningTest {
     private static final WarningTuning TUNING = WarningTuning.DEFAULT;
@@ -197,6 +203,32 @@ public class RetainedWarningTest {
         expect(helper, !RetainedWarning.inCone(0, 0, 1, 0, 0, -20, half), "behind is in view");
         expect(helper, !RetainedWarning.inCone(0, 0, 1, 20, 0, 0, half) || half >= 90, "square to the side is in view");
         expect(helper, !RetainedWarning.inCone(0, 0, 1, 0, 0, 0, half), "a zero direction is in view");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aFigureIsSeenOnlyInsideTheViewConeWithNoRockBetween(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Vec3 eyes = Vec3.atCenterOf(helper.absolutePos(new BlockPos(1, 3, 3)));
+        Vec3 head = eyes.add(10, 0, 0);
+        Vec3 ahead = new Vec3(1, 0, 0);
+        double half = TUNING.viewHalfAngle();
+        expect(helper, RetainedSight.sees(level, eyes, ahead, head, half), "a figure ahead in the open was not seen");
+        expect(
+                helper,
+                !RetainedSight.sees(level, eyes, ahead.scale(-1), head, half),
+                "a figure behind the player was seen");
+        expect(
+                helper,
+                !RetainedSight.sees(level, eyes, new Vec3(0, 0, 1), head, half),
+                "a figure square to the side was seen");
+        helper.setBlock(new BlockPos(6, 3, 3), Blocks.STONE);
+        expect(helper, !RetainedSight.sees(level, eyes, ahead, head, half), "a figure behind rock was seen");
+        helper.setBlock(new BlockPos(6, 3, 3), Blocks.AIR);
+        expect(
+                helper,
+                RetainedSight.sees(level, eyes, ahead, head, half),
+                "a figure was not seen once the rock was gone");
         helper.succeed();
     }
 

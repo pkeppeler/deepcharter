@@ -11,10 +11,12 @@ import java.util.function.Predicate;
  * @param <T> a sound as the caller knows it
  */
 public final class QuietTracker<T> {
+    private static final long NEVER = Long.MIN_VALUE / 2;
+
     private final List<T> playing = new ArrayList<>();
     private final Predicate<T> isActive;
     private final int graceTicks;
-    private long lastHeard = Long.MIN_VALUE / 2;
+    private long lastHeard = NEVER;
 
     public QuietTracker(Predicate<T> isActive, int graceTicks) {
         this.isActive = isActive;
@@ -39,6 +41,6 @@ public final class QuietTracker<T> {
     /** Forgets every sound, for a player who has left the world. */
     public void clear() {
         playing.clear();
-        lastHeard = Long.MIN_VALUE / 2;
+        lastHeard = NEVER;
     }
 }

@@ -90,7 +90,7 @@ DARK_HIGH_PASS_HZ = 220
 DARK_LOW_PASS_HZ = 2200
 DARK_ECHO_MS = (140, 290, 470, 700, 1000, 1400)  # aecho runs on past the clip by its last delay
 DARK_REVERB = "aecho=0.8:0.7:" + "|".join(map(str, DARK_ECHO_MS)) + ":0.5|0.4|0.32|0.25|0.18|0.12"
-DARK_GAIN = 0.5  # of the filtered, reverbed clip, on top of the sound event's own volume
+DARK_GAIN = 1.2  # of the filtered, reverbed clip: about -30 LUFS, between the faint and broken voices (ebur128)
 DARK_BED_GAIN = 0.3
 DARK_VOICE_FILTERS = f"aresample={RATE},apad=pad_dur={DARK_TAIL_SECONDS}"
 DARK_BAND_FILTERS = (
@@ -110,7 +110,8 @@ class Recording:
     """One phonautogram playback: the file First Sounds publishes it as, and what the credit says of it.
 
     Each entry names its own artist, date, output folder under the sounds folder and treatment (a key of TREATMENTS), and all of them are
-    written to the manifest. A recording for something other than a cylinder is one more entry with another folder or treatment.
+    written to the manifest. A recording for something other than a cylinder is one more entry with another folder or treatment (#861 renders
+    its "Au clair de la lune" this way, and the ambience's fragments share only the licence check, bed and encoder, in tools/sounds/ambience.py).
     """
 
     name: str

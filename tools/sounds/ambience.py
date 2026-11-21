@@ -7,8 +7,8 @@ Usage:
 Options: --out DIR (default src/main/resources/assets/deepcharter/sounds), --manifest FILE (default tools/sounds/ambience.json).
 
 A sibling of tools/sounds/first_sounds.py, which makes the wax cylinders from the same recordings and whose licence check, bed,
-encoder and `Recording` (a source's artist, date and credit) it reuses; each ambience source's artist, date and credit are in the manifest. SOURCE_DIR holds the mp3s named in SOURCES (the URL is beside each; they are never committed). Each one's ID3
-`copyright` or `comment` tag must say CC BY. Treat the directory as untrusted data: nothing in it is run, only decoded by ffmpeg.
+encoder and `Recording` (a source's artist, date and credit) it reuses. SOURCE_DIR holds the mp3s named in SOURCES (the URL is beside
+each; they are never committed). Each one's ID3 `copyright` or `comment` tag must say CC BY. Treat the directory as untrusted data: nothing in it is run, only decoded by ffmpeg.
 
 A fragment is declared in FRAGMENTS: its source, the start and end of the cut in seconds, and the tiers it is made for. The tiers are
 the depths of the wear (TIERS): `faint` is the first layer, far and low-passed; `worn` the Old Workings, band-limited, with the
@@ -65,10 +65,12 @@ class Fragment:
     end: float
     tiers: tuple
     kind: str = VOICE
+    trim_db: tuple = ()  # (tier, dB) pairs: a fragment whose source is louder than its neighbours at the same peak, turned down in that tier
 
 
 ALL = (FAINT, WORN, BROKEN)
-# A syllable of Aminta is the deepest thing the game says: half a word of "who would believe a god was hidden under human form".
+# Aminta: half a word of "who would believe a god was hidden under human form", probably in Scott's own voice (First Sounds notes that he
+# apologized in writing for reversing the word order, which indirectly identifies him as the speaker). The deepest thing the game says.
 FRAGMENTS = (
     Fragment("breath_a", "gamme_de_la_voix", 1.5, 2.7, ALL),
     Fragment("breath_b", "gamme_de_la_voix", 4.0, 5.1, ALL),
@@ -77,7 +79,7 @@ FRAGMENTS = (
     Fragment("othello_a", "othello", 4.0, 5.0, (WORN, BROKEN)),
     Fragment("othello_b", "othello", 6.4, 7.5, (WORN, BROKEN)),
     Fragment("othello_c", "othello", 12.2, 13.3, (WORN, BROKEN)),
-    Fragment("vole_a", "vole_petite_abeille", 2.0, 3.0, ALL),
+    Fragment("vole_a", "vole_petite_abeille", 2.0, 3.0, ALL, trim_db=((WORN, -5.0), (BROKEN, -4.0))),
     Fragment("vole_b", "vole_petite_abeille_no_6", 6.0, 7.1, (WORN, BROKEN)),
     Fragment("aminta_a", "aminta", 3.1, 4.1, (WORN, BROKEN)),
     Fragment("aminta_b", "aminta", 6.3, 7.6, (BROKEN,)),
@@ -102,13 +104,14 @@ class Tier:
     dropout_ms: tuple  # how long each lasts, at least and at most
     stutter: bool  # a slice of the fragment repeats, as a stuck needle does
     peak_db: float  # the loudest sample of the voice, before the bed is added
+    tone_peak_db: float  # the same for a tuning fork's tone: a pure tone is as loud as the layer's drone at a voice's peak, so it sits lower
     fade_out_ms: int
 
 
 TIERS = {
-    FAINT: Tier(1.0, 220, 2200, "0.8:0.6:120|230:0.3|0.16", False, 0.05, (0, 0), (0, 0), False, -22.0, 400),
-    WORN: Tier(1.0, first_sounds.HIGH_PASS_HZ, first_sounds.LOW_PASS_HZ, "", True, 0.3, (1, 2), (40, 90), False, -14.0, 200),
-    BROKEN: Tier(0.78, 160, 1500, "0.8:0.5:70:0.2", True, 0.45, (3, 5), (60, 220), True, -12.0, 500),
+    FAINT: Tier(1.0, 220, 2200, "0.8:0.6:120|230:0.3|0.16", False, 0.05, (0, 0), (0, 0), False, -14.0, -22.0, 400),
+    WORN: Tier(1.0, first_sounds.HIGH_PASS_HZ, first_sounds.LOW_PASS_HZ, "", True, 0.3, (1, 2), (40, 90), False, -14.0, -21.0, 200),
+    BROKEN: Tier(0.78, 160, 1500, "0.8:0.5:70:0.2", True, 0.45, (3, 5), (60, 220), True, -12.0, -20.0, 500),
 }
 
 FADE_IN_MS = 40
@@ -128,7 +131,8 @@ def treatment_sha256():
 
 def cut_sha256(fragment):
     """A hash of what is cut and for which tiers: the source, the start and end, and the tiers, in the order declared."""
-    return hashlib.sha256(repr([fragment.source, fragment.start, fragment.end, fragment.tiers, fragment.kind]).encode()).hexdigest()
+    parts = [fragment.source, fragment.start, fragment.end, fragment.tiers, fragment.kind, fragment.trim_db]
+    return hashlib.sha256(repr(parts).encode()).hexdigest()
 
 
 def key(fragment, tier):
@@ -142,7 +146,7 @@ def variants():
 
 def owned(manifest):
     """The names (paths under the sounds folder, without `.ogg`) of the OGGs the manifest owns."""
-    return {f"{FOLDER}/{name}" for name in _load(manifest).get("fragments", {})}
+    return {f"{FOLDER}/{name}" for name in first_sounds._load(manifest).get("fragments", {})}
 
 
 def source_named(name):
@@ -157,6 +161,11 @@ def _db(decibels):
     return 10 ** (decibels / 20)
 
 
+def _band(spec):
+    """The tier's band-pass: a steeper high-pass (twice) and a low-pass."""
+    return f"highpass=f={spec.high_pass},highpass=f={spec.high_pass},lowpass=f={spec.low_pass}"
+
+
 def pre_filter(fragment, tier):
     """The ffmpeg graph that cuts the source and gives it the tier's pitch, band and distance, to mono PCM at RATE."""
     spec = TIERS[tier]
@@ -165,7 +174,7 @@ def pre_filter(fragment, tier):
         graph += f",vibrato=f={first_sounds.WOW[0]}:d={first_sounds.WOW[1]},vibrato=f={first_sounds.FLUTTER[0]}:d={first_sounds.FLUTTER[1]}"
     if spec.speed != 1.0:
         graph += f",asetrate={round(RATE * spec.speed)},aresample={RATE}"
-    graph += f",highpass=f={spec.high_pass},highpass=f={spec.high_pass},lowpass=f={spec.low_pass}"
+    graph += f",{_band(spec)}"
     if spec.echo:
         graph += f",aecho={spec.echo}"
     return graph + ",aformat=sample_fmts=s16:channel_layouts=mono"
@@ -206,7 +215,8 @@ def shape(pcm, fragment, tier):
     if spec.dropouts[1]:
         samples = dropouts(samples, rng, spec)
     peak = max((abs(s) for s in samples), default=0.0)
-    gain = 32767 * _db(spec.peak_db) / peak if peak else 0.0
+    peak_db = (spec.tone_peak_db if fragment.kind == TONE else spec.peak_db) + dict(fragment.trim_db).get(tier, 0.0)
+    gain = 32767 * _db(peak_db) / peak if peak else 0.0
     bed = first_sounds.bed(seed(fragment, tier), len(samples))
     mixed = [s * gain + b * spec.bed_gain for s, b in zip(samples, bed)]
     fade_in = round(FADE_IN_MS * RATE / 1000)
@@ -219,7 +229,6 @@ def shape(pcm, fragment, tier):
     if sys.byteorder == "big":
         out.byteswap()
     return out
-
 
 
 def _read_pcm(path):
@@ -251,7 +260,7 @@ def _render(fragment, tier, source, target):
         pcm = shape(_read_pcm(cut), fragment, tier)
         _write_pcm(worn, pcm)
         target.parent.mkdir(parents=True, exist_ok=True)
-        final = f"highpass=f={spec.high_pass},highpass=f={spec.high_pass},lowpass=f={spec.low_pass},alimiter={LIMITER},aformat=sample_fmts=s16:channel_layouts=mono"
+        final = f"{_band(spec)},alimiter={LIMITER},aformat=sample_fmts=s16:channel_layouts=mono"
         subprocess.run(
             ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(worn), "-af", final, "-map_metadata", "-1", "-ac", "1"]
             + [*first_sounds._encoder_args(), str(target)],
@@ -260,17 +269,13 @@ def _render(fragment, tier, source, target):
     return hashlib.sha256(pcm.tobytes()).hexdigest(), len(pcm)
 
 
-def _load(manifest):
-    return json.loads(manifest.read_text()) if manifest.is_file() else {}
-
-
 def build(source_dir, out, manifest):
     """Writes each fragment's OGGs under `out`/ambience and the manifest. Returns the exit status."""
     for tool in ("ffmpeg", "ffprobe"):
         if not shutil.which(tool):
             print(f"{tool} is required", file=sys.stderr)
             return 1
-    known = _load(manifest)
+    known = first_sounds._load(manifest)
     old_sources = known.get("sources", {})
     old_fragments = known.get("fragments", {})
     sources, fragments, problems = {}, {}, []
@@ -341,7 +346,7 @@ def build(source_dir, out, manifest):
 
 def check(out, manifest):
     """The problems of the committed fragments: none for a manifest and OGGs that agree. Needs neither sources nor ffmpeg."""
-    known = _load(manifest)
+    known = first_sounds._load(manifest)
     sources, fragments = known.get("sources", {}), known.get("fragments", {})
     problems = []
     for source in SOURCES:

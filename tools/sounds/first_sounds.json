@@ -11,13 +11,13 @@
     "duration_seconds": 8.4,
     "folder": "song",
     "license": "CC BY",
-    "ogg_sha256": "4746e14aa18b1a08ff71b81c069ec84415ba2b3432db23badfae41676cae654d",
+    "ogg_sha256": "2668047bca46b24a4560affa2cb2e636b7694d897861c81cf93002810719bb32",
     "recorded": "Apr. 9, 1860",
     "source_sha256": "73f6ed00612cc688fe8d4fca1e5ef0c03fb5aa72c27da4347d97bd075a1d2b37",
     "source_url": "https://firstsounds.org/sounds/Scott-Feaster-No-36.mp3",
     "title": "Au Clair de la Lune, vocal solo",
     "treatment": "dark",
-    "treatment_sha256": "5c9d5c7c012873392f653d100f6b7124af54d29df50f554addefbbc9a4a74bce"
+    "treatment_sha256": "25fe6958949de7e585a1901da58d5541594c403cb0a5ae26344aaa1e4fd6e136"
   },
   "gamme_de_la_voix": {
     "artist": "Édouard-Léon Scott de Martinville",
@@ -75,7 +75,7 @@
     "duration_seconds": 21.708,
     "folder": "song",
     "license": "CC BY",
-    "ogg_sha256": "bac860cb5646321ef1f5bd909ccb0c4327859e1a97864dd5b05175cdbd85bac8",
+    "ogg_sha256": "5fba6b9022f324ee5ab027521ccd19606f4c4a5667bd172e81b1b78e1740c619",
     "recorded": "Apr. 9, 1860",
     "source_sha256": "73f6ed00612cc688fe8d4fca1e5ef0c03fb5aa72c27da4347d97bd075a1d2b37",
     "source_url": "https://firstsounds.org/sounds/Scott-Feaster-No-36.mp3",

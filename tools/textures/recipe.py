@@ -405,12 +405,14 @@ def op_stripes(canvas: Canvas, layer: dict, ctx: Context) -> None:
 
 
 def op_ore(canvas: Canvas, layer: dict, ctx: Context) -> None:
-    """Mineral nodules: each a small seeded shape, shaded from a dark rim to a lit core, with one glint pixel at the top left."""
+    """Mineral nodules: each a small seeded shape, shaded from a dark rim to a lit core, with one glint pixel at the top left. With margin,
+    a nodule keeps that many pixels off the tile edge instead of wrapping round it, so no nodule is cut by the seam."""
     ctx.need(layer, "seed", "count", "ramp")
     rim, dark, mid, light, glint = ctx.ramp(layer["ramp"])
     rng = Rng(layer["seed"])
     size = ctx.size
     shapes = [NODULES[name] for name in layer.get("shapes", sorted(NODULES))]
+    margin = layer.get("margin", 0)
     taken: set[tuple[int, int]] = set()
     placed = 0
     for _ in range(layer["count"] * 40):
@@ -421,6 +423,9 @@ def op_ore(canvas: Canvas, layer: dict, ctx: Context) -> None:
         cells = {((ox + dx) % size, (oy + dy) % size) for dy, row in enumerate(shape) for dx, ch in enumerate(row) if ch != "."}
         halo = {((x + ex) % size, (y + ey) % size) for x, y in cells for ex in (-1, 0, 1) for ey in (-1, 0, 1)}
         if halo & taken:
+            continue
+        reach = [(ox + dx, oy + dy) for dy, row in enumerate(shape) for dx, ch in enumerate(row) if ch != "."]
+        if margin and not all(margin <= x < size - margin and margin <= y < size - margin for x, y in reach):
             continue
         taken |= halo
         placed += 1
@@ -711,14 +716,15 @@ def op_rings(canvas: Canvas, layer: dict, ctx: Context) -> None:
 
 def op_strata(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """Horizontal rock beds: bands of the given ramp shades and thicknesses (summing to the texture size, so they tile), whose edges
-    wobble up and down by up to wobble pixels along a tiling seeded curve."""
+    wobble up and down by up to wobble pixels along a tiling seeded curve (seeded by curve, default seed), so textures sharing beds and
+    curve have their band edges on the same rows."""
     ctx.need(layer, "beds", "seed", "wobble")
     size = ctx.size
     beds = [(ctx.colour(name), thickness) for name, thickness in layer["beds"]]
     if sum(t for _, t in beds) != size:
         raise RecipeError(f"{ctx.where}: strata beds are {sum(t for _, t in beds)} thick, not {size}")
     rows = [colour for colour, thickness in beds for _ in range(thickness)]
-    curve = value_noise(size, layer["seed"], 4 * size // SIZE, 1)[0]
+    curve = value_noise(size, layer.get("curve", layer["seed"]), 4 * size // SIZE, 1)[0]
     for x, y in _cells(layer, ctx):
         shift = round((curve[x] - 0.5) * 2 * layer["wobble"])
         canvas.put(x, y, rows[(y + shift) % size])
