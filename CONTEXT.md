@@ -217,8 +217,24 @@ _Avoid_: questbook, guidebook, tutorial
 One of the handbook's objectives, completed automatically from game events. It gives no reward.
 _Avoid_: quest, task, objective
 
+**Quest map**:
+The handbook's view of its Directives: chapter tabs, and for each chapter a flowchart sheet you can drag and zoom.
+_Avoid_: quest book, tech tree
+
+**Pencil path**:
+A route on the quest map, drawn by earlier miners when a charter finds a Note. It is not a Directive.
+_Avoid_: side quest, Directive
+
+**Parts catalogue**:
+The Company viewer of items and recipes, beside inventory screens. It shows only the recipes the charter knows.
+_Avoid_: recipe book, item viewer
+
+**Known recipe**:
+A recipe the charter has discovered, by a quest step that asks for its item becoming current, or by a member obtaining the item or an ingredient. Unknown recipes still craft.
+_Avoid_: unlocked recipe
+
 **Spec sheet**:
-A short explanation shown the first time you buy or craft something, such as a pad's power cost or a material's heat rating.
+An item's page in the parts catalogue, such as a pad's power cost or a material's heat rating. It pops up the first time you craft or buy the item.
 _Avoid_: tooltip, wiki
 
 **Note**:
