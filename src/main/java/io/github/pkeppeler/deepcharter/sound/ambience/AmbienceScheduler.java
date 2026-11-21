@@ -57,14 +57,15 @@ public final class AmbienceScheduler {
 
     /** One client tick. Returns the fragment that is due, if one is and nothing holds it back. */
     public Optional<Pick> tick(int currentLayer, boolean hornNear, boolean quiet) {
-        Optional<AmbienceTuning.Rate> rate = tuning.rateFor(currentLayer);
-        if (rate.isEmpty()) {
+        Optional<AmbienceTuning.Rate> found = tuning.rateFor(currentLayer);
+        if (found.isEmpty()) {
             reset();
             return Optional.empty();
         }
+        AmbienceTuning.Rate rate = found.get();
         if (currentLayer != layer || ticksLeft == UNSET) {
             layer = currentLayer;
-            ticksLeft = draw(rate.get().minTicks(), rate.get().maxTicks());
+            ticksLeft = draw(rate.minTicks(), rate.maxTicks());
         }
         if (!hornNear) {
             hornTicksLeft = UNSET;
@@ -73,16 +74,10 @@ public final class AmbienceScheduler {
             hornTicksLeft = draw(tuning.hornFirstMinTicks(), tuning.hornMaxTicks());
         }
         // Near a horn its timer is the only one that runs, so the horn never adds to the layer's rate.
-        boolean due;
-        if (hornNear) {
-            due = --hornTicksLeft <= 0;
-        } else {
-            due = --ticksLeft <= 0;
-        }
-        if (!due) {
+        if ((hornNear ? --hornTicksLeft : --ticksLeft) > 0) {
             return Optional.empty();
         }
-        AmbienceTier tier = rate.get().tier();
+        AmbienceTier tier = rate.tier();
         String fragment = quiet ? null : choose(tier);
         if (fragment == null) {
             int retry = draw(tuning.retryMinTicks(), tuning.retryMaxTicks());
@@ -95,11 +90,10 @@ public final class AmbienceScheduler {
         }
         last = fragment;
         // Any fragment redraws both timers.
-        ticksLeft = draw(rate.get().minTicks(), rate.get().maxTicks());
+        ticksLeft = draw(rate.minTicks(), rate.maxTicks());
         if (hornNear) {
             hornTicksLeft = draw(
-                    Math.max(tuning.hornMinTicks(), rate.get().minTicks()),
-                    Math.max(tuning.hornMaxTicks(), rate.get().maxTicks()));
+                    Math.max(tuning.hornMinTicks(), rate.minTicks()), Math.max(tuning.hornMaxTicks(), rate.maxTicks()));
         }
         return Optional.of(new Pick(tier, fragment, hornNear ? Source.HORN : Source.DARK));
     }

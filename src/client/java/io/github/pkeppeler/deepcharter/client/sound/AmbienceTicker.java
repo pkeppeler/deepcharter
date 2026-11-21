@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
  * ({@link SpotPicker}), or, near a Company horn ({@link HornFinder}), from the horn after a crackle of warm-up. Per player and client
  * only: it is atmosphere and carries no rule, so the server knows nothing of it. Nothing starts while the Lamp Hymn, a phonograph, a
  * transmission or another fragment sounds, or just after ({@link AmbienceTuning#quietAfterTicks()}); the tracker learns of them from the
- * sound manager's own listener, which the subtitles use. A later speaker in a wreck (#861) is one more source for the same scheduler.
+ * sound manager's own listener, which the subtitles use.
  */
 public final class AmbienceTicker {
     private static final SplittableRandom RANDOM = new SplittableRandom();
@@ -107,7 +107,8 @@ public final class AmbienceTicker {
         if (level == null || client.player == null) {
             return;
         }
-        QuietTracker<SoundInstance> tracker = listen(client.getSoundManager());
+        SoundManager sounds = client.getSoundManager();
+        QuietTracker<SoundInstance> tracker = listen(sounds);
         if (client.isPaused()) {
             return;
         }
@@ -125,7 +126,6 @@ public final class AmbienceTicker {
         }
         SoundEvent fragment =
                 AmbienceFragments.sound(pick.get().tier(), pick.get().fragment());
-        SoundManager sounds = client.getSoundManager();
         if (pick.get().source() == AmbienceScheduler.Source.HORN && horn.isPresent()) {
             Vec3 at = Vec3.atCenterOf(horn.get());
             sounds.play(at(DeepSound.AMBIENCE_HORN_WARMUP.event(), at));

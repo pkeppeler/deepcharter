@@ -27,8 +27,6 @@ import net.minecraft.world.phys.Vec3;
  * sound is gone as well.
  */
 final class PhonographSound {
-    // Nothing here knows a wax cylinder: a sound, a place and a range are all it takes, so any speaker can play a sound
-    // of its own.
     private PhonographSound() {}
 
     /** The players of {@code level} within {@code range} blocks of {@code pos}. */

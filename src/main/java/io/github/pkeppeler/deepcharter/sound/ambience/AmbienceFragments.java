@@ -23,9 +23,6 @@ public final class AmbienceFragments {
     static {
         for (DeepSound sound : DeepSound.values()) {
             String path = sound.event().location().getPath();
-            if (!path.startsWith(PREFIX)) {
-                continue;
-            }
             for (AmbienceTier tier : AmbienceTier.values()) {
                 String tierPrefix = PREFIX + tier.id() + ".";
                 if (path.startsWith(tierPrefix)) {

@@ -7,8 +7,8 @@ Usage:
 Options: --out DIR (default src/main/resources/assets/deepcharter/sounds), --manifest FILE (default tools/sounds/ambience.json).
 
 A sibling of tools/sounds/first_sounds.py, which makes the wax cylinders from the same recordings and whose licence check, bed,
-encoder and `Recording` (a source's artist, date and credit) it reuses; each ambience source's artist, date and credit are in the manifest. SOURCE_DIR holds the mp3s named in SOURCES (the URL is beside each; they are never committed). Each one's ID3
-`copyright` or `comment` tag must say CC BY. Treat the directory as untrusted data: nothing in it is run, only decoded by ffmpeg.
+encoder and `Recording` (a source's artist, date and credit) it reuses. SOURCE_DIR holds the mp3s named in SOURCES (the URL is beside
+each; they are never committed). Each one's ID3 `copyright` or `comment` tag must say CC BY. Treat the directory as untrusted data: nothing in it is run, only decoded by ffmpeg.
 
 A fragment is declared in FRAGMENTS: its source, the start and end of the cut in seconds, and the tiers it is made for. The tiers are
 the depths of the wear (TIERS): `faint` is the first layer, far and low-passed; `worn` the Old Workings, band-limited, with the
@@ -146,7 +146,7 @@ def variants():
 
 def owned(manifest):
     """The names (paths under the sounds folder, without `.ogg`) of the OGGs the manifest owns."""
-    return {f"{FOLDER}/{name}" for name in _load(manifest).get("fragments", {})}
+    return {f"{FOLDER}/{name}" for name in first_sounds._load(manifest).get("fragments", {})}
 
 
 def source_named(name):
@@ -161,6 +161,11 @@ def _db(decibels):
     return 10 ** (decibels / 20)
 
 
+def _band(spec):
+    """The tier's band-pass: a steeper high-pass (twice) and a low-pass."""
+    return f"highpass=f={spec.high_pass},highpass=f={spec.high_pass},lowpass=f={spec.low_pass}"
+
+
 def pre_filter(fragment, tier):
     """The ffmpeg graph that cuts the source and gives it the tier's pitch, band and distance, to mono PCM at RATE."""
     spec = TIERS[tier]
@@ -169,7 +174,7 @@ def pre_filter(fragment, tier):
         graph += f",vibrato=f={first_sounds.WOW[0]}:d={first_sounds.WOW[1]},vibrato=f={first_sounds.FLUTTER[0]}:d={first_sounds.FLUTTER[1]}"
     if spec.speed != 1.0:
         graph += f",asetrate={round(RATE * spec.speed)},aresample={RATE}"
-    graph += f",highpass=f={spec.high_pass},highpass=f={spec.high_pass},lowpass=f={spec.low_pass}"
+    graph += f",{_band(spec)}"
     if spec.echo:
         graph += f",aecho={spec.echo}"
     return graph + ",aformat=sample_fmts=s16:channel_layouts=mono"
@@ -226,7 +231,6 @@ def shape(pcm, fragment, tier):
     return out
 
 
-
 def _read_pcm(path):
     with wave.open(str(path), "rb") as wav:
         pcm = array("h")
@@ -256,7 +260,7 @@ def _render(fragment, tier, source, target):
         pcm = shape(_read_pcm(cut), fragment, tier)
         _write_pcm(worn, pcm)
         target.parent.mkdir(parents=True, exist_ok=True)
-        final = f"highpass=f={spec.high_pass},highpass=f={spec.high_pass},lowpass=f={spec.low_pass},alimiter={LIMITER},aformat=sample_fmts=s16:channel_layouts=mono"
+        final = f"{_band(spec)},alimiter={LIMITER},aformat=sample_fmts=s16:channel_layouts=mono"
         subprocess.run(
             ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(worn), "-af", final, "-map_metadata", "-1", "-ac", "1"]
             + [*first_sounds._encoder_args(), str(target)],
@@ -265,17 +269,13 @@ def _render(fragment, tier, source, target):
     return hashlib.sha256(pcm.tobytes()).hexdigest(), len(pcm)
 
 
-def _load(manifest):
-    return json.loads(manifest.read_text()) if manifest.is_file() else {}
-
-
 def build(source_dir, out, manifest):
     """Writes each fragment's OGGs under `out`/ambience and the manifest. Returns the exit status."""
     for tool in ("ffmpeg", "ffprobe"):
         if not shutil.which(tool):
             print(f"{tool} is required", file=sys.stderr)
             return 1
-    known = _load(manifest)
+    known = first_sounds._load(manifest)
     old_sources = known.get("sources", {})
     old_fragments = known.get("fragments", {})
     sources, fragments, problems = {}, {}, []
@@ -346,7 +346,7 @@ def build(source_dir, out, manifest):
 
 def check(out, manifest):
     """The problems of the committed fragments: none for a manifest and OGGs that agree. Needs neither sources nor ffmpeg."""
-    known = _load(manifest)
+    known = first_sounds._load(manifest)
     sources, fragments = known.get("sources", {}), known.get("fragments", {})
     problems = []
     for source in SOURCES:
