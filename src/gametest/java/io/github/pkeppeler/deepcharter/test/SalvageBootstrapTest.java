@@ -76,10 +76,19 @@ public class SalvageBootstrapTest {
     private static final int CRATES_BEYOND_THE_PAD = 160;
 
     private static final int STALK_COLUMNS = 40;
-    /** The walk from a crate to the nearest stalk column, in blocks: the survey of the fixed seed found 167 and 281 (a crate near the edge of the survey has the stalks beyond it out of count). */
-    private static final int MEDIAN_WALK_TO_A_STALK = 200;
+    /**
+     * The walk from a crate to the nearest stalk column, in blocks. Before the stalk patches of the yard (#855) the survey of the fixed
+     * seed found a median of 167 and a most of 281, all of it to crater floors past the crates. With a patch among the crates it finds 11
+     * and 41, and the bounds leave room for another seed: the median under two chunks (32), so that wood is always a short walk from
+     * the salvage, and the most under five.
+     */
+    private static final int MEDIAN_WALK_TO_A_STALK = 30;
 
-    private static final int MOST_WALK_TO_A_STALK = 320;
+    private static final int MOST_WALK_TO_A_STALK = 80;
+    /** Stalks stand on the plains only in the yard's patches, among the crates, so this many blocks inside its edges at most. */
+    private static final int PATCH_SLACK = 8;
+    /** At least this many stalk columns stand on the plains, in patches: the survey of the fixed seed found 74. */
+    private static final int PATCH_COLUMNS = 74;
     /** A plains block's top is no lower than 61 (ground 64 less the rolling plains' 2.6), so a stalk's base this low or lower is a crater's. */
     private static final int HIGHEST_STALK_BASE = 60;
     /** How many crates a new player must break to reach the first goals, and the whole repair chain. */
@@ -248,8 +257,9 @@ public class SalvageBootstrapTest {
         helper.succeed();
     }
 
+    /** Stalks grow on the floors of craters, and in patches among the crates of the yard (#855), and nowhere else on the plains. */
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void stalksStandOnlyInCraters(GameTestHelper helper) {
+    public void stalksStandOnlyInCratersAndTheYardsPatches(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         List<BlockPos> stalks = BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk"));
         List<BlockPos> bases = columnBases(stalks);
@@ -258,16 +268,27 @@ public class SalvageBootstrapTest {
             throw helper.assertionException(
                     "the survey found %s stalk columns, expected at least %s", bases.size(), STALK_COLUMNS / 2);
         }
+        int inner = yardInnerRadius() - PATCH_SLACK;
+        int outer = yardRadius() + PATCH_SLACK;
+        int patches = 0;
         for (BlockPos base : bases) {
             if (base.getY() > HIGHEST_STALK_BASE) {
-                throw helper.assertionException(
-                        "a stalk stands at %s, above the floor of any crater (%s)",
-                        base.toShortString(), HIGHEST_STALK_BASE);
+                if (distance(base) < inner || distance(base) > outer) {
+                    throw helper.assertionException(
+                            "a stalk stands at %s, above the floor of any crater (%s) and outside the yard's %s to %s blocks",
+                            base.toShortString(), HIGHEST_STALK_BASE, inner, outer);
+                }
+                patches++;
             }
             if (level.getBlockState(base.below()).isAir()
                     || level.getBlockState(base.below()).is(block("fungal_stalk"))) {
                 throw helper.assertionException("the stalk at %s does not stand on the ground", base.toShortString());
             }
+        }
+        LOGGER.info("[salvage] {} of the stalk columns stand on the plains, in the yard's patches", patches);
+        if (patches < PATCH_COLUMNS / 2) {
+            throw helper.assertionException(
+                    "the yard holds %s stalk columns on the plains, expected at least %s", patches, PATCH_COLUMNS / 2);
         }
         helper.succeed();
     }
@@ -633,7 +654,7 @@ public class SalvageBootstrapTest {
             "basalt_field",
             List.of("deepcharter:fungal_stalks"),
             "salvage_yard",
-            List.of("deepcharter:salvage_litter", "deepcharter:fungal_stalks"),
+            List.of("deepcharter:salvage_litter", "deepcharter:fungal_stalks", "deepcharter:fungal_stalks_yard"),
             "topsoil_claims",
             List.of("deepcharter:fungal_stalks_cave"));
 
