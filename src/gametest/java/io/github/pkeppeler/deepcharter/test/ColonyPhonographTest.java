@@ -30,6 +30,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -45,6 +46,15 @@ import net.minecraft.world.timeline.Timeline;
 public class ColonyPhonographTest {
     /** The colony's phonograph stands this far from the bar's anchor (tools/colony/town.py: the counter along the back wall). */
     private static final BlockPos FROM_ANCHOR = new BlockPos(0, 2, 5);
+
+    /**
+     * The colony has one phonograph, so each test that plays it has an environment of its own: the batches run one after another, and
+     * nothing else runs while a test reads who stands near it or which recording it plays next.
+     */
+    private static final String RACK = "deepcharter-test:phonograph_rack";
+
+    private static final String ROUNDS = "deepcharter-test:phonograph_rounds";
+    private static final String NIGHT = "deepcharter-test:phonograph_night";
 
     private static final ResourceKey<Timeline> SKY =
             ResourceKey.create(Registries.TIMELINE, Identifier.fromNamespaceAndPath("deepcharter", "sky"));
@@ -98,11 +108,12 @@ public class ColonyPhonographTest {
         });
     }
 
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100, environment = RACK)
     public void theRackCannotBeEjectedOrTakenOrAddedTo(GameTestHelper helper) {
         ServerLevel level = server(helper).overworld();
         BlockPos pos = position(helper);
         MockPlayer player = MockPlayers.join(helper, "rack-thief");
+        player.player().setGameMode(GameType.SURVIVAL);
         FarChunks.awaitEntityTicking(helper, level, pos, () -> {
             PhonographBlockEntity phonograph = phonograph(helper, level, pos);
             player.teleportTo(level, Vec3.atBottomCenterOf(pos.below(2)), 0f, 0f);
@@ -121,7 +132,7 @@ public class ColonyPhonographTest {
         });
     }
 
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100, environment = ROUNDS)
     public void eachPlayStartsTheNextRecordingOfTheRackAndWrapsRound(GameTestHelper helper) {
         ServerLevel level = server(helper).overworld();
         BlockPos pos = position(helper);
@@ -159,7 +170,7 @@ public class ColonyPhonographTest {
         });
     }
 
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100, environment = NIGHT)
     public void atNightWithNobodyInTheRoomItStartsByItselfOnceANightAndNeverByDayOrWithSomeoneThere(
             GameTestHelper helper) {
         ServerLevel level = server(helper).overworld();

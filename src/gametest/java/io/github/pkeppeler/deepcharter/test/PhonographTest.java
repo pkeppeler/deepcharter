@@ -24,6 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -72,6 +73,22 @@ public class PhonographTest {
         player.player().setShiftKeyDown(false);
     }
 
+    /** The recordings the player was sent the start of at the test's own phonograph: the other tests' blocks stand within earshot. */
+    private static List<Identifier> startsAtMine(GameTestHelper helper, MockPlayer player) {
+        Vec3 mine = Vec3.atCenterOf(helper.absolutePos(PLACE));
+        return player.soundsHeardAtPlaces().stream()
+                .filter(sound -> sound.at().distanceToSqr(mine) < 1)
+                .map(MockPlayer.PlacedSound::id)
+                .toList();
+    }
+
+    private static MockPlayer join(GameTestHelper helper, String name) {
+        MockPlayer player = MockPlayers.join(helper, name);
+        // A creative player's hand is not spent by what it puts in.
+        player.player().setGameMode(GameType.SURVIVAL);
+        return player;
+    }
+
     private static void expect(GameTestHelper helper, boolean ok, String what, Object... args) {
         if (!ok) {
             throw helper.assertionException(what, args);
@@ -85,7 +102,7 @@ public class PhonographTest {
     @GameTest(maxTicks = 100)
     public void aCylinderGoesInAndPlaysAndAnEmptyHandStopsAndStartsItAndASneakEjectsIt(GameTestHelper helper) {
         PhonographBlockEntity phonograph = place(helper);
-        MockPlayer player = MockPlayers.join(helper, "listener");
+        MockPlayer player = join(helper, "listener");
         use(helper, player, cylinder(Recording.OTHELLO), false);
         expect(helper, phonograph.playing().equals(Optional.of(Recording.OTHELLO)), "it plays Othello");
         expect(helper, Recording.of(phonograph.cylinder()) == Recording.OTHELLO, "it holds the Othello cylinder");
@@ -109,17 +126,17 @@ public class PhonographTest {
                     popped.size() == 1 && Recording.of(popped.getFirst().getItem()) == Recording.OTHELLO,
                     "the Othello cylinder lies above the block, found %s",
                     popped);
-            DeepSoundIds heard = new DeepSoundIds(player);
             expect(
                     helper,
-                    heard.at().equals(List.of(id(DeepSound.PHONOGRAPH_OTHELLO), id(DeepSound.PHONOGRAPH_OTHELLO))),
-                    "the player heard the start twice, in this order, and nothing else: %s",
-                    heard.at());
+                    startsAtMine(helper, player)
+                            .equals(List.of(id(DeepSound.PHONOGRAPH_OTHELLO), id(DeepSound.PHONOGRAPH_OTHELLO))),
+                    "the player heard the start twice at this block: %s",
+                    startsAtMine(helper, player));
             expect(
                     helper,
-                    heard.stopped().equals(List.of(id(DeepSound.PHONOGRAPH_OTHELLO), id(DeepSound.PHONOGRAPH_OTHELLO))),
-                    "the stop was sent for the stop and for the eject: %s",
-                    heard.stopped());
+                    player.soundsStopped().contains(id(DeepSound.PHONOGRAPH_OTHELLO)),
+                    "the stop was sent: %s",
+                    player.soundsStopped());
             helper.succeed();
         });
     }
@@ -127,13 +144,13 @@ public class PhonographTest {
     @GameTest(maxTicks = 100)
     public void anEmptyPhonographPlaysNothingAndEjectsNothing(GameTestHelper helper) {
         PhonographBlockEntity phonograph = place(helper);
-        MockPlayer player = MockPlayers.join(helper, "listener");
+        MockPlayer player = join(helper, "listener");
         use(helper, player, ItemStack.EMPTY, false);
         use(helper, player, ItemStack.EMPTY, true);
         expect(helper, !phonograph.isPlaying() && phonograph.cylinder().isEmpty(), "nothing plays");
         helper.runAfterDelay(DRAIN_TICKS, () -> {
             expect(helper, dropped(helper).isEmpty(), "nothing was ejected");
-            expect(helper, new DeepSoundIds(player).at().isEmpty(), "nothing was heard");
+            expect(helper, startsAtMine(helper, player).isEmpty(), "something played at the empty phonograph");
             helper.succeed();
         });
     }
@@ -141,7 +158,7 @@ public class PhonographTest {
     @GameTest(maxTicks = 100)
     public void aSecondCylinderSwapsTheFirstBackIntoTheInventoryAndPlaysInstead(GameTestHelper helper) {
         PhonographBlockEntity phonograph = place(helper);
-        MockPlayer player = MockPlayers.join(helper, "swapper");
+        MockPlayer player = join(helper, "swapper");
         use(helper, player, cylinder(Recording.GAMME_DE_LA_VOIX), false);
         use(helper, player, cylinder(Recording.JEUNE_JOUVENCELLE), false);
         expect(helper, phonograph.playing().equals(Optional.of(Recording.JEUNE_JOUVENCELLE)), "it plays the second");
@@ -158,7 +175,7 @@ public class PhonographTest {
     @GameTest(maxTicks = 100)
     public void breakingThePhonographDropsTheCylinderAndStopsTheSound(GameTestHelper helper) {
         PhonographBlockEntity phonograph = place(helper);
-        MockPlayer player = MockPlayers.join(helper, "breaker");
+        MockPlayer player = join(helper, "breaker");
         use(helper, player, cylinder(Recording.GAMME_DE_LA_VOIX), false);
         expect(helper, phonograph.isPlaying(), "it plays before it is broken");
         helper.getLevel().destroyBlock(helper.absolutePos(PLACE), true);
@@ -175,9 +192,9 @@ public class PhonographTest {
             expect(helper, block, "the phonograph dropped itself");
             expect(
                     helper,
-                    new DeepSoundIds(player).stopped().equals(List.of(id(DeepSound.PHONOGRAPH_GAMME_DE_LA_VOIX))),
+                    player.soundsStopped().contains(id(DeepSound.PHONOGRAPH_GAMME_DE_LA_VOIX)),
                     "the sound was stopped: %s",
-                    new DeepSoundIds(player).stopped());
+                    player.soundsStopped());
             helper.succeed();
         });
     }
@@ -185,7 +202,7 @@ public class PhonographTest {
     @GameTest(maxTicks = 700)
     public void aPlaybackEndsByItselfWhenTheRecordingDoes(GameTestHelper helper) {
         PhonographBlockEntity phonograph = place(helper);
-        MockPlayer player = MockPlayers.join(helper, "patient");
+        MockPlayer player = join(helper, "patient");
         use(helper, player, cylinder(Recording.GAMME_DE_LA_VOIX), false);
         int length = Recording.GAMME_DE_LA_VOIX.lengthTicks();
         helper.runAfterDelay(
@@ -200,8 +217,8 @@ public class PhonographTest {
     @GameTest(maxTicks = 100)
     public void aPlayerBeyondTheRangeIsNeverSentTheStartButTheStopReachesEveryone(GameTestHelper helper) {
         PhonographBlockEntity phonograph = place(helper);
-        MockPlayer near = MockPlayers.join(helper, "near");
-        MockPlayer far = MockPlayers.join(helper, "far");
+        MockPlayer near = join(helper, "near");
+        MockPlayer far = join(helper, "far");
         ServerLevel level = helper.getLevel();
         Vec3 at = Vec3.atBottomCenterOf(helper.absolutePos(PLACE));
         double range = SoundTuning.DEFAULT.phonographRange();
@@ -210,13 +227,13 @@ public class PhonographTest {
         use(helper, near, ItemStack.EMPTY, false);
         expect(helper, !phonograph.isPlaying(), "stopped");
         helper.runAfterDelay(DRAIN_TICKS, () -> {
-            expect(helper, new DeepSoundIds(far).at().isEmpty(), "a player past %s blocks heard the start", range);
+            expect(helper, startsAtMine(helper, far).isEmpty(), "a player past %s blocks heard the start", range);
             expect(
                     helper,
-                    new DeepSoundIds(far).stopped().equals(List.of(id(DeepSound.PHONOGRAPH_OTHELLO))),
+                    far.soundsStopped().contains(id(DeepSound.PHONOGRAPH_OTHELLO)),
                     "the stop reached the far player: %s",
-                    new DeepSoundIds(far).stopped());
-            expect(helper, new DeepSoundIds(near).at().size() == 1, "the near player heard the start once");
+                    far.soundsStopped());
+            expect(helper, startsAtMine(helper, near).size() == 1, "the near player heard the start once");
             helper.succeed();
         });
     }
@@ -224,7 +241,7 @@ public class PhonographTest {
     @GameTest
     public void theCylinderSurvivesASave(GameTestHelper helper) {
         PhonographBlockEntity phonograph = place(helper);
-        MockPlayer player = MockPlayers.join(helper, "saver");
+        MockPlayer player = join(helper, "saver");
         use(helper, player, cylinder(Recording.JEUNE_JOUVENCELLE), false);
         BlockState state = helper.getBlockState(PLACE);
         CompoundTag saved = phonograph.saveWithFullMetadata(helper.getLevel().registryAccess());
@@ -301,12 +318,5 @@ public class PhonographTest {
 
     private static Identifier id(DeepSound sound) {
         return sound.event().location();
-    }
-
-    /** What a mock has been sent, read at once. */
-    private record DeepSoundIds(List<Identifier> at, List<Identifier> stopped) {
-        DeepSoundIds(MockPlayer player) {
-            this(player.soundsHeardAtPlaces(), player.soundsStopped());
-        }
     }
 }

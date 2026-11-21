@@ -41,7 +41,7 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
-    private final List<Identifier> soundsAtPlaces = new ArrayList<>();
+    private final List<PlacedSound> soundsAtPlaces = new ArrayList<>();
     private final List<Identifier> soundsStopped = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
     private boolean loaded;
@@ -74,12 +74,21 @@ public final class MockPlayer {
         return List.copyOf(sounds);
     }
 
-    /** The id of every sound the server has played to this player at a place in the world (a sound packet) so far, oldest first. Read on the mock's tick, so it lags by one. */
-    public List<Identifier> soundsHeardAtPlaces() {
+    /** A sound the server played at a place in the world. */
+    public record PlacedSound(Identifier id, Vec3 at) {}
+
+    /**
+     * Every sound the server has played to this player at a place in the world (a sound packet) so far, oldest first. Read on the mock's tick,
+     * so it lags by one. Tests run side by side in one level, so a sound of another test's block can be here: filter by place.
+     */
+    public List<PlacedSound> soundsHeardAtPlaces() {
         return List.copyOf(soundsAtPlaces);
     }
 
-    /** The id of every sound the server has told this player's client to stop so far, oldest first. Read on the mock's tick, so it lags by one. */
+    /**
+     * The id of every sound the server has told this player's client to stop so far, oldest first. Read on the mock's tick, so it lags by
+     * one. A stop names no place, so a test beside other tests asks whether one is among them.
+     */
     public List<Identifier> soundsStopped() {
         return List.copyOf(soundsStopped);
     }
@@ -184,7 +193,9 @@ public final class MockPlayer {
                     sounds.add(packet.getSound().value().location());
                 }
                 if (outbound instanceof ClientboundSoundPacket packet) {
-                    soundsAtPlaces.add(packet.getSound().value().location());
+                    soundsAtPlaces.add(new PlacedSound(
+                            packet.getSound().value().location(),
+                            new Vec3(packet.getX(), packet.getY(), packet.getZ())));
                 }
                 if (outbound instanceof ClientboundStopSoundPacket packet) {
                     soundsStopped.add(packet.getName());
