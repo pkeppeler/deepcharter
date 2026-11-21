@@ -52,6 +52,7 @@ import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -160,9 +161,30 @@ public class SalvageBootstrapTest {
         return level.getBiome(pos).unwrapKey().orElseThrow().identifier().toString();
     }
 
-    /** The blocks of {@code wanted} in the surface band of {@code level}, the campaign level: the layers below hold stalks of their own. */
-    private static List<BlockPos> surface(ServerLevel level, int chunks, Block wanted) {
-        return BlockSurvey.find(level, chunks, wanted, ChunkStatus.FEATURES).stream()
+    /** The crates and the stalks of the surface band, which every test of the survey reads. */
+    private record Survey(List<BlockPos> crates, List<BlockPos> stalks) {}
+
+    private static @Nullable Survey survey;
+
+    /**
+     * The salvage crates and fungal stalks in the surface band of {@code level}, the campaign level: the layers below hold stalks of their
+     * own. One pass over the chunks, to the features and no further (a tall world's full chunks cost seconds each), made once for the
+     * tests that read it. Chunks that reach the features only may still take a neighbour's feature later, so a count is a little under
+     * the full chunks' (162 crates against 173 at the yard radius), which the tests' margins hold.
+     */
+    private static synchronized Survey survey(ServerLevel level) {
+        if (survey == null) {
+            Map<Block, List<BlockPos>> found = BlockSurvey.findAll(
+                    level, SURVEY_CHUNKS, ChunkStatus.FEATURES, block("salvage_crate"), block("fungal_stalk"));
+            survey = new Survey(
+                    inSurface(level, Objects.requireNonNull(found.get(block("salvage_crate")), "surveyed")),
+                    inSurface(level, Objects.requireNonNull(found.get(block("fungal_stalk")), "surveyed")));
+        }
+        return survey;
+    }
+
+    private static List<BlockPos> inSurface(ServerLevel level, List<BlockPos> positions) {
+        return positions.stream()
                 .filter(pos -> TestLayers.isIn(level, pos, TestLayers.SURFACE))
                 .toList();
     }
@@ -175,7 +197,7 @@ public class SalvageBootstrapTest {
     public void cratesLieAroundTheColonyWithinTheYardRadiusAndNoFurther(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int radius = yardRadius();
-        List<BlockPos> crates = surface(level, SURVEY_CHUNKS, block("salvage_crate"));
+        List<BlockPos> crates = survey(level).crates();
         List<BlockPos> beyondThePad =
                 crates.stream().filter(pos -> distance(pos) >= PAD_RADIUS).toList();
         double farthest = crates.stream()
@@ -260,7 +282,7 @@ public class SalvageBootstrapTest {
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void stalksStandOnlyInCraters(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        List<BlockPos> stalks = surface(level, SURVEY_CHUNKS, block("fungal_stalk"));
+        List<BlockPos> stalks = survey(level).stalks();
         List<BlockPos> bases = columnBases(stalks);
         LOGGER.info("[salvage] {} stalk blocks in {} columns", stalks.size(), bases.size());
         if (bases.size() < STALK_COLUMNS / 2) {
@@ -285,8 +307,8 @@ public class SalvageBootstrapTest {
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aStalkColumnIsAWalkFromEveryCrate(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        List<BlockPos> bases = columnBases(surface(level, SURVEY_CHUNKS, block("fungal_stalk")));
-        List<BlockPos> crates = surface(level, SURVEY_CHUNKS, block("salvage_crate"));
+        List<BlockPos> bases = columnBases(survey(level).stalks());
+        List<BlockPos> crates = survey(level).crates();
         double[] nearest = crates.stream()
                 .mapToDouble(crate -> bases.stream()
                         .mapToDouble(base -> Math.sqrt(horizontalDistanceSqr(crate, base)))

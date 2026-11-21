@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -91,6 +92,9 @@ public class SurfaceTerrainTest {
     private static final double MESA_SHARE = 0.307;
     private static final int SURVEY_SPAN = 2048;
     private static final int SURVEY_STEP = 8;
+
+    /** The base height of each column asked for, by {@code x << 32 | z}: see {@link #height}. */
+    private static final Map<Long, Integer> HEIGHTS = new ConcurrentHashMap<>();
 
     /** The surface band has no vanilla stone: its rock is the regolith's own, down to the band's floor. */
     private static final Set<String> GROUND_BLOCKS =
@@ -555,7 +559,12 @@ public class SurfaceTerrainTest {
     }
 
     private static int height(ChunkGenerator generator, ServerLevel level, RandomState random, int x, int z) {
-        return generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random);
+        // One world, one seed: a column's height is the same in every test of this class, and the tests ask for the
+        // same columns
+        // (the survey grid, the crater search, the pad), at a quarter of a millisecond each in the tall world.
+        return HEIGHTS.computeIfAbsent(
+                (long) x << 32 | (z & 0xffffffffL),
+                column -> generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random));
     }
 
     @FormatMethod
