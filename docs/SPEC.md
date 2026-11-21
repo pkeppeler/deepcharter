@@ -29,7 +29,7 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Surface and colony
 
-- **Surface:** our own regolith plains, craters and terraced mesas, under a slow dusk-to-night sky that never reaches full day (PR #234, [art direction](design/art-direction.md), [ADR 0030](adr/0030-art-direction-decisions.md)). It is dry and bare: no sea, no grass, no trees, no animals, within the tall-world limits of [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). The vanilla night monsters stay until the creatures session reskins them ([#13](https://github.com/pkeppeler/deepcharter/issues/13)); the colony's interiors are lit so none spawns inside a building. The surface has no ore and no vanilla ore is promised near it: early metal is salvage (see Bootstrap in section 4, [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)), and the first ores are the layers'. The only life on it is pale fungal stalks on crater floors. No villages or settlements besides the colony. No Nether or End; the depths replace them.
+- **Surface:** our own regolith plains, craters and terraced mesas, under a slow dusk-to-night sky that never reaches full day (PR #234, [art direction](design/art-direction.md), [ADR 0030](adr/0030-art-direction-decisions.md)). It is dry and bare: no sea, no grass, no trees, no animals, within the tall-world limits of [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). The vanilla night monsters stay until the creatures session reskins them ([#13](https://github.com/pkeppeler/deepcharter/issues/13)); the colony's interiors are lit so none spawns inside a building. The surface has no ore and no vanilla ore is promised near it: early metal is salvage (see Bootstrap in section 4, [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)), and the first ores are the layers'. The only life on it is pale fungal stalks on crater floors and in patches among the salvage crates (#855). No villages or settlements besides the colony. No Nether or End; the depths replace them.
 - **Never called Mars:** the world may look like Mars, but the game never calls it Mars (lore guardrail).
 - **Colony:** one derelict mining colony per world, at spawn, named Prosperity. Its terminals are repaired once per world: when any charter fixes one, every charter can use it. The contract terminal works from the start.
 - **Conduit:** an undiggable Company pipe runs from the colony's ore processor straight down through every layer, at the same coordinates in each, ending in the Furnace. It is a landmark and the story's first clue ([LORE.md](LORE.md#8-prosperity)).
@@ -99,7 +99,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 
 ### Bootstrap
 
-- Start from the colony's salvage and fungal "wood". This replaces "start like normal Minecraft" on the user's art direction ([art direction](design/art-direction.md) section 11, decided with the user on 2026-10-08, issue #225, PR #234; built in [#245](https://github.com/pkeppeler/deepcharter/issues/245)). Salvage crates supply wood, cloth and scrap (scrap iron and scrap copper, melted in a furnace) and redstone. They are littered round the colony within a set block radius, not only at it (none stand on the pad or its margin): the radius is one number, `min_inclusive` and `max_exclusive` of `data/deepcharter/worldgen/density_function/surface/yard.json`: a ring from 100 to 160 blocks, which starts past the colony's pad and its graded margin. Hardy alien fungal stalks on crater floors, and in the caves of layer 1, are gatherable stand-ins for trees: a stalk presses into four planks, burns, and chars to charcoal. A new player reaches tools, a light and the first terminal repair with no tree and no ore.
+- Start from the colony's salvage and fungal "wood". This replaces "start like normal Minecraft" on the user's art direction ([art direction](design/art-direction.md) section 11, decided with the user on 2026-10-08, issue #225, PR #234; built in [#245](https://github.com/pkeppeler/deepcharter/issues/245)). Salvage crates supply wood, cloth and scrap (scrap iron and scrap copper, melted in a furnace) and redstone. They are littered round the colony within a set block radius, not only at it (none stand on the pad or its margin): the radius is one number, `min_inclusive` and `max_exclusive` of `data/deepcharter/worldgen/density_function/surface/yard.json`: a ring from 100 to 160 blocks, which starts past the colony's pad and its graded margin. Hardy alien fungal stalks on crater floors, in patches among the crates, and in the caves of layer 1, are gatherable stand-ins for trees: a stalk presses into four planks, burns, and chars to charcoal. A new player reaches tools, a light and the first terminal repair with no tree and no ore.
 - Craft the first scanner too: a **scanner unit** from 4 iron, 2 copper and 2 redstone, about four crates' worth of the yard ([mechanics.md](design/mechanics.md#the-crafted-scanner-483-a)). It is the tier 1 part of the first mining pod, made like the Mole's own parts (SPEC section 7, Scanner); the upgrade terminal does not sell it.
 - Repair the colony's terminals one by one (fuel pump, then ore processor, then upgrade terminal, and so on). Each is a crafting goal; the employer gets in touch as they come back online.
 - The first charter also repairs the founding pod (the Mole) in the colony hangar.
@@ -120,7 +120,7 @@ After the bootstrap, progression is money: sell ore at terminals, buy pod upgrad
 
 The **Employee Handbook** is a company-issued onboarding manual.
 
-- **Getting it:** issued when you sign your Employment Contract. It is bound to you, so it cannot be lost. Open it from the item or a keybind.
+- **Getting it:** every player is given it on joining, before any charter, and gets another if it is lost. It is bound to you. Open it from the item or a keybind.
 - **Terminals:** colony and outpost terminals also show the charter's open Directives.
 - **Scope:** the onboarding chapters cover the bootstrap and layers 1–2 as a linear, explicit tutorial: no cryptic wording, no side chapters, no helpdesk. The Directives are shown as a **quest map**, and earlier miners' pencil paths continue it past layer 2 ([ADR 0065](adr/0065-the-handbooks-directives-are-a-quest-map-and-earlier-miners-pencil-paths-continue-it-past-layer-2.md)).
 
@@ -149,6 +149,7 @@ The **Employee Handbook** is a company-issued onboarding manual.
 - The official chapters end with "Further documentation is restricted to Senior Personnel."
 - From then on the back section fills only with **Notes** found in the world: wreck logs, torn pages, miners' scribbles.
 - A Note picked up by anyone in a charter goes into every member's handbook, unread for each person.
+- Using a Note in the world opens it to read, charter or not. A player on no charter is told to found one at the contract terminal to file it.
 - Each Note also draws a **pencil path** on the quest map, from earlier miners. It completes when the charter reaches the place the Note points to: a cache, a wreck or another Note. The place is the payoff; there is no claim button. A pencil path is not a Directive.
 - The first version ships 1–2 paths from existing Notes. More come with lore sessions.
 - Revisions may also add stamped pages: a disciplinary notice, the Chairmen's Book or the Ledger. They carry no rules ([lore/handbook.md](lore/handbook.md#revisions)).
@@ -295,6 +296,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 - **Environment:** heat, pressure and toxic air outside the pod, worse with depth.
 - **Suit timer:** how long you can stay on foot outside a pod or habitable outpost.
 - **Suit:** upgraded separately: oxygen and toxins, heat, pressure, lamp battery.
+- **Food:** the world has no crops at the start, so the Company feeds a new hand: every player starts with a few sealed Company rations, the ore cars on the colony's track still hold the last shift's tins (a one-time find each), the canteen in the Lamp and Pick gives each player one ration per in-game day, and a salvage crate sometimes holds one. A fungal stalk cooks into a poor meal on a campfire or in a smoker, so food is renewable ([mechanics.md](design/mechanics.md#company-rations-838-a)).
 
 ## 10. Hazards
 
