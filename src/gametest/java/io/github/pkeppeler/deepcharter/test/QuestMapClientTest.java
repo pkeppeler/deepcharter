@@ -568,19 +568,12 @@ public class QuestMapClientTest implements FabricClientGameTest {
                 if (!mark.text().equals(stampText)) {
                     continue;
                 }
-                // the drawn box is the turned lettering; the double frame stands out 5 across and 3 up and down beyond
-                // it
-                Box frame = new Box(
-                        mark.box().x() - 5,
-                        mark.box().y() - 3,
-                        mark.box().width() + 10,
-                        mark.box().height() + 6);
                 for (Drawn other : drawn) {
                     if (other != mark) {
                         require(
-                                !io.github.pkeppeler.deepcharter.test.support.ClientChecks.overlaps(frame, other.box()),
-                                where + ": the CLASSIFIED stamp frame " + frame + " overlaps the text '"
-                                        + other.shortText() + "' at " + other.box());
+                                !stampFrameHits(font, mark.box(), stampText, other.box()),
+                                where + ": the CLASSIFIED stamp frame, centred at " + mark.box()
+                                        + ", overlaps the text '" + other.shortText() + "' at " + other.box());
                     }
                 }
             }
@@ -594,6 +587,56 @@ public class QuestMapClientTest implements FabricClientGameTest {
                         where + " draws the CLASSIFIED stamp whole: " + texts(screen));
             }
         }
+    }
+
+    /**
+     * Whether the double frame of a stamp whose turned lettering was drawn in {@code lettering} touches {@code other}. The frame
+     * stands 5 px out from the lettering across and 3 up and down, turned about its centre by the tuned angle; it is tested as
+     * the turned rectangle it is (separating axes), not as the box around it, whose empty corners are no part of the stamp.
+     */
+    private static boolean stampFrameHits(net.minecraft.client.gui.Font font, Box lettering, String text, Box other) {
+        double halfWidth = font.width(Component.literal(text).withStyle(net.minecraft.ChatFormatting.BOLD)) / 2.0 + 5;
+        double halfHeight = font.lineHeight / 2.0 + 3;
+        double angle = Math.toRadians(QuestMapTuning.current().classifiedStampDegrees());
+        double centerX = lettering.x() + lettering.width() / 2.0;
+        double centerY = lettering.y() + lettering.height() / 2.0;
+        double cos = Math.cos(angle);
+        double sin = Math.sin(angle);
+        double[][] axes = {{1, 0}, {0, 1}, {cos, sin}, {-sin, cos}};
+        double[][] frame = new double[4][];
+        double[][] box = {
+            {other.x(), other.y()},
+            {other.x() + other.width(), other.y()},
+            {other.x() + other.width(), other.y() + other.height()},
+            {other.x(), other.y() + other.height()}
+        };
+        int corner = 0;
+        for (int sx = -1; sx <= 1; sx += 2) {
+            for (int sy = -1; sy <= 1; sy += 2) {
+                double dx = sx * halfWidth;
+                double dy = sy * halfHeight;
+                frame[corner++] = new double[] {centerX + dx * cos - dy * sin, centerY + dx * sin + dy * cos};
+            }
+        }
+        for (double[] axis : axes) {
+            double[] frameRange = project(frame, axis);
+            double[] boxRange = project(box, axis);
+            if (frameRange[1] <= boxRange[0] || boxRange[1] <= frameRange[0]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static double[] project(double[][] points, double[] axis) {
+        double min = Double.MAX_VALUE;
+        double max = -Double.MAX_VALUE;
+        for (double[] point : points) {
+            double along = point[0] * axis[0] + point[1] * axis[1];
+            min = Math.min(min, along);
+            max = Math.max(max, along);
+        }
+        return new double[] {min, max};
     }
 
     private static List<String> chapterIds() {
