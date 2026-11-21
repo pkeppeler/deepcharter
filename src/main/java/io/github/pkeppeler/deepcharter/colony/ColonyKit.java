@@ -42,8 +42,15 @@ public final class ColonyKit {
             "mine_track",
             SoundType.METAL,
             properties -> new KitFacingBlock(properties.noOcclusion().noCollision(), Block.box(0, 0, 0, 16, 3, 16)));
-    /** A car on its own length of track, so it takes a track block's place. */
-    public static final Block ORE_CAR = facing("ore_car", SoundType.METAL, 0, Block.box(1, 0, 0, 15, 16, 16));
+    /** A car on its own length of track, so it takes a track block's place. Its tins are a one-time find ({@link OreCarBlock}). */
+    public static final Block ORE_CAR = ColonyBlocks.register(
+            "ore_car",
+            SoundType.METAL,
+            properties -> new OreCarBlock(properties.noOcclusion(), Block.box(1, 0, 0, 15, 16, 16)));
+
+    /** The Lamp and Pick's ration dispenser: one ration per player per in-game day ({@link CanteenBlock}). Gives no light. */
+    public static final Block CANTEEN = ColonyBlocks.register(
+            "canteen", SoundType.METAL, properties -> new CanteenBlock(properties, Block.box(0, 0, 0, 16, 16, 16)));
 
     public static final Block STEEL_BEAM = pillar("steel_beam", 12);
     public static final Block LATTICE_GIRDER = pillar("lattice_girder", 16);
