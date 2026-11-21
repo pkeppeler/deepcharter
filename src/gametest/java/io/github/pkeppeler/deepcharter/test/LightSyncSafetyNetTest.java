@@ -14,6 +14,8 @@ import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.BitSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -22,6 +24,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ThreadedLevelLightEngine;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
@@ -109,6 +112,7 @@ public class LightSyncSafetyNetTest {
         BlockPos[] lamp = {null};
         int[][] dark = {null};
         int[][] steady = {null};
+        AtomicReference<@Nullable CompletableFuture<?>> marker = new AtomicReference<>();
         BitSet[] changed = {null};
         boolean[] ended = {false};
         Runnable finish = () -> {
@@ -162,7 +166,7 @@ public class LightSyncSafetyNetTest {
                     }
                     case 3 -> {
                         // The chunk lies dark and its light has stopped changing.
-                        if (!steady(level, home, lamp[0], steady, waited)) {
+                        if (!steady(level, home, lamp[0], steady, waited, marker)) {
                             return;
                         }
                         dark[0] = steady[0];
@@ -179,7 +183,7 @@ public class LightSyncSafetyNetTest {
                         phase[0] = 5;
                     }
                     case 5 -> {
-                        if (!steady(level, home, lamp[0], steady, waited)) {
+                        if (!steady(level, home, lamp[0], steady, waited, marker)) {
                             return;
                         }
                         // The hold of a draw: the chunks get a watch of the net, and the chunk lies dark afterwards.
@@ -198,7 +202,7 @@ public class LightSyncSafetyNetTest {
                             // The hold ended in the end-of-tick step of the tick before this one.
                             holdEnd[0] = tick - 1;
                         }
-                        if (!steady(level, home, lamp[0], steady, waited)) {
+                        if (!steady(level, home, lamp[0], steady, waited, marker)) {
                             return;
                         }
                         checkStoredLight(helper, level, home, lampChunk, lamp[0], "dark");
@@ -221,27 +225,29 @@ public class LightSyncSafetyNetTest {
                             return;
                         }
                         changed[0] = lit;
-                        // The player is sent the lit chunk, and the lamp goes out in the same tick: the published light
-                        // is dark
-                        // again before another comparison.
+                        // The player is sent the lit chunk.
                         net.minecraft.server.level.ServerPlayer player = mock.player();
                         player.connection.chunkSender.dropChunk(player, home);
                         player.connection.chunkSender.markChunkPendingToSend(level.getChunk(home.x(), home.z()));
-                        level.setBlock(lamp[0], Blocks.AIR.defaultBlockState(), 3);
                         phase[0] = 9;
                     }
                     case 9 -> {
-                        boolean back =
-                                changedSections(level, home, lamp[0], dark[0]).isEmpty();
-                        boolean sent = mock.timesSent(home) > sentBefore[0];
-                        if (!back || !sent) {
+                        // The lamp goes out once the lit chunk is sent: the player holds the lit light for good.
+                        if (mock.timesSent(home) <= sentBefore[0]) {
+                            return;
+                        }
+                        level.setBlock(lamp[0], Blocks.AIR.defaultBlockState(), 3);
+                        phase[0] = 10;
+                    }
+                    case 10 -> {
+                        if (!changedSections(level, home, lamp[0], dark[0]).isEmpty()) {
                             return;
                         }
                         // The sends so far are not the ones the case is about.
                         LightSyncSends.unwatch(id);
                         LightSyncSends.watch(id);
                         waited[0] = 0;
-                        phase[0] = 10;
+                        phase[0] = 11;
                     }
                     default -> {
                         if (waited[0]++ < NET_INTERVAL + 5) {
@@ -304,6 +310,7 @@ public class LightSyncSafetyNetTest {
         BlockPos[] lamp = {null};
         int[][] lit = {null};
         int[][] steady = {null};
+        AtomicReference<@Nullable CompletableFuture<?>> marker = new AtomicReference<>();
         boolean[] ended = {false};
         Runnable finish = () -> {
             ended[0] = true;
@@ -368,7 +375,7 @@ public class LightSyncSafetyNetTest {
                     case 3 -> {
                         boolean over = holdsEnded(List.of(lampChunk));
                         deadline.await(helper, level, over, () -> "the hold of " + lampChunk + " did not end");
-                        if (!over || !steady(level, beyond, lamp[0], steady, waited)) {
+                        if (!over || !steady(level, beyond, lamp[0], steady, waited, marker)) {
                             return;
                         }
                         lit[0] = steady[0];
@@ -439,7 +446,22 @@ public class LightSyncSafetyNetTest {
     }
 
     /** True once the stored light of the chunk has been the same for {@value #STEADY_TICKS} ticks in a row; {@code last} holds it. */
-    private static boolean steady(ServerLevel level, ChunkPos chunk, BlockPos lamp, int[][] last, int[] same) {
+    private static boolean steady(
+            ServerLevel level,
+            ChunkPos chunk,
+            BlockPos lamp,
+            int[][] last,
+            int[] same,
+            AtomicReference<@Nullable CompletableFuture<?>> marker) {
+        // Every light task queued for the chunk so far has run: a marker the light engine completes behind them.
+        CompletableFuture<?> waiting = marker.get();
+        if (waiting == null) {
+            waiting = ((ThreadedLevelLightEngine) level.getLightEngine()).waitForPendingTasks(chunk.x(), chunk.z());
+            marker.set(waiting);
+        }
+        if (!waiting.isDone()) {
+            return false;
+        }
         int[] now = storedLight(level, chunk, lamp);
         if (last[0] != null && java.util.Arrays.equals(last[0], now)) {
             same[0]++;
@@ -449,6 +471,7 @@ public class LightSyncSafetyNetTest {
         last[0] = now;
         if (same[0] >= STEADY_TICKS) {
             same[0] = 0;
+            marker.set(null);
             return true;
         }
         return false;
