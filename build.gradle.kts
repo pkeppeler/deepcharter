@@ -296,7 +296,7 @@ checkstyle {
 	maxWarnings = 0
 }
 
-// The worker's default 512m heap ran out on CI, which Checkstyle reports as "Error was thrown while processing <a different file each run>".
+// The gametest source set outgrew Checkstyle's default worker heap: CI crashed with OutOfMemoryError (#899).
 tasks.withType<Checkstyle>().configureEach {
 	maxHeapSize = "1g"
 }
