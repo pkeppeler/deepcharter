@@ -61,9 +61,6 @@ public final class AtmosphereScenes {
     public static final ResourceKey<WorldPreset> TEST_PRESET =
             ResourceKey.create(Registries.WORLD_PRESET, Identifier.withDefaultNamespace("flat_all_dimensions"));
 
-    /** The camera waits this many ticks after it is placed: the lightmap and the fog ease toward the new place, and nothing reports when they have. */
-    private static final int SETTLE_TICKS = 160;
-
     private static final int HALF_PATCH = 40;
     private static final int STEADY_SAMPLES = 3;
     private static final int MAX_SAMPLES = 60;
@@ -223,7 +220,7 @@ public final class AtmosphereScenes {
 
     /**
      * Stands the first player, a spectator, on {@code floor} in {@code dimension} facing {@code yaw} and {@code pitch}, waits for the
-     * client to hold the chunks round the scene and for its light to match the server's, and lets the lightmap settle. {@code shot} names
+     * client to be there, to hold the chunks round the scene and for its light to match the server's, and for the picture to stop changing. {@code shot} names
      * the view in a failure.
      */
     public static void stand(
@@ -235,38 +232,18 @@ public final class AtmosphereScenes {
             float pitch,
             String shot) {
         teleport(server, dimension, floor, yaw, pitch);
-        long t0 = System.nanoTime(); // DIAG
         Box around = Box.around(floor, MASS, 1, SHAFT_DEPTH);
         ClientWait.until(
                 context,
                 "the client in " + dimension.identifier() + " holding the chunks at " + floor.toShortString(),
                 client -> ClientLight.clientLevel(client).dimension().equals(dimension)
+                        && client.player != null
+                        && client.player.blockPosition().equals(floor)
                         && ClientLight.chunksPresent(ClientLight.clientLevel(client), around),
                 client -> "no chunks at " + floor.toShortString());
-        long t1 = System.nanoTime(); // DIAG
         ClientChecks.requireNone(
                 "the light at " + shot, ClientLight.settledMismatch(context, server, dimension, around));
-        long t2 = System.nanoTime(); // DIAG
-        StringBuilder traj = new StringBuilder(); // DIAG
-        for (int i = 0; i < SETTLE_TICKS / 10; i++) { // DIAG
-            traj.append(String.format("%.2f ", centreLuma(context.takeScreenshot("settle")))); // DIAG
-            context.waitTicks(10); // DIAG
-        } // DIAG
-        long t3 = System.nanoTime(); // DIAG
-        context.waitTicks(10); // DIAG
-        long t3b = System.nanoTime(); // DIAG
         awaitSteadyPicture(context, shot);
-        long t4 = System.nanoTime(); // DIAG
-        org.slf4j.LoggerFactory.getLogger("AtmosphereDiag")
-                .info(
-                        "[diag] {} chunks {} ms, light {} ms, settle16x(shot+10t) {} ms, 10 ticks alone {} ms, steady {} ms; trajectory {}",
-                        shot,
-                        (t1 - t0) / 1_000_000,
-                        (t2 - t1) / 1_000_000,
-                        (t3 - t2) / 1_000_000,
-                        (t3b - t3) / 1_000_000,
-                        (t4 - t3b) / 1_000_000,
-                        traj); // DIAG
     }
 
     private static void teleport(
@@ -321,8 +298,6 @@ public final class AtmosphereScenes {
         int steady = 0;
         for (int sample = 0; sample < MAX_SAMPLES && steady < STEADY_SAMPLES; sample++) {
             double now = centreLuma(context.takeScreenshot("settle"));
-            org.slf4j.LoggerFactory.getLogger("AtmosphereDiag")
-                    .info("[diag] steady sample {} luma {}", sample, now); // DIAG
             steady = Math.abs(now - last) <= STEADY_TOLERANCE ? steady + 1 : 0;
             last = now;
             // tick-wait: the next sample is a few frames later; nothing reports that the lightmap has stopped easing
