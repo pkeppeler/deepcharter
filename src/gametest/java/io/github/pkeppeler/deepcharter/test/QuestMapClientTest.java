@@ -579,7 +579,8 @@ public class QuestMapClientTest implements FabricClientGameTest {
                     if (other != mark) {
                         require(
                                 !io.github.pkeppeler.deepcharter.test.support.ClientChecks.overlaps(frame, other.box()),
-                                where + ": the CLASSIFIED stamp overlaps the text '" + other.shortText() + "'");
+                                where + ": the CLASSIFIED stamp frame " + frame + " overlaps the text '"
+                                        + other.shortText() + "' at " + other.box());
                     }
                 }
             }
