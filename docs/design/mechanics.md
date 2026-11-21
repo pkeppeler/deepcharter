@@ -1715,7 +1715,7 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Knobs.** `SoundTuning.phonographRange`, the `ColonyTuning.phonograph*` fields, the crate pool's `random_chance` in `loot_table/blocks/salvage_crate.json`, the locker's in `loot_table/chests/wreck_locker.json`.
 
-**Open.** The pencil path (#849) should pay out cylinders too. A fourth recording, or the processed "Au clair de la lune" of #861, is one more entry in `tools/sounds/first_sounds.py`.
+**Open.** The pencil path (#849) should pay out cylinders too. A fourth recording is one more entry in `RECORDINGS` in `tools/sounds/first_sounds.py`. "Au clair de la lune" (#861) is made there too but is never one of them.
 
 ## First Sounds in the dark (#866, A)
 
@@ -1733,7 +1733,25 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Knobs.** `AmbienceTuning` (rates, retry, quiet, horn range and timer, distances); the volume and `attenuation_distance` of each event in `sounds.json`; each wear's numbers in `tools/sounds/ambience.py`.
 
-**Open.** #861's wreck speaker is one more source for the same scheduler: a `Source.WRECK` beside `DARK` and `HORN`, and the same quiet rule. The ticker finds horns by block, so a speaker block of any structure reuses `HornFinder` as it is.
+**Open.** None left from #861: it took the ticker's quiet rule and playing code and kept its own pure decision (`RetainedWarning`), since the warning has no timer.
+
+## Au clair de la lune (#861, A)
+
+**Problem.** The oldest recordings are heard rarely and far off (#866), and the Retained (#449) are the one thing in the dark that comes with no sound at all. The user's call (2026-11-21): the 1860 phonautogram of "Au clair de la lune", "wreck first, then the dark". The song is learnt where it is safe, and then it is a warning where it is not.
+
+**The pieces.**
+- **Two variants**, both made by `tools/sounds/first_sounds.py` from one source (`SONGS`, never the cylinder set `RECORDINGS`): `song/wreck.ogg`, the phonograph's treatment on the whole 21.7 seconds, and `song/dark.ogg`, the opening line (0.1 to 4.1 s, up to the singer's first breath) low-passed and distant with a three-second tail and a long reverb, with no wow, so that it is the same steady tune. Mono, credited in `CREDITS.md`, listed in `first_sounds.json` with its cut. They are the sound events `song.wreck` and `song.dark`: in no cylinder, no loot table and no random ambience pool.
+- **The wreck's phonograph** (`wreck_phonograph`) stands in a corner of every wreck bay (Prospector's Run, layer 2), a block of the same Company grade as the colony's phonograph: unbreakable, no item, no loot, and no cylinder, so its song cannot be taken. A player within 14 blocks starts it (it is heard to 16); a player who walks in while it sings hears it from the top. A right click switches it off, or on again.
+- **Off lasts until the bay has been empty for five minutes** (6,000 ticks, no player within 14 blocks). A song that ends by itself is the same: it does not start again while a visitor stays. The next visitor, or the same one much later, hears it start. *Why:* a player who switches it off is not sung to again on the way out, so the off switch is believed; and the tune stays learnable for everyone, with no state saved (a restart finds it armed).
+- **The warning.** A Retained 16 to 32 blocks away that the player does not see (outside a 70 degree view cone, or behind rock) for two seconds, at most once per figure and once in 7.5 minutes (9,000 ticks), makes the dark's variant come from the figure, positional, as ambient sound. Per player, on the client, no server state, and the Retained are not touched: it reads them only. It is never random: with no figure near it cannot play. `RetainedWarning` (pure) decides; `AmbienceTicker` feeds it the figures and plays the sound, with the ambience's quiet rule (no overlap with the hymn, a phonograph, a transmission, a fragment or the song itself) and a longer one of its own: not for a minute after a wreck's phonograph sounds, which also restarts the two-second count. The song is learnt in the safe place first.
+- **The margin note**, "If you hear the song and there's no radio, leave. —R.", is beside the paragraph of "Recovering Company Property" (chapter 9), which opens when the breach into the Old Workings is made, where the wrecks are. It is Roz's: it says what to do and not why.
+- **Subtitles** explain nothing: "A voice, crackling" and "A song, far off".
+
+**Trade-offs.** Nothing to pay, and nothing the player needs: a player who never hears it loses nothing, and one who learns it can leave a Retained's neighbourhood or light their pod. It is a cue, not a rule. The risk is a false teaching, which the rules answer: it plays only for a real figure, and never beside a wreck's song.
+
+**Knobs.** `SoundTuning.wreckSong*` (range, trigger range, length, re-arm time); `WarningTuning` (ranges, cooldown, count, view cone, quiet after a wreck's song); the volume and `attenuation_distance` of each song in `sounds.json`; the dark's cut, tail and reverb in `tools/sounds/first_sounds.py`.
+
+**Open.** The creatures session (#13) may later change how the Retained use the song (a figure that hums it, a sighting that ends it). The cue is a client reading of the figures and needs nothing from them. A wreck in layer 1 would take the same block in its structure.
 
 ## Company rations (#838, A)
 
