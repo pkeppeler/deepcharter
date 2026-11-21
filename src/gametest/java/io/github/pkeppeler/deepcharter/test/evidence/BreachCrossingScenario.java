@@ -15,19 +15,16 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Evidence scenario "breach-crossing": a recording of a player falling through a breach, with the
- * fade and the transmission, plus screenshots of the same view in layer 1 and layer 2 to compare
+ * Evidence scenario "breach-crossing": a recording of a player falling through a breach in place, with the
+ * rumble and the transmission, plus screenshots of the same view in layer 1 and layer 2 to compare
  * their darkness and fog.
  */
 public class BreachCrossingScenario extends EvidenceScenario {
     private static final double X = 2000.5;
     private static final double Z = 2000.5;
-    /** Where the player stands. The terrain is noise, so a stone floor and an open room are built here first. */
-    private static final int STANDING_Y = LAYER_ROOM_Y;
-
     private static final int ROOM_LENGTH = 56;
     private static final int ROOM_HEIGHT = 10;
-    private static final int SHAFT_TOP = 30;
+    private static final int SHAFT_TOP = TestLayers.worldY(1, 30);
     private static final int PATIENCE = 400;
     /** Frames recorded once the transmission has finished typing. */
     private static final int TAIL_FRAMES = 12;
@@ -58,19 +55,14 @@ public class BreachCrossingScenario extends EvidenceScenario {
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 BlockPos column = BlockPos.containing(X, 0, Z);
+                // The rows under the crust are layer 2's rock: a pocket in it, for the player to fall into.
+                RoomCarver.carvePocketBelow(one, 1, column.getX(), column.getX(), column.getZ(), column.getZ());
                 RoomCarver.carve(
                         one,
                         column.atY(TestLayers.band(one, 1).minY()),
                         column.atY(SHAFT_TOP),
                         Blocks.AIR.defaultBlockState(),
                         Block.UPDATE_ALL);
-                // Generate the arrival area in layer 2 now so the client has less to wait for after the crossing.
-                ServerLevel two = TestLayers.level(server, 2);
-                for (int dx = -2; dx <= 2; dx++) {
-                    for (int dz = -2; dz <= 2; dz++) {
-                        two.getChunk(column.getX() / 16 + dx, column.getZ() / 16 + dz);
-                    }
-                }
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.teleportTo(one, X, SHAFT_TOP - 1, Z, Set.of(), 0, 70, true);
             });
@@ -105,7 +97,8 @@ public class BreachCrossingScenario extends EvidenceScenario {
     private void lookDownTheRow(ClientGameTestContext context, TestSingleplayerContext singleplayer, int layer) {
         singleplayer.getServer().runOnServer(server -> {
             ServerLevel level = TestLayers.level(server, layer);
-            int standing = STANDING_Y;
+            // Where the player stands. The terrain is noise, so a stone floor and an open room are built here first.
+            int standing = TestLayers.worldY(layer, LAYER_ROOM_LOCAL_Y);
             int column = (int) X;
             int row = (int) Z;
             BlockPos west = new BlockPos(column - 3, standing, row - 5);

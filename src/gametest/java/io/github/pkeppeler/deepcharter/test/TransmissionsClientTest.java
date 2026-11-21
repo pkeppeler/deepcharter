@@ -66,7 +66,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
         return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, name);
     }
 
-    /** A real crossing brings t05 to the charter's player, with the fields filled, and the text is drawn over the black of the fade. */
+    /** A real crossing brings t05 to the charter's player, with the fields filled, and the text is drawn over the black of the fade (which this test starts itself: a crossing in place has none). */
     private static void aCrossingShowsItsTransmissionOverTheFade(ClientGameTestContext context) {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
@@ -83,8 +83,19 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     }
                 }
                 ServerLevel one = TestLayers.level(server, 1);
-                first.teleportTo(one, X, TestLayers.band(one, 1).minY() - 1, Z, Set.of(), 0, 0, true);
+                // A crossing is read from the layer last seen, so the player is first put in layer 1.
+                first.teleportTo(one, X, TestLayers.band(one, 1).minY() + 40, Z, Set.of(), 0, 0, true);
                 return first.getGameProfile().name();
+            });
+            ClientWait.until(context, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
+            context.waitTicks(20); // tick-wait: the server notes the layer a player is in over its next ticks
+            singleplayer.getServer().runOnServer(server -> {
+                ServerLevel one = TestLayers.level(server, 1);
+                // One block under the floor of layer 1, so it crosses on the next server tick.
+                server.getPlayerList()
+                        .getPlayers()
+                        .getFirst()
+                        .teleportTo(one, X, TestLayers.band(one, 1).minY() - 1, Z, Set.of(), 0, 0, true);
             });
 
             ClientWait.until(

@@ -91,7 +91,8 @@ public final class TestLayers {
 
     /** True when block position {@code pos} of {@code level} is in {@code layer}. */
     public static boolean isIn(Level level, BlockPos pos, int layer) {
-        boolean holds = layer == SURFACE ? level.dimension().equals(Level.OVERWORLD) : LayerChain.isCampaign(level);
+        boolean holds = LayerChain.isCampaign(level)
+                || (layer == SURFACE && level.dimension().equals(Level.OVERWORLD));
         return holds && inBand(band(level, layer), pos.getY());
     }
 

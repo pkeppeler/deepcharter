@@ -130,8 +130,9 @@ public class BreachCrossingTest {
                 ServerLevel two = TestLayers.level(helper, 2);
                 LayerChain.Band twoBand = TestLayers.band(two, 2);
                 double y = mock.player().getY();
-                // Strictly inside both crossing lines (y < minY goes down, y > maxY goes up), with margin.
-                if (y - twoBand.minY() < 1 || twoBand.maxY() - y < 1) {
+                // Under layer 1's floor, which is the line it crossed, and inside layer 2 with margin.
+                if (y - twoBand.minY() < 1
+                        || y >= TestLayers.band(TestLayers.level(helper, 1), 1).minY()) {
                     throw failure(
                             helper,
                             "arrival y=%s is not at least 1 block inside layer 2 [%s, %s]",

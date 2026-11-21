@@ -8,7 +8,6 @@ import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
@@ -84,10 +83,6 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             digIntoSealedRoom(context, server);
             carveThenArrive(context, server, false);
             carveThenArrive(context, server, true);
-            for (int trial = 0; trial < TRIALS; trial++) {
-                breachInto(context, server, 1, trial);
-                breachInto(context, server, 2, trial);
-            }
             colonyPieceReplaced(context, server);
             hostHandsAndHangarConsole(context, server);
             for (int trial = 0; trial < TRIALS; trial++) {
@@ -203,60 +198,6 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 server,
                 Level.OVERWORLD,
                 room(floor));
-    }
-
-    /**
-     * The player crosses a breach into {@code layer}: {@code BreachService} carves the pocket and teleports the player in the same tick.
-     * Layer 2's rock holds lava, which lights what it touches, so a pocket carved out of it must not keep that glow on the client.
-     */
-    private void breachInto(ClientGameTestContext context, TestServerContext server, int layer, int trial) {
-        ResourceKey<Level> from = TestLayers.dimension(layer - 1);
-        ResourceKey<Level> to = TestLayers.dimension(layer);
-        int column = 4_000 + layer * 1_000 + trial * 200;
-        arriveSpectator(
-                context,
-                server,
-                from,
-                new BlockPos(
-                        column,
-                        server.computeOnServer(
-                                s -> TestLayers.band(s, layer - 1).minY() + 40),
-                        column));
-        server.runOnServer(s -> {
-            ServerLevel level = ClientLight.serverLevel(s, from);
-            player(s)
-                    .teleportTo(
-                            level,
-                            column + 0.5,
-                            TestLayers.band(level, layer - 1).minY() - 2,
-                            column + 0.5,
-                            Set.of(),
-                            0,
-                            0,
-                            true);
-        });
-        ClientWait.until(
-                context,
-                "the client to cross into layer " + layer,
-                client -> ClientLight.clientLevel(client).dimension().equals(to),
-                ClientWait::describe);
-        BlockPos arrival = server.computeOnServer(s -> player(s).blockPosition());
-        int radius = LayerTuning.DEFAULT.pocketRadius();
-        Box pocket = new Box(
-                arrival.offset(-radius, -1, -radius),
-                arrival.offset(radius, LayerTuning.DEFAULT.pocketHeight() - 1, radius));
-        ClientWait.until(
-                context,
-                "the client to hold the chunks of the pocket",
-                client -> ClientLight.chunksPresent(ClientLight.clientLevel(client), pocket),
-                client -> "chunks missing in " + pocket);
-        record(
-                "a breach crossing into layer " + layer + " carves its pocket in the tick the player arrives (#" + trial
-                        + ")",
-                context,
-                server,
-                to,
-                pocket);
     }
 
     /**
@@ -408,12 +349,6 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 client -> ClientLight.clientLevel(client).dimension().equals(dimension)
                         && ClientLight.clientLevel(client).getChunkSource().hasChunk(at.getX() >> 4, at.getZ() >> 4),
                 client -> "no chunk at " + at.toShortString());
-    }
-
-    private static void arriveSpectator(
-            ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, BlockPos at) {
-        server.runOnServer(s -> player(s).setGameMode(GameType.SPECTATOR));
-        arrive(context, server, dimension, at);
     }
 
     private static void teleport(MinecraftServer server, ServerLevel level, BlockPos at) {

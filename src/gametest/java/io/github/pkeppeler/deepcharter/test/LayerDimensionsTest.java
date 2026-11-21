@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -28,6 +29,7 @@ import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3fc;
 
@@ -234,6 +236,9 @@ public class LayerDimensionsTest {
             mock.teleportTo(layer, TestLayers.vec(1, 300_000.5, 100, 300_000.5), 0, 0);
             layer.getChunk(300_000 >> 4, 300_000 >> 4);
             BlockPos block = new BlockPos(300_000, TestLayers.band(layer, 2).maxY() - 2, 300_000);
+            // The command stands on the highest place with room over it: the band's rock has none here, so two cells
+            // are opened over the block.
+            RoomCarver.carve(layer, block.above(), block.above(2), Blocks.AIR.defaultBlockState());
             layer.setBlockAndUpdate(block, SurfaceBlocks.REGOLITH.defaultBlockState());
             var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
             server.getCommands().getDispatcher().execute("deepcharter layer goto 2", source);

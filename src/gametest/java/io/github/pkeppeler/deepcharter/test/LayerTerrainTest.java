@@ -103,44 +103,28 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
+    /** A layer's band is rock to its ceiling, cut by noise caves: a 64 x 64 sample has caves in it. */
     @GameTest
     public void terrainIsNoiseWithCaves(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
-            int lowest = Integer.MAX_VALUE;
-            int highest = Integer.MIN_VALUE;
+            LayerChain.Band band = TestLayers.band(level, layer);
             int caveCells = 0;
             for (int x = 900; x < 964; x += 2) {
                 for (int z = 900; z < 964; z += 2) {
                     level.getChunk(x >> 4, z >> 4, ChunkStatus.FULL);
-                    int top = bandTop(level, TestLayers.band(level, layer), x, z);
-                    lowest = Math.min(lowest, top);
-                    highest = Math.max(highest, top);
-                    for (int y = TestLayers.band(level, layer).minY() + 12; y < top - 8; y++) {
+                    for (int y = band.minY() + 12; y < band.maxY() - 8; y++) {
                         if (level.getBlockState(new BlockPos(x, y, z)).isAir()) {
                             caveCells++;
                         }
                     }
                 }
             }
-            if (highest - lowest < 6) {
-                throw failure(helper, "layer_%d terrain is flat: surface y %d to %d", layer, lowest, highest);
-            }
             if (caveCells == 0) {
-                throw failure(helper, "layer_%d has no caves in a 64 x 64 sample", layer);
+                throw failure(helper, "layer %d has no caves in a 64 x 64 sample", layer);
             }
         }
         helper.succeed();
-    }
-
-    /** The highest solid block of the layer's band in the column, which a band of one level has no heightmap for. */
-    private static int bandTop(ServerLevel level, LayerChain.Band band, int x, int z) {
-        for (int y = band.maxY(); y >= band.minY(); y--) {
-            if (!level.getBlockState(new BlockPos(x, y, z)).isAir()) {
-                return y + 1;
-            }
-        }
-        return band.minY();
     }
 
     @GameTest
@@ -181,10 +165,13 @@ public class LayerTerrainTest {
         for (int layer = 1; layer <= 2; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
             LayerChain.Band levelBand = TestLayers.band(level, layer);
+            int inLayer = layer;
             for (int bad :
                     new int[] {levelBand.minY() - 1, levelBand.maxY() + 1, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
-                if (Zones.of(level, bad).isPresent()) {
-                    throw failure(helper, "layer_%d y=%d is outside the layer and should have no zone", layer, bad);
+                // Outside a band is the surface, unbuilt depth or the other layer, which has a zone of its own.
+                if (Zones.of(level, bad).filter(zone -> zone.layer() == inLayer).isPresent()) {
+                    throw failure(
+                            helper, "layer %d y=%d is outside the layer and should have no zone of it", layer, bad);
                 }
             }
         }

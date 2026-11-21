@@ -37,7 +37,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodBraceScenario extends EvidenceScenario {
     private static final int X = 4900;
     private static final int Z = 5000;
-    private static final int CRUST_TOP_Y = LayerTuning.DEFAULT.crustThickness();
+    private static final int CRUST_TOP_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness());
     private static final int FLOOR_Y = CRUST_TOP_Y + 12;
     private static final int RADIUS = 6;
     private static final int TICKS_PER_FRAME = 4;
@@ -171,9 +171,20 @@ public class PodBraceScenario extends EvidenceScenario {
                         .getY());
     }
 
-    /** A stone bed over three rows of breach crust, under an open room. */
+    /** A stone bed over three rows of breach crust over a pocket, under an open room. */
     private static void build(ServerLevel level) {
-        RoomCarver.carve(level, X - RADIUS, X + RADIUS, 0, 2, Z - RADIUS, Z + RADIUS, LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(
+                level,
+                X - RADIUS,
+                X + RADIUS,
+                TestLayers.worldY(1, 0),
+                TestLayers.worldY(1, 2),
+                Z - RADIUS,
+                Z + RADIUS,
+                LayerBlocks.BREACH_CRUST);
+        // The rows under the crust are layer 2's rock: a pocket in it, for the pod to fall into once it has bored the
+        // crust.
+        RoomCarver.carvePocketBelow(level, 1, X - RADIUS, X + RADIUS, Z - RADIUS, Z + RADIUS);
         RoomCarver.carve(level, X - RADIUS, X + RADIUS, CRUST_TOP_Y, FLOOR_Y - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
         RoomCarver.carve(
                 level,

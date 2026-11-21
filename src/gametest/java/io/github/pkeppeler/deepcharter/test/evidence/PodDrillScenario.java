@@ -27,7 +27,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodDrillScenario extends EvidenceScenario {
     private static final int X = 4000;
     private static final int Z = 4000;
-    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
+    private static final int FLOOR_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness() + 1);
     private static final int TICKS_PER_FRAME = 16;
     private static final int MAX_TICKS = 3000;
     private static final int ARRIVAL_FRAMES = 8;
@@ -82,7 +82,7 @@ public class PodDrillScenario extends EvidenceScenario {
             context.getInput().releaseKey(options -> options.keySprint);
             if (!inLayer(context, 2)) {
                 throw new AssertionError(
-                        "The pod did not drill through the crust into layer_2 within " + MAX_TICKS + " ticks");
+                        "The pod did not drill through the crust into layer 2 within " + MAX_TICKS + " ticks");
             }
             context.runOnClient(client -> ClientSession.player(client).setXRot(LOOK_DOWN));
             for (int i = 0; i < ARRIVAL_FRAMES; i++) {
@@ -99,8 +99,19 @@ public class PodDrillScenario extends EvidenceScenario {
 
     /** Crust rows, a row of stone under the pod, an open room above, and glowstone to light the shaft. */
     private static void buildShaftRoom(ServerLevel level) {
-        RoomCarver.carve(level, X - 5, X + 5, 0, 2, Z - 5, Z + 5, LayerBlocks.BREACH_CRUST);
-        RoomCarver.carve(level, X - 5, X + 5, 3, FLOOR_Y - 1, Z - 5, Z + 5, Blocks.STONE);
+        RoomCarver.carve(
+                level,
+                X - 5,
+                X + 5,
+                TestLayers.worldY(1, 0),
+                TestLayers.worldY(1, 2),
+                Z - 5,
+                Z + 5,
+                LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(level, X - 5, X + 5, TestLayers.worldY(1, 3), FLOOR_Y - 1, Z - 5, Z + 5, Blocks.STONE);
+        // The rows under the crust are layer 2's rock: a pocket in it, for the pod to fall into once it has bored the
+        // crust.
+        RoomCarver.carvePocketBelow(level, 1, X - 5, X + 5, Z - 5, Z + 5);
         // Worldgen scatters lava through layer 1's rock, and lava beside the room would flow in and into the shaft, so
         // carve it sealed.
         RoomCarver.carve(
@@ -110,11 +121,11 @@ public class PodDrillScenario extends EvidenceScenario {
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
         for (BlockPos lamp : new BlockPos[] {
-            new BlockPos(X + 1, 3, Z - 1),
-            new BlockPos(X - 2, 3, Z),
-            new BlockPos(X + 1, 1, Z),
-            new BlockPos(X - 2, 1, Z - 1),
-            new BlockPos(X + 1, 0, Z - 1),
+            new BlockPos(X + 1, TestLayers.worldY(1, 3), Z - 1),
+            new BlockPos(X - 2, TestLayers.worldY(1, 3), Z),
+            new BlockPos(X + 1, TestLayers.worldY(1, 1), Z),
+            new BlockPos(X - 2, TestLayers.worldY(1, 1), Z - 1),
+            new BlockPos(X + 1, TestLayers.worldY(1, 0), Z - 1),
             new BlockPos(X + 5, FLOOR_Y + 2, Z),
             new BlockPos(X - 5, FLOOR_Y + 2, Z),
             new BlockPos(X, FLOOR_Y + 2, Z + 5),
