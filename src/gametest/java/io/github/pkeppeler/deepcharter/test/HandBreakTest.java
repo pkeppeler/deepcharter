@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
+import io.github.pkeppeler.deepcharter.layer.BlockReadouts;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.HandBreak;
 import io.github.pkeppeler.deepcharter.layer.HandBreakCost;
@@ -79,6 +80,7 @@ public class HandBreakTest {
     private static final int X_ABORT = 9400;
     private static final int X_SWAP = 9500;
     private static final int X_RESET = 9600;
+    private static final int X_READOUT = 9700;
     private static final int X_CAMPAIGN = 21800;
     private static final int FULL_RUN_TICKS = 1200;
     /** A STOP this many ticks in is past the 0.7 of the break time that vanilla's check lets through. */
@@ -789,6 +791,59 @@ public class HandBreakTest {
             throw failure(helper, "the count with a tool that bites is %d, expected 78", withNetherite);
         }
         helper.succeed();
+    }
+
+    private static String hintOf(BlockState state, ServerLevel level, ServerPlayer viewer) {
+        return BlockReadouts.SHARED
+                .readout(state, level, BlockPos.ZERO, viewer)
+                .flatMap(readout -> readout.hint())
+                .map(hint -> hint.getContents() instanceof TranslatableContents translatable
+                        ? translatable.getKey()
+                        : hint.getString())
+                .orElse("(none)");
+    }
+
+    /** (A) The crosshair readout adds what a brute-forced block would cost when the viewer holds a tool that bites it. */
+    @GameTest
+    public void theReadoutSaysThePickWouldBurnOutOnlyForAToolThatBites(GameTestHelper helper) {
+        ServerLevel one = TestLayers.level(helper, 1);
+        BlockState crust = LayerBlocks.BREACH_CRUST.defaultBlockState();
+        BlockState company = HazardBlocks.COMPANY_ROCK.defaultBlockState();
+        ServerPlayer viewer = rig(helper, 1, X_READOUT, "hb-readout").player();
+        String plain = "hint.deepcharter.pod_drill_only";
+        String burns = "hint.deepcharter.pod_drill_only_burns";
+        hold(viewer, new ItemStack(Items.DIAMOND_PICKAXE));
+        expectHint(helper, burns, hintOf(crust, one, viewer), "crust with a diamond pick");
+        expectHint(helper, burns, hintOf(company, one, viewer), "Company rock with a diamond pick");
+        hold(viewer, new ItemStack(Items.IRON_PICKAXE));
+        expectHint(helper, plain, hintOf(crust, one, viewer), "crust with an iron pick");
+        expectHint(
+                helper,
+                "hint.deepcharter.company_rock",
+                hintOf(company, one, viewer),
+                "Company rock with an iron pick: what does break it");
+        ServerLevel two = TestLayers.level(helper, 2);
+        hold(viewer, new ItemStack(Items.DIAMOND_PICKAXE));
+        expectHint(
+                helper,
+                plain,
+                hintOf(Blocks.STONE.defaultBlockState(), two, viewer),
+                "deep rock in layer 2 with a pick that cannot bite it there");
+        hold(viewer, new ItemStack(Items.NETHERITE_PICKAXE));
+        expectHint(
+                helper,
+                burns,
+                hintOf(Blocks.STONE.defaultBlockState(), two, viewer),
+                "deep rock in layer 2 with netherite");
+        viewer.setGameMode(GameType.CREATIVE);
+        expectHint(helper, "(none)", hintOf(crust, one, viewer), "crust read by a creative player");
+        helper.succeed();
+    }
+
+    private static void expectHint(GameTestHelper helper, String expected, String actual, String what) {
+        if (!expected.equals(actual)) {
+            throw failure(helper, "%s: hint %s, expected %s", what, actual, expected);
+        }
     }
 
     // assertionException(String, Object...) leaves the placeholders unfilled in the report.
