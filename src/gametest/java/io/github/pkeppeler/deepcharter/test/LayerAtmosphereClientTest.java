@@ -18,6 +18,7 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.requ
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.stand;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.todayFloor;
 
+import io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -263,20 +264,17 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         BlockPos today =
                 buildRoom(server, TestLayers.dimension(1), todayFloor(x + 4 * SPACING), Optional.empty(), true);
         requireZone(server, TestLayers.dimension(1), today);
-        record View(String name, float yaw, float pitch) {}
-        for (View view : List.of(new View("wall", 180, 0), new View("floor", 180, 90), new View("ceiling", 180, -90))) {
-            Reading now = look(
-                    context,
-                    server,
-                    TestLayers.dimension(1),
-                    today,
-                    view.yaw(),
-                    view.pitch(),
-                    "lit-room-today-" + view.name());
-            Reading campaignWorld = look(
-                    context, server, CAMPAIGN, campaign, view.yaw(), view.pitch(), "lit-room-campaign-" + view.name());
+        // One room at a time: the camera turns inside a room whose light has settled, and only a change of room
+        // pays the settle.
+        List<Reading> now = lookAround(context, server, TestLayers.dimension(1), today, "lit-room-today-");
+        List<Reading> campaignWorld = lookAround(context, server, CAMPAIGN, campaign, "lit-room-campaign-");
+        for (int i = 0; i < VIEWS.size(); i++) {
             table.add("lit room, %s: today %s; campaign %s; campaign/today %.3f"
-                    .formatted(view.name(), now, campaignWorld, campaignWorld.luma() / Math.max(now.luma(), 0.01)));
+                    .formatted(
+                            VIEWS.get(i).name(),
+                            now.get(i),
+                            campaignWorld.get(i),
+                            campaignWorld.get(i).luma() / Math.max(now.get(i).luma(), 0.01)));
         }
         // An unlit room shows the ambient floor alone.
         putOutTheLight(server, CAMPAIGN, campaign);
@@ -325,6 +323,10 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
             float pitch,
             String shot) {
         stand(context, server, dimension, floor, yaw, pitch, shot);
+        return read(context, floor, shot);
+    }
+
+    private static Reading read(ClientGameTestContext context, BlockPos floor, String shot) {
         Reading[] reading = new Reading[1];
         ClientChecks.withHudHidden(context, () -> reading[0] = average(context.takeScreenshot(shot)));
         LOGGER.info(
@@ -333,6 +335,42 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
                 reading[0],
                 attributes(context, floor));
         return reading[0];
+    }
+
+    private record View(String name, float yaw, float pitch) {}
+
+    private static final List<View> VIEWS =
+            List.of(new View("wall", 180, 0), new View("floor", 180, 90), new View("ceiling", 180, -90));
+
+    /** Reads each of {@link #VIEWS} of the room at {@code floor}: the first view settles the light, the others turn in place. */
+    private static List<Reading> lookAround(
+            ClientGameTestContext context,
+            TestServerContext server,
+            ResourceKey<Level> dimension,
+            BlockPos floor,
+            String shotPrefix) {
+        List<Reading> readings = new ArrayList<>();
+        for (View view : VIEWS) {
+            String shot = shotPrefix + view.name();
+            readings.add(
+                    readings.isEmpty()
+                            ? look(context, server, dimension, floor, view.yaw(), view.pitch(), shot)
+                            : turn(context, server, dimension, floor, view.yaw(), view.pitch(), shot));
+        }
+        return readings;
+    }
+
+    /** Turns the spectator in the room it already stands in and reads the middle of the screen: the light is settled, the camera has not moved. */
+    private static Reading turn(
+            ClientGameTestContext context,
+            TestServerContext server,
+            ResourceKey<Level> dimension,
+            BlockPos floor,
+            float yaw,
+            float pitch,
+            String shot) {
+        AtmosphereScenes.face(context, server, dimension, floor, yaw, pitch, shot);
+        return read(context, floor, shot);
     }
 
     private static Reading average(Path file) {
