@@ -2,6 +2,8 @@ package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -12,12 +14,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.lighting.LevelLightEngine;
 
 /**
  * Light is computed off the server thread, so a client sent a chunk while light is pending keeps the old light: vanilla holds a
@@ -28,6 +34,10 @@ import net.minecraft.world.level.chunk.LevelChunk;
  * <p>A player who already had a chunk of the hold when it began is sent the chunk's settled light when the hold ends (#824): a
  * neighbour's draw changes the light of that chunk, and vanilla drops a light change for a chunk that does not tick (issue 427), so
  * the player's client keeps the old light.
+ *
+ * <p>The safety net (#863, ADR 0068): a client was left with the light a chunk had at its send while the light settled after the
+ * hold, and the cause was not found. For a short window after a hold ends, the chunk's published light is compared on, and a change
+ * is sent to the players who track it.
  */
 public final class LightSync {
     /** Server ticks a hold may last before it is reported as stuck (30 s). */
@@ -54,12 +64,36 @@ public final class LightSync {
 
     private static final Map<Key, Hold> HOLDS = new ConcurrentHashMap<>();
 
+    /** Server ticks a chunk's published light is compared after its hold ended (5 s). */
+    private static final int NET_WINDOW_TICKS = 100;
+    /** Server ticks between two comparisons. */
+    private static final int NET_INTERVAL_TICKS = 10;
+
+    /** The safety net's record of a chunk: the light it published when last compared, and when to compare next and stop. */
+    private static final class NetWatch {
+        int print;
+        int nextCheck;
+        final int until;
+
+        NetWatch(int print, int nextCheck, int until) {
+            this.print = print;
+            this.nextCheck = nextCheck;
+            this.until = until;
+        }
+    }
+
+    /** The chunks whose hold ended and whose light is compared on (#863). Server thread only. */
+    private static final Map<Key, NetWatch> NET = new HashMap<>();
+
     private LightSync() {}
 
     public static void init() {
         ServerTickEvents.END_SERVER_TICK.register(LightSync::sweep);
-        ServerLifecycleEvents.SERVER_STOPPED.register(
-                server -> HOLDS.keySet().removeIf(key -> key.level.getServer() == server));
+        ServerTickEvents.END_SERVER_TICK.register(LightSync::compareLight);
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+            HOLDS.keySet().removeIf(key -> key.level.getServer() == server);
+            NET.keySet().removeIf(key -> key.level.getServer() == server);
+        });
     }
 
     /** Whether a hold of {@code ticksHeld} ticks is stuck. At or past the limit, so a skipped tick count cannot miss it. */
@@ -160,6 +194,8 @@ public final class LightSync {
 
     /** Offers the chunk again to the players who came into view during the hold, and sends its settled light to those who had it. */
     private static void offerAfterHold(Key key, Hold hold, LevelChunk chunk) {
+        int now = key.level.getServer().getTickCount();
+        NET.put(key, new NetWatch(lightPrint(key.level, key.chunk), now + NET_INTERVAL_TICKS, now + NET_WINDOW_TICKS));
         ClientboundLightUpdatePacket light = null;
         for (ServerPlayer player : key.level.players()) {
             if (!player.getChunkTrackingView().contains(key.chunk)) {
@@ -174,6 +210,64 @@ public final class LightSync {
                     light = new ClientboundLightUpdatePacket(key.chunk, key.level.getLightEngine(), null, null);
                 }
                 sendLight(player, light);
+            }
+        }
+    }
+
+    /**
+     * One number for the published light of every section of the chunk, both layers. It reads the section data the light engine
+     * publishes, and a chunk's light that a client was sent is that data.
+     */
+    private static int lightPrint(ServerLevel level, ChunkPos chunk) {
+        LevelLightEngine engine = level.getLightEngine();
+        int print = 1;
+        for (LightLayer layer : LightLayer.values()) {
+            for (int y = engine.getMinLightSection(); y < engine.getMaxLightSection(); y++) {
+                DataLayer data = engine.getLayerListener(layer).getDataLayerData(SectionPos.of(chunk, y));
+                print = 31 * print + (data == null ? 0 : Arrays.hashCode(data.getData()));
+            }
+        }
+        return print;
+    }
+
+    /**
+     * The safety net: for {@value #NET_WINDOW_TICKS} ticks after a hold ended, compares the chunk's published light every
+     * {@value #NET_INTERVAL_TICKS} ticks, and when it changed sends the players who track the chunk one light packet. It does not
+     * look at why the light changed or why vanilla did not send it, so a change vanilla fails to broadcast, whatever the reason, is
+     * sent. A player vanilla also served gets a duplicate, which does no harm.
+     */
+    private static void compareLight(MinecraftServer server) {
+        int now = server.getTickCount();
+        Iterator<Map.Entry<Key, NetWatch>> watches = NET.entrySet().iterator();
+        while (watches.hasNext()) {
+            Map.Entry<Key, NetWatch> entry = watches.next();
+            Key key = entry.getKey();
+            NetWatch watch = entry.getValue();
+            if (key.level.getServer() != server) {
+                continue;
+            }
+            if (now > watch.until
+                    || HOLDS.containsKey(key)
+                    || key.level.getChunkSource().getChunkNow(key.chunk.x(), key.chunk.z()) == null) {
+                watches.remove(); // over, or held again (that hold's end watches it anew), or unloaded
+                continue;
+            }
+            if (now < watch.nextCheck) {
+                continue;
+            }
+            watch.nextCheck = now + NET_INTERVAL_TICKS;
+            int print = lightPrint(key.level, key.chunk);
+            if (print == watch.print) {
+                continue;
+            }
+            watch.print = print;
+            ClientboundLightUpdatePacket light =
+                    new ClientboundLightUpdatePacket(key.chunk, key.level.getLightEngine(), null, null);
+            for (ServerPlayer player : key.level.players()) {
+                if (player.getChunkTrackingView().contains(key.chunk)
+                        && !player.connection.chunkSender.isPending(key.chunk.pack())) {
+                    sendLight(player, light);
+                }
             }
         }
     }

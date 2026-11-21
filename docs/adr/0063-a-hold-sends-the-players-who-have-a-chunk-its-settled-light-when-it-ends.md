@@ -6,6 +6,8 @@ status: accepted
 
 Issue #824 (the cause of #494 on `main`).
 
+Amended (#863) by [ADR 0068](0068-a-held-chunks-light-is-compared-after-its-hold-and-a-change-no-broadcast-sent-is-sent.md): a held chunk's published light is compared for 100 ticks after the hold ends, and a change is sent to the players who track it. The reading above, that the chunk does not tick, is not what happened to a chunk that was sent.
+
 ## Decision
 
 - **`LightSync.holdSendUntilLit` sends the light when the hold ends.**
