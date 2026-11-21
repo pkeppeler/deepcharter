@@ -60,6 +60,12 @@ public class TerminalShapeTest {
                 .add(facing.getStepX() * front * PIXEL, 0, facing.getStepZ() * front * PIXEL);
     }
 
+    /** The point {@code side} pixels to the right of the terminal's front from {@link #point}. */
+    private static Vec3 point(Direction facing, double front, double y, double side) {
+        Direction right = facing.getClockWise();
+        return point(facing, front, y).add(right.getStepX() * side * PIXEL, 0, right.getStepZ() * side * PIXEL);
+    }
+
     private static boolean filled(VoxelShape shape, Vec3 at) {
         return Shapes.joinIsNotEmpty(shape, Shapes.create(new AABB(at, at).inflate(0.004)), BooleanOp.AND);
     }
@@ -94,7 +100,7 @@ public class TerminalShapeTest {
             if (!filled(shape, point(facing, 0, 8)) || !filled(shape, point(facing, 0, 15.5))) {
                 throw helper.assertionException("%s: the casing should fill the middle of the block", state);
             }
-            if (!filled(shape, new Vec3(0.02, 0.5, 0.5))) {
+            if (!filled(shape, point(facing, 0, 8, 7.9))) {
                 throw helper.assertionException("%s: the casing should run the full width", state);
             }
             // The glass rim stands out of the front by half a pixel (to z 1.5), its middle by a whole pixel more (to z
@@ -104,7 +110,7 @@ public class TerminalShapeTest {
                         "%s: the glass should stand out of the front, facing %s", state, facing);
             }
             // The tube taper is behind (z 12 to 15) and not in front: the same point mirrored.
-            if (!filled(shape, point(facing, -4.5, 8)) || filled(shape, point(facing, 4.5, 15.9))) {
+            if (!filled(shape, point(facing, -6.5, 3.5)) || filled(shape, point(facing, 6.5, 3.5))) {
                 throw helper.assertionException("%s: the tube should taper behind, facing %s", state, facing);
             }
             // Nothing stands out past the glass, and the front of the casing corner is clear of the bulge.

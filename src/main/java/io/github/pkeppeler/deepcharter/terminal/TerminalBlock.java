@@ -115,8 +115,9 @@ public final class TerminalBlock extends BaseEntityBlock {
 
     /** Sets {@code lower} at {@code pos} and its upper half over it: the one way code places a terminal, as a player's item does. */
     public static void place(LevelAccessor level, BlockPos pos, BlockState lower, int flags) {
-        level.setBlock(pos, lower.setValue(HALF, DoubleBlockHalf.LOWER), flags);
-        level.setBlock(pos.above(), lower.setValue(HALF, DoubleBlockHalf.UPPER), flags);
+        // Neighbour shape updates would have a half see the other one missing, or an old terminal's, and remove itself.
+        level.setBlock(pos, lower.setValue(HALF, DoubleBlockHalf.LOWER), flags | Block.UPDATE_KNOWN_SHAPE);
+        level.setBlock(pos.above(), lower.setValue(HALF, DoubleBlockHalf.UPPER), flags | Block.UPDATE_KNOWN_SHAPE);
     }
 
     /** {@code pos}, or the block under it when it is the upper half of a terminal: where the block entity is. */

@@ -17,6 +17,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -47,6 +48,15 @@ public class TerminalHalvesTest {
         return mock;
     }
 
+    private static void standBy(GameTestHelper helper, MockPlayer mock, BlockPos ground) {
+        Vec3 centre = Vec3.atCenterOf(helper.absolutePos(ground.above()));
+        mock.teleportTo(
+                helper.getLevel(),
+                new Vec3(centre.x + 2, centre.y - mock.player().getEyeHeight(), centre.z - 2),
+                0,
+                0);
+    }
+
     private static BlockState half(GameTestHelper helper, BlockPos pos) {
         return helper.getLevel().getBlockState(helper.absolutePos(pos));
     }
@@ -63,9 +73,11 @@ public class TerminalHalvesTest {
     public void aPlayerPlacesBothHalvesFacingTheSameWay(GameTestHelper helper) {
         MockPlayer mock = creative(helper, "halves-placer");
         try {
-            BlockPos ground = new BlockPos(1, 0, 1);
-            helper.placeAt(
-                    mock.player(), new ItemStack(TerminalTypes.FUEL_PUMP.block().asItem()), ground, Direction.UP);
+            BlockPos ground = new BlockPos(1, -1, 1);
+            standBy(helper, mock, ground);
+            ItemStack item = new ItemStack(TerminalTypes.FUEL_PUMP.block().asItem());
+            mock.player().setItemInHand(InteractionHand.MAIN_HAND, item);
+            helper.placeAt(mock.player(), item, ground, Direction.UP);
             BlockState lower = half(helper, ground.above());
             BlockState upper = half(helper, ground.above(2));
             if (!lower.is(TerminalTypes.FUEL_PUMP.block())
@@ -91,10 +103,12 @@ public class TerminalHalvesTest {
     public void aTerminalIsNotPlacedWithoutRoomAboveIt(GameTestHelper helper) {
         MockPlayer mock = creative(helper, "halves-no-room");
         try {
-            BlockPos ground = new BlockPos(1, 0, 1);
+            BlockPos ground = new BlockPos(1, -1, 1);
+            standBy(helper, mock, ground);
             helper.setBlock(ground.above(2), Blocks.STONE.defaultBlockState());
-            helper.placeAt(
-                    mock.player(), new ItemStack(TerminalTypes.FUEL_PUMP.block().asItem()), ground, Direction.UP);
+            ItemStack item = new ItemStack(TerminalTypes.FUEL_PUMP.block().asItem());
+            mock.player().setItemInHand(InteractionHand.MAIN_HAND, item);
+            helper.placeAt(mock.player(), item, ground, Direction.UP);
             if (!half(helper, ground.above()).isAir()) {
                 throw helper.assertionException(
                         "nothing should be placed with stone over it, found %s", half(helper, ground.above()));
