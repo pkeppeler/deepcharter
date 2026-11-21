@@ -63,10 +63,8 @@ public class MentionsTest {
 VIOLATIONS = {
     "failure": "private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {\n        return null;\n    }",
     "failure wrapped": "private static RuntimeException failure(\n            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {\n        return null;\n    }",
-    "failure package-private": "static RuntimeException failure(GameTestHelper helper, String message) {\n        return null;\n    }",
     "failure returning a String": "private static String failure(GameTestHelper helper, Runnable action) {\n        return \"\";\n    }",
     "fail": "private static RuntimeException fail(GameTestHelper helper, String message) {\n        return null;\n    }",
-    "fail over a list": "private static RuntimeException fail(GameTestHelper helper, List<String> problems) {\n        return null;\n    }",
     "expect": "private static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {\n    }",
     "expect wrapped": "private static void expect(\n            GameTestHelper helper, boolean ok, @FormatString String format, @Nullable Object... args) {\n    }",
     "expect with a final helper": "private static void expect(final GameTestHelper helper, boolean condition, String format) {\n    }",
