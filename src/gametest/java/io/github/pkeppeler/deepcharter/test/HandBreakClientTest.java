@@ -3,7 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
-import io.github.pkeppeler.deepcharter.test.support.ClientSession;
+import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.HandBreakChecks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -14,7 +14,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -22,7 +21,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -48,52 +46,64 @@ public class HandBreakClientTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
-            BlockPos target = prepare(two, 1, X);
-            context.getInput().lookAt(target);
-
-            // A tool that cannot bite: the swing refuses on the client, and the block stays on both sides.
-            hold(two, new ItemStack(Items.IRON_PICKAXE));
-            mine(context, target, CLUMSY_TICKS, false, true);
-            require(clientHolds(context, target), "an iron pick broke the crust on the client");
-            require(serverHolds(two, 1, target), "an iron pick broke the crust on the server");
-
-            // A pick that bites: the client's prediction and the server's check agree.
-            hold(two, new ItemStack(Items.DIAMOND_PICKAXE));
-            mine(context, target, MIDWAY_TICKS, false, true);
-            // Half way, the player must be able to SEE the work: the pick worn on the client, and the crack well along.
-            HandBreakChecks.requireWorkShows(
-                    context,
-                    MIDWAY_TICKS,
-                    () -> two.server()
-                            .computeOnServer(server ->
-                                    realPlayer(server).getMainHandItem().getDamageValue()),
-                    () -> two.server().computeOnServer(server -> HandBreakChecks.serverFacts(server, target)));
-            int ticks = MIDWAY_TICKS + mine(context, target, BITING_LIMIT_TICKS - MIDWAY_TICKS, true, false);
-            require(ticks >= 1000, "the crust broke after only " + ticks + " ticks, not about 1200");
-            for (int tick = 0; tick < SETTLE_TICKS; tick++) {
-                context.waitTicks(1); // tick-wait: the server's correction of a ghost break arrives within a few ticks
-                require(
-                        !clientHolds(context, target),
-                        "the crust came back on the client after it broke (a ghost break)");
+            try {
+                run(context, two);
+            } finally {
+                EvidencePins.attackHeld = false;
             }
-            require(!serverHolds(two, 1, target), "the client broke the crust but the server still has it");
-            context.takeScreenshot("hand-break-crust-gone");
-
-            // A pick that cannot pay the cost shatters while the client is still mining, so the client never predicts
-            // the
-            // break: the block holds on both sides, and nothing comes back.
-            BlockPos deep = prepare(two, 2, X + 40);
-            context.getInput().lookAt(deep);
-            hold(two, damaged(Items.NETHERITE_PICKAXE, 100));
-            mine(context, deep, SHATTER_TICKS, false, true);
-            require(clientHolds(context, deep), "a pick that could not pay broke the crust on the client");
-            require(serverHolds(two, 2, deep), "a pick that could not pay broke the crust on the server");
-            require(
-                    two.server()
-                            .computeOnServer(server ->
-                                    realPlayer(server).getMainHandItem().isEmpty()),
-                    "the pick that could not pay did not shatter");
         }
+    }
+
+    private static void run(ClientGameTestContext context, TwoPlayerServer two) {
+        BlockPos target = prepare(two, 1, X);
+        context.getInput().lookAt(target);
+
+        // A tool that cannot bite: the swing refuses on the client, and the block stays on both sides.
+        hold(two, new ItemStack(Items.IRON_PICKAXE));
+        EvidencePins.attackHeld = true;
+        mine(context, target, CLUMSY_TICKS, false);
+        EvidencePins.attackHeld = false;
+        require(clientHolds(context, target), "an iron pick broke the crust on the client");
+        require(serverHolds(two, 1, target), "an iron pick broke the crust on the server");
+
+        // A pick that bites: the client's prediction and the server's check agree.
+        hold(two, new ItemStack(Items.DIAMOND_PICKAXE));
+        EvidencePins.attackHeld = true;
+        mine(context, target, MIDWAY_TICKS, false);
+        // Half way, the player must be able to SEE the work: the pick worn on the client, and the crack well along.
+        HandBreakChecks.requireWorkShows(
+                context,
+                MIDWAY_TICKS,
+                () -> two.server()
+                        .computeOnServer(
+                                server -> realPlayer(server).getMainHandItem().getDamageValue()),
+                () -> two.server().computeOnServer(server -> HandBreakChecks.serverFacts(server, target)));
+        int ticks = MIDWAY_TICKS + mine(context, target, BITING_LIMIT_TICKS - MIDWAY_TICKS, true);
+        EvidencePins.attackHeld = false;
+        require(ticks >= 1000, "the crust broke after only " + ticks + " ticks, not about 1200");
+        for (int tick = 0; tick < SETTLE_TICKS; tick++) {
+            context.waitTicks(1); // tick-wait: the server's correction of a ghost break arrives within a few ticks
+            require(!clientHolds(context, target), "the crust came back on the client after it broke (a ghost break)");
+        }
+        require(!serverHolds(two, 1, target), "the client broke the crust but the server still has it");
+        context.takeScreenshot("hand-break-crust-gone");
+
+        // A pick that cannot pay the cost shatters while the client is still mining, so the client never predicts
+        // the
+        // break: the block holds on both sides, and nothing comes back.
+        BlockPos deep = prepare(two, 2, X + 40);
+        context.getInput().lookAt(deep);
+        hold(two, damaged(Items.NETHERITE_PICKAXE, 100));
+        EvidencePins.attackHeld = true;
+        mine(context, deep, SHATTER_TICKS, false);
+        EvidencePins.attackHeld = false;
+        require(clientHolds(context, deep), "a pick that could not pay broke the crust on the client");
+        require(serverHolds(two, 2, deep), "a pick that could not pay broke the crust on the server");
+        require(
+                two.server()
+                        .computeOnServer(
+                                server -> realPlayer(server).getMainHandItem().isEmpty()),
+                "the pick that could not pay did not shatter");
     }
 
     /** A room in {@code layer} at column {@code x} with a crust block in front of the real player, who holds nothing yet. Returns the crust's position. */
@@ -123,23 +133,12 @@ public class HandBreakClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Mines {@code target} as the attack button does: one start, then one continue a tick. Returns the ticks until the client
-     * saw the block gone, or {@code limit} when it never did; when {@code expectBreak} the block must go. {@code start} is false to go on with
-     * a swing that an earlier call began.
+     * Lets the game mine for up to {@code limit} ticks with the attack button held (the pin is on, see {@link EvidencePins#attackHeld}).
+     * Returns the ticks until the client saw the block gone, or {@code limit} when it never did; when {@code expectBreak} the block must go.
      */
-    private static int mine(
-            ClientGameTestContext context, BlockPos target, int limit, boolean expectBreak, boolean start) {
+    private static int mine(ClientGameTestContext context, BlockPos target, int limit, boolean expectBreak) {
         for (int tick = 0; tick < limit; tick++) {
-            boolean first = start && tick == 0;
-            context.runOnClient(client -> {
-                if (first) {
-                    ClientSession.gameMode(client).startDestroyBlock(target, Direction.SOUTH);
-                } else {
-                    ClientSession.gameMode(client).continueDestroyBlock(target, Direction.SOUTH);
-                }
-                ClientSession.player(client).swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
-            });
-            context.waitTicks(1); // tick-wait: the mining is one call a tick
+            context.waitTicks(1); // tick-wait: the mining is the game's own, one step a tick
             if (!clientHolds(context, target)) {
                 return tick;
             }
