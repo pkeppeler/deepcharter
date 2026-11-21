@@ -26,7 +26,7 @@
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
-# Job names (ci.yml) that run on every PR; the label-gated client job is not listed.
+# Job names (ci.yml) that run on every PR; the path-gated client job (client-tests.yml) is not listed.
 REQUIRED_CHECKS=(build tool-tests)
 
 gate_only=0
