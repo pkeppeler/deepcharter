@@ -480,88 +480,25 @@ public final class CataloguePanel {
         int corner = look.bezelCorner();
         int right = panel.right() - corner;
         int bottom = panel.bottom() - corner;
-        int fw = look.frameWidth();
-        int fh = look.frameHeight();
-        blit(
-                graphics,
-                panel.x(),
-                panel.y(),
-                look.bezelLeftU(),
-                look.bezelTopV(),
-                corner,
-                corner,
-                corner,
-                corner,
-                fw,
-                fh);
-        blit(graphics, right, panel.y(), look.bezelRightU(), look.bezelTopV(), corner, corner, corner, corner, fw, fh);
-        blit(
-                graphics,
-                panel.x(),
-                bottom,
-                look.bezelLeftU(),
-                look.bezelBottomV(),
-                corner,
-                corner,
-                corner,
-                corner,
-                fw,
-                fh);
-        blit(graphics, right, bottom, look.bezelRightU(), look.bezelBottomV(), corner, corner, corner, corner, fw, fh);
+        int left = look.bezelLeftU();
+        int rightU = look.bezelRightU();
+        int top = look.bezelTopV();
+        int bottomV = look.bezelBottomV();
         int across = panel.width() - 2 * corner;
         int down = panel.height() - 2 * corner;
-        blit(
-                graphics,
-                panel.x() + corner,
-                panel.y(),
-                look.bezelEdgeU(),
-                look.bezelTopV(),
-                across,
-                corner,
-                1,
-                corner,
-                fw,
-                fh);
-        blit(
-                graphics,
-                panel.x() + corner,
-                bottom,
-                look.bezelEdgeU(),
-                look.bezelBottomV(),
-                across,
-                corner,
-                1,
-                corner,
-                fw,
-                fh);
-        blit(
-                graphics,
-                panel.x(),
-                panel.y() + corner,
-                look.bezelLeftU(),
-                look.bezelEdgeV(),
-                corner,
-                down,
-                corner,
-                1,
-                fw,
-                fh);
-        blit(
-                graphics,
-                right,
-                panel.y() + corner,
-                look.bezelRightU(),
-                look.bezelEdgeV(),
-                corner,
-                down,
-                corner,
-                1,
-                fw,
-                fh);
+        blit(graphics, look, panel.x(), panel.y(), left, top, corner, corner, corner, corner);
+        blit(graphics, look, right, panel.y(), rightU, top, corner, corner, corner, corner);
+        blit(graphics, look, panel.x(), bottom, left, bottomV, corner, corner, corner, corner);
+        blit(graphics, look, right, bottom, rightU, bottomV, corner, corner, corner, corner);
+        blit(graphics, look, panel.x() + corner, panel.y(), look.bezelEdgeU(), top, across, corner, 1, corner);
+        blit(graphics, look, panel.x() + corner, bottom, look.bezelEdgeU(), bottomV, across, corner, 1, corner);
+        blit(graphics, look, panel.x(), panel.y() + corner, left, look.bezelEdgeV(), corner, down, corner, 1);
+        blit(graphics, look, right, panel.y() + corner, rightU, look.bezelEdgeV(), corner, down, corner, 1);
     }
 
     private static void blit(
             GuiGraphicsExtractor graphics,
+            CatalogueLook look,
             int x,
             int y,
             int u,
@@ -569,10 +506,20 @@ public final class CataloguePanel {
             int width,
             int height,
             int uWidth,
-            int vHeight,
-            int fw,
-            int fh) {
-        graphics.blit(RenderPipelines.GUI_TEXTURED, FRAME, x, y, u, v, width, height, uWidth, vHeight, fw, fh);
+            int vHeight) {
+        graphics.blit(
+                RenderPipelines.GUI_TEXTURED,
+                FRAME,
+                x,
+                y,
+                u,
+                v,
+                width,
+                height,
+                uWidth,
+                vHeight,
+                look.frameWidth(),
+                look.frameHeight());
     }
 
     /** What is behind a panel's content: the phosphor in the glass, then the bezel round it. */
