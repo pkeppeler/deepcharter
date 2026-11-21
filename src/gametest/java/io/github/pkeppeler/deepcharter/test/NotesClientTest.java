@@ -168,15 +168,11 @@ public class NotesClientTest implements FabricClientGameTest {
                     "a player on no charter has the Note filed for them alone");
             context.takeScreenshot("notes-opened-from-world");
             context.setScreen(() -> null);
-            // Reading it marked it read; clear that so the charter part below starts from an unread Note.
-            singleplayer
-                    .getServer()
-                    .runOnServer(server ->
-                            ReadMarks.unmark(server.getPlayerList().getPlayers().getFirst(), FIRST));
+            // Opening it marked it read, and read marks belong to the player, so it stays read on the charter below.
             ClientWait.until(
                     context,
-                    "the read mark cleared",
-                    client -> !ClientReadMarks.isRead(FIRST),
+                    "the Note read before founding marked read",
+                    client -> ClientReadMarks.isRead(FIRST),
                     client -> "read mark " + ClientReadMarks.isRead(FIRST));
 
             singleplayer.getServer().runOnServer(server -> {
@@ -202,8 +198,8 @@ public class NotesClientTest implements FabricClientGameTest {
                                     .map(HandbookNote::id)
                                     .toList());
             require(
-                    context.computeOnClient(client -> !ClientReadMarks.isRead(FIRST) && !ClientReadMarks.isRead(TENTH)),
-                    "the found notes are unread");
+                    context.computeOnClient(client -> ClientReadMarks.isRead(FIRST) && !ClientReadMarks.isRead(TENTH)),
+                    "the Note read before founding stays read, and the Note found on the charter is unread");
 
             context.runOnClient(client -> HandbookScreen.open(client));
             ClientWait.screen(context, HandbookScreen.class);
@@ -213,41 +209,37 @@ public class NotesClientTest implements FabricClientGameTest {
             context.waitTicks(2);
             require(
                     context.computeOnClient(client ->
-                            screen.noteRows().size() == 2 && screen.noteUnread(FIRST) && screen.noteUnread(TENTH)),
-                    "the Notes tab lists the two found notes, both unread");
+                            screen.noteRows().size() == 2 && !screen.noteUnread(FIRST) && screen.noteUnread(TENTH)),
+                    "the Notes tab lists the two found notes, the carried one read and the new one unread");
+            context.takeScreenshot("notes-tab");
 
             context.runOnClient(
-                    client -> screen.mouseClicked(clickOn(screen.noteRows().getFirst()), false));
+                    client -> screen.mouseClicked(clickOn(screen.noteRows().get(1)), false));
             context.waitTicks(2);
             context.takeScreenshot("notes-open");
             require(
                     context.computeOnClient(client -> HandbookDrawn.showsNote(
-                            screen, ClientNotes.entries().getFirst())),
-                    "clicking the first row opens the first note");
+                            screen, ClientNotes.entries().get(1))),
+                    "clicking the second row opens the second note");
             ClientWait.until(
                     context,
-                    "the first note marked read",
-                    client -> ClientReadMarks.isRead(FIRST),
-                    client -> "read mark " + ClientReadMarks.isRead(FIRST));
+                    "the second note marked read",
+                    client -> ClientReadMarks.isRead(TENTH),
+                    client -> "read mark " + ClientReadMarks.isRead(TENTH));
             require(
                     singleplayer
                             .getServer()
                             .computeOnServer(server -> ReadMarks.isRead(
-                                    server.getPlayerList().getPlayers().getFirst(), FIRST)),
-                    "the server holds the read mark");
-            require(
-                    singleplayer
-                            .getServer()
-                            .computeOnServer(server -> !ReadMarks.isRead(
-                                    server.getPlayerList().getPlayers().getFirst(), TENTH)),
-                    "the other note stays unread");
+                                            server.getPlayerList().getPlayers().getFirst(), TENTH)
+                                    && ReadMarks.isRead(
+                                            server.getPlayerList().getPlayers().getFirst(), FIRST)),
+                    "the server holds both read marks");
 
             context.runOnClient(client -> screen.closeNote());
             context.waitTicks(2);
             require(
-                    context.computeOnClient(client -> !screen.noteUnread(FIRST) && screen.noteUnread(TENTH)),
-                    "the list tells the read note from the unread one");
-            context.takeScreenshot("notes-tab");
+                    context.computeOnClient(client -> !screen.noteUnread(FIRST) && !screen.noteUnread(TENTH)),
+                    "the list shows both notes read");
             context.setScreen(() -> null);
 
             // Using a Note in the world opens it, and reading it marks it read for this player.
