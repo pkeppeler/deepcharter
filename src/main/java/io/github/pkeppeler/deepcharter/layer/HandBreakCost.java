@@ -111,7 +111,7 @@ public final class HandBreakCost {
     }
 
     /** The durability one block of {@code layer} costs this tool. */
-    static int totalCost(ItemStack tool, int layer) {
+    private static int totalCost(ItemStack tool, int layer) {
         return (int) Math.round(LayerTuning.DEFAULT.handBreak().shareFor(layer) * tool.getMaxDamage());
     }
 

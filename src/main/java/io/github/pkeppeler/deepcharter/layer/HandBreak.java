@@ -35,7 +35,7 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 public final class HandBreak {
     /** Rock below layer 1 is pod-only; {@code #c:ores} is part of it. */
-    public static final TagKey<Block> DEEP_ROCK =
+    private static final TagKey<Block> DEEP_ROCK =
             TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "deep_rock"));
 
     private static final String FIRST_TRY_KEY = "deepcharter.layer.pod_only.first_try";
