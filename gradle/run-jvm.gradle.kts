@@ -18,10 +18,15 @@ addVmArgToRuns(exitOnOom)
 // Measured 2026-10-15 (-Xlog:gc; 1110 tests for the 1 GB and 1.5 GB sweep, 1132 for the peak): 1 GB fails (Full GCs at 1022M), 1.5 GB passes with 6 Full GCs, 2 GB passes with none.
 // The live set was 300 to 550 MB, peaking at 1.13 GB while one batch of about 50 tests runs. POI is not the holder (#636).
 // Measured 2026-11-20 (-Xlog:gc, 1250 tests): CI died of OutOfMemoryError at 2 GB twice (#805). The live set is 300 to 450 MB between
-// batches, with no growth across batches in 4 runs, and peaks at 1.23 to 1.45 GB in the batch that runs the campaign tests (the
-// CampaignCrossingTest cases and OrePlacementTest's campaign case each generate a tall world). That batch starts with chunk data
-// carried over from the batch before it, which is not traced (#807). 3G is above 2x the peak (2.9 GB) and well under the 16 GB of a
-// CI runner. Re-measure when the suite grows by a tenth or when a test adds a tall world to that batch.
+// batches and peaks at 1.23 to 1.45 GB where the campaign tests run (the CampaignCrossingTest cases and OrePlacementTest's campaign
+// case each generate a tall world).
+// Carry-over traced 2026-11-21 (#807; numbers from a 4 vCPU VM, -Xlog:gc and a forced GC at each batch start). Holder: not a leak.
+// Chunks of a finished batch sat in ChunkMap.pendingUnloads of each level (9,300 proto chunks, 870 MB live at the next batch start,
+// no ticket left). Fix: ChunkMapUnloadMixin (gametest mod; its Javadoc has the mechanism).
+// Highest sample, always at the batch after the campaign batch: 1039, 1189, 1382 MB before (3 runs), 1022 MB after (1 run); next-batch
+// carry-over 816 to 899 MB -> 510 to 594 MB. `./gradlew build` at 3G: 1 Full GC, live 930 MB (the #805 run: 2, 1093 MB).
+// 3G stays: a lower heap needs a measured peak below 1 GB, and one run is not that. The remaining 1 GB there is #816.
+// Re-measure when the suite grows by a tenth or when a test adds a tall world to the campaign batch; below 2x the peak is where CI died.
 val gameTestHeap = "-Xmx3G"
 addVmArgToRun("gameTest", gameTestHeap)
 
