@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.surface.GreatStalk;
 import io.github.pkeppeler.deepcharter.surface.SurfaceTuning;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -61,6 +62,9 @@ public class StalkCollapseTest {
     private static final int ITEM_HEIGHT = 60;
     private static final String SINGLE_ALONE = "deepcharter-test:stalk_count_single";
     private static final String GREAT_ALONE = "deepcharter-test:stalk_count_great";
+    /** How far above the test a build in the air stands, off every neighbour. */
+    private static final int SKY = 40;
+
     private static final int COLUMN_HEIGHT = 6;
     private static final int BROKEN_SEGMENT = 2;
     private static final int TEST_MAX_TICKS = COLLAPSE_WAIT + 100;
@@ -377,6 +381,48 @@ public class StalkCollapseTest {
         });
     }
 
+    /**
+     * The cap's rim overhangs the trunk by a block and slides down beside it as the stalk sags: a player standing at the foot must never
+     * have a block land in their cells (that would smother them, a hidden effect). A block whose way down is occupied bursts instead.
+     */
+    @GameTest(maxTicks = TEST_MAX_TICKS)
+    public void aSagGreatStalkNeverLandsOnAPlayerAtItsFoot(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        clearArea(helper, SurfaceTuning.DEFAULT.greatMaxHeight() + 4);
+        greatStalk(helper, 3, 3);
+        BlockPos origin = helper.absolutePos(new BlockPos(3, BASE_ROW, 3));
+        MockPlayer player = MockPlayers.join(helper, "great-foot");
+        player.player().setGameMode(GameType.SURVIVAL);
+        player.teleportTo(level, Vec3.atBottomCenterOf(origin.offset(-1, 0, 0)), 0, 0);
+        BlockPos feet = player.player().blockPosition();
+        float health = player.player().getHealth();
+        TestTicks.each(helper, () -> {
+            for (BlockPos cell : List.of(feet, feet.above())) {
+                if (!level.getBlockState(cell).isAir()) {
+                    throw failure(
+                            helper,
+                            "a block %s landed in the player's cell %s",
+                            level.getBlockState(cell),
+                            cell.toShortString());
+                }
+            }
+        });
+        breakByHand(helper, player, origin);
+        helper.runAfterDelay(COLLAPSE_WAIT, () -> {
+            if (stalkBlocks(helper).stream().anyMatch(pos -> pos.getY() > origin.getY())) {
+                throw failure(helper, "the great stalk did not finish collapsing");
+            }
+            if (player.player().getHealth() != health) {
+                throw failure(
+                        helper,
+                        "the player lost health: %s of %s",
+                        player.player().getHealth(),
+                        health);
+            }
+            helper.succeed();
+        });
+    }
+
     /** A great stalk is a 2x2 trunk, the height the tuning gives, and a cap: the rim of 12 and the dome of 4 above it. */
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void aGreatStalkGrowsATwoByTwoTrunkWithACap(GameTestHelper helper) {
@@ -443,6 +489,55 @@ public class StalkCollapseTest {
         }
         if (heights.size() < 2) {
             throw failure(helper, "every seed grew a trunk of the same height %s", heights);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The placer writes by block position through its level, never by chunk, so a great stalk whose trunk straddles a chunk border (its
+     * west column in one chunk and its east column in the next) is as whole as any. Built in the air above the test, off any neighbour.
+     */
+    @GameTest(maxTicks = TEST_MAX_TICKS)
+    public void aGreatStalkOnAChunkBorderIsWhole(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos here = helper.absolutePos(new BlockPos(0, BASE_ROW, 0)).above(SKY);
+        BlockPos origin = new BlockPos(((here.getX() >> 4) << 4) + 15, here.getY(), here.getZ());
+        int height = SurfaceTuning.DEFAULT.greatMaxHeight();
+        for (int x = -3; x <= 4; x++) {
+            for (int z = -3; z <= 4; z++) {
+                level.setBlock(origin.offset(x, -1, z), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+                for (int y = 0; y <= height + 3; y++) {
+                    level.setBlock(origin.offset(x, y, z), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+                }
+            }
+        }
+        if (!GreatStalk.place(level, RandomSource.create(GREAT_SEED), origin)) {
+            throw failure(helper, "the placer would not grow a great stalk on a chunk border");
+        }
+        int trunk = 0;
+        int cap = 0;
+        for (int x = -3; x <= 4; x++) {
+            for (int z = -3; z <= 4; z++) {
+                for (int y = 0; y <= height + 3; y++) {
+                    BlockState state = level.getBlockState(origin.offset(x, y, z));
+                    trunk += state.is(ours("great_stalk")) ? 1 : 0;
+                    cap += state.is(ours("great_stalk_cap")) ? 1 : 0;
+                }
+            }
+        }
+        int tall = 0;
+        while (level.getBlockState(origin.above(tall)).is(ours("great_stalk"))) {
+            tall++;
+        }
+        boolean straddles = (origin.getX() >> 4) != (origin.east().getX() >> 4);
+        if (!straddles || trunk != 4 * tall || cap != 16 || tall < SurfaceTuning.DEFAULT.greatMinHeight()) {
+            throw failure(
+                    helper,
+                    "a great stalk on a chunk border: straddles %s, %s trunk blocks of %s tall, %s cap blocks",
+                    straddles,
+                    trunk,
+                    tall,
+                    cap);
         }
         helper.succeed();
     }

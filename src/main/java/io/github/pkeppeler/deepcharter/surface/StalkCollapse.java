@@ -13,12 +13,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
 /**
  * The collapse of a fungal stalk: breaking any block of one brings everything above it down, in a spore puff. Atmosphere only: it
@@ -92,7 +94,7 @@ final class StalkCollapse {
             for (BlockPos pos : falling) {
                 BlockState state = level.getBlockState(pos);
                 BlockPos target = pos.below();
-                if (pos.getY() == above.getY() || !level.getBlockState(target).isAir()) {
+                if (pos.getY() == above.getY() || !level.getBlockState(target).isAir() || occupied(level, target)) {
                     burst(level, pos, state, great);
                     burst++;
                 } else {
@@ -112,6 +114,19 @@ final class StalkCollapse {
         }
     }
 
+    /**
+     * Whether a creature stands in the cell. A block never slides into one: it bursts instead, so the collapse can never smother or crush
+     * anyone (the rim of a great stalk's cap overhangs its trunk and slides down beside it). Items do not count: they are what it throws.
+     */
+    private static boolean occupied(ServerLevel level, BlockPos cell) {
+        // entity-query: the cell is one the collapse is about to fill, in a loaded chunk, so a miss cannot happen
+        return !level.getEntities(
+                        (Entity) null,
+                        new AABB(cell),
+                        entity -> !(entity instanceof ItemEntity) && !entity.isSpectator())
+                .isEmpty();
+    }
+
     /** The blocks that fall with {@code start}, lowest first: up the columns, and across between great stalk blocks. */
     private static List<BlockPos> connected(ServerLevel level, BlockPos start) {
         Set<BlockPos> found = new LinkedHashSet<>();
@@ -123,6 +138,10 @@ final class StalkCollapse {
             BlockState state = level.getBlockState(pos);
             for (Direction direction : JOINS) {
                 BlockPos next = pos.relative(direction);
+                if (!level.getChunkSource().hasChunk(next.getX() >> 4, next.getZ() >> 4)) {
+                    // A collapse at a chunk's edge never loads the chunk beside it: what is not loaded is not joined.
+                    continue;
+                }
                 BlockState nextState = level.getBlockState(next);
                 boolean joined = direction == Direction.UP ? collapses(nextState) : great(state) && great(nextState);
                 if (joined && found.add(next)) {
