@@ -58,7 +58,6 @@ public final class ReadoutFade {
     public void reset() {
         shown = null;
         candidate = null;
-        candidateTicks = 0;
         previousAlpha = 0f;
         alpha = 0f;
     }
