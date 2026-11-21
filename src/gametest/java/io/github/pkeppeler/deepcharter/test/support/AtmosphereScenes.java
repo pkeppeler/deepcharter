@@ -61,6 +61,9 @@ public final class AtmosphereScenes {
     public static final ResourceKey<WorldPreset> TEST_PRESET =
             ResourceKey.create(Registries.WORLD_PRESET, Identifier.withDefaultNamespace("flat_all_dimensions"));
 
+    /** The camera waits this many ticks after it is placed: the lightmap and the fog ease toward the new place, and nothing reports when they have. */
+    private static final int SETTLE_TICKS = 160;
+
     private static final int HALF_PATCH = 40;
     private static final int STEADY_SAMPLES = 3;
     private static final int MAX_SAMPLES = 60;
@@ -219,11 +222,48 @@ public final class AtmosphereScenes {
     }
 
     /**
-     * Stands the first player, a spectator, on {@code floor} in {@code dimension} facing {@code yaw} and {@code pitch}. Waits for the
-     * client to be there, to hold the chunks round the scene, to have meshed every section and for its light to match the server's, then
-     * for the picture to stop changing. {@code shot} names the view in a failure.
+     * Stands the first player, a spectator, on {@code floor} in {@code dimension} facing {@code yaw} and {@code pitch}, and waits until
+     * the picture is the settled one: {@link #arrive}, a fixed {@link #SETTLE_TICKS} for the lightmap and the fog, then a steady
+     * picture. For the evidence scenario, whose full-frame stills must not depend on how early a picture happens to be steady.
+     * {@code shot} names the view in a failure.
      */
     public static void stand(
+            ClientGameTestContext context,
+            TestServerContext server,
+            ResourceKey<Level> dimension,
+            BlockPos floor,
+            float yaw,
+            float pitch,
+            String shot) {
+        arrive(context, server, dimension, floor, yaw, pitch, shot);
+        // tick-wait: the lightmap and the fog ease toward the new place over a few ticks, and nothing reports when they
+        // have
+        context.waitTicks(SETTLE_TICKS);
+        awaitSteadyPicture(context, shot);
+    }
+
+    /**
+     * Like {@link #stand}, without the fixed settle: the picture is read when the middle of the screen stops changing. For a reading of
+     * the middle of the screen; a full-frame still uses {@link #stand}.
+     */
+    public static void standSteady(
+            ClientGameTestContext context,
+            TestServerContext server,
+            ResourceKey<Level> dimension,
+            BlockPos floor,
+            float yaw,
+            float pitch,
+            String shot) {
+        arrive(context, server, dimension, floor, yaw, pitch, shot);
+        awaitSteadyPicture(context, shot);
+    }
+
+    /**
+     * Teleports to {@code floor} and waits for the client to be there, to hold the chunks round the scene, to have meshed every section
+     * and for its light to match the server's. The steady-picture check reads only the middle of the screen, so it cannot tell that
+     * sections are unmeshed.
+     */
+    private static void arrive(
             ClientGameTestContext context,
             TestServerContext server,
             ResourceKey<Level> dimension,
@@ -245,7 +285,6 @@ public final class AtmosphereScenes {
                 client -> "no chunks or unmeshed sections at " + floor.toShortString());
         ClientChecks.requireNone(
                 "the light at " + shot, ClientLight.settledMismatch(context, server, dimension, around));
-        awaitSteadyPicture(context, shot);
     }
 
     private static void teleport(

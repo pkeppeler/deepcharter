@@ -16,7 +16,7 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.grou
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.layer1Floor;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.putOutTheLight;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.requireZone;
-import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.stand;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.standSteady;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.todayFloor;
 
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
@@ -325,7 +325,7 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
             float yaw,
             float pitch,
             String shot) {
-        stand(context, server, dimension, floor, yaw, pitch, shot);
+        standSteady(context, server, dimension, floor, yaw, pitch, shot);
         return read(context, floor, shot);
     }
 
