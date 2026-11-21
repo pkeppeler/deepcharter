@@ -296,6 +296,11 @@ checkstyle {
 	maxWarnings = 0
 }
 
+// The worker's default 512m heap ran out on CI, which Checkstyle reports as "Error was thrown while processing <a different file each run>".
+tasks.withType<Checkstyle>().configureEach {
+	maxHeapSize = "1g"
+}
+
 // palantir-java-format owns Java formatting (run `just fmt`); spotlessCheck is part of check. tooling/ is third-party code and is not
 // ours to reformat. The two single-file programs outside src/ are Java too. The gate fixtures in tools/tests are strings inside
 // Python, not files, so no target here touches them.
