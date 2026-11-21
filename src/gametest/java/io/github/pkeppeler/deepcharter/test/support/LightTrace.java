@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
@@ -28,6 +30,8 @@ public final class LightTrace {
     private static final int PRINTED = 300;
     private static final AtomicLong SEQUENCE = new AtomicLong();
     private static final ConcurrentLinkedDeque<Event> EVENTS = new ConcurrentLinkedDeque<>();
+    private static final AtomicInteger SIZE = new AtomicInteger();
+    private static final Map<String, LongAdder> COUNTS = new ConcurrentHashMap<>();
     private static final long START = System.nanoTime();
 
     private static final Map<Long, Integer> LAST = new ConcurrentHashMap<>();
@@ -104,11 +108,26 @@ public final class LightTrace {
 
     /** Notes one event. {@code side} is {@code SRV} or {@code CLI}. */
     public static void record(String side, String kind, int x, int z, String detail) {
+        COUNTS.computeIfAbsent(
+                        side + " " + kind.substring(0, kind.contains(" ") ? kind.indexOf(' ') : kind.length()),
+                        key -> new LongAdder())
+                .increment();
         EVENTS.addLast(new Event(
                 SEQUENCE.incrementAndGet(), (System.nanoTime() - START) / 1_000_000L, side, kind, x, z, detail));
-        if (EVENTS.size() > CAP) {
+        if (SIZE.incrementAndGet() > CAP) {
             EVENTS.pollFirst();
+            SIZE.decrementAndGet();
         }
+    }
+
+    /** True while a box is watched: the mixins that fire for every chunk record only then. */
+    public static boolean watching() {
+        return watched != null;
+    }
+
+    /** How many events of each side and kind were noted since the start, for a line at the end of a test: it shows a hook fires at all. */
+    public static String counts() {
+        return new java.util.TreeMap<>(COUNTS).toString();
     }
 
     /** Forgets every event, at the start of the case a failure will be explained from. */
@@ -116,6 +135,7 @@ public final class LightTrace {
         watched = null;
         LAST.clear();
         EVENTS.clear();
+        SIZE.set(0);
     }
 
     /** The events about the chunks of the box and the ring round it, oldest first, a repeat of one line counted once. */
