@@ -38,6 +38,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public class NotesClientTest implements FabricClientGameTest {
     private static final Identifier FIRST = Notes.id(1);
+    private static final Identifier SECOND = Notes.id(2);
     private static final Identifier TENTH = Notes.id(10);
     private static final int LEFT_MOUSE = 1;
     /** A window so small that the sheet is at its minimum size. */
@@ -171,8 +172,9 @@ public class NotesClientTest implements FabricClientGameTest {
                         Charters.found(server, player.getUUID(), "Notes Test Co")
                                 .isEmpty(),
                         "the player founds a charter");
-                useNoteBlock(player, 1);
-                useNoteBlock(player, 10);
+                // Filed without the block: using it would open each Note, and reading marks it read.
+                Notes.find(player, FIRST);
+                Notes.find(player, TENTH);
             });
             ClientWait.until(
                     context,
@@ -232,6 +234,25 @@ public class NotesClientTest implements FabricClientGameTest {
                     context.computeOnClient(client -> !screen.noteUnread(FIRST) && screen.noteUnread(TENTH)),
                     "the list tells the read note from the unread one");
             context.takeScreenshot("notes-tab");
+            context.setScreen(() -> null);
+
+            // Using a Note in the world opens it, and reading it marks it read for this player.
+            singleplayer
+                    .getServer()
+                    .runOnServer(server ->
+                            useNoteBlock(server.getPlayerList().getPlayers().getFirst(), 2));
+            ClientWait.screen(context, HandbookScreen.class);
+            HandbookScreen usedNote =
+                    context.computeOnClient(client -> ClientSession.screen(client, HandbookScreen.class));
+            context.waitTicks(2);
+            require(
+                    context.computeOnClient(client -> HandbookDrawn.showsNote(usedNote, ClientNotes.entry(SECOND))),
+                    "a Note used in the world opens to read, on a charter");
+            ClientWait.until(
+                    context,
+                    "the used note marked read",
+                    client -> ClientReadMarks.isRead(SECOND),
+                    client -> "read mark " + ClientReadMarks.isRead(SECOND));
             context.setScreen(() -> null);
         }
     }
