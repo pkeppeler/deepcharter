@@ -252,9 +252,10 @@ def mine_track() -> Model:
     return Model(t, boxes, ambient_occlusion=False)
 
 
-def ore_car() -> Model:
+def ore_car(looted: bool = False) -> Model:
     """A riveted ore car on four iron wheels, its tub heaped with ore, coupled front and back. It runs north and south, and stands on
-    its own length of mine track (the sleepers and rails of mine_track under it), so it replaces a track block and never floats."""
+    its own length of mine track (the sleepers and rails of mine_track under it), so it replaces a track block and never floats.
+    A looted car (its ration tins taken, OreCarBlock) is the same car with the heap gone and the bare tub showing."""
     t = {"tub": tex("ore_car"), "ore": tex("ore_car_load"), "iron": tex("lamp_iron"), "rim": tex("beam"), "rail": tex("track_rail"),
          "sleeper": tex("track_sleeper"), "particle": tex("ore_car")}
     boxes = [Box((0, 0, z), (16, 1.5, z + 3), {"*": "#sleeper", "down": None}) for z in (1.5, 6.5, 11.5)]
@@ -269,12 +270,13 @@ def ore_car() -> Model:
         for z0 in (2, 11):
             boxes.append(car((x0, 0, z0), (x1, 4, z0 + 3), {"*": "#iron"}))
     boxes.append(car((3, 2.5, 1.5), (13, 5, 14.5), {"*": "#iron"}))
-    boxes.append(car((1.5, 5, 1), (14.5, 12, 15), {"*": "#tub", "up": "#ore", "down": "#iron"}))
+    boxes.append(car((1.5, 5, 1), (14.5, 12, 15), {"*": "#tub", "up": "#tub" if looted else "#ore", "down": "#iron"}))
     boxes.append(car((1, 12, 0.5), (15, 13.5, 2), {"*": "#rim"}))
     boxes.append(car((1, 12, 14), (15, 13.5, 15.5), {"*": "#rim"}))
     boxes.append(car((1, 12, 2), (2.5, 13.5, 14), {"*": "#rim"}))
     boxes.append(car((13.5, 12, 2), (15, 13.5, 14), {"*": "#rim"}))
-    boxes.append(car((3, 12, 3), (13, 13.5, 13), {"*": "#ore", "down": None}))
+    if not looted:
+        boxes.append(car((3, 12, 3), (13, 13.5, 13), {"*": "#ore", "down": None}))
     for z0, z1 in ((0, 1), (15, 16)):
         boxes.append(car((7, 6, z0), (9, 8, z1), {"*": "#iron"}))
     return Model(t, boxes)
@@ -290,6 +292,17 @@ def _signs() -> KitBlock:
         return {"variants": dict(sorted(variants.items()))}
     return KitBlock("enamel_sign", "Enamel Sign", {"facing": tuple(FACINGS), "tile": tuple(str(i) for i in range(SIGN_TILES))},
                     states, lambda: {f"sign_{i}": sign_tile(i) for i in range(SIGN_TILES)}, model_id("sign_0"))
+
+
+def _ore_car() -> KitBlock:
+    """The ore car has two states of its tins: full, or looted (OreCarBlock.LOOTED), drawn without the heap."""
+    def states():
+        variants = {}
+        for looted in ("false", "true"):
+            variants.update(facing_variants(model_id("ore_car_looted" if looted == "true" else "ore_car"), f",looted={looted}"))
+        return {"variants": dict(sorted(variants.items()))}
+    return KitBlock("ore_car", "Ore Car", {"facing": tuple(FACINGS), "looted": ("false", "true")}, states,
+                    lambda: {"ore_car": ore_car(), "ore_car_looted": ore_car(True)}, model_id("ore_car"))
 
 
 def _sculpture() -> KitBlock:
@@ -321,7 +334,8 @@ CATALOGUE: dict[str, KitBlock] = {block.name: block for block in [
     facing("steel_ladder", "Steel Ladder", steel_ladder),
     facing("brace", "Lattice Brace", lambda: brace("lattice")),
     facing("mine_track", "Mine Track", mine_track),
-    facing("ore_car", "Ore Car", ore_car),
+    _ore_car(),
+    facing("canteen", "Canteen Dispenser", lambda: framed_cube("canteen_front")),
     pillar("steel_beam", "Steel Beam", i_beam),
     pillar("lattice_girder", "Lattice Girder", lambda: lattice("lattice")),
     pillar("pipe", "Steel Pipe", lambda: pipe("pipe")),

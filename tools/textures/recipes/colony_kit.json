@@ -222,6 +222,93 @@
     }
    ]
   },
+  "block/colony/canteen_front": {
+   "kind": "opaque",
+   "layers": [
+    {
+     "op": "noise",
+     "ramp": [
+      "steel.1",
+      "steel.2",
+      "steel.2"
+     ],
+     "seed": 3611,
+     "cell": 4,
+     "dither": 0.6
+    },
+    {
+     "op": "bevel",
+     "rect": [
+      0,
+      0,
+      16,
+      16
+     ],
+     "light": "steel.4",
+     "dark": "steel.0"
+    },
+    {
+     "op": "pixels",
+     "at": [
+      2,
+      2
+     ],
+     "legend": {
+      "b": "brass.4",
+      "B": "brass.2",
+      "e": "enamel.3",
+      "c": "company.3",
+      "C": "company.1",
+      "n": "iron.0"
+     },
+     "rows": [
+      "bbbbbbbbbbbb",
+      "bccccccccccB",
+      "bcceeeeeeccB",
+      "bccccccccccB",
+      "BBBBBBBBBBBB"
+     ]
+    },
+    {
+     "op": "pixels",
+     "at": [
+      4,
+      8
+     ],
+     "legend": {
+      "n": "iron.0",
+      "m": "iron.2",
+      "h": "steel.5",
+      "s": "steel.0"
+     },
+     "rows": [
+      "hhhhhhhh",
+      "hnnnnnnh",
+      "hnmmmmnh",
+      "hnnnnnnh",
+      "hssssssh"
+     ]
+    },
+    {
+     "op": "rivets",
+     "at": [
+      [
+       1,
+       13
+      ],
+      [
+       13,
+       13
+      ]
+     ],
+     "ramp": [
+      "steel.0",
+      "steel.4",
+      "steel.6"
+     ]
+    }
+   ]
+  },
   "block/colony/concrete_footing": {
    "kind": "opaque",
    "layers": [
