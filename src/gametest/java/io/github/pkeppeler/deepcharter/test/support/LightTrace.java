@@ -25,7 +25,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class LightTrace {
     private static final int CAP = 20_000;
-    private static final int PRINTED = 150;
+    private static final int PRINTED = 300;
     private static final AtomicLong SEQUENCE = new AtomicLong();
     private static final ConcurrentLinkedDeque<Event> EVENTS = new ConcurrentLinkedDeque<>();
     private static final long START = System.nanoTime();
@@ -66,6 +66,7 @@ public final class LightTrace {
                 }
             });
         }
+        LAST.clear();
         watched = new Watch(dimension, box);
     }
 
@@ -78,6 +79,7 @@ public final class LightTrace {
                 print = 1;
                 for (BlockPos pos : box.cells()
                         .filter(p -> p.getX() >> 4 == chunk.x() && p.getZ() >> 4 == chunk.z())
+                        .map(BlockPos::immutable)
                         .toList()) {
                     print = 31 * print
                             + level.getBrightness(LightLayer.SKY, pos) * 16

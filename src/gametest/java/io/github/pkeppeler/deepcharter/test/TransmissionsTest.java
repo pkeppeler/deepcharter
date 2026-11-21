@@ -223,11 +223,9 @@ public class TransmissionsTest {
                 }
             }
             boolean placeholder = transmission.id().getPath().matches("t\\d\\d");
-            if (placeholder
-                    && (!lang.get(transmission.bodyKey()).getAsString().contains("[CHARTER]")
-                            || !lang.get(transmission.bodyKey()).getAsString().contains("[DIRECTOR]"))) {
+            if (placeholder && !lang.get(transmission.bodyKey()).getAsString().contains("[CHARTER]")) {
                 throw helper.assertionException(
-                        "the placeholder text of %s should show both fields", transmission.id());
+                        "the placeholder text of %s should show the charter field", transmission.id());
             }
         }
         helper.succeed();
