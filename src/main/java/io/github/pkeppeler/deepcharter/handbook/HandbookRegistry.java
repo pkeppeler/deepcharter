@@ -51,6 +51,7 @@ public final class HandbookRegistry {
         HandbookProgress.register();
         HandbookReadPayload.register();
         Notes.register();
+        OpenNotePayload.register();
         HandbookItems.register();
     }
 

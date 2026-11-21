@@ -39,6 +39,12 @@
       "text": {
         "translate": "deepcharter.handbook.directive.welcome.craft_scanner"
       }
+    },
+    {
+      "id": "deepcharter:handbook/welcome/make_light",
+      "text": {
+        "translate": "deepcharter.handbook.directive.welcome.make_light"
+      }
     }
   ]
 }

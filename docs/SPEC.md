@@ -120,7 +120,7 @@ After the bootstrap, progression is money: sell ore at terminals, buy pod upgrad
 
 The **Employee Handbook** is a company-issued onboarding manual.
 
-- **Getting it:** issued when you sign your Employment Contract. It is bound to you, so it cannot be lost. Open it from the item or a keybind.
+- **Getting it:** every player is given it on joining, before any charter, and gets another if it is lost. It is bound to you. Open it from the item or a keybind.
 - **Terminals:** colony and outpost terminals also show the charter's open Directives.
 - **Scope:** the onboarding chapters cover the bootstrap and layers 1–2 as a linear, explicit tutorial: no cryptic wording, no side chapters, no helpdesk. The Directives are shown as a **quest map**, and earlier miners' pencil paths continue it past layer 2 ([ADR 0065](adr/0065-the-handbooks-directives-are-a-quest-map-and-earlier-miners-pencil-paths-continue-it-past-layer-2.md)).
 
@@ -149,6 +149,7 @@ The **Employee Handbook** is a company-issued onboarding manual.
 - The official chapters end with "Further documentation is restricted to Senior Personnel."
 - From then on the back section fills only with **Notes** found in the world: wreck logs, torn pages, miners' scribbles.
 - A Note picked up by anyone in a charter goes into every member's handbook, unread for each person.
+- Using a Note in the world opens it to read, charter or not. A player on no charter is told to found one at the contract terminal to file it.
 - Each Note also draws a **pencil path** on the quest map, from earlier miners. It completes when the charter reaches the place the Note points to: a cache, a wreck or another Note. The place is the payoff; there is no claim button. A pencil path is not a Directive.
 - The first version ships 1–2 paths from existing Notes. More come with lore sessions.
 - Revisions may also add stamped pages: a disciplinary notice, the Chairmen's Book or the Ledger. They carry no rules ([lore/handbook.md](lore/handbook.md#revisions)).
