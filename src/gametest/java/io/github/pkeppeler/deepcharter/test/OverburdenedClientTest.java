@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -25,6 +26,13 @@ import net.minecraft.world.item.TooltipFlag;
 public class OverburdenedClientTest implements FabricClientGameTest {
     private static final Identifier ICON =
             Identifier.fromNamespaceAndPath("deepcharter", "textures/mob_effect/overburdened.png");
+
+    private static final int GUI_WIDTH = 427;
+    private static final int INVENTORY_WIDTH = 176;
+    private static final int EFFECT_SPACING = 7;
+    private static final int EFFECT_TEXT_OFFSET = 32;
+    /** Below this much room the inventory draws the compact, icon-only effect list. */
+    private static final int EFFECT_PANEL_MIN = 120 - EFFECT_SPACING;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -53,8 +61,8 @@ public class OverburdenedClientTest implements FabricClientGameTest {
                                     .value()
                                     .getDisplayName()
                                     .getString())
-                            .equals("Ore overload"),
-                    "the status should be called Ore overload, which names the cause and fits the inventory list");
+                            .equals("Ore-laden"),
+                    "the status should be called Ore-laden, which names the cause and fits the inventory list");
             require(
                     context.computeOnClient(client -> Hud.getMobEffectSprite(OreRegistry.OVERBURDENED))
                             .equals(Identifier.fromNamespaceAndPath("deepcharter", "mob_effect/overburdened")),
@@ -63,6 +71,23 @@ public class OverburdenedClientTest implements FabricClientGameTest {
                     context.computeOnClient(client ->
                             client.getResourceManager().getResource(ICON).isPresent()),
                     "the icon texture " + ICON + " should ship in the mod");
+
+            // The inventory clips an effect's name to the panel's width less the icon column and a margin
+            // (EffectsInInventory): at the default
+            // 427 x 240 GUI the panel starts 2 px right of the inventory, which is 176 wide and centred.
+            int panel = GUI_WIDTH - ((GUI_WIDTH - INVENTORY_WIDTH) / 2 + INVENTORY_WIDTH + 2) - EFFECT_SPACING;
+            int clip = panel - EFFECT_TEXT_OFFSET - EFFECT_SPACING;
+            int capLevel = (int) Math.round(OreTuning.DEFAULT.maxSlowdown()
+                    / (OreTuning.DEFAULT.slowdownPerMass() * OreTuning.DEFAULT.massScale()));
+            int widest = context.computeOnClient(client -> client.font.width(Component.empty()
+                    .append(OreRegistry.OVERBURDENED.value().getDisplayName())
+                    .append(" ")
+                    .append(Component.translatable("enchantment.level." + capLevel))));
+            require(
+                    panel >= EFFECT_PANEL_MIN && widest <= clip,
+                    "the status at its cap level (" + capLevel + ") is " + widest
+                            + " px wide and the inventory clips an effect name at " + clip
+                            + " px, so the level would be cut off");
 
             ItemStack ore = OreRegistry.stack(OreType.EINSTEINIUM);
             List<String> lines = context.computeOnClient(client ->
