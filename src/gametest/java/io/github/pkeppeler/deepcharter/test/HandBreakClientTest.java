@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.HandBreakChecks;
@@ -15,6 +16,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -137,12 +139,16 @@ public class HandBreakClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Lets the game mine for up to {@code limit} ticks with the attack button held (the pin is on, see {@link EvidencePins#attackHeld}).
+     * Mines for up to {@code limit} ticks with the attack button held (the pin is on, see {@link EvidencePins#attackHeld}).
      * Returns the ticks until the client saw the block gone, or {@code limit} when it never did; when {@code expectBreak} the block must go.
      */
     private static int mine(ClientGameTestContext context, BlockPos target, int limit, boolean expectBreak) {
         for (int tick = 0; tick < limit; tick++) {
-            context.waitTicks(1); // tick-wait: the mining is the game's own, one step a tick
+            // The game's own mining (the pin) does not always start in a client test, so each tick also steps the game
+            // mode as an attack would; with
+            // the pin on, nothing aborts the block between two steps.
+            context.runOnClient(client -> ClientSession.gameMode(client).continueDestroyBlock(target, Direction.SOUTH));
+            context.waitTicks(1); // tick-wait: the mining is one step a tick
             if (!clientHolds(context, target)) {
                 return tick;
             }

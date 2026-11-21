@@ -79,6 +79,8 @@ public final class HandBreakChecks {
                 + ", destroyBlockPos " + clientField(client, "destroyBlockPos")
                 + ", destroyDelay " + clientField(client, "destroyDelay")
                 + ", destroyProgress " + clientField(client, "destroyProgress")
+                + ", attackHeld " + EvidencePins.attackHeld
+                + ", missTime " + minecraftField(client, "missTime")
                 + ", " + clientRule(client));
     }
 
@@ -98,6 +100,16 @@ public final class HandBreakChecks {
                 + AttackBlockCallback.EVENT
                         .invoker()
                         .interact(client.player, client.level, InteractionHand.MAIN_HAND, pos, hit.getDirection());
+    }
+
+    private static Object minecraftField(Minecraft client, String name) {
+        try {
+            Field field = Minecraft.class.getDeclaredField(name);
+            field.setAccessible(true);
+            return field.get(client);
+        } catch (ReflectiveOperationException e) {
+            throw new LinkageError("the client's " + name + " could not be read", e);
+        }
     }
 
     private static Object clientField(Minecraft client, String name) {
