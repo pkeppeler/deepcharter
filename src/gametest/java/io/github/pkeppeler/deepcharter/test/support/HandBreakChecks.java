@@ -31,7 +31,7 @@ public final class HandBreakChecks {
         require(
                 serverWorn > 0,
                 "the server has not worn the pick after " + ticks + " ticks of mining; the server says: "
-                        + serverFacts.get());
+                        + serverFacts.get() + "; the client says: " + clientFacts(context));
         int worn = context.computeOnClient(
                 client -> ClientSession.player(client).getMainHandItem().getDamageValue());
         require(
@@ -65,6 +65,27 @@ public final class HandBreakChecks {
                 + ", layerOf " + HandBreak.layerOf(level, target)
                 + ", governs " + HandBreak.governs(player, level, target, state)
                 + ", bites " + HandBreak.bites(player.getMainHandItem(), HandBreak.layerOf(level, target));
+    }
+
+    /** What the client holds of its own mining, for a failure message: the crosshair, the held pick and the game mode's mining state. */
+    public static String clientFacts(ClientGameTestContext context) {
+        return context.computeOnClient(client -> "crosshair " + client.hitResult + ", held "
+                + (client.player == null ? "(no player)" : client.player.getMainHandItem()) + ", game mode "
+                + (client.gameMode == null ? "(none)" : client.gameMode.getPlayerMode())
+                + ", isDestroying " + clientField(client, "isDestroying")
+                + ", destroyBlockPos " + clientField(client, "destroyBlockPos")
+                + ", destroyDelay " + clientField(client, "destroyDelay")
+                + ", destroyProgress " + clientField(client, "destroyProgress"));
+    }
+
+    private static Object clientField(Minecraft client, String name) {
+        try {
+            Field field = MultiPlayerGameMode.class.getDeclaredField(name);
+            field.setAccessible(true);
+            return field.get(ClientSession.gameMode(client));
+        } catch (ReflectiveOperationException e) {
+            throw new LinkageError("the client's " + name + " could not be read", e);
+        }
     }
 
     private static Object gameModeField(ServerPlayer player, String name) {
