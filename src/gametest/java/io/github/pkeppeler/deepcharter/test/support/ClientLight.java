@@ -1,6 +1,9 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import io.github.pkeppeler.deepcharter.test.mixin.ThreadedLightEngineAccess;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -16,6 +19,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * Compares the light a client reads with the light the server holds (issue 427). A client that is sent a chunk while the server's light
@@ -103,11 +107,38 @@ public final class ClientLight {
         int[] clientLights = context.computeOnClient(client -> clientLights(client, box));
         String cells = server.computeOnServer(
                 minecraftServer -> differingCells(serverLevel(minecraftServer, dimension), box, clientLights));
+        List<BlockPos> first = server.computeOnServer(minecraftServer -> {
+            ServerLevel level = serverLevel(minecraftServer, dimension);
+            List<BlockPos> all = box.cells().map(BlockPos::immutable).toList();
+            int[] serverLights = serverLights(level, all);
+            return LightMismatchEvidence.firstDiffering(all, serverLights, clientLights);
+        });
+        // The failure path only: what makes the server or the client wrong (LightMismatchEvidence).
+        Map<BlockPos, BlockState> emitters = new LinkedHashMap<>();
+        BlockState[][] serverBlocks = new BlockState[1][];
+        String serverSide = server.computeOnServer(minecraftServer -> {
+            ServerLevel level = serverLevel(minecraftServer, dimension);
+            emitters.putAll(LightMismatchEvidence.emitters(level, first));
+            serverBlocks[0] = LightMismatchEvidence.surroundings(level, box);
+            return LightMismatchEvidence.server(level, box, first, clientLights)
+                    + LightMismatchEvidence.serverChunks(level, box);
+        });
         return Optional.of(context.computeOnClient(client -> {
             ClientLevel level = clientLevel(client);
             return cells + " client maxSky=" + maxSky(level, box) + " maxBlock=" + maxBlock(level, box) + " in "
-                    + level.dimension().identifier() + ", server maxSky=" + serverSky + " maxBlock=" + serverBlock;
+                    + level.dimension().identifier() + ", server maxSky=" + serverSky + " maxBlock=" + serverBlock
+                    + serverSide + LightMismatchEvidence.client(level, emitters)
+                    + LightMismatchEvidence.blockDifferences(
+                            box, serverBlocks[0], LightMismatchEvidence.surroundings(level, box))
+                    + LightMismatchEvidence.clientChunks(level, box) + LightMismatchEvidence.timeline(box);
         }));
+    }
+
+    private static int[] serverLights(Level level, List<BlockPos> cells) {
+        return cells.stream()
+                .mapToInt(pos ->
+                        level.getBrightness(LightLayer.SKY, pos) * 16 + level.getBrightness(LightLayer.BLOCK, pos))
+                .toArray();
     }
 
     /** The client's sky and block light of every cell of the box, as {@code sky * 16 + block}, in {@link Box#cells} order. */
@@ -196,11 +227,17 @@ public final class ClientLight {
         });
     }
 
-    /** True when no level of the server has light work pending. */
+    /**
+     * True when no level of the server has light work pending: nothing inside the light engines, no block-change task still queued for
+     * them and no batch of those running ({@link ThreadedLightEngineAccess}).
+     */
     public static boolean serverLightIdle(ClientGameTestContext context, TestServerContext server) {
         return server.computeOnServer(minecraftServer -> {
             for (ServerLevel level : minecraftServer.getAllLevels()) {
-                if (level.getLightEngine().hasLightWork()) {
+                ThreadedLightEngineAccess engine = (ThreadedLightEngineAccess) level.getLightEngine();
+                if (level.getLightEngine().hasLightWork()
+                        || !engine.deepcharter$lightTasks().isEmpty()
+                        || engine.deepcharter$scheduled().get()) {
                     return false;
                 }
             }
