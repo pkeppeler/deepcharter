@@ -104,7 +104,7 @@ public class BandReadersTest {
             RoomCarver.carve(level, x - 2, x + 2, floor, floor + crustRows - 1, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
             RoomCarver.carve(level, x - 2, x + 2, floor + crustRows, floor + crustRows + 7, Z - 2, Z + 2, Blocks.AIR);
             Vec3 at = new Vec3(x, floor + feetAbove, Z);
-            pilot = MockPlayers.join(helper, "band-bore-" + x);
+            pilot = MockPlayers.join(helper, "band-bore-" + Math.abs(floor));
             pilot.teleportTo(level, at, 0f, 0f);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
                 PodEntity made = TestEntities.create(PodRegistry.POD, level);
@@ -162,7 +162,8 @@ public class BandReadersTest {
     /** Layer 2's floor crust leads nowhere (unbuilt depth lies below it), so the pod stands on it and does not drill. */
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theCrustAtLayer2sFloorIsRefused(GameTestHelper helper) {
-        int x = 23064;
+        // Layer 1's bore is in this column too: the layers share a level, so one set of chunks serves both.
+        int x = 23000;
         int floor = TWO.minY();
         ServerLevel level = helper.getLevel();
         Bore bore = new Bore(helper, x, floor, 3, 3);
