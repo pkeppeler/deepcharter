@@ -290,9 +290,10 @@ final class QuestMap {
                         t.faintInkColor());
             }
             connect(graphics, layout.ahead(), layout.columns(), t.faintInkColor());
-            if (!layout.ahead().isEmpty()) {
+            // at the right edge, past the end of the title it crosses, and not through a note set beside the last row
+            if (!layout.ahead().isEmpty() && layout.noteY() > layout.aheadTitleY()) {
                 Rect last = layout.main().getLast();
-                int x = last.right() - q.chapterLinkInset();
+                int x = layout.width() - q.chapterLinkInset();
                 PaperDraw.arrow(
                         graphics,
                         new int[][] {
