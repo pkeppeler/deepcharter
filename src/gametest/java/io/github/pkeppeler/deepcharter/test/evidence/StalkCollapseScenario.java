@@ -5,13 +5,15 @@ import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.block.Block;
 
 /**
  * Evidence scenario "stalk-collapse" (#855): a player on foot walks up to the foot of the nearest great stalk the world grew (or, if the
  * survey of the colony's surroundings finds none, the nearest column of fungal stalk at least {@value #TALL_ENOUGH} blocks tall), breaks
  * it bare handed and backs away: everything above the break sags and bursts in a spore puff, layer by layer, and the drops scatter. The
  * stalk is the real generated feature, found by scanning the world, and the collapse is the real server logic. The frames run from the
- * break until the last layer has burst, then the player walks up and picks up what fell.
+ * break until the last layer has burst; the camera follows the fall down to the puff at the foot.
  */
 public class StalkCollapseScenario extends EvidenceScenario {
     /** A great stalk is tall; an ordinary column the scenario falls back to must still have something to sag. */
@@ -24,8 +26,10 @@ public class StalkCollapseScenario extends EvidenceScenario {
     private static final int BACK_AWAY_TICKS = 24;
     /** The quiet walk up to the foot, ending a step inside the reach of a bare hand (about 9.5 blocks from a start 13 away). */
     private static final int APPROACH_TICKS = 44;
-    /** The height, in blocks above the foot, that the camera looks at: the middle of a great stalk, so that its cap is in view from a distance. */
-    private static final int MIDDLE = 9;
+    /** The camera follows the fall down to this many blocks above the foot, where the puff and the drops are, over {@link #FOLLOW_TICKS}. */
+    private static final int LOW_LOOK = 1;
+
+    private static final int FOLLOW_TICKS = 12;
     /** The collapse of the tallest great stalk: its sag, a step for each layer and its cap, and a margin. */
     private static final int COLLAPSE_TICKS = 100;
 
@@ -40,26 +44,29 @@ public class StalkCollapseScenario extends EvidenceScenario {
     }
 
     private void scenes(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
-        BlockPos foot = singleplayer.getServer().computeOnServer(server -> {
+        BlockPos[] found = singleplayer.getServer().computeOnServer(server -> {
             try {
-                return GatherWalk.nearest(server, "great_stalk", true, WATCH_DISTANCE, GREAT_HEIGHT);
+                return foot(server, "great_stalk", GREAT_HEIGHT);
             } catch (AssertionError noGreatStalk) {
-                return GatherWalk.nearest(server, "fungal_stalk", true, WATCH_DISTANCE, TALL_ENOUGH);
+                return foot(server, "fungal_stalk", TALL_ENOUGH);
             }
         });
+        BlockPos foot = found[0];
+        int height = found[1].getY();
         // The recording is the stalk and nothing else: no HUD, hands or item name, and no toast over it.
         EvidencePins.handsHidden = true;
         EvidencePins.itemNameHidden = true;
         try {
-            ClientChecks.withHudHidden(context, () -> collapse(context, singleplayer, foot));
+            ClientChecks.withHudHidden(context, () -> collapse(context, singleplayer, foot, height));
         } finally {
             EvidencePins.reset();
         }
     }
 
     /** The cut: standing, a walk up and the break with no frames, then the sag, the puff and the stalk settled. */
-    private void collapse(ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos foot) {
-        BlockPos middle = foot.above(MIDDLE);
+    private void collapse(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, BlockPos foot, int height) {
+        BlockPos middle = foot.above(height / 2);
         GatherWalk walk = new GatherWalk(this, context, singleplayer, WATCH_DISTANCE, false);
         walk.stand(foot);
         context.getInput().lookAt(middle);
@@ -74,7 +81,10 @@ public class StalkCollapseScenario extends EvidenceScenario {
             if (tick == BACK_AWAY_TICKS) {
                 context.getInput().releaseKey(options -> options.keyDown);
             }
-            context.getInput().lookAt(middle);
+            // The view starts on the middle of the stalk and follows the fall down to the puff at its foot.
+            int follow = Math.min(tick, FOLLOW_TICKS);
+            int aim = height / 2 - (height / 2 - LOW_LOOK) * follow / FOLLOW_TICKS;
+            context.getInput().lookAt(foot.above(aim));
             context.waitTicks(
                     GatherWalk.TICKS_PER_FRAME); // tick-wait: the collapse takes a fixed number of server ticks
             clean(context);
@@ -82,6 +92,17 @@ public class StalkCollapseScenario extends EvidenceScenario {
         }
         context.getInput().releaseKey(options -> options.keyDown);
         screenshot(context, "collapsed");
+    }
+
+    /** The foot of the nearest column of the block, and its height as the y of a second position. */
+    private static BlockPos[] foot(MinecraftServer server, String path, int least) {
+        BlockPos foot = GatherWalk.nearest(server, path, true, WATCH_DISTANCE, least);
+        Block kind = server.overworld().getBlockState(foot).getBlock();
+        int height = 1;
+        while (server.overworld().getBlockState(foot.above(height)).is(kind)) {
+            height++;
+        }
+        return new BlockPos[] {foot, new BlockPos(0, height, 0)};
     }
 
     /** Clears the toasts ("New Recipe Unlocked") that would cover the frame. */

@@ -35,7 +35,7 @@ final class GatherWalk {
     private static final int MIN_CRATE_DISTANCE = 70;
     static final int TICKS_PER_FRAME = 2;
     static final int WALK_UP_TICKS = 40;
-    static final int PICK_UP_TICKS = 16;
+    private static final int PICK_UP_TICKS = 16;
     private static final int HOLD_FRAMES = 10;
 
     private final EvidenceScenario scenario;
