@@ -351,7 +351,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
         Box two = drawn(screen, done("Do thing 1.2")).box();
         // an empty spot of the sheet, under the flowchart's last row, takes the drag
         double emptyX = one.x() + 10;
-        double emptyY = one.y() + QuestMapTuning.current().stepHeight() + 2;
+        double emptyY = one.y() + QuestMapTuning.current().stepHeight() - 1;
         screen.mouseClicked(mouse(emptyX, emptyY), false);
         require(
                 screen.mouseDragged(mouse(emptyX + 6, emptyY + 4), 6, 4),
@@ -377,7 +377,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
         Box before = drawn(first, open("Do thing 1.6")).box();
         double emptyY = before.y()
                 + QuestMapTuning.current().stepHeight()
-                + 2
+                - 1
                 - QuestMapTuning.current().stepPitch();
         first.mouseClicked(mouse(before.x() + 4, emptyY), false);
         first.mouseDragged(mouse(before.x() + 9, emptyY + 2), 5, 2);
