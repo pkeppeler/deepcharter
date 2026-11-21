@@ -40,8 +40,14 @@ n=$(wc -l <"$work/seen-${DEEPCHARTER_CAMPAIGN_COST_ONLY:-}${DEEPCHARTER_SURFACE_
 pick() { # pick <file>: line n of it, or its last line
   sed -n "${n}p" "$1" | grep . || tail -1 "$1"
 }
+if [[ -n ${STUB_RAISE:-} ]]; then echo 3.50 > "$work/load"; fi
 if [[ ${STUB_FAIL:-} ]]; then echo "boom"; exit 1; fi
 if [[ -n ${DEEPCHARTER_CAMPAIGN_COST:-} ]]; then
+  # The lines below mirror what CampaignCostTest.report logs (CampaignCostTest.java:139 is the
+  # per-world line); change them together.
+  if [[ ! ${STUB_NOBAR:-} ]]; then
+    echo "[campaign-cost] 289 columns per world and round; bar: the campaign's median CPU per block of height at most 1.15x tall_baseline's"
+  fi
   echo "rounds ${DEEPCHARTER_CAMPAIGN_COST} worlds ${DEEPCHARTER_CAMPAIGN_COST_ONLY}" >> "$work/campaign-env"
   for w in ${DEEPCHARTER_CAMPAIGN_COST_ONLY//,/ }; do
     echo "[campaign-cost] $w: CPU ms per column, in round order: [$(pick "$work/cpu-$w")]; heap MB: [1]; wall ms per column: [1]; GC ms per column: [$(pick "$work/gc-$w")]; GC count: [$(pick "$work/gccount-$w")]; medians 1 CPU, 1 MB"
@@ -52,20 +58,33 @@ if [[ -n ${DEEPCHARTER_CAMPAIGN_COST:-} ]]; then
 fi
 w=${DEEPCHARTER_SURFACE_COST_ONLY}
 echo "[surface-cost] $w: 1 CPU ms per column (rounds [$(pick "$work/rounds-$w")]), 1 MB heap"
+if [[ ${STUB_SURFACE_STATUS:-} ]]; then exit "$STUB_SURFACE_STATUS"; fi
 S
 sed -i.bak "s|__WORK__|$work|" "$repo/tools/gametest.sh"
 cat >"$work/bin/uptime" <<S
 #!/usr/bin/env bash
-echo "12:00  up 1 day,  3 users,  load averages: \${STUB_LOAD:-0.50} 1.00 1.00"
+load=\$(cat "$work/load" 2>/dev/null || echo "\${STUB_LOAD:-0.50}")
+echo "12:00  up 1 day,  3 users,  load averages: \$load 1.00 1.00"
 S
 # ps: a foreign Java process using $STUB_CPU percent, and two small ones. The stub cannot know the
 # script's pid, so the script's own tree (the descendants it skips) is not tested here.
 cat >"$work/bin/ps" <<S
 #!/usr/bin/env bash
 echo "1 0 0.0 launchd"
-echo "500 1 \${STUB_CPU:-10} java"
+# STUB_CPU_RUNS="10 450" gives run 1 and run 2 their own foreign CPU (the first sample of a run
+# still reads the run before, so put the quiet run first).
+n=\$(wc -l <"$work/gametest-args" 2>/dev/null | tr -d ' ')
+list=(\${STUB_CPU_RUNS:-})
+echo "500 1 \${list[\$((n > 0 ? n - 1 : 0))]:-\${STUB_CPU:-10}} java"
 echo "501 1 3.0 Some App"
 S
+# sleep: the tool's 10 second load wait only drops the load (and is logged); anything else sleeps.
+cat >"$work/bin/sleep" <<S
+#!/usr/bin/env bash
+if [[ \$1 == 10 ]]; then echo wait >> "$work/waits"; rm -f "$work/load"; exit 0; fi
+exec /bin/sleep "\$@"
+S
+chmod +x "$work/bin/sleep"
 chmod +x "$repo/tools/cost-run.sh" "$repo/tools/gametest.sh" "$work/bin/uptime" "$work/bin/ps"
 echo "10 14 12 11 13" >"$work/rounds-a"
 echo "20 24 22 21 23" >"$work/rounds-b"
@@ -77,7 +96,8 @@ run() {
   : >"$work/gametest-args"
   : >"$work/gradle-opts"
   : >"$work/reverse"
-  rm -f "$work"/seen-*
+  : >"$work/waits"
+  rm -f "$work"/seen-* "$work/load"
   (cd "$work" && PATH="$work/bin:$PATH" DEEPCHARTER_COST_SAMPLE=1 "$repo/tools/cost-run.sh" "$@") \
     >"$work/out" 2>"$work/err" || status=$?
 }
@@ -175,18 +195,50 @@ same "the world order alternates between runs" "$(tr '\n' ' ' <"$work/reverse")"
 contains "run 1 verdict" "$work/out" "run 1: campaign_sample over tall_baseline: 1.500x"
 contains "run 2 verdict" "$work/out" "run 2: campaign_sample over tall_baseline: 1.100x on the medians, 1.100x on the minimums, 0.958x per block of height"
 contains "run 2 drift" "$work/out" "run 2 drift campaign_sample: rounds 1-3 median 11.00, rounds 4-6 median 11.00 (1.000x)"
-contains "pooled min and median" "$work/out" "pooled over 2 runs (12 rounds): campaign_sample: CPU ms per column, min 11, median 11.5"
+contains "pooled min and median" "$work/out" "pooled over 2 runs (12 rounds, 0 of 2 runs LOADED): campaign_sample: CPU ms per column, min 11, median 11.5"
 contains "pooled verdict" "$work/out" \
   "pooled campaign_sample over tall_baseline: 1.150x on the medians, 1.100x on the minimums, 1.001x per block of height (within the 1.15x bar)"
 
 STUB_ASSERT=1 run --runs 2 campaign 6 tall_baseline campaign_sample
-same "a test assertion with readings still pools" "$status" 0
+same "a test assertion exits nonzero after pooling" "$status" 1
 contains "an assertion failure is named" "$work/err" "the test's own assertion failed (exit 1); its readings are kept"
 contains "the pooled verdict follows a failed run" "$work/out" "pooled campaign_sample over tall_baseline"
 
 STUB_FAIL=1 run campaign 6 tall_baseline campaign_sample
 same "a campaign run with no readings exits with its status" "$status" 1
 contains "it names the worlds" "$work/err" "$cw failed (exit 1)"
+
+# exit codes: a surface run with a nonzero status keeps its readings and exits with it
+STUB_SURFACE_STATUS=7 run 5 a b
+same "a failing surface run exits with its status" "$status" 7
+# the bar comes from the test's own line, and a log without it is an error
+STUB_NOBAR=1 run campaign 6 tall_baseline campaign_sample
+same "a campaign log without the bar line fails" "$status" 1
+contains "it says the log format changed" "$work/err" "no 'at most <bar>x' line"
+# a pooled per-block ratio over the bar exits 1 even though every run passed
+printf '%s\n' "20, 20, 20, 20, 20, 20" >"$work/cpu-campaign_sample"
+run --runs 2 campaign 6 tall_baseline campaign_sample
+same "a pooled ratio over the bar exits 1" "$status" 1
+contains "it says over the bar" "$work/out" "(over the 1.15x bar)"
+printf '%s\n%s\n' "12, 12, 12, 18, 18, 18" "11, 11, 11, 11, 11, 11" >"$work/cpu-campaign_sample"
+# --runs waits by default: run 1 leaves the load high, run 2 starts after the stub wait
+STUB_RAISE=1 run --runs 2 campaign 6 tall_baseline campaign_sample
+same "--runs waits for the load to fall by default" "$status" 0
+same "both runs ran" "$(wc -l <"$work/gametest-args" | tr -d ' ')" 2
+check "it waited" "$([[ -s $work/waits ]] && echo 0 || echo 1)"
+# a refusal after finished runs still pools them
+STUB_RAISE=1 DEEPCHARTER_COST_WAIT=0 run --runs 2 campaign 6 tall_baseline campaign_sample
+same "a refusal after a finished run exits 3" "$status" 3
+same "only run 1 ran" "$(wc -l <"$work/gametest-args" | tr -d ' ')" 1
+STUB_RAISE=1 DEEPCHARTER_COST_WAIT=0 run --runs 3 campaign 6 tall_baseline campaign_sample
+same "a refusal in run 2 of 3 exits 3" "$status" 3
+contains "the refusal still prints the pooled verdict of the finished runs" "$work/out" "pooled over 1 runs (6 rounds, 0 of 1 runs LOADED)"
+# LOADED runs are counted, and --quiet-only leaves them out
+STUB_CPU_RUNS="10 450" run --runs 2 campaign 6 tall_baseline campaign_sample
+contains "the pooled line counts LOADED runs" "$work/out" "pooled over 2 runs (12 rounds, 1 of 2 runs LOADED): campaign_sample"
+STUB_CPU_RUNS="10 450" run --runs 2 --quiet-only campaign 6 tall_baseline campaign_sample
+contains "--quiet-only pools the quiet runs only" "$work/out" \
+  "pooled over 1 runs (6 rounds, 1 of 2 runs LOADED, LOADED runs left out): campaign_sample: CPU ms per column, min 12, median 15"
 
 # surface with --runs pools the rounds of each world across runs and has no order switch
 printf '%s\n%s\n' "10, 14, 12, 11, 13" "30, 34, 32, 31, 33" >"$work/rounds-a"
@@ -195,7 +247,7 @@ run --runs 2 surface 5 a b
 same "surface with two runs succeeds" "$status" 0
 same "surface runs once per world and run" "$(wc -l <"$work/gametest-args" | tr -d ' ')" 4
 same "surface has no order switch" "$(sort -u "$work/reverse")" unset
-contains "surface pooled median" "$work/out" "pooled over 2 runs (10 rounds): a: CPU ms per column, min 10, median 22"
+contains "surface pooled median" "$work/out" "pooled over 2 runs (10 rounds, 0 of 2 runs LOADED): a: CPU ms per column, min 10, median 22"
 contains "surface pooled ratio" "$work/out" "pooled b over a: 1.000x on the medians, 2.000x on the minimums"
 contains "surface drift needs a GC series to split it" "$work/out" "drift a: rounds 1-2 median 12.00, rounds 4-5 median 12.00 (1.000x); no GC series"
 
