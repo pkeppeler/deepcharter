@@ -94,8 +94,11 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             colonyPieceReplaced(context, server);
             hostHandsAndHangarConsole(context, server);
             for (int trial = 0; trial < TRIALS; trial++) {
+                // A layer is a band of one level, so two layers' sites in one cell share chunk columns: each layer has
+                // cells of its own,
+                // or the second visit finds the chunks already sent.
                 layerStructuresOnArrival(context, server, 1, CELL + trial);
-                layerStructuresOnArrival(context, server, 2, CELL + trial);
+                layerStructuresOnArrival(context, server, 2, CELL + TRIALS + trial);
             }
         }
         StringBuilder table = new StringBuilder("stale client light, per path:");
