@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.ServerSocket;
 import java.util.Properties;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerConnection;
@@ -50,12 +53,12 @@ public final class TwoPlayerServer implements AutoCloseable {
         // The default port 25565 would collide between parallel local runs. The properties are merged
         // over the harness defaults, so online-mode=false and the rest survive. Port 0 does not work:
         // connect() reads the configured port, not the bound one.
-        int port = DedicatedServers.freePort();
+        int port = freePort();
         Properties properties = new Properties();
         properties.setProperty("server-port", Integer.toString(port));
         properties.setProperty("max-players", Integer.toString(PLAYER_LIMIT));
         LOGGER.info("TwoPlayerServer: dedicated server on port {}", port);
-        TestDedicatedServerContext server = DedicatedServers.start(context, properties);
+        TestDedicatedServerContext server = context.worldBuilder().createServer(properties);
         TestDedicatedServerConnection connection = null;
         String stage =
                 "the real client joining the dedicated server (connect, login and world load, waited on by WorldLoadWait for "
@@ -87,6 +90,14 @@ public final class TwoPlayerServer implements AutoCloseable {
     private static MockPlayer joinBesideReal(MinecraftServer server) {
         ServerPlayer real = server.getPlayerList().getPlayers().getFirst();
         return MockPlayers.join(server, MOCK_NAME, real.level(), real.position());
+    }
+
+    private static int freePort() {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        } catch (IOException e) {
+            throw new UncheckedIOException("No free port for the test server", e);
+        }
     }
 
     public TestDedicatedServerContext server() {

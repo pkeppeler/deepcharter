@@ -15,7 +15,6 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientTestWatchdog;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
-import io.github.pkeppeler.deepcharter.test.support.DedicatedServers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.time.Duration;
@@ -426,7 +425,7 @@ public class CampaignWorldClientTest implements FabricClientGameTest {
     private void aDedicatedServerRunsTheCampaignWorld(ClientGameTestContext context) {
         Properties properties = new Properties();
         properties.setProperty("max-players", "2");
-        TestDedicatedServerContext server = DedicatedServers.start(context, properties);
+        TestDedicatedServerContext server = context.worldBuilder().createServer(properties);
         try {
             TestDedicatedServerConnection connection = server.connect();
             try {

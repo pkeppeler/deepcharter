@@ -7,6 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Pattern;
 import javax.management.JMException;
 import javax.management.ObjectName;
@@ -17,7 +19,7 @@ import org.slf4j.LoggerFactory;
  * The live heap by class at the start of each client test class, for a leak that grows by one world per class (the 2352-tall campaign
  * world: about 70 MB a class). The environment variable {@link #DIR_ENV} names a directory; when it is set, {@code ClientTestLog.start}
  * collects the heap (the {@code GC.class_histogram} diagnostic command, which runs a full collection first) and writes the largest 40
- * classes, and the rows of the types that pin a world and of every class of this mod, to {@code <dir>/<number>-<class>.txt}. Unset, nothing runs: a collection at every
+ * classes, and the rows of the types that pin a world and of every class of this mod, to {@code <dir>/<number>-<class>.txt}, and the live threads by name to {@code <number>-<class>-threads.txt}. Unset, nothing runs: a collection at every
  * class costs seconds. Diff the first and the last file to find the type that grows.
  */
 public final class HeapHistogram {
@@ -31,7 +33,7 @@ public final class HeapHistogram {
             "\\s(net\\.minecraft\\.(client\\.multiplayer\\.ClientLevel|server\\.level\\.ServerLevel|server\\.MinecraftServer"
                     + "|server\\.level\\.ChunkMap|world\\.level\\.chunk\\.LevelChunk|client\\.multiplayer\\.ClientChunkCache"
                     + "|client\\.multiplayer\\.ClientPacketListener|server\\.level\\.ServerPlayer|world\\.level\\.chunk\\.ProtoChunk"
-                    + "|world\\.level\\.chunk\\.LevelChunkSection|client\\.Minecraft)"
+                    + "|world\\.level\\.chunk\\.LevelChunkSection|client\\.Minecraft|server\\.dedicated\\.\\w+|server\\.network\\.\\w+|network\\.Connection)"
                     + "|io\\.github\\.pkeppeler\\.deepcharter\\.[\\w.$]+)(?:\\s+\\([^)]*\\))?\\s*$");
 
     private static int count;
@@ -66,6 +68,19 @@ public final class HeapHistogram {
             Path file = Path.of(dir).resolve(String.format("%02d-%s.txt", count++, test));
             Files.createDirectories(file.getParent());
             Files.write(file, kept, StandardCharsets.UTF_8);
+            // The live threads by name, digits folded: a thread that outlives its server holds the server, and the file
+            // shows it by its count.
+            Map<String, Integer> threads = new TreeMap<>();
+            for (Thread thread : Thread.getAllStackTraces().keySet()) {
+                threads.merge(
+                        thread.getName().replaceAll("\\d+", "#") + " (" + thread.getState() + ")", 1, Integer::sum);
+            }
+            Files.write(
+                    file.resolveSibling(file.getFileName().toString().replace(".txt", "-threads.txt")),
+                    threads.entrySet().stream()
+                            .map(entry -> entry.getValue() + " " + entry.getKey())
+                            .toList(),
+                    StandardCharsets.UTF_8);
             String total = lines.stream()
                     .filter(line -> line.startsWith("Total"))
                     .findFirst()
