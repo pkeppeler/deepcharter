@@ -19,8 +19,10 @@ import io.github.pkeppeler.deepcharter.transmission.Transmission;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionCatalog;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionData;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionEvents;
+import io.github.pkeppeler.deepcharter.transmission.TransmissionPayload;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionTriggers;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
+import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -52,9 +54,11 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.level.storage.SavedDataStorage;
 import net.minecraft.world.phys.Vec3;
 
@@ -926,5 +930,85 @@ public class TransmissionsTest {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    /** The server fills no field: the client replaces {@code [DIRECTOR]} with the payload's {@code director}. Any transmission carries it. */
+    private static void fireThenExpect(GameTestHelper helper, CharterId charter, Runnable expectations) {
+        helper.startSequence()
+                .thenExecute(() -> withFreshWorldData(
+                        helper, data -> Transmissions.fire(server(helper), data, charter, id("t01"))))
+                .thenIdle(2)
+                .thenExecute(expectations)
+                .thenSucceed();
+    }
+
+    private static MockPlayer joinListening(GameTestHelper helper, String name) {
+        MockPlayer mock = MockPlayers.join(helper, name);
+        mock.announceChannel(TransmissionPayload.TYPE);
+        return mock;
+    }
+
+    private static TransmissionPayload sentTo(GameTestHelper helper, MockPlayer member) {
+        List<TransmissionPayload> sent = member.payloadsOf(TransmissionPayload.class);
+        if (sent.size() != 1) {
+            throw helper.assertionException(
+                    "%s should have been sent exactly one transmission payload, was sent %s",
+                    member.player().getGameProfile().name(), sent);
+        }
+        return sent.getFirst();
+    }
+
+    private static void expectDirector(GameTestHelper helper, MockPlayer member, String expected) {
+        String actual = sentTo(helper, member).director();
+        if (!actual.equals(expected)) {
+            throw helper.assertionException(
+                    "the payload sent to %s should name the Director %s, names %s",
+                    member.player().getGameProfile().name(), expected, actual);
+        }
+    }
+
+    /** The mock records the payload object, so encode and decode it as the connection does. */
+    private static void expectSurvivesTheWire(GameTestHelper helper, TransmissionPayload sent) {
+        RegistryFriendlyByteBuf buffer =
+                new RegistryFriendlyByteBuf(Unpooled.buffer(), server(helper).registryAccess());
+        TransmissionPayload.CODEC.encode(buffer, sent);
+        TransmissionPayload received = TransmissionPayload.CODEC.decode(buffer);
+        if (!received.equals(sent)) {
+            throw helper.assertionException(
+                    "the payload should survive the wire, sent %s and received %s", sent, received);
+        }
+    }
+
+    @GameTest
+    public void anOnlineDirectorIsNamedInThePayloadSentToEveryMember(GameTestHelper helper) {
+        MockPlayer director = joinListening(helper, "tx-dir-online");
+        MockPlayer crew = joinListening(helper, "tx-crew-online");
+        CharterId charter =
+                directCharter(helper, director.player().getUUID(), crew.player().getUUID());
+        fireThenExpect(helper, charter, () -> {
+            expectDirector(helper, crew, "tx-dir-online");
+            expectDirector(helper, director, "tx-dir-online");
+        });
+    }
+
+    @GameTest
+    public void anOfflineDirectorTheServerKnowsIsNamedFromTheNameCache(GameTestHelper helper) {
+        UUID director = UUID.randomUUID();
+        String cached = "Cäched Ünï \u65E5\u672C " + uniqueName();
+        server(helper).services().nameToIdCache().add(new NameAndId(director, cached));
+        MockPlayer crew = joinListening(helper, "tx-crew-cached");
+        CharterId charter = directCharter(helper, director, crew.player().getUUID());
+        fireThenExpect(helper, charter, () -> {
+            expectDirector(helper, crew, cached);
+            expectSurvivesTheWire(helper, sentTo(helper, crew));
+        });
+    }
+
+    @GameTest
+    public void anOfflineDirectorTheServerDoesNotKnowIsTheStandIn(GameTestHelper helper) {
+        MockPlayer crew = joinListening(helper, "tx-crew-unknown");
+        CharterId charter =
+                directCharter(helper, UUID.randomUUID(), crew.player().getUUID());
+        fireThenExpect(helper, charter, () -> expectDirector(helper, crew, "the Director"));
     }
 }
