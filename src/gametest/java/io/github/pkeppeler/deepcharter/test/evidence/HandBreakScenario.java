@@ -85,7 +85,10 @@ public class HandBreakScenario extends EvidenceScenario {
                                             .getPlayers()
                                             .getFirst()
                                             .getMainHandItem()
-                                            .getDamageValue()));
+                                            .getDamageValue()),
+                            () -> singleplayer
+                                    .getServer()
+                                    .computeOnServer(server -> HandBreakChecks.serverFacts(server, spot)));
                     screenshot(context, "middle");
                     middle = true;
                 }

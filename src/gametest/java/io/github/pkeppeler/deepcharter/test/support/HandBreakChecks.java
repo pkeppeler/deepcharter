@@ -2,11 +2,19 @@ package io.github.pkeppeler.deepcharter.test.support;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
+import io.github.pkeppeler.deepcharter.layer.HandBreak;
 import java.lang.reflect.Field;
 import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerPlayerGameMode;
+import net.minecraft.world.level.block.state.BlockState;
 
 /** What a player must see while a pick brute-forces a block (#858): the pick worn on the client and the crack well along. */
 public final class HandBreakChecks {
@@ -17,9 +25,13 @@ public final class HandBreakChecks {
      * destroy progress, which draws the crack, is about {@code ticks / 1200}. A swing the client restarted would show neither.
      * {@code serverWear} reads the damage of the server's held pick, to tell a pick never worn from wear never shown.
      */
-    public static void requireWorkShows(ClientGameTestContext context, int ticks, IntSupplier serverWear) {
+    public static void requireWorkShows(
+            ClientGameTestContext context, int ticks, IntSupplier serverWear, Supplier<String> serverFacts) {
         int serverWorn = serverWear.getAsInt();
-        require(serverWorn > 0, "the server has not worn the pick after " + ticks + " ticks of mining");
+        require(
+                serverWorn > 0,
+                "the server has not worn the pick after " + ticks + " ticks of mining; the server says: "
+                        + serverFacts.get());
         int worn = context.computeOnClient(
                 client -> ClientSession.player(client).getMainHandItem().getDamageValue());
         require(
@@ -32,6 +44,37 @@ public final class HandBreakChecks {
                 Math.abs(progress - expected) < 0.1F,
                 "the client's destroy progress is " + progress + " after " + ticks + " ticks of mining, expected about "
                         + expected);
+    }
+
+    /**
+     * What the server holds of the mining of {@code target} by its first player, for a failure message: the game mode, the held pick, the
+     * game mode's own mining state, and what the rule makes of the block and the pick. Run on the server.
+     */
+    public static String serverFacts(MinecraftServer server, BlockPos target) {
+        ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+        ServerLevel level = player.level();
+        BlockState state = level.getBlockState(target);
+        return "game mode " + player.gameMode.getGameModeForPlayer()
+                + ", held " + player.getMainHandItem() + " with damage "
+                + player.getMainHandItem().getDamageValue()
+                + ", isDestroyingBlock " + gameModeField(player, "isDestroyingBlock")
+                + ", destroyPos " + gameModeField(player, "destroyPos")
+                + ", target " + target.toShortString()
+                + ", block " + state.getBlock()
+                + ", dimension " + level.dimension().identifier()
+                + ", layerOf " + HandBreak.layerOf(level, target)
+                + ", governs " + HandBreak.governs(player, level, target, state)
+                + ", bites " + HandBreak.bites(player.getMainHandItem(), HandBreak.layerOf(level, target));
+    }
+
+    private static Object gameModeField(ServerPlayer player, String name) {
+        try {
+            Field field = ServerPlayerGameMode.class.getDeclaredField(name);
+            field.setAccessible(true);
+            return field.get(player.gameMode);
+        } catch (ReflectiveOperationException e) {
+            throw new LinkageError("the game mode's " + name + " could not be read", e);
+        }
     }
 
     /** The client's own progress on the block it is mining, whose tenths are the stage of the crack. */

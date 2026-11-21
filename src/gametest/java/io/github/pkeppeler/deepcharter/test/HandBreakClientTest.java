@@ -66,7 +66,8 @@ public class HandBreakClientTest implements FabricClientGameTest {
                     MIDWAY_TICKS,
                     () -> two.server()
                             .computeOnServer(server ->
-                                    realPlayer(server).getMainHandItem().getDamageValue()));
+                                    realPlayer(server).getMainHandItem().getDamageValue()),
+                    () -> two.server().computeOnServer(server -> HandBreakChecks.serverFacts(server, target)));
             int ticks = MIDWAY_TICKS + mine(context, target, BITING_LIMIT_TICKS - MIDWAY_TICKS, true, false);
             require(ticks >= 1000, "the crust broke after only " + ticks + " ticks, not about 1200");
             for (int tick = 0; tick < SETTLE_TICKS; tick++) {
