@@ -881,7 +881,11 @@ public final class HandbookScreen extends Screen {
                 paperTop + tuning().topMargin(),
                 textWidth,
                 tuning().faintInkColor());
-        for (int bar = 0; bar < 3; bar++) {
+        int noteLines = font.split(tr("chapter.classified"), textWidth).size();
+        int noteHeight = noteLines * (font.lineHeight + 1);
+        // A short sheet gives up redaction bars before the note runs under Back and Next.
+        int bars = Mth.clamp((bottom() - y - 10 - noteHeight) / (font.lineHeight + 4), 0, 3);
+        for (int bar = 0; bar < bars; bar++) {
             PaperDraw.redaction(
                     graphics,
                     textLeft,
@@ -890,9 +894,17 @@ public final class HandbookScreen extends Screen {
                     font.lineHeight);
         }
         y += 3 * (font.lineHeight + 4) + 10;
-        PaperDraw.wrapped(graphics, font, tr("chapter.classified"), textLeft, y, textWidth, tuning().inkColor());
-        PaperDraw.stamp(
-                graphics, font, tr("chapter.stamp.classified"), centerX(), bottom() - 28, -12, tuning().stampColor());
+        if (bars < 3) {
+            y -= (3 - bars) * (font.lineHeight + 4);
+        }
+        int noteEnd = PaperDraw.wrapped(
+                graphics, font, tr("chapter.classified"), textLeft, y, textWidth, tuning().inkColor());
+        int stampY = bottom() - 28;
+        // The stamp's frame stands 3 px above its lettering; with no room under the note it is left out.
+        if (stampY - 3 >= noteEnd) {
+            PaperDraw.stamp(
+                    graphics, font, tr("chapter.stamp.classified"), centerX(), stampY, -12, tuning().stampColor());
+        }
     }
 
     /** The map's mouse-facing geometry: the heading it hangs under, the view the flowchart is clipped to, and the corner it grows from. */
