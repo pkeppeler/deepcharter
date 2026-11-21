@@ -5,13 +5,17 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import net.fabricmc.fabric.api.item.v1.ItemComponentTooltipProviderRegistry;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -24,6 +28,15 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
  * hits until #63 places ores in the world; no vanilla ore is ever cargo.
  */
 public final class OreRegistry {
+    /** Marks an ore item as heavy: a default component of every {@link OreItem}, shown as its tooltip. */
+    public static final DataComponentType<OreWeight> WEIGHT = Registry.register(
+            BuiltInRegistries.DATA_COMPONENT_TYPE,
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "ore_weight"),
+            DataComponentType.<OreWeight>builder()
+                    .persistent(OreWeight.CODEC)
+                    .networkSynchronized(OreWeight.STREAM_CODEC)
+                    .build());
+
     private static final Map<OreType, Item> ITEMS = new EnumMap<>(OreType.class);
     private static final Map<OreType, Block> BLOCKS = new EnumMap<>(OreType.class);
 
@@ -63,10 +76,17 @@ public final class OreRegistry {
                     (containerId, inventory, slotCount) -> new OreCargoMenu(containerId, slotCount),
                     ByteBufCodecs.VAR_INT));
 
+    /** The status that shows {@link OreEncumbrance}'s slowdown: it carries no attribute modifier, so the slowdown is never counted twice. */
+    public static final Holder<MobEffect> OVERBURDENED = Registry.registerForHolder(
+            BuiltInRegistries.MOB_EFFECT,
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "overburdened"),
+            new OverburdenedEffect());
+
     private OreRegistry() {}
 
     /** Loads the class, which registers everything. */
     public static void register() {
+        ItemComponentTooltipProviderRegistry.addFirst(WEIGHT);
         HazardBlocks.register();
         SlagBrick.register();
         Registry.register(
