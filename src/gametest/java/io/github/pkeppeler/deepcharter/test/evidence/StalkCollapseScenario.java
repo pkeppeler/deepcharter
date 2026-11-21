@@ -28,7 +28,7 @@ public class StalkCollapseScenario extends EvidenceScenario {
     private static final int APPROACH_TICKS = 44;
     /** The camera follows the fall down to this many blocks above the foot, where the puff and the drops are, over {@link #FOLLOW_TICKS}. */
     private static final int LOW_LOOK = 1;
-
+    /** The ticks the camera takes to follow the fall from the middle of the stalk down to {@link #LOW_LOOK}. */
     private static final int FOLLOW_TICKS = 12;
     /** The collapse of the tallest great stalk: its sag, a step for each layer and its cap, and a margin. */
     private static final int COLLAPSE_TICKS = 100;
@@ -44,15 +44,15 @@ public class StalkCollapseScenario extends EvidenceScenario {
     }
 
     private void scenes(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
-        BlockPos[] found = singleplayer.getServer().computeOnServer(server -> {
+        Column found = singleplayer.getServer().computeOnServer(server -> {
             try {
                 return foot(server, "great_stalk", GREAT_HEIGHT);
             } catch (AssertionError noGreatStalk) {
                 return foot(server, "fungal_stalk", TALL_ENOUGH);
             }
         });
-        BlockPos foot = found[0];
-        int height = found[1].getY();
+        BlockPos foot = found.foot();
+        int height = found.height();
         // The recording is the stalk and nothing else: no HUD, hands or item name, and no toast over it.
         EvidencePins.handsHidden = true;
         EvidencePins.itemNameHidden = true;
@@ -94,15 +94,18 @@ public class StalkCollapseScenario extends EvidenceScenario {
         screenshot(context, "collapsed");
     }
 
-    /** The foot of the nearest column of the block, and its height as the y of a second position. */
-    private static BlockPos[] foot(MinecraftServer server, String path, int least) {
+    /** A column of stalk: the position of its lowest block and how many blocks stand in it. */
+    private record Column(BlockPos foot, int height) {}
+
+    /** The nearest column of the block that a player can walk up to. */
+    private static Column foot(MinecraftServer server, String path, int least) {
         BlockPos foot = GatherWalk.nearest(server, path, true, WATCH_DISTANCE, least);
         Block kind = server.overworld().getBlockState(foot).getBlock();
         int height = 1;
         while (server.overworld().getBlockState(foot.above(height)).is(kind)) {
             height++;
         }
-        return new BlockPos[] {foot, new BlockPos(0, height, 0)};
+        return new Column(foot, height);
     }
 
     /** Clears the toasts ("New Recipe Unlocked") that would cover the frame. */
