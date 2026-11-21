@@ -53,8 +53,8 @@ public class OverburdenedClientTest implements FabricClientGameTest {
                                     .value()
                                     .getDisplayName()
                                     .getString())
-                            .equals("Overburdened"),
-                    "the status should be called Overburdened");
+                            .equals("Ore overload"),
+                    "the status should be called Ore overload, which names the cause and fits the inventory list");
             require(
                     context.computeOnClient(client -> Hud.getMobEffectSprite(OreRegistry.OVERBURDENED))
                             .equals(Identifier.fromNamespaceAndPath("deepcharter", "mob_effect/overburdened")),

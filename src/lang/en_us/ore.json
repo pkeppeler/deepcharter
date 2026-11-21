@@ -15,7 +15,7 @@
   "deepcharter.ore.first_pickup": "Ore is heavy. It slows you down and won't stack. Haul it in your pod's cargo bay.",
   "deepcharter.ore.tooltip.haul": "Won't stack. Haul it in your pod's cargo bay.",
   "deepcharter.ore.tooltip.heavy": "Heavy: it slows you while you carry it.",
-  "effect.deepcharter.overburdened": "Overburdened",
+  "effect.deepcharter.overburdened": "Ore overload",
   "item.deepcharter.bronzium": "Bronzium",
   "item.deepcharter.cicatrium": "Cicatrium",
   "item.deepcharter.einsteinium": "Einsteinium",

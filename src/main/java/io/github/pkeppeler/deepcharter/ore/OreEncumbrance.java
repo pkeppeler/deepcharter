@@ -24,8 +24,9 @@ import net.minecraft.world.item.component.ItemContainerContents;
 public final class OreEncumbrance {
     private static final Identifier LOAD = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "ore_load");
 
-    /** The read mark that records the one-time line on a player's first ore (the player's {@code ReadMarks}). */
-    public static final Identifier FIRST_PICKUP_MARK = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "first_ore");
+    /** The read mark that records the one-time line on a player's first ore (the player's {@code ReadMarks}, which also holds one-time hints). */
+    public static final Identifier FIRST_PICKUP_MARK =
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hint/first_ore");
 
     private OreEncumbrance() {}
 
@@ -77,7 +78,8 @@ public final class OreEncumbrance {
             speed.addOrUpdateTransientModifier(
                     new AttributeModifier(LOAD, -slowdown, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         }
-        showStatus(player, slowdown);
+        // A pod carries its pilot at its own speed, so a rider is not slowed and the status would say otherwise.
+        showStatus(player, player.isPassenger() ? 0 : slowdown);
         if (mass > 0) {
             explainFirstOre(player);
         }

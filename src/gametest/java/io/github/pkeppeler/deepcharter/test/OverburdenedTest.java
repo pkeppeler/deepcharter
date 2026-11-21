@@ -10,6 +10,8 @@ import io.github.pkeppeler.deepcharter.ore.OreEncumbrance;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
@@ -152,6 +154,43 @@ public class OverburdenedTest {
                         modifiers);
             }
             helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theStatusIsHiddenWhileRidingAPodAndReturnsOnFoot(GameTestHelper helper) {
+        MockPlayer walker = MockPlayers.join(helper, "burden-rider");
+        ServerPlayer player = walker.player();
+        PodEntity pod = helper.spawn(PodRegistry.POD, 2, 2, 2);
+        player.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
+        int[] stage = {0};
+        int[] settled = {0};
+        TestTicks.each(helper, () -> {
+            boolean shown = player.getEffect(OreRegistry.OVERBURDENED) != null;
+            switch (stage[0]) {
+                case 0 -> {
+                    if (shown) {
+                        player.startRiding(pod, true, false);
+                        stage[0] = 1;
+                    }
+                }
+                case 1 -> {
+                    if (!shown && ++settled[0] >= SETTLE_TICKS) {
+                        player.stopRiding();
+                        stage[0] = 2;
+                    } else if (shown && settled[0] > 0) {
+                        walker.leave();
+                        throw failure(helper, "the status came back while riding a pod");
+                    }
+                }
+                default -> {
+                    if (shown) {
+                        pod.discard();
+                        walker.leave();
+                        helper.succeed();
+                    }
+                }
+            }
         });
     }
 
