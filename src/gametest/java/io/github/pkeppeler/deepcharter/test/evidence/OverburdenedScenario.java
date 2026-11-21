@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.ContainerScreenFields
 
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.test.support.ChatLines;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -42,8 +43,7 @@ public class OverburdenedScenario extends EvidenceScenario {
                     context,
                     "the status and the first-ore line on the client",
                     client -> ClientSession.player(client).hasEffect(OreRegistry.OVERBURDENED)
-                            && client.gui.hud.getChat().getRecentChat().stream()
-                                    .anyMatch(line -> line.contains("Ore is heavy")));
+                            && ChatLines.received(client).stream().anyMatch(line -> line.contains("Ore is heavy")));
             context.waitTicks(10); // tick-wait: the status icon and the chat line fade in over a few frames
             screenshot(context, "overburdened-hud");
             frame(context);
