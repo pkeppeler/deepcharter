@@ -405,9 +405,8 @@ def op_stripes(canvas: Canvas, layer: dict, ctx: Context) -> None:
 
 
 def op_ore(canvas: Canvas, layer: dict, ctx: Context) -> None:
-    """Mineral nodules: each a small seeded shape, shaded from a dark rim to a lit core, with one glint pixel at the top left. A nodule
-    wraps round the tile edges unless margin is set: then it and its halo keep that many pixels inside the tile, so a tile that has
-    no nodule across its edge shows no cut or ring there."""
+    """Mineral nodules: each a small seeded shape, shaded from a dark rim to a lit core, with one glint pixel at the top left. With margin,
+    a nodule keeps that many pixels off the tile edge instead of wrapping round it, so no nodule is cut by the seam."""
     ctx.need(layer, "seed", "count", "ramp")
     rim, dark, mid, light, glint = ctx.ramp(layer["ramp"])
     rng = Rng(layer["seed"])
@@ -425,7 +424,9 @@ def op_ore(canvas: Canvas, layer: dict, ctx: Context) -> None:
         halo = {((x + ex) % size, (y + ey) % size) for x, y in cells for ex in (-1, 0, 1) for ey in (-1, 0, 1)}
         if halo & taken:
             continue
-        if margin and not all(margin <= (ox + dx) < size - margin and margin <= (oy + dy) < size - margin for dy, row in enumerate(shape) for dx, ch in enumerate(row) if ch != "."):
+        reach = [(ox + dx, oy + dy) for dy, row in enumerate(shape) for dx, ch in enumerate(row) if ch != "."]
+        off_edge = all(margin <= x < size - margin and margin <= y < size - margin for x, y in reach)
+        if margin and not off_edge:
             continue
         taken |= halo
         placed += 1
@@ -716,9 +717,8 @@ def op_rings(canvas: Canvas, layer: dict, ctx: Context) -> None:
 
 def op_strata(canvas: Canvas, layer: dict, ctx: Context) -> None:
     """Horizontal rock beds: bands of the given ramp shades and thicknesses (summing to the texture size, so they tile), whose edges
-    wobble up and down by up to wobble pixels along a tiling seeded curve. The curve is seeded by curve (default seed), so textures
-    that give the same beds and curve have their band edges on the same rows in every column, and stripes line up between blocks.
-    Begin and end the beds in the same shade to put no band edge on the wrap seam."""
+    wobble up and down by up to wobble pixels along a tiling seeded curve. Textures that share beds and curve (a seed, default seed) have
+    their band edges on the same rows, so stripes line up between blocks."""
     ctx.need(layer, "beds", "seed", "wobble")
     size = ctx.size
     beds = [(ctx.colour(name), thickness) for name, thickness in layer["beds"]]
