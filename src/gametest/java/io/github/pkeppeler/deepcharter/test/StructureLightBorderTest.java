@@ -9,9 +9,9 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
-import io.github.pkeppeler.deepcharter.test.mixin.ChunkHolderAccess;
 import io.github.pkeppeler.deepcharter.test.support.BlockLightOracle;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.LightBroadcasts;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.ArrayList;
@@ -47,9 +47,11 @@ import org.jspecify.annotations.Nullable;
  * <ul>
  *   <li>the light the server stores in both chunks is the light of the blocks, which {@link BlockLightOracle} works out without the
  *       light engine;
- *   <li>if the light stored in {@code held} changed under the draw, {@code held} is marked for a light update to its clients. Vanilla
- *       marks a changed light section only while its chunk ticks ({@code ChunkHolder.sectionLightChanged}), so a client that was sent
- *       the chunk before the draw kept the old light: a lamp's spill missing, or the glow of a lava the draw sealed over still there.
+ *   <li>every section of {@code held} whose stored light changed under the draw is broadcast ({@code ChunkHolder.broadcastChanges}) while
+ *       {@code held} still does not tick. Vanilla marks a changed light section, and broadcasts it, only while its chunk ticks, so a
+ *       client that was sent the chunk before the draw kept the old light: a lamp's spill missing, or the glow of a lava the draw sealed
+ *       over still there. The test has no client: {@link LightBroadcasts} sees what the holder is about to send to the players that
+ *       hold the chunk.
  * </ul>
  */
 public class StructureLightBorderTest {
@@ -294,7 +296,11 @@ public class StructureLightBorderTest {
         int[] phase = {0};
         int[] waited = {0};
         int[][] before = {null};
+        boolean[] ended = {false};
         TestTicks.each(helper, () -> {
+            if (ended[0]) {
+                return;
+            }
             try {
                 if (!(settling[0].isDone() && !level.getLightEngine().hasLightWork())) {
                     if (settling[0].isDone()) {
@@ -325,6 +331,7 @@ public class StructureLightBorderTest {
                         phase[0] = 2;
                     }
                     case 2 -> {
+                        LightBroadcasts.watch(held);
                         inContext(placement, server, () -> {
                             tickets.load(drawn);
                             placement.withRing().forEach(tickets::load);
@@ -337,12 +344,19 @@ public class StructureLightBorderTest {
                         if (waited[0]++ < SETTLE_TICKS) {
                             return;
                         }
-                        compare(helper, level, placement, held, Objects.requireNonNull(before[0]), lamp, sent);
+                        try {
+                            compare(helper, level, placement, held, Objects.requireNonNull(before[0]), lamp, sent);
+                        } finally {
+                            LightBroadcasts.unwatch(held);
+                        }
+                        ended[0] = true;
                         tickets.releaseAll();
                         helper.succeed();
                     }
                 }
             } catch (RuntimeException e) {
+                ended[0] = true;
+                LightBroadcasts.unwatch(held);
                 tickets.releaseAll();
                 throw e;
             }
@@ -435,60 +449,58 @@ public class StructureLightBorderTest {
         int[] after = storedLight(level, held, placement);
         int rows = placement.maxY() - placement.minY() + 1;
         int changed = 0;
-        BitSet unmarked = new BitSet();
-        BitSet marked = ((ChunkHolderAccess) holder).deepcharter$blockChangedLightSectionFilter();
+        BitSet unsent = new BitSet();
+        BitSet sentSections = LightBroadcasts.sent(held);
         int minLightSection = level.getLightEngine().getMinLightSection();
         for (int i = 0; i < after.length; i++) {
             if (after[i] != before[i]) {
                 changed++;
                 int section = ((placement.minY() + i % rows) >> 4) - minLightSection;
-                if (!marked.get(section)) {
-                    unmarked.set(section);
+                if (!sentSections.get(section)) {
+                    unsent.set(section);
                 }
             }
         }
         if (changed == 0) {
             throw failure(helper, "%s: the draw changed no light in the held chunk, so the case proves nothing", where);
         }
-        if (!unmarked.isEmpty()) {
+        if (!unsent.isEmpty()) {
             throw failure(
                     helper,
-                    "%s: the block light stored in the held chunk changed in %d cells after it was sent, and nothing marks the sections %s (counted from the lowest light section) for a light update, so its clients keep the old light",
+                    "%s: the block light stored in the held chunk changed in %d cells after it was sent, and the sections %s (counted from the lowest light section) did not go out while the chunk did not tick, so its clients keep the old light",
                     where,
                     changed,
-                    unmarked);
+                    unsent);
         }
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aSeaLanternDrawnAfterItsNeighbourWentOutLeavesTheNeighbourMarkedForALightUpdate(GameTestHelper helper) {
+    public void aSeaLanternDrawnAfterItsNeighbourWentOutSendsTheNeighbourItsLight(GameTestHelper helper) {
         run(helper, Lamp.SEA_LANTERN, Sent.NEIGHBOUR);
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aKellsLavaDrawnAfterItsNeighbourWentOutLeavesTheNeighbourMarkedForALightUpdate(GameTestHelper helper) {
+    public void aKellsLavaDrawnAfterItsNeighbourWentOutSendsTheNeighbourItsLight(GameTestHelper helper) {
         run(helper, Lamp.KELLS_LAVA, Sent.NEIGHBOUR);
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aKellsLavaAtABorderLeavesTheLightRightWhenTheNeighbourIsGeneratedAfterIt(GameTestHelper helper) {
+    public void aKellsLavaAtABorderSendsTheLampChunkItsLightWhenTheNeighbourIsGeneratedAfterIt(GameTestHelper helper) {
         run(helper, Lamp.KELLS_LAVA, Sent.LAMP_CHUNK);
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aShaftCandleDrawnAfterItsNeighbourWentOutLeavesTheNeighbourMarkedForALightUpdate(
-            GameTestHelper helper) {
+    public void aShaftCandleDrawnAfterItsNeighbourWentOutSendsTheNeighbourItsLight(GameTestHelper helper) {
         run(helper, Lamp.CANDLE, Sent.NEIGHBOUR);
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void theFamousWrecksLanternDrawnAfterItsNeighbourWentOutLeavesTheNeighbourMarkedForALightUpdate(
-            GameTestHelper helper) {
+    public void theFamousWrecksLanternDrawnAfterItsNeighbourWentOutSendsTheNeighbourItsLight(GameTestHelper helper) {
         run(helper, Lamp.FAMOUS_LANTERN, Sent.NEIGHBOUR);
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void theFamousWrecksLanternAtABorderLeavesTheLightRightWhenTheNeighbourIsGeneratedAfterIt(
+    public void theFamousWrecksLanternAtABorderSendsTheLampChunkItsLightWhenTheNeighbourIsGeneratedAfterIt(
             GameTestHelper helper) {
         run(helper, Lamp.FAMOUS_LANTERN, Sent.LAMP_CHUNK);
     }
