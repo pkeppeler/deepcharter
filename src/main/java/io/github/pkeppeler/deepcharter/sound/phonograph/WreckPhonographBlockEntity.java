@@ -14,13 +14,13 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
 /**
- * What a wreck's phonograph is doing: playing its song or not, and when it was last spent ({@link WreckSongArming}). Only that time is saved;
+ * What a wreck's phonograph is doing: playing its song or not, and when it was last spent ({@link WreckSongArming}). Only the two times are saved;
  * a playback is not, since a restart cuts the sound off. A playback keeps its listeners, as the other phonographs' do, so a player who walks
  * into range hears it from the top, and its stop reaches only those it was sent to.
  */
 public final class WreckPhonographBlockEntity extends BlockEntity {
-    private final WreckSongArming arming =
-            new WreckSongArming(SoundTuning.DEFAULT.wreckSongRearmTicks(), WreckSongArming.NEVER);
+    private final WreckSongArming arming = new WreckSongArming(
+            SoundTuning.DEFAULT.wreckSongRearmTicks(), WreckSongArming.NEVER, WreckSongArming.NEVER);
     private boolean playing;
     private int ticksLeft;
     private Set<UUID> listeners = new HashSet<>();
@@ -86,9 +86,10 @@ public final class WreckPhonographBlockEntity extends BlockEntity {
         }
         boolean near = !PhonographSound.audience(server, pos, tuning.wreckSongTriggerRange())
                 .isEmpty();
-        long before = phonograph.arming.spentAt();
+        long spentBefore = phonograph.arming.spentAt();
+        long nearBefore = phonograph.arming.lastNearAt();
         boolean startNow = phonograph.arming.look(near, server.getGameTime());
-        if (phonograph.arming.spentAt() != before) {
+        if (phonograph.arming.spentAt() != spentBefore || phonograph.arming.lastNearAt() != nearBefore) {
             phonograph.setChanged();
         }
         if (startNow && !phonograph.playing) {
@@ -100,11 +101,14 @@ public final class WreckPhonographBlockEntity extends BlockEntity {
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
         output.putLong("spent_at", arming.spentAt());
+        output.putLong("last_near_at", arming.lastNearAt());
     }
 
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
-        arming.restore(input.getLongOr("spent_at", WreckSongArming.NEVER));
+        arming.restore(
+                input.getLongOr("spent_at", WreckSongArming.NEVER),
+                input.getLongOr("last_near_at", WreckSongArming.NEVER));
     }
 }
