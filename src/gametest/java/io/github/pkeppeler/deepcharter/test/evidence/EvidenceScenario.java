@@ -5,12 +5,14 @@ import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -169,6 +171,35 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     /** Take a named still screenshot. */
     protected final void screenshot(ClientGameTestContext context, String screenshotName) {
         shoot(context, screenshotName, screenshotsDir());
+    }
+
+    /**
+     * Takes a still named {@code screenshotName} and, beside it, {@code screenshotName-zoom}: the rectangle of it at ({@code x}, {@code y}) in GUI pixels,
+     * {@code width} by {@code height}, scaled up {@code scale} times with nearest-neighbour so each GUI pixel stays a sharp block.
+     */
+    protected final void screenshotZoom(
+            ClientGameTestContext context, String screenshotName, int x, int y, int width, int height, int scale) {
+        screenshot(context, screenshotName);
+        int guiScale = context.computeOnClient(client -> client.getWindow().getGuiScale());
+        try {
+            BufferedImage full = ImageIO.read(
+                    screenshotsDir().resolve(screenshotName + ".png").toFile());
+            BufferedImage crop = full.getSubimage(x * guiScale, y * guiScale, width * guiScale, height * guiScale);
+            int zoom = scale;
+            BufferedImage out =
+                    new BufferedImage(crop.getWidth() * zoom, crop.getHeight() * zoom, BufferedImage.TYPE_INT_ARGB);
+            for (int py = 0; py < out.getHeight(); py++) {
+                for (int px = 0; px < out.getWidth(); px++) {
+                    out.setRGB(px, py, crop.getRGB(px / zoom, py / zoom));
+                }
+            }
+            ImageIO.write(
+                    out,
+                    "png",
+                    screenshotsDir().resolve(screenshotName + "-zoom.png").toFile());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static void shoot(ClientGameTestContext context, String fileName, Path dir) {
