@@ -4,6 +4,7 @@ import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.HandBreak;
+import io.github.pkeppeler.deepcharter.layer.HandBreakCost;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -13,7 +14,11 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.IntConsumer;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
+import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -67,8 +72,24 @@ public class HandBreakTest {
     private static final int X_TOLD = 8700;
     private static final int X_FULL = 8800;
     private static final int X_MINING_SHATTERS = 8900;
+    private static final int X_GAS = 9000;
+    private static final int X_VETO = 9100;
+    private static final int X_ADVENTURE = 9200;
+    private static final int X_EARLY = 9300;
+    private static final int X_ABORT = 9400;
+    private static final int X_SWAP = 9500;
+    private static final int X_RESET = 9600;
     private static final int X_CAMPAIGN = 21800;
     private static final int FULL_RUN_TICKS = 1200;
+    /** A STOP this many ticks in is past the 0.7 of the break time that vanilla's check lets through. */
+    private static final int EARLY_STOP_TICKS = 850;
+
+    /** Positions a test has asked the veto listener below to refuse. A Fabric event cannot be unregistered. */
+    private static final Set<BlockPos> VETOED = ConcurrentHashMap.newKeySet();
+
+    static {
+        PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, blockEntity) -> !VETOED.contains(pos));
+    }
 
     /** A pod-only block of one kind in one layer, and the tool that bites it. */
     private record Kind(String name, int layer, BlockState state, Item bitingTool) {}
@@ -562,6 +583,210 @@ public class HandBreakTest {
         }
         if (!player.getMainHandItem().isEmpty()) {
             throw failure(helper, "the block did not cost the whole pick: %s", player.getMainHandItem());
+        }
+        helper.succeed();
+    }
+
+    private static void action(Rig rig, BlockPos pos, ServerboundPlayerActionPacket.Action action, int sequence) {
+        rig.player().gameMode.handleBlockBreakAction(pos, action, Direction.UP, 319, sequence);
+    }
+
+    /**
+     * Sends START on the first tick the chunk is entity-ticking, then calls {@code perTick} with the ticks mined so far on
+     * every tick after. The two test bodies run in no fixed order in a tick, so START is this body's own first tick.
+     */
+    private static void drive(GameTestHelper helper, Rig rig, BlockPos pos, IntConsumer perTick) {
+        boolean[] ready = {false};
+        int[] startedAt = {-1};
+        FarChunks.awaitEntityTicking(helper, rig.level, pos, () -> ready[0] = true);
+        TestTicks.each(helper, () -> {
+            if (!ready[0]) {
+                return;
+            }
+            if (startedAt[0] < 0) {
+                startedAt[0] = (int) helper.getTick();
+                action(rig, pos, ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, 0);
+                return;
+            }
+            perTick.accept((int) helper.getTick() - startedAt[0]);
+        });
+    }
+
+    /** A pocket mined by hand vents like any hand break: the hazard still bites, and brute force is no way round it. */
+    @GameTest
+    public void bruteForcingAGasPocketVentsIt(GameTestHelper helper) {
+        Rig rig = rig(helper, 2, X_GAS, "hb-gas");
+        BlockPos pocket = rig.cell(0);
+        BlockPos neighbour = pocket.east();
+        rig.level.setBlock(pocket, HazardBlocks.GAS_POCKET.defaultBlockState(), 3);
+        rig.level.setBlock(neighbour, Blocks.STONE.defaultBlockState(), 3);
+        hold(rig.player(), new ItemStack(Items.NETHERITE_PICKAXE));
+        if (!rig.player().gameMode.destroyBlock(pocket)
+                || !rig.level.getBlockState(pocket).isAir()) {
+            throw failure(helper, "the gas pocket did not break");
+        }
+        if (!rig.level.getBlockState(neighbour).isAir()) {
+            throw failure(helper, "the pocket did not vent: the rock beside it stands");
+        }
+        helper.succeed();
+    }
+
+    /** A listener's veto refuses the break, charges nothing and leaves the block, which the client is sent back. */
+    @GameTest
+    public void aVetoedBreakChargesNothingAndLeavesTheBlock(GameTestHelper helper) {
+        Rig rig = rig(helper, 2, X_VETO, "hb-veto");
+        BlockPos pos = rig.cell(0);
+        rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+        ItemStack pick = new ItemStack(Items.NETHERITE_PICKAXE);
+        hold(rig.player(), pick);
+        VETOED.add(pos);
+        if (rig.player().gameMode.destroyBlock(pos)
+                || !rig.level.getBlockState(pos).is(Blocks.STONE)) {
+            throw failure(helper, "a vetoed break went through");
+        }
+        if (pick.getDamageValue() != 0) {
+            throw failure(helper, "a vetoed break cost %d durability", pick.getDamageValue());
+        }
+        helper.succeed();
+    }
+
+    /** Vanilla's adventure-mode refusal still holds for a pick that bites: no break, no cost. */
+    @GameTest
+    public void anAdventurePlayerWithABitingPickBreaksNothing(GameTestHelper helper) {
+        Rig rig = rig(helper, 2, X_ADVENTURE, "hb-adventure");
+        BlockPos pos = rig.cell(0);
+        rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+        ItemStack pick = new ItemStack(Items.NETHERITE_PICKAXE);
+        hold(rig.player(), pick);
+        rig.player().setGameMode(GameType.ADVENTURE);
+        if (rig.player().gameMode.destroyBlock(pos)
+                || !rig.level.getBlockState(pos).is(Blocks.STONE)) {
+            throw failure(helper, "an adventure player broke deep rock with a netherite pick");
+        }
+        if (pick.getDamageValue() != 0) {
+            throw failure(helper, "a refused adventure break cost %d durability", pick.getDamageValue());
+        }
+        helper.succeed();
+    }
+
+    /** A STOP that comes before the break time is up, but past vanilla's 0.7, pays the rest of the cost and breaks the block. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + EARLY_STOP_TICKS + 200)
+    public void anEarlyStopPaysTheRemainderAndBreaksTheBlock(GameTestHelper helper) {
+        Rig rig = rig(helper, 2, X_EARLY, "hb-early");
+        BlockPos pos = rig.cell(0);
+        rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+        ItemStack pick = new ItemStack(Items.NETHERITE_PICKAXE);
+        hold(rig.player(), pick);
+        int expected = expectedCost(2, pick.getMaxDamage());
+        drive(helper, rig, pos, mined -> {
+            if (mined < EARLY_STOP_TICKS) {
+                if (!rig.level.getBlockState(pos).is(Blocks.STONE)) {
+                    throw failure(helper, "the block went after %d ticks of mining", mined);
+                }
+                return;
+            }
+            action(rig, pos, ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, 1);
+            if (!rig.level.getBlockState(pos).isAir()) {
+                throw failure(helper, "a STOP after %d ticks did not break the block", mined);
+            }
+            if (pick.getDamageValue() != expected) {
+                throw failure(helper, "an early STOP cost %d durability, expected %d", pick.getDamageValue(), expected);
+            }
+            helper.succeed();
+        });
+    }
+
+    /** Stopping and starting again throws away the count: what the first swing spent is wasted, and the block costs its whole price again. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FULL_RUN_TICKS + 400)
+    public void abortingAndStartingAgainWastesWhatWasSpent(GameTestHelper helper) {
+        Rig rig = rig(helper, 2, X_ABORT, "hb-abort");
+        BlockPos pos = rig.cell(0);
+        rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+        ItemStack pick = new ItemStack(Items.NETHERITE_PICKAXE);
+        hold(rig.player(), pick);
+        int expected = expectedCost(2, pick.getMaxDamage());
+        int restartAt = 100;
+        int[] wasted = {-1};
+        drive(helper, rig, pos, mined -> {
+            if (mined == restartAt) {
+                wasted[0] = pick.getDamageValue();
+                if (wasted[0] <= 0) {
+                    throw failure(helper, "100 ticks of mining spent nothing");
+                }
+                action(rig, pos, ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, 1);
+                action(rig, pos, ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, 2);
+            } else if (mined == restartAt + FULL_RUN_TICKS) {
+                action(rig, pos, ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, 3);
+                if (!rig.level.getBlockState(pos).isAir()) {
+                    throw failure(helper, "the block is still there after a whole run since the restart");
+                }
+                if (pick.getDamageValue() != wasted[0] + expected) {
+                    throw failure(
+                            helper,
+                            "the pick took %d damage, expected the %d wasted plus the block's %d",
+                            pick.getDamageValue(),
+                            wasted[0],
+                            expected);
+                }
+                helper.succeed();
+            }
+        });
+    }
+
+    /** Swapping the pick for one that cannot bite stops the spending and the progress; the pick put away keeps what it spent. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+    public void swappingToAToolThatCannotBiteStopsTheSpending(GameTestHelper helper) {
+        Rig rig = rig(helper, 2, X_SWAP, "hb-swap");
+        BlockPos pos = rig.cell(0);
+        rig.level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+        ItemStack pick = new ItemStack(Items.NETHERITE_PICKAXE);
+        ItemStack iron = new ItemStack(Items.IRON_PICKAXE);
+        hold(rig.player(), pick);
+        int[] spent = {-1};
+        drive(helper, rig, pos, mined -> {
+            if (mined == 100) {
+                spent[0] = pick.getDamageValue();
+                hold(rig.player(), iron);
+            } else if (mined == 140) {
+                if (pick.getDamageValue() != spent[0] || iron.getDamageValue() != 0) {
+                    throw failure(
+                            helper,
+                            "the damage moved after the swap: pick %d (was %d), iron %d",
+                            pick.getDamageValue(),
+                            spent[0],
+                            iron.getDamageValue());
+                }
+                action(rig, pos, ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, 1);
+                if (!rig.level.getBlockState(pos).is(Blocks.STONE)) {
+                    throw failure(helper, "an iron pick finished a block the netherite pick began");
+                }
+                helper.succeed();
+            }
+        });
+    }
+
+    /** The mining count starts again on a block that is not pod-only, and a tool that cannot bite leaves it where it was. */
+    @GameTest
+    public void theCountResetsOnAnOrdinaryBlockAndWaitsForATool(GameTestHelper helper) {
+        Rig rig = rig(helper, 2, X_RESET, "hb-reset");
+        BlockPos podOnly = rig.cell(0);
+        BlockPos ordinary = rig.cell(1);
+        rig.level.setBlock(podOnly, Blocks.STONE.defaultBlockState(), 3);
+        rig.level.setBlock(ordinary, Blocks.DIRT.defaultBlockState(), 3);
+        hold(rig.player(), new ItemStack(Items.NETHERITE_PICKAXE));
+        int onOrdinary = HandBreakCost.grind(rig.player(), rig.level, ordinary, Direction.UP, 77);
+        if (onOrdinary != 0) {
+            throw failure(helper, "the count after an ordinary block is %d, expected 0", onOrdinary);
+        }
+        hold(rig.player(), new ItemStack(Items.IRON_PICKAXE));
+        int withIron = HandBreakCost.grind(rig.player(), rig.level, podOnly, Direction.UP, 77);
+        if (withIron != 77) {
+            throw failure(helper, "the count with a tool that cannot bite is %d, expected 77", withIron);
+        }
+        hold(rig.player(), new ItemStack(Items.NETHERITE_PICKAXE));
+        int withNetherite = HandBreakCost.grind(rig.player(), rig.level, podOnly, Direction.UP, 77);
+        if (withNetherite != 78) {
+            throw failure(helper, "the count with a tool that bites is %d, expected 78", withNetherite);
         }
         helper.succeed();
     }

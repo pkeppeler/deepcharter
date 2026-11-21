@@ -15,5 +15,6 @@ public final class LayerClientRegistry {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> BreachEffects.reset());
         BreachHud.init();
         BreachVoidCover.init();
+        HandBreakClient.init();
     }
 }

@@ -18,6 +18,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.SwingAnimation;
@@ -38,19 +39,21 @@ public class HandBreakClientTest implements FabricClientGameTest {
 
     private static final int CLUMSY_TICKS = 160;
     private static final int SETTLE_TICKS = 40;
+    /** The pick left with 100 points shatters in about 55 ticks of mining; the rest is the client going on with none. */
+    private static final int SHATTER_TICKS = 200;
 
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
-            BlockPos target = prepare(two);
+            BlockPos target = prepare(two, 1, X);
             context.getInput().lookAt(target);
 
             // A tool that cannot bite: the swing refuses on the client, and the block stays on both sides.
             hold(two, new ItemStack(Items.IRON_PICKAXE));
             mine(context, target, CLUMSY_TICKS, false);
             require(clientHolds(context, target), "an iron pick broke the crust on the client");
-            require(serverHolds(two, target), "an iron pick broke the crust on the server");
+            require(serverHolds(two, 1, target), "an iron pick broke the crust on the server");
 
             // A pick that bites: the client's prediction and the server's check agree.
             hold(two, new ItemStack(Items.DIAMOND_PICKAXE));
@@ -62,25 +65,46 @@ public class HandBreakClientTest implements FabricClientGameTest {
                         !clientHolds(context, target),
                         "the crust came back on the client after it broke (a ghost break)");
             }
-            require(!serverHolds(two, target), "the client broke the crust but the server still has it");
+            require(!serverHolds(two, 1, target), "the client broke the crust but the server still has it");
             context.takeScreenshot("hand-break-crust-gone");
+
+            // A pick that cannot pay the cost shatters while the client is still mining, so the client never predicts
+            // the
+            // break: the block holds on both sides, and nothing comes back.
+            BlockPos deep = prepare(two, 2, X + 40);
+            context.getInput().lookAt(deep);
+            hold(two, damaged(Items.NETHERITE_PICKAXE, 100));
+            mine(context, deep, SHATTER_TICKS, false);
+            require(clientHolds(context, deep), "a pick that could not pay broke the crust on the client");
+            require(serverHolds(two, 2, deep), "a pick that could not pay broke the crust on the server");
+            require(
+                    two.server()
+                            .computeOnServer(server ->
+                                    realPlayer(server).getMainHandItem().isEmpty()),
+                    "the pick that could not pay did not shatter");
         }
     }
 
-    /** A room in layer 1 with a crust block in front of the real player, who holds nothing yet. Returns the crust's position. */
-    private static BlockPos prepare(TwoPlayerServer two) {
+    /** A room in {@code layer} at column {@code x} with a crust block in front of the real player, who holds nothing yet. Returns the crust's position. */
+    private static BlockPos prepare(TwoPlayerServer two, int layer, int x) {
         return two.server().computeOnServer(server -> {
-            ServerLevel level = TestLayers.level(server, 1);
-            BlockPos floor = TestLayers.pos(1, X, 80, Z);
-            RoomCarver.carve(level, X - 4, X + 4, floor.getY() - 3, floor.getY(), Z - 5, Z + 5, Blocks.STONE);
-            RoomCarver.carve(level, X - 4, X + 4, floor.getY() + 1, floor.getY() + 6, Z - 5, Z + 5, Blocks.AIR);
+            ServerLevel level = TestLayers.level(server, layer);
+            BlockPos floor = TestLayers.pos(layer, x, 80, Z);
+            RoomCarver.carve(level, x - 4, x + 4, floor.getY() - 3, floor.getY(), Z - 5, Z + 5, Blocks.STONE);
+            RoomCarver.carve(level, x - 4, x + 4, floor.getY() + 1, floor.getY() + 6, Z - 5, Z + 5, Blocks.AIR);
             BlockPos target = floor.offset(0, 2, -2);
             level.setBlock(target, LayerBlocks.BREACH_CRUST.defaultBlockState(), Block.UPDATE_ALL);
             ServerPlayer player = realPlayer(server);
             player.setGameMode(GameType.SURVIVAL);
-            player.teleportTo(level, X + 0.5, floor.getY() + 1, Z + 0.5, Set.of(), 0, 0, true);
+            player.teleportTo(level, x + 0.5, floor.getY() + 1, Z + 0.5, Set.of(), 0, 0, true);
             return target;
         });
+    }
+
+    private static ItemStack damaged(Item item, int pointsLeft) {
+        ItemStack stack = new ItemStack(item);
+        stack.setDamageValue(stack.getMaxDamage() - pointsLeft);
+        return stack;
     }
 
     private static void hold(TwoPlayerServer two, ItemStack stack) {
@@ -118,10 +142,10 @@ public class HandBreakClientTest implements FabricClientGameTest {
         });
     }
 
-    private static boolean serverHolds(TwoPlayerServer two, BlockPos target) {
+    private static boolean serverHolds(TwoPlayerServer two, int layer, BlockPos target) {
         return two.server()
                 .computeOnServer(server ->
-                        TestLayers.level(server, 1).getBlockState(target).is(LayerBlocks.BREACH_CRUST));
+                        TestLayers.level(server, layer).getBlockState(target).is(LayerBlocks.BREACH_CRUST));
     }
 
     /** The real client's player, who joined before the mock ({@link TwoPlayerServer} joins the mock beside the first). */

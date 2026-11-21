@@ -1,15 +1,19 @@
 package io.github.pkeppeler.deepcharter.layer;
 
+import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.stats.Stats;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
@@ -21,8 +25,9 @@ import net.minecraft.world.phys.Vec3;
  * <p>A block costs {@code share(layer) * maxDamage} points. The tool is damaged directly, by
  * {@link ItemStack#setDamageValue}, and never by {@code hurtAndBreak}: that is the path Unbreaking reduces. Mending
  * repairs from experience and never touches the cost. The cost is spread evenly over the first {@code breakTicks - 1}
- * ticks of mining; the break pays what is left, so a block always ends on a paid cost and a pick that would have to
- * give more than it has shatters on the way, or at the break, and the block stays.
+ * ticks of mining, all but its last point; the break pays what is left, so a pick that would have to give more than it
+ * has shatters on the way, before the client predicts a break, and the block stays. A break that comes early (a short
+ * stop) pays the rest in one go.
  */
 public final class HandBreakCost {
     private HandBreakCost() {}
@@ -58,10 +63,20 @@ public final class HandBreakCost {
 
     /**
      * Breaks a pod-only block for a player who has been mining it for {@code mined} ticks: refused for a tool that does
-     * not bite, or one without the durability left to pay, which shatters. The block goes without a drop, a pulverised
-     * block, so brute force is never an ore exploit. Creative players never come here.
+     * not bite, one whose block a {@code PlayerBlockBreakEvents.BEFORE} listener vetoes (nothing is charged), or one
+     * without the durability left to pay, which shatters. The block goes without a drop, a pulverised block, so brute
+     * force is never an ore exploit, but with the events a hand break fires, so a gas pocket still vents and protection
+     * mods still veto. Creative players never come here. A refusal sends the client the block back, so it shows no ghost.
      */
     public static boolean breakByHand(ServerPlayer player, ServerLevel level, BlockPos pos, int mined) {
+        boolean broken = tryBreak(player, level, pos, mined);
+        if (!broken) {
+            player.connection.send(new ClientboundBlockUpdatePacket(pos, level.getBlockState(pos)));
+        }
+        return broken;
+    }
+
+    private static boolean tryBreak(ServerPlayer player, ServerLevel level, BlockPos pos, int mined) {
         // Vanilla's own refusals in destroyBlock, which this replaces for a pod-only block: adventure mode and the
         // like.
         if (player.blockActionRestricted(level, pos, player.gameMode.getGameModeForPlayer())) {
@@ -72,16 +87,27 @@ public final class HandBreakCost {
         if (!HandBreak.bites(tool, layer)) {
             return false;
         }
+        BlockState state = level.getBlockState(pos);
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (!PlayerBlockBreakEvents.BEFORE.invoker().beforeBlockBreak(level, player, pos, state, blockEntity)) {
+            PlayerBlockBreakEvents.CANCELED.invoker().onBlockBreakCanceled(level, player, pos, state, blockEntity);
+            return false;
+        }
         int total = totalCost(tool, layer);
-        int due = total
-                - spentBy(total, Math.min(mined, LayerTuning.DEFAULT.handBreak().breakTicks() - 1));
+        int due = total - spentBy(total, mined);
         // A pick that has just enough is used up by the block and the block still goes; one with less shatters first.
         boolean enough = tool.getDamageValue() + due <= tool.getMaxDamage();
         spend(player, tool, due);
         if (!enough) {
             return false;
         }
-        return level.destroyBlock(pos, false, player, 512);
+        BlockState broken = state.getBlock().playerWillDestroy(level, pos, state, player);
+        if (!level.removeBlock(pos, false)) {
+            return false;
+        }
+        state.getBlock().destroy(level, pos, broken);
+        PlayerBlockBreakEvents.AFTER.invoker().afterBlockBreak(level, player, pos, state, blockEntity);
+        return true;
     }
 
     /** The durability one block of {@code layer} costs this tool. */
@@ -89,9 +115,14 @@ public final class HandBreakCost {
         return (int) Math.round(LayerTuning.DEFAULT.handBreak().shareFor(layer) * tool.getMaxDamage());
     }
 
-    /** The points of {@code total} spent after {@code ticks} ticks of mining, evenly. */
+    /**
+     * The points of {@code total} spent after {@code ticks} ticks of mining, evenly over the first {@code breakTicks - 1}
+     * and all but the last point, which the break takes: a pick that can pay the whole cost survives the mining with one
+     * point to spare, and one that cannot shatters while the client is still mining, before it predicts a break.
+     */
     private static int spentBy(int total, int ticks) {
-        return (int) ((long) total * ticks / LayerTuning.DEFAULT.handBreak().breakTicks());
+        int span = LayerTuning.DEFAULT.handBreak().breakTicks() - 1;
+        return (int) ((long) Math.max(total - 1, 0) * Math.min(ticks, span) / span);
     }
 
     /** Damages {@code tool} by {@code amount} directly, and shatters it, as vanilla does, when the damage reaches its maximum. */
@@ -107,6 +138,7 @@ public final class HandBreakCost {
         ItemStack broken = tool.copy();
         tool.shrink(1);
         player.onEquippedItemBroken(broken, EquipmentSlot.MAINHAND);
+        player.awardStat(Stats.ITEM_BROKEN.get(broken.getItem()));
     }
 
     private static void effects(

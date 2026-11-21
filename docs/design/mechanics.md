@@ -1716,7 +1716,7 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 - A fresh netherite pick pays for 1 deep block (layer 3) or about 1.1 (layer 2). A diamond pick pays for 1.3 blocks of layer 1.
 - Stopping early wastes what was spent; Mending cannot refund it and Unbreaking cannot lower it.
 - It makes the default build marginally easier: a diamond pick can now pass Company rock in layer 1, which no tool could before. That is fine: a block costs 75% of a diamond pick, so a straight shaft by hand is far dearer than the charges of [Company Rock and the straight shaft](#company-rock-and-the-straight-shaft-509-a).
-- Drops are never given, so brute force is not an ore exploit.
+- Drops are never given, so brute force is not an ore exploit. The break still fires the hand-break events, so (A) brute-forcing a gas pocket vents it and the hazard still bites; a protection mod's veto refuses the break and charges nothing.
 
 **Knobs (`HandBreakTuning` in `LayerTuning`).** `breakTicks` (1200), `shares` (0.75, 0.9, 1.0), `tools` (the tags `deepcharter:hand_break/layer_1` and `.../layer_2_and_deeper`), `sparkTicks` (4), `soundTicks` (10), `messageTicks` (40).
 

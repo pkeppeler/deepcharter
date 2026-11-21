@@ -23,7 +23,10 @@ public final class HazardBlocks {
     /** What a pod drill refuses to bore, whatever its hardness. It is pod-only for a hand tool too ({@code HandBreak}). */
     public static final TagKey<Block> UNDIGGABLE = tag("undiggable");
 
-    /** Hardness -1, so a hand makes no progress but through the pod-only rule ({@code HandBreak}); a drill refuses it, through {@link #UNDIGGABLE}, by a drill. Its look follows its layer and a blast ({@link CompanyRockBlock}). */
+    /**
+     * Hardness -1, so a hand makes no progress but through the pod-only rule ({@code HandBreak}), and a drill refuses it through
+     * {@link #UNDIGGABLE}. Its look follows its layer and a blast ({@link CompanyRockBlock}).
+     */
     public static final Block COMPANY_ROCK = registerBlock(
             id("company_rock"),
             key -> new CompanyRockBlock(BlockBehaviour.Properties.of()

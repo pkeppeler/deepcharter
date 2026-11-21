@@ -39,21 +39,24 @@ public final class HandBreak {
             TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "deep_rock"));
 
     private static final String FIRST_TRY_KEY = "deepcharter.layer.pod_only.first_try";
-    private static final String CANNOT_BITE_KEY = "deepcharter.layer.pod_only.cannot_bite";
+    /** The line for a tool that cannot bite; the client says it too, for a swing it refuses before the server hears of it. */
+    public static final String CANNOT_BITE_KEY = "deepcharter.layer.pod_only.cannot_bite";
 
-    /**
-     * Players already told, for this session and not saved: the server forgets one on disconnect. An integrated server
-     * shares it with the client in the same JVM, which is harmless: one line either way.
-     */
-    private static final Set<UUID> TOLD = ConcurrentHashMap.newKeySet();
+    /** Players the server has told each line, for this session and not saved: it forgets one on disconnect. */
+    private static final Set<UUID> TOLD_FIRST_TRY = ConcurrentHashMap.newKeySet();
+
+    private static final Set<UUID> TOLD_CANNOT_BITE = ConcurrentHashMap.newKeySet();
 
     private HandBreak() {}
 
     public static void init() {
-        // Both sides: the client's refusal starts no crack for a tool that cannot bite, the server's is the backstop.
+        // The server's refusal of a swing that cannot bite is the backstop; the client refuses it first, in
+        // HandBreakClient, so no crack starts.
         AttackBlockCallback.EVENT.register(HandBreak::onSwing);
-        ServerPlayConnectionEvents.DISCONNECT.register(
-                (handler, server) -> TOLD.remove(handler.getPlayer().getUUID()));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            TOLD_FIRST_TRY.remove(handler.getPlayer().getUUID());
+            TOLD_CANNOT_BITE.remove(handler.getPlayer().getUUID());
+        });
     }
 
     /**
@@ -75,9 +78,16 @@ public final class HandBreak {
     /**
      * The layer a block counts as, which sets what bites it and what it costs. The crust counts as the layer whose floor it
      * is. Unbuilt depth of the campaign world counts as the layer below the last one built; the surface and a level
-     * outside the chain count as layer 1.
+     * outside the chain (the Nether, the End, a dimension type given inline) count as layer 1. It never throws.
      */
     public static int layerOf(Level level, BlockPos pos) {
+        // A dimension type a data pack gives inline has no key, which LayerChain rejects: such a level is outside the
+        // chain.
+        if (!level.dimension().equals(Level.OVERWORLD)
+                && !LayerChain.isCampaign(level)
+                && level.dimensionTypeRegistration().unwrapKey().isEmpty()) {
+            return 1;
+        }
         return LayerChain.layerAt(level, pos.getY())
                 .map(Band::layer)
                 .orElseGet(() -> unbuiltDepth(level, pos) ? CampaignBands.lastLayer() + 1 : 1);
@@ -106,22 +116,15 @@ public final class HandBreak {
 
     private static InteractionResult onSwing(
             Player player, Level level, InteractionHand hand, BlockPos pos, Direction direction) {
-        if (!governs(player, level, pos, level.getBlockState(pos))) {
+        // The client decides for itself (HandBreakClient): its swing is only ever sent when the tool bites.
+        if (level.isClientSide() || !governs(player, level, pos, level.getBlockState(pos))) {
             return InteractionResult.PASS;
         }
         boolean bites = bites(player.getMainHandItem(), layerOf(level, pos));
-        // A client that refuses a swing never tells the server, so it tells the player itself. A tool that bites goes
-        // on
-        // to the server, which tells.
-        if (!bites || !level.isClientSide()) {
-            tellOnce(player, bites);
-        }
-        return bites ? InteractionResult.PASS : InteractionResult.FAIL;
-    }
-
-    private static void tellOnce(Player player, boolean bites) {
-        if (TOLD.add(player.getUUID())) {
+        Set<UUID> told = bites ? TOLD_FIRST_TRY : TOLD_CANNOT_BITE;
+        if (told.add(player.getUUID())) {
             player.sendSystemMessage(Component.translatable(bites ? FIRST_TRY_KEY : CANNOT_BITE_KEY));
         }
+        return bites ? InteractionResult.PASS : InteractionResult.FAIL;
     }
 }
