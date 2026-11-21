@@ -51,7 +51,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.BiomeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -102,7 +101,10 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
 
     private static final ResourceKey<WorldPreset> NETHER_LIGHT_PRESET = ResourceKey.create(
             Registries.WORLD_PRESET, Identifier.fromNamespaceAndPath("deepcharter", "nether_light_surface"));
-    /** The mesa is the closest badlands biome; the search is vanilla's {@code /locate biome} one. */
+    /** The surface's mesa biome: the mesa of the stills is the closest one, found as {@code /locate biome} finds it. */
+    private static final ResourceKey<Biome> MESA =
+            ResourceKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath("deepcharter", "mesa_country"));
+
     private static final int MESA_SEARCH_RADIUS = 6_400;
 
     private static final int MESA_SEARCH_HSTEP = 32;
@@ -357,17 +359,13 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         }
     }
 
-    /** The top of the ground at the middle of the closest badlands biome to {@code from}, found as {@code /locate biome} finds one. */
+    /** The top of the ground at the middle of the closest mesa_country biome to {@code from}, found as {@code /locate biome} finds one. */
     private static BlockPos closestMesa(MinecraftServer server, BlockPos from) {
         ServerLevel level = TestLayers.level(server, TestLayers.SURFACE);
         Pair<BlockPos, Holder<Biome>> found = level.findClosestBiome3d(
-                biome -> biome.is(BiomeTags.IS_BADLANDS),
-                from,
-                MESA_SEARCH_RADIUS,
-                MESA_SEARCH_HSTEP,
-                MESA_SEARCH_VSTEP);
+                biome -> biome.is(MESA), from, MESA_SEARCH_RADIUS, MESA_SEARCH_HSTEP, MESA_SEARCH_VSTEP);
         if (found == null) {
-            throw new AssertionError("no badlands biome within " + MESA_SEARCH_RADIUS + " blocks of " + from);
+            throw new AssertionError("no mesa_country biome within " + MESA_SEARCH_RADIUS + " blocks of " + from);
         }
         BlockPos at = found.getFirst();
         return new BlockPos(

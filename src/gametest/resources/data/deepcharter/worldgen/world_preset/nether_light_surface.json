@@ -3,10 +3,131 @@
     "minecraft:overworld": {
       "generator": {
         "biome_source": {
-          "preset": "minecraft:overworld",
+          "biomes": [
+            {
+              "biome": "deepcharter:regolith_plains",
+              "parameters": {
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "erosion": [
+                  -2.0,
+                  0.5
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0,
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ]
+              }
+            },
+            {
+              "biome": "deepcharter:mesa_country",
+              "parameters": {
+                "continentalness": [
+                  0.22,
+                  2.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0,
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ]
+              }
+            },
+            {
+              "biome": "deepcharter:basalt_field",
+              "parameters": {
+                "continentalness": [
+                  -2.0,
+                  0.22
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "erosion": [
+                  0.5,
+                  2.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0,
+                "temperature": [
+                  -1.0,
+                  0.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ]
+              }
+            },
+            {
+              "biome": "deepcharter:salvage_yard",
+              "parameters": {
+                "continentalness": [
+                  -2.0,
+                  2.0
+                ],
+                "depth": [
+                  -1.0,
+                  1.0
+                ],
+                "erosion": [
+                  -1.0,
+                  1.0
+                ],
+                "humidity": [
+                  -1.0,
+                  1.0
+                ],
+                "offset": 0.0,
+                "temperature": [
+                  0.5,
+                  1.0
+                ],
+                "weirdness": [
+                  -1.0,
+                  1.0
+                ]
+              }
+            }
+          ],
           "type": "minecraft:multi_noise"
         },
-        "settings": "minecraft:overworld",
+        "settings": "deepcharter:surface",
         "type": "minecraft:noise"
       },
       "type": "deepcharter:overworld_nether_light"
