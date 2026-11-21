@@ -184,6 +184,13 @@ The story stays in Transmissions and Notes.
 
 Implementation: [ADR 0005](adr/0005-build-our-own-handbook.md); research in [research/handbook-build-vs-reuse.md](research/handbook-build-vs-reuse.md).
 
+### Parts catalogue
+
+Our own EMI-style viewer, styled as a Company parts catalogue ([ADR 0066](adr/0066-we-build-our-own-parts-catalogue-and-the-server-sends-each-player-only-their-charters-known-recipes.md)). It sits beside inventory screens. R on a hovered item shows its recipes, U its uses. It has search, favourites and a "craftable now" filter. Vanilla's recipe book is hidden.
+
+- A recipe is **known** per charter. It becomes known when a quest step that asks for its item becomes current, or when anyone in the charter obtains the item or one of its ingredients. Vanilla items follow the same rule.
+- Unknown recipes still craft. The server sends each player only their charter's known recipes.
+
 ## 6. Charters
 
 - The employer issues charters. At the colony's contract terminal a player either:
@@ -407,10 +414,3 @@ Surface, repairing the colony, the Mole, the onboarding handbook (implied by the
 - A trimming tool for chunks nobody visits, if world size becomes a problem.
 - Exact "couple of component tiers" cadence for catalysts, and which layer supplies which catalyst. Names proposed in [LORE.md](LORE.md#6-motifs).
 - Exact component tier caps per chassis.
-
-### Parts catalogue
-
-Our own EMI-style viewer, styled as a Company parts catalogue ([ADR 0066](adr/0066-we-build-our-own-parts-catalogue-and-the-server-sends-each-player-only-their-charters-known-recipes.md)). It sits beside inventory screens. R on a hovered item shows its recipes, U its uses. It has search, favourites and a "craftable now" filter. Vanilla's recipe book is hidden.
-
-- A recipe is **known** per charter. It becomes known when a quest step that asks for its item becomes current, or when anyone in the charter obtains the item or one of its ingredients. Vanilla items follow the same rule.
-- Unknown recipes still craft. The server sends each player only their charter's known recipes.
