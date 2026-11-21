@@ -53,6 +53,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         context.runOnClient(client -> {
             theMapShowsTheStepsTheCardAndTheRoadAhead();
+            theNextChapterShowsFaintStepsWhenTheyFit();
             nothingBeyondTheNextChapterIsReadable();
             chapterTabsOpenTheirChapterMaps();
             aClassifiedChapterKeepsItsRedactedPage();
@@ -208,13 +209,38 @@ public class QuestMapClientTest implements FabricClientGameTest {
                 texts.contains(Component.translatable("deepcharter.handbook.quest.ahead", 2, "Title 2")
                         .getString()),
                 "the next chapter is named under the flowchart: " + texts);
-        for (int n = 1; n <= 3; n++) {
-            require(texts.contains("Do thing 2." + n), "the next chapter's step " + n + " shows, in faint ink");
-        }
         require(
                 texts.contains(Component.translatable("deepcharter.handbook.chapter.stamp.classified")
                         .getString()),
                 "the redaction bars carry the CLASSIFIED stamp");
+    }
+
+    /**
+     * Where the sheet has room the next chapter's steps show too, in faint ink with no checkbox. Chapter 1 of the fixture above has a
+     * three-line margin note and no room for them (it keeps the next chapter's title only), so this is chapter 2 of the shipped step
+     * counts, whose next chapter fits whole.
+     */
+    private static void theNextChapterShowsFaintStepsWhenTheyFit() {
+        Map<Identifier, HandbookChapter> chapters = shippedLike();
+        List<HandbookPage> pages = HandbookPages.of(chapters, doneBefore(chapters, 2));
+        HandbookScreen screen = new HandbookScreen(pages, id -> true, id -> {}, List.of(), new HandbookMemory());
+        screen.init(WIDTH, HEIGHT);
+        for (int index = 0; index < pages.size(); index++) {
+            if (pages.get(index) instanceof HandbookPage.Chapter map && map.number() == 2) {
+                screen.goTo(index);
+            }
+        }
+        settle(screen);
+        List<String> texts = texts(screen);
+        for (int n = 1; n <= 2; n++) {
+            String step = "Do thing 3." + n;
+            require(
+                    texts.stream().anyMatch(text -> text.startsWith(step)),
+                    "the next chapter's step " + n + " shows when it fits: " + texts);
+            require(
+                    texts.stream().noneMatch(text -> text.startsWith("[") && text.contains(step)),
+                    "the next chapter's steps carry no checkbox: " + texts);
+        }
     }
 
     private static void nothingBeyondTheNextChapterIsReadable() {
