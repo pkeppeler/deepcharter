@@ -597,31 +597,29 @@ public class GrainedCrustTest {
         pad(level, x);
         MockPlayer walker = MockPlayers.join(helper, "grain-warned");
         walker.player().setGameMode(GameType.SURVIVAL);
-        walker.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 0.5), 0f, 0f);
         MockPlayer bystander = MockPlayers.join(helper, "grain-bystander");
         bystander.player().setGameMode(GameType.SURVIVAL);
-        // Far out of earshot of the walker's creak, in no crust at all.
-        bystander.teleportTo(level, new Vec3(x + 200, FLOOR, Z + 0.5), 0f, 0f);
-        Arrival<Boolean> ready = ready(helper, level, x);
+        // The walker goes in once the far chunk ticks, not at the start: the grain squeezes a player in a loaded chunk,
+        // and in the tall
+        // world the chunk takes longer than a pulse to tick, so a walker put in at the start was dead before the test
+        // watched.
+        Arrival<Boolean> ready = new Arrival<>("the room", "the far chunk ticks");
+        FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            walker.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 0.5), 0f, 0f);
+            // Far out of earshot of the walker's creak, in no crust at all.
+            bystander.teleportTo(level, new Vec3(x + 200, FLOOR, Z + 0.5), 0f, 0f);
+            ready.set(true);
+        });
         int period = TUNING.grainPulseTicks();
         int warnAt = period - WARN_TICKS;
         int[] cues = {0};
         int[] seen = {0};
-        boolean[] watching = {false};
         TestTicks.each(helper, () -> {
             if (!ready.isPresent()) {
                 return;
             }
             int heard =
                     (int) walker.soundsHeard().stream().filter(WARNING::equals).count();
-            if (!watching[0]) {
-                // The walker stands by the grain from the start, and the pad may take longer than a pulse to be ready
-                // in the
-                // tall world: a cue heard before this tick came at a phase nobody was watching.
-                watching[0] = true;
-                seen[0] = heard;
-                return;
-            }
             if (heard > seen[0]) {
                 // A mock reads its sounds on its own tick, so a cue is seen a tick or two late.
                 long phase = level.getGameTime() % period;
