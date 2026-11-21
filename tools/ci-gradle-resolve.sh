@@ -32,4 +32,4 @@ modules="${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2"
 echo "::warning::Dependency verification failed on the restored Gradle cache. Clearing $modules and resolving once more with --refresh-dependencies (#830)."
 ./gradlew --stop >/dev/null 2>&1 || true
 rm -rf "$modules"
-exec ./gradlew --refresh-dependencies "$@"
+./gradlew --refresh-dependencies "$@"

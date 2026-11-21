@@ -27,12 +27,13 @@ runs:
         cache-read-only: false
     # A restored Gradle home can be broken: its module metadata points at dependency files that
     # were never restored, so verification fails and the failed run saves the broken state again
-    # (#830). This resolves everything the run needs first and, on a dependency-verification
+    # (#830). This resolves everything the run needs first (the compile classpaths through `classes`,
+    # the run's runtime classpaths through resolveClientGameTestRuntime) and, on a dependency-verification
     # failure only, clears the module cache and retries once with --refresh-dependencies. It is
-    # the same compile the client run would do, moved ahead of it, so a healthy run pays nothing.
+    # work the client run would do anyway, moved ahead of it, so a healthy run costs about nothing.
     - name: Resolve dependencies
       shell: bash
-      run: tools/ci-gradle-resolve.sh classes
+      run: tools/ci-gradle-resolve.sh classes resolveClientGameTestRuntime
     - shell: bash
       run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri
     # One backend, not a matrix, to save minutes. `version` is the data version that

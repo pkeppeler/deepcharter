@@ -35,13 +35,17 @@ check() { # check <description> <expected> <actual>
   if [[ $2 == "$3" ]]; then echo "ok   $1"; else echo "FAIL $1: expected [$2] got [$3]"; failures=$((failures + 1)); fi
 }
 
-# run <first> <retry>: prints "<exit status>|<gradlew calls, joined>|<modules-2 left: yes/no>"
+# run <first> <retry> [ARGS...]: prints "<exit status>|<gradlew calls, joined>|<modules-2 left: yes/no>" and
+# leaves the script's output in $work/out-<first>-<retry>. ARGS default to "classes".
 run() {
-  export STUB_FIRST=$1 STUB_RETRY=$2 STUB_CALLS=$work/calls GRADLE_USER_HOME=$work/home
+  local first=$1 retry=$2
+  shift 2
+  [[ $# -gt 0 ]] || set -- classes
+  export STUB_FIRST=$first STUB_RETRY=$retry STUB_CALLS=$work/calls GRADLE_USER_HOME=$work/home
   : >"$STUB_CALLS"
   mkdir -p "$GRADLE_USER_HOME/caches/modules-2"
   local status=0
-  (cd "$work" && bash "$tools/ci-gradle-resolve.sh" classes >"$work/out" 2>&1) || status=$?
+  (cd "$work" && bash "$tools/ci-gradle-resolve.sh" "$@" >"$work/out-$first-$retry" 2>&1) || status=$?
   local left=no
   [[ ! -d $GRADLE_USER_HOME/caches/modules-2 ]] || left=yes
   echo "$status|$(paste -sd ';' "$STUB_CALLS")|$left"
@@ -50,10 +54,13 @@ run() {
 check "clean run: no retry, cache kept" "0|gradlew classes|yes" "$(run ok ok)"
 check "verification failure: cache cleared, one refresh retry, passes" \
   "0|gradlew classes;gradlew --stop;gradlew --refresh-dependencies classes|no" "$(run verify ok)"
-grep -q '::warning::Dependency verification failed' "$work/out" || {
+grep -q '::warning::Dependency verification failed' "$work/out-verify-ok" || {
   echo "FAIL the retry is not logged"
   failures=$((failures + 1))
 }
+check "retry puts --refresh-dependencies before the caller's arguments and keeps them all" \
+  "0|gradlew classes resolveClientGameTestRuntime;gradlew --stop;gradlew --refresh-dependencies classes resolveClientGameTestRuntime|no" \
+  "$(run verify ok classes resolveClientGameTestRuntime)"
 check "second verification failure: fails, no third run" \
   "1|gradlew classes;gradlew --stop;gradlew --refresh-dependencies classes|no" "$(run verify verify)"
 check "other failure: its status, no retry, cache kept" "3|gradlew classes|yes" "$(run other ok)"

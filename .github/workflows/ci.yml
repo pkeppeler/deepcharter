@@ -36,7 +36,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           cache-read-only: false
-      - run: ./gradlew build
+      # First Gradle call: retries once if the restored cache fails dependency verification (#830).
+      - run: tools/ci-gradle-resolve.sh build
       - name: gate checks on fixtures
         run: tools/py tools/tests/gate_checks.py
       # The client run tasks never run on Linux. A dry run with the lock forced on still checks that
