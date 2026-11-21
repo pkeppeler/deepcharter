@@ -67,7 +67,7 @@ final class ChassisChecks {
     static final int TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1500;
     private static final AtomicInteger OWNERS = new AtomicInteger();
     private static final int Z = 9000;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int RADIUS = 7;
     private static final int ROOM_HEIGHT = 16;
     private static final float EAST = -90f;

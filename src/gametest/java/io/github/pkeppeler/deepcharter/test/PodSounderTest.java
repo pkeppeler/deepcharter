@@ -59,7 +59,7 @@ import org.jspecify.annotations.Nullable;
 public class PodSounderTest {
     private static final AtomicInteger OWNERS = new AtomicInteger();
     private static final int Z = 3600;
-    private static final int FLOOR = 14;
+    private static final int FLOOR = TestLayers.worldY(1, 14);
     private static final int RADIUS = 6;
     private static final int SETTLE_TICKS = 6;
     private static final int DRILL_TICKS = 400;

@@ -60,7 +60,7 @@ public class PodLinerTest {
     private static final AtomicInteger OWNERS = new AtomicInteger();
 
     private static final int Z = 3416;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int RADIUS = 4;
     private static final int PLENTY = 200;
     private static final int DRILL_TICKS = 2600;

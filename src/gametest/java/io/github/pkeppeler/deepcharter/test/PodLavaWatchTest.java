@@ -51,7 +51,7 @@ public class PodLavaWatchTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(PodLavaWatchTest.class);
     private static final AtomicInteger OWNERS = new AtomicInteger();
     private static final int Z = 5400;
-    private static final int FLOOR = 14;
+    private static final int FLOOR = TestLayers.worldY(1, 14);
     /** Cells of the pod's box, from its feet up. */
     private static final int BOX = 3;
     /** Air cells above the pod's feet in the shaft. */
