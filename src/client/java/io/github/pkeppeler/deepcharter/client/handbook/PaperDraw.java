@@ -118,6 +118,15 @@ final class PaperDraw {
         return lineY + font.lineHeight + 3;
     }
 
+    /** The faint ruled lines of a slip of paper spanning {@code left} to {@code right}: one every rule spacing from {@code top} to short of {@code bottom}. */
+    static void ruledLines(GuiGraphicsExtractor graphics, int left, int right, int top, int bottom) {
+        HandbookScreenTuning t = HandbookScreenTuning.current();
+        int rule = Colors.withAlpha(t.paperEdgeColor(), t.ruleAlpha());
+        for (int y = top; y < bottom; y += t.ruleSpacing()) {
+            graphics.fill(left + 1, y, right - 1, y + 1, rule);
+        }
+    }
+
     /** One pixel. */
     private static void pixel(GuiGraphicsExtractor graphics, int x, int y, int color) {
         graphics.fill(x, y, x + 1, y + 1, color);

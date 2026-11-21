@@ -147,9 +147,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
     private static int firstPage(int chapter) {
         List<HandbookPage> pages = pages();
         for (int index = 0; index < pages.size(); index++) {
-            HandbookPage page = pages.get(index);
-            if ((page instanceof HandbookPage.ChapterText text && text.number() == chapter)
-                    || (page instanceof HandbookPage.Chapter map && map.number() == chapter)) {
+            if (HandbookPage.chapterNumber(pages.get(index)) == chapter) {
                 return index;
             }
         }
@@ -456,15 +454,6 @@ public class QuestMapClientTest implements FabricClientGameTest {
         return chapters;
     }
 
-    private static String plain(net.minecraft.util.FormattedCharSequence line) {
-        StringBuilder text = new StringBuilder();
-        line.accept((index, style, codePoint) -> {
-            text.appendCodePoint(codePoint);
-            return true;
-        });
-        return text.toString();
-    }
-
     /**
      * Whatever chapter the player is on, at the default window the whole map is on the sheet: the layout leaves no pixel short, the
      * stamp and every line of the margin note are drawn at full height (a string the scissor cuts is drawn shorter, or not at all), and
@@ -512,7 +501,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
             for (var line : font.split(
                     Component.translatable(HandbookScreen.marginKey(id)),
                     QuestMapTuning.current().noteWidth())) {
-                whole.add(plain(line));
+                whole.add(DrawnText.plain(line));
             }
             for (String line : whole) {
                 require(

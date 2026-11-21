@@ -460,7 +460,7 @@ public final class HandbookScreen extends Screen {
         built.back().active = !notesTab && page > 0;
         built.next().active = notesTab || page < pages.size() - 1;
         built.noteBack().visible = notesTab && openNote != null;
-        int chapter = notesTab ? 0 : chapterOfPage(page);
+        int chapter = notesTab ? 0 : HandbookPage.chapterNumber(pages.get(page));
         for (int i = 0; i < built.chapterTabs().size(); i++) {
             PaperButton tab = built.chapterTabs().get(i);
             HandbookPage.Chapter entry = chapters.get(i + 1);
@@ -832,15 +832,6 @@ public final class HandbookScreen extends Screen {
         }
     }
 
-    /** The chapter a page belongs to, its text or its map, or 0 for any other page. */
-    private int chapterOfPage(int pageIndex) {
-        return switch (pages.get(pageIndex)) {
-            case HandbookPage.ChapterText text -> text.number();
-            case HandbookPage.Chapter chapter -> chapter.number();
-            default -> 0;
-        };
-    }
-
     private int chapterNumberAt(int pageIndex) {
         return switch (pages.get(pageIndex)) {
             case HandbookPage.ChapterText text -> text.number();
@@ -960,6 +951,10 @@ public final class HandbookScreen extends Screen {
                 : 0;
     }
 
+    private String seePageLink(HandbookPage.Chapter chapter) {
+        return I18n.get("deepcharter.handbook.quest.see_page", firstPageOf(chapter) + 1);
+    }
+
     private QuestMap.Card indexCard(HandbookPage.Chapter chapter) {
         HandbookChapter.Entry step = QuestMap.shown(chapter, memory.view(chapter.number()));
         return QuestMap.card(
@@ -968,14 +963,14 @@ public final class HandbookScreen extends Screen {
                 chapter.chapter().directives().indexOf(step) + 1,
                 paperLeft + paperWidth,
                 paperTop,
-                I18n.get("deepcharter.handbook.quest.see_page", firstPageOf(chapter) + 1),
+                seePageLink(chapter),
                 chapter.completed().contains(step.id()),
                 this::heldItems);
     }
 
     // test-seam: the number the first impression rests on, which no drawn text shows: how many pixels of the sheet a
-    // chapter's map
-    // leaves unused (negative when it would overflow). The fits test holds it at 0 or more for every shipped chapter
+    // chapter's map leaves unused (negative when it would overflow). The fits test holds it at 0 or more for every
+    // shipped chapter
     public int mapSpareHeight(int chapterNumber) {
         HandbookPage.Chapter chapter = Objects.requireNonNull(
                 chapters.get(chapterNumber), () -> "chapter " + chapterNumber + " has no chapter page");
@@ -1051,13 +1046,7 @@ public final class HandbookScreen extends Screen {
         if (full) {
             HandbookChapter.Entry step = QuestMap.shown(chapter, view);
             QuestMap.Card card = indexCard(chapter);
-            QuestMap.drawCard(
-                    graphics,
-                    font,
-                    card,
-                    step,
-                    tr("quest.step", card.stepNumber()),
-                    I18n.get("deepcharter.handbook.quest.see_page", firstPageOf(chapter) + 1));
+            QuestMap.drawCard(graphics, font, card, step, tr("quest.step", card.stepNumber()), seePageLink(chapter));
         }
     }
 

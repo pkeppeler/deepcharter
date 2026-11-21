@@ -497,10 +497,8 @@ final class QuestMap {
         int shadow = t.shadowOffset();
         graphics.fill(box.x() + shadow, box.y() + shadow, box.right() + shadow, box.bottom() + shadow, t.shadowColor());
         graphics.fill(box.x(), box.y(), box.right(), box.bottom(), t.paperColor());
-        int rule = Colors.withAlpha(t.paperEdgeColor(), t.ruleAlpha());
-        for (int y = box.y() + q.cardRuleTop(); y < box.bottom() - q.cardRuleBottom(); y += t.ruleSpacing()) {
-            graphics.fill(box.x() + 1, y, box.right() - 1, y + 1, rule);
-        }
+        PaperDraw.ruledLines(
+                graphics, box.x(), box.right(), box.y() + q.cardRuleTop(), box.bottom() - q.cardRuleBottom());
         PaperDraw.border(graphics, box.x(), box.y(), box.right(), box.bottom(), Colors.opaque(t.paperEdgeColor()));
         graphics.text(
                 font,

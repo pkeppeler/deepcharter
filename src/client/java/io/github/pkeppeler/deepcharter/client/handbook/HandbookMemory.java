@@ -21,11 +21,7 @@ public final class HandbookMemory {
     /** Remembers {@code page} as the one the book was left on. */
     void remember(HandbookPage page) {
         this.page = key(page);
-        this.chapter = switch (page) {
-            case HandbookPage.ChapterText text -> text.number();
-            case HandbookPage.Chapter map -> map.number();
-            default -> 0;
-        };
+        this.chapter = HandbookPage.chapterNumber(page);
     }
 
     /**

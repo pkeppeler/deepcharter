@@ -66,10 +66,7 @@ final class StepToast implements Toast {
         int w = width();
         int h = height();
         graphics.fill(0, 0, w, h, t.paperColor());
-        int rule = Colors.withAlpha(t.paperEdgeColor(), t.ruleAlpha());
-        for (int y = q.cardRuleTop(); y < h - q.cardRuleBottom(); y += t.ruleSpacing()) {
-            graphics.fill(1, y, w - 1, y + 1, rule);
-        }
+        PaperDraw.ruledLines(graphics, 0, w, q.cardRuleTop(), h - q.cardRuleBottom());
         graphics.fill(0, 0, t.bindingWidth() / 2, h, t.bindingColor());
         PaperDraw.border(graphics, 0, 0, w, h, Colors.opaque(t.paperEdgeColor()));
         int left = t.bindingWidth() / 2 + q.toastInset();
