@@ -27,4 +27,13 @@ check "no changed paths skips" false 0
 check "label overrides docs-only" true 1 docs/a.md
 check "label with no paths runs" true 1
 
+bad_arg() { # bad_arg <description> [arg]...: the script exits 2 with a usage message
+  local rc=0 err
+  err=$(echo src/main/x | "$script" "$@" 2>&1 >/dev/null) || rc=$?
+  if [[ $rc -eq 2 && $err == usage:* ]]; then echo "ok   $1"; else echo "FAIL $1: rc=$rc [$err]"; fail=1; fi
+}
+bad_arg "no argument exits 2"
+bad_arg "non-flag argument exits 2" yes
+bad_arg "flag 2 exits 2" 2
+
 exit "$fail"

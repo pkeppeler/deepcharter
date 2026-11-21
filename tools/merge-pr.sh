@@ -212,6 +212,17 @@ check_demo
 check_map_change
 check_map_fresh
 
+# A PR whose changed paths (a rename's old path too) or `gameplay` label make tools/ci-client-needed.sh print
+# true needs a passing `client-gametest` run: a PR pushed while draft can end with only skipped CI on its head,
+# and would otherwise merge with no client run (#885). $checks holds the newest non-skipped verdict per name.
+gameplay_flag=0
+has_label gameplay && gameplay_flag=1
+client_needed=$(cut -f2,3 <<<"$pr_files" | tr '\t' '\n' | tools/ci-client-needed.sh "$gameplay_flag") \
+  || refuse "could not decide whether the client suite is needed"
+if [[ $client_needed == true ]] && ! grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then
+  refuse "changes game code or is labelled gameplay but has no passing client-gametest run on $sha (a draft push or a skipped run does not count): push or re-run CI" # pipe-grep-q: fail-closed
+fi
+
 # Read the closing set again: a body edit may have reached GitHub's parse after the first read.
 checked_closes=$closes
 closing_set

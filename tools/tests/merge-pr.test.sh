@@ -206,12 +206,13 @@ files() {
 # fake runs report each one as succeeding, plus an unrelated skipped one.
 required=$(sed -n 's/^REQUIRED_CHECKS=(\(.*\))$/\1/p' "$script")
 [[ -n $required ]] || { echo "cannot read REQUIRED_CHECKS from $script" >&2; exit 1; }
-default_specs=(docs:1:skipped)
+default_specs=(docs:1:skipped client-gametest:3:success)
 skipped_required_specs=(docs:1:skipped)
 for name in $required; do
   default_specs+=("$name:2:success")
   skipped_required_specs+=("$name:2:skipped")
 done
+skipped_required_specs+=(client-gametest:3:skipped)
 DEFAULT_RUNS=$(runs "${default_specs[@]}")
 export DEFAULT_RUNS
 
@@ -448,6 +449,41 @@ exited "non-game PR with demo label and media merges" 0
 run_script "STUB_FILES=$(files modified:tools/merge-pr.sh added:src/test/java/T.java added:src/mainly/x.java)"
 exited "non-game files need no demo" 0
 
+# Client-suite gate: when the changed paths (a rename's old path too) or the `gameplay` label make
+# tools/ci-client-needed.sh print true, `client-gametest` needs a non-skipped passing run on the head sha.
+req_pass=$(printf '%s:2:success ' $required)
+client_msg="changes game code or is labelled gameplay but has no passing client-gametest run"
+cg_labels="infra${nl}review-passed${nl}no-demo"
+cg_body="Closes #12${nl}No demo: x"
+# client_args <runs> <files> [labels]: the STUB_* arguments shared by the client-gate cases.
+client_args() { client_vars=("STUB_RUNS=$1" "STUB_FILES=$2" "STUB_LABELS=${3-$cg_labels}" "STUB_BODY=$cg_body"); }
+docs_files=$(files modified:README.md added:tools/x.sh)
+# shellcheck disable=SC2086 # $req_pass is a word list
+client_args "$(runs $req_pass)" "$game"
+refusal "game path, no client run" "$client_msg" "${client_vars[@]}"
+client_args "$(runs $req_pass client-gametest:3:skipped)" "$game"
+refusal "game path, client run only skipped" "$client_msg" "${client_vars[@]}"
+client_args "$(runs $req_pass client-gametest:3:failure)" "$game"
+refusal "game path, client run failed" "client-gametest (newest non-skipped run: failure)" "${client_vars[@]}"
+client_args "$(runs $req_pass client-gametest:3:success client-gametest:4:skipped)" "$game"
+run_script "${client_vars[@]}"
+exited "game path, client passed then skipped later merges" 0
+client_args "$(runs $req_pass client-gametest:3:skipped)" "$docs_files"
+run_script "${client_vars[@]}"
+exited "docs/tools-only, client skipped merges" 0
+client_args "$(runs $req_pass)" "$docs_files"
+run_script "${client_vars[@]}"
+exited "docs/tools-only, no client run merges" 0
+client_args "$(runs $req_pass client-gametest:3:success)" "$(files modified:README.md)" "$cg_labels${nl}gameplay"
+run_script "${client_vars[@]}" "STUB_BODY=$cg_body${nl}No map change: x"
+exited "gameplay label, client passed merges" 0
+client_args "$(runs $req_pass)" "$(files modified:README.md)" "$cg_labels${nl}gameplay"
+refusal "gameplay label, no client run" "$client_msg" "${client_vars[@]}" "STUB_BODY=$cg_body${nl}No map change: x"
+client_args "$(runs $req_pass)" "$(files renamed:docs/Foo.java:src/main/java/Foo.java)"
+refusal "rename into game path, no client run" "$client_msg" "${client_vars[@]}"
+client_args "$(runs $req_pass)" "$(files renamed:docs/Foo.java:src/main/java/Foo.java | awk -F'\t' -v OFS='\t' '{print $1, $3, $2}')"
+refusal "rename out of game path, no client run" "$client_msg" "${client_vars[@]}"
+
 # Map gate (#510): a `gameplay` PR must change docs/feature-map/map.json or carry a `No map change: <reason>` body line.
 gameplay_labels="infra${nl}review-passed${nl}gameplay"
 refusal "gameplay PR with no map change" "does not change docs/feature-map/map.json" "STUB_LABELS=$gameplay_labels"
@@ -535,7 +571,7 @@ exited "runs as ./merge-pr.sh from tools/" 0
 # script has no override seam).
 mkdir "$work/tools"
 cp -R "$tools/lib" "$work/tools/lib"
-cp "$tools/py" "$tools/closing_refs.py" "$work/tools/"
+cp "$tools/py" "$tools/closing_refs.py" "$tools/ci-client-needed.sh" "$work/tools/"
 cp "$tools/../.python-version" "$work/.python-version"
 sed 's/^REQUIRED_CHECKS=(.*)$/REQUIRED_CHECKS=(build lint)/' "$script" >"$work/tools/merge-pr.sh"
 grep -q 'REQUIRED_CHECKS=(build lint)' "$work/tools/merge-pr.sh" || fail "required-checks copy was not patched"
