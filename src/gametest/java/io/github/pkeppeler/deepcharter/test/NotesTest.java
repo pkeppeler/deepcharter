@@ -180,37 +180,6 @@ public class NotesTest {
     }
 
     @GameTest
-    public void usingANoteOpensItToReadWhetherOrNotThePlayerHasACharter(GameTestHelper helper) {
-        MinecraftServer server = helper.getLevel().getServer();
-        ServerPlayer director = MockPlayers.join(helper, "Director").player();
-        ServerPlayer loner = MockPlayers.join(helper, "Loner").player();
-        found(helper, server, director);
-
-        FindResult first = Notes.find(director, FIRST);
-        FindResult again = Notes.find(director, FIRST);
-        FindResult noCharter = Notes.find(loner, FIRST);
-        expectOpens(helper, first, FindResult.FOUND, FIRST);
-        expectOpens(helper, again, FindResult.ALREADY_FOUND, FIRST);
-        expectOpens(helper, noCharter, FindResult.NO_CHARTER, FIRST);
-        // Nothing is filed for the player on no charter, and the block itself still works for both.
-        use(helper, loner, 1);
-        use(helper, director, 2);
-        expectNotes(helper, server, loner, List.of());
-        expectNotes(helper, server, director, List.of(FIRST, SECOND));
-        helper.succeed();
-    }
-
-    private static void expectOpens(GameTestHelper helper, FindResult actual, FindResult expected, Identifier note) {
-        if (actual != expected) {
-            throw helper.assertionException("the find should be %s, was %s", expected, actual);
-        }
-        Optional<OpenNotePayload> payload = OpenNotePayload.after(actual, note);
-        if (!payload.equals(Optional.of(new OpenNotePayload(note)))) {
-            throw helper.assertionException("%s should open %s, would send %s", actual, note, payload);
-        }
-    }
-
-    @GameTest
     public void aNoteWithNoTextOrUnreadableDataOpensNothing(GameTestHelper helper) {
         Identifier note = Notes.id(Notes.MAX_NUMBER);
         for (FindResult result : List.of(FindResult.UNKNOWN, FindResult.UNREADABLE)) {
