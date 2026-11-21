@@ -33,10 +33,11 @@ addVmArgToRun("gameTest", gameTestHeap)
 // Client GameTest heap. It had none (a quarter of RAM: 4 GB on the 16 GB runner), and the first client run on the campaign overworld
 // (#803) died of OutOfMemoryError while a client test's world was saving on stop, 52 classes in. Every default-preset world is now
 // the 2352-tall campaign world, whose chunks hold six times the sections of the old surface's, and the integrated server and the client
-// each hold the chunks in view. 6G was a guess; the run logs its collections (-Xlog:gc, build/client-gc.log) and the client-gametest
-// action prints the peak and the live set from it, so the figure below comes from a run, not a guess. A Mac with two client slots
-// (DEEPCHARTER_CLIENT_SLOTS, default 2) holds two of these JVMs beside the browser and the editor: the heap of two plus about 1.5 GB
-// of native memory each must stay well under its 16 GB.
+// each hold the chunks in view. The run logs its collections (-Xlog:gc, build/client-gc.log) and the client-gametest action prints the
+// peak and the live set from it. Measured 2026-11-21 (CI, 4 vCPU, 16 GB, the suite as far as OutpostClientTest or PartTooltipClientTest;
+// two runs): the heap peaks at 4.96 and 5.12 GB before a collection and the live set at 4.30 to 4.36 GB, with no Full GC. 6G is 17% over
+// the higher peak; re-measure when the suite grows by a tenth, and raise it if the peak passes 5.4 GB. Two of these JVMs plus 1.5 GB of
+// native memory each do not fit a 16 GB Mac: run the suite there with DEEPCHARTER_CLIENT_SLOTS=1 (tests.md, Client slots).
 val clientGameTestHeap = "-Xmx6G"
 addVmArgToRun("clientGameTest", clientGameTestHeap)
 addVmArgToRun("clientGameTest", "-Xlog:gc:file=" + layout.buildDirectory.file("client-gc.log").get().asFile.path + ":uptime")

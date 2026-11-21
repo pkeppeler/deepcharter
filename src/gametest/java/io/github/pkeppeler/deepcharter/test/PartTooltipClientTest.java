@@ -44,8 +44,10 @@ public class PartTooltipClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "both parts in the client's inventory",
-                    client -> !stackAt(client, LABELLED_SLOT).isEmpty()
-                            && !stackAt(client, UNLABELLED_SLOT).isEmpty());
+                    // Not "non-empty": a new player's starting tins (ColonyRations) fill the first slots until the
+                    // server's set arrives.
+                    client -> stackAt(client, LABELLED_SLOT).is(ComponentItems.item(ComponentTrack.HULL))
+                            && stackAt(client, UNLABELLED_SLOT).is(ComponentItems.item(ComponentTrack.HULL)));
             ItemStack labelled = context.computeOnClient(client -> stackAt(client, LABELLED_SLOT));
             ItemStack unlabelled = context.computeOnClient(client -> stackAt(client, UNLABELLED_SLOT));
             String name = unlabelled.getHoverName().getString();
