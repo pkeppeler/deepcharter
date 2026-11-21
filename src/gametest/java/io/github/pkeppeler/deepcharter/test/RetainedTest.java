@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.QUIET;
 
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
@@ -109,8 +110,6 @@ public class RetainedTest {
     private static final String APPROACH_KEY = "creature.deepcharter.approach";
     private static final String BITTEN_KEY = "creature.deepcharter.bitten";
     private static final String DEAD_KEY = "creature.deepcharter.dead";
-    /** Ticks for the light of a block to spread through a sealed room, or to go out of it: slow on a loaded runner. */
-    private static final int LIGHT_BUDGET_TICKS = 200;
 
     private static final AtomicInteger CHARTERS = new AtomicInteger();
 
@@ -938,7 +937,7 @@ public class RetainedTest {
      * and in the overworld (where the colony and the hangar stand), the Nether and the End it may not appear at all. The light takes a few
      * ticks to spread, so the test waits for it, in three phases: dark, lit, dark again.
      */
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+    @GameTest(environment = QUIET, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aFigureMayAppearInTheDarkOfLayersOneAndTwoAndNowhereElse(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         // The two layers are bands of one level: each has its own room, at the same height over its floor.
@@ -1073,19 +1072,18 @@ public class RetainedTest {
      * What the game's spawner asks of a figure it tries to place: the roll passes about {@code chancePerTry} of the tries, no try passes beside a
      * light, and a figure made by a command is never refused.
      */
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+    @GameTest(environment = QUIET, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theGamesOwnSpawnerRollsRareAndOnlyWhereTheRulesAllow(GameTestHelper helper) {
         ServerLevel two = TestLayers.level(helper.getLevel().getServer(), 2);
         BlockPos column = TestLayers.pos(2, 7272, 128, 7208);
         LamplessFigure[] figure = {null};
         int[] phase = {0};
-        int[] since = {0};
         int tries = 4000;
+        FarChunks.Deadline[] lightDeadline = {FarChunks.deadline()};
         TestTicks.each(helper, () -> {
             if (figure[0] == null) {
                 return;
             }
-            since[0]++;
             if (phase[0] == 0) {
                 LamplessFigures.clearRespawnDelays();
                 int rolled = 0;
@@ -1108,7 +1106,7 @@ public class RetainedTest {
                         "a figure made by a command was refused");
                 two.setBlock(column.above(), light(15), 3);
                 phase[0] = 1;
-                since[0] = 0;
+                lightDeadline[0] = FarChunks.deadline();
             } else if (two.getBrightness(LightLayer.BLOCK, column) >= TUNING.litBlockLight()) {
                 for (int i = 0; i < tries; i++) {
                     expect(
@@ -1120,10 +1118,13 @@ public class RetainedTest {
                 two.setBlock(column.above(), Blocks.AIR.defaultBlockState(), 3);
                 helper.succeed();
             } else {
-                expect(
+                // Wall-clock, as the test above waits: the light engine works off the server thread, and its queue is
+                // shared with every test of the batch that builds in the level.
+                lightDeadline[0].await(
                         helper,
-                        since[0] < LIGHT_BUDGET_TICKS,
-                        "the light of level 15 did not reach the room in " + LIGHT_BUDGET_TICKS + " ticks");
+                        two,
+                        false,
+                        () -> "the light of level 15 did not reach the room in " + FarChunks.WAIT_SECONDS + " s");
             }
         });
         FarChunks.awaitEntityTicking(helper, two, column, () -> {

@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.QUIET;
+
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -73,7 +75,7 @@ public class RoomCarverSendTest {
         });
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = QUIET, maxTicks = MAX_TICKS)
     public void aPlayerWhoArrivesDuringTheHoldIsSentTheRoomOfLayerOne(GameTestHelper helper) {
         carveThenArrive(
                 helper,
@@ -82,7 +84,7 @@ public class RoomCarverSendTest {
                 new BlockPos(6400 + 10, TestLayers.worldY(1, LOCAL_FLOOR) + 4, 6400 + 10));
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = QUIET, maxTicks = MAX_TICKS)
     public void aPlayerWhoArrivesDuringTheHoldIsSentARoomAcrossFourChunksOfLayerTwo(GameTestHelper helper) {
         carveThenArrive(
                 helper,
@@ -92,7 +94,7 @@ public class RoomCarverSendTest {
     }
 
     /** A player who has the chunk before the carve gets block updates, not the chunk again: a resend to everyone would pass the tests above. */
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = QUIET, maxTicks = MAX_TICKS)
     public void aPlayerWhoHadTheChunkBeforeTheCarveIsNotSentItAgain(GameTestHelper helper) {
         int layer = 1;
         BlockPos min = new BlockPos(6800 + 4, TestLayers.worldY(1, LOCAL_FLOOR), 6800 + 4);

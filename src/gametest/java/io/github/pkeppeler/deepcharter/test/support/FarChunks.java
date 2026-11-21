@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntConsumer;
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -117,12 +118,29 @@ public final class FarChunks {
         }
     }
 
-    /** A wall-clock limit for one wait. */
-    public static final class Deadline {
-        private final long endNanos;
+    /**
+     * The most that one server tick adds to a {@link Deadline#await} wait. A batch of 50 tests starts in one tick, and each test's first tick
+     * builds its room and generates its chunks of the tall world on the server thread (1 to 5 s apiece), so a waiter's first tick can last a
+     * minute and a deadline of 30 s runs out before the light engine or the sweep of a hold had a second tick (#803: {@code RoomCarverSendTest}
+     * took 34 s over 3 ticks). Time that ticks spent past this is other tests' work, and is not counted.
+     */
+    private static final long MAX_COUNTED_TICK_NANOS = 1_000_000_000L;
 
-        private Deadline(int seconds) {
-            endNanos = System.nanoTime() + seconds * 1_000_000_000L;
+    /**
+     * A wall-clock limit for one wait. For {@link #await}, which a test calls once for each waiting tick, a tick longer than
+     * one second counts as one second: a deadline of N seconds is N seconds of ticks that ran at pace, and a
+     * hung wait still fails (after N ticks, at the worst).
+     */
+    public static final class Deadline {
+        private final LongSupplier clock;
+        private long endNanos;
+        /** When {@link #await} last ran, or the deadline began. Server thread only. */
+        private long lastNanos;
+
+        private Deadline(int seconds, LongSupplier clock) {
+            this.clock = clock;
+            lastNanos = clock.getAsLong();
+            endNanos = lastNanos + seconds * 1_000_000_000L;
         }
 
         /**
@@ -137,7 +155,7 @@ public final class FarChunks {
 
         /** Whether the {@link #WAIT_SECONDS} have passed. For a waiter with no {@code GameTestHelper}, such as a client scenario. */
         public boolean expired() {
-            return System.nanoTime() - endNanos > 0;
+            return clock.getAsLong() - endNanos > 0;
         }
 
         private static String timeout(ChunkPos chunk, ServerLevel level, Awaited awaited) {
@@ -150,8 +168,14 @@ public final class FarChunks {
          * the test with {@code failure} once {@link #WAIT_SECONDS} have passed. The message is built only then.
          */
         public void await(GameTestHelper helper, ServerLevel level, boolean settled, Supplier<String> failure) {
+            long now = clock.getAsLong();
+            long tickNanos = now - lastNanos;
+            lastNanos = now;
             if (settled) {
                 return;
+            }
+            if (tickNanos > MAX_COUNTED_TICK_NANOS) {
+                endNanos += tickNanos - MAX_COUNTED_TICK_NANOS;
             }
             if (expired()) {
                 throw helper.assertionException(
@@ -173,12 +197,17 @@ public final class FarChunks {
 
     /** Starts the clock for {@link Deadline#awaitUnloaded}. */
     public static Deadline deadline() {
-        return new Deadline(WAIT_SECONDS);
+        return deadline(WAIT_SECONDS);
     }
 
     /** A clock for a wait longer than {@link #WAIT_SECONDS}, such as a world load. */
     public static Deadline deadline(int seconds) {
-        return new Deadline(seconds);
+        return new Deadline(seconds, System::nanoTime);
+    }
+
+    /** As {@link #deadline(int)} on the given clock (nanoseconds), so {@link FarChunksTest} can stall a tick without waiting. */
+    public static Deadline deadline(int seconds, LongSupplier clock) {
+        return new Deadline(seconds, clock);
     }
 
     /**

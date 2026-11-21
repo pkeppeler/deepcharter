@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
+import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.QUIET;
 
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
@@ -589,7 +590,7 @@ public class GrainedCrustTest {
         });
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = QUIET, maxTicks = MAX_TICKS)
     public void aWarningCreakComesBeforeEachPulseToWhatWouldBeSqueezed(GameTestHelper helper) {
         int x = 5080;
         ServerLevel level = room(helper, x);

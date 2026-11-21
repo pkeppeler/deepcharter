@@ -14,4 +14,12 @@ public final class TestEnvironments {
      * each other. A heavy test keeps its dimension.
      */
     public static final String HEAVY = "deepcharter-test:heavy";
+
+    /**
+     * For a test whose wait depends on the server ticking at pace or on the light engine's queue, which the first ticks of a batch of 50
+     * tests starve: each of them builds its room and generates its tall chunks on the server thread. The light holds of
+     * {@code RoomCarverSendTest} and {@code StructureLightBorderTest}, the light waits of {@code RetainedTest} and the cue of
+     * {@code GrainedCrustTest} sit in a batch of their own, with nothing that generates in volume. A quiet test keeps its dimension.
+     */
+    public static final String QUIET = "deepcharter-test:quiet";
 }

@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.concurrent.atomic.AtomicReference;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -47,6 +48,45 @@ public class FarChunksTest {
             }
             helper.succeed();
         });
+    }
+
+    /**
+     * A first tick that other tests' work stretches to a minute is not the waiter's time (#803): a deadline of 30 s survives it, counts
+     * the ticks that follow at a second each, and still fails a wait that never settles.
+     */
+    @GameTest
+    public void aStalledTickDoesNotUseUpTheDeadline(GameTestHelper helper) {
+        long second = 1_000_000_000L;
+        long[] now = {0};
+        ServerLevel level = helper.getLevel();
+        FarChunks.Deadline deadline = FarChunks.deadline(30, () -> now[0]);
+        // 1 s of the 30 is used by each of these ticks, however long it took.
+        now[0] += 90 * second;
+        deadline.await(helper, level, false, () -> "ran out in a stalled first tick");
+        for (int tick = 0; tick < 20; tick++) {
+            now[0] += second;
+            deadline.await(helper, level, false, () -> "ran out too soon");
+        }
+        now[0] += 120 * second;
+        deadline.await(helper, level, false, () -> "ran out in a second stalled tick");
+        for (int tick = 0; tick < 8; tick++) {
+            now[0] += second;
+            deadline.await(helper, level, false, () -> "ran out too soon after the second stall");
+        }
+        // 30 s are used now, and the limit is passed at a second more.
+        try {
+            now[0] += second;
+            deadline.await(helper, level, false, () -> "the limit is not passed yet");
+            now[0] += second;
+            deadline.await(helper, level, false, () -> "never settles");
+        } catch (GameTestAssertException expected) {
+            if (!expected.getMessage().contains("never settles")) {
+                throw helper.assertionException("the wait failed too soon: " + expected.getMessage());
+            }
+            helper.succeed();
+            return;
+        }
+        throw helper.assertionException("a wait that never settles must fail once the 30 s of ticks are used");
     }
 
     /** Two tests that force one chunk: the first to finish does not release it, the second does. */
