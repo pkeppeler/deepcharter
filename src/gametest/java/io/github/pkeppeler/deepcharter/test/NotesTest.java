@@ -50,7 +50,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for #78: using a Note block files the Note for the whole charter, unread for each member; reading marks it for
- * the reader alone; a repeat adds nothing; a player on no charter files nothing; and the saved format is versioned.
+ * the reader alone; a repeat adds nothing; and the saved format is versioned.
  */
 public class NotesTest {
     private static final Identifier FIRST = Notes.id(1);
@@ -171,24 +171,6 @@ public class NotesTest {
         }
         expectRead(helper, crew, FIRST, true);
         expectRead(helper, director, FIRST, false);
-        helper.succeed();
-    }
-
-    @GameTest
-    public void aPlayerOnNoCharterFilesNothing(GameTestHelper helper) {
-        MinecraftServer server = helper.getLevel().getServer();
-        ServerPlayer loner = MockPlayers.join(helper, "Loner").player();
-
-        FindResult result = Notes.find(loner, FIRST);
-        use(helper, loner, 1);
-
-        if (result != FindResult.NO_CHARTER) {
-            throw helper.assertionException("a player on no charter gets NO_CHARTER, was %s", result);
-        }
-        expectNotes(helper, server, loner, List.of());
-        // Founding a charter afterwards does not bring the Note back: it was never found.
-        found(helper, server, loner);
-        expectNotes(helper, server, loner, List.of());
         helper.succeed();
     }
 

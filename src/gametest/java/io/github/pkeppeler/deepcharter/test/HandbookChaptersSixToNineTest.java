@@ -639,11 +639,6 @@ public class HandbookChaptersSixToNineTest {
                         Set<String> restored = with(towed, directive("company_property", "restore_prospector"));
                         HandbookChaptersOneToFiveTest.expectCompleted(
                                 helper, server, "restoring the Prospector", both, restored);
-                        expect(
-                                helper,
-                                completed(server, drifter).isEmpty(),
-                                "a player on no charter completes nothing, got %s",
-                                completed(server, drifter));
 
                         // The floor of the Workings counts only from a Prospector's seat.
                         director.teleportTo(two, new Vec3(9100.5, zoneY(two, 2, 2), 9100.5), 0, 0);
@@ -733,7 +728,7 @@ public class HandbookChaptersSixToNineTest {
 
     /**
      * A player who is on no charter, and one on another charter, complete nothing for the charter whose pod, terminal or crossing it
-     * was not: each event credits the charter of the player who did the deed, and no charter at all if there is none.
+     * was not: each event credits the charter of the player who did the deed, and the player alone if there is none (#843).
      */
     @GameTest
     public void eachTriggerCreditsOnlyTheCharterOfThePlayerWhoDidTheDeed(GameTestHelper helper) {
@@ -763,11 +758,6 @@ public class HandbookChaptersSixToNineTest {
             expect(helper, drifter.player().startRiding(pod, true, false), "the drifter should board the pod");
             poll(pod);
             expectNothingNew(helper, server, "a drifter on no charter", member, memberBefore);
-            expect(
-                    helper,
-                    completed(server, drifter).isEmpty(),
-                    "a player on no charter completes nothing, got %s",
-                    completed(server, drifter));
             drifter.player().stopRiding();
 
             // A scanner that another charter stamped does nothing on the member's pod, so the member finds no ore with

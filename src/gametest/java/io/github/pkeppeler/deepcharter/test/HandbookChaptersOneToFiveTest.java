@@ -711,9 +711,9 @@ public class HandbookChaptersOneToFiveTest {
         }
     }
 
-    /** A pilot and a terminal user on no charter complete nothing for anyone, and nothing throws. */
+    /** A pilot and a terminal user on no charter complete nothing for the charter (their deeds are their own, #843), and nothing throws. */
     @GameTest
-    public void aPilotAndATerminalUserOnNoCharterCompleteNothing(GameTestHelper helper) {
+    public void aPilotAndATerminalUserOnNoCharterCompleteNothingForTheCharter(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer member = MockPlayers.join(helper, "Member");
         MockPlayer drifter = MockPlayers.join(helper, "Drifter");
@@ -746,11 +746,10 @@ public class HandbookChaptersOneToFiveTest {
             }
             pod.tickCount = 0;
             PodEvents.AFTER_TICK.invoker().afterTick(pod);
-            if (!completed(server, drifter.player()).isEmpty()
-                    || !memberBefore.equals(completed(server, member.player()))) {
+            if (!memberBefore.equals(completed(server, member.player()))) {
                 throw helper.assertionException(
-                        "nothing should complete: the drifter has %s, the member %s from %s",
-                        completed(server, drifter.player()), completed(server, member.player()), memberBefore);
+                        "nothing should complete for the charter: the member has %s from %s",
+                        completed(server, member.player()), memberBefore);
             }
             helper.succeed();
         } finally {

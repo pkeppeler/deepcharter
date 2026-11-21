@@ -78,7 +78,7 @@
   "deepcharter.handbook.note.place.success": "Placed Note %s",
   "deepcharter.handbook.note.use.already_found": "Your charter has this Note already.",
   "deepcharter.handbook.note.use.found": "You file the Note in your charter's handbook.",
-  "deepcharter.handbook.note.use.no_charter": "You are on no charter, so there is no handbook to file this in.",
+  "deepcharter.handbook.note.use.no_charter": "You are on no charter. The Note is filed once you found or join one.",
   "deepcharter.handbook.note.use.unknown": "This page is blank.",
   "deepcharter.handbook.note.use.unreadable": "The handbook cannot be read right now.",
   "deepcharter.handbook.notes.back": "< Notes",
