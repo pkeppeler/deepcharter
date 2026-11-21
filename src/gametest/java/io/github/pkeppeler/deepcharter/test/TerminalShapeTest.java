@@ -118,9 +118,8 @@ public class TerminalShapeTest {
     @GameTest
     public void aRayAtTheScreenHitsTheTerminal(GameTestHelper helper) {
         for (TerminalType type : TerminalTypes.all()) {
-            BlockState state = type.block()
-                    .defaultBlockState()
-                    .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.SOUTH);
+            BlockState state =
+                    type.block().defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.SOUTH);
             BlockPos relative = new BlockPos(1, 1, 1);
             helper.setBlock(relative, state);
             BlockPos at = helper.absolutePos(relative);
@@ -128,11 +127,7 @@ public class TerminalShapeTest {
             Vec3 from = screen.add(0, 0, 2);
             BlockHitResult hit = helper.getLevel()
                     .clip(new ClipContext(
-                            from,
-                            screen,
-                            ClipContext.Block.OUTLINE,
-                            ClipContext.Fluid.NONE,
-                            CollisionContext.empty()));
+                            from, screen, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, CollisionContext.empty()));
             if (hit.getType() != HitResult.Type.BLOCK || !hit.getBlockPos().equals(at)) {
                 throw helper.assertionException("a ray at the screen of %s should hit it, hit %s", type.id(), hit);
             }

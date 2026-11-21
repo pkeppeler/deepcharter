@@ -45,8 +45,10 @@ public class CrtTerminalsScenario extends EvidenceScenario {
                 server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "time set noon");
                 server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "weather clear");
             });
-            ColonySite.Placed colony = singleplayer.getServer().computeOnServer(server -> Colony.placed(server)
-                    .orElseThrow(() -> new AssertionError("the colony was not built when the world started")));
+            ColonySite.Placed colony = singleplayer
+                    .getServer()
+                    .computeOnServer(server -> Colony.placed(server)
+                            .orElseThrow(() -> new AssertionError("the colony was not built when the world started")));
             singleplayer.getServer().runOnServer(server -> {
                 for (TerminalType type : TerminalTypes.all()) {
                     ColonyAnchor.forTerminal(type)
