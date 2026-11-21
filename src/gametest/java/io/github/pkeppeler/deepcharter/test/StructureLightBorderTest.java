@@ -7,17 +7,23 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerStructures;
+import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.test.support.BlockLightOracle;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.LightSyncSends;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -26,28 +32,30 @@ import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ThreadedLevelLightEngine;
-import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The block light round a lamp of a layer structure that stands at a chunk border (#824), in each order of the lamp's chunk and its
- * neighbour across the border. One chunk of the pair, {@code held}, is loaded, lit and let go out to its clients, and does not tick (a
- * ticket of radius 0 holds it, as a chunk is held while its neighbour is still generating). The other, {@code drawn}, is not generated;
- * the test loads it, which draws its part of the structure, and lets the light engine finish. Then:
+ * The block light round a lamp of a layer structure that stands at a chunk border (#824). A player who tracks the lamp's chunk and its
+ * neighbour across the border is sent both, with the structure drawn, and the light settles. Then every lamp of the two chunks is
+ * removed and {@link LightSync} holds the chunks, as a carve does. Then:
  *
  * <ul>
- *   <li>the light the server stores in both chunks is the light of the blocks, which {@link BlockLightOracle} works out without the
- *       light engine;
- *   <li>if the light stored in {@code held} changed under the draw, {@code held} is marked for a light update to its clients. Vanilla
- *       marks a changed light section only while its chunk ticks ({@code ChunkHolder.sectionLightChanged}), so a client that was sent
- *       the chunk before the draw kept the old light: a lamp's spill missing, or the glow of a lava the draw sealed over still there.
+ *   <li>the light the server stores in both chunks is the light of the blocks, before and after, which {@link BlockLightOracle} works
+ *       out without the light engine;
+ *   <li>{@link LightSync} sends the player, once the light is done, a light update that carries every section of each chunk whose
+ *       stored light changed. Vanilla sends a light update only for a chunk that ticks, and drops the change of a chunk that does
+ *       not, so a client that already holds a chunk kept the old light when a neighbour's light spilled into it later: a lamp's
+ *       spill missing, or the glow of a lava the draw sealed over still there. The test reads what {@code LightSync} sends through
+ *       {@link LightSyncSends}, so a vanilla update of a ticking chunk cannot stand in for it.
  * </ul>
  */
 public class StructureLightBorderTest {
@@ -242,114 +250,123 @@ public class StructureLightBorderTest {
         return ColonySite.CODEC.parse(NbtOps.INSTANCE, moved).getOrThrow();
     }
 
-    /** What a case holds while it runs: tickets to let go. */
-    private static final class Held {
-        private final ServerLevel level;
-        private final List<ChunkPos> chunks = new ArrayList<>();
-
-        Held(ServerLevel level) {
-            this.level = level;
-        }
-
-        /** Loads {@code chunk} to the full status and holds it loaded, not ticking. */
-        void load(ChunkPos chunk) {
-            if (!chunks.contains(chunk)) {
-                level.getChunkSource().addTicketWithRadius(TicketType.PLAYER_LOADING, chunk, 0);
-                chunks.add(chunk);
-            }
-            level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
-        }
-
-        void releaseAll() {
-            chunks.forEach(chunk -> level.getChunkSource().removeTicketWithRadius(TicketType.PLAYER_LOADING, chunk, 0));
-            chunks.clear();
-        }
-    }
-
-    /** Which chunk of the pair is held, and so sent, before the other is drawn. */
-    private enum Sent {
-        /** The lamp's chunk is drawn after its neighbour went out: the neighbour's light changes under it. */
-        NEIGHBOUR,
-        /** The neighbour is generated after the lamp's chunk went out. */
-        LAMP_CHUNK
-    }
-
     /** Server ticks that the callbacks of the light engine's last update get to run on the main thread. */
     private static final int SETTLE_TICKS = 20;
 
-    private static void run(GameTestHelper helper, Lamp lamp, Sent sent) {
+    private static boolean holdsEnded(ChunkPos... chunks) {
+        return LightSync.heldChunks().stream()
+                .noneMatch(line -> Arrays.stream(chunks).anyMatch(chunk -> line.contains(chunk.toString())));
+    }
+
+    private static void run(GameTestHelper helper, Lamp lamp) {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
-        Placement placement = place(helper, lamp, lamp.ordinal() * 2 + sent.ordinal());
-        ChunkPos held = sent == Sent.NEIGHBOUR ? placement.neighbour() : placement.lampChunk();
-        ChunkPos drawn = sent == Sent.NEIGHBOUR ? placement.lampChunk() : placement.neighbour();
-        Held tickets = new Held(level);
-        CompletableFuture<?>[] settling = {CompletableFuture.completedFuture(null)};
-        FarChunks.Deadline deadline = FarChunks.deadline(30);
+        Placement placement = place(helper, lamp, lamp.ordinal());
+        List<ChunkPos> pair = List.of(placement.lampChunk(), placement.neighbour());
+        MockPlayer player = MockPlayers.join(helper, "border-" + lamp.ordinal());
+        player.player().setGameMode(GameType.SPECTATOR);
+        UUID id = player.player().getUUID();
+        LightSyncSends.watch(id);
+        FarChunks.Deadline deadline = FarChunks.deadline(60);
         int[] phase = {0};
         int[] waited = {0};
-        int[][] before = {null};
+        int[][][] before = {null};
+        boolean[] ended = {false};
         TestTicks.each(helper, () -> {
+            if (ended[0]) {
+                return;
+            }
             try {
-                if (!(settling[0].isDone() && !level.getLightEngine().hasLightWork())) {
-                    if (settling[0].isDone()) {
-                        settling[0] = lightTasks(level, held);
-                    }
-                    deadline.await(helper, level, false, () -> "the light engine did not finish in phase " + phase[0]);
-                    return;
-                }
                 switch (phase[0]) {
                     case 0 -> {
-                        inContext(placement, server, () -> tickets.load(held));
+                        // Loading the chunks draws the structure, with the test's own Conduit where the case needs it.
+                        inContext(
+                                placement,
+                                server,
+                                () -> placement.withRing().forEach(chunk -> {
+                                    FarChunks.force(helper, level, chunk.x(), chunk.z());
+                                    level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                                }));
                         phase[0] = 1;
-                        settling[0] = lightTasks(level, held);
                     }
                     case 1 -> {
-                        // The chunk's own generation has told its holder what changed; what is left to tell starts
-                        // here.
-                        if (waited[0]++ < SETTLE_TICKS) {
+                        // Chunks are sent once they tick: a player who comes into view of them now is sent both.
+                        BlockPos at = new BlockPos(
+                                placement.lampChunk().getMiddleBlockX(),
+                                placement.site().origin().getY(),
+                                placement.lampChunk().getMiddleBlockZ());
+                        if (!pair.stream().allMatch(chunk -> level.isPositionEntityTicking(chunk.getWorldPosition()))) {
+                            deadline.await(helper, level, false, () -> "the chunks " + pair + " do not tick");
                             return;
                         }
-                        if (level.getChunkSource().getChunkNow(drawn.x(), drawn.z()) != null) {
-                            throw failure(helper, "chunk %s is generated already, so the case proves nothing", drawn);
-                        }
-                        ChunkHolder holder = holder(helper, level, held);
-                        holder.broadcastChanges(
-                                Objects.requireNonNull(level.getChunkSource().getChunkNow(held.x(), held.z())));
-                        before[0] = storedLight(level, held, placement);
+                        player.teleportTo(level, Vec3.atBottomCenterOf(at), 0f, 0f);
                         phase[0] = 2;
                     }
                     case 2 -> {
-                        inContext(placement, server, () -> {
-                            tickets.load(drawn);
-                            placement.withRing().forEach(tickets::load);
-                        });
-                        waited[0] = 0;
-                        phase[0] = 3;
-                        settling[0] = lightTasks(level, held);
-                    }
-                    default -> {
+                        if (!player.chunksSent().containsAll(pair) || !holdsEnded(pair.toArray(ChunkPos[]::new))) {
+                            deadline.await(helper, level, false, () -> "the player was not sent " + pair + " in time");
+                            return;
+                        }
                         if (waited[0]++ < SETTLE_TICKS) {
                             return;
                         }
-                        compare(helper, level, placement, held, Objects.requireNonNull(before[0]), lamp, sent);
-                        tickets.releaseAll();
+                        checkLight(helper, level, placement, lamp);
+                        before[0] = pair.stream()
+                                .map(chunk -> storedLight(level, chunk, placement))
+                                .toArray(int[][]::new);
+                        removeLamps(level, placement);
+                        waited[0] = 0;
+                        phase[0] = 3;
+                    }
+                    default -> {
+                        if (!holdsEnded(pair.toArray(ChunkPos[]::new))) {
+                            deadline.await(helper, level, false, () -> "the hold of " + pair + " did not end");
+                            return;
+                        }
+                        if (waited[0]++ < SETTLE_TICKS) {
+                            return;
+                        }
+                        checkSent(helper, level, placement, id, Objects.requireNonNull(before[0]), lamp);
+                        ended[0] = true;
+                        LightSyncSends.unwatch(id);
                         helper.succeed();
                     }
                 }
             } catch (RuntimeException e) {
-                tickets.releaseAll();
+                ended[0] = true;
+                LightSyncSends.unwatch(id);
                 throw e;
             }
         });
     }
 
-    private static ChunkHolder holder(GameTestHelper helper, ServerLevel level, ChunkPos chunk) {
-        ChunkHolder holder = level.getChunkSource().chunkMap.getUpdatingChunkIfPresent(chunk.pack());
-        if (holder == null) {
-            throw failure(helper, "chunk %s has no holder", chunk);
+    /** Removes every block of the pair that gives light, and holds the sending of its chunks as a carve of the box does. */
+    private static void removeLamps(ServerLevel level, Placement placement) {
+        BoundingBox box = placement.compared();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        List<BlockPos> lamps = new ArrayList<>();
+        for (int x = box.minX(); x <= box.maxX(); x++) {
+            for (int z = box.minZ(); z <= box.maxZ(); z++) {
+                for (int y = box.minY(); y <= box.maxY(); y++) {
+                    if (level.getBlockState(pos.set(x, y, z)).getLightEmission() > 0) {
+                        lamps.add(pos.immutable());
+                    }
+                }
+            }
         }
-        return holder;
+        lamps.forEach(lamp -> level.setBlock(lamp, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL));
+        if (!lamps.isEmpty()) {
+            LightSync.holdSendUntilLit(
+                    level,
+                    new BlockPos(
+                            lamps.stream().mapToInt(BlockPos::getX).min().orElseThrow(),
+                            lamps.stream().mapToInt(BlockPos::getY).min().orElseThrow(),
+                            lamps.stream().mapToInt(BlockPos::getZ).min().orElseThrow()),
+                    new BlockPos(
+                            lamps.stream().mapToInt(BlockPos::getX).max().orElseThrow(),
+                            lamps.stream().mapToInt(BlockPos::getY).max().orElseThrow(),
+                            lamps.stream().mapToInt(BlockPos::getZ).max().orElseThrow()));
+        }
     }
 
     /** The block light the engine stores for every cell of {@code chunk} in the rows of the placement, in x, z, y order. */
@@ -378,23 +395,15 @@ public class StructureLightBorderTest {
                         conduit -> WorldData.with(server, ColonySite.TYPE, withConduit(server, conduit), body), body);
     }
 
-    private static CompletableFuture<?> lightTasks(ServerLevel level, ChunkPos chunk) {
-        return ((ThreadedLevelLightEngine) level.getLightEngine()).waitForPendingTasks(chunk.x(), chunk.z());
-    }
-
-    private static void compare(
-            GameTestHelper helper,
-            ServerLevel level,
-            Placement placement,
-            ChunkPos held,
-            int[] before,
-            Lamp lamp,
-            Sent sent) {
+    /** The server stores the light of the blocks in the pair, and light crosses between the two chunks. */
+    private static void checkLight(GameTestHelper helper, ServerLevel level, Placement placement, Lamp lamp) {
         BoundingBox box = placement.compared();
         BlockLightOracle.Field expected = BlockLightOracle.expected(level, box);
+        String where = lamp + " at " + placement.site().origin().toShortString() + " (lamp chunk "
+                + placement.lampChunk() + ", neighbour " + placement.neighbour() + ")";
         // The case proves nothing unless light crosses the border: a chunk of the pair must hold light that comes from
         // the other.
-        long crossing = 0;
+        long crossed = 0;
         for (ChunkPos chunk : List.of(placement.lampChunk(), placement.neighbour())) {
             BlockLightOracle.Field own = BlockLightOracle.expected(
                     level, box, pos -> ChunkPos.containing(pos).equals(chunk));
@@ -403,15 +412,13 @@ public class StructureLightBorderTest {
                     for (int y = box.minY(); y <= box.maxY(); y++) {
                         BlockPos pos = new BlockPos(x, y, z);
                         if (expected.at(pos) > own.at(pos)) {
-                            crossing++;
+                            crossed++;
                         }
                     }
                 }
             }
         }
-        String where = lamp + " at " + placement.site().origin().toShortString() + " (lamp chunk "
-                + placement.lampChunk() + ", neighbour " + placement.neighbour() + ", " + sent + ", held " + held + ")";
-        if (crossing == 0) {
+        if (crossed == 0) {
             throw failure(helper, "%s: no light crosses between the two chunks, so the case proves nothing", where);
         }
         List<BlockLightOracle.Mismatch> stored = BlockLightOracle.mismatches(level, expected);
@@ -423,69 +430,61 @@ public class StructureLightBorderTest {
                     stored.size(),
                     stored.subList(0, Math.min(6, stored.size())));
         }
-        ChunkHolder holder = holder(helper, level, held);
-        if (holder.getTickingChunk() != null) {
-            throw failure(helper, "%s: the held chunk ticks, so the case proves nothing", where);
-        }
-        int[] after = storedLight(level, held, placement);
-        int changed = 0;
-        for (int i = 0; i < after.length; i++) {
-            if (after[i] != before[i]) {
-                changed++;
+    }
+
+    /** {@link LightSync} sent the player every section of each chunk of the pair whose stored light changed since {@code before}. */
+    private static void checkSent(
+            GameTestHelper helper, ServerLevel level, Placement placement, UUID player, int[][] before, Lamp lamp) {
+        List<ChunkPos> pair = List.of(placement.lampChunk(), placement.neighbour());
+        int rows = placement.maxY() - placement.minY() + 1;
+        int minLightSection = level.getLightEngine().getMinLightSection();
+        for (int c = 0; c < pair.size(); c++) {
+            ChunkPos chunk = pair.get(c);
+            int[] after = storedLight(level, chunk, placement);
+            BitSet changedSections = new BitSet();
+            int changed = 0;
+            for (int i = 0; i < after.length; i++) {
+                if (after[i] != before[c][i]) {
+                    changed++;
+                    changedSections.set(((placement.minY() + i % rows) >> 4) - minLightSection);
+                }
+            }
+            String where = lamp + " at " + placement.site().origin().toShortString() + ", chunk " + chunk;
+            if (changed == 0) {
+                throw failure(
+                        helper, "%s: removing the lamps changed no light in it, so the case proves nothing", where);
+            }
+            BitSet sent = LightSyncSends.sections(player, chunk);
+            BitSet unsent = (BitSet) changedSections.clone();
+            unsent.andNot(sent);
+            if (!unsent.isEmpty()) {
+                throw failure(
+                        helper,
+                        "%s: the stored light changed in %d cells, a player who had the chunk was not sent the sections %s (counted from the lowest light section) by the hold, so the client keeps the old light",
+                        where,
+                        changed,
+                        unsent);
             }
         }
-        if (sent == Sent.NEIGHBOUR && changed == 0) {
-            throw failure(helper, "%s: the draw changed no light in the held chunk, so the case proves nothing", where);
-        }
-        if (changed > 0 && !holder.hasChangesToBroadcast()) {
-            throw failure(
-                    helper,
-                    "%s: the block light stored in the held chunk changed in %d cells after it was sent, and nothing marks it for a light update, so its clients keep the old light",
-                    where,
-                    changed);
-        }
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aSeaLanternDrawnAfterItsNeighbourWentOutLeavesTheNeighbourMarkedForALightUpdate(GameTestHelper helper) {
-        run(helper, Lamp.SEA_LANTERN, Sent.NEIGHBOUR);
+    public void aSeaLanternAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
+        run(helper, Lamp.SEA_LANTERN);
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aSeaLanternAtABorderLeavesTheLightRightWhenTheNeighbourIsGeneratedAfterIt(GameTestHelper helper) {
-        run(helper, Lamp.SEA_LANTERN, Sent.LAMP_CHUNK);
+    public void aKellsLavaAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
+        run(helper, Lamp.KELLS_LAVA);
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aKellsLavaDrawnAfterItsNeighbourWentOutLeavesTheNeighbourMarkedForALightUpdate(GameTestHelper helper) {
-        run(helper, Lamp.KELLS_LAVA, Sent.NEIGHBOUR);
+    public void aShaftCandleAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
+        run(helper, Lamp.CANDLE);
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aKellsLavaAtABorderLeavesTheLightRightWhenTheNeighbourIsGeneratedAfterIt(GameTestHelper helper) {
-        run(helper, Lamp.KELLS_LAVA, Sent.LAMP_CHUNK);
-    }
-
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aShaftCandleDrawnAfterItsNeighbourWentOutLeavesTheNeighbourMarkedForALightUpdate(
-            GameTestHelper helper) {
-        run(helper, Lamp.CANDLE, Sent.NEIGHBOUR);
-    }
-
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void aShaftCandleAtABorderLeavesTheLightRightWhenTheNeighbourIsGeneratedAfterIt(GameTestHelper helper) {
-        run(helper, Lamp.CANDLE, Sent.LAMP_CHUNK);
-    }
-
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void theFamousWrecksLanternDrawnAfterItsNeighbourWentOutLeavesTheNeighbourMarkedForALightUpdate(
-            GameTestHelper helper) {
-        run(helper, Lamp.FAMOUS_LANTERN, Sent.NEIGHBOUR);
-    }
-
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void theFamousWrecksLanternAtABorderLeavesTheLightRightWhenTheNeighbourIsGeneratedAfterIt(
-            GameTestHelper helper) {
-        run(helper, Lamp.FAMOUS_LANTERN, Sent.LAMP_CHUNK);
+    public void theFamousWrecksLanternAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
+        run(helper, Lamp.FAMOUS_LANTERN);
     }
 }
