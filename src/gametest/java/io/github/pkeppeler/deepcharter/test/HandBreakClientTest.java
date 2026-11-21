@@ -63,7 +63,9 @@ public class HandBreakClientTest implements FabricClientGameTest {
         EvidencePins.attackHeld = true;
         mine(context, target, CLUMSY_TICKS, false);
         EvidencePins.attackHeld = false;
-        require(clientHolds(context, target), "an iron pick broke the crust on the client");
+        require(
+                clientHolds(context, target),
+                "an iron pick broke the crust on the client: " + clientFacts(context, target));
         require(serverHolds(two, 1, target), "an iron pick broke the crust on the server");
 
         // A pick that bites: the client's prediction and the server's check agree.
@@ -92,7 +94,6 @@ public class HandBreakClientTest implements FabricClientGameTest {
         // the
         // break: the block holds on both sides, and nothing comes back.
         BlockPos deep = prepare(two, 2, X + 40);
-        context.getInput().lookAt(deep);
         hold(two, damaged(Items.NETHERITE_PICKAXE, 100));
         EvidencePins.attackHeld = true;
         mine(context, deep, SHATTER_TICKS, false);
@@ -145,6 +146,29 @@ public class HandBreakClientTest implements FabricClientGameTest {
         }
         require(!expectBreak, "the client never broke the crust in " + limit + " ticks");
         return limit;
+    }
+
+    /** Waits for the client to hold the crust the server placed: a block set on the server reaches the client a few ticks later, and a new layer is a new level. */
+    private static void awaitCrust(ClientGameTestContext context, BlockPos target) {
+        ClientWait.until(
+                context,
+                "the crust at " + target.toShortString() + " in the client's level",
+                client -> client.level != null
+                        && client.level.getBlockState(target).is(LayerBlocks.BREACH_CRUST)
+                        && client.player != null
+                        && client.player.blockPosition().distSqr(target) < 36);
+        context.getInput().lookAt(target);
+    }
+
+    /** What the client holds of the block, for a failure message: its block, the player's game mode and the held item. */
+    private static String clientFacts(ClientGameTestContext context, BlockPos target) {
+        return context.computeOnClient(
+                client -> client.level == null || client.player == null || client.gameMode == null
+                        ? "no level or player yet"
+                        : "block " + client.level.getBlockState(target) + " at " + target.toShortString()
+                                + ", game mode "
+                                + client.gameMode.getPlayerMode() + ", held " + client.player.getMainHandItem()
+                                + ", player at " + client.player.blockPosition().toShortString());
     }
 
     private static boolean clientHolds(ClientGameTestContext context, BlockPos target) {
