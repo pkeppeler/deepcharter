@@ -13,7 +13,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
@@ -170,25 +169,26 @@ public final class ClientLight {
     }
 
     /**
-     * True when the server holds every chunk the box touches, and every chunk the player is sent, as one it can send: the chunk is full
-     * and its light is done, the state vanilla's {@code ChunkMap.waitForLightBeforeSending} and {@code LightSync} hold a chunk back until.
-     * A chunk of the view still generating lights later and changes the light along its edge, which is not a stale client. {@link
-     * #serverLightIdle} alone is true for a chunk still below the light stage, or whose light job is not yet queued.
+     * True when the server holds every chunk the box touches, and the ring of chunks round them, as one it can send: the chunk is full and
+     * its light is done, the state vanilla's {@code ChunkMap.waitForLightBeforeSending} and {@code LightSync} hold a chunk back until.
+     * Light spreads at most 15 blocks, so a neighbour still generating is the only other chunk whose light can still change the box.
+     * {@link #serverLightIdle} alone is true for a chunk still below the light stage, or whose light job is not yet queued. A ring chunk
+     * outside the player's view is never generated, so only a ring chunk a player is sent counts.
      */
     public static boolean serverChunksSendable(TestServerContext server, ResourceKey<Level> dimension, Box box) {
         return server.computeOnServer(minecraftServer -> {
             ServerLevel level = serverLevel(minecraftServer, dimension);
             ChunkMap chunkMap = level.getChunkSource().chunkMap;
-            boolean boxSendable = ChunkPos.rangeClosed(ChunkPos.containing(box.min()), ChunkPos.containing(box.max()))
-                    .allMatch(chunk -> chunkMap.getChunkToSend(chunk.pack()) != null);
-            if (!boxSendable) {
-                return false;
-            }
-            for (ServerPlayer player : level.players()) {
-                boolean[] ready = {true};
-                player.getChunkTrackingView()
-                        .forEach(chunk -> ready[0] &= chunkMap.getChunkToSend(chunk.pack()) != null);
-                if (!ready[0]) {
+            ChunkPos low = ChunkPos.containing(box.min());
+            ChunkPos high = ChunkPos.containing(box.max());
+            for (ChunkPos chunk : ChunkPos.rangeClosed(
+                            new ChunkPos(low.x() - 1, low.z() - 1), new ChunkPos(high.x() + 1, high.z() + 1))
+                    .toList()) {
+                boolean inBox =
+                        chunk.x() >= low.x() && chunk.x() <= high.x() && chunk.z() >= low.z() && chunk.z() <= high.z();
+                boolean sent = level.players().stream()
+                        .anyMatch(player -> player.getChunkTrackingView().contains(chunk));
+                if ((inBox || sent) && chunkMap.getChunkToSend(chunk.pack()) == null) {
                     return false;
                 }
             }
