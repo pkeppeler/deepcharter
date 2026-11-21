@@ -239,7 +239,9 @@ public class M2SliceTest {
                         mole.setPos(Vec3.atBottomCenterOf(colony.center()));
                         poll(mole);
 
-                        // Chapter 5: sell ore, buy a part.
+                        // Chapter 5: the drill puts ore in the bay (#853), sell ore, buy a part.
+                        mole.cargo().tryAdd(mole, OreRegistry.stack(OreType.IRONIUM));
+                        poll(mole);
                         first.stopRiding();
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
                         mole.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
