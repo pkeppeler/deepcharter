@@ -203,10 +203,8 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
 
         // A lampless figure, whole, in each dark room: at light 0 it is lit by the dimension type's ambient light
         // alone.
-        int figureToday = spawnFigure(server, layer1, today);
-        int figureCampaign = spawnFigure(server, CAMPAIGN, campaign);
-        stillWithFigure(context, server, layer1, today, figureToday, "figure-light-0-today");
-        stillWithFigure(context, server, CAMPAIGN, campaign, figureCampaign, "figure-light-0-campaign");
+        stillWithFigure(context, server, layer1, today, "figure-light-0-today");
+        stillWithFigure(context, server, CAMPAIGN, campaign, "figure-light-0-campaign");
     }
 
     /** The bottom of an open shaft under the campaign type's sky, next to today's sealed room, with the sky timeline at dusk and at night. */
@@ -265,14 +263,18 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         frame(context);
     }
 
+    /**
+     * Stands the camera in the dark room, then puts the figure in it: a figure spawned before the camera arrives is in a chunk the
+     * server has let go, and the client never gets it.
+     */
     private void stillWithFigure(
             ClientGameTestContext context,
             TestServerContext server,
             ResourceKey<Level> dimension,
             BlockPos floor,
-            int figure,
             String name) {
         stand(context, server, dimension, floor, NORTH, 0, name);
+        int figure = spawnFigure(server, dimension, floor);
         ClientWait.until(
                 context,
                 "the figure of " + name + " on the client",
