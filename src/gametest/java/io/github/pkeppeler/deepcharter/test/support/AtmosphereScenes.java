@@ -8,6 +8,8 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import javax.imageio.ImageIO;
@@ -19,10 +21,13 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 
@@ -183,6 +188,9 @@ public final class AtmosphereScenes {
     /**
      * Fills {@code biome} over {@link #MARGIN} blocks round the scene, from {@code bottomY} to {@code topY}, in slabs (a command fills at
      * most 32,768 blocks, counted in whole 4-block cells). The fill is bounded, not the world's whole height: the campaign world is 2,352 tall.
+     * {@code fillbiome} skips a position in a chunk that is not loaded and says so only in a log line, and {@link RoomCarver} leaves
+     * its chunks loaded only until they unload, so the chunks of the box are held for the fill and every cell of the box is read back after
+     * it: a cell that is not {@code biome} fails the test, naming the columns. A chunk this holds and nothing else did is let go after.
      */
     public static void fillBiome(
             TestServerContext server,
@@ -191,18 +199,79 @@ public final class AtmosphereScenes {
             String biome,
             int bottomY,
             int topY) {
-        for (int y = bottomY; y <= topY; y += 4) {
-            server.runCommand("execute in %s run fillbiome %d %d %d %d %d %d %s"
-                    .formatted(
-                            dimension.identifier(),
-                            floor.getX() - MARGIN,
-                            y,
-                            floor.getZ() - MARGIN,
-                            floor.getX() + MARGIN,
-                            Math.min(y + 3, topY),
-                            floor.getZ() + MARGIN,
-                            biome));
+        int minX = floor.getX() - MARGIN;
+        int maxX = floor.getX() + MARGIN;
+        int minZ = floor.getZ() - MARGIN;
+        int maxZ = floor.getZ() + MARGIN;
+        List<ChunkPos> held = server.computeOnServer(s -> {
+            ServerLevel level = ClientLight.serverLevel(s, dimension);
+            List<ChunkPos> forcedHere = new ArrayList<>();
+            for (int cx = minX >> 4; cx <= maxX >> 4; cx++) {
+                for (int cz = minZ >> 4; cz <= maxZ >> 4; cz++) {
+                    if (!level.getForceLoadedChunks().contains(new ChunkPos(cx, cz).pack())) {
+                        forcedHere.add(new ChunkPos(cx, cz));
+                    }
+                    // force-ok: a client test and an evidence scenario have no GameTestHelper to release through; what
+                    // this forces is released below
+                    level.setChunkForced(cx, cz, true);
+                    level.getChunk(cx, cz);
+                }
+            }
+            return forcedHere;
+        });
+        try {
+            for (int y = bottomY; y <= topY; y += 4) {
+                server.runCommand("execute in %s run fillbiome %d %d %d %d %d %d %s"
+                        .formatted(dimension.identifier(), minX, y, minZ, maxX, Math.min(y + 3, topY), maxZ, biome));
+            }
+            List<String> missed = server.computeOnServer(s -> unfilledColumns(
+                    ClientLight.serverLevel(s, dimension), biome, minX, maxX, minZ, maxZ, bottomY, topY));
+            ClientChecks.require(
+                    missed.isEmpty(),
+                    "fillbiome did not put every cell round " + floor.toShortString() + " in " + dimension.identifier()
+                            + " (Y " + bottomY + " to " + topY + ") in " + biome + "; " + missed.size()
+                            + " columns have a cell that is not, from "
+                            + missed.stream().limit(8).toList());
+        } finally {
+            server.runOnServer(s -> {
+                ServerLevel level = ClientLight.serverLevel(s, dimension);
+                for (ChunkPos chunk : held) {
+                    // force-ok: releases what this method forced above
+                    level.setChunkForced(chunk.x(), chunk.z(), false);
+                }
+            });
         }
+    }
+
+    /**
+     * The columns, as {@code x,z} of their cell's corner, with a biome cell between {@code bottomY} and {@code topY} that is not
+     * {@code biome}. It reads the chunk's stored cells and not {@code Level.getBiome}, which blurs, and it does not load a chunk.
+     */
+    private static List<String> unfilledColumns(
+            ServerLevel level, String biome, int minX, int maxX, int minZ, int maxZ, int bottomY, int topY) {
+        List<String> missed = new ArrayList<>();
+        for (int x = minX & ~3; x <= maxX; x += 4) {
+            for (int z = minZ & ~3; z <= maxZ; z += 4) {
+                ChunkAccess chunk = level.getChunk(x >> 4, z >> 4, ChunkStatus.FULL, false);
+                if (chunk == null) {
+                    missed.add(x + "," + z);
+                    continue;
+                }
+                boolean complete = true;
+                for (int y = bottomY & ~3; complete && y <= topY; y += 4) {
+                    complete = chunk.getNoiseBiome(x >> 2, y >> 2, z >> 2)
+                            .unwrapKey()
+                            .orElseThrow()
+                            .identifier()
+                            .toString()
+                            .equals(biome);
+                }
+                if (!complete) {
+                    missed.add(x + "," + z);
+                }
+            }
+        }
+        return missed;
     }
 
     /** The free block over the ground of the campaign type at {@code x}, {@link #SITE}, with the chunks round it loaded. */

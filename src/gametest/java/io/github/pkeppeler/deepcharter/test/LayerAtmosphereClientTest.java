@@ -137,6 +137,8 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         BlockPos shaftFloor = build(server, CAMPAIGN, ground(server, x), Optional.of(ZONE), true);
         BlockPos roomFloor = build(server, CAMPAIGN, layer1Floor(x + SPACING), Optional.of(ZONE), false);
         BlockPos controlFloor = build(server, CAMPAIGN, ground(server, x + 2 * SPACING), Optional.empty(), true);
+        requireZone(server, CAMPAIGN, shaftFloor);
+        requireZone(server, CAMPAIGN, roomFloor);
         int shaftSky = serverSky(server, shaftFloor);
         int roomSky = serverSky(server, roomFloor);
         ClientChecks.require(roomSky == 0, "the sealed room has no sky light on the server, read " + roomSky);
@@ -268,6 +270,7 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         BlockPos campaign = buildRoom(server, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE), true);
         BlockPos today =
                 buildRoom(server, TestLayers.dimension(1), todayFloor(x + 4 * SPACING), Optional.empty(), true);
+        requireZone(server, CAMPAIGN, campaign);
         requireZone(server, TestLayers.dimension(1), today);
         List<Reading> now = lookAround(context, server, TestLayers.dimension(1), today, "lit-room-today-");
         List<Reading> campaignWorld = lookAround(context, server, CAMPAIGN, campaign, "lit-room-campaign-");
