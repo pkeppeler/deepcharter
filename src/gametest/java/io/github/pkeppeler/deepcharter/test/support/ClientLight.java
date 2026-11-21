@@ -127,6 +127,19 @@ public final class ClientLight {
                 .allMatch(chunk -> level.getChunkSource().hasChunk(chunk.x(), chunk.z()));
     }
 
+    /**
+     * True when the server holds every chunk the box touches as one it can send: the chunk is full and its light is done, which is the
+     * state vanilla's {@code ChunkMap.waitForLightBeforeSending} and {@code LightSync} hold a chunk back until. {@link #serverLightIdle}
+     * alone is true for a chunk still below the light stage, or whose light job is not yet queued, so it cannot say the light is final.
+     */
+    public static boolean serverChunksSendable(TestServerContext server, ResourceKey<Level> dimension, Box box) {
+        return server.computeOnServer(minecraftServer -> {
+            ServerLevel level = serverLevel(minecraftServer, dimension);
+            return ChunkPos.rangeClosed(ChunkPos.containing(box.min()), ChunkPos.containing(box.max()))
+                    .allMatch(chunk -> level.getChunkSource().chunkMap.getChunkToSend(chunk.pack()) != null);
+        });
+    }
+
     /** True when no level of the server has light work pending. */
     public static boolean serverLightIdle(ClientGameTestContext context, TestServerContext server) {
         return server.computeOnServer(minecraftServer -> {

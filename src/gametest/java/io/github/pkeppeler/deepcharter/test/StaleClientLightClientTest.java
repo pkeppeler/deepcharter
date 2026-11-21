@@ -348,6 +348,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                     client -> ClientLight.clientLevel(client).dimension().equals(dimension)
                             && ClientLight.chunksPresent(ClientLight.clientLevel(client), box),
                     client -> "chunks missing in " + box);
+            quiet(context, server, dimension, box);
             record(
                     "layer " + layer + " structure " + site.kind() + " in cell " + cell
                             + " drawn as its chunk loads for an arriving client",
@@ -371,7 +372,8 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
 
     /**
      * Waits until the client is in {@code dimension} with no screen open (the loading screen of a level change is one), holds the chunks
-     * of {@code box} and has rendered them, the server's light engine is idle and its ticks are back under the 50 ms budget.
+     * of {@code box} and has rendered them, the server holds those chunks as sendable (full, light done), its light engine is idle and its
+     * ticks are back under the 50 ms budget. Never waits on the two sides' light agreeing: that is what the comparison after it checks.
      */
     private static void quiet(
             ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, Box box) {
@@ -381,9 +383,12 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 () -> ClientLight.clientHolds(context, dimension, box)
                         && context.computeOnClient(
                                 client -> client.gui.screen() == null && client.levelRenderer.hasRenderedAllSections())
+                        && ClientLight.serverChunksSendable(server, dimension, box)
                         && ClientLight.serverLightIdle(context, server)
                         && server.computeOnServer(s -> s.getAverageTickTimeNanos() <= TICK_BUDGET_NANOS),
-                () -> "a screen open, chunks missing or unrendered, light pending or the server behind");
+                () ->
+                        "a screen open, chunks missing or unrendered, a server chunk not yet sendable, light pending or the"
+                                + " server behind");
     }
 
     /** Moves the player to {@code at} in {@code dimension} and waits until the client has the chunk, so the player is in range. */
