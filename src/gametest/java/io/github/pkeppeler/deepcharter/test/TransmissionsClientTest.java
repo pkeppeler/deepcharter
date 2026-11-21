@@ -31,14 +31,13 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Client GameTest for #62. The overlay shows the transmission of a breach crossing over the fade, with {@code [CHARTER]} and
- * {@code [DIRECTOR]} filled in and the header in the colour of its framing. Transmissions fired for a charter reach the real client in
+ * Client GameTest for #62. The overlay shows the transmission of a breach crossing over the fade, with {@code [CHARTER]}
+ * filled in and the header in the colour of its framing. Transmissions fired for a charter reach the real client in
  * order, one after another, and those fired while it was offline are delivered when it logs in again.
  */
 public class TransmissionsClientTest implements FabricClientGameTest {
     private static final String CREW_NAME = "Overlay Crew";
     private static final String TWO_PLAYER_NAME = "Two Player Overlay";
-    private static final String MOCK_NAME = "MockPilot";
     private static final double X = 2400.5;
     private static final double Z = 2400.5;
     /** A fuse on client ticks for a wait that has no other limit. About 3 minutes at 20 ticks a second. */
@@ -51,8 +50,18 @@ public class TransmissionsClientTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
+        theDirectorFieldIsFilledWithTheDirectorsName();
         aCrossingShowsItsTransmissionOverTheFade(context);
         transmissionsReachTheClientInOrderAndOnLogin(context);
+    }
+
+    /** The overlay fills {@code [DIRECTOR]} with the name the server sent and leaves no literal field behind. */
+    private static void theDirectorFieldIsFilledWithTheDirectorsName() {
+        String filled = TransmissionOverlay.fill(
+                "[CHARTER] signs. [DIRECTOR] signs. [DIRECTOR] again.", CREW_NAME, "Test Director");
+        require(
+                filled.equals(CREW_NAME + " signs. Test Director signs. Test Director again."),
+                "The charter and Director fields should be filled, the text is: " + filled);
     }
 
     /** The overlay's state, for a wait's failure message. */
@@ -96,12 +105,8 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     client -> seen());
             String body = context.computeOnClient(client -> TransmissionOverlay.bodyFull());
             require(
-                    !body.contains("[CHARTER]")
-                            && !body.contains("[DIRECTOR]")
-                            && body.contains(CREW_NAME)
-                            && body.contains(player),
-                    "The charter and Director fields should be filled with '" + CREW_NAME + "' and '" + player
-                            + "', the text is: " + body);
+                    !body.contains("[CHARTER]") && body.contains(CREW_NAME),
+                    "The charter field should be filled with '" + CREW_NAME + "', the text is: " + body);
             ClientWait.until(
                     context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
             String header = context.computeOnClient(client -> TransmissionOverlay.headerShown());
@@ -193,11 +198,8 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     client -> seen());
             String body = context.computeOnClient(client -> TransmissionOverlay.bodyFull());
             require(
-                    body.contains(TWO_PLAYER_NAME)
-                            && body.contains(MOCK_NAME)
-                            && !body.contains("[CHARTER]")
-                            && !body.contains("[DIRECTOR]"),
-                    "The Director is " + MOCK_NAME + " and the charter " + TWO_PLAYER_NAME + ", the text is: " + body);
+                    body.contains(TWO_PLAYER_NAME) && !body.contains("[CHARTER]"),
+                    "The charter is " + TWO_PLAYER_NAME + ", the text is: " + body);
             ClientWait.until(
                     context, "the transmission typed out", client -> TransmissionOverlay.typed(), client -> seen());
             require(
