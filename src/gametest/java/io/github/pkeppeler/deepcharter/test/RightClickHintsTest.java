@@ -7,7 +7,6 @@ import io.github.pkeppeler.deepcharter.layer.BlockReadouts.Readout;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -26,9 +25,6 @@ import net.minecraft.world.level.block.state.BlockState;
  * {@code useOn}: a gate passing is not proof that every right-click has a hint.
  */
 public class RightClickHintsTest {
-    /** Blocks that handle a right-click and need no hint, each with the reason. */
-    private static final Map<String, String> EXEMPT = Map.of();
-
     private static final List<String> RIGHT_CLICK_METHODS = List.of("useWithoutItem", "useItemOn");
 
     private static boolean handlesRightClick(Class<?> type) {
@@ -55,10 +51,7 @@ public class RightClickHintsTest {
         int checked = 0;
         for (Block block : BuiltInRegistries.BLOCK) {
             Identifier key = BuiltInRegistries.BLOCK.getKey(block);
-            if (!key.getNamespace().equals(DeepCharter.MOD_ID) || EXEMPT.containsKey(key.toString())) {
-                continue;
-            }
-            if (!handlesRightClick(block.getClass())) {
+            if (!key.getNamespace().equals(DeepCharter.MOD_ID) || !handlesRightClick(block.getClass())) {
                 continue;
             }
             checked++;
