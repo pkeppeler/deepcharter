@@ -926,11 +926,22 @@ public class TransmissionsTest {
         }
     }
 
-    /**
-     * The server fills no field: it sends the payload's {@code director} and the client replaces {@code [DIRECTOR]} with it
-     * ({@code TransmissionsClientTest.theDirectorFieldIsFilledWithTheDirectorsName}). The text is never read here, so any transmission
-     * carries the lookup under test.
-     */
+    /** The server fills no field: the client replaces {@code [DIRECTOR]} with the payload's {@code director}. Any transmission carries it. */
+    private static void fireThenExpect(GameTestHelper helper, CharterId charter, Runnable expectations) {
+        helper.startSequence()
+                .thenExecute(() -> withFreshWorldData(
+                        helper, data -> Transmissions.fire(server(helper), data, charter, id("t01"))))
+                .thenIdle(2)
+                .thenExecute(expectations)
+                .thenSucceed();
+    }
+
+    private static MockPlayer joinListening(GameTestHelper helper, String name) {
+        MockPlayer mock = MockPlayers.join(helper, name);
+        mock.announceChannel(TransmissionPayload.TYPE);
+        return mock;
+    }
+
     private static TransmissionPayload sentTo(GameTestHelper helper, MockPlayer member) {
         List<TransmissionPayload> sent = member.payloadsOf(TransmissionPayload.class);
         if (sent.size() != 1) {
@@ -939,23 +950,6 @@ public class TransmissionsTest {
                     member.player().getGameProfile().name(), sent);
         }
         return sent.getFirst();
-    }
-
-    /** The mock records the payload object, so the codec is the link to test: encode and decode it as the connection does. */
-    private static void expectSurvivesTheWire(GameTestHelper helper, TransmissionPayload sent, MinecraftServer server) {
-        RegistryFriendlyByteBuf buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), server.registryAccess());
-        TransmissionPayload.CODEC.encode(buffer, sent);
-        TransmissionPayload received = TransmissionPayload.CODEC.decode(buffer);
-        if (!received.equals(sent)) {
-            throw helper.assertionException(
-                    "the payload should survive the wire, sent %s and received %s", sent, received);
-        }
-    }
-
-    private static MockPlayer joinListening(GameTestHelper helper, String name) {
-        MockPlayer mock = MockPlayers.join(helper, name);
-        mock.announceChannel(TransmissionPayload.TYPE);
-        return mock;
     }
 
     private static void expectDirector(GameTestHelper helper, MockPlayer member, String expected) {
@@ -967,21 +961,28 @@ public class TransmissionsTest {
         }
     }
 
+    /** The mock records the payload object, so encode and decode it as the connection does. */
+    private static void expectSurvivesTheWire(GameTestHelper helper, TransmissionPayload sent) {
+        RegistryFriendlyByteBuf buffer =
+                new RegistryFriendlyByteBuf(Unpooled.buffer(), server(helper).registryAccess());
+        TransmissionPayload.CODEC.encode(buffer, sent);
+        TransmissionPayload received = TransmissionPayload.CODEC.decode(buffer);
+        if (!received.equals(sent)) {
+            throw helper.assertionException(
+                    "the payload should survive the wire, sent %s and received %s", sent, received);
+        }
+    }
+
     @GameTest
     public void anOnlineDirectorIsNamedInThePayloadSentToEveryMember(GameTestHelper helper) {
         MockPlayer director = joinListening(helper, "tx-dir-online");
         MockPlayer crew = joinListening(helper, "tx-crew-online");
         CharterId charter =
                 directCharter(helper, director.player().getUUID(), crew.player().getUUID());
-        helper.startSequence()
-                .thenExecute(() -> withFreshWorldData(
-                        helper, data -> Transmissions.fire(server(helper), data, charter, id("t01"))))
-                .thenIdle(2)
-                .thenExecute(() -> {
-                    expectDirector(helper, crew, "tx-dir-online");
-                    expectDirector(helper, director, "tx-dir-online");
-                })
-                .thenSucceed();
+        fireThenExpect(helper, charter, () -> {
+            expectDirector(helper, crew, "tx-dir-online");
+            expectDirector(helper, director, "tx-dir-online");
+        });
     }
 
     @GameTest
@@ -991,15 +992,10 @@ public class TransmissionsTest {
         server(helper).services().nameToIdCache().add(new NameAndId(director, cached));
         MockPlayer crew = joinListening(helper, "tx-crew-cached");
         CharterId charter = directCharter(helper, director, crew.player().getUUID());
-        helper.startSequence()
-                .thenExecute(() -> withFreshWorldData(
-                        helper, data -> Transmissions.fire(server(helper), data, charter, id("t01"))))
-                .thenIdle(2)
-                .thenExecute(() -> {
-                    expectDirector(helper, crew, cached);
-                    expectSurvivesTheWire(helper, sentTo(helper, crew), server(helper));
-                })
-                .thenSucceed();
+        fireThenExpect(helper, charter, () -> {
+            expectDirector(helper, crew, cached);
+            expectSurvivesTheWire(helper, sentTo(helper, crew));
+        });
     }
 
     @GameTest
@@ -1007,11 +1003,6 @@ public class TransmissionsTest {
         MockPlayer crew = joinListening(helper, "tx-crew-unknown");
         CharterId charter =
                 directCharter(helper, UUID.randomUUID(), crew.player().getUUID());
-        helper.startSequence()
-                .thenExecute(() -> withFreshWorldData(
-                        helper, data -> Transmissions.fire(server(helper), data, charter, id("t01"))))
-                .thenIdle(2)
-                .thenExecute(() -> expectDirector(helper, crew, "the Director"))
-                .thenSucceed();
+        fireThenExpect(helper, charter, () -> expectDirector(helper, crew, "the Director"));
     }
 }
