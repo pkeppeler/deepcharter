@@ -27,7 +27,7 @@ public final class LightSyncSends {
     }
 
     /** The light sections, counted from the lowest, that a packet to the player for {@code chunk} carried, empty or not. */
-    public static BitSet sections(UUID player, ChunkPos chunk) {
+    public static BitSet sectionsCarried(UUID player, ChunkPos chunk) {
         Map<Long, BitSet> chunks = SENT.get(player);
         if (chunks == null) {
             throw new IllegalStateException("player " + player + " is not watched");

@@ -48,8 +48,8 @@ import org.jspecify.annotations.Nullable;
  * removed and {@link LightSync} holds the chunks, as a carve does. Then:
  *
  * <ul>
- *   <li>the light the server stores in both chunks is the light of the blocks, before and after, which {@link BlockLightOracle} works
- *       out without the light engine;
+ *   <li>the light the server stores in both chunks is the light of the blocks, which {@link BlockLightOracle} works out without the
+ *       light engine, checked before the lamps are removed;
  *   <li>{@link LightSync} sends the player, once the light is done, a light update that carries every section of each chunk whose
  *       stored light changed. Vanilla sends a light update only for a chunk that ticks, and drops the change of a chunk that does
  *       not, so a client that already holds a chunk kept the old light when a neighbour's light spilled into it later: a lamp's
@@ -457,7 +457,7 @@ public class StructureLightBorderTest {
                 throw failure(
                         helper, "%s: removing the lamps changed no light in it, so the case proves nothing", where);
             }
-            BitSet sent = LightSyncSends.sections(player, chunk);
+            BitSet sent = LightSyncSends.sectionsCarried(player, chunk);
             BitSet unsent = (BitSet) changedSections.clone();
             unsent.andNot(sent);
             if (!unsent.isEmpty()) {
