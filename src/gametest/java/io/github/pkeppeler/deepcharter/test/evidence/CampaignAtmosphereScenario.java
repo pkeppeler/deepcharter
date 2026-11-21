@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.CAMPAIGN;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.MASS;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ROOM_HEIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SITE;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_DUSK;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_NIGHT;
@@ -9,7 +11,6 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TEST
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ZONE;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.biomeAt;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.build;
-import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildLitRoom;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildRoom;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ground;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.layer1Floor;
@@ -47,6 +48,7 @@ import net.minecraft.client.gui.screens.worldselection.WorldCreationUiState.Worl
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
+import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -187,7 +189,6 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
                 litRoomAndFigure(context, server);
                 shaftBottom(context, singleplayer, server);
                 descent(context, server);
-                netherShadedRoom(context, server);
             });
         }
     }
@@ -221,6 +222,38 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
             String name) {
         BlockPos room = nextRoom(context, server, dimension, lit);
         still(context, server, dimension, room, pitch, name);
+        if (lit && dimension.equals(CAMPAIGN)) {
+            netherShaded(context, server, room, pitch, name + "-nether");
+        }
+    }
+
+    /**
+     * The same room again with {@link EvidencePins#cardinalLightNether} on, so that the one thing that differs from the still before it is
+     * the shading of the faces: the room's sections are marked dirty to be meshed again with it, and again when the switch is off.
+     */
+    private void netherShaded(
+            ClientGameTestContext context, TestServerContext server, BlockPos room, float pitch, String name) {
+        EvidencePins.cardinalLightNether = true;
+        try {
+            remesh(context, room);
+            still(context, server, CAMPAIGN, room, pitch, name);
+        } finally {
+            EvidencePins.cardinalLightNether = false;
+            remesh(context, room);
+        }
+    }
+
+    private static void remesh(ClientGameTestContext context, BlockPos room) {
+        context.runOnClient(client -> ClientLight.clientLevel(client)
+                .setSectionRangeDirty(
+                        SectionPos.blockToSectionCoord(room.getX() - MASS),
+                        SectionPos.blockToSectionCoord(room.getY() - 1),
+                        SectionPos.blockToSectionCoord(room.getZ() - MASS),
+                        SectionPos.blockToSectionCoord(room.getX() + MASS),
+                        SectionPos.blockToSectionCoord(room.getY() + ROOM_HEIGHT),
+                        SectionPos.blockToSectionCoord(room.getZ() + MASS)));
+        ClientWait.until(
+                context, "the room's sections meshed", client -> client.levelRenderer.hasRenderedAllSections());
     }
 
     private void figureStill(
@@ -244,24 +277,6 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         requireZone(server, dimension, room);
         awaitLight(context, server);
         return room;
-    }
-
-    /**
-     * The campaign type's lit room again with {@link EvidencePins#cardinalLightNether} on, so that the one thing that differs from the
-     * campaign room above is the shading of the faces. The room is built after the switch is on, so that its sections are meshed with it.
-     */
-    private void netherShadedRoom(ClientGameTestContext context, TestServerContext server) {
-        EvidencePins.cardinalLightNether = true;
-        try {
-            BlockPos room = buildLitRoom(server, CAMPAIGN, layer1Floor(nextRoomX()), Optional.of(ZONE));
-            requireZone(server, CAMPAIGN, room);
-            awaitLight(context, server);
-            still(context, server, CAMPAIGN, room, UP, "lit-room-ceiling-campaign-nether");
-            still(context, server, CAMPAIGN, room, DOWN, "lit-room-floor-campaign-nether");
-            still(context, server, CAMPAIGN, room, 0, "lit-room-wall-campaign-nether");
-        } finally {
-            EvidencePins.cardinalLightNether = false;
-        }
     }
 
     /** The bottom of an open shaft under the campaign type's sky, next to today's sealed room, with the sky timeline at dusk and at night. */
