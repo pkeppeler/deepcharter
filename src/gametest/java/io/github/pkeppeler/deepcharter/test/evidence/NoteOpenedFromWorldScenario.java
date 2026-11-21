@@ -13,7 +13,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Evidence scenario "note-opened-from-world" for #834: a player on no charter uses a Note in the world and it opens to read, then
+ * Evidence scenario "note-opened-from-world" for #834: a player on no charter uses a Note in the world, it opens to read and is filed for them alone (#843), then
  * the same player founds a charter and uses another, which opens and is filed too.
  */
 public class NoteOpenedFromWorldScenario extends EvidenceScenario {
