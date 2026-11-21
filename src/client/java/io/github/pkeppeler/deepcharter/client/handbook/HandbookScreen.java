@@ -340,7 +340,12 @@ public final class HandbookScreen extends Screen {
                 width
                         - QuestMapTuning.current().windowMargin()
                         - QuestMapTuning.current().chapterTabWidth());
-        paperHeight = Mth.clamp(height - tuning().tabHeight() - 16, 100, tuning().paperMaxHeight());
+        // The sheet and the tab above it always fit the window, so in the smallest one the sheet gives up its 100 px
+        // floor.
+        paperHeight = Mth.clamp(
+                height - tuning().tabHeight() - 16,
+                Math.min(100, height - tuning().tabHeight()),
+                tuning().paperMaxHeight());
         paperLeft = Math.min(
                 (width - paperWidth) / 2,
                 width
