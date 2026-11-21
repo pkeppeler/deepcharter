@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
  *
  * By default it generates a few columns of each world and checks they exist. With the number of rounds in the environment, for example
  * {@code DEEPCHARTER_CAMPAIGN_COST=4 tools/gametest.sh 'campaign_cost_test*'}, it takes that many readings of each world, alternating
- * which is first, prints every reading as a {@code [campaign-cost]} line and fails when the campaign's median CPU per block of height is
+ * which is first, prints every reading (CPU, heap, wall and garbage collection time and count per round) as a {@code [campaign-cost]} line and fails when the campaign's median CPU per block of height is
  * over the bar against {@code tall_baseline}. It is per block because the campaign world is 2352 blocks tall and the baseline 2048,
  * which is 1.148x already: a per-column bar would leave the surface nothing. It needs at least {@value #MIN_ROUNDS} rounds, because a
  * median of fewer is a guess. {@value #ONLY_ENV}=<world> (or a comma-separated list of the worlds) measures only those, so that a
@@ -102,11 +102,13 @@ public class CampaignCostTest {
                 BAR,
                 BASELINE);
         results.forEach((world, all) -> LOGGER.info(
-                "[campaign-cost] {}: CPU ms per column, in round order: {}; heap MB: {}; wall ms per column: {}; medians {} CPU, {} MB",
+                "[campaign-cost] {}: CPU ms per column, in round order: {}; heap MB: {}; wall ms per column: {}; GC ms per column: {}; GC count: {}; medians {} CPU, {} MB",
                 world,
                 all.stream().map(m -> ColumnCost.format(m.cpuMsPerColumn())).toList(),
                 all.stream().map(m -> Math.round(m.heapMb())).toList(),
                 all.stream().map(m -> ColumnCost.format(m.wallMsPerColumn())).toList(),
+                all.stream().map(m -> ColumnCost.format(m.gcMsPerColumn())).toList(),
+                all.stream().map(Measurement::gcCount).toList(),
                 ColumnCost.format(ColumnCost.median(all).cpuMsPerColumn()),
                 Math.round(ColumnCost.median(all).heapMb())));
         List<Measurement> campaign = results.get(CAMPAIGN);

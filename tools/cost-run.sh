@@ -1,16 +1,26 @@
 #!/usr/bin/env bash
-# Usage: tools/cost-run.sh <rounds> <world>...
+# Usage: tools/cost-run.sh [--runs N] [surface|campaign] <rounds> [<world>...]
 #
-# Runs SurfaceCostTest for <rounds> rounds, one JVM per world, and keeps the machine's load beside
-# each reading, so a measurement does not depend on what else the Mac is doing (#473). Worlds are
-# the names SurfaceCostTest takes, for example `tall_baseline_biomes tall_surface_biomes`.
+# Runs a cost GameTest for <rounds> rounds and keeps the machine's load beside each reading, so a
+# measurement does not depend on what else the Mac is doing (#473, #781). The test is one row of a
+# table in `configure` below (default `surface`):
+#   surface   SurfaceCostTest, one JVM per world (a heap reading is only clean for the first world
+#             a JVM measures), at least two worlds, for example `tall_baseline_biomes tall_surface_biomes`.
+#   campaign  CampaignCostTest, one JVM for all the worlds (the bar needs the campaign world and
+#             tall_baseline in the same run); no worlds means the test's three. At least 4 rounds.
 #
-# Before a world: refuses to start while the 1-minute load average is above
+# --runs N repeats the whole measurement N times (default 1). A campaign run alternates the order
+# the worlds start in (DEEPCHARTER_COST_REVERSE, set to 1 on even runs), because the rounds alternate
+# it only inside a run. With N above 1 it ends with the rounds of every run pooled per world and the
+# ratio of the pooled medians, which is what the ADR 0029 follow-ups judge on: one run of a few
+# rounds is too noisy for a 1.15x bar.
+#
+# Before a run: refuses to start while the 1-minute load average is above
 # DEEPCHARTER_COST_MAX_LOAD (default 2, may be fractional), after waiting up to
 # DEEPCHARTER_COST_WAIT seconds (default 0) for it to fall. A run raises the average itself, so a
-# pair needs a wait between its worlds.
+# pair needs a wait between its runs.
 #
-# During a world: the run's own world generation fills the cores, so the load average between
+# During a run: the run's own world generation fills the cores, so the load average between
 # start and end says little. Instead, every DEEPCHARTER_COST_SAMPLE seconds (default 10) and once
 # more at the end, the script sums the CPU of every process that is not a descendant of this
 # script (100 = one core), Java included, and marks the run LOADED when the peak goes above
@@ -18,17 +28,92 @@
 # build JVM and the forked test JVM are descendants and every other Java is foreign. `ps pcpu` is
 # a decayed average on macOS, so a short burst is seen late and a quiet verdict is not proof.
 #
-# After a world: prints one `[cost-run]` line (load at start and end, peak foreign CPU and its top
-# process, verdict, time, exit status), that run's `[surface-cost]` lines, and its per-round CPU
-# ms per column as min and median. With exactly two worlds it ends with the second over the first.
+# After a run: one `[cost-run]` line (load at start and end, peak foreign CPU and its top process,
+# verdict, time, exit status), the test's own log lines, each world's per-round CPU ms per column
+# as min and median, and the ratio of the numerator world over the denominator one (the second over
+# the first for exactly two surface worlds; campaign_sample over tall_baseline, also per block of
+# height). A campaign test that fails its own assertion still has its readings kept and pooled; a
+# run with none exits with its status.
+#
+# Drift line per world and run: the median CPU of the first half of the rounds against the second
+# half, and the same with the JVM's GC time per column taken off, with the halves' GC time and
+# count. A rise that goes away without the GC time is the collector working on what the world
+# keeps; one that stays is real cost growing with the world's age. GC time is wall time of the
+# collectors while CPU adds up every GC thread, so the "without" figure is an approximation. Only
+# the campaign test prints GC per round; a surface world's drift line has no GC series.
 set -euo pipefail
 
-if [[ $# -lt 2 || ! ${1-} =~ ^[1-9][0-9]*$ ]]; then
-  echo "usage: tools/cost-run.sh <rounds> <world>...   (e.g. 5 tall_baseline_biomes tall_surface_biomes)" >&2
+usage() {
+  echo "usage: tools/cost-run.sh [--runs N] [surface|campaign] <rounds> [<world>...]   (e.g. 5 tall_baseline_biomes tall_surface_biomes, or --runs 3 campaign 6)" >&2
   exit 2
+}
+runs=1
+if [[ ${1-} == --runs ]]; then
+  [[ ${2-} =~ ^[1-9][0-9]*$ ]] || usage
+  runs=$2
+  shift 2
 fi
+test_name=surface
+if [[ ${1-} == surface || ${1-} == campaign ]]; then
+  test_name=$1
+  shift
+fi
+[[ ${1-} =~ ^[1-9][0-9]*$ ]] || usage
 rounds=$1
 shift
+
+# The per-test table: what to run, how to hand it rounds and worlds, and how to read its lines.
+# tag: the log tag. cpu_label, gc_label, count_label: the text before each per-round list, as a sed
+# pattern (gc_label and count_label empty: no GC series). per_world_jvm: 1 starts one JVM per world.
+# reverse: 1 when the test has an order switch. Heights: the campaign test prints both, for per block.
+configure() {
+  case $test_name in
+    surface)
+      filter='surface_cost_test*'
+      rounds_env=DEEPCHARTER_SURFACE_COST
+      only_env=DEEPCHARTER_SURFACE_COST_ONLY
+      tag='[surface-cost]'
+      cpu_label='CPU ms per column \(rounds '
+      gc_label=
+      count_label=
+      per_world_jvm=1
+      reverse=0
+      bar=
+      [[ $# -ge 2 ]] || usage
+      ;;
+    campaign)
+      filter='campaign_cost_test*'
+      rounds_env=DEEPCHARTER_CAMPAIGN_COST
+      only_env=DEEPCHARTER_CAMPAIGN_COST_ONLY
+      tag='[campaign-cost]'
+      cpu_label='CPU ms per column, in round order: '
+      gc_label='GC ms per column: '
+      count_label='GC count: '
+      per_world_jvm=0
+      reverse=1
+      bar=1.15
+      ;;
+  esac
+}
+configure "$@"
+if [[ $# -gt 0 ]]; then
+  worlds=("$@")
+else
+  worlds=(tall_baseline tall_layer campaign_sample)
+fi
+# The pair the ratio line compares: numerator, then denominator.
+num=
+den=
+if [[ $test_name == campaign ]]; then
+  if [[ " ${worlds[*]} " == *" campaign_sample "* && " ${worlds[*]} " == *" tall_baseline "* ]]; then
+    num=campaign_sample
+    den=tall_baseline
+  fi
+elif [[ ${#worlds[@]} -eq 2 ]]; then
+  num=${worlds[1]}
+  den=${worlds[0]}
+fi
+
 max_load=${DEEPCHARTER_COST_MAX_LOAD:-2}
 wait_seconds=${DEEPCHARTER_COST_WAIT:-0}
 sample_seconds=${DEEPCHARTER_COST_SAMPLE:-10}
@@ -55,16 +140,62 @@ foreign_cpu() {
       printf "%.0f %s\n", sum, topname
     }'
 }
-# Min and median of the per-round CPU ms per column in a world's [surface-cost] line.
-min_median() {
-  sed -nE "s/^.*\[surface-cost\] $1: .*CPU ms per column \(rounds \[([^]]*)\]\).*/\1/p" "$2" | head -1 |
-    tr -d ' ' | tr ',' '\n' | sort -n | awk '
-      { v[NR] = $1 }
-      END { if (NR) printf "%s %s\n", v[1], (NR % 2 ? v[(NR + 1) / 2] : (v[NR / 2] + v[NR / 2 + 1]) / 2) }'
+# The per-round list after <label> in <world>'s line of the log, one value per line.
+series() { # series <log> <world> <label>
+  [[ -n $3 ]] || return 0
+  local tag_re
+  tag_re=$(printf '%s' "$tag" | sed 's/[][]/\\&/g')
+  sed -nE "s/^.*${tag_re} $2: .*$3\[([^]]*)\].*/\1/p" "$1" | head -1 | tr -d ' ' | tr ',' '\n'
+}
+# "<min> <median>" of the values in a file.
+stats() {
+  sort -n "$1" | awk '
+    { v[NR] = $1 }
+    END { if (NR) printf "%s %s\n", v[1], (NR % 2 ? v[(NR + 1) / 2] : (v[NR / 2] + v[NR / 2 + 1]) / 2) }'
+}
+# [cost-run] <prefix><num> over <den>: ratios of two worlds' CPU files; <scale> (den height over num
+# height, or empty) adds the per-block ratio, and with a bar the verdict on it.
+ratio_line() { # ratio_line <prefix> <num-file> <den-file> <scale> <bar>
+  local n d
+  n=$(stats "$2")
+  d=$(stats "$3")
+  awk -v a="${d#* }" -v b="${n#* }" -v c="${d%% *}" -v e="${n%% *}" -v p="$1" -v w="$num" -v v="$den" -v s="$4" -v bar="$5" '
+    BEGIN {
+      printf "[cost-run] %s%s over %s: %.3fx on the medians, %.3fx on the minimums", p, w, v, b / a, e / c
+      if (s != "") {
+        pb = b / a * s
+        printf ", %.3fx per block of height", pb
+        if (bar != "") printf " (%s the %sx bar)", (pb > bar ? "over" : "within"), bar
+      }
+      printf "\n"
+    }'
+}
+# One drift line: first-half against second-half median CPU per column, with and without GC time.
+drift_line() { # drift_line <world> <cpu-file> <gc-file> <count-file> <prefix>
+  awk -v cpu="$(paste -sd, "$2")" -v gc="$(paste -sd, "$3")" -v cnt="$(paste -sd, "$4")" -v w="$1" -v p="$5" '
+    function med(arr, lo, hi,    i, j, k, t, x) {
+      k = 0
+      for (i = lo; i <= hi; i++) x[++k] = arr[i]
+      for (i = 2; i <= k; i++) { t = x[i]; for (j = i - 1; j >= 1 && x[j] > t; j--) x[j + 1] = x[j]; x[j + 1] = t }
+      return k % 2 ? x[(k + 1) / 2] : (x[k / 2] + x[k / 2 + 1]) / 2
+    }
+    BEGIN {
+      n = split(cpu, c, ","); m = split(gc, g, ","); split(cnt, k, ",")
+      h = int(n / 2)
+      if (h < 1) { printf "[cost-run] %sdrift %s: needs at least 2 rounds\n", p, w; exit }
+      lo2 = n - h + 1
+      a1 = med(c, 1, h); a2 = med(c, lo2, n)
+      printf "[cost-run] %sdrift %s: rounds 1-%d median %.2f, rounds %d-%d median %.2f (%.3fx)", p, w, h, a1, lo2, n, a2, a2 / a1
+      if (m != n) { printf "; no GC series\n"; exit }
+      for (i = 1; i <= n; i++) net[i] = c[i] - g[i]
+      b1 = med(net, 1, h); b2 = med(net, lo2, n)
+      printf "; without GC time %.2f, %.2f (%.3fx); GC ms per column %.2f, %.2f; GC count per round %g, %g\n", b1, b2, b2 / b1, med(g, 1, h), med(g, lo2, n), med(k, 1, h), med(k, lo2, n)
+    }'
 }
 
 log=
 samples=
+state=$(mktemp -d)
 sampler=
 stop_sampler() {
   if [[ -n $sampler ]]; then
@@ -75,66 +206,107 @@ stop_sampler() {
 }
 cleanup() {
   stop_sampler
-  rm -f "$log" "$samples"
+  rm -rf "$log" "$samples" "$state"
 }
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
 limit=$(awk -v m="$max_load" 'BEGIN { print m * 100 }')
-mins=()
-medians=()
-for world in "$@"; do
-  start=$(load1)
-  waited=0
-  while above "$start" "$max_load" && [[ $waited -lt $wait_seconds ]]; do
-    sleep 10
-    waited=$((waited + 10))
-    start=$(load1)
-  done
-  if above "$start" "$max_load"; then
-    echo "cost-run.sh: load $start is above $max_load; not starting $world (set DEEPCHARTER_COST_MAX_LOAD to change)" >&2
-    exit 3
-  fi
-  log=$(mktemp)
-  samples=$(mktemp)
-  (
-    while true; do
-      foreign_cpu >>"$samples"
-      sleep "$sample_seconds"
-    done
-  ) &
-  sampler=$!
-  status=0
-  GRADLE_OPTS="${GRADLE_OPTS:-} -Dorg.gradle.daemon=false" DEEPCHARTER_SURFACE_COST="$rounds" \
-    DEEPCHARTER_SURFACE_COST_ONLY="$world" tools/gametest.sh 'surface_cost_test*' >"$log" 2>&1 || status=$?
-  stop_sampler
-  foreign_cpu >>"$samples"
-  end=$(load1)
-  peak=$(sort -n "$samples" | tail -1)
-  peak_cpu=${peak%% *}
-  verdict=quiet
-  if above "$peak_cpu" "$limit"; then
-    verdict=LOADED
-  fi
-  echo "[cost-run] $world: $rounds rounds, load average at start $start, at end $end, foreign CPU peak ${peak_cpu}% (top: ${peak#* }) ($verdict), $(date -u +%FT%TZ), exit $status"
-  grep -F '[surface-cost]' "$log" || true
-  if [[ $status -ne 0 ]]; then
-    tail -30 "$log" >&2
-    echo "cost-run.sh: $world failed (exit $status)" >&2
-    exit "$status"
-  fi
-  stats=$(min_median "$world" "$log")
-  if [[ -z $stats ]]; then
-    echo "cost-run.sh: no [surface-cost] line for $world in the output" >&2
-    exit 1
-  fi
-  mins+=("${stats%% *}")
-  medians+=("${stats#* }")
-  echo "[cost-run] $world: CPU ms per column, min ${stats%% *}, median ${stats#* }"
-  rm -f "$log" "$samples"
+if [[ $per_world_jvm -eq 1 ]]; then
+  units=("${worlds[@]}")
+else
+  units=("$(IFS=,; echo "${worlds[*]}")")
+fi
+scale=
+for world in "${worlds[@]}"; do
+  : >"$state/pool.cpu.$world"
 done
-if [[ $# -eq 2 ]]; then
-  awk -v a="${medians[0]}" -v b="${medians[1]}" -v c="${mins[0]}" -v d="${mins[1]}" -v w="$2" -v v="$1" \
-    'BEGIN { printf "[cost-run] %s over %s: %.3fx on the medians, %.3fx on the minimums\n", w, v, b / a, d / c }'
+run=1
+while [[ $run -le $runs ]]; do
+  for unit in "${units[@]}"; do
+    start=$(load1)
+    waited=0
+    while above "$start" "$max_load" && [[ $waited -lt $wait_seconds ]]; do
+      sleep 10
+      waited=$((waited + 10))
+      start=$(load1)
+    done
+    if above "$start" "$max_load"; then
+      echo "cost-run.sh: load $start is above $max_load; not starting $unit (set DEEPCHARTER_COST_MAX_LOAD to change)" >&2
+      exit 3
+    fi
+    log=$(mktemp)
+    samples=$(mktemp)
+    (
+      while true; do
+        foreign_cpu >>"$samples"
+        sleep "$sample_seconds"
+      done
+    ) &
+    sampler=$!
+    envs=("$rounds_env=$rounds" "$only_env=$unit")
+    if [[ $reverse -eq 1 ]]; then
+      envs+=("DEEPCHARTER_COST_REVERSE=$((1 - run % 2))")
+    fi
+    status=0
+    GRADLE_OPTS="${GRADLE_OPTS:-} -Dorg.gradle.daemon=false" env "${envs[@]}" tools/gametest.sh "$filter" >"$log" 2>&1 || status=$?
+    stop_sampler
+    foreign_cpu >>"$samples"
+    end=$(load1)
+    peak=$(sort -n "$samples" | tail -1)
+    peak_cpu=${peak%% *}
+    verdict=quiet
+    if above "$peak_cpu" "$limit"; then
+      verdict=LOADED
+    fi
+    echo "[cost-run] $unit: $rounds rounds, run $run of $runs, load average at start $start, at end $end, foreign CPU peak ${peak_cpu}% (top: ${peak#* }) ($verdict), $(date -u +%FT%TZ), exit $status"
+    grep -F "$tag" "$log" || true
+    missing=
+    for world in ${unit//,/ }; do
+      series "$log" "$world" "$cpu_label" >"$state/run$run.cpu.$world"
+      series "$log" "$world" "$gc_label" >"$state/run$run.gc.$world"
+      series "$log" "$world" "$count_label" >"$state/run$run.count.$world"
+      [[ -s $state/run$run.cpu.$world ]] || missing=1
+    done
+    if [[ -n $missing ]]; then
+      if [[ $status -ne 0 ]]; then
+        tail -30 "$log" >&2
+        echo "cost-run.sh: $unit failed (exit $status)" >&2
+      else
+        echo "cost-run.sh: no $tag line for $unit in the output" >&2
+        status=1
+      fi
+      exit "$status"
+    fi
+    if [[ $status -ne 0 ]]; then
+      tail -5 "$log" >&2
+      echo "cost-run.sh: $unit: the test's own assertion failed (exit $status); its readings are kept" >&2
+    fi
+    heights=$(sed -nE 's/^.*campaign_sample vs tall_baseline.*\(([0-9]+) against ([0-9]+) blocks\).*/\1 \2/p' "$log" | head -1)
+    if [[ -n $heights ]]; then
+      scale=$(awk -v h="$heights" 'BEGIN { split(h, a, " "); printf "%.6f", a[2] / a[1] }')
+    fi
+    for world in ${unit//,/ }; do
+      cat "$state/run$run.cpu.$world" >>"$state/pool.cpu.$world"
+      stats=$(stats "$state/run$run.cpu.$world")
+      echo "[cost-run] run $run: $world: CPU ms per column, min ${stats%% *}, median ${stats#* }"
+      drift_line "$world" "$state/run$run.cpu.$world" "$state/run$run.gc.$world" "$state/run$run.count.$world" "run $run "
+    done
+    rm -f "$log" "$samples"
+  done
+  if [[ -n $num ]]; then
+    ratio_line "run $run: " "$state/run$run.cpu.$num" "$state/run$run.cpu.$den" "$scale" ""
+  fi
+  run=$((run + 1))
+done
+if [[ $runs -gt 1 ]]; then
+  total=$(wc -l <"$state/pool.cpu.${worlds[0]}" | tr -d ' ')
+  for world in "${worlds[@]}"; do
+    stats=$(stats "$state/pool.cpu.$world")
+    echo "[cost-run] pooled over $runs runs ($total rounds): $world: CPU ms per column, min ${stats%% *}, median ${stats#* }"
+  done
+  if [[ -n $num ]]; then
+    ratio_line "pooled " "$state/pool.cpu.$num" "$state/pool.cpu.$den" "$scale" "$bar"
+  fi
 fi
