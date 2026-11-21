@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.handbook.HandbookSyncPayload;
 import io.github.pkeppeler.deepcharter.handbook.NotesSyncPayload;
+import io.github.pkeppeler.deepcharter.handbook.OpenNotePayload;
 import java.util.List;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -19,6 +20,9 @@ public final class HandbookClientRegistry {
         });
         ClientPlayNetworking.registerGlobalReceiver(
                 NotesSyncPayload.TYPE, (payload, context) -> ClientNotes.set(payload.found()));
+        ClientPlayNetworking.registerGlobalReceiver(
+                OpenNotePayload.TYPE,
+                (payload, context) -> HandbookScreen.openNoteFromWorld(context.client(), payload.note()));
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             ClientHandbook.forget();
             HandbookMemory.forgetSession();

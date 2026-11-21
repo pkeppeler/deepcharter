@@ -44,6 +44,12 @@
         { "item": "minecraft:copper_ingot", "count": 2 },
         { "item": "minecraft:redstone", "count": 2 }
       ]
+    },
+    {
+      "id": "deepcharter:handbook/welcome/make_light",
+      "text": {
+        "translate": "deepcharter.handbook.directive.welcome.make_light"
+      }
     }
   ]
 }
