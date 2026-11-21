@@ -83,6 +83,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             digIntoSealedRoom(context, server);
             carveThenArrive(context, server, false);
             carveThenArrive(context, server, true);
+            visitTheCampaignLevel(context, server);
             colonyPieceReplaced(context, server);
             hostHandsAndHangarConsole(context, server);
             for (int trial = 0; trial < TRIALS; trial++) {
@@ -198,6 +199,16 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 server,
                 Level.OVERWORLD,
                 room(floor));
+    }
+
+    /**
+     * The player leaves the overworld for layer 1 of the campaign level and the cases after it bring them back: the client then has the
+     * overworld's chunks sent again, as the breach crossings this test made before they were in place did.
+     */
+    private void visitTheCampaignLevel(ClientGameTestContext context, TestServerContext server) {
+        int y = server.computeOnServer(s -> TestLayers.worldY(1, 40));
+        server.runOnServer(s -> player(s).setGameMode(GameType.SPECTATOR));
+        arrive(context, server, TestLayers.dimension(1), new BlockPos(4_000, y, 4_000));
     }
 
     /**
