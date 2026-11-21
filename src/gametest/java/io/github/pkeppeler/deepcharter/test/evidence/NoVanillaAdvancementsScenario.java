@@ -54,7 +54,7 @@ public class NoVanillaAdvancementsScenario extends EvidenceScenario {
             ClientWait.screen(context, PauseScreen.class);
             hold(context);
             screenshot(context, "pause-menu-handbook-button");
-            context.clickScreenButton("gui.advancements");
+            context.clickScreenButton("deepcharter.handbook.pause_button");
             ClientWait.screen(context, HandbookScreen.class);
             hold(context);
             context.setScreen(() -> null);

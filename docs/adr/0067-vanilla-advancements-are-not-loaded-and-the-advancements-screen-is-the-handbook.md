@@ -11,7 +11,7 @@ Issue #835.
 - **The server loads no `minecraft:` advancement.** `handbook/mixin/ServerAdvancementManagerMixin` redirects the `listElements()` call in the `ServerAdvancementManager` constructor (`<init>`) to the same stream without the `minecraft` namespace. The mod's directive advancements and any other mod's stay.
   - Nothing vanilla is tracked, granted or toasted, and none unlocks a recipe, so a recipe-unlock toast has no source either: the toast comes from the advancement's recipe reward.
   - The mixin is required (`defaultRequire: 1`), so a rename in a Minecraft update fails the launch.
-- **The advancements key (L) and the pause menu's Advancements button open the handbook.** `HandbookKeys` listens to `ScreenEvents.AFTER_INIT` and opens the handbook over any `AdvancementsScreen`. Closing it returns to the pause menu when it was opened from there, and to the game otherwise. A resource-pack lang override relabels the button "Handbook" and the key "Open the Employee Handbook".
+- **The advancements key (L) and the pause menu's Advancements button open the handbook.** `HandbookKeys` listens to `ScreenEvents.AFTER_INIT` and opens the handbook over any `AdvancementsScreen`. Closing it returns to the pause menu when it was opened from there, and to the game otherwise. The same hook relabels the pause button "Handbook" (a deepcharter lang key); the key binding keeps vanilla's name "Advancements", since a vanilla-namespace lang file is forbidden.
 - **The locator bar is off.** `SurfaceWorldRules` sets `LOCATOR_BAR` false with the other rules, once, at the world's first start.
 
 ## Why

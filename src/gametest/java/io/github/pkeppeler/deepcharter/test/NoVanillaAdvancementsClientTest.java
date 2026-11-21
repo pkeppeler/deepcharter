@@ -81,7 +81,7 @@ public class NoVanillaAdvancementsClientTest implements FabricClientGameTest {
 
             context.setScreen(() -> new PauseScreen(true));
             ClientWait.screen(context, PauseScreen.class);
-            context.clickScreenButton("gui.advancements");
+            context.clickScreenButton("deepcharter.handbook.pause_button");
             ClientWait.screen(context, HandbookScreen.class);
             context.runOnClient(
                     client -> ClientSession.screen(client, HandbookScreen.class).onClose());

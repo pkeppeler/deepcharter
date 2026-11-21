@@ -6,12 +6,17 @@ import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionResult;
 import org.jspecify.annotations.Nullable;
@@ -31,6 +36,17 @@ public final class HandbookKeys {
 
     private HandbookKeys() {}
 
+    /** The pause menu's Advancements button opens the handbook, so it says so. */
+    private static void relabelAdvancementsButton(Screen pauseScreen) {
+        for (AbstractWidget widget : Screens.getWidgets(pauseScreen)) {
+            if (widget instanceof Button button
+                    && button.getMessage().getContents() instanceof TranslatableContents contents
+                    && contents.getKey().equals("gui.advancements")) {
+                button.setMessage(Component.translatable("deepcharter.handbook.pause_button"));
+            }
+        }
+    }
+
     public static void register() {
         KeyMappingHelper.registerKeyMapping(OPEN);
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -46,6 +62,7 @@ public final class HandbookKeys {
         ClientTickEvents.START_CLIENT_TICK.register(client -> closedPauseScreen = null);
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (screen instanceof PauseScreen) {
+                relabelAdvancementsButton(screen);
                 ScreenEvents.remove(screen).register(removed -> closedPauseScreen = removed);
             } else if (screen instanceof AdvancementsScreen) {
                 Screen parent = closedPauseScreen;
