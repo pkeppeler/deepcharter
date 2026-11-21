@@ -54,7 +54,12 @@ public final class BlockReadoutHud {
         return client.player != null && client.gui.screen() == null && !client.gui.hud.isHidden();
     }
 
+    /** Before a world there is nothing to look at, and the theme may not be loaded yet (the title screen ticks before the first resource reload). */
     private static void tick(Minecraft client) {
+        if (client.player == null || client.level == null) {
+            FADE.reset();
+            return;
+        }
         FADE.tick(looked(client), ReadoutLook.current());
     }
 
