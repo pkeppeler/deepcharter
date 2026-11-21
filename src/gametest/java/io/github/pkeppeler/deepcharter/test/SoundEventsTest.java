@@ -141,7 +141,7 @@ public class SoundEventsTest {
                         && entry.getAsJsonObject().has("type")
                         && "event".equals(entry.getAsJsonObject().get("type").getAsString());
                 if (!name.startsWith(DeepCharter.MOD_ID + ":") || event) {
-                    if (SHIPPED.contains(path)) {
+                    if (SHIPPED.contains(path) || path.startsWith("ambience.")) {
                         throw failure(helper, "%s is a shipped sound but plays %s, not a file of ours", path, name);
                     }
                     continue;
@@ -176,12 +176,15 @@ public class SoundEventsTest {
     }
 
     /**
-     * The drone beds, the Lamp Hymn (#249) and the wax cylinders' recordings (#864, made by tools/sounds/first_sounds.py) are ours alone: the
-     * original game has nothing to map them to.
+     * The drone beds, the Lamp Hymn (#249), the wax cylinders' recordings (#864, made by tools/sounds/first_sounds.py) and the ambience's
+     * fragments (#866, tools/sounds/ambience.py) are ours alone: the original game has nothing to map them to.
      */
     private static boolean hasNoOriginal(DeepSound sound) {
         String path = sound.event().location().getPath();
-        return path.startsWith("ambient.") || path.startsWith("hymn.") || path.startsWith("phonograph.");
+        return path.startsWith("ambient.")
+                || path.startsWith("hymn.")
+                || path.startsWith("phonograph.")
+                || path.startsWith("ambience.");
     }
 
     /**
@@ -218,6 +221,47 @@ public class SoundEventsTest {
         }
         if (!manifest.keySet().equals(names)) {
             throw failure(helper, "the manifest holds %s and Recording %s", manifest.keySet(), names);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Each fragment of the ambience (#866) is a mono file of its tier, is in the manifest the audio gate checks, and is short; the manifest
+     * holds no fragment the game has no sound event for.
+     */
+    @GameTest
+    public void everyAmbienceFragmentIsMonoShortAndInTheManifest(GameTestHelper helper) throws IOException {
+        Path root = repoRoot(helper);
+        JsonObject manifest;
+        try (Reader reader = Files.newBufferedReader(root.resolve("tools/sounds/ambience.json"))) {
+            manifest = JsonParser.parseReader(reader).getAsJsonObject().getAsJsonObject("fragments");
+        }
+        Set<String> declared = new TreeSet<>();
+        for (DeepSound sound : DeepSound.values()) {
+            String path = sound.event().location().getPath();
+            if (!path.startsWith("ambience.")) {
+                continue;
+            }
+            String[] parts = path.split("\\.", -1);
+            String key = parts.length == 3 ? parts[1] + "/" + parts[2] : "worn/" + parts[1];
+            declared.add(key);
+            JsonObject entry = manifest.getAsJsonObject(key);
+            if (entry == null) {
+                throw failure(helper, "%s has no entry %s in tools/sounds/ambience.json", path, key);
+            }
+            Path file = root.resolve("src/main/resources/assets/deepcharter/sounds/ambience/" + key + ".ogg");
+            byte[] head = Arrays.copyOf(Files.readAllBytes(file), 256);
+            int identification = indexOf(head, new byte[] {1, 'v', 'o', 'r', 'b', 'i', 's'});
+            if (identification < 0 || head[identification + 11] != 1) {
+                throw failure(helper, "%s is not a mono Vorbis file", file);
+            }
+            double seconds = entry.get("duration_seconds").getAsDouble();
+            if (seconds > 4.0) {
+                throw failure(helper, "%s lasts %s seconds: a fragment is a syllable, not a song", key, seconds);
+            }
+        }
+        if (!manifest.keySet().equals(declared)) {
+            throw failure(helper, "the manifest holds %s and DeepSound %s", manifest.keySet(), declared);
         }
         helper.succeed();
     }

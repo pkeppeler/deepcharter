@@ -1716,3 +1716,21 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Knobs.** `SoundTuning.phonographRange`, the `ColonyTuning.phonograph*` fields, the crate pool's `random_chance` in `loot_table/blocks/salvage_crate.json`, the locker's in `loot_table/chests/wreck_locker.json`.
 
 **Open.** The pencil path (#849) should pay out cylinders too. A fourth recording, or the processed "Au clair de la lune" of #861, is one more entry in `tools/sounds/first_sounds.py`.
+
+## First Sounds in the dark (#866, A)
+
+**Problem.** The wax cylinders (#864) are a find. The user also wants the oldest recordings there are to be a faint, building unease in the layers themselves, never noise. So they are heard rarely and far off, and the deeper the player is the more often and the more worn they come.
+
+**The pieces.**
+- **Fragments, not songs.** `tools/sounds/ambience.py` cuts 14 short fragments (about 1 to 3 seconds: a syllable of Othello, a breath of the vocal scale, half a word of Tasso's Aminta spoken by Scott himself, the tuning fork surfacing from noise) and one warm-up crackle, from the same First Sounds recordings as the cylinders, each in the tiers it is made for. Its `ambience.json` holds every cut. The wreck's song (#861) is never one.
+- **Three wears.** `faint` (layer 1): low-passed, distant, quiet. `worn` (the Old Workings): band-limited with crackle and a dropout or two. `broken` (everything deeper): slowed and pitched down, heavily filtered, gated dropouts and a stutter. The deepest words (Aminta) are only in the worn and broken tiers.
+- **One client ticker** (`client/sound/AmbienceTicker`, per player, no server state: it is atmosphere and carries no rule) asks a pure `AmbienceScheduler` each tick. The gap per layer is drawn at random between two ends (`AmbienceTuning.layers`): layer 1 every 15 to 30 minutes, layer 2 every 5 to 12, deeper every 3 to 8. The surface and colony get none. A layer past the table takes its last entry, so a new layer is never silent and needs no code. A fragment never follows itself. If one falls due while the Lamp Hymn, a phonograph, a transmission or another fragment sounds (or ended within 10 seconds), it waits a drawn 20 to 90 seconds and tries again.
+- **From the dark:** a place 12 to 28 blocks away, picked for rock between it and the player, then air, then no lamp, so it seems to come from behind a wall.
+- **The Company horn** hangs from the roof over the middle of the punch clock's hall in Shift Change (layer 2), chosen because that hall holds the lore's still-ticking clock; the gallery is a dead end that few cross. A player within 24 blocks of it is on a shorter timer of their own (45 to 120 seconds) and the fragments come from the horn: 1.3 seconds of crackle (the tuning fork's noise before it finds its note), then the fragment. It is scenery: no collision, instant to break, no drop, no rule.
+- **Subtitles** explain nothing: "A voice, far off" and "Static".
+
+**Trade-offs.** Nothing to pay and nothing to learn: it is never a signal, so a player who mutes the ambient slider loses nothing. The risk is annoyance, which the rates answer: the first layer is a thing a player hears twice in a long session and wonders about.
+
+**Knobs.** `AmbienceTuning` (rates, retry, quiet, horn range and timer, distances); the volume and `attenuation_distance` of each event in `sounds.json`; each wear's numbers in `tools/sounds/ambience.py`.
+
+**Open.** #861's wreck speaker is one more source for the same scheduler: a `Source.WRECK` beside `DARK` and `HORN`, and the same quiet rule. The ticker finds horns by block, so a speaker block of any structure reuses `HornFinder` as it is.
