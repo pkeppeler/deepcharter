@@ -66,17 +66,6 @@ public final class MockPlayers {
                 TickLists.dropStale(server.getAllLevels());
             }
         });
-        // A mock still on when its server stops would stay in Fabric's networking registry with its listener, its
-        // player and their levels:
-        // a client run makes a server for each test class, and every one of them that joined a mock kept its world
-        // (#803, #698).
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
-            for (MockPlayer mock : List.copyOf(ACTIVE)) {
-                if (mock.server() == server) {
-                    mock.leave();
-                }
-            }
-        });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> ACTIVE.removeIf(mock -> mock.server() == server));
     }
 
