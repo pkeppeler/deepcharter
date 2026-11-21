@@ -5,14 +5,17 @@ import net.minecraft.world.level.gamerules.GameRules;
 
 /**
  * Game rules the surface sets once, when a world is made. The wandering trader and its llamas are the one passive spawner that ignores
- * a biome's spawn list, so the biomes cannot turn them off. {@link ColonyEvents#BUILT} fires once per world, at its first start, so a
+ * a biome's spawn list, so the biomes cannot turn them off. The locator bar (the coloured dots of other players in the experience bar)
+ * is off too: crewmates are met on the surface and below, not found by bearing. {@link ColonyEvents#BUILT} fires once per world, at its first start, so a
  * player who turns the rule back on keeps that choice.
  */
 public final class SurfaceWorldRules {
     private SurfaceWorldRules() {}
 
     public static void init() {
-        ColonyEvents.BUILT.register(
-                (server, colony) -> server.getGameRules().set(GameRules.SPAWN_WANDERING_TRADERS, false, server));
+        ColonyEvents.BUILT.register((server, colony) -> {
+            server.getGameRules().set(GameRules.SPAWN_WANDERING_TRADERS, false, server);
+            server.getGameRules().set(GameRules.LOCATOR_BAR, false, server);
+        });
     }
 }
