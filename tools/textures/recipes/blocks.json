@@ -63,6 +63,24 @@
         {"op": "rivets", "at": [[1, 1], [13, 1], [1, 13], [13, 13]], "ramp": ["steel.1", "steel.4", "steel.6"], "rust": "rust.2"}
       ]
     },
+    "block/terminal_casing": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "template", "name": "company_plate", "args": {"seed": 6}},
+        {"op": "pixels", "at": [4, 5], "legend": {"v": "steel.0", "l": "steel.4"},
+          "rows": ["vvvvvvvv", "llllllll", "", "vvvvvvvv", "llllllll", "", "vvvvvvvv", "llllllll"]},
+        {"op": "rivets", "at": [[1, 1], [13, 1], [1, 13], [13, 13]], "ramp": ["steel.1", "steel.4", "steel.6"]}
+      ]
+    },
+    "block/terminal_casing_top": {
+      "kind": "opaque",
+      "layers": [
+        {"op": "template", "name": "company_plate", "args": {"seed": 7}},
+        {"op": "pixels", "at": [3, 9], "legend": {"v": "steel.0", "l": "steel.4"},
+          "rows": ["vvvvvvvvvv", "llllllllll", "", "vvvvvvvvvv", "llllllllll"]},
+        {"op": "rivets", "at": [[1, 1], [13, 1]], "ramp": ["steel.1", "steel.4", "steel.6"], "rust": "rust.2"}
+      ]
+    },
     "block/terminal_standby_glow": {
       "kind": "cutout",
       "glow": {"over": null},
