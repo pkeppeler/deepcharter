@@ -183,15 +183,9 @@ final class StalkCollapse {
     private static void cough(ServerLevel level, BlockPos pos, boolean great) {
         RandomSource random = level.getRandom();
         float pitch = great ? 0.5F : 0.8F;
+        float volume = great ? 1.2F : 0.8F;
         float jitter = random.nextFloat() * 0.2F;
-        level.playSound(
-                null, pos, SoundEvents.PUFFER_FISH_BLOW_OUT, SoundSource.BLOCKS, great ? 1.2F : 0.8F, pitch + jitter);
-        level.playSound(
-                null,
-                pos,
-                SoundEvents.SLIME_BLOCK_BREAK,
-                SoundSource.BLOCKS,
-                great ? 1.2F : 0.8F,
-                pitch * 0.7F + jitter);
+        level.playSound(null, pos, SoundEvents.PUFFER_FISH_BLOW_OUT, SoundSource.BLOCKS, volume, pitch + jitter);
+        level.playSound(null, pos, SoundEvents.SLIME_BLOCK_BREAK, SoundSource.BLOCKS, volume, pitch * 0.7F + jitter);
     }
 }
