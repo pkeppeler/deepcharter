@@ -117,4 +117,86 @@ final class PaperDraw {
         }
         return lineY + font.lineHeight + 3;
     }
+
+    /** One pixel. */
+    private static void pixel(GuiGraphicsExtractor graphics, int x, int y, int color) {
+        graphics.fill(x, y, x + 1, y + 1, color);
+    }
+
+    /** A one-pixel line (Bresenham). {@code dashOn} pixels drawn, then {@code dashOff} skipped; {@code dashOff} 0 is solid. */
+    static void line(
+            GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color, int dashOn, int dashOff) {
+        int dx = Math.abs(x1 - x0);
+        int dy = -Math.abs(y1 - y0);
+        int sx = x0 < x1 ? 1 : -1;
+        int sy = y0 < y1 ? 1 : -1;
+        int err = dx + dy;
+        int x = x0;
+        int y = y0;
+        for (int step = 0; ; step++) {
+            if (dashOff == 0 || step % (dashOn + dashOff) < dashOn) {
+                pixel(graphics, x, y, color);
+            }
+            if (x == x1 && y == y1) {
+                return;
+            }
+            int doubled = 2 * err;
+            if (doubled >= dy) {
+                err += dy;
+                x += sx;
+            }
+            if (doubled <= dx) {
+                err += dx;
+                y += sy;
+            }
+        }
+    }
+
+    /** A line through {@code points} (x, y pairs), with a head of barbs {@code head} long on its last end if {@code head} is above 0. */
+    static void arrow(GuiGraphicsExtractor graphics, int[][] points, int color, int head, int dashOn, int dashOff) {
+        for (int i = 1; i < points.length; i++) {
+            line(graphics, points[i - 1][0], points[i - 1][1], points[i][0], points[i][1], color, dashOn, dashOff);
+        }
+        if (head <= 0) {
+            return;
+        }
+        int[] from = points[points.length - 2];
+        int[] to = points[points.length - 1];
+        int ux = Integer.signum(to[0] - from[0]);
+        int uy = Integer.signum(to[1] - from[1]);
+        for (int back = 1; back <= head; back++) {
+            // the barbs lie either side of the shaft, one pixel further out for each pixel further back
+            int px = -uy;
+            int py = ux;
+            pixel(graphics, to[0] - ux * back + px * back, to[1] - uy * back + py * back, color);
+            pixel(graphics, to[0] - ux * back - px * back, to[1] - uy * back - py * back, color);
+        }
+    }
+
+    /**
+     * The current step circled in ink: a loose rounded loop round the box, the pen running on past where it closed at the top right.
+     * The box is {@code (left, top)} to {@code (right, bottom)}, inclusive.
+     */
+    static void loop(GuiGraphicsExtractor graphics, int left, int top, int right, int bottom, int radius, int color) {
+        int r = Math.min(radius, Math.min(right - left, bottom - top) / 2);
+        line(graphics, left + r, top, right - r, top, color, 1, 0);
+        line(graphics, left + r, bottom, right - r, bottom, color, 1, 0);
+        line(graphics, left, top + r, left, bottom - r, color, 1, 0);
+        line(graphics, right, top + r, right, bottom - r, color, 1, 0);
+        int[][] corners = {
+            {left + r, top + r, 180}, {right - r, top + r, 270}, {right - r, bottom - r, 0}, {left + r, bottom - r, 90}
+        };
+        for (int[] corner : corners) {
+            for (int degrees = corner[2]; degrees <= corner[2] + 90; degrees++) {
+                double angle = Math.toRadians(degrees);
+                pixel(
+                        graphics,
+                        corner[0] + (int) Math.round(Math.cos(angle) * r),
+                        corner[1] + (int) Math.round(Math.sin(angle) * r),
+                        color);
+            }
+        }
+        line(graphics, right - 14, top + 1, right - 6, top - 1, color, 1, 0);
+        line(graphics, right - 6, top - 1, right - 2, top - 2, color, 1, 0);
+    }
 }
