@@ -222,9 +222,9 @@ public final class AtmosphereScenes {
     }
 
     /**
-     * Stands the first player, a spectator, on {@code floor} in {@code dimension} facing {@code yaw} and {@code pitch}: {@link #arrive},
-     * a fixed {@link #SETTLE_TICKS} for the lightmap and the fog, then a steady picture. For full-frame stills. {@code shot} names the
-     * view in a failure.
+     * Stands the first player, a spectator, on {@code floor} in {@code dimension} facing {@code yaw} and {@code pitch}, waits for the
+     * client to hold the chunks round the scene and for its light to match the server's, and lets the lightmap settle. {@code shot} names
+     * the view in a failure.
      */
     public static void stand(
             ClientGameTestContext context,
@@ -234,7 +234,27 @@ public final class AtmosphereScenes {
             float yaw,
             float pitch,
             String shot) {
-        arrive(context, server, dimension, floor, yaw, pitch, shot);
+        server.runOnServer(s -> s.getPlayerList()
+                .getPlayers()
+                .getFirst()
+                .teleportTo(
+                        ClientLight.serverLevel(s, dimension),
+                        floor.getX() + 0.5,
+                        floor.getY(),
+                        floor.getZ() + 0.5,
+                        Set.of(),
+                        yaw,
+                        pitch,
+                        true));
+        Box around = Box.around(floor, MASS, 1, SHAFT_DEPTH);
+        ClientWait.until(
+                context,
+                "the client in " + dimension.identifier() + " holding the chunks at " + floor.toShortString(),
+                client -> ClientLight.clientLevel(client).dimension().equals(dimension)
+                        && ClientLight.chunksPresent(ClientLight.clientLevel(client), around),
+                client -> "no chunks at " + floor.toShortString());
+        ClientChecks.requireNone(
+                "the light at " + shot, ClientLight.settledMismatch(context, server, dimension, around));
         // tick-wait: the lightmap and the fog ease toward the new place over a few ticks, and nothing reports when they
         // have
         context.waitTicks(SETTLE_TICKS);
@@ -242,25 +262,11 @@ public final class AtmosphereScenes {
     }
 
     /**
-     * Like {@link #stand}, without the fixed settle: for a reading of the middle of the screen.
+     * Like {@link #stand} without the fixed settle, for a reading of the middle of the screen: waits for the client to be there with
+     * the chunks meshed and the light matching the server's, then for the picture to stop changing. The steady-picture check reads only
+     * the middle of the screen, so it cannot tell that sections are unmeshed.
      */
     public static void standWithoutSettle(
-            ClientGameTestContext context,
-            TestServerContext server,
-            ResourceKey<Level> dimension,
-            BlockPos floor,
-            float yaw,
-            float pitch,
-            String shot) {
-        arrive(context, server, dimension, floor, yaw, pitch, shot);
-        awaitSteadyPicture(context, shot);
-    }
-
-    /**
-     * Teleports to {@code floor} and waits for the client to be there with the chunks meshed and the light matching the server's. The
-     * steady-picture check reads only the middle of the screen, so it cannot tell that sections are unmeshed.
-     */
-    private static void arrive(
             ClientGameTestContext context,
             TestServerContext server,
             ResourceKey<Level> dimension,
@@ -282,6 +288,7 @@ public final class AtmosphereScenes {
                 client -> "no chunks or unmeshed sections at " + floor.toShortString());
         ClientChecks.requireNone(
                 "the light at " + shot, ClientLight.settledMismatch(context, server, dimension, around));
+        awaitSteadyPicture(context, shot);
     }
 
     private static void teleport(
@@ -301,8 +308,8 @@ public final class AtmosphereScenes {
     }
 
     /**
-     * Turns the spectator, already standing on {@code floor} in {@code dimension}, to {@code yaw} and {@code pitch}. Only the view
-     * changes, so nothing needs to mesh or settle.
+     * Turns the spectator, already standing on {@code floor} in {@code dimension}, to {@code yaw} and {@code pitch}, and waits for the
+     * picture to stop changing. It does not wait for meshing, because the player does not move; the steady-picture check is its only guard.
      */
     public static void face(
             ClientGameTestContext context,
