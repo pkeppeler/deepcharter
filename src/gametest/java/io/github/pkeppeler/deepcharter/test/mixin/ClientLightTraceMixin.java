@@ -5,7 +5,6 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
-import net.minecraft.network.protocol.game.ClientboundSectionBlocksUpdatePacket;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -40,11 +39,5 @@ public abstract class ClientLightTraceMixin {
     private void deepcharter$traceForget(ClientboundForgetLevelChunkPacket packet, CallbackInfo ci) {
         LightTrace.record(
                 "CLI", "CHUNK-FORGOTTEN", packet.pos().x(), packet.pos().z(), "");
-    }
-
-    @Inject(method = "handleChunkBlocksUpdate", at = @At("HEAD"))
-    private void deepcharter$traceBlocks(ClientboundSectionBlocksUpdatePacket packet, CallbackInfo ci) {
-        packet.runUpdates(
-                (pos, state) -> LightTrace.record("CLI", "BLOCK-RECEIVED", pos.getX() >> 4, pos.getZ() >> 4, ""));
     }
 }
