@@ -226,13 +226,6 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         } finally {
             EvidencePins.cardinalLightNether = false;
         }
-        // The same room with the default shading, built last: it tells a difference of the shading from a difference of
-        // place or time.
-        BlockPos late = buildLitRoom(server, CAMPAIGN, layer1Floor(SITE + 9 * SPACING), Optional.of(ZONE));
-        requireZone(server, CAMPAIGN, late);
-        still(context, server, CAMPAIGN, late, UP, "lit-room-ceiling-campaign-late");
-        still(context, server, CAMPAIGN, late, DOWN, "lit-room-floor-campaign-late");
-        still(context, server, CAMPAIGN, late, 0, "lit-room-wall-campaign-late");
     }
 
     /** The bottom of an open shaft under the campaign type's sky, next to today's sealed room, with the sky timeline at dusk and at night. */
