@@ -39,7 +39,7 @@ A node lacking an icon or still is fine, and the gallery says "no still yet". Ev
 
 ## What `covers` takes
 
-`item:<path>`, `block:<path>`, `entity:<path>`, `terminal:<path>`, `consumable:<path>` and `track:<id>` name a registered `deepcharter:` thing. `FeatureMapCoverageTest` fails when a registered one is on no node, and when an entry names something that is not registered, and prints both lists. Exclusions: a block item is its block; `part_<track>` is its track (so `track:drill` covers the drill part item); a consumable's item is the consumable; the 24 colony kit blocks are the one entry `group:colony-kit`. `chapter:`, `zone:` and `order:` entries are the map's own and are not checked against the game. An id is covered by one node only.
+`item:<path>`, `block:<path>`, `entity:<path>`, `terminal:<path>`, `consumable:<path>` and `track:<id>` name a registered `deepcharter:` thing. `FeatureMapCoverageTest` fails when a registered one is on no node, and when an entry names something that is not registered, and prints both lists. Exclusions: a block item is its block; `part_<track>` is its track (so `track:drill` covers the drill part item); a consumable's item is the consumable; the colony kit blocks are the one entry `group:colony-kit`. `chapter:`, `zone:` and `order:` entries are the map's own and are not checked against the game. An id is covered by one node only.
 
 ## Icons and stills
 

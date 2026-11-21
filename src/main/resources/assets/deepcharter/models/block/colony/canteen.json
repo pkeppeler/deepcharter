@@ -1,7 +1,7 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "glass": "deepcharter:block/colony/window_ribbon_dark",
+    "front": "deepcharter:block/colony/canteen_front",
     "side": "deepcharter:block/colony/riveted_plate",
     "particle": "deepcharter:block/colony/riveted_plate"
   },
@@ -25,7 +25,7 @@
             16.0,
             16.0
           ],
-          "texture": "#glass",
+          "texture": "#front",
           "cullface": "north"
         },
         "south": {
@@ -35,7 +35,7 @@
             16.0,
             16.0
           ],
-          "texture": "#glass",
+          "texture": "#side",
           "cullface": "south"
         },
         "east": {
