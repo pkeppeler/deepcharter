@@ -7,6 +7,7 @@ import java.lang.reflect.Field;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.core.BlockPos;
@@ -14,7 +15,9 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerPlayerGameMode;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
 
 /** What a player must see while a pick brute-forces a block (#858): the pick worn on the client and the crack well along. */
 public final class HandBreakChecks {
@@ -75,7 +78,26 @@ public final class HandBreakChecks {
                 + ", isDestroying " + clientField(client, "isDestroying")
                 + ", destroyBlockPos " + clientField(client, "destroyBlockPos")
                 + ", destroyDelay " + clientField(client, "destroyDelay")
-                + ", destroyProgress " + clientField(client, "destroyProgress"));
+                + ", destroyProgress " + clientField(client, "destroyProgress")
+                + ", " + clientRule(client));
+    }
+
+    /** What the rule makes of the block under the client's crosshair, as the client sees it: the swing's answer, and the pieces of it. */
+    private static String clientRule(Minecraft client) {
+        if (!(client.hitResult instanceof BlockHitResult hit) || client.level == null || client.player == null) {
+            return "no block under the crosshair";
+        }
+        BlockPos pos = hit.getBlockPos();
+        BlockState state = client.level.getBlockState(pos);
+        int layer = HandBreak.layerOf(client.level, pos);
+        return "crosshair block " + state.getBlock() + " at " + pos.toShortString()
+                + ", governs " + HandBreak.governs(client.player, client.level, pos, state)
+                + ", layerOf " + layer
+                + ", bites " + HandBreak.bites(client.player.getMainHandItem(), layer)
+                + ", swing answer "
+                + AttackBlockCallback.EVENT
+                        .invoker()
+                        .interact(client.player, client.level, InteractionHand.MAIN_HAND, pos, hit.getDirection());
     }
 
     private static Object clientField(Minecraft client, String name) {
