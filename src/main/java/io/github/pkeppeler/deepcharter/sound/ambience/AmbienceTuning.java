@@ -13,7 +13,8 @@ import java.util.Optional;
  * @param quietAfterTicks how long after a hymn, a phonograph, a transmission or another fragment ends nothing starts
  * @param quietPrefixes   the sound events that hold the ambience back, by the start of their path
  * @param hornRange       a player this close (blocks) to a Company horn hears the fragments from it
- * @param hornMinTicks    while near a horn, the gap after a fragment is drawn between this and {@code hornMaxTicks}
+ * @param hornMinTicks    while near a horn, the gap after a fragment is drawn between this and {@code hornMaxTicks}, each at least the layer's
+ *                        own, so a horn never makes a layer noisier
  * @param hornMaxTicks    the latest of that draw, and of the first fragment after arriving
  * @param hornFirstMinTicks the first fragment after arriving near a horn is not sooner than this, whatever the draw
  * @param hornWarmupTicks the crackle of the horn's warm-up lasts this long before the fragment speaks

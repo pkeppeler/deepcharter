@@ -16,9 +16,9 @@ import org.jspecify.annotations.Nullable;
  *   <li>A fragment never follows itself: the next is drawn from the tier's pool without the last one, whichever tier it was.
  *   <li>A fragment that falls due while something is sounding (the Lamp Hymn, a phonograph, a transmission, another fragment) waits a short,
  *       drawn time and tries again; it is never played over them.
- *   <li>Near a horn the player is on a drawn timer of their own (the first fragment not sooner than a minute after arriving, then every few
- *       minutes), and a fragment due then comes from the horn. A fragment from the
- *       dark that falls due while a horn is near comes from the horn too.
+ *   <li>Near a horn the horn's timer replaces the layer's, and the fragment comes from the horn. The horn adds one fragment: the first
+ *       after arriving, not sooner than a minute. After any fragment both timers are drawn again, and the horn's gap is never shorter than
+ *       the layer's own, so a horn changes where a fragment is heard from and never how often.
  * </ul>
  */
 public final class AmbienceScheduler {
@@ -69,34 +69,37 @@ public final class AmbienceScheduler {
         if (!hornNear) {
             hornTicksLeft = UNSET;
         } else if (hornTicksLeft == UNSET) {
+            // The one extra: a first fragment soon after arriving, whatever the layer's own timer has left.
             hornTicksLeft = draw(tuning.hornFirstMinTicks(), tuning.hornMaxTicks());
         }
-        ticksLeft--;
+        // Near a horn its timer is the only one that runs, so the horn never adds to the layer's rate.
+        boolean due;
         if (hornNear) {
-            hornTicksLeft--;
+            due = --hornTicksLeft <= 0;
+        } else {
+            due = --ticksLeft <= 0;
         }
-        boolean hornDue = hornNear && hornTicksLeft <= 0;
-        boolean darkDue = ticksLeft <= 0;
-        if (!hornDue && !darkDue) {
+        if (!due) {
             return Optional.empty();
         }
         AmbienceTier tier = rate.get().tier();
         String fragment = quiet ? null : choose(tier);
         if (fragment == null) {
-            if (hornDue) {
-                hornTicksLeft = draw(tuning.retryMinTicks(), tuning.retryMaxTicks());
-            }
-            if (darkDue) {
-                ticksLeft = draw(tuning.retryMinTicks(), tuning.retryMaxTicks());
+            int retry = draw(tuning.retryMinTicks(), tuning.retryMaxTicks());
+            if (hornNear) {
+                hornTicksLeft = retry;
+            } else {
+                ticksLeft = retry;
             }
             return Optional.empty();
         }
         last = fragment;
-        if (hornDue) {
-            hornTicksLeft = draw(tuning.hornMinTicks(), tuning.hornMaxTicks());
-        }
-        if (darkDue) {
-            ticksLeft = draw(rate.get().minTicks(), rate.get().maxTicks());
+        // Any fragment redraws both timers.
+        ticksLeft = draw(rate.get().minTicks(), rate.get().maxTicks());
+        if (hornNear) {
+            hornTicksLeft = draw(
+                    Math.max(tuning.hornMinTicks(), rate.get().minTicks()),
+                    Math.max(tuning.hornMaxTicks(), rate.get().maxTicks()));
         }
         return Optional.of(new Pick(tier, fragment, hornNear ? Source.HORN : Source.DARK));
     }

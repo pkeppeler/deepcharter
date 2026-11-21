@@ -86,7 +86,8 @@ class Recording:
     """One phonautogram playback: the file First Sounds publishes it as, and what the credit says of it.
 
     Each entry names its own artist, date, output folder under the sounds folder and treatment (a key of TREATMENTS), and all of them are
-    written to the manifest. A recording for something other than a cylinder is one more entry with another folder or treatment.
+    written to the manifest. A recording for something other than a cylinder is one more entry with another folder or treatment (#861 renders
+    its "Au clair de la lune" this way, and the ambience's fragments share only the licence check, bed and encoder, in tools/sounds/ambience.py).
     """
 
     name: str

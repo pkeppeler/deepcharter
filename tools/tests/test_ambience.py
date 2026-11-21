@@ -157,11 +157,31 @@ class TreatmentTest(unittest.TestCase):
         shaped = {tier: ambience.shape(self.pcm(), fragment, tier).tobytes() for tier in ambience.ALL}
         self.assertEqual(3, len(set(shaped.values())))
 
-    def test_the_voice_is_quieter_in_the_faint_tier(self):
-        fragment = next(f for f in ambience.FRAGMENTS if f.tiers == ambience.ALL)
-        peaks = {tier: max(abs(s) for s in ambience.shape(self.pcm(), fragment, tier)) for tier in ambience.ALL}
-        self.assertLess(peaks[ambience.FAINT], peaks[ambience.WORN])
-        self.assertLess(peaks[ambience.FAINT], 32767 * 0.2)
+    def test_a_tone_sits_lower_than_a_voice_in_every_tier(self):
+        # A pure tone is as loud as the layer's drone at a voice's peak: measured by LUFS in the PR, held here by the peak it is set to.
+        voice = next(f for f in ambience.FRAGMENTS if f.tiers == ambience.ALL and f.kind == ambience.VOICE and not f.trim_db)
+        tone = next(f for f in ambience.FRAGMENTS if f.tiers == ambience.ALL and f.kind == ambience.TONE)
+        for tier in ambience.ALL:
+            self.assertLess(
+                max(abs(s) for s in ambience.shape(self.pcm(), tone, tier)),
+                max(abs(s) for s in ambience.shape(self.pcm(), voice, tier)),
+                tier,
+            )
+
+    def test_a_trimmed_fragment_is_turned_down_in_its_tier_only(self):
+        trimmed = next(f for f in ambience.FRAGMENTS if f.trim_db)
+        plain = ambience.Fragment(trimmed.name, trimmed.source, trimmed.start, trimmed.end, trimmed.tiers)
+        for tier, decibels in trimmed.trim_db:
+            self.assertLess(decibels, 0)
+            self.assertLess(
+                max(abs(s) for s in ambience.shape(self.pcm(), trimmed, tier)),
+                max(abs(s) for s in ambience.shape(self.pcm(), plain, tier)),
+                tier,
+            )
+
+    def test_the_first_layers_voices_are_not_left_inaudible(self):
+        # Distance takes 4 to 18 dB more: the faint tier's voice peak is no lower than the worn tier's, which the narrower band makes quieter.
+        self.assertGreaterEqual(ambience.TIERS[ambience.FAINT].peak_db, ambience.TIERS[ambience.WORN].peak_db)
 
     def test_only_a_broken_fragment_stutters(self):
         fragment = next(f for f in ambience.FRAGMENTS if f.tiers == ambience.ALL)

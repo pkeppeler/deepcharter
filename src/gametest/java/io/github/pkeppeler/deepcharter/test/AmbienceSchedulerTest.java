@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.sound.ambience.QuietTracker;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -273,6 +274,48 @@ public class AmbienceSchedulerTest {
     }
 
     @GameTest
+    public void aHornNeverMakesALayerNoisierThanItsOwnRate(GameTestHelper helper) {
+        long ticks = DAYS * 24_000L;
+        for (int layer = 1; layer <= 3; layer++) {
+            AmbienceTuning.Rate rate = AmbienceTuning.DEFAULT.rateFor(layer).orElseThrow();
+            long near = 0;
+            long away = 0;
+            for (long seed = 70; seed < 75; seed++) {
+                List<Pick> picks = new ArrayList<>();
+                List<Long> at = picksAt(scheduler(seed), layer, true, false, ticks, picks);
+                // The first fragment after arriving is the one extra; every gap after it is at least the layer's own
+                // minimum.
+                expect(
+                        helper,
+                        picks.size() <= ticks / rate.minTicks() + 1,
+                        "layer %s near a horn heard %s",
+                        layer,
+                        picks.size());
+                for (long gap : gaps(at)) {
+                    expect(
+                            helper,
+                            gap >= rate.minTicks(),
+                            "layer %s: two fragments %s ticks apart near a horn",
+                            layer,
+                            gap);
+                }
+                near += picks.size();
+                List<Pick> dark = new ArrayList<>();
+                picksAt(scheduler(seed), layer, false, false, ticks, dark);
+                away += dark.size();
+            }
+            expect(
+                    helper,
+                    near <= away * 1.1,
+                    "layer %s: %s fragments near a horn against %s away from one",
+                    layer,
+                    near,
+                    away);
+        }
+        helper.succeed();
+    }
+
+    @GameTest
     public void leavingAHornGoesBackToTheLayersOwnGapAndTheHornTimerStartsAgain(GameTestHelper helper) {
         AmbienceScheduler scheduler = scheduler(8);
         List<Pick> picks = new ArrayList<>();
@@ -346,7 +389,14 @@ public class AmbienceSchedulerTest {
             expect(helper, pool.size() >= 4, "the %s pool is %s", tier, pool);
             expect(helper, new HashSet<>(pool).size() == pool.size(), "the %s pool repeats a fragment: %s", tier, pool);
             for (String fragment : pool) {
-                expect(helper, AmbienceFragments.sound(tier, fragment) != null, "no sound for %s %s", tier, fragment);
+                String path = AmbienceFragments.sound(tier, fragment).location().getPath();
+                expect(
+                        helper,
+                        path.equals("ambience." + tier.name().toLowerCase(Locale.ROOT) + "." + fragment),
+                        "%s %s is the sound %s",
+                        tier,
+                        fragment,
+                        path);
                 expect(helper, !fragment.equals("horn_warmup"), "the horn's warm-up is in the %s pool", tier);
             }
         }
