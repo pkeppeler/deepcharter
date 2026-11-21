@@ -26,8 +26,8 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Server GameTests for #861, the wreck's phonograph: a player who comes close starts the song and one far away is never sent it, a right
  * click switches it off (and on again), an off or ended song stays quiet while a player lingers, the block is unbreakable with no item and
- * no loot and holds no cylinder, and the rule for when it plays again (armed by a long absence) holds. The block's place in a wreck bay is
- * in {@code LayerStructuresTest}.
+ * no loot and holds no cylinder, and the rule for when it plays again (armed by a long absence) holds. The block's place in the story bay is
+ * in {@code CampaignContentTest} and {@code LayerStructuresTest}.
  */
 public class WreckPhonographTest {
     /** The ticks a mock player needs to read what the server sent it. */

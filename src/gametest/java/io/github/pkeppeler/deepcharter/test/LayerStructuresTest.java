@@ -19,7 +19,6 @@ import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
-import io.github.pkeppeler.deepcharter.sound.phonograph.WreckPhonographBlockEntity;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -605,11 +604,11 @@ public class LayerStructuresTest {
         });
     }
 
-    /** A cell of its own for the wreck bay's phonograph. */
+    /** A cell of its own for an ordinary wreck bay, which has no phonograph. */
     private static final int WRECK_PHONOGRAPH_CELL = 11;
 
     @GameTest(maxTicks = 600)
-    public void everyWreckBayHoldsTheCabinsPhonographInACornerClearOfTheLockerPodAndRail(GameTestHelper helper) {
+    public void anOrdinaryWreckBayHasNoCabinPhonographThatIsPROSPECTOR0002sAlone(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 2);
         LayerChain.Band levelBand = TestLayers.band(level, 2);
         StructureSite site = StructureSite.in(
@@ -620,21 +619,21 @@ public class LayerStructuresTest {
                 WRECK_PHONOGRAPH_CELL,
                 WRECK_PHONOGRAPH_CELL,
                 conduit(helper));
-        // At u 5, v 5 of the bay (StructureKind.WRECK): the same offset whichever way the bay turns.
-        BlockPos phonograph = site.origin().offset(5, 0, 5);
-        BlockPos locker = site.origin().offset(site.alongZ() ? -5 : 5, 0, site.alongZ() ? 5 : -5);
-        if (phonograph.equals(locker) || phonograph.distSqr(site.origin()) < 9) {
-            throw failure(helper, "the phonograph at %s is on the locker %s or the pod's spot", phonograph, locker);
+        if (LayerStructures.prospector(level).filter(site::equals).isPresent()) {
+            throw failure(helper, "cell %d is the Prospector's own site", WRECK_PHONOGRAPH_CELL);
         }
-        level.getChunk(phonograph.getX() >> 4, phonograph.getZ() >> 4);
+        // The story bay's phonograph is at u 5, v 5, the same offset whichever way the bay turns (CampaignContentTest
+        // counts it).
+        BlockPos corner = site.origin().offset(5, 0, 5);
+        level.getChunk(corner.getX() >> 4, corner.getZ() >> 4);
         helper.succeedWhen(() -> {
-            BlockState state = level.getBlockState(phonograph);
-            if (!state.is(PhonographRegistry.WRECK_PHONOGRAPH)) {
+            if (level.getBlockState(site.origin().offset(0, -1, 0)).isAir()) {
                 throw failure(
-                        helper, "the corner of the wreck bay at %s holds %s, not the phonograph", phonograph, state);
+                        helper, "the bay at %s was not drawn yet", site.origin().toShortString());
             }
-            if (!(level.getBlockEntity(phonograph) instanceof WreckPhonographBlockEntity)) {
-                throw failure(helper, "the wreck's phonograph at %s has no block entity", phonograph);
+            BlockState state = level.getBlockState(corner);
+            if (state.is(PhonographRegistry.WRECK_PHONOGRAPH)) {
+                throw failure(helper, "an ordinary wreck bay at %s holds a cabin phonograph", corner);
             }
         });
     }

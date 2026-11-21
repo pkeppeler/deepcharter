@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
-import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographRegistry;
 import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalInt;
@@ -152,8 +151,8 @@ public enum StructureKind {
     },
     /**
      * A wreck site in Prospector's Run: a bay with a scorched floor, a rail that ends in it, and debris at the edges. The middle
-     * is clear for a pod, which a later issue sets there (the site is {@code origin}). A barrel in the corner is the crew's locker, and in
-     * the next corner, in every bay, stands the cabin's phonograph: it plays "Au clair de la lune" for a player who comes close (#861).
+     * is clear for a pod, which a later issue sets there (the site is {@code origin}). A barrel in the corner is the crew's locker. PROSPECTOR-0002's bay
+     * alone also holds the cabin's phonograph ({@link ProspectorWrecks#light}).
      */
     WRECK(2, 2, 6, 6, OptionalInt.of(5)) {
         @Override
@@ -176,7 +175,6 @@ public enum StructureKind {
                 }
             }
             p.lootBarrel(5, 0, -5, WRECK_LOCKER);
-            p.set(5, 0, 5, PhonographRegistry.WRECK_PHONOGRAPH.defaultBlockState());
         }
     };
 
