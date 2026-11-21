@@ -34,12 +34,33 @@ public record HandbookChapter(int order, Component title, List<Entry> directives
         directives = List.copyOf(directives);
     }
 
-    /** One directive: its id, which is also the id of its advancement, and the line the handbook shows. */
-    public record Entry(Identifier id, Component text) {
+    /**
+     * One directive: its id, which is also the id of its advancement, the line the handbook shows, and the items the step asks the
+     * player to hold, each with a count. {@code needs} is for the quest map's index card only: nothing here takes the items.
+     */
+    public record Entry(Identifier id, Component text, List<Need> needs) {
         public static final Codec<Entry> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                         Identifier.CODEC.fieldOf("id").forGetter(Entry::id),
-                        ComponentSerialization.CODEC.fieldOf("text").forGetter(Entry::text))
+                        ComponentSerialization.CODEC.fieldOf("text").forGetter(Entry::text),
+                        Need.CODEC.listOf().optionalFieldOf("needs", List.of()).forGetter(Entry::needs))
                 .apply(instance, Entry::new));
+
+        public Entry {
+            needs = List.copyOf(needs);
+        }
+
+        /** A directive that needs no items. */
+        public Entry(Identifier id, Component text) {
+            this(id, text, List.of());
+        }
+    }
+
+    /** {@code count} of {@code item}, held by the player, for the step that lists it. */
+    public record Need(Identifier item, int count) {
+        public static final Codec<Need> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                        Identifier.CODEC.fieldOf("item").forGetter(Need::item),
+                        Codec.intRange(1, Integer.MAX_VALUE).fieldOf("count").forGetter(Need::count))
+                .apply(instance, Need::new));
     }
 
     private static DataResult<HandbookChapter> validate(HandbookChapter chapter) {
