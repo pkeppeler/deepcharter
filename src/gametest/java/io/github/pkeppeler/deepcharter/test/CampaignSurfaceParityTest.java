@@ -25,23 +25,23 @@ import org.slf4j.LoggerFactory;
 /**
  * The layers' density terms must not reach above the surface band (#803). In the shipped overworld they once did: solid pillars rose
  * from the surface to the top of the band in 0.5% of the columns, because the terms ran past their bands. The ground of
- * {@code deepcharter:campaign_sample} (the shipped overworld in the test pack) must be the ground of {@code deepcharter:tall_surface_biomes},
- * the pack's surface world with the surface's own biome source, to within {@link #TOLERANCE} blocks on a grid of columns, and the density must end the layers' terms at the
+ * {@code deepcharter:campaign_sample} (the shipped overworld in the test pack) must be the ground of {@code deepcharter:surface_sample},
+ * the pack's copy of the overworld before the cutover (the surface alone, 384 tall; {@code tall_surface_biomes} is no reference: its own layer
+ * terms leak, 320 in 5 of 4096 columns), to within {@link #TOLERANCE} blocks on a grid of columns, and the density must end the layers' terms at the
  * surface band's floor: a {@code range_choice} on the band below it, a constant that is empty everywhere else.
  */
 public class CampaignSurfaceParityTest {
     private static final ResourceKey<Level> CAMPAIGN =
             ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "campaign_sample"));
-    private static final ResourceKey<Level> SURFACE_ONLY = ResourceKey.create(
-            Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "tall_surface_biomes"));
+    private static final ResourceKey<Level> SURFACE_SAMPLE =
+            ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("deepcharter", "surface_sample"));
     /** The columns read: a square this many blocks either side of the origin, this far apart (4096 columns, the leak hit 1 in 200). */
     private static final int SPAN = 1024;
 
     private static final int STEP = 32;
     /**
-     * The surface-only world is the pack's own fixture, with its own noise router: its ground differs by a block or three in about
-     * 0.4% of the columns (measured, CI 2026-11-21). A leak is a pillar from the surface to the top of the band, hundreds of blocks, so
-     * two density cells (16) separate the two.
+     * The surface-only world has another height and its own cells, so a column may differ by a block or two. A leak is a pillar from the
+     * surface to the top of the band, hundreds of blocks, so two density cells (16) separate the two.
      */
     private static final int TOLERANCE = 16;
 
@@ -51,7 +51,7 @@ public class CampaignSurfaceParityTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void theCampaignGroundIsTheGroundOfTheSurfaceOnlyWorld(GameTestHelper helper) {
         ServerLevel campaign = ClientLight.serverLevel(helper.getLevel().getServer(), CAMPAIGN);
-        ServerLevel surface = ClientLight.serverLevel(helper.getLevel().getServer(), SURFACE_ONLY);
+        ServerLevel surface = ClientLight.serverLevel(helper.getLevel().getServer(), SURFACE_SAMPLE);
         int columns = 0;
         int largest = 0;
         List<String> differing = new ArrayList<>();
