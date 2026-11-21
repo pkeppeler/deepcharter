@@ -11,24 +11,23 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TODA
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ZONE;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.build;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildRoom;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.face;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.fillBiome;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ground;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.layer1Floor;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.putOutTheLight;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.requireZone;
-import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.stand;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.standWithoutSettle;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.todayFloor;
 
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
-import io.github.pkeppeler.deepcharter.test.support.ClientTestWatchdog;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -81,6 +80,11 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
      */
     private static final double CONTROL_RATIO = 2.0;
 
+    private record View(String name, float yaw, float pitch) {}
+
+    private static final List<View> VIEWS =
+            List.of(new View("wall", 180, 0), new View("floor", 180, 90), new View("ceiling", 180, -90));
+
     private final List<String> table = new ArrayList<>();
 
     /** One reading: the mean luminance (0 to 255) and colour of the middle of the screen. */
@@ -91,14 +95,9 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         }
     }
 
-    private static final int LIMIT_SECONDS = 360;
-
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
-        // Long by design: a dozen looks of 160 settle ticks each. A loaded runner stretches it past the 180 s of a
-        // class (it ran 181 s and 146 s), so it has more.
-        ClientTestWatchdog.shared().arm(getClass().getSimpleName(), Duration.ofSeconds(LIMIT_SECONDS));
         boolean flickerWas = EvidencePins.lightFlickerOff;
         EvidencePins.lightFlickerOff = true;
         try (TestSingleplayerContext singleplayer = context.worldBuilder()
@@ -269,14 +268,15 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         BlockPos campaign = buildRoom(server, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE), true);
         BlockPos today = buildRoom(server, TODAY, todayFloor(x + 4 * SPACING), Optional.empty(), true);
         requireZone(server, TODAY, today);
-        record View(String name, float yaw, float pitch) {}
-        for (View view : List.of(new View("wall", 180, 0), new View("floor", 180, 90), new View("ceiling", 180, -90))) {
-            Reading now =
-                    look(context, server, TODAY, today, view.yaw(), view.pitch(), "lit-room-today-" + view.name());
-            Reading campaignWorld = look(
-                    context, server, CAMPAIGN, campaign, view.yaw(), view.pitch(), "lit-room-campaign-" + view.name());
+        List<Reading> now = lookAround(context, server, TODAY, today, "lit-room-today-");
+        List<Reading> campaignWorld = lookAround(context, server, CAMPAIGN, campaign, "lit-room-campaign-");
+        for (int i = 0; i < VIEWS.size(); i++) {
             table.add("lit room, %s: today %s; campaign %s; campaign/today %.3f"
-                    .formatted(view.name(), now, campaignWorld, campaignWorld.luma() / Math.max(now.luma(), 0.01)));
+                    .formatted(
+                            VIEWS.get(i).name(),
+                            now.get(i),
+                            campaignWorld.get(i),
+                            campaignWorld.get(i).luma() / Math.max(now.get(i).luma(), 0.01)));
         }
         // An unlit room shows the ambient floor alone.
         putOutTheLight(server, CAMPAIGN, campaign);
@@ -305,7 +305,7 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
 
     // ---------------------------------------------------------------------------------------------- reading
 
-    /** Stands the spectator on {@code floor}, waits for the light and the lightmap to settle, and reads the middle of the screen. */
+    /** Stands the spectator on {@code floor} and reads the middle of the screen. */
     private static Reading look(
             ClientGameTestContext context,
             TestServerContext server,
@@ -324,7 +324,11 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
             float yaw,
             float pitch,
             String shot) {
-        stand(context, server, dimension, floor, yaw, pitch, shot);
+        standWithoutSettle(context, server, dimension, floor, yaw, pitch, shot);
+        return read(context, floor, shot);
+    }
+
+    private static Reading read(ClientGameTestContext context, BlockPos floor, String shot) {
         Reading[] reading = new Reading[1];
         ClientChecks.withHudHidden(context, () -> reading[0] = average(context.takeScreenshot(shot)));
         LOGGER.info(
@@ -333,6 +337,26 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
                 reading[0],
                 attributes(context, floor));
         return reading[0];
+    }
+
+    /** Reads each of {@link #VIEWS} of one room: the first view stands, the others turn in place. */
+    private static List<Reading> lookAround(
+            ClientGameTestContext context,
+            TestServerContext server,
+            ResourceKey<Level> dimension,
+            BlockPos floor,
+            String shotPrefix) {
+        List<Reading> readings = new ArrayList<>();
+        for (View view : VIEWS) {
+            String shot = shotPrefix + view.name();
+            if (readings.isEmpty()) {
+                readings.add(look(context, server, dimension, floor, view.yaw(), view.pitch(), shot));
+            } else {
+                face(context, server, dimension, floor, view.yaw(), view.pitch(), shot);
+                readings.add(read(context, floor, shot));
+            }
+        }
+        return readings;
     }
 
     private static Reading average(Path file) {

@@ -20,12 +20,14 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 
 /**
- * Light is computed off the server thread, and vanilla drops the light update of a chunk that is not yet ticking (issue 427), so a client
- * sent a chunk while light is pending keeps the old light; call this after the last block placed in a chunk a player may be sent.
- * Vanilla offers a chunk to its trackers only once, so this also offers it again, when the hold ends, to those who came into view
- * during the hold (issue 524). A player who already had a chunk of the hold when it began is sent the chunk's settled light when the hold
- * ends (#824): the change reaches that chunk from a neighbour's draw, and vanilla marks a light change for sending only once the chunk
- * ticks.
+ * Light is computed off the server thread, so a client sent a chunk while light is pending keeps the old light: vanilla holds a
+ * chunk's send until the light tasks queued for it are done, and this holds the sends of a chunk and its neighbours the same way.
+ * Call this after the last block placed in a chunk a player may be sent. Vanilla offers a chunk to its trackers only once, so this
+ * also offers it again, when the hold ends, to those who came into view during the hold (issue 524).
+ *
+ * <p>A player who already had a chunk of the hold when it began is sent the chunk's settled light when the hold ends (#824): a
+ * neighbour's draw changes the light of that chunk, and vanilla drops a light change for a chunk that does not tick (issue 427), so
+ * the player's client keeps the old light.
  */
 public final class LightSync {
     /** Server ticks a hold may last before it is reported as stuck (30 s). */
@@ -82,16 +84,16 @@ public final class LightSync {
 
     /**
      * Holds the sending of the chunk, and of each of its eight neighbours that has a loaded holder (light spreads at most 15 blocks, so
-     * one ring is enough), until the light tasks queued so far are done: vanilla's {@code ChunkMap.waitForLightBeforeSending}, which
-     * takes the radius and holds only the chunks within it. A neighbour that is sendable already gets a hold of its own here, and its
-     * players that have it are sent its settled light when the hold ends.
+     * one ring is enough), until the light tasks queued so far are done. Vanilla's {@code ChunkMap.waitForLightBeforeSending(pos, r)}
+     * adds the dependency over {@code rangeClosed(pos, r + 1)}, so radius 0 already holds that 3x3. The hold does not make a
+     * player's copy of a chunk that was sent before it right: for that, see the class comment.
      */
     public static void holdSendUntilLit(ServerLevel level, ChunkPos chunk) {
         List<ChunkPos> sendable = new ArrayList<>();
         ChunkPos.rangeClosed(chunk, 1)
                 .filter(near -> level.getChunkSource().chunkMap.getChunkToSend(near.pack()) != null)
                 .forEach(sendable::add);
-        level.getChunkSource().chunkMap.waitForLightBeforeSending(chunk, 1);
+        level.getChunkSource().chunkMap.waitForLightBeforeSending(chunk, 0);
         int now = level.getServer().getTickCount();
         for (ChunkPos held : sendable) {
             Hold existing = HOLDS.get(new Key(level, held));

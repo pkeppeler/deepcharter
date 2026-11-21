@@ -18,6 +18,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
@@ -265,6 +266,78 @@ public final class AtmosphereScenes {
         // tick-wait: the lightmap and the fog ease toward the new place over a few ticks, and nothing reports when they
         // have
         context.waitTicks(SETTLE_TICKS);
+        awaitSteadyPicture(context, shot);
+    }
+
+    /**
+     * Like {@link #stand} without the fixed settle, for a reading of the middle of the screen: waits for the client to be there with
+     * the chunks meshed and the light matching the server's, then for the picture to stop changing. The steady-picture check reads only
+     * the middle of the screen, so it cannot tell that sections are unmeshed.
+     */
+    public static void standWithoutSettle(
+            ClientGameTestContext context,
+            TestServerContext server,
+            ResourceKey<Level> dimension,
+            BlockPos floor,
+            float yaw,
+            float pitch,
+            String shot) {
+        teleport(server, dimension, floor, yaw, pitch);
+        Box around = Box.around(floor, MASS, 1, SHAFT_DEPTH);
+        ClientWait.until(
+                context,
+                "the client in " + dimension.identifier() + " holding and meshing the chunks at "
+                        + floor.toShortString(),
+                client -> ClientLight.clientLevel(client).dimension().equals(dimension)
+                        && client.player != null
+                        && client.player.blockPosition().equals(floor)
+                        && ClientLight.chunksPresent(ClientLight.clientLevel(client), around)
+                        && client.levelRenderer.hasRenderedAllSections(),
+                client -> "no chunks or unmeshed sections at " + floor.toShortString());
+        ClientChecks.requireNone(
+                "the light at " + shot, ClientLight.settledMismatch(context, server, dimension, around));
+        awaitSteadyPicture(context, shot);
+    }
+
+    private static void teleport(
+            TestServerContext server, ResourceKey<Level> dimension, BlockPos floor, float yaw, float pitch) {
+        server.runOnServer(s -> s.getPlayerList()
+                .getPlayers()
+                .getFirst()
+                .teleportTo(
+                        ClientLight.serverLevel(s, dimension),
+                        floor.getX() + 0.5,
+                        floor.getY(),
+                        floor.getZ() + 0.5,
+                        Set.of(),
+                        yaw,
+                        pitch,
+                        true));
+    }
+
+    /**
+     * Turns the spectator, already standing on {@code floor} in {@code dimension}, to {@code yaw} and {@code pitch}, and waits for the
+     * picture to stop changing. It does not wait for meshing, because the player does not move; the steady-picture check is its only guard.
+     */
+    public static void face(
+            ClientGameTestContext context,
+            TestServerContext server,
+            ResourceKey<Level> dimension,
+            BlockPos floor,
+            float yaw,
+            float pitch,
+            String shot) {
+        teleport(server, dimension, floor, yaw, pitch);
+        ClientWait.until(
+                context,
+                "the client facing " + yaw + ", " + pitch + " at " + shot,
+                client -> client.player != null
+                        && Math.abs(client.player.getXRot() - pitch) < 0.5f
+                        && Math.abs(Mth.wrapDegrees(client.player.getYRot() - yaw)) < 0.5f,
+                client -> "the player faces "
+                        + (client.player == null
+                                ? "nowhere"
+                                : client.player.getYRot() + ", " + client.player.getXRot()));
         awaitSteadyPicture(context, shot);
     }
 
