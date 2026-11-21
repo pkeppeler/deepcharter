@@ -148,7 +148,7 @@ public class NotesClientTest implements FabricClientGameTest {
     private static void inTheRealGame(ClientGameTestContext context) {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.runOnClient(client -> require(ClientNotes.entries().isEmpty(), "a new world has no notes"));
-            // Before any charter: using a Note in the world opens it to read, and files nothing.
+            // Before any charter: using a Note in the world opens it to read, and files it for the player alone (#843).
             singleplayer
                     .getServer()
                     .runOnServer(server ->
@@ -161,10 +161,23 @@ public class NotesClientTest implements FabricClientGameTest {
                     context.computeOnClient(client -> HandbookDrawn.showsNote(worldNote, ClientNotes.entry(FIRST))),
                     "a Note used in the world opens to read, with no charter");
             require(
-                    context.computeOnClient(client -> ClientNotes.entries().isEmpty()),
-                    "a player on no charter files nothing by reading it");
+                    context.computeOnClient(client -> ClientNotes.entries().stream()
+                            .map(HandbookNote::id)
+                            .toList()
+                            .equals(List.of(FIRST))),
+                    "a player on no charter has the Note filed for them alone");
             context.takeScreenshot("notes-opened-from-world");
             context.setScreen(() -> null);
+            // Reading it marked it read; clear that so the charter part below starts from an unread Note.
+            singleplayer
+                    .getServer()
+                    .runOnServer(server ->
+                            ReadMarks.unmark(server.getPlayerList().getPlayers().getFirst(), FIRST));
+            ClientWait.until(
+                    context,
+                    "the read mark cleared",
+                    client -> !ClientReadMarks.isRead(FIRST),
+                    client -> "read mark " + ClientReadMarks.isRead(FIRST));
 
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -172,7 +185,8 @@ public class NotesClientTest implements FabricClientGameTest {
                         Charters.found(server, player.getUUID(), "Notes Test Co")
                                 .isEmpty(),
                         "the player founds a charter");
-                // Filed without the block: using it would open each Note, and reading marks it read.
+                // The founder's own Note carried into the charter; FIRST is found already. Filed without the block:
+                // using it would open each Note, and reading marks it read.
                 Notes.find(player, FIRST);
                 Notes.find(player, TENTH);
             });
