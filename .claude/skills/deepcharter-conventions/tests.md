@@ -46,6 +46,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - A test that restates a registry (a hand-copied list of names) is not a test; read the registry.
 - A render-path feature with its own update loop (`FloodlightBeams`) needs a client GameTest driving it, not only an evidence scenario.
 - A change to shared client visuals runs every client test class that reads them, not only its own (#630 missed `TextureLayersClientTest`).
+- A control assertion must be shown to fail without the feature in every scenario it runs; a case that passes by closeness to a dark control is a log row, not an assertion.
 - Prove a regression test with a mutation check: break the code under test in your worktree, see it go red, revert (#627's first case was vacuous).
 
 ## Client slots
