@@ -215,8 +215,9 @@ public class StructureLightBorderTest {
                     fake,
                     pair.get().lampChunk(),
                     pair.get().neighbour(),
-                    Math.max(level.getMinY(), baseY - REACH),
-                    Math.min(level.getMaxY(), top + REACH));
+                    Math.max(
+                            level.getMinY(), baseY - REACH), // level-height: clamps light reach to the level's own rows
+                    Math.min(level.getMaxY(), top + REACH)); // level-height: clamps light reach to the level's own rows
         }
         throw failure(helper, "no cell of %d from %d has a %s at a chunk border", CELL_SEARCH, BASE_CELL, lamp);
     }

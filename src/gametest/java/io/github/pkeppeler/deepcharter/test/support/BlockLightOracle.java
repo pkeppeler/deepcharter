@@ -58,10 +58,14 @@ public final class BlockLightOracle {
     public static Field expected(ServerLevel level, BoundingBox box, Predicate<BlockPos> counts) {
         BoundingBox scan = new BoundingBox(
                 box.minX() - REACH,
-                Math.max(level.getMinY(), box.minY() - REACH),
+                Math.max(
+                        level.getMinY(),
+                        box.minY() - REACH), // level-height: clamps light reach to the level's own rows
                 box.minZ() - REACH,
                 box.maxX() + REACH,
-                Math.min(level.getMaxY(), box.maxY() + REACH),
+                Math.min(
+                        level.getMaxY(),
+                        box.maxY() + REACH), // level-height: clamps light reach to the level's own rows
                 box.maxZ() + REACH);
         requireLoaded(level, scan);
         int cells = scan.getXSpan() * scan.getYSpan() * scan.getZSpan();
