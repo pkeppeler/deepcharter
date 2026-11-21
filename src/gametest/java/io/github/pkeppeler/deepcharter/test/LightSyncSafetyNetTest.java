@@ -66,9 +66,6 @@ public class LightSyncSafetyNetTest {
     /** Ticks the stored light must not change before the case takes it as settled. */
     private static final int STEADY_TICKS = 6;
 
-    /** Ticks between two comparisons of the net: restates its interval. */
-    private static final int NET_INTERVAL = 10;
-
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1_200;
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
@@ -82,15 +79,10 @@ public class LightSyncSafetyNetTest {
     }
 
     /**
-     * The lamp is a magma block, whose light of 3 spreads two blocks: it is published and withdrawn in a few ticks, where a sea
-     * lantern's takes seconds, and the case needs the light to come and go inside one interval of the net.
-     *
-     * <p>The light the player holds is neither the light before a change nor the light after it, and the published light returns to the
-     * first between two of the net's samples. The chunk lies dark; a lamp is placed; once its light is published the chunk is sent
-     * again and the lamp is removed in the same tick, so the player holds the lit chunk and the published light is dark again a few
-     * ticks later, inside one interval of the net. A net that compares with its own last sample sees dark, then dark. A first round,
-     * before the hold, measures how long the lamp's light takes to appear; the round that counts starts so that the lit light falls
-     * just after one of the net's samples, which come every {@value #NET_INTERVAL} ticks from the end of the hold.
+     * The light the player holds is neither the light before a change nor the light after it, and the published light returns to the
+     * first. The chunk lies dark; a lamp is lit; the chunk is sent to the player lit; the lamp goes out. The holds that keep the net's
+     * watch alive end last, so the net's own record from the hold's end is dark, as the published light is: only what the player was
+     * sent, lit, tells it to send. A net that compares with its own last sample sees dark, then dark.
      */
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aLightThatMovedAndCameBackAfterTheChunkWasSentIsSentAgain(GameTestHelper helper) {
@@ -105,9 +97,6 @@ public class LightSyncSafetyNetTest {
         FarChunks.Deadline deadline = FarChunks.deadline(120);
         int[] phase = {0};
         int[] waited = {0};
-        int[] holdEnd = {0};
-        int[] placedAt = {0};
-        int[] litDelay = {0};
         int[] sentBefore = {0};
         BlockPos[] lamp = {null};
         int[][] dark = {null};
@@ -127,7 +116,6 @@ public class LightSyncSafetyNetTest {
                 return;
             }
             try {
-                int tick = level.getServer().getTickCount();
                 switch (phase[0]) {
                     case 0 -> {
                         forEach(home, chunk -> {
@@ -170,87 +158,53 @@ public class LightSyncSafetyNetTest {
                             return;
                         }
                         dark[0] = steady[0];
-                        placedAt[0] = tick;
                         level.setBlock(lamp[0], Blocks.MAGMA_BLOCK.defaultBlockState(), 3);
                         phase[0] = 4;
                     }
                     case 4 -> {
-                        if (changedSections(level, home, lamp[0], dark[0]).isEmpty()) {
+                        if (changedSections(level, home, lamp[0], dark[0]).isEmpty()
+                                || !steady(level, home, lamp[0], steady, waited, marker)) {
                             return;
                         }
-                        litDelay[0] = tick - placedAt[0];
-                        level.setBlock(lamp[0], Blocks.AIR.defaultBlockState(), 3);
-                        phase[0] = 5;
-                    }
-                    case 5 -> {
-                        if (!steady(level, home, lamp[0], steady, waited, marker)) {
-                            return;
-                        }
-                        // The hold of a draw: the chunks get a watch of the net, and the chunk lies dark afterwards.
-                        level.setBlock(lamp[0], Blocks.MAGMA_BLOCK.defaultBlockState(), 3);
-                        LightSync.holdSendUntilLit(level, lamp[0], lamp[0]);
-                        level.setBlock(lamp[0], Blocks.AIR.defaultBlockState(), 3);
-                        phase[0] = 6;
-                    }
-                    case 6 -> {
-                        boolean over = holdsEnded(pair);
-                        deadline.await(helper, level, over, () -> "the hold of " + pair + " did not end");
-                        if (!over) {
-                            return;
-                        }
-                        if (holdEnd[0] == 0) {
-                            // The hold ended in the end-of-tick step of the tick before this one.
-                            holdEnd[0] = tick - 1;
-                        }
-                        if (!steady(level, home, lamp[0], steady, waited, marker)) {
-                            return;
-                        }
-                        checkStoredLight(helper, level, home, lampChunk, lamp[0], "dark");
-                        dark[0] = steady[0];
-                        phase[0] = 7;
-                    }
-                    case 7 -> {
-                        // The lit light is published litDelay ticks after the lamp is placed: two ticks after a sample.
-                        if ((tick + litDelay[0] - holdEnd[0] - 2) % NET_INTERVAL != 0) {
-                            return;
-                        }
-                        placedAt[0] = tick;
+                        changed[0] = changedSections(level, home, lamp[0], dark[0]);
                         sentBefore[0] = mock.timesSent(home);
-                        level.setBlock(lamp[0], Blocks.MAGMA_BLOCK.defaultBlockState(), 3);
-                        phase[0] = 8;
-                    }
-                    case 8 -> {
-                        BitSet lit = changedSections(level, home, lamp[0], dark[0]);
-                        if (lit.isEmpty()) {
-                            return;
-                        }
-                        changed[0] = lit;
+                        phase[0] = 5;
+                        keepHeld(level, lamp[0]);
                         // The player is sent the lit chunk.
                         net.minecraft.server.level.ServerPlayer player = mock.player();
                         player.connection.chunkSender.dropChunk(player, home);
                         player.connection.chunkSender.markChunkPendingToSend(level.getChunk(home.x(), home.z()));
-                        phase[0] = 9;
                     }
-                    case 9 -> {
+                    case 5 -> {
                         // The lamp goes out once the lit chunk is sent: the player holds the lit light for good.
                         if (mock.timesSent(home) <= sentBefore[0]) {
                             return;
                         }
                         level.setBlock(lamp[0], Blocks.AIR.defaultBlockState(), 3);
-                        phase[0] = 10;
+                        phase[0] = 6;
                     }
-                    case 10 -> {
-                        if (!changedSections(level, home, lamp[0], dark[0]).isEmpty()) {
+                    case 6 -> {
+                        keepHeld(level, lamp[0]);
+                        if (!changedSections(level, home, lamp[0], dark[0]).isEmpty()
+                                || !steady(level, home, lamp[0], steady, waited, marker)) {
                             return;
                         }
-                        // The sends so far are not the ones the case is about.
+                        // The sends so far are not the ones the case is about. The holds end from here.
                         LightSyncSends.unwatch(id);
                         LightSyncSends.watch(id);
+                        phase[0] = 7;
+                    }
+                    case 7 -> {
+                        boolean over = holdsEnded(pair);
+                        deadline.await(helper, level, over, () -> "the hold of " + pair + " did not end");
+                        if (!over) {
+                            return;
+                        }
                         waited[0] = 0;
-                        phase[0] = 11;
+                        phase[0] = 8;
                     }
                     default -> {
-                        if (waited[0]++ < NET_INTERVAL + 5) {
+                        if (waited[0]++ < NET_WAIT_TICKS) {
                             return;
                         }
                         BitSet unsent = (BitSet) changed[0].clone();
@@ -270,6 +224,11 @@ public class LightSyncSafetyNetTest {
                 throw e;
             }
         });
+    }
+
+    /** A hold of the lamp's chunks, as a draw makes one; asked every tick, it keeps the net's watch alive while the case runs. */
+    private static void keepHeld(ServerLevel level, BlockPos lamp) {
+        LightSync.holdSendUntilLit(level, lamp, lamp);
     }
 
     /**
