@@ -67,6 +67,7 @@ public final class RecipeIndex {
      * The index of {@code manager}'s recipes: the one built before when it is the same manager, and a new one when it is not, as
      * after {@code /reload}, which replaces the manager.
      */
+    // test-seam: the /reload rebuild is tested by passing a replaced manager
     public static RecipeIndex of(MinecraftServer server, RecipeManager manager) {
         RecipeIndex index = cached;
         if (index == null || index.manager != manager) {

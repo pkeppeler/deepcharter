@@ -235,12 +235,17 @@ public class KnownRecipesTest {
         RecipeManager replaced = new RecipeManager(server.reloadableRegistries().lookup());
         replaced.finalizeRecipeLoading(server.getWorldData().enabledFeatures());
 
-        if (RecipeIndex.of(server, server.getRecipeManager()) != current) {
-            throw helper.assertionException("the same recipe manager should keep its index");
-        }
-        // /reload replaces the manager; an index kept from the old one would hold the old recipes.
-        if (RecipeIndex.of(server, replaced) == current) {
-            throw helper.assertionException("a replaced recipe manager should get a new index");
+        try {
+            if (RecipeIndex.of(server, server.getRecipeManager()) != current) {
+                throw helper.assertionException("the same recipe manager should keep its index");
+            }
+            // /reload replaces the manager; an index kept from the old one would hold the old recipes.
+            if (RecipeIndex.of(server, replaced) == current) {
+                throw helper.assertionException("a replaced recipe manager should get a new index");
+            }
+        } finally {
+            // The cache is static: leave the server's own manager in it, not the replaced one.
+            RecipeIndex.of(server, server.getRecipeManager());
         }
         helper.succeed();
     }
