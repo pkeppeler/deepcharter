@@ -10,19 +10,23 @@ import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.NotesData;
 import io.github.pkeppeler.deepcharter.handbook.NotesSyncPayload;
+import io.github.pkeppeler.deepcharter.handbook.OpenNotePayload;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -40,6 +44,7 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -171,6 +176,65 @@ public class NotesTest {
         }
         expectRead(helper, crew, FIRST, true);
         expectRead(helper, director, FIRST, false);
+        helper.succeed();
+    }
+
+    @GameTest
+    public void aNoteWithNoTextOrUnreadableDataOpensNothing(GameTestHelper helper) {
+        Identifier note = Notes.id(Notes.MAX_NUMBER);
+        for (FindResult result : List.of(FindResult.UNKNOWN, FindResult.UNREADABLE)) {
+            if (OpenNotePayload.after(result, note).isPresent()) {
+                throw helper.assertionException("%s should open nothing", result);
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theOpenNotePayloadSurvivesTheWire(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), server.registryAccess());
+        OpenNotePayload.CODEC.encode(buf, new OpenNotePayload(SECOND));
+        OpenNotePayload decoded = OpenNotePayload.CODEC.decode(buf);
+        if (!decoded.note().equals(SECOND) || buf.isReadable()) {
+            throw helper.assertionException("the payload should round-trip to %s, was %s", SECOND, decoded);
+        }
+        helper.succeed();
+    }
+
+    @GameTest
+    public void everyFindResultHasALineInTheLanguageFile(GameTestHelper helper) {
+        for (FindResult result : FindResult.values()) {
+            String key = "deepcharter.handbook.note.use." + result.name().toLowerCase(Locale.ROOT);
+            if (!Language.getInstance().has(key)) {
+                throw helper.assertionException("%s has no line %s", result, key);
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theNoteBlockOpensTheNoteForEveryResultThatHasOne(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerPlayer director = MockPlayers.join(helper, "Director").player();
+        ServerPlayer loner = MockPlayers.join(helper, "Loner").player();
+        found(helper, server, director);
+        List<Identifier> opened = new ArrayList<>();
+
+        FindResult first = NoteBlock.use(director, FIRST, payload -> opened.add(payload.note()));
+        FindResult again = NoteBlock.use(director, FIRST, payload -> opened.add(payload.note()));
+        FindResult noCharter = NoteBlock.use(loner, SECOND, payload -> opened.add(payload.note()));
+        if (first != FindResult.FOUND || again != FindResult.ALREADY_FOUND || noCharter != FindResult.NO_CHARTER) {
+            throw helper.assertionException("results were %s, %s, %s", first, again, noCharter);
+        }
+        if (!opened.equals(List.of(FIRST, FIRST, SECOND))) {
+            throw helper.assertionException(
+                    "the block should open FOUND, ALREADY_FOUND and NO_CHARTER, opened %s", opened);
+        }
+        FindResult blank = NoteBlock.use(director, Notes.id(Notes.MAX_NUMBER), payload -> opened.add(payload.note()));
+        if (blank != FindResult.UNKNOWN || opened.size() != 3) {
+            throw helper.assertionException("a blank page opens nothing: %s, opened %s", blank, opened);
+        }
         helper.succeed();
     }
 
