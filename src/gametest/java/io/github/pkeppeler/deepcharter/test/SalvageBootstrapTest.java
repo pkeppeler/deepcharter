@@ -561,6 +561,15 @@ public class SalvageBootstrapTest {
                                 Items.IRON_NUGGET,
                                 Items.IRON_NUGGET,
                                 Items.IRON_NUGGET);
+                        // Holding the lantern the path made completes chapter 1's light directive (the torch does too).
+                        if (bag.count(Items.LANTERN) != 1) {
+                            throw helper.assertionException(
+                                    "the path should end in one lantern, the bag holds %s", bag.count(Items.LANTERN));
+                        }
+                        HandbookChaptersOneToFiveTest.give(player, Items.LANTERN);
+                        done.add(chapterOne.get(6));
+                        HandbookChaptersOneToFiveTest.expectCompleted(
+                                helper, server, "a lantern from a stalk and iron", List.of(player), done);
 
                         // The first terminal: its parts from the real recipes, in the real terminal.
                         bag.craftPart(helper, "pump_motor");
