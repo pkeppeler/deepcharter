@@ -48,6 +48,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.input.InputQuirks;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.context.ContextMap;
@@ -894,9 +896,12 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 context.computeOnClient(client -> panel.shownItems()).isEmpty(),
                 "a search nothing matches lists nothing");
         everyStringIsInsideItsGlass(context, screen, "with nothing found");
-        context.getInput().holdControl();
-        context.getInput().pressKey(InputConstants.KEY_BACKSPACE);
-        context.getInput().releaseControl();
+        // The runner's holdControl does not reach the key event's modifiers, so the press goes in with the edit
+        // shortcut key (Ctrl, or Cmd on a Mac) set.
+        context.runOnClient(client -> client.keyboardHandler.keyPress(
+                client.getWindow().handle(),
+                InputConstants.PRESS,
+                new KeyEvent(InputConstants.KEY_BACKSPACE, 0, InputQuirks.EDIT_SHORTCUT_KEY_MODIFIER)));
         context.waitTicks(1);
         require(context.computeOnClient(client -> panel.state().query()).isEmpty(), "ctrl+backspace clears the search");
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
