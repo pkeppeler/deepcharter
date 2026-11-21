@@ -41,10 +41,10 @@ import org.jspecify.annotations.Nullable;
  * here: a server GameTest has no client behind it.
  */
 public class StalkCollapseTest {
-    /** The floor of the test area, one block above the structure's own floor. */
-    private static final int FLOOR_Y = 1;
+    /** The row of the test area that holds its stone floor (a row of the test structure, not a world height). */
+    private static final int FLOOR_ROW = 1;
     /** The first block a stalk stands in. */
-    private static final int BASE_Y = 2;
+    private static final int BASE_ROW = 2;
     /** Longer than a collapse takes: the sag delay plus one step for each layer of the tallest great stalk and its cap. */
     private static final int COLLAPSE_WAIT = 200;
 
@@ -91,10 +91,10 @@ public class StalkCollapseTest {
         for (int x = -2; x <= 10; x++) {
             for (int z = -2; z <= 10; z++) {
                 level.setBlock(
-                        helper.absolutePos(new BlockPos(x, FLOOR_Y, z)),
+                        helper.absolutePos(new BlockPos(x, FLOOR_ROW, z)),
                         Blocks.STONE.defaultBlockState(),
                         Block.UPDATE_CLIENTS);
-                for (int y = BASE_Y; y <= BASE_Y + height; y++) {
+                for (int y = BASE_ROW; y <= BASE_ROW + height; y++) {
                     level.setBlock(
                             helper.absolutePos(new BlockPos(x, y, z)),
                             Blocks.AIR.defaultBlockState(),
@@ -129,7 +129,7 @@ public class StalkCollapseTest {
         MockPlayer mock = MockPlayers.join(helper, name);
         mock.player().setGameMode(GameType.SURVIVAL);
         mock.teleportTo(
-                helper.getLevel(), Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(0, BASE_Y, FAR_Z))), 0, 0);
+                helper.getLevel(), Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(0, BASE_ROW, FAR_Z))), 0, 0);
         return mock;
     }
 
@@ -139,14 +139,14 @@ public class StalkCollapseTest {
                 .setValue(RotatedPillarBlock.AXIS, net.minecraft.core.Direction.Axis.Y);
         for (int index = 0; index < height; index++) {
             helper.getLevel()
-                    .setBlock(helper.absolutePos(new BlockPos(x, BASE_Y + index, z)), stalk, Block.UPDATE_CLIENTS);
+                    .setBlock(helper.absolutePos(new BlockPos(x, BASE_ROW + index, z)), stalk, Block.UPDATE_CLIENTS);
         }
     }
 
     /** Places the great stalk of {@link #GREAT_SEED} with its trunk's low corner at the given block of the test area. */
     private static void greatStalk(GameTestHelper helper, int x, int z) {
         if (!GreatStalk.place(
-                helper.getLevel(), RandomSource.create(GREAT_SEED), helper.absolutePos(new BlockPos(x, BASE_Y, z)))) {
+                helper.getLevel(), RandomSource.create(GREAT_SEED), helper.absolutePos(new BlockPos(x, BASE_ROW, z)))) {
             throw failure(helper, "the placer would not grow a great stalk on a flat stone floor");
         }
     }
@@ -160,7 +160,7 @@ public class StalkCollapseTest {
         Set<BlockPos> found = new HashSet<>();
         for (int x = -2; x <= 10; x++) {
             for (int z = -2; z <= 10; z++) {
-                for (int y = BASE_Y; y <= BASE_Y + 30; y++) {
+                for (int y = BASE_ROW; y <= BASE_ROW + 30; y++) {
                     BlockPos pos = helper.absolutePos(new BlockPos(x, y, z));
                     if (isStalkBlock(helper.getLevel().getBlockState(pos))) {
                         found.add(pos);
@@ -174,7 +174,7 @@ public class StalkCollapseTest {
     /** How many great stalk blocks stand in the column of a block of the test area. */
     private static int trunkHeight(GameTestHelper helper, int x, int z) {
         int height = 0;
-        for (int y = BASE_Y; y <= BASE_Y + 40; y++) {
+        for (int y = BASE_ROW; y <= BASE_ROW + 40; y++) {
             if (helper.getLevel()
                     .getBlockState(helper.absolutePos(new BlockPos(x, y, z)))
                     .is(ours("great_stalk"))) {
@@ -200,7 +200,7 @@ public class StalkCollapseTest {
         // The reference: every block from the break up, broken by hand from the top down, so nothing collapses.
         column(helper, 2, 2, COLUMN_HEIGHT);
         for (int index = COLUMN_HEIGHT - 1; index >= BROKEN_SEGMENT; index--) {
-            breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_Y + index, 2)));
+            breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + index, 2)));
         }
         Map<String, Integer> byHand = dropped(helper);
         if (byHand.getOrDefault("deepcharter:fungal_stalk", 0) != COLUMN_HEIGHT - BROKEN_SEGMENT) {
@@ -209,11 +209,11 @@ public class StalkCollapseTest {
         clearArea(helper, COLUMN_HEIGHT);
         // The collapse: one break.
         column(helper, 2, 2, COLUMN_HEIGHT);
-        breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_Y + BROKEN_SEGMENT, 2)));
+        breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + BROKEN_SEGMENT, 2)));
         helper.runAfterDelay(COLLAPSE_WAIT, () -> {
             for (int index = 0; index < COLUMN_HEIGHT; index++) {
                 boolean stands =
-                        isStalkBlock(level.getBlockState(helper.absolutePos(new BlockPos(2, BASE_Y + index, 2))));
+                        isStalkBlock(level.getBlockState(helper.absolutePos(new BlockPos(2, BASE_ROW + index, 2))));
                 if (stands != (index < BROKEN_SEGMENT)) {
                     throw failure(
                             helper,
@@ -222,7 +222,7 @@ public class StalkCollapseTest {
                             stands ? "still stands" : "is gone");
                 }
             }
-            if (!level.getBlockState(helper.absolutePos(new BlockPos(2, FLOOR_Y, 2)))
+            if (!level.getBlockState(helper.absolutePos(new BlockPos(2, FLOOR_ROW, 2)))
                     .is(Blocks.STONE)) {
                 throw failure(helper, "the floor under the column was touched");
             }
@@ -245,8 +245,8 @@ public class StalkCollapseTest {
         clearArea(helper, COLUMN_HEIGHT);
         MockPlayer player = farPlayer(helper, "stalk-sag");
         column(helper, 2, 2, COLUMN_HEIGHT);
-        breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_Y + BROKEN_SEGMENT, 2)));
-        BlockPos top = helper.absolutePos(new BlockPos(2, BASE_Y + COLUMN_HEIGHT - 1, 2));
+        breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + BROKEN_SEGMENT, 2)));
+        BlockPos top = helper.absolutePos(new BlockPos(2, BASE_ROW + COLUMN_HEIGHT - 1, 2));
         if (!isStalkBlock(level.getBlockState(top))) {
             throw failure(helper, "the top of the column fell in the tick of the break, with no sag");
         }
@@ -265,12 +265,13 @@ public class StalkCollapseTest {
         clearArea(helper, COLUMN_HEIGHT);
         MockPlayer player = MockPlayers.join(helper, "stalk-beside");
         player.player().setGameMode(GameType.SURVIVAL);
-        player.teleportTo(level, Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(3, BASE_Y, 2))), 0, 0);
+        player.teleportTo(level, Vec3.atBottomCenterOf(helper.absolutePos(new BlockPos(3, BASE_ROW, 2))), 0, 0);
         column(helper, 2, 2, COLUMN_HEIGHT);
         float health = player.player().getHealth();
-        breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_Y + BROKEN_SEGMENT, 2)));
+        breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + BROKEN_SEGMENT, 2)));
         helper.runAfterDelay(COLLAPSE_WAIT, () -> {
-            if (isStalkBlock(level.getBlockState(helper.absolutePos(new BlockPos(2, BASE_Y + COLUMN_HEIGHT - 1, 2))))) {
+            if (isStalkBlock(
+                    level.getBlockState(helper.absolutePos(new BlockPos(2, BASE_ROW + COLUMN_HEIGHT - 1, 2))))) {
                 throw failure(helper, "the column did not collapse");
             }
             if (player.player().getHealth() != health || !player.player().isAlive()) {
@@ -297,10 +298,10 @@ public class StalkCollapseTest {
         clearArea(helper, COLUMN_HEIGHT);
         MockPlayer player = farPlayer(helper, "stalk-top");
         column(helper, 2, 2, COLUMN_HEIGHT);
-        breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_Y + COLUMN_HEIGHT - 1, 2)));
+        breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + COLUMN_HEIGHT - 1, 2)));
         helper.runAfterDelay(COLLAPSE_WAIT, () -> {
             for (int index = 0; index < COLUMN_HEIGHT - 1; index++) {
-                if (!isStalkBlock(level.getBlockState(helper.absolutePos(new BlockPos(2, BASE_Y + index, 2))))) {
+                if (!isStalkBlock(level.getBlockState(helper.absolutePos(new BlockPos(2, BASE_ROW + index, 2))))) {
                     throw failure(helper, "segment %s fell when only the top was broken", index);
                 }
             }
@@ -318,7 +319,7 @@ public class StalkCollapseTest {
         greatStalk(helper, 3, 3);
         int height = trunkHeight(helper, 3, 3);
         int breakIndex = Math.max(2, height / 2);
-        BlockPos broken = helper.absolutePos(new BlockPos(3, BASE_Y + breakIndex, 3));
+        BlockPos broken = helper.absolutePos(new BlockPos(3, BASE_ROW + breakIndex, 3));
         Set<BlockPos> before = stalkBlocks(helper);
         Set<BlockPos> falls = new HashSet<>();
         for (BlockPos pos : before) {
@@ -384,7 +385,7 @@ public class StalkCollapseTest {
         RandomSource shapes = RandomSource.create(SHAPE_SEED);
         for (long seed = 1; seed <= SHAPE_SEEDS; seed++) {
             clearArea(helper, tuning.greatMaxHeight() + 4);
-            if (!GreatStalk.place(helper.getLevel(), shapes, helper.absolutePos(new BlockPos(3, BASE_Y, 3)))) {
+            if (!GreatStalk.place(helper.getLevel(), shapes, helper.absolutePos(new BlockPos(3, BASE_ROW, 3)))) {
                 throw failure(helper, "seed %s: the placer would not grow a great stalk on a flat stone floor", seed);
             }
             int height = trunkHeight(helper, 3, 3);
@@ -398,7 +399,7 @@ public class StalkCollapseTest {
                         tuning.greatMinHeight(),
                         tuning.greatMaxHeight());
             }
-            BlockPos origin = helper.absolutePos(new BlockPos(3, BASE_Y, 3));
+            BlockPos origin = helper.absolutePos(new BlockPos(3, BASE_ROW, 3));
             Set<BlockPos> trunk = new HashSet<>();
             Set<BlockPos> rim = new HashSet<>();
             Set<BlockPos> dome = new HashSet<>();
@@ -452,17 +453,19 @@ public class StalkCollapseTest {
         ServerLevel level = helper.getLevel();
         clearArea(helper, SurfaceTuning.DEFAULT.greatMaxHeight() + 4);
         level.setBlock(
-                helper.absolutePos(new BlockPos(4, BASE_Y, 4)), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-        if (GreatStalk.place(level, RandomSource.create(1), helper.absolutePos(new BlockPos(3, BASE_Y, 3)))
+                helper.absolutePos(new BlockPos(4, BASE_ROW, 4)),
+                Blocks.STONE.defaultBlockState(),
+                Block.UPDATE_CLIENTS);
+        if (GreatStalk.place(level, RandomSource.create(1), helper.absolutePos(new BlockPos(3, BASE_ROW, 3)))
                 || !stalkBlocks(helper).isEmpty()) {
             throw failure(helper, "a great stalk grew over a block in its footprint");
         }
         clearArea(helper, SurfaceTuning.DEFAULT.greatMaxHeight() + 4);
         level.setBlock(
-                helper.absolutePos(new BlockPos(3, BASE_Y + SurfaceTuning.DEFAULT.greatMinHeight() / 2, 3)),
+                helper.absolutePos(new BlockPos(3, BASE_ROW + SurfaceTuning.DEFAULT.greatMinHeight() / 2, 3)),
                 Blocks.STONE.defaultBlockState(),
                 Block.UPDATE_CLIENTS);
-        if (GreatStalk.place(level, RandomSource.create(1), helper.absolutePos(new BlockPos(3, BASE_Y, 3)))
+        if (GreatStalk.place(level, RandomSource.create(1), helper.absolutePos(new BlockPos(3, BASE_ROW, 3)))
                 || !stalkBlocks(helper).isEmpty()) {
             throw failure(helper, "a great stalk grew under a roof lower than its shortest trunk");
         }
@@ -487,7 +490,7 @@ public class StalkCollapseTest {
                     level,
                     level.getChunkSource().getGenerator(),
                     random,
-                    helper.absolutePos(new BlockPos(3, BASE_Y, 3)))) {
+                    helper.absolutePos(new BlockPos(3, BASE_ROW, 3)))) {
                 throw failure(helper, "attempt %s: the feature placed nothing on a flat stone floor", attempt);
             }
             boolean isGreat = stalkBlocks(helper).stream()
