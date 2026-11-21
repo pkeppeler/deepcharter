@@ -117,6 +117,7 @@ public final class HandbookScreen extends Screen {
      * @param onViewed told the id of a chapter or Note the player has just opened, once, if it is not read yet
      * @param notes    what the Notes tab lists; empty shows its empty state
      */
+    // test-seam: a test builds the book with no memory, so it opens at the cover whatever an earlier test left
     public HandbookScreen(
             List<HandbookPage> pages,
             Predicate<Identifier> isRead,

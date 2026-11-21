@@ -11,7 +11,7 @@ import net.minecraft.resources.Identifier;
  */
 public final class ClientHandbook {
     /** More steps than this finishing in one sync is a charter change handing over its progress, not a deed: no popups. */
-    static final int MOST_TOASTED_AT_ONCE = 2;
+    public static final int MOST_TOASTED_AT_ONCE = 2;
 
     private static Set<Identifier> completed = Set.of();
     /** Whether a sync has arrived in this world: the first one is everything done so far, not news. */
@@ -24,7 +24,7 @@ public final class ClientHandbook {
     }
 
     /** Takes the set the server sent, and returns the steps it newly completes that deserve a popup, in id order. */
-    static List<Identifier> set(Collection<Identifier> newCompleted) {
+    public static List<Identifier> set(Collection<Identifier> newCompleted) {
         Set<Identifier> next = Set.copyOf(newCompleted);
         List<Identifier> fresh = !synced
                 ? List.of()
@@ -35,7 +35,7 @@ public final class ClientHandbook {
     }
 
     /** Forgets the progress and that a sync ever arrived: the client has left its world. */
-    static void forget() {
+    public static void forget() {
         completed = Set.of();
         synced = false;
     }

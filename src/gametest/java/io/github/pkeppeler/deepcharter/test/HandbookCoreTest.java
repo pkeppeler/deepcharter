@@ -477,7 +477,7 @@ public class HandbookCoreTest {
     public void aDirectiveDefinedTwiceFailsLoudAndNamesBothChapters(GameTestHelper helper) {
         Identifier first = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "one");
         Identifier second = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "two");
-        HandbookChapter.Entry entry = new HandbookChapter.Entry(CUSTOM_DIRECTIVE, Component.literal("x"));
+        HandbookChapter.Entry entry = new HandbookChapter.Entry(CUSTOM_DIRECTIVE, Component.literal("x"), List.of());
         Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
         chapters.put(first, new HandbookChapter(0, Component.literal("one"), List.of(entry)));
         chapters.put(second, new HandbookChapter(1, Component.literal("two"), List.of(entry)));

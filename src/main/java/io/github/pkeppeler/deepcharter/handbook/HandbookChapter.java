@@ -48,11 +48,6 @@ public record HandbookChapter(int order, Component title, List<Entry> directives
         public Entry {
             needs = List.copyOf(needs);
         }
-
-        /** A directive that needs no items. */
-        public Entry(Identifier id, Component text) {
-            this(id, text, List.of());
-        }
     }
 
     /** {@code count} of {@code item}, held by the player, for the step that lists it. */

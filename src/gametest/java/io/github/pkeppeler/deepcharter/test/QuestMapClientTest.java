@@ -1,0 +1,420 @@
+package io.github.pkeppeler.deepcharter.test;
+
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
+import com.mojang.blaze3d.platform.InputConstants;
+import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookKeys;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookMemory;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
+import io.github.pkeppeler.deepcharter.client.handbook.ItemRecipeLink;
+import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
+import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+
+/**
+ * Client GameTest for the quest map (#847): each chapter's directives as a flowchart on the handbook paper, the chapter tabs, the index
+ * card of a step with the items it needs, the book opening where it was left, the popup of a finished step and the L key. The screens
+ * are driven by hand, with no world, and read from the text they draw ({@link DrawnText}); the keys and the real game are in
+ * {@code HandbookScreenClientTest} and the quest map scenario.
+ */
+public class QuestMapClientTest implements FabricClientGameTest {
+    private static final int LEFT_MOUSE = 1;
+    private static final int WIDTH = 427;
+    private static final int HEIGHT = 240;
+    private static final int MIN_WIDTH = 200;
+    private static final int MIN_HEIGHT = 100;
+    private static final List<String> IDS = List.of("welcome", "back_online", "meet_the_mole", "fuel_is_life");
+    /** Chapter 1 has six steps; the first five are done, so the sixth is the current step. */
+    private static final int FIRST_CHAPTER_STEPS = 6;
+
+    private static final Identifier IRON = Identifier.parse("minecraft:iron_ingot");
+
+    @Override
+    public void runTest(ClientGameTestContext context) {
+        ClientTestLog.start(this);
+        context.runOnClient(client -> {
+            theMapShowsTheStepsTheCardAndTheRoadAhead();
+            nothingBeyondTheNextChapterIsReadable();
+            chapterTabsOpenTheirChapterMaps();
+            aClassifiedChapterKeepsItsRedactedPage();
+            pickingAStepMovesTheCard();
+            theLinkOnTheCardOpensTheChapterPage();
+            clickingAnItemCallsTheRecipeHook();
+            draggingPansAndScrollingZooms();
+            theBookOpensWhereItWasLeft();
+            theMapFitsTheDefaultWindowAndTheSmallest();
+            aStepIsToastedOnlyWhenItIsNews();
+            theSecondKeyOpensTheHandbook();
+        });
+    }
+
+    private static Identifier chapterId(int chapter) {
+        return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, IDS.get(chapter - 1));
+    }
+
+    private static Identifier directive(int chapter, int n) {
+        return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "handbook/test/d" + chapter + "_" + n);
+    }
+
+    private static Map<Identifier, HandbookChapter> chapters() {
+        Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
+        int[] steps = {FIRST_CHAPTER_STEPS, 3, 2, 2};
+        for (int chapter = 1; chapter <= IDS.size(); chapter++) {
+            List<HandbookChapter.Entry> entries = new ArrayList<>();
+            for (int n = 1; n <= steps[chapter - 1]; n++) {
+                boolean scanner = chapter == 1 && n == FIRST_CHAPTER_STEPS;
+                entries.add(new HandbookChapter.Entry(
+                        directive(chapter, n),
+                        Component.literal("Do thing " + chapter + "." + n),
+                        scanner
+                                ? List.of(
+                                        new HandbookChapter.Need(IRON, 4),
+                                        new HandbookChapter.Need(Identifier.parse("minecraft:copper_ingot"), 2),
+                                        new HandbookChapter.Need(Identifier.parse("minecraft:redstone"), 2))
+                                : List.of()));
+            }
+            chapters.put(
+                    chapterId(chapter), new HandbookChapter(chapter, Component.literal("Title " + chapter), entries));
+        }
+        return chapters;
+    }
+
+    /** Chapter 1's first five steps are done. */
+    private static Set<Identifier> done() {
+        Set<Identifier> done = new HashSet<>();
+        for (int n = 1; n < FIRST_CHAPTER_STEPS; n++) {
+            done.add(directive(1, n));
+        }
+        return done;
+    }
+
+    private static List<HandbookPage> pages() {
+        return HandbookPages.of(chapters(), done());
+    }
+
+    private static HandbookScreen screen(HandbookMemory memory, int width, int height) {
+        HandbookScreen screen = new HandbookScreen(pages(), id -> true, id -> {}, List.of(), memory);
+        screen.init(width, height);
+        return screen;
+    }
+
+    /** A screen on the map of {@code chapter}. */
+    private static HandbookScreen mapScreen(HandbookMemory memory, int chapter) {
+        HandbookScreen screen = screen(memory, WIDTH, HEIGHT);
+        screen.goTo(mapPage(chapter));
+        settle(screen);
+        return screen;
+    }
+
+    /** Lets the page flip end, so the page is drawn flat and takes clicks. */
+    private static void settle(HandbookScreen screen) {
+        for (int tick = 0; tick < HandbookScreenTuning.current().flipTicks(); tick++) {
+            screen.tick();
+        }
+    }
+
+    private static int mapPage(int chapter) {
+        List<HandbookPage> pages = pages();
+        for (int index = 0; index < pages.size(); index++) {
+            if (pages.get(index) instanceof HandbookPage.Chapter page && page.number() == chapter) {
+                return index;
+            }
+        }
+        throw new AssertionError("no map page for chapter " + chapter);
+    }
+
+    private static int firstPage(int chapter) {
+        List<HandbookPage> pages = pages();
+        for (int index = 0; index < pages.size(); index++) {
+            HandbookPage page = pages.get(index);
+            if ((page instanceof HandbookPage.ChapterText text && text.number() == chapter)
+                    || (page instanceof HandbookPage.Chapter map && map.number() == chapter)) {
+                return index;
+            }
+        }
+        throw new AssertionError("no page for chapter " + chapter);
+    }
+
+    private static List<String> texts(HandbookScreen screen) {
+        return DrawnText.of(screen).stream().map(Drawn::text).toList();
+    }
+
+    private static Drawn drawn(HandbookScreen screen, String text) {
+        return DrawnText.of(screen).stream()
+                .filter(entry -> entry.text().equals(text))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the screen draws no '" + text + "': " + texts(screen)));
+    }
+
+    private static MouseButtonEvent mouse(double x, double y) {
+        return new MouseButtonEvent(x, y, new MouseButtonInfo(LEFT_MOUSE, 0));
+    }
+
+    private static void click(HandbookScreen screen, Box box) {
+        screen.mouseClicked(mouse(box.x() + 1, box.y() + 1), false);
+        screen.mouseReleased(mouse(box.x() + 1, box.y() + 1));
+    }
+
+    private static String done(String line) {
+        return Component.translatable("deepcharter.handbook.chapter.directive.done", line)
+                .getString();
+    }
+
+    private static String open(String line) {
+        return Component.translatable("deepcharter.handbook.chapter.directive.open", line)
+                .getString();
+    }
+
+    private static void theMapShowsTheStepsTheCardAndTheRoadAhead() {
+        HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+        List<String> texts = texts(screen);
+        for (int n = 1; n < FIRST_CHAPTER_STEPS; n++) {
+            require(texts.contains(done("Do thing 1." + n)), "step " + n + " is a box with [X]: " + texts);
+        }
+        require(texts.contains(open("Do thing 1.6")), "the sixth step is a box with an empty checkbox: " + texts);
+        require(texts.contains("Title 1"), "the chapter title heads the sheet");
+        require(
+                texts.contains(Component.translatable("deepcharter.handbook.quest.step", FIRST_CHAPTER_STEPS)
+                        .getString()),
+                "the card is for the current step, the sixth: " + texts);
+        require(texts.contains("Do thing 1.6"), "the card carries the instruction without a checkbox");
+        require(
+                texts.contains(Component.translatable("deepcharter.handbook.quest.see_page", firstPage(1) + 1)
+                        .getString()),
+                "the card links to the chapter's first page, p. " + (firstPage(1) + 1) + ": " + texts);
+        require(
+                texts.containsAll(List.of("0/4", "0/2")),
+                "the card counts each item needed against what is held: " + texts);
+        require(
+                texts.contains(Component.translatable("deepcharter.handbook.quest.ahead", 2, "Title 2")
+                        .getString()),
+                "the next chapter is named under the flowchart: " + texts);
+        for (int n = 1; n <= 3; n++) {
+            require(texts.contains("Do thing 2." + n), "the next chapter's step " + n + " shows, in faint ink");
+        }
+        require(
+                texts.contains(Component.translatable("deepcharter.handbook.chapter.stamp.classified")
+                        .getString()),
+                "the redaction bars carry the CLASSIFIED stamp");
+    }
+
+    private static void nothingBeyondTheNextChapterIsReadable() {
+        HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+        List<String> texts = texts(screen);
+        require(
+                texts.stream()
+                        .noneMatch(text -> text.contains("Do thing 3")
+                                || text.contains("Do thing 4")
+                                || text.contains("Title 3")
+                                || text.contains("Title 4")),
+                "a chapter after the next is only redaction bars: " + texts);
+        HandbookScreen preview = mapScreen(new HandbookMemory(), 2);
+        require(
+                texts(preview).contains("Do thing 2.1")
+                        && texts(preview).stream().noneMatch(text -> text.startsWith("[")),
+                "the next chapter's steps carry no checkbox: " + texts(preview));
+    }
+
+    private static List<AbstractWidget> tabs(HandbookScreen screen) {
+        List<AbstractWidget> tabs = new ArrayList<>();
+        for (int chapter = 1; chapter <= IDS.size(); chapter++) {
+            String label = Integer.toString(chapter);
+            for (var child : screen.children()) {
+                if (child instanceof AbstractWidget widget
+                        && widget.getMessage().getString().equals(label)
+                        && widget.getX() >= screen.width / 2) {
+                    tabs.add(widget);
+                }
+            }
+        }
+        return tabs;
+    }
+
+    private static void chapterTabsOpenTheirChapterMaps() {
+        HandbookScreen screen = screen(new HandbookMemory(), WIDTH, HEIGHT);
+        require(tabs(screen).size() == IDS.size(), "a tab for each chapter");
+        require(tabs(screen).stream().noneMatch(tab -> tab.visible), "the cover has no chapter tabs");
+        screen.goTo(mapPage(1));
+        List<AbstractWidget> tabs = tabs(screen);
+        require(tabs.stream().allMatch(tab -> tab.visible), "a chapter's map shows every chapter tab");
+        for (int i = 1; i < tabs.size(); i++) {
+            require(
+                    tabs.get(i).getY() > tabs.get(i - 1).getY()
+                            && tabs.get(i).getX() == tabs.get(0).getX(),
+                    "the tabs step down the sheet's right edge");
+        }
+        AbstractWidget three = tabs.get(2);
+        screen.mouseClicked(mouse(three.getX() + 2, three.getY() + 2), false);
+        require(
+                screen.page() == mapPage(3),
+                "tab 3 opens chapter 3's map, page " + mapPage(3) + ", got " + screen.page());
+        screen.goTo(firstPage(2));
+        require(tabs(screen).stream().allMatch(tab -> tab.visible), "a chapter's text pages show the tabs too");
+    }
+
+    private static void aClassifiedChapterKeepsItsRedactedPage() {
+        HandbookScreen screen = mapScreen(new HandbookMemory(), 4);
+        List<String> texts = texts(screen);
+        require(
+                texts.stream().noneMatch(text -> text.contains("Do thing 4") || text.contains("Title 4")),
+                "a classified chapter shows no title and no step: " + texts);
+        require(
+                texts.contains(Component.translatable("deepcharter.handbook.chapter.classified")
+                        .getString()),
+                "a classified chapter says so");
+    }
+
+    private static void pickingAStepMovesTheCard() {
+        HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+        click(screen, drawn(screen, done("Do thing 1.2")).box());
+        List<String> texts = texts(screen);
+        require(
+                texts.contains(Component.translatable("deepcharter.handbook.quest.step", 2)
+                        .getString()),
+                "a click on step 2 puts its card up: " + texts);
+        require(!texts.contains("0/4"), "step 2 needs no items, so the card shows none");
+    }
+
+    private static void theLinkOnTheCardOpensTheChapterPage() {
+        HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+        require(screen.page() == mapPage(1), "setup: on the map");
+        String link = Component.translatable("deepcharter.handbook.quest.see_page", firstPage(1) + 1)
+                .getString();
+        click(screen, drawn(screen, link).box());
+        require(
+                screen.page() == firstPage(1) && firstPage(1) != mapPage(1),
+                "the link goes to the chapter's first page " + firstPage(1) + ", got " + screen.page());
+    }
+
+    private static void clickingAnItemCallsTheRecipeHook() {
+        HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+        List<Identifier> clicked = new ArrayList<>();
+        ItemRecipeLink.handleWith(clicked::add);
+        try {
+            Box count = drawn(screen, "0/4").box();
+            int iconSize = QuestMapTuning.current().itemIconSize();
+            screen.mouseClicked(mouse(count.x() - iconSize / 2.0, count.y() + 2), false);
+            require(clicked.equals(List.of(IRON)), "a click on the iron icon asks for iron's recipe, got " + clicked);
+        } finally {
+            ItemRecipeLink.handleWith(item -> {});
+        }
+    }
+
+    private static void draggingPansAndScrollingZooms() {
+        HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+        Box one = drawn(screen, done("Do thing 1.1")).box();
+        Box two = drawn(screen, done("Do thing 1.2")).box();
+        // an empty spot of the sheet, under the flowchart's last row, takes the drag
+        double emptyX = one.x() + 10;
+        double emptyY = one.y() + QuestMapTuning.current().stepHeight() + 2;
+        screen.mouseClicked(mouse(emptyX, emptyY), false);
+        require(
+                screen.mouseDragged(mouse(emptyX + 6, emptyY + 4), 6, 4),
+                "a drag that begins on the flowchart pans it");
+        screen.mouseReleased(mouse(emptyX + 6, emptyY + 4));
+        Box moved = drawn(screen, done("Do thing 1.1")).box();
+        require(
+                moved.x() == one.x() + 6 && moved.y() == one.y() + 4,
+                "the flowchart moves with the drag: from " + one.x() + "," + one.y() + " to " + moved.x() + ","
+                        + moved.y());
+        require(!screen.mouseDragged(mouse(emptyX, emptyY), 5, 5), "a drag after the release is not the flowchart's");
+        screen.mouseScrolled(moved.x() + 1, moved.y() + 1, 0, 1);
+        Box zoomedTwo = drawn(screen, done("Do thing 1.2")).box();
+        Box zoomedOne = drawn(screen, done("Do thing 1.1")).box();
+        require(
+                zoomedTwo.x() - zoomedOne.x() > two.x() - one.x(),
+                "scrolling up zooms in: the steps stand further apart");
+    }
+
+    private static void theBookOpensWhereItWasLeft() {
+        HandbookMemory memory = new HandbookMemory();
+        HandbookScreen first = mapScreen(memory, 1);
+        Box before = drawn(first, open("Do thing 1.6")).box();
+        double emptyY = before.y()
+                + QuestMapTuning.current().stepHeight()
+                + 2
+                - QuestMapTuning.current().stepPitch();
+        first.mouseClicked(mouse(before.x() + 4, emptyY), false);
+        first.mouseDragged(mouse(before.x() + 9, emptyY + 2), 5, 2);
+        first.mouseReleased(mouse(before.x() + 9, emptyY + 2));
+        first.mouseScrolled(before.x() + 20, before.y() + 20, 0, 1);
+        Box after = drawn(first, open("Do thing 1.6")).box();
+        require(!after.equals(before), "setup: the flowchart moved");
+        HandbookScreen second = screen(memory, WIDTH, HEIGHT);
+        require(second.page() == mapPage(1), "the book opens on the page it was left on, got " + second.page());
+        require(
+                drawn(second, open("Do thing 1.6")).box().equals(after),
+                "the book opens with the flowchart panned and zoomed as it was left");
+        require(screen(new HandbookMemory(), WIDTH, HEIGHT).page() == 0, "a book with no memory opens at the cover");
+    }
+
+    private static void theMapFitsTheDefaultWindowAndTheSmallest() {
+        int[][] windows = {{WIDTH, HEIGHT}, {MIN_WIDTH, MIN_HEIGHT}};
+        for (int[] window : windows) {
+            for (int chapter = 1; chapter <= IDS.size(); chapter++) {
+                HandbookScreen screen = screen(new HandbookMemory(), window[0], window[1]);
+                screen.goTo(mapPage(chapter));
+                for (Drawn drawn : DrawnText.of(screen)) {
+                    require(
+                            DrawnText.leavesScreen(screen, drawn).isEmpty(),
+                            "chapter " + chapter + " at " + window[0] + " x " + window[1] + ": "
+                                    + DrawnText.leavesScreen(screen, drawn).orElse(""));
+                }
+                for (AbstractWidget tab : tabs(screen)) {
+                    require(
+                            tab.getX() >= 0 && tab.getRight() <= window[0] && tab.getBottom() <= window[1],
+                            "chapter tab " + tab.getMessage().getString() + " is on the screen at " + window[0] + " x "
+                                    + window[1]);
+                }
+            }
+        }
+    }
+
+    private static void aStepIsToastedOnlyWhenItIsNews() {
+        ClientHandbook.forget();
+        Identifier a = directive(1, 1);
+        Identifier b = directive(1, 2);
+        require(
+                ClientHandbook.set(List.of(a)).isEmpty(),
+                "the first sync of a world is what was done before: no popup");
+        require(ClientHandbook.set(List.of(a, b)).equals(List.of(b)), "a step done since the last sync is news");
+        require(ClientHandbook.set(List.of(a, b)).isEmpty(), "the same set again is not news");
+        List<Identifier> many = new ArrayList<>();
+        for (int n = 1; n <= ClientHandbook.MOST_TOASTED_AT_ONCE + 2; n++) {
+            many.add(directive(2, n));
+        }
+        require(ClientHandbook.set(many).isEmpty(), "a charter handing over its progress is not a deed: no popups");
+        ClientHandbook.forget();
+        require(ClientHandbook.completed().isEmpty(), "leaving the world forgets the progress");
+        require(ClientHandbook.set(List.of(a)).isEmpty(), "and the next world's first sync is silent again");
+        ClientHandbook.forget();
+    }
+
+    private static void theSecondKeyOpensTheHandbook() {
+        require(
+                HandbookKeys.OPEN_QUEST_MAP.getDefaultKey().getValue() == InputConstants.KEY_L,
+                "the quest map key is L by default");
+        require(HandbookKeys.OPEN.getDefaultKey().getValue() == InputConstants.KEY_H, "the handbook key stays H");
+        require(HandbookScreenTuning.current().flipTicks() > 0, "the theme is loaded");
+    }
+}
