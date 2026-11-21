@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:block",
+  "random_sequence": "deepcharter:blocks/great_stalk_cap",
+  "pools": [
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "deepcharter:fungal_stalk"
+        }
+      ]
+    }
+  ]
+}

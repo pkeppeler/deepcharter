@@ -2,6 +2,8 @@
   "values": [
     "deepcharter:salvage_crate",
     "deepcharter:fungal_stalk",
+    "deepcharter:great_stalk",
+    "deepcharter:great_stalk_cap",
     "deepcharter:stalk_planks"
   ]
 }

@@ -178,17 +178,6 @@ public class HandbookCoreTest {
     }
 
     @GameTest
-    public void aPlayerOnNoCharterCompletesNothing(GameTestHelper helper) {
-        MinecraftServer server = helper.getLevel().getServer();
-        ServerPlayer loner = MockPlayers.join(helper, "Loner").player();
-
-        Directives.fire(loner, CUSTOM_DIRECTIVE);
-
-        expectComplete(helper, server, loner, CUSTOM_DIRECTIVE, false);
-        helper.succeed();
-    }
-
-    @GameTest
     public void newCrewInheritProgress(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerPlayer director = MockPlayers.join(helper, "Director").player();

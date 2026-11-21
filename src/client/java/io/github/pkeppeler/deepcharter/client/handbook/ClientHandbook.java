@@ -5,8 +5,8 @@ import java.util.Set;
 import net.minecraft.resources.Identifier;
 
 /**
- * The directives the server last said this player's charter has completed. Empty when the player is on no charter. The handbook
- * screen (#66) reads it. Read and written on the client thread.
+ * The directives the server last said this player's charter has completed; on no charter, the ones the player completed
+ * alone. The handbook screen (#66) reads it. Read and written on the client thread.
  */
 public final class ClientHandbook {
     private static Set<Identifier> completed = Set.of();

@@ -726,9 +726,9 @@ public class HandbookChaptersOneToFiveTest {
         }
     }
 
-    /** A pilot and a terminal user on no charter complete nothing for anyone, and nothing throws. */
+    /** A pilot and a terminal user on no charter earn only their own credit, nothing for the charter (#843), and nothing throws. */
     @GameTest
-    public void aPilotAndATerminalUserOnNoCharterCompleteNothing(GameTestHelper helper) {
+    public void aPilotAndATerminalUserOnNoCharterCompleteNothingForTheCharter(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer member = MockPlayers.join(helper, "Member");
         MockPlayer drifter = MockPlayers.join(helper, "Drifter");
@@ -761,11 +761,22 @@ public class HandbookChaptersOneToFiveTest {
             }
             pod.tickCount = 0;
             PodEvents.AFTER_TICK.invoker().afterTick(pod);
-            if (!completed(server, drifter.player()).isEmpty()
-                    || !memberBefore.equals(completed(server, member.player()))) {
+            Set<Identifier> drifterOwn = Set.of(
+                    id(directive("back_online", "repair_upgrade_terminal")),
+                    id(directive("back_online", "repair_fuel_pump")),
+                    id(directive("back_online", "repair_ore_processor")),
+                    id(directive("fuel_is_life", "refuel_mole")),
+                    id(directive("every_sale_counts", "install_component")),
+                    id(directive("every_sale_counts", "sell_ore")),
+                    id(directive("every_sale_counts", "buy_component")),
+                    id(directive("meet_the_mole", "board_mole")),
+                    id(directive("meet_the_mole", "repair_mole")));
+            Set<Identifier> memberNew = new java.util.HashSet<>(completed(server, member.player()));
+            memberNew.removeAll(memberBefore);
+            if (!drifterOwn.equals(completed(server, drifter.player())) || !memberNew.isEmpty()) {
                 throw helper.assertionException(
-                        "nothing should complete: the drifter has %s, the member %s from %s",
-                        completed(server, drifter.player()), completed(server, member.player()), memberBefore);
+                        "the drifter earns only their own credit %s, has %s; the member has %s new",
+                        drifterOwn, completed(server, drifter.player()), memberNew);
             }
             helper.succeed();
         } finally {
