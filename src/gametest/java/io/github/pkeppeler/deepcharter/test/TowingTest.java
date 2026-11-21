@@ -89,7 +89,7 @@ public class TowingTest {
     private static final int RELOAD_X = 15500;
     private static final int CHUNK_X = 15600;
     /** Blocks that the floor of a shaft's gallery is above the floor of its shaft. */
-    private static final int GALLERY_FLOOR = 10;
+    private static final int GALLERY_FLOOR = 10; // fixed-pos: a height above the shaft floor, not a world Y
 
     static {
         BreachEvents.CROSSED.register((entity, from, to, fromLayer, toLayer) -> CROSSED.add(entity.getUUID()));

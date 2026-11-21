@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -28,6 +29,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.world.attribute.EnvironmentAttributes;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -45,6 +47,49 @@ public class LayerDimensionsTest {
                 || level != TestLayers.level(helper, 1)
                 || level != TestLayers.level(helper, 2)) {
             throw helper.assertionException("test ran in %s, which is not the level of every layer", level.dimension());
+        }
+        helper.succeed();
+    }
+
+    /**
+     * {@code TestLayers.band} of a level that does not hold the layer fails loud: the flat test overworld holds the surface only, and the
+     * Nether is no layer's level. ({@code TestLayers.dimension(server, n)} returns the overworld for a layer once the overworld is the
+     * campaign level (#803), so that branch has no test before then.)
+     */
+    @GameTest
+    public void aLevelThatDoesNotHoldALayerHasNoBandForIt(GameTestHelper helper) {
+        ServerLevel overworld = helper.getLevel();
+        LayerChain.Band surface = TestLayers.band(overworld, TestLayers.SURFACE);
+        if (surface.layer() != TestLayers.SURFACE) {
+            throw helper.assertionException("the overworld's surface band is layer %d", surface.layer());
+        }
+        expectNoBand(helper, overworld, 1);
+        expectNoBand(helper, ClientLight.serverLevel(helper.getLevel().getServer(), Level.NETHER), TestLayers.SURFACE);
+        helper.succeed();
+    }
+
+    /** The surface is a band of the campaign level, and a position is in exactly the band its Y falls in. */
+    @GameTest(dimension = "deepcharter:campaign_sample")
+    public void theSurfaceIsABandOfTheCampaignLevel(GameTestHelper helper) {
+        ServerLevel campaign = helper.getLevel();
+        LayerChain.Band surface = TestLayers.band(campaign, TestLayers.SURFACE);
+        if (surface.minY() != -64 || surface.maxY() != 319) {
+            throw helper.assertionException(
+                    "the surface band of the campaign level is %d..%d, not -64..319", surface.minY(), surface.maxY());
+        }
+        BlockPos onTheSurface = TestLayers.pos(TestLayers.SURFACE, 0, 0, 0);
+        BlockPos inLayer1 = TestLayers.pos(1, 0, 5, 0);
+        if (!TestLayers.isIn(campaign, onTheSurface, TestLayers.SURFACE)
+                || TestLayers.isIn(campaign, onTheSurface, 1)) {
+            throw helper.assertionException("%s should be in the surface and not in layer 1", onTheSurface);
+        }
+        if (TestLayers.isIn(campaign, inLayer1, TestLayers.SURFACE) || !TestLayers.isIn(campaign, inLayer1, 1)) {
+            throw helper.assertionException("%s should be in layer 1 and not in the surface", inLayer1);
+        }
+        MinecraftServer server = campaign.getServer();
+        if (TestLayers.level(server, 1) != campaign
+                || TestLayers.level(server, TestLayers.SURFACE) != server.overworld()) {
+            throw helper.assertionException("layer 1 is the campaign level and the surface the overworld");
         }
         helper.succeed();
     }
@@ -291,6 +336,16 @@ public class LayerDimensionsTest {
         try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader);
         }
+    }
+
+    private static void expectNoBand(GameTestHelper helper, ServerLevel level, int layer) {
+        try {
+            TestLayers.band(level, layer);
+        } catch (IllegalArgumentException expected) {
+            return;
+        }
+        throw helper.assertionException(
+                "band(%s, %d) should fail: the level does not hold the layer", level.dimension(), layer);
     }
 
     private static void expectLayer(GameTestHelper helper, int layer, int minY, int height) {

@@ -9,7 +9,6 @@
     "GameTestTickerMixin"
   ],
   "client": [
-    "BreachEffectsMixin",
     "CardinalLightingMixin",
     "ClientGameTestImplMixin",
     "EntityRenderStateMixin",
@@ -18,8 +17,7 @@
     "LamplessFigureRendererMixin",
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
-    "SpriteAnimationStateMixin",
-    "TransmissionOverlayMixin"
+    "SpriteAnimationStateMixin"
   ],
   "injectors": {
     "defaultRequire": 1

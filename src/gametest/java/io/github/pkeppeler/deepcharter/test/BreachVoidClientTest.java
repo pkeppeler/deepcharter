@@ -85,9 +85,9 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                     player.getAbilities().flying = true;
                     player.onUpdateAbilities();
                 });
-                // TODO(#819): the layers' floors too. In the campaign level a hole through a layer's crust shows the
-                // next layer's rock, not
-                // the void, so the void cases move to the bottom of the world with BreachVoidCover (#804).
+                // TODO(#819): the layers' floors too. In the campaign level a hole through a layer's crust
+                // shows the next layer's rock, not the void, so the void cases move to the bottom of the
+                // world with BreachVoidCover (#804).
                 for (int layer : new int[] {LayerChain.SURFACE}) {
                     int minY = singleplayer
                             .getServer()

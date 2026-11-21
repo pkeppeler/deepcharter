@@ -118,7 +118,7 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aDownwardBoreIsExactlyTwoByTwoByN(GameTestHelper helper) {
         int x = 3000;
-        int floor = 60;
+        int floor = FLOOR;
         int n = 3;
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
@@ -173,7 +173,7 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void drillingSidewaysNeedsGroundUnderThePod(GameTestHelper helper) {
         int x = 3064;
-        int floor = 60;
+        int floor = FLOOR;
         int height = Chassis.MOLE.boreHeight();
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
@@ -272,8 +272,8 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void drillingIsSlowerDeeperDown(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 1);
-        int shallowFloor = 150;
-        int deepFloor = 20;
+        int shallowFloor = TestLayers.worldY(1, 150);
+        int deepFloor = TestLayers.worldY(1, 20);
         int shallowX = 3256;
         int deepX = 3320;
         stoneBed(level, shallowX, shallowFloor);
@@ -336,7 +336,7 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void oreGoesToCargoAndStoneIsDestroyed(GameTestHelper helper) {
         int x = 3384;
-        int floor = 60;
+        int floor = FLOOR;
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
         level.setBlock(
@@ -374,7 +374,7 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aFullBayLosesTheOreAndDrillingGoesOn(GameTestHelper helper) {
         int x = 3448;
-        int floor = 60;
+        int floor = FLOOR;
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
         level.setBlock(
@@ -417,7 +417,7 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodOnALedgeInTheThirdColumnCentresAndDrillsDown(GameTestHelper helper) {
         int x = 3640;
-        int floor = 60;
+        int floor = FLOOR;
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
         // Only column x+1 reaches the pod; under columns x-1 and x the ground is three blocks lower.
@@ -443,7 +443,7 @@ public class PodDrillTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodAgainstAWallInTheThirdColumnCentresAndDrillsSideways(GameTestHelper helper) {
         int x = 3704;
-        int floor = 60;
+        int floor = FLOOR;
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor, 4);
         // A one-column wall the pod's hitbox touches but its 2 x 2 bore does not, then a full wall behind it.

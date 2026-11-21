@@ -546,7 +546,7 @@ public class PodStatsTest {
     @GameTest(maxTicks = FAR_TICKS)
     public void halvedTicksPerHardnessBoresInAboutHalfTheTicks(GameTestHelper helper) {
         int x = 4000;
-        int floor = 60;
+        int floor = TestLayers.worldY(1, 60);
         ServerLevel level = TestLayers.level(helper, 1);
         RoomCarver.carve(level, x - 3, x + 8, floor - 8, floor - 1, Z - 3, Z + 4, Blocks.STONE);
         RoomCarver.carve(level, x - 3, x + 8, floor, floor + 10, Z - 3, Z + 4, Blocks.AIR);

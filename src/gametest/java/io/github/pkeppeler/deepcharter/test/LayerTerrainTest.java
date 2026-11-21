@@ -103,25 +103,35 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    /** A layer's band is rock to its ceiling, cut by noise caves: a 64 x 64 sample has caves in it. */
+    /**
+     * A layer's band is rock to its ceiling, cut by noise caves: a 64 x 64 sample has caves in it, and the air rows of a column differ
+     * from column to column, which flat terrain never does.
+     */
     @GameTest
     public void terrainIsNoiseWithCaves(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
             LayerChain.Band band = TestLayers.band(level, layer);
-            int caveCells = 0;
-            for (int x = 900; x < 964; x += 2) {
-                for (int z = 900; z < 964; z += 2) {
+            int fewest = Integer.MAX_VALUE;
+            int most = 0;
+            for (int x = 900; x < 964; x += 4) {
+                for (int z = 900; z < 964; z += 4) {
                     level.getChunk(x >> 4, z >> 4, ChunkStatus.FULL);
+                    int air = 0;
                     for (int y = band.minY() + 12; y < band.maxY() - 8; y++) {
                         if (level.getBlockState(new BlockPos(x, y, z)).isAir()) {
-                            caveCells++;
+                            air++;
                         }
                     }
+                    fewest = Math.min(fewest, air);
+                    most = Math.max(most, air);
                 }
             }
-            if (caveCells == 0) {
+            if (most == 0) {
                 throw failure(helper, "layer %d has no caves in a 64 x 64 sample", layer);
+            }
+            if (most == fewest) {
+                throw failure(helper, "layer %d terrain is flat: every column has %d air rows", layer, most);
             }
         }
         helper.succeed();

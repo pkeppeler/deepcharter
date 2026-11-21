@@ -69,12 +69,14 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
     private final List<Result> results = new ArrayList<>();
 
     private static final int LIMIT_SECONDS = 360;
+    /** One server tick's budget at 20 ticks a second, in nanoseconds. */
+    private static final long TICK_BUDGET_NANOS = 50_000_000L;
 
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
-        // Long by design: six trials of two layers over a tall campaign level. A loaded runner stretches it past the
-        // 180 s of a class (it ran 181 s and 146 s), so it has more.
+        // Long by design: six trials of two layers over a tall campaign level. A loaded runner stretches
+        // it past the 180 s of a class (it ran 181 s and 146 s), so it has more.
         ClientTestWatchdog.shared().arm(getClass().getSimpleName(), Duration.ofSeconds(LIMIT_SECONDS));
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
@@ -94,9 +96,8 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             colonyPieceReplaced(context, server);
             hostHandsAndHangarConsole(context, server);
             for (int trial = 0; trial < TRIALS; trial++) {
-                // A layer is a band of one level, so two layers' sites in one cell share chunk columns: each layer has
-                // cells of its own,
-                // or the second visit finds the chunks already sent.
+                // A layer is a band of one level, so two layers' sites in one cell share chunk columns:
+                // each layer has cells of its own, or the second visit finds the chunks already sent.
                 layerStructuresOnArrival(context, server, 1, CELL + trial);
                 layerStructuresOnArrival(context, server, 2, CELL + TRIALS + trial);
             }
@@ -218,7 +219,12 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
     private void visitTheCampaignLevel(ClientGameTestContext context, TestServerContext server) {
         int y = server.computeOnServer(s -> TestLayers.worldY(1, 40));
         server.runOnServer(s -> player(s).setGameMode(GameType.SPECTATOR));
-        arrive(context, server, TestLayers.dimension(1), new BlockPos(4_000, y, 4_000));
+        ResourceKey<Level> campaign = server.computeOnServer(s -> TestLayers.dimension(s, 1));
+        BlockPos at = new BlockPos(4_000, y, 4_000);
+        arrive(context, server, campaign, at);
+        // The tall level's chunks stall the client and the server for seconds: the next case starts after both are
+        // done.
+        quiet(context, server, campaign, new Box(at, at));
     }
 
     /**
@@ -232,6 +238,9 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
         ColonyLayout.Piece piece =
                 server.computeOnServer(s -> nearestPiece(s, colony, player(s).blockPosition()));
         Box box = server.computeOnServer(s -> pieceBox(s, colony, piece));
+        // The wipe is judged by a light packet that follows it: the client must hold the piece's chunks and neither
+        // side may be behind.
+        quiet(context, server, Level.OVERWORLD, box);
         server.runOnServer(s -> {
             for (BlockPos pos : BlockPos.betweenClosed(box.min(), box.max())) {
                 s.overworld()
@@ -302,7 +311,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
      */
     private void layerStructuresOnArrival(
             ClientGameTestContext context, TestServerContext server, int layer, int cell) {
-        ResourceKey<Level> dimension = TestLayers.dimension(layer);
+        ResourceKey<Level> dimension = server.computeOnServer(s -> TestLayers.dimension(s, layer));
         List<StructureSite> sites = server.computeOnServer(s -> {
             BlockPos conduit = Colony.anchor(s, ColonyAnchor.CONDUIT).orElseThrow();
             ServerLevel level = ClientLight.serverLevel(s, dimension);
@@ -358,6 +367,23 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             ResourceKey<Level> dimension,
             Box box) {
         results.add(new Result(path, ClientLight.settledMismatch(context, server, dimension, box)));
+    }
+
+    /**
+     * Waits until the client is in {@code dimension} with no screen open (the loading screen of a level change is one), holds the chunks
+     * of {@code box} and has rendered them, the server's light engine is idle and its ticks are back under the 50 ms budget.
+     */
+    private static void quiet(
+            ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, Box box) {
+        ClientWait.until(
+                context,
+                "the client to be settled in " + dimension.identifier() + " and the server quiet",
+                () -> ClientLight.clientHolds(context, dimension, box)
+                        && context.computeOnClient(
+                                client -> client.gui.screen() == null && client.levelRenderer.hasRenderedAllSections())
+                        && ClientLight.serverLightIdle(context, server)
+                        && server.computeOnServer(s -> s.getAverageTickTimeNanos() <= TICK_BUDGET_NANOS),
+                () -> "a screen open, chunks missing or unrendered, light pending or the server behind");
     }
 
     /** Moves the player to {@code at} in {@code dimension} and waits until the client has the chunk, so the player is in range. */

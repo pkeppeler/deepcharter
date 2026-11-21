@@ -146,7 +146,7 @@ public class M2SliceScenario extends EvidenceScenario {
 
     private static final int BORE_SEARCH_BLOCKS = 24;
     /** The Mole is set this far above the floor of the overworld for the rest of the bore. */
-    private static final int BORE_RESUMED_ABOVE_FLOOR = 6;
+    private static final int BORE_RESUMED_ABOVE_FLOOR = 6; // fixed-pos: a height above the floor, not a world Y
 
     /** The room at the floor of layer 1, in the Deep Claim, far from everything else. */
     private static final int X = 4000;

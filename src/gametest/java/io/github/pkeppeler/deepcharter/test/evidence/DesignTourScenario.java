@@ -1205,7 +1205,7 @@ public class DesignTourScenario extends EvidenceScenario {
                 RoomCarver.carvePocketBelow(one, 1, x - 2, x + 2, z - 2, z + 2);
             });
             litRooms.add(new LitRoom(
-                    TestLayers.dimension(1),
+                    layerDimension(1),
                     new Box(TestLayers.pos(1, x - 3, 3, z - 3), TestLayers.pos(1, x + 3, 8, z + 3))));
             nightVision();
             view(1, TestLayers.vec(1, x + 0.5, 6.5, z + 0.5), TestLayers.vec(1, x + 0.5, 1.5, z + 1.5), 120);
@@ -1299,7 +1299,7 @@ public class DesignTourScenario extends EvidenceScenario {
                 return new Vec3(x + 0.5, floor + EYE, z + 0.5);
             });
             litRooms.add(new LitRoom(
-                    TestLayers.dimension(2),
+                    layerDimension(2),
                     new Box(
                             BlockPos.containing(hall).offset(-6, -1, -6),
                             BlockPos.containing(hall).offset(6, 6, 6))));
@@ -1645,6 +1645,10 @@ public class DesignTourScenario extends EvidenceScenario {
 
         private <T extends @Nullable Object> T serverGet(Function<MinecraftServer, T> action) {
             return sp.getServer().computeOnServer(action::apply);
+        }
+
+        private ResourceKey<Level> layerDimension(int layer) {
+            return serverGet(server -> TestLayers.dimension(server, layer));
         }
 
         private void serverDo(Consumer<MinecraftServer> action) {

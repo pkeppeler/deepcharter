@@ -42,14 +42,6 @@ public final class TestLayers {
         return LayerChain.isCampaign(server.overworld()) ? Level.OVERWORLD : SAMPLE;
     }
 
-    /**
-     * The level key that holds {@code layer} when the overworld is not the campaign level, for a caller with no server (a client test
-     * reads the server through its context, so most have one: prefer {@link #dimension(MinecraftServer, int)}).
-     */
-    public static ResourceKey<Level> dimension(int layer) {
-        return layer == SURFACE ? Level.OVERWORLD : SAMPLE;
-    }
-
     /** The server's level for {@code layer}: the overworld for the surface, the campaign level otherwise. Never a layer dimension. */
     public static ServerLevel level(MinecraftServer server, int layer) {
         ServerLevel level = ClientLight.serverLevel(server, dimension(server, layer));

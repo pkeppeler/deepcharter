@@ -25,7 +25,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public class RoomCarverSendTest {
     private static final int SECONDS = 30;
-    private static final int LOCAL_FLOOR = 60;
+    private static final int LOCAL_FLOOR = 60; // fixed-pos: a layer-local Y, turned into a world Y by TestLayers.worldY
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 200;
 
     /** Carves the box once its chunks tick, brings the player in the same tick, and fails naming the chunks that are never sent. */
