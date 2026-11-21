@@ -72,6 +72,8 @@ public class QuestMapScenario extends EvidenceScenario {
             complete(context, singleplayer, 1, Integer.MAX_VALUE);
             complete(context, singleplayer, 2, Integer.MAX_VALUE);
             open(context, 3);
+            // the two steps finished just above popped up; the stills are of the map
+            context.runOnClient(client -> client.gui.toastManager().clear());
             hold(context);
             screenshot(context, "quest-map-chapter-3");
             HandbookScreen screen =
