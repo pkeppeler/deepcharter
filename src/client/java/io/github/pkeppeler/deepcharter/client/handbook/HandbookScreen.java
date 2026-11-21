@@ -180,7 +180,7 @@ public final class HandbookScreen extends Screen {
 
     /**
      * Opens the handbook on {@code note}, because the player used its block in the world. The Note is listed even when the charter has
-     * not found it (a player on no charter files nothing), so it can be read all the same.
+     * not found it, so it can be read all the same.
      */
     public static void openNoteFromWorld(Minecraft client, Identifier note) {
         if (client.player == null || client.getConnection() == null || !Notes.exists(note)) {

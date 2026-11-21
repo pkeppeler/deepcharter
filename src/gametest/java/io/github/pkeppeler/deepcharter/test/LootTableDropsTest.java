@@ -38,6 +38,8 @@ public class LootTableDropsTest {
             Map.entry("einsteinium_ore", "einsteinium"),
             Map.entry("fungal_stalk", "fungal_stalk"),
             Map.entry("goldium_ore", "goldium"),
+            Map.entry("great_stalk", "fungal_stalk"),
+            Map.entry("great_stalk_cap", "fungal_stalk"),
             Map.entry("ironium_ore", "ironium"),
             Map.entry("ochre_regolith", "ochre_regolith"),
             Map.entry("platinium_ore", "platinium"),
