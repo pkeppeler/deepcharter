@@ -98,7 +98,8 @@ public final class MockPlayer {
 
     /**
      * Tell the server this client can receive {@code type}, as a real client does with Fabric's channel registration, so that
-     * {@code ServerPlayNetworking.canSend} is true for the mock.
+     * {@code ServerPlayNetworking.canSend} is true for the mock. It uses Fabric's impl {@code RegistrationPayload}, because no public
+     * API makes {@code canSend} true for a mock: a Fabric bump that breaks it is fixed here.
      */
     public void announceChannel(CustomPacketPayload.Type<?> type) {
         player.connection.handleCustomPayload(new ServerboundCustomPayloadPacket(

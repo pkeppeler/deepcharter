@@ -22,6 +22,7 @@ import io.github.pkeppeler.deepcharter.transmission.TransmissionEvents;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionPayload;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionTriggers;
 import io.github.pkeppeler.deepcharter.transmission.Transmissions;
+import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -53,6 +54,7 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -939,6 +941,17 @@ public class TransmissionsTest {
         return sent.getFirst();
     }
 
+    /** The mock records the payload object, so the codec is the link to test: encode and decode it as the connection does. */
+    private static void expectSurvivesTheWire(GameTestHelper helper, TransmissionPayload sent, MinecraftServer server) {
+        RegistryFriendlyByteBuf buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), server.registryAccess());
+        TransmissionPayload.CODEC.encode(buffer, sent);
+        TransmissionPayload received = TransmissionPayload.CODEC.decode(buffer);
+        if (!received.equals(sent)) {
+            throw helper.assertionException(
+                    "the payload should survive the wire, sent %s and received %s", sent, received);
+        }
+    }
+
     private static MockPlayer joinListening(GameTestHelper helper, String name) {
         MockPlayer mock = MockPlayers.join(helper, name);
         mock.announceChannel(TransmissionPayload.TYPE);
@@ -974,7 +987,7 @@ public class TransmissionsTest {
     @GameTest
     public void anOfflineDirectorTheServerKnowsIsNamedFromTheNameCache(GameTestHelper helper) {
         UUID director = UUID.randomUUID();
-        String cached = "Cached " + uniqueName();
+        String cached = "Cäched Ünï \u65E5\u672C " + uniqueName();
         server(helper).services().nameToIdCache().add(new NameAndId(director, cached));
         MockPlayer crew = joinListening(helper, "tx-crew-cached");
         CharterId charter = directCharter(helper, director, crew.player().getUUID());
@@ -982,7 +995,10 @@ public class TransmissionsTest {
                 .thenExecute(() -> withFreshWorldData(
                         helper, data -> Transmissions.fire(server(helper), data, charter, id("t01"))))
                 .thenIdle(2)
-                .thenExecute(() -> expectDirector(helper, crew, cached))
+                .thenExecute(() -> {
+                    expectDirector(helper, crew, cached);
+                    expectSurvivesTheWire(helper, sentTo(helper, crew), server(helper));
+                })
                 .thenSucceed();
     }
 
@@ -995,7 +1011,7 @@ public class TransmissionsTest {
                 .thenExecute(() -> withFreshWorldData(
                         helper, data -> Transmissions.fire(server(helper), data, charter, id("t01"))))
                 .thenIdle(2)
-                .thenExecute(() -> expectDirector(helper, crew, Transmissions.UNKNOWN_DIRECTOR))
+                .thenExecute(() -> expectDirector(helper, crew, "the Director"))
                 .thenSucceed();
     }
 }
