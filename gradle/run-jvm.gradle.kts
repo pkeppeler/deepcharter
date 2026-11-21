@@ -31,14 +31,16 @@ val gameTestHeap = "-Xmx3G"
 addVmArgToRun("gameTest", gameTestHeap)
 
 // Client GameTest heap. It had none (a quarter of RAM: 4 GB on the 16 GB runner), and the first client run on the campaign overworld
-// (#803) died of OutOfMemoryError while a client test's world was saving on stop, 52 classes in. Every default-preset world is now
-// the 2352-tall campaign world, whose chunks hold six times the sections of the old surface's, and the integrated server and the client
-// each hold the chunks in view. The run logs its collections (-Xlog:gc, build/client-gc.log) and the client-gametest action prints the
-// peak and the live set from it. Measured 2026-11-21 (CI, 4 vCPU, 16 GB, the suite as far as OutpostClientTest or PartTooltipClientTest;
-// two runs): the heap peaks at 4.96 and 5.12 GB before a collection and the live set at 4.30 to 4.36 GB, with no Full GC. 6G is 17% over
-// the higher peak; re-measure when the suite grows by a tenth, and raise it if the peak passes 5.4 GB. Two of these JVMs plus 1.5 GB of
-// native memory each do not fit a 16 GB Mac: run the suite there with DEEPCHARTER_CLIENT_SLOTS=1 (tests.md, Client slots).
-val clientGameTestHeap = "-Xmx6G"
+// (#803) died of OutOfMemoryError while a client test's world was saving on stop, 52 classes in. The heap was not too small, it leaked:
+// the live set after a forced collection (a class histogram at the start of each test class, HeapHistogram; CI 4 vCPU, 2026-11-21) climbed
+// from 0.2 GB to 4.0 GB in 56 classes, a world a class, as 6 ServerLevels each (60 at class 5, 363 at class 56; the ClientLevel stayed at 1).
+// FarChunks.pin, which every colony build calls for the pad, kept a record that held its ServerLevel; MockPlayers kept a mock that was on
+// when its server stopped in Fabric's networking registry. With both let go (WorldRetentionClientTest guards them) the live set is
+// 0.6 to 0.9 GB at the same point. The run logs its collections (-Xlog:gc, build/client-gc.log; the client-gametest action prints the peak
+// and the live set from it and uploads the histograms with it). 3G is more than three times that live set, as the server run's 3G is of its
+// peak; re-measure when the suite grows by a tenth, and raise it if the live set passes 1.2 GB. Two of these JVMs plus 1.5 GB of native
+// memory each fit a 16 GB Mac, so the default two client slots stay.
+val clientGameTestHeap = "-Xmx3G"
 addVmArgToRun("clientGameTest", clientGameTestHeap)
 addVmArgToRun("clientGameTest", "-Xlog:gc:file=" + layout.buildDirectory.file("client-gc.log").get().asFile.path + ":uptime")
 
