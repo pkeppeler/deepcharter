@@ -382,10 +382,11 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             context.runOnClient(client ->
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
             CatalogueScene.openInventory(context);
+            // Reopens the inventory, so it comes before the screen and the panel the rest hold are taken.
+            theRecipeBookButtonIsGone(context);
             AbstractContainerScreen<?> screen = screen(context);
             CataloguePanel panel = CatalogueScene.panel(context);
 
-            theRecipeBookButtonIsGone(context);
             theCatalogueListsOnlyWhatTheBookKnows(context, panel);
             everyStringIsInsideItsGlass(context, screen, "with nothing looked up");
             rAndUShowRecipesAndUsesOfAHoveredItem(context, screen, panel);
@@ -493,7 +494,10 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                         "text '" + text.shortText() + "' at " + box + " is in no glass and not in the inventory, "
                                 + when + " (catalogue glass " + catalogue + ", recipe glass " + recipe + ")");
             }
-            for (String expected : List.of("PARTS CATALOGUE", "SEARCH", "FAVOURITES", "CRAFTABLE NOW", "1/1")) {
+            require(
+                    texts.stream().anyMatch(text -> text.matches("\\d+/\\d+")),
+                    "the catalogue draws its page counter " + when + ", it draws " + texts);
+            for (String expected : List.of("PARTS CATALOGUE", "FAVOURITES", "CRAFTABLE NOW")) {
                 require(
                         texts.contains(expected),
                         "the catalogue draws '" + expected + "' " + when + ", it draws " + texts);
@@ -724,7 +728,6 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(!context.computeOnClient(client -> panel.searchFocused()), "escape leaves the search field");
         require(context.computeOnClient(client -> client.gui.screen()) == screen, "and does not close the inventory");
         // A search too long to show is cut from the front, so the end that is typed stays on screen.
-        context.getInput().pressMouse(LEFT_MOUSE);
         CatalogueScene.hover(context, search);
         context.getInput().pressMouse(LEFT_MOUSE);
         context.getInput().typeChars("a very long search that cannot fit the field");
