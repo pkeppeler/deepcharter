@@ -181,17 +181,21 @@ public class LightSyncSafetyNetTest {
                             return;
                         }
                         level.setBlock(lamp[0], Blocks.AIR.defaultBlockState(), 3);
+                        keepHeld(level, lamp[0]);
                         phase[0] = 6;
                     }
                     case 6 -> {
+                        // Held again from the send on, so no comparison of the net sees the chunk lit or half dark.
                         keepHeld(level, lamp[0]);
                         if (!changedSections(level, home, lamp[0], dark[0]).isEmpty()
                                 || !steady(level, home, lamp[0], steady, waited, marker)) {
                             return;
                         }
-                        // The sends so far are not the ones the case is about. The holds end from here.
+                        // The sends so far are not the ones the case is about. The last hold, as a draw's, ends with
+                        // the chunk dark.
                         LightSyncSends.unwatch(id);
                         LightSyncSends.watch(id);
+                        keepHeld(level, lamp[0]);
                         phase[0] = 7;
                     }
                     case 7 -> {
@@ -226,7 +230,7 @@ public class LightSyncSafetyNetTest {
         });
     }
 
-    /** A hold of the lamp's chunks, as a draw makes one; asked every tick, it keeps the net's watch alive while the case runs. */
+    /** A hold of the lamp's chunks, as a draw makes one. */
     private static void keepHeld(ServerLevel level, BlockPos lamp) {
         LightSync.holdSendUntilLit(level, lamp, lamp);
     }
