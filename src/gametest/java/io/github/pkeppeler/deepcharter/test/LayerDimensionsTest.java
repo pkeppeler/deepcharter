@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.RegistryAccess;
@@ -25,32 +26,37 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.server.permissions.PermissionLevel;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3fc;
 
 /** Server GameTests for layer dimensions and depth math. */
 public class LayerDimensionsTest {
     private static final Identifier CRUST_ID = Identifier.fromNamespaceAndPath("deepcharter", "breach_crust");
 
-    /** Runs inside deepcharter:layer_1: proves the GameTest server loads data-pack dimensions. */
-    @GameTest(dimension = "deepcharter:layer_1")
-    public void gameTestRunsInLayerOne(GameTestHelper helper) {
+    /** Runs inside deepcharter:campaign_sample: proves the GameTest server loads the test pack's campaign dimension, and that it holds every layer. */
+    @GameTest(dimension = "deepcharter:campaign_sample")
+    public void gameTestRunsInTheCampaignLevel(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        if (!TestLayers.isIn(level, helper.absolutePos(BlockPos.ZERO), 1)) {
-            throw helper.assertionException("test ran in %s, not deepcharter:layer_1", level.dimension());
+        if (!LayerChain.isCampaign(level)
+                || level != TestLayers.level(helper, 1)
+                || level != TestLayers.level(helper, 2)) {
+            throw helper.assertionException("test ran in %s, which is not the level of every layer", level.dimension());
         }
         helper.succeed();
     }
 
     // The GameTest server ignores data-pack dimensions and bakes its world from the test mod's copy
-    // of minecraft:flat_all_dimensions; this keeps that copy equal to the shipped dimension JSON.
+    // of minecraft:flat_all_dimensions; this keeps that copy equal to the shipped dimension JSON, and
+    // to the test data pack's campaign_sample, which the client's default-preset worlds get from the pack.
     @GameTest
     public void testPresetMatchesTheShippedDimensions(GameTestHelper helper) throws IOException {
         JsonObject preset = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject();
-        for (int layer = 1; layer <= 2; layer++) {
-            String id = "deepcharter:layer_" + layer;
-            JsonElement shipped = read(helper, "/data/deepcharter/dimension/layer_" + layer + ".json");
+        for (String name : List.of("layer_1", "layer_2", "campaign_sample")) {
+            String id = "deepcharter:" + name;
+            JsonElement shipped = read(helper, "/data/deepcharter/dimension/" + name + ".json");
             if (!shipped.equals(preset.getAsJsonObject("dimensions").get(id))) {
                 throw helper.assertionException(
                         "flat_all_dimensions preset entry %s differs from the shipped dimension", id);
@@ -60,24 +66,34 @@ public class LayerDimensionsTest {
     }
 
     @GameTest
-    public void layersLoadWithExpectedHeights(GameTestHelper helper) {
-        expectLayer(helper, 1, 0, 192);
-        expectLayer(helper, 2, 0, 256);
+    public void layerBandsLoadWithExpectedHeights(GameTestHelper helper) {
+        expectLayer(helper, 1, -256, 192);
+        expectLayer(helper, 2, -512, 256);
         helper.succeed();
     }
 
-    @GameTest
+    /** The darkening is the zone biomes' ambient light colour (ADR 0059): layer 2 reads a darker one than layer 1, and neither is lit by the sky. */
+    @GameTest(dimension = "deepcharter:campaign_sample")
     public void layersAreDarkerWithDepth(GameTestHelper helper) {
-        float one = TestLayers.level(helper, 1).dimensionType().ambientLight();
-        float two = TestLayers.level(helper, 2).dimensionType().ambientLight();
+        ServerLevel level = helper.getLevel();
+        float one = brightness(level, TestLayers.pos(1, 0, 100, 0));
+        float two = brightness(level, TestLayers.pos(2, 0, 100, 0));
         if (!(two < one)) {
-            throw helper.assertionException("layer_2 ambient light %s should be below layer_1's %s", two, one);
+            throw helper.assertionException("layer 2 ambient light %s should be below layer 1's %s", two, one);
         }
-        if (TestLayers.level(helper, 1).dimensionType().hasSkyLight()
-                || TestLayers.level(helper, 2).dimensionType().hasSkyLight()) {
-            throw helper.assertionException("layers must have no skylight");
+        for (int layer = 1; layer <= 2; layer++) {
+            float sky = level.environmentAttributes()
+                    .getValue(EnvironmentAttributes.SKY_LIGHT_FACTOR, TestLayers.pos(layer, 0, 100, 0));
+            if (sky != 0f) {
+                throw helper.assertionException("layer %d reads a sky light factor of %s, not 0", layer, sky);
+            }
         }
         helper.succeed();
+    }
+
+    private static float brightness(ServerLevel level, BlockPos pos) {
+        Vector3fc colour = level.environmentAttributes().getValue(EnvironmentAttributes.AMBIENT_LIGHT_COLOR, pos);
+        return colour.x() + colour.y() + colour.z();
     }
 
     @GameTest
@@ -104,9 +120,9 @@ public class LayerDimensionsTest {
         ServerLevel one = TestLayers.level(helper, 1);
         ServerLevel two = TestLayers.level(helper, 2);
         expectInt(helper, Depth.of(one, TestLayers.band(one, 1).maxY() + 1), 127);
-        expectInt(helper, Depth.of(one, 100), 127 + 92);
+        expectInt(helper, Depth.of(one, TestLayers.worldY(1, 100)), 127 + 92);
         expectInt(helper, Depth.of(two, TestLayers.band(two, 2).maxY() + 1), 127 + 192);
-        expectInt(helper, Depth.of(two, 0), 127 + 192 + 256);
+        expectInt(helper, Depth.of(two, TestLayers.worldY(2, 0)), 127 + 192 + 256);
         ServerLevel surface = helper.getLevel().getServer().overworld();
         expectInt(helper, Depth.of(surface, 63), 0);
         expectInt(
@@ -177,12 +193,16 @@ public class LayerDimensionsTest {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer mock = MockPlayers.join(server, "layer-goto-op", helper.getLevel(), helper.absoluteVec(Vec3.ZERO));
         try {
+            // In the campaign level a goto stays in the level and moves the player to the band.
+            ServerLevel level = TestLayers.level(helper, 1);
+            mock.teleportTo(level, TestLayers.vec(1, 0.5, 100, 0.5), 0, 0);
             var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
             server.getCommands().getDispatcher().execute("deepcharter layer goto 2", source);
-            ServerLevel level = mock.player().level();
             LayerChain.Band levelBand = TestLayers.band(level, 2);
-            if (!TestLayers.isIn(mock.player(), 2)) {
-                throw helper.assertionException("player is in %s after goto 2", level.dimension());
+            if (!TestLayers.isIn(mock.player(), 2) || mock.player().level() != level) {
+                throw helper.assertionException(
+                        "player is at y=%s in %s after goto 2",
+                        mock.player().getY(), mock.player().level().dimension());
             }
             Vec3 pos = mock.player().position();
             if (pos.y < levelBand.minY() + LayerTuning.DEFAULT.crustThickness() || pos.y > levelBand.maxY()) {
@@ -211,7 +231,7 @@ public class LayerDimensionsTest {
                 MockPlayers.join(server, "layer-goto-block", helper.getLevel(), helper.absoluteVec(Vec3.ZERO));
         try {
             ServerLevel layer = TestLayers.level(helper, 2);
-            mock.player().setPos(300_000.5, TestLayers.worldY(2, 80), 300_000.5);
+            mock.teleportTo(layer, TestLayers.vec(1, 300_000.5, 100, 300_000.5), 0, 0);
             layer.getChunk(300_000 >> 4, 300_000 >> 4);
             BlockPos block = new BlockPos(300_000, TestLayers.band(layer, 2).maxY() - 2, 300_000);
             layer.setBlockAndUpdate(block, SurfaceBlocks.REGOLITH.defaultBlockState());
@@ -228,22 +248,28 @@ public class LayerDimensionsTest {
         helper.succeed();
     }
 
-    /** A far, never-loaded column: goto must generate the target chunk, not read an empty heightmap. */
+    /** A far column of the campaign level: goto places the player in the band there, under its top and over its crust. */
     @GameTest
-    public void gotoGeneratesAnUnloadedTargetChunk(GameTestHelper helper) throws CommandSyntaxException {
+    public void gotoPlacesAPlayerInTheBandAtAFarColumn(GameTestHelper helper) throws CommandSyntaxException {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer mock = MockPlayers.join(server, "layer-goto-far", helper.getLevel(), helper.absoluteVec(Vec3.ZERO));
         try {
-            mock.player().setPos(200_000.5, TestLayers.worldY(1, 80), 200_000.5);
             ServerLevel layer = TestLayers.level(helper, 1);
             LayerChain.Band layerBand = TestLayers.band(layer, 1);
-            if (layer.getChunkSource().getChunkNow(200_000 >> 4, 200_000 >> 4) != null) {
-                throw helper.assertionException("the far chunk was already loaded, so the test proves nothing");
-            }
+            mock.teleportTo(
+                    layer,
+                    new Vec3(
+                            200_000.5,
+                            TestLayers.band(layer, TestLayers.SURFACE).minY() + 50,
+                            200_000.5),
+                    0,
+                    0);
             var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
             server.getCommands().getDispatcher().execute("deepcharter layer goto 1", source);
             double y = mock.player().position().y;
-            if (y < layerBand.minY() + LayerTuning.DEFAULT.crustThickness() || y > layerBand.maxY()) {
+            if (mock.player().level() != layer
+                    || y < layerBand.minY() + LayerTuning.DEFAULT.crustThickness()
+                    || y > layerBand.maxY()) {
                 throw helper.assertionException("player placed at y=%s, outside the layer", y);
             }
         } finally {
