@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.texture.TextureProperties;
 import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -19,6 +20,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -44,7 +47,7 @@ public class BlockReadoutsTest {
     }
 
     private static Readout readout(GameTestHelper helper, BlockState state, Level level) {
-        return SHARED.readout(state, level, BlockPos.ZERO)
+        return SHARED.readout(state, level, BlockPos.ZERO, helper.makeMockPlayer(GameType.SURVIVAL))
                 .orElseThrow(() -> helper.assertionException("%s has no readout", state));
     }
 
@@ -73,17 +76,18 @@ public class BlockReadoutsTest {
     public void airFluidMissAndEntityReadNothing(GameTestHelper helper) {
         Level level = helper.getLevel();
         BlockPos pos = helper.absolutePos(new BlockPos(1, 1, 1));
+        Player viewer = helper.makeMockPlayer(GameType.SURVIVAL);
         for (BlockState state : new BlockState[] {Blocks.AIR.defaultBlockState(), Blocks.WATER.defaultBlockState()}) {
-            if (SHARED.readout(state, level, pos).isPresent()) {
+            if (SHARED.readout(state, level, pos, viewer).isPresent()) {
                 throw helper.assertionException("%s should read nothing", state);
             }
         }
-        if (SHARED.resolve(level, BlockHitResult.miss(Vec3.ZERO, Direction.UP, pos))
+        if (SHARED.resolve(level, BlockHitResult.miss(Vec3.ZERO, Direction.UP, pos), viewer)
                 .isPresent()) {
             throw helper.assertionException("a miss should read nothing");
         }
         EntityHitResult entity = new EntityHitResult(TestEntities.create(PodRegistry.POD, level));
-        if (SHARED.resolve(level, entity).isPresent()) {
+        if (SHARED.resolve(level, entity, viewer).isPresent()) {
             throw helper.assertionException("an entity should read nothing");
         }
         helper.succeed();
@@ -95,7 +99,8 @@ public class BlockReadoutsTest {
         helper.setBlock(front, Blocks.STONE.defaultBlockState());
         helper.setBlock(front.east(), OreBlocks.of(OreType.IRONIUM).defaultBlockState());
         helper.setBlock(front.above(), Blocks.AIR.defaultBlockState());
-        Readout readout = SHARED.resolve(helper.getLevel(), hit(helper.absolutePos(front)))
+        Readout readout = SHARED.resolve(
+                        helper.getLevel(), hit(helper.absolutePos(front)), helper.makeMockPlayer(GameType.SURVIVAL))
                 .orElseThrow(() -> helper.assertionException("the stone had no readout"));
         expectWords(helper, readout, "block.minecraft.stone", Optional.empty(), "the block hit, with ore behind it");
         helper.succeed();
@@ -181,18 +186,19 @@ public class BlockReadoutsTest {
     @GameTest
     public void aFeatureAddsAHintFromStateAndPlaceWithoutTouchingTheOthers(GameTestHelper helper) {
         BlockReadouts own = new BlockReadouts();
-        own.addHint((state, level, pos) -> state.is(Blocks.DIRT) && pos.getY() < 0
+        Player viewer = helper.makeMockPlayer(GameType.SURVIVAL);
+        own.addHint((state, level, pos, who) -> state.is(Blocks.DIRT) && pos.getY() < 0
                 ? Optional.of(Component.translatable("hint.test.deep_dirt"))
                 : Optional.empty());
-        own.addHint((state, level, pos) ->
+        own.addHint((state, level, pos, who) ->
                 state.is(Blocks.DIRT) ? Optional.of(Component.translatable("hint.test.any_dirt")) : Optional.empty());
         BlockState dirt = Blocks.DIRT.defaultBlockState();
         Level level = helper.getLevel();
-        String deep = own.readout(dirt, level, new BlockPos(0, -5, 0))
+        String deep = own.readout(dirt, level, new BlockPos(0, -5, 0), viewer)
                 .flatMap(Readout::hint)
                 .map(component -> key(helper, component))
                 .orElse("none");
-        String shallow = own.readout(dirt, level, new BlockPos(0, 5, 0))
+        String shallow = own.readout(dirt, level, new BlockPos(0, 5, 0), viewer)
                 .flatMap(Readout::hint)
                 .map(component -> key(helper, component))
                 .orElse("none");
@@ -200,7 +206,7 @@ public class BlockReadoutsTest {
             throw helper.assertionException(
                     "the first answering provider should win by place: deep %s, shallow %s", deep, shallow);
         }
-        if (own.readout(Blocks.STONE.defaultBlockState(), level, BlockPos.ZERO)
+        if (own.readout(Blocks.STONE.defaultBlockState(), level, BlockPos.ZERO, viewer)
                 .orElseThrow()
                 .hint()
                 .isPresent()) {
@@ -220,5 +226,36 @@ public class BlockReadoutsTest {
             return;
         }
         throw helper.assertionException("a second disguise of one block should be refused");
+    }
+
+    @GameTest
+    public void aCreativePlayerReadsNoPodDrillHint(GameTestHelper helper) {
+        Player creative = helper.makeMockPlayer(GameType.CREATIVE);
+        for (BlockState state : new BlockState[] {
+            LayerBlocks.BREACH_CRUST.defaultBlockState(), LayerBlocks.GREEN_SHALE.defaultBlockState()
+        }) {
+            Readout readout = SHARED.readout(state, TestLayers.level(helper, 2), BlockPos.ZERO, creative)
+                    .orElseThrow(() -> helper.assertionException("%s has no readout", state));
+            if (readout.hint().isPresent()) {
+                throw helper.assertionException("a creative player read a hint on %s: %s", state, readout.hint());
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest
+    public void anOfflineTerminalStillSaysRightClickBecauseItOpensToTakeParts(GameTestHelper helper) {
+        BlockState offline = TerminalTypes.FUEL_PUMP.block().defaultBlockState();
+        if (offline.getValue(TextureProperties.ACTIVE)) {
+            throw helper.assertionException("the fuel pump should start offline");
+        }
+        Readout readout = readout(helper, offline, helper.getLevel());
+        expectWords(
+                helper,
+                readout,
+                TerminalTypes.FUEL_PUMP.block().getDescriptionId(),
+                Optional.of("hint.deepcharter.right_click_use"),
+                "an offline terminal");
+        helper.succeed();
     }
 }

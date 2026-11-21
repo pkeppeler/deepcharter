@@ -11,7 +11,7 @@ final class TerminalReadout {
     private TerminalReadout() {}
 
     static void init() {
-        BlockReadouts.SHARED.addHint((state, level, pos) ->
+        BlockReadouts.SHARED.addHint((state, level, pos, viewer) ->
                 TerminalTypes.of(state.getBlock()).isPresent() ? Optional.of(RIGHT_CLICK) : Optional.empty());
     }
 }

@@ -30,6 +30,10 @@ public class BlockReadoutClientTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            ClientWait.until(
+                    context,
+                    "the player and level of the world",
+                    client -> client.player != null && client.level != null);
             BlockPos spot = singleplayer.getServer().computeOnServer(BlockReadoutStage::build);
 
             show(context, singleplayer, spot, Blocks.STONE, Optional.empty());

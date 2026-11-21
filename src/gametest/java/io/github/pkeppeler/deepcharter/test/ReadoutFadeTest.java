@@ -86,6 +86,45 @@ public class ReadoutFadeTest {
         helper.succeed();
     }
 
+    @GameTest
+    public void aBlockMustHoldTheCrosshairForTheSettleTicksBeforeItReplacesTheOne(GameTestHelper helper) {
+        ReadoutLook slow = new ReadoutLook(14, 2, 1.0, 0xFF00FF00, 0xFFFFFF00, 4, 1, 5);
+        ReadoutFade fade = new ReadoutFade();
+        for (int i = 0; i < 10; i++) {
+            fade.tick(STONE, slow);
+        }
+        for (int i = 0; i < 4; i++) {
+            fade.tick(DIRT, slow);
+        }
+        require(
+                helper,
+                fade.shown().equals(STONE),
+                "four of five settle ticks must not replace stone, got " + fade.shown());
+        fade.tick(DIRT, slow);
+        require(
+                helper,
+                fade.shown().equals(DIRT),
+                "the fifth settle tick replaces stone with dirt, got " + fade.shown());
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theFadeInIsExactlyTheLooksTicks(GameTestHelper helper) {
+        ReadoutFade fade = new ReadoutFade();
+        tick(fade, STONE, 2);
+        float[] expected = {0.25f, 0.5f, 0.75f, 1f};
+        for (int step = 0; step < expected.length; step++) {
+            if (step > 0) {
+                tick(fade, STONE, 1);
+            }
+            require(
+                    helper,
+                    Math.abs(fade.alpha(1f) - expected[step]) < EPSILON,
+                    "fade-in step " + (step + 1) + ": expected " + expected[step] + ", got " + fade.alpha(1f));
+        }
+        helper.succeed();
+    }
+
     private static void require(GameTestHelper helper, boolean ok, String message) {
         if (!ok) {
             throw helper.assertionException("%s", message);

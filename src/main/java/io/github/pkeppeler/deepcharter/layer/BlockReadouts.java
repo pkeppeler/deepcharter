@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.LiquidBlock;
@@ -48,8 +49,9 @@ public final class BlockReadouts {
          * @param state the block as it reads (the one it is disguised as, if any)
          * @param level the level the block is in, for a hint that depends on depth or surroundings
          * @param pos where the block is
+         * @param viewer who looks, for a hint that depends on their game mode or what they hold
          */
-        Optional<Component> hint(BlockState state, Level level, BlockPos pos);
+        Optional<Component> hint(BlockState state, Level level, BlockPos pos, Player viewer);
     }
 
     private final List<HintProvider> hints = new CopyOnWriteArrayList<>();
@@ -71,23 +73,23 @@ public final class BlockReadouts {
      * The readout for what a crosshair hit: empty for a miss or an entity, and otherwise the readout of the one block hit. The hit's
      * position is the only one read.
      */
-    public Optional<Readout> resolve(Level level, HitResult hit) {
+    public Optional<Readout> resolve(Level level, HitResult hit, Player viewer) {
         if (!(hit instanceof BlockHitResult blockHit) || blockHit.getType() != HitResult.Type.BLOCK) {
             return Optional.empty();
         }
         BlockPos pos = blockHit.getBlockPos();
-        return readout(level.getBlockState(pos), level, pos);
+        return readout(level.getBlockState(pos), level, pos, viewer);
     }
 
-    /** The readout of the block {@code state} at {@code pos} in {@code level}; empty for air and fluid. */
-    public Optional<Readout> readout(BlockState state, Level level, BlockPos pos) {
+    /** The readout of the block {@code state} at {@code pos} in {@code level} as {@code viewer} sees it; empty for air and fluid. */
+    public Optional<Readout> readout(BlockState state, Level level, BlockPos pos, Player viewer) {
         if (state.isAir() || state.getBlock() instanceof LiquidBlock) {
             return Optional.empty();
         }
         Block shown = disguises.getOrDefault(state.getBlock(), state.getBlock());
         BlockState shownState = shown == state.getBlock() ? state : shown.defaultBlockState();
         Optional<Component> hint = hints.stream()
-                .flatMap(provider -> provider.hint(shownState, level, pos).stream())
+                .flatMap(provider -> provider.hint(shownState, level, pos, viewer).stream())
                 .findFirst();
         return Optional.of(new Readout(shown.getName(), hint));
     }

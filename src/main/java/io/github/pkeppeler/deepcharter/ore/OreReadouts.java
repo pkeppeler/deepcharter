@@ -17,7 +17,7 @@ final class OreReadouts {
     static void init() {
         BlockReadouts readouts = BlockReadouts.SHARED;
         readouts.disguise(HazardBlocks.GAS_POCKET, Blocks.STONE);
-        readouts.addHint((state, level, pos) ->
+        readouts.addHint((state, level, pos, viewer) ->
                 state.is(HazardBlocks.COMPANY_ROCK) ? Optional.of(COMPANY_ROCK) : Optional.empty());
     }
 }

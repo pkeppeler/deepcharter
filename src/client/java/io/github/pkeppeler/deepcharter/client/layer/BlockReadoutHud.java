@@ -39,10 +39,10 @@ public final class BlockReadoutHud {
 
     /** What the crosshair rests on, as the readout says it: empty with no world, in a screen, or with the HUD hidden. */
     public static Optional<Readout> looked(Minecraft client) {
-        if (!visible(client) || client.level == null || client.hitResult == null) {
+        if (!visible(client) || client.player == null || client.level == null || client.hitResult == null) {
             return Optional.empty();
         }
-        return BlockReadouts.SHARED.resolve(client.level, client.hitResult);
+        return BlockReadouts.SHARED.resolve(client.level, client.hitResult, client.player);
     }
 
     /** The readout on screen, whatever its opacity: what a client test reads instead of pixels. */
@@ -71,7 +71,9 @@ public final class BlockReadoutHud {
         ReadoutLook look = ReadoutLook.current();
         Font font = client.font;
         graphics.pose().pushMatrix();
-        graphics.pose().translate(graphics.guiWidth() / 2f, graphics.guiHeight() / 2f + look.offsetY());
+        int centreX = graphics.guiWidth() / 2;
+        int top = graphics.guiHeight() / 2 + look.offsetY();
+        graphics.pose().translate(centreX, top);
         graphics.pose().scale((float) look.scale(), (float) look.scale());
         centred(graphics, font, shown.get().name(), 0, Colors.withAlpha(look.nameColor(), alpha));
         shown.get()
@@ -86,6 +88,6 @@ public final class BlockReadoutHud {
     }
 
     private static void centred(GuiGraphicsExtractor graphics, Font font, Component text, int y, int color) {
-        graphics.text(font, text, -font.width(text) / 2, y, color);
+        graphics.text(font, text, -font.width(text) / 2, y, color, true);
     }
 }

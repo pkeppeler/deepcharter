@@ -11,7 +11,7 @@ final class NoteReadout {
     private NoteReadout() {}
 
     static void init() {
-        BlockReadouts.SHARED.addHint(
-                (state, level, pos) -> state.is(HandbookRegistry.NOTE) ? Optional.of(RIGHT_CLICK) : Optional.empty());
+        BlockReadouts.SHARED.addHint((state, level, pos, viewer) ->
+                state.is(HandbookRegistry.NOTE) ? Optional.of(RIGHT_CLICK) : Optional.empty());
     }
 }
