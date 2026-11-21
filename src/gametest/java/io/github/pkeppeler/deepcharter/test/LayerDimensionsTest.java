@@ -284,7 +284,7 @@ public class LayerDimensionsTest {
             // The command stands on the highest place with room over it: the band's rock has none here, so two cells
             // are opened over the block.
             RoomCarver.carve(layer, block.above(), block.above(2), Blocks.AIR.defaultBlockState());
-            layer.setBlockAndUpdate(block, SurfaceBlocks.REGOLITH.defaultBlockState());
+            layer.setBlockAndUpdate(block, SurfaceBlocks.REGOLITH_PACKED.defaultBlockState());
             var source = mock.player().createCommandSourceStack().withPermission(LevelBasedPermissionSet.GAMEMASTER);
             server.getCommands().getDispatcher().execute("deepcharter layer goto 2", source);
             if (mock.player().blockPosition().getY() != block.getY() + 1) {
