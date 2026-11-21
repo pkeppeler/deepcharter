@@ -136,6 +136,21 @@ public class WreckPhonographTest {
         });
     }
 
+    @GameTest(maxTicks = 200)
+    public void aHandOnItBeforeItHasLookedSpendsItSoTheNextLookDoesNotStartIt(GameTestHelper helper) {
+        WreckPhonographBlockEntity phonograph = place(helper);
+        int listen = SoundTuning.DEFAULT.phonographListenTicks();
+        MockPlayer player = joinAt(helper, "wreck-eager", 3);
+        // Two right clicks in the tick the player arrives, before the block has looked for anyone: on, then off.
+        use(helper, player, ItemStack.EMPTY);
+        use(helper, player, ItemStack.EMPTY);
+        expect(helper, !phonograph.isPlaying() && !phonograph.isArmed(), "switched off by hand it is still armed");
+        helper.runAfterDelay(listen * 2L + DRAIN_TICKS, () -> {
+            expect(helper, !phonograph.isPlaying(), "it started on its own after the visitor switched it off");
+            helper.succeed();
+        });
+    }
+
     @GameTest(maxTicks = 700)
     public void theSongEndsByItselfAndDoesNotReplayWhileAPlayerStays(GameTestHelper helper) {
         WreckPhonographBlockEntity phonograph = place(helper);

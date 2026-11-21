@@ -210,7 +210,7 @@ public class RetainedWarningTest {
     public void aFigureIsSeenOnlyInsideTheViewConeWithNoRockBetween(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Vec3 eyes = Vec3.atCenterOf(helper.absolutePos(new BlockPos(1, 3, 3)));
-        Vec3 head = eyes.add(10, 0, 0);
+        Vec3 head = eyes.add(5, 0, 0);
         Vec3 ahead = new Vec3(1, 0, 0);
         double half = TUNING.viewHalfAngle();
         expect(helper, RetainedSight.sees(level, eyes, ahead, head, half), "a figure ahead in the open was not seen");
@@ -222,9 +222,9 @@ public class RetainedWarningTest {
                 helper,
                 !RetainedSight.sees(level, eyes, new Vec3(0, 0, 1), head, half),
                 "a figure square to the side was seen");
-        helper.setBlock(new BlockPos(6, 3, 3), Blocks.STONE);
+        helper.setBlock(new BlockPos(4, 3, 3), Blocks.STONE);
         expect(helper, !RetainedSight.sees(level, eyes, ahead, head, half), "a figure behind rock was seen");
-        helper.setBlock(new BlockPos(6, 3, 3), Blocks.AIR);
+        helper.setBlock(new BlockPos(4, 3, 3), Blocks.AIR);
         expect(
                 helper,
                 RetainedSight.sees(level, eyes, ahead, head, half),

@@ -13,7 +13,9 @@ import io.github.pkeppeler.deepcharter.sound.ambience.RetainedWarning;
 import io.github.pkeppeler.deepcharter.sound.ambience.SpotPicker;
 import io.github.pkeppeler.deepcharter.sound.ambience.WarningTuning;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
@@ -183,6 +185,7 @@ public final class AmbienceTicker {
     private static boolean warn(Minecraft client, ClientLevel level, boolean quietNow) {
         Player player = Objects.requireNonNull(client.player);
         List<RetainedWarning.Figure> figures = new ArrayList<>();
+        Map<Integer, Entity> known = new HashMap<>();
         for (Entity entity : level.entitiesForRendering()) {
             if (entity instanceof LamplessFigure figure && figure.isAlive()) {
                 double distance = figure.position().distanceTo(player.position());
@@ -194,6 +197,7 @@ public final class AmbienceTicker {
                             figure.getEyePosition(),
                             WARNING_TUNING.viewHalfAngle());
                     figures.add(new RetainedWarning.Figure(figure.getId(), distance, seen));
+                    known.put(figure.getId(), figure);
                 }
             }
         }
@@ -201,7 +205,7 @@ public final class AmbienceTicker {
                 figures,
                 quietNow,
                 Objects.requireNonNull(wreckSong, "set by listen()").quiet(now));
-        @Nullable Entity figure = from.isPresent() ? level.getEntity(from.getAsInt()) : null;
+        @Nullable Entity figure = from.isPresent() ? known.get(from.getAsInt()) : null;
         if (figure == null) {
             return false;
         }

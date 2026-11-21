@@ -33,6 +33,7 @@ public final class WreckPhonographBlockEntity extends BlockEntity {
     }
 
     /** Whether the next player to come close starts the song. */
+    // test-seam: the off rule (a switch-off or an ended song is spent until the long absence) is observable only here
     public boolean isArmed() {
         return arming.isArmed();
     }
@@ -48,7 +49,7 @@ public final class WreckPhonographBlockEntity extends BlockEntity {
             return;
         }
         arming.byHand();
-        if (playing) {
+        if (isPlaying()) {
             silence(server);
         } else {
             start(server);
@@ -84,7 +85,7 @@ public final class WreckPhonographBlockEntity extends BlockEntity {
         if (server.getGameTime() % tuning.phonographListenTicks() != 0) {
             return;
         }
-        if (phonograph.playing) {
+        if (phonograph.isPlaying()) {
             PhonographSound.recruit(server, pos, DeepSound.SONG_WRECK, tuning.wreckSongRange(), phonograph.listeners);
         }
         boolean near = !PhonographSound.audience(server, pos, tuning.wreckSongTriggerRange())
