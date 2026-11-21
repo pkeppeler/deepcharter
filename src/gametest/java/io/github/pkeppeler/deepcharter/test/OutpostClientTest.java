@@ -15,10 +15,12 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OutpostScene;
 import io.github.pkeppeler.deepcharter.test.support.OutpostScene.Scene;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
@@ -41,11 +43,13 @@ public class OutpostClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             long[] tank = new long[1];
+            PodEntity[] parked = new PodEntity[1];
             Scene scene = singleplayer.getServer().computeOnServer(server -> {
                 Scene staged = OutpostScene.stage(server);
                 OutpostScene.build(server, staged);
                 OutpostScene.standIn(server, staged, 0.5, 0.5, 180f, 0f);
                 PodEntity pod = OutpostScene.parkPod(server, staged, 3.0, 0.5, 0f);
+                parked[0] = pod;
                 pod.addTag(FROZEN);
                 tank[0] = Math.round(PodStats.of(pod).tankLitres());
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
@@ -54,6 +58,19 @@ public class OutpostClientTest implements FabricClientGameTest {
                 }
                 return staged;
             });
+            // The shaft is in a chunk the staging just loaded: until it is entity-ticking the pod is not in the level,
+            // and
+            // the pump's and processor's parked-pod query finds none, so FILL UP and SELL do nothing.
+            ClientWait.until(
+                    context,
+                    "the parked pod findable on the server",
+                    () -> singleplayer.getServer().computeOnServer(server -> {
+                        PodEntity pod = parked[0];
+                        ServerLevel level = TestLayers.level(server, 1);
+                        return level.isPositionEntityTicking(pod.blockPosition())
+                                && level.getEntity(pod.getUUID()) == pod;
+                    }),
+                    () -> "pod at " + parked[0].blockPosition().toShortString());
             ClientWait.until(
                     context,
                     "the charter view with its starting balance",

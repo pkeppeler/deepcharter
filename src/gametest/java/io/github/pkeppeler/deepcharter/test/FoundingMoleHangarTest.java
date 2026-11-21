@@ -78,7 +78,7 @@ public class FoundingMoleHangarTest {
 
     static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + MOLE_LOAD_TICKS + 200;
     static final long RICH = 100_000;
-    private static final int FLOOR = 9;
+    private static final int FLOOR = 9; // fixed-pos: the side of a square pad, not a Y
     private static final String FUTURE_HANGAR = "7741";
     private static final String FUTURE_SERIALS = "7742";
 

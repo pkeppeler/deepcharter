@@ -91,7 +91,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 
 ### Darkness
 
-- Each layer sets its own ambient light, darker with depth.
+- The darkness comes from each zone biome's ambient colour, darker with depth; the dimension's own ambient light is 0.
 - Pod lights are a component track. On foot, the suit lamp runs on a battery.
 - The original was fully lit; Minecraft's real darkness adds to the dread.
 

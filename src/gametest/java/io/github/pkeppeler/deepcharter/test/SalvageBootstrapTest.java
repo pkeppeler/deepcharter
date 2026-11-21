@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -45,11 +46,13 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,11 +60,11 @@ import org.slf4j.LoggerFactory;
  * Server GameTests for the bootstrap of #245 (art direction section 11): the colony's salvage crates lie within the yard radius and not
  * beyond it, fungal stalks grow only on the floors of craters and in caves, and a new player reaches the first crafting goals (tools, a
  * light, the first terminal repair) with the real recipes, starting from nothing but what crates and stalks drop. The surface runs in
- * {@code deepcharter:surface_sample}, a copy of the shipped overworld in the test mod's preset (see {@link SurfaceTerrainTest}).
+ * the surface band of {@code deepcharter:campaign_sample}, the test pack's copy of the shipped overworld (see {@link SurfaceTerrainTest}).
  */
 public class SalvageBootstrapTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(SalvageBootstrapTest.class);
-    private static final String SAMPLE = "deepcharter:surface_sample";
+    private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final String YARD = "deepcharter:salvage_yard";
     private static final int MAX_TICKS = 12_000;
     /** The survey covers the chunks within this many of the origin, a little past the yard so that its edge shows. */
@@ -158,6 +161,34 @@ public class SalvageBootstrapTest {
         return level.getBiome(pos).unwrapKey().orElseThrow().identifier().toString();
     }
 
+    /** The crates and the stalks of the surface band, which every test of the survey reads. */
+    private record Survey(List<BlockPos> crates, List<BlockPos> stalks) {}
+
+    private static @Nullable Survey survey;
+
+    /**
+     * The salvage crates and fungal stalks in the surface band of {@code level}, the campaign level: the layers below hold stalks of their
+     * own. One pass over the chunks, to the features and no further (a tall world's full chunks cost seconds each), made once for the
+     * tests that read it. Chunks that reach the features only may still take a neighbour's feature later, so a count is a little under
+     * the full chunks' (162 crates against 173 at the yard radius), which the tests' margins hold.
+     */
+    private static synchronized Survey survey(ServerLevel level) {
+        if (survey == null) {
+            Map<Block, List<BlockPos>> found = BlockSurvey.findAll(
+                    level, SURVEY_CHUNKS, ChunkStatus.FEATURES, block("salvage_crate"), block("fungal_stalk"));
+            survey = new Survey(
+                    inSurface(level, Objects.requireNonNull(found.get(block("salvage_crate")), "surveyed")),
+                    inSurface(level, Objects.requireNonNull(found.get(block("fungal_stalk")), "surveyed")));
+        }
+        return survey;
+    }
+
+    private static List<BlockPos> inSurface(ServerLevel level, List<BlockPos> positions) {
+        return positions.stream()
+                .filter(pos -> TestLayers.isIn(level, pos, TestLayers.SURFACE))
+                .toList();
+    }
+
     private static double distance(BlockPos pos) {
         return Math.sqrt((double) pos.getX() * pos.getX() + (double) pos.getZ() * pos.getZ());
     }
@@ -166,7 +197,7 @@ public class SalvageBootstrapTest {
     public void cratesLieAroundTheColonyWithinTheYardRadiusAndNoFurther(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int radius = yardRadius();
-        List<BlockPos> crates = BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate"));
+        List<BlockPos> crates = survey(level).crates();
         List<BlockPos> beyondThePad =
                 crates.stream().filter(pos -> distance(pos) >= PAD_RADIUS).toList();
         double farthest = crates.stream()
@@ -251,7 +282,7 @@ public class SalvageBootstrapTest {
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void stalksStandOnlyInCraters(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        List<BlockPos> stalks = BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk"));
+        List<BlockPos> stalks = survey(level).stalks();
         List<BlockPos> bases = columnBases(stalks);
         LOGGER.info("[salvage] {} stalk blocks in {} columns", stalks.size(), bases.size());
         if (bases.size() < STALK_COLUMNS / 2) {
@@ -276,8 +307,8 @@ public class SalvageBootstrapTest {
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aStalkColumnIsAWalkFromEveryCrate(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        List<BlockPos> bases = columnBases(BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk")));
-        List<BlockPos> crates = BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate"));
+        List<BlockPos> bases = columnBases(survey(level).stalks());
+        List<BlockPos> crates = survey(level).crates();
         double[] nearest = crates.stream()
                 .mapToDouble(crate -> bases.stream()
                         .mapToDouble(base -> Math.sqrt(horizontalDistanceSqr(crate, base)))
@@ -312,10 +343,13 @@ public class SalvageBootstrapTest {
                 + (double) (a.getZ() - b.getZ()) * (a.getZ() - b.getZ());
     }
 
-    @GameTest(dimension = "deepcharter:layer_1", maxTicks = MAX_TICKS)
+    @GameTest(dimension = "deepcharter:campaign_sample", maxTicks = MAX_TICKS)
     public void stalksGrowOnTheFloorsOfLayerOneCaves(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        List<BlockPos> stalks = BlockSurvey.find(level, 6, block("fungal_stalk"));
+        // The campaign level holds the surface and both layers: only the stalks in layer 1's band are this test's.
+        List<BlockPos> stalks = BlockSurvey.find(level, 6, block("fungal_stalk")).stream()
+                .filter(pos -> TestLayers.isIn(level, pos, 1))
+                .toList();
         LOGGER.info("[salvage] layer 1: {} stalk blocks", stalks.size());
         if (stalks.isEmpty()) {
             throw helper.assertionException("the caves of layer 1 hold no fungal stalk");

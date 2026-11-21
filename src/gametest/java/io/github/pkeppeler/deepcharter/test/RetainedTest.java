@@ -930,6 +930,9 @@ public class RetainedTest {
         helper.succeed();
     }
 
+    /** A sealed dark room in {@code layer}'s band, with its column. */
+    private record DarkRoom(int layer, ServerLevel level, BlockPos column) {}
+
     /**
      * In a dark room of layer 1 and of layer 2 a figure may appear; beside a light, over air, and in a level that holds the cap it may not;
      * and in the overworld (where the colony and the hangar stand), the Nether and the End it may not appear at all. The light takes a few
@@ -938,14 +941,17 @@ public class RetainedTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aFigureMayAppearInTheDarkOfLayersOneAndTwoAndNowhereElse(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        List<ServerLevel> layers =
-                List.of(server.getLevel(TestLayers.dimension(1)), server.getLevel(TestLayers.dimension(2)));
+        // The two layers are bands of one level: each has its own room, at the same height over its floor.
+        List<DarkRoom> rooms = List.of(
+                new DarkRoom(1, TestLayers.level(server, 1), TestLayers.pos(1, 7208, 128, 7208)),
+                new DarkRoom(2, TestLayers.level(server, 2), TestLayers.pos(2, 7208, 128, 7208)));
         ServerLevel overworld = ClientLight.serverLevel(server, Level.OVERWORLD);
-        BlockPos column = TestLayers.pos(2, 7208, 128, 7208);
+        BlockPos column = rooms.getLast().column();
         BlockPos overworldPos = slot(5).above(2);
         int[] ready = {0};
         int[] phase = {0};
         int[] since = {0};
+        FarChunks.Deadline[] lightDeadline = {FarChunks.deadline()};
         TestTicks.each(helper, () -> {
             if (ready[0] < 3) {
                 return;
@@ -954,65 +960,69 @@ public class RetainedTest {
             switch (phase[0]) {
                 case 0 -> {
                     LamplessFigures.clearRespawnDelays();
-                    for (ServerLevel layer : layers) {
+                    for (DarkRoom room : rooms) {
                         expect(
                                 helper,
-                                LamplessFigures.canAppearAt(layer, column),
-                                "a figure may not appear in the dark room of "
-                                        + layer.dimension().identifier());
-                        layer.setBlock(column.above(), light(15), 3);
+                                LamplessFigures.canAppearAt(room.level(), room.column()),
+                                "a figure may not appear in the dark room of layer " + room.layer());
+                        room.level().setBlock(room.column().above(), light(15), 3);
                     }
                     expectNowhereElse(helper, server, overworld, overworldPos, column);
                     phase[0] = 1;
                     since[0] = 0;
+                    lightDeadline[0] = FarChunks.deadline();
                 }
                 case 1 -> {
-                    if (layers.stream()
-                            .allMatch(
-                                    layer -> layer.getBrightness(LightLayer.BLOCK, column) >= TUNING.litBlockLight())) {
-                        for (ServerLevel layer : layers) {
+                    if (rooms.stream()
+                            .allMatch(room -> room.level().getBrightness(LightLayer.BLOCK, room.column())
+                                    >= TUNING.litBlockLight())) {
+                        for (DarkRoom room : rooms) {
                             expect(
                                     helper,
-                                    !LamplessFigures.canAppearAt(layer, column),
-                                    "a figure may appear beside a light of level 15 in "
-                                            + layer.dimension().identifier());
+                                    !LamplessFigures.canAppearAt(room.level(), room.column()),
+                                    "a figure may appear beside a light of level 15 in layer " + room.layer());
                             // room-carver: removes the light block this test placed itself in its own sealed room
-                            layer.setBlock(column.above(), Blocks.AIR.defaultBlockState(), 3);
+                            room.level().setBlock(room.column().above(), Blocks.AIR.defaultBlockState(), 3);
                         }
                         phase[0] = 2;
                         since[0] = 0;
+                        lightDeadline[0] = FarChunks.deadline();
                     } else {
-                        expect(
+                        // Wall-clock, not ticks: the light engine works off the server thread, and a loaded runner
+                        // ticks fast.
+                        lightDeadline[0].await(
                                 helper,
-                                since[0] < LIGHT_BUDGET_TICKS,
-                                "the light of level 15 did not reach the room in " + LIGHT_BUDGET_TICKS + " ticks");
+                                rooms.getFirst().level(),
+                                false,
+                                () -> "the light of level 15 did not reach the room in " + FarChunks.WAIT_SECONDS
+                                        + " s");
                     }
                 }
                 default -> {
-                    if (layers.stream()
-                            .allMatch(
-                                    layer -> layer.getBrightness(LightLayer.BLOCK, column) < TUNING.litBlockLight())) {
-                        for (ServerLevel layer : layers) {
+                    if (rooms.stream()
+                            .allMatch(room -> room.level().getBrightness(LightLayer.BLOCK, room.column())
+                                    < TUNING.litBlockLight())) {
+                        for (DarkRoom room : rooms) {
                             expect(
                                     helper,
-                                    LamplessFigures.canAppearAt(layer, column),
-                                    "the room is dark again and a figure may not appear in "
-                                            + layer.dimension().identifier());
-                            expectNotOverAir(helper, layer, column);
+                                    LamplessFigures.canAppearAt(room.level(), room.column()),
+                                    "the room is dark again and a figure may not appear in layer " + room.layer());
+                            expectNotOverAir(helper, room.level(), room.column());
                         }
                         helper.succeed();
                     } else {
-                        expect(
+                        lightDeadline[0].await(
                                 helper,
-                                since[0] < LIGHT_BUDGET_TICKS,
-                                "the light did not go out of the room in " + LIGHT_BUDGET_TICKS + " ticks");
+                                rooms.getFirst().level(),
+                                false,
+                                () -> "the light did not go out of the room in " + FarChunks.WAIT_SECONDS + " s");
                     }
                 }
             }
         });
-        for (ServerLevel layer : layers) {
-            FarChunks.awaitEntityTicking(helper, layer, column, () -> {
-                buildDarkRoom(layer, column);
+        for (DarkRoom room : rooms) {
+            FarChunks.awaitEntityTicking(helper, room.level(), room.column(), () -> {
+                buildDarkRoom(room.level(), room.column());
                 ready[0]++;
             });
         }

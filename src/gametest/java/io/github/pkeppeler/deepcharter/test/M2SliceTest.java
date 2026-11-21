@@ -75,10 +75,55 @@ import org.jspecify.annotations.Nullable;
  * added to the game fails this test until the slice covers it.
  */
 public class M2SliceTest {
+    static {
+        M2SliceEndState.watchCrossings();
+    }
+
     private static final double X = 9300.5;
     private static final double Z = 9300.5;
     private static final BlockPos TERMINAL = new BlockPos(0, 1, 0);
     private static final long FUNDS = 50_000;
+
+    /**
+     * The end state says whether a descent changed anyone's dimension: a crossing in place (both levels the same) passes it by, and one
+     * that moved a player fails it before it looks at anything else. In the campaign world no crossing moves anyone (ADR 0061).
+     */
+    @GameTest
+    public void theEndStateFailsWhenACrossingMovedAPlayer(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerLevel campaign = TestLayers.level(server, 1);
+        MockPlayer mock = MockPlayers.join(helper, "end-state-moved");
+        try {
+            mock.teleportTo(campaign, new Vec3(X, TestLayers.worldY(1, 40), Z), 0, 0);
+            PodEntity pod = TestEntities.create(PodRegistry.POD, campaign);
+            BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, campaign, 1, 2);
+            AssertionError inPlace = endStateFailure(server, pod);
+            if (inPlace instanceof M2SliceEndState.PlayerMoved) {
+                throw helper.assertionException(net.minecraft.network.chat.Component.literal(
+                        "a crossing in place counted as a move: " + inPlace.getMessage()));
+            }
+            BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, server.overworld(), 1, 2);
+            AssertionError moved = endStateFailure(server, pod);
+            if (!(moved instanceof M2SliceEndState.PlayerMoved)) {
+                throw helper.assertionException(net.minecraft.network.chat.Component.literal(
+                        "a crossing that moved a player passed: " + moved));
+            }
+        } finally {
+            M2SliceEndState.forgetCrossings(mock.player().getUUID());
+            mock.leave();
+        }
+        helper.succeed();
+    }
+
+    /** The end state's failure for a world where nothing of the slice was done; null when it does not fail. */
+    private static @Nullable AssertionError endStateFailure(MinecraftServer server, PodEntity prospector) {
+        try {
+            M2SliceEndState.require(server, CharterId.random(), prospector);
+            return null;
+        } catch (AssertionError failure) {
+            return failure;
+        }
+    }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theScriptedSliceReachesItsEndState(GameTestHelper helper) {
@@ -298,6 +343,17 @@ public class M2SliceTest {
                                 helper,
                                 Terminals.act(first, terminal, RepairStation.REPAIR_TOTAL, new CompoundTag()),
                                 "repairing the hull");
+                        // The descent starts in the surface band of the campaign level and passes into layer 1 in
+                        // place.
+                        director.teleportTo(
+                                one,
+                                new Vec3(
+                                        X,
+                                        TestLayers.band(one, TestLayers.SURFACE).minY() + 6,
+                                        Z),
+                                0,
+                                0);
+                        BreachEvents.CROSSED.invoker().onCrossed(first, one, one, TestLayers.SURFACE, 1);
                         director.teleportTo(one, new Vec3(X, zoneY(one, 1, 2), Z), 0, 0);
                         HandbookTriggers.pollPlayer(server, first);
 

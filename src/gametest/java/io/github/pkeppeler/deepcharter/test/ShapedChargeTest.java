@@ -39,7 +39,7 @@ import org.jspecify.annotations.Nullable;
 public class ShapedChargeTest {
     private static final RepairTuning TUNING = RepairTuning.DEFAULT;
     private static final int Z = 5400;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int BED = 16;
     private static final int ROOM = 14;
     /** Blocks east that the pod is moved to leave the blast: its box then starts over chargeReach from the footprint, and the pod stays in its chunk (x is a multiple of 16). */

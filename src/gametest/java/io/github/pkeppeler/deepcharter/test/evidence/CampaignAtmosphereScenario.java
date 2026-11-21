@@ -8,6 +8,7 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_NIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SPACING;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TEST_PRESET;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TODAY;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ZONE;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.build;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildRoom;
@@ -198,7 +199,7 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
      * just before the camera goes to it: a room that waits unloaded for some stills was read back with the wrong light in some runs.
      */
     private void litRoomAndFigure(ClientGameTestContext context, TestServerContext server) {
-        ResourceKey<Level> layer1 = TestLayers.dimension(1);
+        ResourceKey<Level> layer1 = TODAY;
         record View(String name, float pitch) {}
         for (View view : List.of(new View("wall", 0), new View("floor", DOWN), new View("ceiling", UP))) {
             roomStill(context, server, layer1, true, view.pitch(), "lit-room-" + view.name() + "-today");
@@ -283,7 +284,7 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
     private void shaftBottom(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, TestServerContext server) {
         int x = SITE;
-        ResourceKey<Level> layer1 = TestLayers.dimension(1);
+        ResourceKey<Level> layer1 = TODAY;
         BlockPos shaft = build(server, CAMPAIGN, ground(server, x), Optional.of(ZONE), true);
         BlockPos room = build(server, layer1, todayFloor(x + SPACING), Optional.empty(), false);
         awaitLight(context, server);

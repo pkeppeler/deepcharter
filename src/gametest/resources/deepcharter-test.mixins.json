@@ -7,11 +7,14 @@
     "ChunkMapUnloadMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",
-    "LightSyncSendMixin"
+    "LightSyncSendMixin",
+    "LightTraceServerMixin",
+    "PlayerChunkSenderTraceMixin",
+    "ThreadedLightEngineAccess"
   ],
   "client": [
-    "BreachEffectsMixin",
     "CardinalLightingMixin",
+    "ClientLightTraceMixin",
     "ClientGameTestImplMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",
@@ -19,8 +22,7 @@
     "LamplessFigureRendererMixin",
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
-    "SpriteAnimationStateMixin",
-    "TransmissionOverlayMixin"
+    "SpriteAnimationStateMixin"
   ],
   "injectors": {
     "defaultRequire": 1

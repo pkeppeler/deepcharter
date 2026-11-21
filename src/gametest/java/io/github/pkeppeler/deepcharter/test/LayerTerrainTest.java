@@ -10,7 +10,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
-import io.github.pkeppeler.deepcharter.layer.gen.ZoneBiomeSource;
+import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
@@ -44,7 +44,6 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -104,31 +103,35 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
+    /**
+     * A layer's band is rock to its ceiling, cut by noise caves: a 64 x 64 sample has caves in it, and the air rows of a column differ
+     * from column to column, which flat terrain never does.
+     */
     @GameTest
     public void terrainIsNoiseWithCaves(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
-            int lowest = Integer.MAX_VALUE;
-            int highest = Integer.MIN_VALUE;
-            int caveCells = 0;
-            for (int x = 900; x < 964; x += 2) {
-                for (int z = 900; z < 964; z += 2) {
+            LayerChain.Band band = TestLayers.band(level, layer);
+            int fewest = Integer.MAX_VALUE;
+            int most = 0;
+            for (int x = 900; x < 964; x += 4) {
+                for (int z = 900; z < 964; z += 4) {
                     level.getChunk(x >> 4, z >> 4, ChunkStatus.FULL);
-                    int top = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
-                    lowest = Math.min(lowest, top);
-                    highest = Math.max(highest, top);
-                    for (int y = TestLayers.band(level, layer).minY() + 12; y < top - 8; y++) {
+                    int air = 0;
+                    for (int y = band.minY() + 12; y < band.maxY() - 8; y++) {
                         if (level.getBlockState(new BlockPos(x, y, z)).isAir()) {
-                            caveCells++;
+                            air++;
                         }
                     }
+                    fewest = Math.min(fewest, air);
+                    most = Math.max(most, air);
                 }
             }
-            if (highest - lowest < 6) {
-                throw failure(helper, "layer_%d terrain is flat: surface y %d to %d", layer, lowest, highest);
+            if (most == 0) {
+                throw failure(helper, "layer %d has no caves in a 64 x 64 sample", layer);
             }
-            if (caveCells == 0) {
-                throw failure(helper, "layer_%d has no caves in a 64 x 64 sample", layer);
+            if (most == fewest) {
+                throw failure(helper, "layer %d terrain is flat: every column has %d air rows", layer, most);
             }
         }
         helper.succeed();
@@ -162,22 +165,23 @@ public class LayerTerrainTest {
     @GameTest
     public void zoneBoundsAreRight(GameTestHelper helper) {
         // Zone 0 is the top third. Layer 1 is 192 tall: thirds at 64 and 128. Layer 2 is 256 tall: 85.33 and 170.67.
-        expectZones(
-                helper, TestLayers.level(helper, 1), new int[] {0, 63, 64, 127, 128, 191}, new int[] {2, 2, 1, 1, 0, 0
-                });
-        expectZones(
-                helper, TestLayers.level(helper, 2), new int[] {0, 85, 86, 170, 171, 255}, new int[] {2, 2, 1, 1, 0, 0
-                });
+        // The Ys are local to the
+        // layer's band, counted from its lowest block.
+        expectZones(helper, 1, new int[] {0, 63, 64, 127, 128, 191}, new int[] {2, 2, 1, 1, 0, 0});
+        expectZones(helper, 2, new int[] {0, 85, 86, 170, 171, 255}, new int[] {2, 2, 1, 1, 0, 0});
         if (Zones.of(helper.getLevel().getServer().overworld(), 63).isPresent()) {
             throw failure(helper, "the surface has a zone");
         }
         for (int layer = 1; layer <= 2; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
             LayerChain.Band levelBand = TestLayers.band(level, layer);
+            int inLayer = layer;
             for (int bad :
                     new int[] {levelBand.minY() - 1, levelBand.maxY() + 1, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
-                if (Zones.of(level, bad).isPresent()) {
-                    throw failure(helper, "layer_%d y=%d is outside the layer and should have no zone", layer, bad);
+                // Outside a band is the surface, unbuilt depth or the other layer, which has a zone of its own.
+                if (Zones.of(level, bad).filter(zone -> zone.layer() == inLayer).isPresent()) {
+                    throw failure(
+                            helper, "layer %d y=%d is outside the layer and should have no zone of it", layer, bad);
                 }
             }
         }
@@ -238,12 +242,13 @@ public class LayerTerrainTest {
         ServerLevel one = TestLayers.level(helper, 1);
         ServerLevel two = TestLayers.level(helper, 2);
         BlockPos pos = TestLayers.pos(2, 1700, 80, 1700);
+        BlockPos pos1 = TestLayers.pos(1, 1700, 80, 1700);
         mock.teleportTo(two, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
         mock.player().setGameMode(GameType.SURVIVAL);
         two.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
         two.setBlock(pos.east(), Blocks.DIRT.defaultBlockState(), 3);
         if (mock.player().gameMode.destroyBlock(pos) || !two.getBlockState(pos).is(Blocks.STONE)) {
-            throw failure(helper, "a survival player broke rock by hand in layer_2");
+            throw failure(helper, "a survival player broke rock by hand in layer 2");
         }
         if (!mock.player().gameMode.destroyBlock(pos.east())) {
             throw failure(helper, "the guard stopped dirt, which is not rock");
@@ -251,21 +256,21 @@ public class LayerTerrainTest {
         two.setBlock(pos.west(), Blocks.IRON_ORE.defaultBlockState(), 3);
         if (mock.player().gameMode.destroyBlock(pos.west())
                 || !two.getBlockState(pos.west()).is(Blocks.IRON_ORE)) {
-            throw failure(helper, "a survival player broke iron ore by hand in layer_2");
+            throw failure(helper, "a survival player broke iron ore by hand in layer 2");
         }
         mock.player().setGameMode(GameType.ADVENTURE);
         if (mock.player().gameMode.destroyBlock(pos) || !two.getBlockState(pos).is(Blocks.STONE)) {
-            throw failure(helper, "an adventure player broke rock by hand in layer_2");
+            throw failure(helper, "an adventure player broke rock by hand in layer 2");
         }
         mock.player().setGameMode(GameType.CREATIVE);
         if (!mock.player().gameMode.destroyBlock(pos)) {
             throw failure(helper, "a creative player could not break rock");
         }
-        mock.teleportTo(one, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
+        mock.teleportTo(one, Vec3.atBottomCenterOf(pos1.above(4)), 0, 0);
         mock.player().setGameMode(GameType.SURVIVAL);
-        one.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
-        if (!mock.player().gameMode.destroyBlock(pos)) {
-            throw failure(helper, "a survival player could not break rock by hand in layer_1");
+        one.setBlock(pos1, Blocks.STONE.defaultBlockState(), 3);
+        if (!mock.player().gameMode.destroyBlock(pos1)) {
+            throw failure(helper, "a survival player could not break rock by hand in layer 1");
         }
         helper.succeed();
     }
@@ -277,8 +282,9 @@ public class LayerTerrainTest {
         ServerLevel one = TestLayers.level(helper, 1);
         ServerLevel two = TestLayers.level(helper, 2);
         BlockPos pos = TestLayers.pos(2, 1750, 80, 1750);
+        BlockPos pos1 = TestLayers.pos(1, 1750, 80, 1750);
         two.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
-        one.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+        one.setBlock(pos1, Blocks.STONE.defaultBlockState(), 3);
         two.setBlock(pos.east(), Blocks.DIRT.defaultBlockState(), 3);
         mock.teleportTo(two, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
         mock.player().setGameMode(GameType.SURVIVAL);
@@ -286,9 +292,9 @@ public class LayerTerrainTest {
         expectAttack(helper, mock, two, pos.east(), InteractionResult.PASS);
         mock.player().setGameMode(GameType.CREATIVE);
         expectAttack(helper, mock, two, pos, InteractionResult.PASS);
-        mock.teleportTo(one, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
+        mock.teleportTo(one, Vec3.atBottomCenterOf(pos1.above(4)), 0, 0);
         mock.player().setGameMode(GameType.SURVIVAL);
-        expectAttack(helper, mock, one, pos, InteractionResult.PASS);
+        expectAttack(helper, mock, one, pos1, InteractionResult.PASS);
         helper.succeed();
     }
 
@@ -313,7 +319,7 @@ public class LayerTerrainTest {
         ServerLevel two = TestLayers.level(helper, 2);
         int x = 1800;
         int z = 1800;
-        int floor = 80;
+        int floor = TestLayers.worldY(2, 80);
         RoomCarver.carve(two, x - 4, x + 3, floor - 6, floor - 1, z - 4, z + 3, Blocks.STONE);
         RoomCarver.carve(two, x - 4, x + 3, floor, floor + 10, z - 4, z + 3, Blocks.AIR);
         MockPlayer pilot = MockPlayers.join(helper, "terrain-drill");
@@ -335,34 +341,39 @@ public class LayerTerrainTest {
         });
     }
 
-    /** The generator's own copies of the layer's range must equal the dimension type's, or zones and terrain drift apart. */
+    /** The generator's own copies of the layers' ranges must equal the level's and the band table's, or zones and terrain drift apart. */
     @GameTest
-    public void generatorMatchesTheDimensionType(GameTestHelper helper) {
+    public void generatorMatchesTheBands(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        if (!(level.getChunkSource().getGenerator() instanceof NoiseBasedChunkGenerator generator)) {
+            throw failure(helper, "the campaign level is not generated by noise");
+        }
+        var noise = generator.generatorSettings().value().noiseSettings();
+        // level-height: the campaign generator's noise spans the whole level, not one layer
+        int levelMin = level.getMinY();
+        // level-height: as above
+        int levelHeight = level.getHeight();
+        if (noise.minY() != levelMin || noise.height() != levelHeight) {
+            throw failure(
+                    helper,
+                    "the noise range %d+%d differs from the level's %d+%d",
+                    noise.minY(),
+                    noise.height(),
+                    levelMin,
+                    levelHeight);
+        }
+        if (!(generator.getBiomeSource() instanceof BandBiomeSource)) {
+            throw failure(helper, "the campaign level is not given its biomes by band");
+        }
+        // The stored cell of a chunk, never level.getBiome, which blurs a band's edge.
+        var chunk = level.getChunk(0, 0, ChunkStatus.FULL);
         for (int layer = 1; layer <= 2; layer++) {
-            ServerLevel level = TestLayers.level(helper, layer);
             LayerChain.Band levelBand = TestLayers.band(level, layer);
-            if (!(level.getChunkSource().getGenerator() instanceof NoiseBasedChunkGenerator generator)) {
-                throw failure(helper, "layer_%d is not generated by noise", layer);
-            }
-            var noise = generator.generatorSettings().value().noiseSettings();
-            if (noise.minY() != levelBand.minY() || noise.height() != levelBand.height()) {
-                throw failure(
-                        helper,
-                        "layer_%d noise range %d+%d differs from the dimension's %d+%d",
-                        layer,
-                        noise.minY(),
-                        noise.height(),
-                        levelBand.minY(),
-                        levelBand.height());
-            }
-            if (!(generator.getBiomeSource() instanceof ZoneBiomeSource zones)) {
-                throw failure(helper, "layer_%d is not given its biomes by zone", layer);
-            }
             for (int quartY = QuartPos.fromBlock(levelBand.minY());
                     quartY <= QuartPos.fromBlock(levelBand.maxY());
                     quartY++) {
                 int y = Math.clamp(QuartPos.toBlock(quartY) + 2, levelBand.minY(), levelBand.maxY());
-                Identifier drawn = zones.getNoiseBiome(0, quartY, 0)
+                Identifier drawn = chunk.getNoiseBiome(0, quartY, 0)
                         .unwrapKey()
                         .orElseThrow()
                         .identifier();
@@ -370,10 +381,10 @@ public class LayerTerrainTest {
                 if (!drawn.equals(expected)) {
                     throw failure(
                             helper,
-                            "layer_%d biome source gives y=%d the biome %s, the dimension's zone there is %s",
+                            "layer %d: the generated chunk holds the biome %s at y=%d, the zone there is %s",
                             layer,
-                            y,
                             drawn,
+                            y,
                             expected);
                 }
             }
@@ -409,15 +420,18 @@ public class LayerTerrainTest {
         helper.succeed();
     }
 
-    private static void expectZones(GameTestHelper helper, ServerLevel level, int[] ys, int[] expected) {
-        for (int i = 0; i < ys.length; i++) {
-            Zones.Zone zone = Zones.of(level, ys[i]).orElseThrow();
+    private static void expectZones(GameTestHelper helper, int layer, int[] localYs, int[] expected) {
+        ServerLevel level = TestLayers.level(helper, layer);
+        for (int i = 0; i < localYs.length; i++) {
+            int y = TestLayers.worldY(layer, localYs[i]);
+            Zones.Zone zone = Zones.of(level, y).orElseThrow();
             if (zone.index() != expected[i]) {
                 throw failure(
                         helper,
-                        "%s y=%d is in zone %d, expected %d",
-                        level.dimension().identifier(),
-                        ys[i],
+                        "layer %d at local y=%d (y=%d) is in zone %d, expected %d",
+                        layer,
+                        localYs[i],
+                        y,
                         zone.index(),
                         expected[i]);
             }

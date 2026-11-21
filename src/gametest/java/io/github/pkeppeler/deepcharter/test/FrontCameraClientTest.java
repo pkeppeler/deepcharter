@@ -32,7 +32,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LightBlock;
 
 /**
  * Client GameTest for the front camera's feed (#448, docs/design/cockpit-concepts-2.md): the feed's state follows the hazards (a hit leaves static that fades, lava heats the
@@ -41,6 +43,9 @@ import net.minecraft.world.level.block.Blocks;
  */
 public class FrontCameraClientTest implements FabricClientGameTest {
     private static final int FEET_Y = TestLayers.worldY(1, 150);
+    private static final int LAMP_OFFSET = 5;
+    private static final int LAMP_HEIGHT = 3;
+    private static final int LAMP_LEVEL = 12;
     private static final int ROOM_RADIUS = 8;
     private static final int ROOM_HEIGHT = 30;
     private static final int LAVA_RADIUS = 2;
@@ -214,6 +219,16 @@ public class FrontCameraClientTest implements FabricClientGameTest {
                     -ROOM_RADIUS,
                     ROOM_RADIUS,
                     Blocks.AIR);
+            // The campaign type has no ambient light of its own (a layer's dark is its biome's), so the room carries
+            // lamps to be seen by.
+            for (int dx : new int[] {-LAMP_OFFSET, LAMP_OFFSET}) {
+                for (int dz : new int[] {-LAMP_OFFSET, LAMP_OFFSET}) {
+                    one.setBlock(
+                            new BlockPos(dx, FEET_Y + LAMP_HEIGHT, dz),
+                            Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, LAMP_LEVEL),
+                            Block.UPDATE_ALL);
+                }
+            }
             player.teleportTo(one, 0.5, FEET_Y, 0.5, Set.of(), 0f, 0f, true);
             PodEntity pod = TestEntities.create(PodRegistry.POD, one);
             pod.setPos(0.5, FEET_Y, 0.5);
@@ -230,7 +245,9 @@ public class FrontCameraClientTest implements FabricClientGameTest {
                 "the pilot seated in the pod in layer 1",
                 client -> client.player != null
                         && client.player.getVehicle() instanceof PodEntity
-                        && TestLayers.clientIsIn(client, 1));
+                        && TestLayers.clientIsIn(client, 1)
+                        // The campaign level is tall: the loading screen outlasts the arrival.
+                        && client.gui.screen() == null);
         return made[0];
     }
 
@@ -394,7 +411,9 @@ public class FrontCameraClientTest implements FabricClientGameTest {
             client.gui.toastManager().clear();
         });
         ClientWait.until(
-                context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
+                context,
+                "every section in view rendered",
+                client -> client.gui.screen() == null && client.levelRenderer.hasRenderedAllSections());
         context.waitTicks(5); // tick-wait: the pod and the view settle for a few frames
         Path file = context.takeScreenshot(name);
         try {

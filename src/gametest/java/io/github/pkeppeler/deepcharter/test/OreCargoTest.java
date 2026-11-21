@@ -145,7 +145,7 @@ public class OreCargoTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void drilledOreReachesTheCargoAndVanillaOreDoesNot(GameTestHelper helper) {
         int x = 3200;
-        int floor = 60;
+        int floor = TestLayers.worldY(1, 60);
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor);
         level.setBlock(
@@ -185,7 +185,7 @@ public class OreCargoTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void drilledOreMassCutsLift(GameTestHelper helper) {
         int x = 3264;
-        int floor = 60;
+        int floor = TestLayers.worldY(1, 60);
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor);
         for (int i = 0; i < 4; i++) {
@@ -438,7 +438,7 @@ public class OreCargoTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void drillingOreIntoUnreadableCargoLosesTheOreLogsOnceAndKeepsTheData(GameTestHelper helper) {
         int x = 3328;
-        int floor = 60;
+        int floor = TestLayers.worldY(1, 60);
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor);
         level.setBlock(

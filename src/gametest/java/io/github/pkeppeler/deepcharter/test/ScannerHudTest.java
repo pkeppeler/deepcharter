@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Set;
 import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -300,14 +301,25 @@ public class ScannerHudTest implements FabricClientGameTest {
     }
 
     /**
-     * Runs {@code /deepcharter layer goto n} as an op. The target chunk is generated first: the command
-     * reads the surface height from the heightmap, which is empty (the layer's min y) in a chunk
-     * that has not been generated yet, and the player would fall out of the world.
+     * Runs {@code /deepcharter layer goto n} as an op, from inside the campaign level. The target chunk is generated first: the command
+     * reads the surface height from the heightmap, which is empty in a chunk that has not been generated yet, and the player would
+     * fall out of the world.
      */
     public static void goToLayer(TestServerContext server, int n) {
         server.runOnServer(minecraftServer -> {
             ServerPlayer player = minecraftServer.getPlayerList().getPlayers().getFirst();
-            TestLayers.level(minecraftServer, n).getChunk(player.getBlockX() >> 4, player.getBlockZ() >> 4);
+            // In the campaign level the command stays in the level, so the player is put there first.
+            ServerLevel campaign = TestLayers.level(minecraftServer, n);
+            campaign.getChunk(player.getBlockX() >> 4, player.getBlockZ() >> 4);
+            player.teleportTo(
+                    campaign,
+                    player.getX(),
+                    TestLayers.worldY(n, 100),
+                    player.getZ(),
+                    Set.of(),
+                    player.getYRot(),
+                    player.getXRot(),
+                    true);
             try {
                 minecraftServer
                         .getCommands()
@@ -384,14 +396,7 @@ public class ScannerHudTest implements FabricClientGameTest {
             dismountAndExpectNoHud(context, server, "scanner-surface-midnight");
 
             goToLayer(server, 2);
-            ClientWait.until(
-                    context,
-                    "the client in layer_2",
-                    client -> ClientLight.clientLevel(client)
-                            .dimension()
-                            .identifier()
-                            .getPath()
-                            .equals("layer_2"));
+            ClientWait.until(context, "the client in layer_2", client -> TestLayers.clientIsIn(client, 2));
             context.waitTicks(40);
             rideWithGoldAhead(context, server, 1);
             expectGoldRow(context, "scanner-layer-2");

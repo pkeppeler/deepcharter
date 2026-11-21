@@ -197,9 +197,9 @@ public class PodAttachmentTest {
         throw failure(helper, "a foreign wire version must throw");
     }
 
-    /** M1's crossing, with a piloted pod: the arriving pod is a new entity, and the attachment must be on it. */
+    /** A crossing in place (ADR 0061), with a piloted pod: it is the same entity, and its attachment is untouched. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
-    public void theAttachmentSurvivesABreachCrossing(GameTestHelper helper) {
+    public void theAttachmentSurvivesABreachCrossingInPlace(GameTestHelper helper) {
         double x = 2000.5;
         double z = 2000.5;
         ServerLevel one = TestLayers.level(helper, 1);
@@ -216,7 +216,7 @@ public class PodAttachmentTest {
                 throw failure(helper, "the mock could not board the pod");
             }
         });
-        // The pod falls by itself (PodMovement brings its own gravity) and leaves layer_1 through the open floor.
+        // The pod falls by itself (PodMovement brings its own gravity) and leaves layer 1 through the open floor.
         helper.succeedWhen(() -> {
             if (pod[0] == null) {
                 throw failure(
@@ -235,13 +235,13 @@ public class PodAttachmentTest {
             if (!(player.getVehicle() instanceof PodEntity arrived)) {
                 throw failure(helper, "the rider is on %s after crossing, not a pod", player.getVehicle());
             }
-            if (arrived == pod[0] || !pod[0].isRemoved()) {
-                throw failure(helper, "expected a new pod instance after the crossing and the old one removed");
+            if (arrived != pod[0] || pod[0].isRemoved()) {
+                throw failure(helper, "expected the same pod instance after the crossing, still in the world");
             }
             if (!new Example(7).equals(Versioned.orThrow(arrived, TestAttachments.EXAMPLE))) {
                 throw failure(
                         helper,
-                        "the attachment did not cross with the pod, got %s",
+                        "the attachment changed in the crossing, got %s",
                         arrived.getAttached(TestAttachments.EXAMPLE));
             }
         });
@@ -265,9 +265,11 @@ public class PodAttachmentTest {
                 .orElseThrow(() -> failure(helper, "the saved pod did not load"));
     }
 
-    /** Clear a 3x3 shaft through the floor of {@code level}, wide enough for the pod's 1.9-block hull. */
+    /** Clear a 3x3 shaft through the floor of layer 1 into a pocket under it, wide enough for the pod's 1.9-block hull. */
     private static void openShaft(ServerLevel level, double x, double z) {
         BlockPos column = BlockPos.containing(x, 0, z);
+        RoomCarver.carvePocketBelow(
+                level, 1, column.getX() - 1, column.getX() + 1, column.getZ() - 1, column.getZ() + 1);
         RoomCarver.carve(
                 level,
                 column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).minY()),

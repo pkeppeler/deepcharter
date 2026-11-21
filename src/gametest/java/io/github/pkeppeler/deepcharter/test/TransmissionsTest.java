@@ -791,7 +791,13 @@ public class TransmissionsTest {
         MockPlayer crew = MockPlayers.join(helper, "tx-breach");
         CharterId charter = foundedCharter(helper, crew.player().getUUID());
         crew.player().setPermanentlyInvulnerable(true);
-        crew.teleportTo(one, new Vec3(BREACH_COLUMN, TestLayers.band(one, 1).minY() - 1, BREACH_COLUMN), 0, 0);
+        crew.player().setNoGravity(true);
+        // A crossing is seen from the layer last seen: the crew is first seen in layer 1, then goes below its floor.
+        crew.teleportTo(one, new Vec3(BREACH_COLUMN, TestLayers.worldY(1, 100), BREACH_COLUMN), 0, 0);
+        helper.runAfterDelay(
+                20,
+                () -> crew.teleportTo(
+                        one, new Vec3(BREACH_COLUMN, TestLayers.band(one, 1).minY() - 1, BREACH_COLUMN), 0, 0));
         helper.succeedWhen(() -> {
             List<Identifier> delivered = deliveredTo(crew);
             if (!delivered.contains(id("t05"))) {
