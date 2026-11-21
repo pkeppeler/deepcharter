@@ -111,7 +111,15 @@ public class LightSyncAfterHoldTest {
                     }
                     case 1 -> {
                         boolean sent = mock.chunksSent().containsAll(pair) && ringLoaded(level, far, lampChunk);
-                        deadline.await(helper, level, sent, () -> "the player was not sent " + pair);
+                        deadline.await(
+                                helper,
+                                level,
+                                sent,
+                                () -> "the player was not sent " + pair + ": server view distance "
+                                        + server.getPlayerList().getViewDistance() + ", the player's tracking view "
+                                        + mock.player().getChunkTrackingView() + ", sent "
+                                        + mock.chunksSent().size() + " chunks, ring loaded "
+                                        + ringLoaded(level, far, lampChunk));
                         if (!sent) {
                             return;
                         }
