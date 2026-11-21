@@ -9,7 +9,8 @@
     "GameTestTickerMixin",
     "LightSyncSendMixin",
     "LightTraceServerMixin",
-    "PlayerChunkSenderTraceMixin"
+    "PlayerChunkSenderTraceMixin",
+    "ThreadedLightEngineAccess"
   ],
   "client": [
     "CardinalLightingMixin",
