@@ -55,10 +55,7 @@ public class TransmissionsClientTest implements FabricClientGameTest {
         transmissionsReachTheClientInOrderAndOnLogin(context);
     }
 
-    /**
-     * No placeholder text names the Director any more, but the finale's text will: the overlay's field replacement fills
-     * {@code [DIRECTOR]} with the name the server sent and leaves no literal field behind.
-     */
+    /** The overlay fills {@code [DIRECTOR]} with the name the server sent and leaves no literal field behind. */
     private static void theDirectorFieldIsFilledWithTheDirectorsName() {
         String filled = TransmissionOverlay.fill(
                 "[CHARTER] signs. [DIRECTOR] signs. [DIRECTOR] again.", CREW_NAME, "Test Director");
