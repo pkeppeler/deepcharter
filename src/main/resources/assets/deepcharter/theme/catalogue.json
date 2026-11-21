@@ -52,5 +52,8 @@
   "needTextX": 20,
   "needTextY": 4,
   "cycleMillis": 1000,
-  "maxQueryLength": 24
+  "maxQueryLength": 24,
+  "nameStripPad": 3,
+  "nameStripGap": 2,
+  "caretHeight": 3
 }

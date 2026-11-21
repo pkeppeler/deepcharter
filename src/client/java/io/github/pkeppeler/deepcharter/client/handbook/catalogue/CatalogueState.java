@@ -47,11 +47,12 @@ public final class CatalogueState {
         page = 0;
     }
 
-    /** The known items that match the search and, with the filter on, can be made from {@code contents} now. */
-    public List<Item> shown(PartsCatalogue catalogue, StackedItemContents contents) {
+    /** The known items that match the search and, with the filter on, can be made at {@code bench} from {@code contents} now. */
+    public List<Item> shown(PartsCatalogue catalogue, StackedItemContents contents, Bench bench) {
         List<Item> shown = new ArrayList<>();
         for (Item item : catalogue.items()) {
-            if (CatalogueSearch.matches(query, item) && (!craftableOnly || catalogue.craftable(item, contents))) {
+            if (CatalogueSearch.matches(query, item)
+                    && (!craftableOnly || catalogue.craftable(item, contents, bench))) {
                 shown.add(item);
             }
         }
@@ -82,6 +83,11 @@ public final class CatalogueState {
 
     public void scrollFavourites(int delta) {
         favouriteOffset = Math.max(0, favouriteOffset + delta);
+    }
+
+    /** Puts the recipe panel away: nothing is looked up. */
+    public void clear() {
+        lookup = null;
     }
 
     public @Nullable Lookup lookup() {

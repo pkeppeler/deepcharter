@@ -61,6 +61,9 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param needTextY pixels from a have/need row's top to its figures
  * @param cycleMillis how long a cell shows one item of a tag before the next
  * @param maxQueryLength the longest search the field takes
+ * @param nameStripPad pixels between the border of the strip that names the hovered item and its text
+ * @param nameStripGap pixels between the hovered cell and that strip
+ * @param caretHeight the thickness of the search field's caret, the underline after the text; at least the scanline spacing, so a scanline never takes it
  */
 public record CatalogueLook(
         int maxPanelWidth,
@@ -116,7 +119,10 @@ public record CatalogueLook(
         int needTextX,
         int needTextY,
         int cycleMillis,
-        int maxQueryLength) {
+        int maxQueryLength,
+        int nameStripPad,
+        int nameStripGap,
+        int caretHeight) {
     public static CatalogueLook current() {
         return UiTheme.current().catalogue();
     }
@@ -176,7 +182,10 @@ public record CatalogueLook(
                 d.integer("needTextX", 0, 64),
                 d.integer("needTextY", 0, 64),
                 d.integer("cycleMillis", 100, 60000),
-                d.integer("maxQueryLength", 1, 256));
+                d.integer("maxQueryLength", 1, 256),
+                d.integer("nameStripPad", 0, 16),
+                d.integer("nameStripGap", 0, 16),
+                d.integer("caretHeight", 1, 8));
         if (look.minPanelWidth() > look.maxPanelWidth()) {
             throw d.conflict("minPanelWidth must not exceed maxPanelWidth", "minPanelWidth", "maxPanelWidth");
         }

@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
+import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
+import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.WeakHashMap;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
@@ -10,7 +12,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
@@ -28,7 +29,7 @@ import org.jspecify.annotations.Nullable;
  * clicks that are its own before the screen sees them.
  */
 public final class CatalogueScreens {
-    private static final Map<Screen, CataloguePanel> PANELS = new WeakHashMap<>();
+    private static final Map<Screen, CataloguePanel> PANELS = new HashMap<>();
     /** An item {@link #open} was asked for before the inventory it needs was open, looked up as soon as the panel exists. */
     private static @Nullable Item pending;
 
@@ -37,15 +38,26 @@ public final class CatalogueScreens {
     public static void register() {
         CatalogueKeys.register();
         ScreenEvents.BEFORE_INIT.register((client, screen, width, height) -> {
-            if (hasCatalogue(screen)) {
+            if (hasCatalogue(screen) && fits(width, height)) {
                 closeVanillaBook(client);
             }
         });
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
-            if (screen instanceof AbstractContainerScreen<?> container && hasCatalogue(screen)) {
-                attach(container, width, height);
+            if (screen instanceof AbstractRecipeBookScreen<?> book) {
+                attach(book, width, height);
             }
         });
+    }
+
+    /** Whether a screen {@code width} by {@code height} has room for the panels, which is when they take the place of the vanilla recipe book. */
+    private static boolean fits(int width, int height) {
+        return CatalogueLayout.of(
+                        width,
+                        height,
+                        CatalogueLook.current(),
+                        CrtTuning.current(),
+                        Minecraft.getInstance().font.lineHeight)
+                != null;
     }
 
     /** Whether the catalogue stands beside {@code screen}: it is a vanilla screen with a recipe book. */
@@ -62,6 +74,8 @@ public final class CatalogueScreens {
      * Shows the recipes of {@code item}: the entry point of the quest map's "recipe one click away" link. Opens the inventory first when
      * no screen with a catalogue is open. An item the charter knows no recipe of is shown as such, never its recipes.
      */
+    // test-seam: the join point of the quest map's "recipe one click away" (#880), which calls it when it merges; the
+    // catalogue test calls it now
     public static void open(Item item) {
         Minecraft client = Minecraft.getInstance();
         LocalPlayer player = client.player;
@@ -81,10 +95,14 @@ public final class CatalogueScreens {
         client.gui.setScreen(inventory);
     }
 
-    private static void attach(AbstractContainerScreen<?> screen, int width, int height) {
-        hideBookButton(screen);
+    private static void attach(AbstractRecipeBookScreen<?> screen, int width, int height) {
         CataloguePanel panel = PANELS.computeIfAbsent(screen, ignored -> new CataloguePanel(screen));
         panel.resize(width, height);
+        // The panels replace the recipe book, so its button goes only while they are drawn: a window too small for them
+        // keeps the book.
+        if (panel.layout() != null) {
+            hideBookButton(screen);
+        }
         Item wanted = pending;
         if (wanted != null) {
             pending = null;
@@ -108,10 +126,17 @@ public final class CatalogueScreens {
                 .register((s, x, y, horizontal, vertical) -> !panel.mouseScrolled(x, y, vertical));
     }
 
+    /** The recipe-book button's size in vanilla's {@code AbstractRecipeBookScreen.initButton}: no other image button of these screens is that size. */
+    private static final int BOOK_BUTTON_WIDTH = 20;
+
+    private static final int BOOK_BUTTON_HEIGHT = 18;
+
     /** Hides the vanilla recipe-book button: it stays in the screen's lists and can neither be seen, hovered nor pressed. */
     private static void hideBookButton(Screen screen) {
         for (AbstractWidget widget : Screens.getWidgets(screen)) {
-            if (widget instanceof ImageButton) {
+            if (widget instanceof ImageButton
+                    && widget.getWidth() == BOOK_BUTTON_WIDTH
+                    && widget.getHeight() == BOOK_BUTTON_HEIGHT) {
                 widget.visible = false;
                 widget.active = false;
             }

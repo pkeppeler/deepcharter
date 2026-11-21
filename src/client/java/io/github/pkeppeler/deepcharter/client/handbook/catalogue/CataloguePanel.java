@@ -15,7 +15,7 @@ import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
 import net.minecraft.client.gui.screens.recipebook.RecipeCollection;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
@@ -53,21 +53,32 @@ public final class CataloguePanel {
     /** What is under the mouse in a panel (not in the inventory): the item and the cell it is in. */
     private record Hit(Item item, Rect cell) {}
 
-    private final AbstractContainerScreen<?> screen;
+    private final AbstractRecipeBookScreen<?> screen;
+    private final Bench bench;
     private final CatalogueState state = new CatalogueState();
     private final Font font = Minecraft.getInstance().font;
     private @Nullable CatalogueLayout layout;
     private PartsCatalogue catalogue = PartsCatalogue.of(List.of(), ContextMap.EMPTY);
     private @Nullable List<RecipeCollection> builtFrom;
     private StackedItemContents contents = new StackedItemContents();
+    /** What {@link #shownItems} was last worked out from; it is worked out again only when one of these changes. */
+    private List<Item> shownCache = List.of();
+
+    private @Nullable PartsCatalogue shownCatalogue;
+    private String shownQuery = "";
+    private boolean shownFilter;
+    private int contentsStamp;
+    private int shownStamp = -1;
+    private List<Item> favouritesCache = List.of();
     private boolean searchFocused;
     private boolean pressTaken;
     private int ticks;
     private int mouseX = -1;
     private int mouseY = -1;
 
-    CataloguePanel(AbstractContainerScreen<?> screen) {
+    CataloguePanel(AbstractRecipeBookScreen<?> screen) {
         this.screen = screen;
+        this.bench = Bench.of(screen.getMenu());
         refresh();
     }
 
@@ -123,6 +134,8 @@ public final class CataloguePanel {
         }
         contents = new StackedItemContents();
         player.getInventory().fillStackedContents(contents);
+        contentsStamp++;
+        favouritesCache = CatalogueFavourites.shared().items(player.getUUID());
     }
 
     // ---------------------------------------------------------------- what is where
@@ -135,8 +148,29 @@ public final class CataloguePanel {
         return player.getUUID();
     }
 
+    /**
+     * The items the grid lists, with the search and the filter applied. Worked out again once a tick (what the player holds may have
+     * changed), and when the search, the filter or the catalogue changes, not on each call (a frame asks several times).
+     */
     private List<Item> shown() {
-        return state.shown(catalogue, contents);
+        String query = state.query();
+        boolean filter = state.craftableOnly();
+        if (shownCatalogue != catalogue
+                || shownStamp != contentsStamp
+                || shownFilter != filter
+                || !shownQuery.equals(query)) {
+            shownCache = state.shown(catalogue, contents, bench);
+            shownCatalogue = catalogue;
+            shownStamp = contentsStamp;
+            shownFilter = filter;
+            shownQuery = query;
+        }
+        return shownCache;
+    }
+
+    // test-seam: the client test reads what the grid lists, which is the list it draws
+    public List<Item> shownItems() {
+        return shown();
     }
 
     /** The cell {@code index} of the item grid or of the favourites row. */
@@ -153,7 +187,7 @@ public final class CataloguePanel {
     }
 
     private List<Item> favourites() {
-        return CatalogueFavourites.shared().items(player());
+        return favouritesCache;
     }
 
     /** The cell of {@code item} in the recipe panel's grid, result and have/need rows, as laid out for the shown recipe. */
@@ -272,8 +306,15 @@ public final class CataloguePanel {
         if (searchFocused) {
             return searchKey(event);
         }
-        if (event.hasControlDown() && event.key() == InputConstants.KEY_F) {
+        // Ctrl+F, or Cmd+F on a Mac (hasControlDownWithQuirk is the shortcut key of the platform).
+        if (event.hasControlDownWithQuirk() && event.key() == InputConstants.KEY_F) {
             searchFocused = true;
+            return true;
+        }
+        if (event.isEscape() && showsRecipePanel()) {
+            // Before the screen sees it: Escape puts the recipe panel away first and closes the inventory the next
+            // time.
+            state.clear();
             return true;
         }
         Item item = hoveredItem();
@@ -290,6 +331,7 @@ public final class CataloguePanel {
         }
         if (CatalogueKeys.FAVOURITE.matches(event)) {
             CatalogueFavourites.shared().toggle(player(), item);
+            favouritesCache = CatalogueFavourites.shared().items(player());
             return true;
         }
         return false;
@@ -300,7 +342,7 @@ public final class CataloguePanel {
         if (event.isEscape() || event.isConfirmation()) {
             searchFocused = false;
         } else if (event.key() == InputConstants.KEY_BACKSPACE) {
-            if (event.hasControlDown()) {
+            if (event.hasControlDownWithQuirk()) {
                 state.setQuery("");
             } else if (!query.isEmpty()) {
                 state.setQuery(query.substring(0, query.length() - 1));
@@ -346,6 +388,10 @@ public final class CataloguePanel {
             return false;
         }
         pressTaken = true;
+        if (event.button() != 0 && event.button() != 1) {
+            // A middle or side button on a panel is taken and does nothing, so it never reaches the inventory behind.
+            return true;
+        }
         boolean right = event.button() == 1;
         Hit hit = hitAt(x, y);
         if (hit != null) {
@@ -354,9 +400,12 @@ public final class CataloguePanel {
             shelfClick(shelf, x, y);
         } else {
             CatalogueLayout.Card card = now.card();
-            Item item = state.lookup() == null ? null : state.lookup().item();
-            if (item != null && card.spec().contains(x, y)) {
-                SpecSheetHook.open(item);
+            CatalogueState.Lookup lookup = state.lookup();
+            Rect title = new Rect(card.left(), card.titleY(), card.right() - card.left(), font.lineHeight);
+            if (lookup != null && card.spec().contains(x, y)) {
+                SpecSheetHook.open(lookup.item());
+            } else if (title.contains(x, y)) {
+                state.clear();
             }
         }
         return true;
@@ -422,7 +471,7 @@ public final class CataloguePanel {
             drawCard(graphics, now, look, hit);
         }
         if (hit != null) {
-            graphics.setTooltipForNextFrame(font, new ItemStack(hit.item()), mouseX, mouseY);
+            drawNameStrip(graphics, look, hit);
         }
     }
 
@@ -538,6 +587,28 @@ public final class CataloguePanel {
         CrtDraw.scanlines(graphics, glass.x(), glass.y(), glass.right(), glass.bottom());
     }
 
+    /**
+     * The name of the hovered item in a strip of its own, in the terminal font on the phosphor black with a phosphor border, where the
+     * game's purple tooltip would clash with the panels. Under the cell, or over it when there is no room below, and kept inside the
+     * screen.
+     */
+    private void drawNameStrip(GuiGraphicsExtractor graphics, CatalogueLook look, Hit hit) {
+        CrtTuning crt = CrtTuning.current();
+        String name = new ItemStack(hit.item()).getHoverName().getString().toUpperCase(Locale.ROOT);
+        int inset = look.nameStripPad() + 1;
+        int width = termWidth(name) + 2 * inset;
+        int height = font.lineHeight + 2 * inset;
+        int x = Math.clamp(hit.cell().x(), 0, Math.max(0, graphics.guiWidth() - width));
+        int y = hit.cell().bottom() + look.nameStripGap();
+        if (y + height > graphics.guiHeight()) {
+            y = hit.cell().y() - look.nameStripGap() - height;
+        }
+        graphics.nextStratum();
+        graphics.fill(x, y, x + width, y + height, crt.backgroundColor());
+        CrtDraw.border(graphics, x, y, x + width, y + height, crt.phosphorColor());
+        CrtDraw.glowText(graphics, font, CrtText.terminal(name), x + inset, y + inset, crt.phosphorColor());
+    }
+
     private void drawShelf(GuiGraphicsExtractor graphics, CatalogueLayout now, CatalogueLook look, @Nullable Hit hit) {
         CrtTuning crt = CrtTuning.current();
         PanelLook panel = PanelLook.current();
@@ -605,7 +676,8 @@ public final class CataloguePanel {
             GuiGraphicsExtractor graphics, Rect search, CatalogueLook look, CrtTuning crt, PanelLook panel) {
         int textX = search.x() + look.searchPad();
         int textY = search.y() + look.searchPad();
-        int room = search.width() - 2 * look.searchPad() - termWidth("_");
+        int caretWidth = termWidth("_");
+        int room = search.width() - 2 * look.searchPad() - caretWidth;
         String query = state.query();
         boolean caretOn = !searchFocused || (ticks / crt.cursorBlinkTicks()) % 2 == 0;
         if (query.isEmpty() && !searchFocused) {
@@ -622,7 +694,10 @@ public final class CataloguePanel {
             textX += termWidth(tail);
         }
         if (caretOn) {
-            CrtDraw.glowText(graphics, font, CrtText.terminal("_"), textX, textY, crt.phosphorColor());
+            // A solid bar at least as thick as the scanline spacing, so a scanline over it never turns it into dashes
+            // ("=").
+            int baseline = textY + font.lineHeight - look.caretHeight();
+            graphics.fill(textX, baseline, textX + caretWidth, baseline + look.caretHeight(), crt.phosphorColor());
         }
     }
 

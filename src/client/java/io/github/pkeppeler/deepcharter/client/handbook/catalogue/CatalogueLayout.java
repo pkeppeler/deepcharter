@@ -26,6 +26,8 @@ public record CatalogueLayout(
     public static final int IMAGE_WIDTH = 176;
     /** The height of that image. */
     public static final int IMAGE_HEIGHT = 166;
+    /** The fewest rows of items the catalogue is worth drawing with; a window too short for them hides both panels. */
+    public static final int MIN_ROWS = 3;
 
     /** A rectangle on the screen. */
     public record Rect(int x, int y, int width, int height) {
@@ -107,7 +109,7 @@ public record CatalogueLayout(
             int needRows,
             Rect spec) {}
 
-    /** The layout on a screen {@code width} by {@code height}, or null when the free bands are too narrow to hold both panels. */
+    /** The layout on a screen {@code width} by {@code height}, or null when the free bands are too narrow to hold both panels or the window too short for {@link #MIN_ROWS} rows of items. */
     public static @Nullable CatalogueLayout of(
             int width, int height, CatalogueLook look, CrtTuning crt, int lineHeight) {
         int inventoryLeft = (width - IMAGE_WIDTH) / 2;
@@ -133,10 +135,14 @@ public record CatalogueLayout(
                 leftWidth,
                 Math.min(look.recipeHeight(), height - look.recipeTop() - look.catalogueTop()));
         Rect recipeGlass = glass(recipe, look);
+        Shelf shelf = shelf(catalogueGlass, look, crt, lineHeight);
+        if (shelf.rows() < MIN_ROWS) {
+            return null;
+        }
         return new CatalogueLayout(
                 catalogue,
                 catalogueGlass,
-                shelf(catalogueGlass, look, crt, lineHeight),
+                shelf,
                 recipe,
                 recipeGlass,
                 card(recipeGlass, look, crt, lineHeight),
@@ -170,7 +176,7 @@ public record CatalogueLayout(
         Rect craftable = new Rect(glass.x(), buttonY - look.craftableRise(), glass.width(), look.buttonHeight());
         int favouritesBlock = look.labelHeight() + look.slotSize();
         int gridBottom = craftable.y() - look.searchGap() - favouritesBlock - look.gridGap();
-        int rows = Math.clamp((gridBottom - gridY + slackPerCell) / look.gridCell(), 1, look.gridRows());
+        int rows = Math.clamp((gridBottom - gridY + slackPerCell) / look.gridCell(), 0, look.gridRows());
         int favouritesLabelY = gridY + rows * look.gridCell() + look.gridGap();
         Rect previous = new Rect(left - look.pageButtonOutset(), buttonY, look.pageButtonWidth(), look.buttonHeight());
         Rect next = new Rect(

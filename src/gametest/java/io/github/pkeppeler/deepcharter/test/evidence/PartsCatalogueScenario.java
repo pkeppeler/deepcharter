@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -89,10 +88,8 @@ public class PartsCatalogueScenario extends EvidenceScenario {
     private void star(ClientGameTestContext context, CataloguePanel panel, CatalogueLayout layout) {
         UUID player =
                 context.computeOnClient(client -> ClientSession.player(client).getUUID());
-        List<Item> page = context.computeOnClient(
-                client -> panel.state().shown(panel.catalogue(), new StackedItemContents()).stream()
-                        .limit(layout.shelf().perPage())
-                        .toList());
+        List<Item> page = context.computeOnClient(client ->
+                panel.shownItems().stream().limit(layout.shelf().perPage()).toList());
         List<Item> starred = new ArrayList<>(List.of(ScannerRegistry.SCANNER_UNIT));
         for (Item item : page) {
             if (starred.size() < FAVOURITES && !starred.contains(item)) {

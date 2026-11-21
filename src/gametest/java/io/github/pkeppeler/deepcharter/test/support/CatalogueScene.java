@@ -10,7 +10,6 @@ import java.util.Objects;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
-import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.item.Item;
 
 /** Opens the inventory and finds and hovers the parts catalogue's cells, for the catalogue's client test and its evidence scenario. */
@@ -48,15 +47,23 @@ public final class CatalogueScene {
                 look.slotSize());
     }
 
-    /** The position of {@code item} in the catalogue's list on the first page, with nothing searched or filtered. */
+    /** The position of {@code item} in the catalogue's list on the first page, as it is drawn. */
     public static int indexOf(ClientGameTestContext context, CataloguePanel panel, Item item) {
-        List<Item> shown =
-                context.computeOnClient(client -> panel.state().shown(panel.catalogue(), new StackedItemContents()));
+        List<Item> shown = context.computeOnClient(client -> panel.shownItems());
         int index = shown.indexOf(item);
         if (index < 0) {
             throw new AssertionError("the catalogue lists " + shown + ", not " + item);
         }
         return index;
+    }
+
+    /**
+     * Moves the cursor to a corner of the inventory image that holds no slot, so no item is hovered and no name or tooltip is drawn. A test
+     * that reads the screen's text through {@code DrawnText} does this first, because a hovered item's name is recorded with the rest.
+     */
+    public static void parkCursor(ClientGameTestContext context, CatalogueLayout layout) {
+        ClientCursor.moveTo(
+                context, layout.inventory().x() + 2, layout.inventory().y() + 2);
     }
 
     /** Moves the cursor onto the centre of {@code cell}. */

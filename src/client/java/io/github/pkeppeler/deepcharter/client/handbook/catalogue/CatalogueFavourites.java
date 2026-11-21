@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
  * The items a player has starred in the catalogue, kept on this client in {@code config/deepcharter-parts-catalogue.json} and told apart
  * by player, so two accounts on one machine keep their own. The file is {@code {"version": 1, "players": {"<uuid>": ["<item id>", ...]}}}.
  * A file of another version, or one that does not parse, is read as empty and never written over (a newer build may own it), so the
- * favourites of that run live in memory only. An id no item has any more stays in the file and is skipped when listed.
+ * favourites of that run live in memory only. An id that names no item, or does not parse, stays in the file as written and is skipped when listed.
  */
 public final class CatalogueFavourites {
     /** The version of the file this build reads and writes. */
@@ -36,7 +36,7 @@ public final class CatalogueFavourites {
     private static @Nullable CatalogueFavourites shared;
 
     private final Path file;
-    private final Map<UUID, List<Identifier>> players = new LinkedHashMap<>();
+    private final Map<UUID, List<String>> players = new LinkedHashMap<>();
     private boolean writable = true;
 
     private CatalogueFavourites(Path file) {
@@ -63,16 +63,26 @@ public final class CatalogueFavourites {
     /** The favourite items of {@code player}, in the order they were starred. */
     public synchronized List<Item> items(UUID player) {
         List<Item> items = new ArrayList<>();
-        for (Identifier id : players.getOrDefault(player, List.of())) {
-            BuiltInRegistries.ITEM.getOptional(id).ifPresent(items::add);
+        for (String raw : players.getOrDefault(player, List.of())) {
+            Identifier id = Identifier.tryParse(raw);
+            if (id != null) {
+                BuiltInRegistries.ITEM.getOptional(id).ifPresent(items::add);
+            }
         }
         return items;
     }
 
-    /** Stars {@code item} for {@code player}, or takes the star off; returns whether it is a favourite now. */
+    /**
+     * Stars {@code item} for {@code player}, or takes the star off; returns whether it is a favourite now. The file is read again first, so
+     * another client on the same machine that starred something meanwhile keeps its star.
+     */
     public synchronized boolean toggle(UUID player, Item item) {
-        Identifier id = BuiltInRegistries.ITEM.getKey(item);
-        List<Identifier> ids = players.computeIfAbsent(player, ignored -> new ArrayList<>());
+        if (writable) {
+            players.clear();
+            load();
+        }
+        String id = BuiltInRegistries.ITEM.getKey(item).toString();
+        List<String> ids = players.computeIfAbsent(player, ignored -> new ArrayList<>());
         boolean starred = !ids.remove(id);
         if (starred) {
             ids.add(id);
@@ -95,12 +105,10 @@ public final class CatalogueFavourites {
             }
             for (Map.Entry<String, JsonElement> player :
                     root.getAsJsonObject("players").entrySet()) {
-                List<Identifier> ids = new ArrayList<>();
+                // An id that names no item, or does not parse, is kept as it was written: a newer build may know it.
+                List<String> ids = new ArrayList<>();
                 for (JsonElement id : player.getValue().getAsJsonArray()) {
-                    Identifier parsed = Identifier.tryParse(id.getAsString());
-                    if (parsed != null) {
-                        ids.add(parsed);
-                    }
+                    ids.add(id.getAsString());
                 }
                 players.put(UUID.fromString(player.getKey()), ids);
             }

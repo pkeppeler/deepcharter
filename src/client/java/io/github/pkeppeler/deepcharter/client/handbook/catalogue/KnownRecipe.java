@@ -9,8 +9,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import net.minecraft.util.context.ContextMap;
+import net.minecraft.world.inventory.RecipeBookType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.display.FurnaceRecipeDisplay;
 import net.minecraft.world.item.crafting.display.RecipeDisplay;
 import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
@@ -19,6 +21,7 @@ import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
 import net.minecraft.world.item.crafting.display.SlotDisplay;
 import net.minecraft.world.item.crafting.display.SmithingRecipeDisplay;
 import net.minecraft.world.item.crafting.display.StonecutterRecipeDisplay;
+import org.jspecify.annotations.Nullable;
 
 /**
  * One recipe of the client's recipe book, resolved for the catalogue: what it makes, the grid its ingredients sit in and the station it is
@@ -31,6 +34,8 @@ import net.minecraft.world.item.crafting.display.StonecutterRecipeDisplay;
  * @param cells {@code columns * rows} cells, row by row; a cell holds the items that may sit in it (a tag has several) and is empty for
  *     a blank
  * @param station the name of the station it is made at in capitals, or an empty string
+ * @param book the kind of recipe book whose screen can make it (crafting, or the furnace it smelts in), or null for a recipe no such
+ *     screen makes (stonecutting, smithing, a campfire)
  */
 public record KnownRecipe(
         RecipeDisplayEntry entry,
@@ -38,7 +43,8 @@ public record KnownRecipe(
         int columns,
         int rows,
         List<List<ItemStack>> cells,
-        String station) {
+        String station,
+        @Nullable RecipeBookType book) {
     /** The widest grid of a crafting recipe, which the other displays are laid into too. */
     private static final int CRAFTING_COLUMNS = 3;
 
@@ -98,7 +104,43 @@ public record KnownRecipe(
         ItemStack station = display.craftingStation().resolveForFirstStack(context);
         String stationName =
                 station.isEmpty() ? "" : station.getHoverName().getString().toUpperCase(Locale.ROOT);
-        return new KnownRecipe(entry, results, columns, rows, List.copyOf(cells), stationName);
+        return new KnownRecipe(
+                entry, results, columns, rows, List.copyOf(cells), stationName, bookOf(display, station));
+    }
+
+    private static @Nullable RecipeBookType bookOf(RecipeDisplay display, ItemStack station) {
+        if (display instanceof ShapedCraftingRecipeDisplay || display instanceof ShapelessCraftingRecipeDisplay) {
+            return RecipeBookType.CRAFTING;
+        }
+        if (display instanceof FurnaceRecipeDisplay) {
+            if (station.is(Items.FURNACE)) {
+                return RecipeBookType.FURNACE;
+            }
+            if (station.is(Items.BLAST_FURNACE)) {
+                return RecipeBookType.BLAST_FURNACE;
+            }
+            if (station.is(Items.SMOKER)) {
+                return RecipeBookType.SMOKER;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whether {@code bench} can make this recipe: it has the recipe's kind of recipe book and, for a crafting recipe, a grid it fits (a
+     * shaped recipe is as wide and high as its pattern, a shapeless one needs a cell for each ingredient).
+     */
+    public boolean makeableAt(Bench bench) {
+        if (book == null || book != bench.type()) {
+            return false;
+        }
+        if (book != RecipeBookType.CRAFTING) {
+            return true;
+        }
+        if (entry.display() instanceof ShapedCraftingRecipeDisplay) {
+            return columns <= bench.width() && rows <= bench.height();
+        }
+        return cells.stream().filter(cell -> !cell.isEmpty()).count() <= (long) bench.width() * bench.height();
     }
 
     /** The items it makes. */

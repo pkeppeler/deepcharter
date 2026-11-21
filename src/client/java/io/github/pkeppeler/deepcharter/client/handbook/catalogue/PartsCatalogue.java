@@ -91,10 +91,10 @@ public final class PartsCatalogue {
         return using.getOrDefault(item, List.of());
     }
 
-    /** Whether a known recipe that makes {@code item} can be made from what {@code contents} holds. */
-    public boolean craftable(Item item, StackedItemContents contents) {
+    /** Whether a known recipe that makes {@code item} can be made at {@code bench} from what {@code contents} holds. */
+    public boolean craftable(Item item, StackedItemContents contents, Bench bench) {
         for (KnownRecipe recipe : recipesFor(item)) {
-            if (recipe.entry().canCraft(contents)) {
+            if (recipe.makeableAt(bench) && recipe.entry().canCraft(contents)) {
                 return true;
             }
         }
