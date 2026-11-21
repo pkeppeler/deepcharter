@@ -61,7 +61,6 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -74,7 +73,7 @@ import net.minecraft.world.phys.Vec3;
  *       ceiling, the unlit wall, a lampless figure at light 0, the bottom of a shaft at dusk and at night, and (campaign only: today's
  *       layers have no surface above them) five stills of a descent through the surface floor.
  *   <li>The design tour's world with today's surface: the colony and a mesa.
- *   <li>The same world with the overworld's type given {@code cardinal_light: nether} (a test-only type), to show what the whole world
+ *   <li>The same world with its blocks shaded as {@code cardinal_light: nether} shades them ({@link EvidencePins#cardinalLightNether}), to show what the whole world
  *       would look like with that shading.
  * </ol>
  *
@@ -99,8 +98,6 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
     /** The design tour's world, so the colony and the mesa are the ones the tour shows. */
     private static final String SEED = "deepcharter-design-tour";
 
-    private static final ResourceKey<WorldPreset> NETHER_LIGHT_PRESET = ResourceKey.create(
-            Registries.WORLD_PRESET, Identifier.fromNamespaceAndPath("deepcharter", "nether_light_surface"));
     /** The surface's mesa biome: the mesa of the stills is the closest one, found as {@code /locate biome} finds it. */
     private static final ResourceKey<Biome> MESA =
             ResourceKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath("deepcharter", "mesa_country"));
@@ -143,8 +140,8 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
         try {
             pinTheClient();
             layersAndCampaign(context);
-            Places today = surface(context, Optional.empty(), "today");
-            Places nether = surface(context, Optional.of(NETHER_LIGHT_PRESET), "nether");
+            Places today = surface(context, false, "today");
+            Places nether = surface(context, true, "nether");
             ClientChecks.require(
                     today.equals(nether),
                     "the two surface worlds show the same places, today's " + today + " and nether's " + nether);
@@ -306,19 +303,15 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
     // ------------------------------------------------------------------------------------------------------ surface
 
     /**
-     * The colony and a mesa in a world of the design tour's seed. {@code preset} empty: the game's own world, the surface as it looks
-     * today ({@code look} "today"); present: the overworld's type has the nether's cardinal light.
+     * The colony and a mesa in a world of the design tour's seed, the game's own world. {@code nether}: its blocks are shaded as {@code
+     * cardinal_light: nether} shades them; the switch is on before the world opens, so that every section is meshed with it. {@code look}
+     * ends the names of the stills.
      */
-    private Places surface(ClientGameTestContext context, Optional<ResourceKey<WorldPreset>> preset, String look) {
+    private Places surface(ClientGameTestContext context, boolean nether, String look) {
+        EvidencePins.cardinalLightNether = nether;
         try (TestSingleplayerContext singleplayer = context.worldBuilder()
                 .setUseConsistentSettings(false)
-                .adjustSettings(state -> {
-                    preset.ifPresent(key -> state.setWorldType(new WorldTypeEntry(state.getSettings()
-                            .worldgenLoadContext()
-                            .lookupOrThrow(Registries.WORLD_PRESET)
-                            .getOrThrow(key))));
-                    state.setSeed(SEED);
-                })
+                .adjustSettings(state -> state.setSeed(SEED))
                 .create()) {
             awaitWorld(context);
             EvidenceWorld.pin(context, singleplayer);
@@ -356,6 +349,8 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
                         "mesa-" + look);
             });
             return new Places(colony.center(), mesa);
+        } finally {
+            EvidencePins.cardinalLightNether = false;
         }
     }
 

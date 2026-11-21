@@ -8,6 +8,7 @@
   ],
   "client": [
     "BreachEffectsMixin",
+    "CardinalLightingMixin",
     "ClientGameTestImplMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",
