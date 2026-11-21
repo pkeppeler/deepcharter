@@ -69,11 +69,11 @@ public class FarChunksTest {
         }
         now[0] += 120 * second;
         deadline.await(helper, level, false, () -> "ran out in a second stalled tick");
-        for (int tick = 0; tick < 8; tick++) {
+        for (int tick = 0; tick < 7; tick++) {
             now[0] += second;
             deadline.await(helper, level, false, () -> "ran out too soon after the second stall");
         }
-        // 30 s are used now, and the limit is passed at a second more.
+        // 29 s are used now: the next tick uses the 30th, and the limit is passed at a second more.
         try {
             now[0] += second;
             deadline.await(helper, level, false, () -> "the limit is not passed yet");

@@ -607,12 +607,21 @@ public class GrainedCrustTest {
         int warnAt = period - WARN_TICKS;
         int[] cues = {0};
         int[] seen = {0};
+        boolean[] watching = {false};
         TestTicks.each(helper, () -> {
             if (!ready.isPresent()) {
                 return;
             }
             int heard =
                     (int) walker.soundsHeard().stream().filter(WARNING::equals).count();
+            if (!watching[0]) {
+                // The walker stands by the grain from the start, and the pad may take longer than a pulse to be ready
+                // in the
+                // tall world: a cue heard before this tick came at a phase nobody was watching.
+                watching[0] = true;
+                seen[0] = heard;
+                return;
+            }
             if (heard > seen[0]) {
                 // A mock reads its sounds on its own tick, so a cue is seen a tick or two late.
                 long phase = level.getGameTime() % period;
