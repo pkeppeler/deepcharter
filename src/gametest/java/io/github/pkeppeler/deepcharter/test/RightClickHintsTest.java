@@ -14,13 +14,16 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * Server GameTests for the right-click hints of the block readout (#892). The gate walks every registered {@code deepcharter} block
- * whose class handles a right-click and fails when its default state reads without a hint, so the next such block cannot be missed.
+ * whose class overrides {@code useWithoutItem} or {@code useItemOn} and fails when none of its states reads with a hint, so the next
+ * such block cannot be missed. It does not cover a right-click wired through a block entity, a {@code UseBlockCallback} or an item's
+ * {@code useOn}: a gate passing is not proof that every right-click has a hint.
  */
 public class RightClickHintsTest {
     /** Blocks that handle a right-click and need no hint, each with the reason. */
@@ -51,23 +54,26 @@ public class RightClickHintsTest {
         List<String> missing = new ArrayList<>();
         int checked = 0;
         for (Block block : BuiltInRegistries.BLOCK) {
-            Class<?> type = block.getClass();
-            String id = BuiltInRegistries.BLOCK.getKey(block).toString();
-            if (!BuiltInRegistries.BLOCK.getKey(block).getNamespace().equals(DeepCharter.MOD_ID)
-                    || !handlesRightClick(type)
-                    || EXEMPT.containsKey(id)) {
+            Identifier key = BuiltInRegistries.BLOCK.getKey(block);
+            if (!key.getNamespace().equals(DeepCharter.MOD_ID) || EXEMPT.containsKey(key.toString())) {
+                continue;
+            }
+            if (!handlesRightClick(block.getClass())) {
                 continue;
             }
             checked++;
-            if (hintKey(helper, block.defaultBlockState()).isEmpty()) {
-                missing.add(id);
+            if (block.getStateDefinition().getPossibleStates().stream()
+                    .noneMatch(state -> hintKey(helper, state).isPresent())) {
+                missing.add(key.toString());
             }
         }
         if (checked == 0) {
             throw helper.assertionException("no right-click block found: the reflection walk is broken");
         }
         if (!missing.isEmpty()) {
-            throw helper.assertionException("right-click blocks with no readout hint: %s", missing);
+            throw helper.assertionException(
+                    "right-click blocks with no readout hint: %s; add a hint provider from the feature's init",
+                    missing);
         }
         helper.succeed();
     }
