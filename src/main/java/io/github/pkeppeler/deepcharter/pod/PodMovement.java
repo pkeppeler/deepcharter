@@ -31,7 +31,7 @@ public final class PodMovement {
         double vx = drive == null ? 0 : drive.getStepX() * stats.horizontalSpeed();
         double vz = drive == null ? 0 : drive.getStepZ() * stats.horizontalSpeed();
 
-        float lift = Math.max(0f, stats.enginePower() - pod.cargoMass() - PodEvents.extraMass(pod));
+        float lift = lift(pod, stats);
         boolean thrusting = input.jump() && lift > 0f;
         double vy = pod.getDeltaMovement().y;
         if (thrusting) {
@@ -51,6 +51,11 @@ public final class PodMovement {
         if (pod.verticalCollision && (pod.verticalCollisionBelow ? after < 0 : after > 0)) {
             pod.setDeltaMovement(pod.getDeltaMovement().multiply(1, 0, 1));
         }
+    }
+
+    /** The rotor's lift: the engine power cargo and {@link PodEvents#extraMass} leave, 0 when they take it all. */
+    static float lift(PodEntity pod, PodStats stats) {
+        return Math.max(0f, stats.enginePower() - pod.cargoMass() - PodEvents.extraMass(pod));
     }
 
     /**

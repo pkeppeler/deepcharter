@@ -22,6 +22,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
@@ -39,6 +40,7 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
+    private final Map<Integer, List<Identifier>> soundsByEntity = new HashMap<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
     private boolean loaded;
 
@@ -68,6 +70,14 @@ public final class MockPlayer {
     /** The id of every sound the server has played to this player alone (a sound entity packet) so far, oldest first. Read on the mock's tick, so it lags by one. */
     public List<Identifier> soundsHeard() {
         return List.copyOf(sounds);
+    }
+
+    /**
+     * As {@link #soundsHeard}, only the sounds played at {@code source} (a sound entity packet names its entity), so a test is not heard by another test
+     * whose entities stand within earshot.
+     */
+    public List<Identifier> soundsHeardFrom(Entity source) {
+        return List.copyOf(soundsByEntity.getOrDefault(source.getId(), List.of()));
     }
 
     /**
@@ -168,6 +178,9 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundSoundEntityPacket packet) {
                     sounds.add(packet.getSound().value().location());
+                    soundsByEntity
+                            .computeIfAbsent(packet.getId(), id -> new ArrayList<>())
+                            .add(packet.getSound().value().location());
                 }
                 if (outbound instanceof ClientboundLevelChunkWithLightPacket packet) {
                     chunksSent.merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);
