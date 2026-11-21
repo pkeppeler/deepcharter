@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,10 +20,14 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 
 /**
- * Light is computed off the server thread, and vanilla drops the light update of a chunk that is not yet ticking (issue 427), so a client
- * sent a chunk while light is pending keeps the old light; call this after the last block placed in a chunk a player may be sent.
- * Vanilla offers a chunk to its trackers only once, so this also offers it again, when the hold ends, to those who came into view
- * during the hold (issue 524).
+ * Light is computed off the server thread, so a client sent a chunk while light is pending keeps the old light: vanilla holds a
+ * chunk's send until the light tasks queued for it are done, and this holds the sends of a chunk and its neighbours the same way.
+ * Call this after the last block placed in a chunk a player may be sent. Vanilla offers a chunk to its trackers only once, so this
+ * also offers it again, when the hold ends, to those who came into view during the hold (issue 524).
+ *
+ * <p>A player who already had a chunk of the hold when it began is sent the chunk's settled light when the hold ends (#824): a
+ * neighbour's draw changes the light of that chunk, and vanilla drops a light change for a chunk that does not tick (issue 427), so
+ * the player's client keeps the old light.
  */
 public final class LightSync {
     /** Server ticks a hold may last before it is reported as stuck (30 s). */
@@ -30,16 +35,20 @@ public final class LightSync {
 
     private record Key(ServerLevel level, ChunkPos chunk) {}
 
-    /** One chunk hold. {@code trackedThroughout} is server thread only; test threads read {@code startTick}. */
+    /** One chunk hold. The player sets are server thread only; test threads read {@code startTick}. */
     private static final class Hold {
         final Set<UUID> trackedThroughout;
+        /** The players who had been sent the chunk when the hold began and still track it. */
+        final Set<UUID> sentAtStart;
+
         volatile int startTick;
         /** Server thread only. */
         boolean reported;
 
-        Hold(int startTick, Set<UUID> trackedThroughout) {
+        Hold(int startTick, Set<UUID> trackedThroughout, Set<UUID> sentAtStart) {
             this.startTick = startTick;
             this.trackedThroughout = trackedThroughout;
+            this.sentAtStart = sentAtStart;
         }
     }
 
@@ -75,7 +84,9 @@ public final class LightSync {
 
     /**
      * Holds the sending of the chunk, and of each of its eight neighbours that has a loaded holder (light spreads at most 15 blocks, so
-     * one ring is enough), until the light tasks queued so far are done: vanilla's {@code ChunkMap.waitForLightBeforeSending}.
+     * one ring is enough), until the light tasks queued so far are done. Vanilla's {@code ChunkMap.waitForLightBeforeSending(pos, r)}
+     * adds the dependency over {@code rangeClosed(pos, r + 1)}, so radius 0 already holds that 3x3. The hold does not make a
+     * player's copy of a chunk that was sent before it right: for that, see the class comment.
      */
     public static void holdSendUntilLit(ServerLevel level, ChunkPos chunk) {
         List<ChunkPos> sendable = new ArrayList<>();
@@ -87,7 +98,7 @@ public final class LightSync {
         for (ChunkPos held : sendable) {
             Hold existing = HOLDS.get(new Key(level, held));
             if (existing == null) {
-                HOLDS.put(new Key(level, held), new Hold(now, trackers(level, held)));
+                HOLDS.put(new Key(level, held), new Hold(now, trackers(level, held), sentTo(level, held)));
             } else {
                 existing.startTick = now; // new light work was queued: the timeout counts from the latest carve
                 existing.reported = false;
@@ -105,6 +116,18 @@ public final class LightSync {
         return tracking;
     }
 
+    /** The players that track {@code chunk} and have been sent it: it is not pending to them. */
+    private static Set<UUID> sentTo(ServerLevel level, ChunkPos chunk) {
+        Set<UUID> sent = new HashSet<>();
+        for (ServerPlayer player : level.players()) {
+            if (player.getChunkTrackingView().contains(chunk)
+                    && !player.connection.chunkSender.isPending(chunk.pack())) {
+                sent.add(player.getUUID());
+            }
+        }
+        return sent;
+    }
+
     private static void sweep(MinecraftServer server) {
         Iterator<Map.Entry<Key, Hold>> holds = HOLDS.entrySet().iterator();
         while (holds.hasNext()) {
@@ -120,7 +143,7 @@ public final class LightSync {
             }
             LevelChunk sendable = key.level.getChunkSource().chunkMap.getChunkToSend(key.chunk.pack());
             if (sendable != null) {
-                markPendingForLateTrackers(key, hold, sendable);
+                offerAfterHold(key, hold, sendable);
                 holds.remove();
                 continue;
             }
@@ -129,16 +152,33 @@ public final class LightSync {
                 DeepCharter.LOGGER.error(
                         "A chunk hold is stuck: the light has not released it. Held: {}", heldChunks());
             }
-            hold.trackedThroughout.retainAll(trackers(key.level, key.chunk));
+            Set<UUID> tracking = trackers(key.level, key.chunk);
+            hold.trackedThroughout.retainAll(tracking);
+            hold.sentAtStart.retainAll(tracking);
         }
     }
 
-    private static void markPendingForLateTrackers(Key key, Hold hold, LevelChunk chunk) {
+    /** Offers the chunk again to the players who came into view during the hold, and sends its settled light to those who had it. */
+    private static void offerAfterHold(Key key, Hold hold, LevelChunk chunk) {
+        ClientboundLightUpdatePacket light = null;
         for (ServerPlayer player : key.level.players()) {
-            if (player.getChunkTrackingView().contains(key.chunk)
-                    && !hold.trackedThroughout.contains(player.getUUID())) {
+            if (!player.getChunkTrackingView().contains(key.chunk)) {
+                continue;
+            }
+            if (!hold.trackedThroughout.contains(player.getUUID())) {
                 player.connection.chunkSender.markChunkPendingToSend(chunk);
+            } else if (hold.sentAtStart.contains(player.getUUID())) {
+                // Every section of both layers: which sections the neighbour's light changed is not known here, and a
+                // ticking chunk that vanilla also updates gets a duplicate, which does no harm.
+                if (light == null) {
+                    light = new ClientboundLightUpdatePacket(key.chunk, key.level.getLightEngine(), null, null);
+                }
+                sendLight(player, light);
             }
         }
+    }
+
+    private static void sendLight(ServerPlayer player, ClientboundLightUpdatePacket light) {
+        player.connection.send(light);
     }
 }

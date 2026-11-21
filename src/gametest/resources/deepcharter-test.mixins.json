@@ -6,7 +6,8 @@
     "ChunkMapAccess",
     "ChunkMapUnloadMixin",
     "GameTestInfoMixin",
-    "GameTestTickerMixin"
+    "GameTestTickerMixin",
+    "LightSyncSendMixin"
   ],
   "client": [
     "BreachEffectsMixin",
