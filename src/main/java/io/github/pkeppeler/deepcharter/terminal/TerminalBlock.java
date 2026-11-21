@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.terminal;
 
 import io.github.pkeppeler.deepcharter.texture.TextureProperties;
+import java.util.Map;
+import java.util.Objects;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -9,6 +11,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
@@ -18,6 +21,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * A terminal, of whichever {@link TerminalType} owns this block. Using it, with or without an item in hand, asks the server to
@@ -27,6 +33,19 @@ import net.minecraft.world.phys.BlockHitResult;
  * state has it true only for a type that needs no repair; {@link TerminalActivity} keeps it right from then on.
  */
 public final class TerminalBlock extends BaseEntityBlock {
+    /**
+     * The cabinet with its CRT monitor on top, facing north (the model {@code block/terminal}): the cabinet, the monitor's
+     * casing, its tube taper behind, and the two steps of the glass in front. Turned for the other facings.
+     */
+    private static final VoxelShape NORTH_SHAPE = Shapes.or(
+            Block.box(0, 0, 0, 16, 6, 16),
+            Block.box(1, 6, 3, 15, 16, 13),
+            Block.box(3, 7, 13, 13, 14, 14),
+            Block.box(3, 7, 2.5, 13, 15, 3),
+            Block.box(4, 8, 2, 12, 14, 2.5));
+
+    private static final Map<Direction, VoxelShape> SHAPES = Shapes.rotateHorizontal(NORTH_SHAPE);
+
     TerminalBlock(Properties properties, boolean alwaysOnline) {
         super(properties);
         registerDefaultState(stateDefinition
@@ -68,6 +87,18 @@ public final class TerminalBlock extends BaseEntityBlock {
         return context.getLevel() instanceof ServerLevel level
                 ? TerminalActivity.corrected(level.getServer(), state)
                 : state;
+    }
+
+    @Override
+    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return Objects.requireNonNull(
+                SHAPES.get(state.getValue(BlockStateProperties.HORIZONTAL_FACING)), "the shapes cover every facing");
+    }
+
+    /** It is not a full cube: light and neighbouring faces follow its shape. */
+    @Override
+    protected boolean useShapeForLightOcclusion(BlockState state) {
+        return true;
     }
 
     @Override
