@@ -83,6 +83,7 @@ public class HandBreakTest {
     private static final int X_SENT = 9800;
     private static final int X_PACKET = 9900;
     private static final int X_CAMPAIGN = 21800;
+    private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final int FULL_RUN_TICKS = 1200;
     /** A STOP this many ticks in is past the 0.7 of the break time that vanilla's check lets through. */
     private static final int EARLY_STOP_TICKS = 850;
@@ -562,7 +563,7 @@ public class HandBreakTest {
     }
 
     /** Layer 3 and deeper cost a whole pick: the campaign world's unbuilt depth is the first of them. */
-    @GameTest(environment = CampaignEnvironments.B, dimension = "deepcharter:campaign_sample")
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE)
     public void deeperThanLayerTwoACrustCostsAWholeNetheritePick(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int y = CampaignBands.layer(CampaignBands.lastLayer()).minY() - 100;
