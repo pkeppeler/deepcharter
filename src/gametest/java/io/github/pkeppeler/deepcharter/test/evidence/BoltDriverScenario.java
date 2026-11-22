@@ -44,21 +44,29 @@ public class BoltDriverScenario extends EvidenceScenario {
     private static final int TICKS_PER_FRAME = 3;
     private static final float EAST = -90f;
     private static final float WEST = 90f;
-    /** The Retained's place, the driver's rest between shots (12 ticks) with a tick to spare. */
-    private static final int RETAINED_ALONG = 14;
+    /** A little up from level, so that the roof and what hangs from it are in the frame. */
+    private static final float LOOK_UP = -8f;
+    /** The Retained's place, 6 blocks from the person who fires; the driver's rest between shots is 12 ticks, with one to spare. */
+    private static final int RETAINED_ALONG = 10;
 
     private static final int SHOT_TICKS = 13;
-    /** Where the person stands to fire, and the roof bolts that hold the stretch behind them. */
+    /** Where the person fires from, and the two roof bolts that hold the stretch round {@link #HELD_ALONG}. */
     private static final int FIRING_ALONG = 4;
 
-    private static final int[] BOLTS_ALONG = {4, 8};
-    /** The two stretches the blast shakes, one bolted and one not: the person stands between them. */
-    private static final int HELD_ALONG = 6;
+    private static final int[] BOLTS_ALONG = {8, 12};
+    /** The two stretches the blast shakes: the bolted one, and one with no bolts that the person watches from {@link #WATCH_ALONG}. */
+    private static final int HELD_ALONG = 10;
 
-    private static final int LOOSE_ALONG = 22;
-    private static final int STANDING_ALONG = 14;
+    private static final int LOOSE_ALONG = 21;
+    private static final int WATCH_ALONG = 15;
     /** The creak (60 ticks), the fall and the rock coming to rest. */
     private static final int COLLAPSE_TICKS = 110;
+
+    /** One frame of the recording, with the toasts that would cover it cleared. */
+    private void clearFrame(ClientGameTestContext context) {
+        context.runOnClient(client -> client.gui.toastManager().clear());
+        frame(context);
+    }
 
     private static BlockPos floor(int along) {
         return new BlockPos(X + along, FLOOR_Y, Z);
@@ -116,10 +124,10 @@ public class BoltDriverScenario extends EvidenceScenario {
                     context,
                     "the person on foot in the tunnel in layer 1",
                     client -> client.player != null && TestLayers.clientIsIn(client, 1));
-            context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+            context.runOnClient(client -> client.options.setCameraType(CameraType.FIRST_PERSON));
             context.waitTicks(40);
             for (int i = 0; i < 4; i++) {
-                frame(context);
+                clearFrame(context);
                 context.waitTicks(TICKS_PER_FRAME);
             }
             screenshot(context, "bolt-driver-before");
@@ -128,7 +136,7 @@ public class BoltDriverScenario extends EvidenceScenario {
                 singleplayer.getServer().runOnServer(server -> use(server, null));
                 for (int tick = 0; tick < SHOT_TICKS; tick += TICKS_PER_FRAME) {
                     context.waitTicks(TICKS_PER_FRAME);
-                    frame(context);
+                    clearFrame(context);
                 }
                 if (shot == 0) {
                     screenshot(context, "bolt-driver-fired");
@@ -142,12 +150,12 @@ public class BoltDriverScenario extends EvidenceScenario {
             for (int along : BOLTS_ALONG) {
                 singleplayer.getServer().runOnServer(server -> {
                     ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-                    stand(TestLayers.level(server, 1), player, along, EAST);
+                    stand(TestLayers.level(server, 1), player, along - 4, EAST);
                     use(server, roof(along));
                 });
                 for (int i = 0; i < 6; i++) {
                     context.waitTicks(TICKS_PER_FRAME);
-                    frame(context);
+                    clearFrame(context);
                 }
             }
             screenshot(context, "bolt-driver-roof-bolt");
@@ -155,13 +163,13 @@ public class BoltDriverScenario extends EvidenceScenario {
             // Back between the two stretches, looking at the loose one, and the blast.
             singleplayer.getServer().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
-                stand(one, server.getPlayerList().getPlayers().getFirst(), STANDING_ALONG - 3, EAST);
+                stand(one, server.getPlayerList().getPlayers().getFirst(), WATCH_ALONG, EAST);
                 CaveIns.shake(one, floor(HELD_ALONG));
                 CaveIns.shake(one, floor(LOOSE_ALONG));
             });
             for (int tick = 0; tick < COLLAPSE_TICKS; tick += TICKS_PER_FRAME) {
                 context.waitTicks(TICKS_PER_FRAME);
-                frame(context);
+                clearFrame(context);
                 if (tick == 0) {
                     screenshot(context, "bolt-driver-creak");
                 }
@@ -175,11 +183,11 @@ public class BoltDriverScenario extends EvidenceScenario {
                     .runOnServer(server -> stand(
                             TestLayers.level(server, 1),
                             server.getPlayerList().getPlayers().getFirst(),
-                            STANDING_ALONG,
+                            WATCH_ALONG,
                             WEST));
             for (int i = 0; i < 8; i++) {
                 context.waitTicks(TICKS_PER_FRAME);
-                frame(context);
+                clearFrame(context);
             }
             screenshot(context, "bolt-driver-held");
             context.runOnClient(client -> ClientSession.player(client).setXRot(0f));
@@ -187,7 +195,7 @@ public class BoltDriverScenario extends EvidenceScenario {
     }
 
     private static void stand(ServerLevel level, ServerPlayer player, int along, float yaw) {
-        player.teleportTo(level, X + along + 0.5, FLOOR_Y, Z + 0.5, Set.of(), yaw, 0f, true);
+        player.teleportTo(level, X + along + 0.5, FLOOR_Y, Z + 0.5, Set.of(), yaw, LOOK_UP, true);
     }
 
     /** A right click with the driver: on the underside of {@code roof}, or in the air when it is null. */
