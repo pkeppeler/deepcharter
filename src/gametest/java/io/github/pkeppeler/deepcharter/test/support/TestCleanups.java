@@ -7,17 +7,13 @@ import java.util.Map;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.AABB;
 
-/**
- * Per-test state that lives outside the test's own box, such as an entity a winch carried onto the shared colony pad, removed on
- * every exit of the test, including a throw and a timeout: {@link #run} is called from {@code GameTestInfoMixin}'s {@code finish}. Server
- * thread only.
- */
+/** Per-test cleanups for what lives outside the test's box (a pod a winch put on the shared colony pad), run from {@code GameTestInfoMixin}'s {@code finish} on every exit. Server thread only. */
 public final class TestCleanups {
     private static final Map<AABB, List<Runnable>> BY_TEST = new HashMap<>();
 
     private TestCleanups() {}
 
-    /** Runs {@code cleanup} when the test of {@code helper} ends, however it ends. It reads what the test made by then, so it may find nothing. */
+    /** Runs {@code cleanup} when the test of {@code helper} ends, however it ends; it may find nothing made. */
     public static void onFinish(GameTestHelper helper, Runnable cleanup) {
         BY_TEST.computeIfAbsent(helper.getBounds(), bounds -> new ArrayList<>()).add(cleanup);
     }
