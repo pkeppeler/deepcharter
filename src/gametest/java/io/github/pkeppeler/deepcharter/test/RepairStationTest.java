@@ -481,6 +481,27 @@ public class RepairStationTest {
     }
 
     @GameTest
+    public void aFullPackWithAnEmptyOffhandRefusesEveryPurchaseAndChargesNothing(GameTestHelper helper) {
+        withStation(helper, station -> {
+            ServerPlayer player = station.pilot().player();
+            Inventory inventory = player.getInventory();
+            fund(helper, station, 1_000);
+            for (int slot = 0; slot < inventory.getNonEquipmentItems().size(); slot++) {
+                inventory.setItem(slot, new ItemStack(Blocks.DIRT));
+            }
+            inventory.setItem(Inventory.SLOT_OFFHAND, ItemStack.EMPTY);
+            for (Consumable bought : List.of(Consumable.BOLT, Consumable.BLASTING_CHARGE)) {
+                expectRefused(
+                        helper,
+                        Terminals.act(player, station.pos(), RepairStation.BUY, item(bought)),
+                        "buying " + bought + " with a full pack and an empty offhand");
+                expectAccount(helper, station, 1_000, bought + " with no room costs nothing");
+            }
+            helper.succeed();
+        });
+    }
+
+    @GameTest
     public void aPackThatDoesNotFitWholeIsRefusedAndNothingIsCharged(GameTestHelper helper) {
         withStation(helper, station -> {
             ServerPlayer player = station.pilot().player();

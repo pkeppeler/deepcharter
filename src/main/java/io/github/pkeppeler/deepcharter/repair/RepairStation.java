@@ -11,8 +11,6 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -114,17 +112,22 @@ public final class RepairStation {
         return Optional.empty();
     }
 
-    /** How many of {@code stack}'s item {@code inventory.add} can take: the pack's slots and the offhand, which it fills too. */
+    /**
+     * How many of {@code stack}'s item {@code inventory.add} can take, as vanilla does: space in same-item stacks in the
+     * 36 main slots, the offhand only if it already holds that item, and empty main slots (never an empty offhand).
+     */
     private static int roomFor(Inventory inventory, ItemStack stack) {
         int room = 0;
-        List<ItemStack> slots = new ArrayList<>(inventory.getNonEquipmentItems());
-        slots.add(inventory.getItem(Inventory.SLOT_OFFHAND));
-        for (ItemStack held : slots) {
+        for (ItemStack held : inventory.getNonEquipmentItems()) {
             if (held.isEmpty()) {
                 room += stack.getMaxStackSize();
             } else if (ItemStack.isSameItemSameComponents(held, stack)) {
                 room += Math.max(0, held.getMaxStackSize() - held.getCount());
             }
+        }
+        ItemStack offhand = inventory.getItem(Inventory.SLOT_OFFHAND);
+        if (!offhand.isEmpty() && ItemStack.isSameItemSameComponents(offhand, stack)) {
+            room += Math.max(0, offhand.getMaxStackSize() - offhand.getCount());
         }
         return room;
     }
