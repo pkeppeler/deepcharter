@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 
-import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -29,7 +28,7 @@ import net.minecraft.world.level.block.Blocks;
 public class PodHazardCuesScenario extends EvidenceScenario {
     private static final int X = 5400;
     private static final int Z = 5400;
-    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
+    private static final int FLOOR_Y = LAYER_ROOM_Y;
     private static final int ROOM_HEIGHT = 24;
     private static final int DROP_BLOCKS = 14;
     private static final int CUE_TICKS = 6;

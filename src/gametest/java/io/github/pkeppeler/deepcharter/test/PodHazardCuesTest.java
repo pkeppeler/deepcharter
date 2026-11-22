@@ -1,9 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.pod.PodCues;
@@ -34,7 +34,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /** Server GameTests for #854: each pod hazard names its cause on the pilot's action bar and plays a sound; no hurt, no cue. */
 public class PodHazardCuesTest {
@@ -53,7 +52,7 @@ public class PodHazardCuesTest {
     private static final int GAS_X = 9800;
 
     private static final int GAS_Z = 9800;
-    private static final int GAS_FLOOR = 14;
+    private static final int GAS_FLOOR = TestLayers.worldY(1, 14);
     private static final int GAS_RADIUS = 6;
 
     private static Identifier id(String path) {
@@ -80,28 +79,27 @@ public class PodHazardCuesTest {
             Identifier sound,
             int times,
             String when) {
-        if (messages(pilot, key) != times || sounds(pilot, pod, sound) != times) {
-            throw failure(
-                    helper,
-                    "%s: the pilot should get '%s' %s times with the %s sound, the bar said %s and the pilot heard %s",
-                    when,
-                    key,
-                    times,
-                    sound,
-                    pilot.actionBarMessages().stream().map(Component::getString).toList(),
-                    pilot.soundsHeardFrom(pod));
-        }
+        expect(
+                helper,
+                messages(pilot, key) == times && sounds(pilot, pod, sound) == times,
+                "%s: the pilot should get '%s' %s times with the %s sound, the bar said %s and the pilot heard %s",
+                when,
+                key,
+                times,
+                sound,
+                pilot.actionBarMessages().stream().map(Component::getString).toList(),
+                pilot.soundsHeardFrom(pod));
     }
 
     private static void expectQuiet(GameTestHelper helper, PodEntity pod, MockPlayer pilot, String when) {
-        if (!pilot.actionBarMessages().isEmpty() || !pilot.soundsHeardFrom(pod).isEmpty()) {
-            throw failure(
-                    helper,
-                    "%s: nothing hurt or blocked the pod, yet the bar said %s and the pilot heard %s",
-                    when,
-                    pilot.actionBarMessages().stream().map(Component::getString).toList(),
-                    pilot.soundsHeardFrom(pod));
-        }
+        expect(
+                helper,
+                pilot.actionBarMessages().isEmpty()
+                        && pilot.soundsHeardFrom(pod).isEmpty(),
+                "%s: nothing hurt or blocked the pod, yet the bar said %s and the pilot heard %s",
+                when,
+                pilot.actionBarMessages().stream().map(Component::getString).toList(),
+                pilot.soundsHeardFrom(pod));
     }
 
     // ---- gas ----
@@ -546,11 +544,5 @@ public class PodHazardCuesTest {
     @GameTest(maxTicks = 60)
     public void towMassLeavingOneUnitOfLiftThrustsAndStaysSilent(GameTestHelper helper) {
         cueAgreesWithTheRotor(helper, 0f, PodTuning.DEFAULT.movement().enginePower() - 1f, 1f);
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }
