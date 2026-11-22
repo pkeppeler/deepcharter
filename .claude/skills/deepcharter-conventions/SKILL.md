@@ -47,7 +47,7 @@ Code lives under `io.github.pkeppeler.deepcharter`. Detail beyond this file:
 - A brief that repeats runs until a target is met sets an iteration cap (for example 3 run pairs); at the cap, stop and report what is left.
 - Client slots: on macOS at most two game clients run at a time (`DEEPCHARTER_CLIENT_SLOTS`, default 2); a run that finds both taken waits. Details, and what to do after a Ctrl-C, in [tests.md](tests.md#client-slots).
 - On macOS, client GameTests, `tools/record-evidence.sh` and `tools/play.sh` render with Vulkan (MoltenVK), so they run with the screen locked. `DEEPCHARTER_GL=1` uses OpenGL instead (for example for Iris shaders).
-- Client tests are slow and open a window: run them only for the class you changed, plus every class that reads shared visuals you touched ([tests.md](tests.md)). CI runs the full set on `gameplay` PRs.
+- Client tests are slow and open a window: run them only for the class you changed, plus every class that reads shared visuals you touched ([tests.md](tests.md)). CI runs the full set when a PR changes game code ([CLAUDE.md](../../CLAUDE.md)).
 
 ## Code layout
 
@@ -70,7 +70,7 @@ Code is grouped by feature under `io.github.pkeppeler.deepcharter`. The features
 
   Fix the findings with `org.jspecify.annotations.Nullable`, the one the dependency and options are wired for. `@Shadow` fields are excluded from NullAway (`build.gradle.kts` `NullAway:ExcludedFieldAnnotations`), and `test.mixin` now has some. `@Unique` fields are the open case: the first PR that adds one checks whether it needs an exclusion. A `CrtScreen` widget field that `layout()` assigns is `@Nullable` and read through `Objects.requireNonNull(field, "<built by layout() in init()>")`; prefer a local when nothing reads the widget later. A `requireNonNull` on a per-tick, per-frame or per-cell path takes the `Supplier` message overload, so the message is built only when it fails.
   Javadoc on a nullability annotation needs a non-obvious why. Pass a checked value as a parameter instead of re-reading a global and asserting. Make the null state unrepresentable instead of writing an accessor that only asserts.
-  Marking package B makes B's signatures non-null for every marked caller, so a PR can pass its own CI and break `main` once another merges: before queueing a batch of NullAway PRs, run the integration compile on the merged tree. NullAway stops at the first source set with errors (main, then client, then gametest), so rebuild until the whole build is clean, and probe a zero-finding package with a temporary `String s = null;`. A feature PR touching `src/client` needs the `gameplay` label so CI runs the client suite.
+  Marking package B makes B's signatures non-null for every marked caller, so a PR can pass its own CI and break `main` once another merges: before queueing a batch of NullAway PRs, run the integration compile on the merged tree. NullAway stops at the first source set with errors (main, then client, then gametest), so rebuild until the whole build is clean, and probe a zero-finding package with a temporary `String s = null;`.
 
 Do not spell out counts of enum members or registry entries in prose ("the seven ores"): they drift. Name them, or point at the code.
 
