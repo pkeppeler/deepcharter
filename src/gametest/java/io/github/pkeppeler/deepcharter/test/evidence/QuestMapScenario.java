@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookMemory;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
+import io.github.pkeppeler.deepcharter.client.handbook.StepToast;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapters;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
@@ -17,9 +18,11 @@ import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.ShippedHandbook;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.core.Holder;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -29,14 +32,17 @@ import net.minecraft.world.item.Items;
  * Evidence scenario "m2-quest-map" for #847: the handbook's quest map, in the real game with the shipped chapters. A player on a
  * charter has done five of chapter 1's seven steps, the last of them just now (the step popup), and holds some of what the sixth, the
  * scanner, needs (the index card). Then the first two chapters are done, and chapter 3's map, with chapter 4 ahead and the rest redacted, is shown
- * whole and zoomed out.
+ * whole. Every page carries the tabs: the stills show them on the Founder's letter (the intro), on a chapter text page and on the maps, and
+ * a step with a very long line shows its popup grown to fit it (#962).
  */
 public class QuestMapScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
     private static final int TOAST_SETTLE_TICKS = 40;
     private static final int SCANNER_IRON = 2;
     private static final int SCANNER_COPPER = 2;
-    private static final int ZOOM_OUT_NOTCHES = 3;
+    private static final String LONG_STEP =
+            "Carry the whole of a very long instruction through the hatch, past the second sump pump and "
+                    + "the old tally board, down three ladders to the Company's first fuel depot, and sign for every barrel.";
 
     @Override
     protected String name() {
@@ -64,6 +70,19 @@ public class QuestMapScenario extends EvidenceScenario {
             frame(context);
             screenshot(context, "step-popup");
             context.runOnClient(client -> client.gui.toastManager().clear());
+            context.runOnClient(
+                    client -> client.gui.toastManager().addToast(StepToast.of(Component.literal(LONG_STEP))));
+            context.waitTicks(TOAST_SETTLE_TICKS);
+            frame(context);
+            screenshot(context, "step-popup-long");
+            context.runOnClient(client -> client.gui.toastManager().clear());
+
+            openAt(context, page -> page instanceof HandbookPage.Letter);
+            hold(context);
+            screenshot(context, "tabs-intro-page");
+            openAt(context, page -> page instanceof HandbookPage.ChapterText text && text.number() == 1);
+            hold(context);
+            screenshot(context, "tabs-chapter-text-page");
 
             open(context, 1);
             hold(context);
@@ -76,19 +95,6 @@ public class QuestMapScenario extends EvidenceScenario {
             context.runOnClient(client -> client.gui.toastManager().clear());
             hold(context);
             screenshot(context, "quest-map-chapter-3");
-            HandbookScreen screen =
-                    context.computeOnClient(client -> ClientSession.screen(client, HandbookScreen.class));
-            context.runOnClient(client -> {
-                for (int notch = 0; notch < ZOOM_OUT_NOTCHES; notch++) {
-                    screen.mouseScrolled(
-                            client.getWindow().getGuiScaledWidth() / 2.0,
-                            client.getWindow().getGuiScaledHeight() / 2.0,
-                            0,
-                            -1);
-                }
-            });
-            hold(context);
-            screenshot(context, "quest-map-zoomed-out");
             // chapter 4 has the most steps ahead of it of any current chapter: the tightest fit
             complete(context, singleplayer, 3, Integer.MAX_VALUE);
             open(context, 4);
@@ -127,6 +133,11 @@ public class QuestMapScenario extends EvidenceScenario {
 
     /** Opens the handbook, as the shipped chapters and the synced progress make it, on the map of {@code chapter}. */
     private void open(ClientGameTestContext context, int chapter) {
+        openAt(context, page -> page instanceof HandbookPage.Chapter map && map.number() == chapter);
+    }
+
+    /** Opens the handbook, as the shipped chapters and the synced progress make it, on the first page that {@code target} accepts. */
+    private void openAt(ClientGameTestContext context, Predicate<HandbookPage> target) {
         context.setScreen(() -> {
             var client = net.minecraft.client.Minecraft.getInstance();
             return new HandbookScreen(
@@ -137,8 +148,9 @@ public class QuestMapScenario extends EvidenceScenario {
         context.runOnClient(client -> {
             List<HandbookPage> pages = ShippedHandbook.pages(client);
             for (int index = 0; index < pages.size(); index++) {
-                if (pages.get(index) instanceof HandbookPage.Chapter map && map.number() == chapter) {
+                if (target.test(pages.get(index))) {
                     screen.goTo(index);
+                    break;
                 }
             }
         });
