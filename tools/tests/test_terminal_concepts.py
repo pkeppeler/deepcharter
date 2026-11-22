@@ -133,8 +133,7 @@ class Panel(unittest.TestCase):
                         self.assertEqual(0, self.alpha(glass, x, row), "glass drawn over the bezel")
 
     def test_the_glass_shades_the_rim_and_leaves_the_content_corner_clear(self):
-        # The content starts 6 pixels inside the glass edge (the hatch's margin). A title there keeps at least 95% of its brightness (#1012): 12 of 255 alpha
-        # a pixel in from the content's corner (the corner pixel itself is on the arc and may be dark), while the arc's own rim stays dark.
+        # Content starts `margin` px inside the glass edge; a title there keeps 95% of its brightness (#1012). The corner pixel is on the arc and may be dark.
         glass = pngio.decode((SPRITES / "glass.png").read_bytes())
         margin = self.theme["insetLeft"] - self.theme["glassLeft"]
         for y in range(margin + 1, glass.height - margin - 1):

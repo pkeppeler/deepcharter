@@ -159,9 +159,7 @@ def nameplate(height, text, ink):
 
 
 VIGNETTE_REACH = 10
-# The shading falls off exponentially with the depth `t` into the glass, `exp(-t / decay)`, so it is dark on the rim where the arc is and gone by the
-# 6 pixels the content stays inside the glass edge: a title that starts at the content's corner keeps its brightness (#1012). It never reaches zero
-# inside `VIGNETTE_REACH`, so every pixel of the arc's ring holds some alpha.
+# Shading falls off as exp(-t / decay): dark on the rim, gone by the 6 px the content sits inside the glass edge, so a corner title keeps its brightness (#1012).
 VIGNETTE_DECAY = 0.8
 SHADOW_DECAY = 0.7
 

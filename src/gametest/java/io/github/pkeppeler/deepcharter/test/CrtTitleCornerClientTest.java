@@ -15,6 +15,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -31,9 +32,6 @@ import org.jspecify.annotations.Nullable;
  * corner. On each of the terminal screens it takes a screenshot, finds the title (the first string the screen draws, which must sit at the
  * content's top-left corner) and compares the topmost lit pixel of its first stem, where the glass's shading is heaviest, with the brightest
  * pixel of the title in rows the scanlines treat alike, so a scanline does not read as dimming.
- *
- * <p>Expected, from the sprite's alpha table and not yet measured on a run: the stem's top pixel reads about 0.4 to 0.5 of the title's
- * brightness on main (glass alpha 125 to 160 of 255 there) and 0.95 or more with the lightened glass (alpha 4 to 11).
  */
 public class CrtTitleCornerClientTest implements FabricClientGameTest {
     /** A pixel is the title's text, not its halo (a fifth of the text's brightness), when it is at least this share of the brightest in its row kind. */
@@ -127,10 +125,7 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
                 brightestOfKind[kind] = Math.max(brightestOfKind[kind], brightness(shot, image, x, y));
             }
         }
-        int overall = 0;
-        for (int brightest : brightestOfKind) {
-            overall = Math.max(overall, brightest);
-        }
+        int overall = Arrays.stream(brightestOfKind).max().orElse(0);
         if (overall < 100) {
             return Optional.of(screen + ": " + title + " is not visible in the still");
         }
@@ -141,7 +136,6 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
                 if (brightestOfKind[kind] < TEXT_SHARE * overall || value < TEXT_SHARE * brightestOfKind[kind]) {
                     continue;
                 }
-                // The first lit pixel of the first lit column, from the top: where the glass's shading is heaviest.
                 if (value < FIRST_STEM_SHARE * brightestOfKind[kind]) {
                     return Optional.of(screen + ": the first stem of " + title + " (GUI column " + x + ", row " + y
                             + ") reads " + value + ", the rest of the title " + brightestOfKind[kind]
