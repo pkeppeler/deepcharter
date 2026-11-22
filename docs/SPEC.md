@@ -151,7 +151,8 @@ The **Employee Handbook** is a company-issued onboarding manual.
 - A Note picked up by anyone in a charter goes into every member's handbook, unread for each person.
 - Using a Note in the world opens it to read, charter or not. A player on no charter is told to found one at the contract terminal to file it.
 - Each Note also draws a **pencil path** on the quest map, from earlier miners. It completes when the charter reaches the place the Note points to: a cache, a wreck or another Note. The place is the payoff; there is no claim button. A pencil path is not a Directive.
-- The first version ships 1–2 paths from existing Notes. More come with lore sessions.
+- The paths sit on one fixed **pencil sheet** after the last chapter (nothing drags or zooms), in Roz's green pencil: a box for the Note, a dashed line, an x at the place. The sheet exists once a Note has drawn a path.
+- The first version ships two paths from existing Notes: N07, the prayer card, to the Prospector's wreck, and N10, Ines's log, to the Kells' shaft. More come with lore sessions. A wax cylinder found where a path ends ([#864](https://github.com/pkeppeler/deepcharter/issues/864)) is a payoff of the same kind, added with the cylinder.
 - Revisions may also add stamped pages: a disciplinary notice, the Chairmen's Book or the Ledger. They carry no rules ([lore/handbook.md](lore/handbook.md#revisions)).
 
 ### Directives and progress

@@ -82,6 +82,13 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param windowMargin space kept between the sheet and the window's sides
  * @param tabEdgeGap space kept between the chapter tabs and the window's right edge
  * @param cardItemsGap space between the card's instruction and its first row of items
+ * @param pencilRowPitch tallest a row of the pencil sheet is, from the top of its boxes to the top of the next row's
+ * @param pencilRowGap space between two rows of the pencil sheet
+ * @param pencilSourcePercent width of the box of the Note that draws a path, in percent of the sheet's text width
+ * @param pencilArrowMin shortest the dashed pencil line between a path's two boxes is drawn, with its x
+ * @param pencilBoxInset space between a pencil box's edge and its text
+ * @param pencilMarkSize how far the arms of the x at a payoff reach from its middle
+ * @param pencilWobble how far, in pixels, the pencil boxes' corners overshoot and their sides drift: the hand in a hand-drawn box
  */
 public record QuestMapTuning(
         int chapterTabWidth,
@@ -157,7 +164,14 @@ public record QuestMapTuning(
         int ruleGap,
         int windowMargin,
         int tabEdgeGap,
-        int cardItemsGap) {
+        int cardItemsGap,
+        int pencilRowPitch,
+        int pencilRowGap,
+        int pencilSourcePercent,
+        int pencilArrowMin,
+        int pencilBoxInset,
+        int pencilMarkSize,
+        int pencilWobble) {
     public static QuestMapTuning current() {
         return UiTheme.current().questMap();
     }
@@ -237,6 +251,13 @@ public record QuestMapTuning(
                 d.integer("ruleGap", 0),
                 d.integer("windowMargin", 0),
                 d.integer("tabEdgeGap", 0),
-                d.integer("cardItemsGap", 0));
+                d.integer("cardItemsGap", 0),
+                d.integer("pencilRowPitch", 1),
+                d.integer("pencilRowGap", 0),
+                d.integer("pencilSourcePercent", 10, 60),
+                d.integer("pencilArrowMin", 1),
+                d.integer("pencilBoxInset", 0),
+                d.integer("pencilMarkSize", 1),
+                d.integer("pencilWobble", 0, 3));
     }
 }
