@@ -9,7 +9,6 @@ import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
@@ -32,7 +31,7 @@ import net.minecraft.world.phys.Vec3;
  * The scenes of the layer concepts (#447, docs/design/layer-concepts-2.md; round 1 was #241): for each of layers 1, 2 and 3, one box of rock
  * with a gallery, a hall and a natural cave, written as a structure file by {@code tools/layer_concepts/make.py}, with the cameras to shoot it
  * from and the lava sources that start its flows, which {@code scenes.json} beside the structures lists. Layer 3 does not exist yet, so its
- * scene is built in layer 2's dimension. Nothing here says what a scene looks like: the shape is in the structure file and the look is in the
+ * scene is built in layer 2's band. Nothing here says what a scene looks like: the shape is in the structure file and the look is in the
  * test packs.
  */
 public final class LayerConceptScenes {
@@ -68,7 +67,7 @@ public final class LayerConceptScenes {
      * One scene.
      *
      * @param layer     1, 2 or 3: the layer whose rock, light and fog the scene shows
-     * @param dimension the layer whose dimension the scene is built in: its own, except that layer 3 has none yet and uses layer 2's
+     * @param dimension the layer whose band the scene is built in: its own, except that layer 3 has none yet and uses layer 2's
      * @param structure the structure file the scene is built from
      * @param origin    where its lowest corner goes in the layer's dimension
      * @param lava      its lava sources, in blocks from its corner
@@ -81,9 +80,7 @@ public final class LayerConceptScenes {
         }
 
         public ServerLevel level(MinecraftServer server) {
-            return Objects.requireNonNull(
-                    server.getLevel(TestLayers.dimension(dimension)),
-                    "the server has no level for layer dimension " + dimension);
+            return TestLayers.level(server, dimension);
         }
 
         public Vec3 absolute(Vec3 local) {
@@ -131,7 +128,8 @@ public final class LayerConceptScenes {
     }
 
     private static Scene parse(int layer, JsonObject body) {
-        BlockPos origin = TestLayers.pos(layer, ORIGIN_X + GAP * (layer - 1), 40, ORIGIN_Z);
+        int dimension = body.get("dimension").getAsInt();
+        BlockPos origin = TestLayers.pos(dimension, ORIGIN_X + GAP * (layer - 1), 40, ORIGIN_Z);
         List<BlockPos> lava = new ArrayList<>();
         for (JsonElement at : body.getAsJsonArray("lava")) {
             JsonArray xyz = at.getAsJsonArray();
@@ -151,7 +149,7 @@ public final class LayerConceptScenes {
         }
         return new Scene(
                 layer,
-                body.get("dimension").getAsInt(),
+                dimension,
                 Identifier.parse(body.get("structure").getAsString()),
                 origin,
                 List.copyOf(lava),

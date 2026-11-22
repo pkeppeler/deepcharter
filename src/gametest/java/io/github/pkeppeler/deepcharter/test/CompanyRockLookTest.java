@@ -59,7 +59,7 @@ public class CompanyRockLookTest {
 
     private static final int X = 3456;
     private static final int Z = 5300;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int ROOM = 14;
     /** Blocks east that the pod is moved to leave the blast, as in {@code BlastingChargeTest}. */
     private static final double FAR = 9.5;

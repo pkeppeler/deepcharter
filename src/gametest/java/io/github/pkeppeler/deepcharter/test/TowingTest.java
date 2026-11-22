@@ -81,14 +81,14 @@ public class TowingTest {
     /** Where the tow scenes are built in layer 1, each in its own range of x so none builds on another, and the top of the stone bed they stand on. */
     private static final int TOW_Z = 15008;
 
-    private static final int TOW_FLOOR = 60;
+    private static final int TOW_FLOOR = TestLayers.worldY(1, 60);
     private static final int GROUND_X = 15000;
     private static final int SKY_X = 15100;
     private static final int SHAFT_X = 15300;
     private static final int RELOAD_X = 15500;
     private static final int CHUNK_X = 15600;
     /** Blocks that the floor of a shaft's gallery is above the floor of its shaft. */
-    private static final int GALLERY_FLOOR = 10;
+    private static final int GALLERY_FLOOR = 10; // fixed-pos: a height above the shaft floor, not a world Y
 
     static {
         BreachEvents.CROSSED.register((entity, from, to, fromLayer, toLayer) -> CROSSED.add(entity.getUUID()));
@@ -1051,19 +1051,20 @@ public class TowingTest {
         });
     }
 
-    /** The M1 crossing with a second, unridden pod on a cable: the arriving tower is a new entity and the towed pod must arrive with it. */
+    /** A crossing in place with a second, unridden pod on a cable: nobody is carried, so the towed pod is the same entity, pulled by its cable. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
-    public void theTowedPodCrossesABreachWithItsTower(GameTestHelper helper) {
+    public void theTowedPodFollowsItsTowerAcrossABreachInPlace(GameTestHelper helper) {
         double x = 2100.5;
         double z = 2100.5;
+        double y = TestLayers.worldY(1, 8);
         ServerLevel one = TestLayers.level(helper, 1);
         openShaft(one, x, z);
         MockPlayer mock = MockPlayers.join(helper, "towing-crossing");
         mock.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         PodEntity[] pods = {null, null};
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
-            pods[0] = spawn(one, x, 8, z);
-            pods[1] = spawn(one, x, 10, z);
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, y, z), () -> {
+            pods[0] = spawn(one, x, y, z);
+            pods[1] = spawn(one, x, y + 2, z);
             PodTowing.attach(pods[0], pods[1]);
             if (!mock.player().startRiding(pods[0], true, false)) {
                 throw failure(helper, "the mock could not board the tower");
@@ -1071,48 +1072,41 @@ public class TowingTest {
         });
         helper.succeedWhen(() -> {
             if (pods[0] == null) {
-                throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+                throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, y, z));
             }
             ServerPlayer player = mock.player();
             if (!TestLayers.isIn(player, 2)) {
                 throw failure(
                         helper,
-                        "the rider is still in %s (tower ticked %s times)",
+                        "the rider is still at y=%s in %s (tower ticked %s times)",
+                        player.getY(),
                         player.level().dimension(),
                         pods[0].tickCount);
             }
-            if (!(player.getVehicle() instanceof PodEntity arrived)
-                    || !arrived.getUUID().equals(pods[0].getUUID())) {
+            if (player.getVehicle() != pods[0] || pods[0].level() != one) {
                 throw failure(
                         helper, "the rider should be on the same tower after crossing, is on %s", player.getVehicle());
             }
-            ServerLevel two = player.level();
-            if (!(two.getEntity(pods[1].getUUID()) instanceof PodEntity crossed)) {
-                throw failure(helper, "the towed pod did not arrive in layer 2");
+            if (pods[1].isRemoved() || one.getEntity(pods[1].getUUID()) != pods[1]) {
+                throw failure(helper, "the towed pod should be the same entity, not carried or recreated");
             }
-            if (crossed == pods[1] || !pods[1].isRemoved()) {
-                throw failure(helper, "expected a new towed pod after the crossing and the old one removed");
+            if (!Optional.of(pods[0].getUUID()).equals(PodTowing.towerId(pods[1]))) {
+                throw failure(helper, "the cable is gone, got %s", PodTowing.towerId(pods[1]));
             }
-            if (!Optional.of(arrived.getUUID()).equals(PodTowing.towerId(crossed))) {
-                throw failure(helper, "the cable did not cross with the towed pod, got %s", PodTowing.towerId(crossed));
-            }
-            double gap = crossed.position().distanceTo(arrived.position());
-            double trail = TowTuning.DEFAULT.trailDistance(arrived, crossed);
-            if (Math.abs(gap - trail) > 0.5) {
-                throw failure(
-                        helper,
-                        "the towed pod should arrive at the trail offset of %s from its tower, not inside it, it is %s away",
-                        trail,
-                        gap);
+            double gap = pods[1].position().distanceTo(pods[0].position());
+            double trail = TowTuning.DEFAULT.trailDistance(pods[0], pods[1]);
+            if (gap > trail + 1.5) {
+                throw failure(helper, "the towed pod trails %s from its tower, more than the rope %s", gap, trail);
             }
         });
     }
 
-    /** A rider in the towed pod crosses with it, and CROSSED fires for that rider as it does for the pilot: both crossed. */
+    /** A rider in the towed pod crosses when the towed pod does, and CROSSED fires for that rider as it does for the pilot: both crossed. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CROSSING_TICKS)
-    public void aRiderInTheTowedPodCrossesWithIt(GameTestHelper helper) {
+    public void aRiderInTheTowedPodCrossesWhenItsPodDoes(GameTestHelper helper) {
         double x = 2200.5;
         double z = 2200.5;
+        double y = TestLayers.worldY(1, 8);
         ServerLevel one = TestLayers.level(helper, 1);
         openShaft(one, x, z);
         MockPlayer pilot = MockPlayers.join(helper, "towing-pilot");
@@ -1120,9 +1114,9 @@ public class TowingTest {
         pilot.teleportTo(one, TestLayers.vec(1, x, 8, z), 0, 0);
         rider.teleportTo(one, TestLayers.vec(1, x, 10, z), 0, 0);
         PodEntity[] pods = {null, null};
-        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, 8, z), () -> {
-            pods[0] = spawn(one, x, 8, z);
-            pods[1] = spawn(one, x, 10, z);
+        FarChunks.awaitEntityTicking(helper, one, BlockPos.containing(x, y, z), () -> {
+            pods[0] = spawn(one, x, y, z);
+            pods[1] = spawn(one, x, y + 2, z);
             PodTowing.attach(pods[0], pods[1]);
             if (!pilot.player().startRiding(pods[0], true, false)
                     || !rider.player().startRiding(pods[1], true, false)) {
@@ -1131,18 +1125,13 @@ public class TowingTest {
         });
         helper.succeedWhen(() -> {
             if (pods[0] == null) {
-                throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, 8, z));
+                throw failure(helper, "waiting for the chunk at %s to tick entities", BlockPos.containing(x, y, z));
             }
             ServerPlayer seated = rider.player();
             if (!TestLayers.isIn(seated, 2)) {
-                throw failure(
-                        helper,
-                        "the rider in the towed pod is still in %s",
-                        seated.level().dimension());
+                throw failure(helper, "the rider in the towed pod is still at y=%s", seated.getY());
             }
-            if (!(seated.getVehicle() instanceof PodEntity vehicle)
-                    || !vehicle.getUUID().equals(pods[1].getUUID())
-                    || !PodTowing.isTowed(vehicle)) {
+            if (seated.getVehicle() != pods[1] || !PodTowing.isTowed(pods[1])) {
                 throw failure(
                         helper,
                         "the rider should still ride the towed pod on its cable, is on %s",
@@ -1150,9 +1139,7 @@ public class TowingTest {
             }
             if (!TestLayers.isIn(pilot.player(), 2)) {
                 throw failure(
-                        helper,
-                        "the pilot is still in %s",
-                        pilot.player().level().dimension());
+                        helper, "the pilot is still at y=%s", pilot.player().getY());
             }
             if (!CROSSED.contains(seated.getUUID())
                     || !CROSSED.contains(pilot.player().getUUID())) {
@@ -1427,9 +1414,11 @@ public class TowingTest {
                 .orElseThrow(() -> failure(helper, "the saved pod did not load"));
     }
 
-    /** Clear a 3x3 shaft through the floor of {@code level}, wide enough for the pod's 1.9-block hull. */
+    /** Clear a 3x3 shaft through the floor of layer 1 into a pocket under it, wide enough for the pod's 1.9-block hull. */
     private static void openShaft(ServerLevel level, double x, double z) {
         BlockPos column = BlockPos.containing(x, 0, z);
+        RoomCarver.carvePocketBelow(
+                level, 1, column.getX() - 1, column.getX() + 1, column.getZ() - 1, column.getZ() + 1);
         RoomCarver.carve(
                 level,
                 column.offset(-1, 0, -1).atY(TestLayers.band(level, 1).minY()),
