@@ -101,6 +101,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             favouritesAreKeptPerPlayerAndSurviveReopening();
             aFavouritesFileOfAnotherVersionIsNeverWritten();
             thePanelsFitAtEveryWindowSize();
+            aGlassWithNoRadiusKeepsFullWidthScanlines();
         });
         inTheRealGame(context);
     }
@@ -415,6 +416,15 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         }
     }
 
+    /** {@code CrtDraw.scanlines} is {@code roundedScanlines} with radius 0, which must start every line at the left edge and end it at the right. */
+    private static void aGlassWithNoRadiusKeepsFullWidthScanlines() {
+        for (int row = 0; row < HEIGHT; row++) {
+            require(
+                    PanelLook.scanlineInset(0, row, WIDTH, HEIGHT) == 0,
+                    "a scanline of a glass with no radius is cut short at row " + row);
+        }
+    }
+
     private static void requireFits(CatalogueLayout layout, int width, int height) {
         CatalogueLook look = CatalogueLook.current();
         String at = " at " + width + " by " + height;
@@ -685,9 +695,9 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The glass has rounded corners (#984): no drawn string and no item icon of the two consoles may reach the region outside the arcs, which
-     * the scanlines and the glass sprite blank. The window is {@code width} by {@code height}, the smallest the layout draws at or the
-     * default.
+     * The glass has rounded corners (#984): no drawn string and no item icon of the two consoles may reach the region outside the arcs or the
+     * dark ring the glass's bulge puts round its edge ({@code vignetteWidth}), and no cell outline may reach the region outside the arcs. The
+     * window is {@code width} by {@code height}, the smallest the layout draws at or the default.
      */
     private static void nothingIsCutByTheGlassCorners(
             ClientGameTestContext context, AbstractContainerScreen<?> screen, int width, int height) {
@@ -697,6 +707,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             CatalogueLayout layout = Objects.requireNonNull(panelOf(screen).layout(), "the panels are laid out");
             String at = " at " + width + " by " + height;
             int radius = PanelLook.current().glassRadius();
+            CatalogueLook look = CatalogueLook.current();
+            int ring = look.casing().vignetteWidth();
             List<Rect> glasses = List.of(layout.catalogueGlass(), layout.recipeGlass());
             for (Drawn text : drawn(client, screen)) {
                 Rect box = new Rect(
@@ -706,11 +718,10 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                         text.box().height());
                 for (Rect glass : glasses) {
                     if (inside(box, glass)) {
-                        requireClearOfCorners(box, glass, radius, "text '" + text.shortText() + "'" + at);
+                        requireClearOfCorners(box, glass, radius, ring, "text '" + text.shortText() + "'" + at);
                     }
                 }
             }
-            CatalogueLook look = CatalogueLook.current();
             CatalogueLayout.Shelf shelf = layout.shelf();
             List<Rect> shelfCells = new ArrayList<>();
             for (int row = 0; row < shelf.rows(); row++) {
@@ -729,35 +740,32 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                         look.slotSize(),
                         look.slotSize()));
             }
-            for (Rect cell : shelfCells) {
-                requireClearOfCorners(
-                        icon(cell, look), layout.catalogueGlass(), radius, "the item icon in " + cell + at);
-            }
+            List<Rect> recipeCells = new ArrayList<>();
             CatalogueLayout.Card card = layout.card();
-            List<Rect> icons = new ArrayList<>();
             for (int row = 0; row < 3; row++) {
                 for (int column = 0; column < 3; column++) {
-                    icons.add(icon(
-                            new Rect(
-                                    card.left() + column * look.recipeCell(),
-                                    card.gridY() + row * look.recipeCell(),
-                                    look.slotSize(),
-                                    look.slotSize()),
-                            look));
+                    recipeCells.add(new Rect(
+                            card.left() + column * look.recipeCell(),
+                            card.gridY() + row * look.recipeCell(),
+                            look.slotSize(),
+                            look.slotSize()));
                 }
             }
-            icons.add(icon(
-                    new Rect(
-                            card.left() + look.resultX(),
-                            card.gridY() + look.resultY(),
-                            look.slotSize(),
-                            look.slotSize()),
-                    look));
-            for (int row = 0; row < card.needRows(); row++) {
-                icons.add(new Rect(card.left(), card.needTop() + row * look.needRow(), 16, 16));
+            recipeCells.add(new Rect(
+                    card.left() + look.resultX(), card.gridY() + look.resultY(), look.slotSize(), look.slotSize()));
+            for (Rect cell : shelfCells) {
+                requireClearOfCorners(cell, layout.catalogueGlass(), radius, 0, "the cell outline " + cell + at);
+                requireClearOfCorners(
+                        icon(cell, look), layout.catalogueGlass(), radius, ring, "the item icon in " + cell + at);
             }
-            for (Rect icon : icons) {
-                requireClearOfCorners(icon, layout.recipeGlass(), radius, "the recipe item icon " + icon + at);
+            for (Rect cell : recipeCells) {
+                requireClearOfCorners(cell, layout.recipeGlass(), radius, 0, "the recipe cell outline " + cell + at);
+                requireClearOfCorners(
+                        icon(cell, look), layout.recipeGlass(), radius, ring, "the recipe item icon in " + cell + at);
+            }
+            for (int row = 0; row < card.needRows(); row++) {
+                Rect need = new Rect(card.left(), card.needTop() + row * look.needRow(), 16, 16);
+                requireClearOfCorners(need, layout.recipeGlass(), radius, ring, "the have/need icon " + need + at);
             }
         });
     }
@@ -767,16 +775,27 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         return new Rect(cell.x() + look.iconInset(), cell.y() + look.iconInset(), 16, 16);
     }
 
-    /** Fails when a row of {@code box} reaches past the rounded corner of {@code glass}: the row's first inside pixel is {@link PanelLook#cornerInset}. */
-    private static void requireClearOfCorners(Rect box, Rect glass, int radius, String what) {
+    /**
+     * Fails when a row of {@code box} reaches past the rounded corner of {@code glass} ({@link PanelLook#cornerInset}). A positive {@code ring}
+     * is the width of the dark ring that dims the glass's edge: inside a corner's rows the box must also keep that far from the sides, and
+     * from the top and bottom edges.
+     */
+    private static void requireClearOfCorners(Rect box, Rect glass, int radius, int ring, String what) {
         for (int y = box.y(); y < box.bottom(); y++) {
             int row = y - glass.y();
             int inset = Math.max(
                     PanelLook.cornerInset(radius, row), PanelLook.cornerInset(radius, glass.height() - 1 - row));
+            boolean inCorner = inset > 0;
+            int margin = inCorner ? Math.max(inset, ring) : 0;
             require(
-                    box.x() >= glass.x() + inset && box.right() <= glass.right() - inset,
+                    box.x() >= glass.x() + margin && box.right() <= glass.right() - margin,
                     what + " " + box + " is cut by the rounded corner of the glass " + glass + " at row " + row
-                            + ", where the glass starts " + inset + " pixels in (radius " + radius + ")");
+                            + ", where the glass starts " + margin + " pixels in (radius " + radius + ", ring " + ring
+                            + ")");
+            require(
+                    ring == 0 || (row >= ring && glass.height() - row > ring),
+                    what + " " + box + " is under the dark ring at the top or bottom of the glass " + glass + " at row "
+                            + row + " (ring " + ring + ")");
         }
     }
 
