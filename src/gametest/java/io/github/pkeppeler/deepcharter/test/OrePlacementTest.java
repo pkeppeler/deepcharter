@@ -20,8 +20,10 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks.At;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
@@ -39,6 +41,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -51,7 +54,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.piston.PistonBaseBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -98,15 +100,23 @@ public class OrePlacementTest {
         }
     }
 
-    private static Census @Nullable [] census;
+    /** A census counted once per batch: a second test that arrives while it is counting waits for it instead of counting too. */
+    private static final class CachedCensus {
+        Census @Nullable [] value;
+        boolean pending;
+    }
+
+    private static final CachedCensus CENSUS = new CachedCensus();
 
     private static final String CAMPAIGN = "deepcharter:campaign_sample";
 
     /** The tables in the campaign world (#743): the zone fill runs in each layer's band, so each of its six zones holds the ore of the same rows. */
-    @GameTest(dimension = CAMPAIGN, maxTicks = 6000)
+    @GameTest(environment = CampaignEnvironments.C, dimension = CAMPAIGN, maxTicks = MAX_TICKS)
     public void oreAndHazardFrequenciesMatchTheTablesPerZone(GameTestHelper helper) {
-        expectTables(helper, sample(helper));
-        helper.succeed();
+        sample(helper, sample -> {
+            expectTables(helper, sample);
+            helper.succeed();
+        });
     }
 
     private static void expectTables(GameTestHelper helper, Census[] sample) {
@@ -199,30 +209,31 @@ public class OrePlacementTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = CAMPAIGN, maxTicks = 6000)
+    @GameTest(environment = CampaignEnvironments.C, dimension = CAMPAIGN, maxTicks = MAX_TICKS)
     public void hazardsStartWhereTheIssueSaysAndCicatriumIsDeep(GameTestHelper helper) {
-        Census[] sample = sample(helper);
-        for (int zone = 0; zone < ZONE_NAMES.length; zone++) {
-            boolean rock = zone >= 1;
-            boolean lavaAndGas = zone >= 2;
-            expectPresence(helper, zone, sample[zone], HazardBlocks.COMPANY_ROCK, rock);
-            expectPresence(helper, zone, sample[zone], Blocks.LAVA, lavaAndGas);
-            expectPresence(helper, zone, sample[zone], HazardBlocks.GAS_POCKET, lavaAndGas);
-            expectPresence(helper, zone, sample[zone], OreBlocks.of(OreType.CICATRIUM), zone >= 4);
-        }
-        for (int zone = 4; zone < 6; zone++) {
-            int cicatrium = sample[zone].of(OreBlocks.of(OreType.CICATRIUM));
-            int platinium = sample[zone].of(OreBlocks.of(OreType.PLATINIUM));
-            if (cicatrium >= platinium) {
-                throw failure(
-                        helper,
-                        "%s has %d cicatrium and %d platinium: cicatrium is the rarer",
-                        ZONE_NAMES[zone],
-                        cicatrium,
-                        platinium);
+        sample(helper, sample -> {
+            for (int zone = 0; zone < ZONE_NAMES.length; zone++) {
+                boolean rock = zone >= 1;
+                boolean lavaAndGas = zone >= 2;
+                expectPresence(helper, zone, sample[zone], HazardBlocks.COMPANY_ROCK, rock);
+                expectPresence(helper, zone, sample[zone], Blocks.LAVA, lavaAndGas);
+                expectPresence(helper, zone, sample[zone], HazardBlocks.GAS_POCKET, lavaAndGas);
+                expectPresence(helper, zone, sample[zone], OreBlocks.of(OreType.CICATRIUM), zone >= 4);
             }
-        }
-        helper.succeed();
+            for (int zone = 4; zone < 6; zone++) {
+                int cicatrium = sample[zone].of(OreBlocks.of(OreType.CICATRIUM));
+                int platinium = sample[zone].of(OreBlocks.of(OreType.PLATINIUM));
+                if (cicatrium >= platinium) {
+                    throw failure(
+                            helper,
+                            "%s has %d cicatrium and %d platinium: cicatrium is the rarer",
+                            ZONE_NAMES[zone],
+                            cicatrium,
+                            platinium);
+                }
+            }
+            helper.succeed();
+        });
     }
 
     @GameTest
@@ -695,60 +706,118 @@ public class OrePlacementTest {
         return blocks;
     }
 
-    /** Counts the blocks of {@link #SIDE} x {@link #SIDE} chunks of each layer's band, once for all the tests of the class. */
-    private static Census[] sample(GameTestHelper helper) {
-        if (census == null) {
-            census = count(layer -> {
-                CampaignBands.Band band = CampaignBands.layer(layer);
-                return new Rows(helper.getLevel(), band.minY(), band.height());
-            });
+    /**
+     * Counts the blocks of {@link #SIDE} x {@link #SIDE} chunks of each layer's band, once for all the tests of the class, and runs
+     * {@code then} with the result. The chunks load on the worker threads and the count takes one chunk a tick, so the server keeps
+     * ticking for the tests beside this one (#1016).
+     */
+    private static void sample(GameTestHelper helper, Consumer<Census[]> then) {
+        cached(
+                helper,
+                CENSUS,
+                layer -> {
+                    CampaignBands.Band band = CampaignBands.layer(layer);
+                    return new Rows(helper.getLevel(), band.minY(), band.height());
+                },
+                then);
+    }
+
+    private static void cached(
+            GameTestHelper helper, CachedCensus cache, IntFunction<Rows> rowsOf, Consumer<Census[]> then) {
+        if (cache.value != null) {
+            then.accept(cache.value);
+            return;
         }
-        return census;
+        if (cache.pending) {
+            // A tick body, not a sequence step: a sequence swallows a failure and polls on, so a dead owner would hide
+            // for the whole maxTicks.
+            FarChunks.Deadline deadline = FarChunks.deadline();
+            boolean[] done = {false};
+            TestTicks.each(helper, () -> {
+                if (done[0]) {
+                    return;
+                }
+                Census[] value = cache.value;
+                deadline.await(
+                        helper,
+                        helper.getLevel(),
+                        value != null,
+                        () -> "the census owner never finished; see its failure");
+                if (value != null) {
+                    done[0] = true;
+                    then.accept(value);
+                }
+            });
+            return;
+        }
+        cache.pending = true;
+        count(helper, rowsOf, result -> {
+            cache.value = result;
+            then.accept(result);
+        });
     }
 
     /** The rows of one layer: the level that holds it and the Ys it spans in that level. */
     private record Rows(ServerLevel level, int minY, int height) {}
 
-    private static Census[] count(IntFunction<Rows> rowsOf) {
-        Census[] result = new Census[ZONE_NAMES.length];
-        for (int layer = 1; layer <= 2; layer++) {
-            Rows rows = rowsOf.apply(layer);
-            ServerLevel level = rows.level();
-            int minY = rows.minY();
-            int height = rows.height();
-            Map<Block, Integer>[] found = newCounters(3);
-            int[] candidates = new int[3];
-            long start = System.nanoTime();
+    private static void count(GameTestHelper helper, IntFunction<Rows> rowsOf, Consumer<Census[]> then) {
+        Rows[] rows = {rowsOf.apply(1), rowsOf.apply(2)};
+        List<FarChunks.At> chunks = new ArrayList<>();
+        for (Rows layer : rows) {
             for (int cx = FIRST_CHUNK; cx < FIRST_CHUNK + SIDE; cx++) {
                 for (int cz = FIRST_CHUNK; cz < FIRST_CHUNK + SIDE; cz++) {
-                    level.getChunk(cx, cz, ChunkStatus.FULL);
-                    for (int x = cx << 4; x < (cx << 4) + 16; x++) {
-                        for (int z = cz << 4; z < (cz << 4) + 16; z++) {
-                            for (int y = minY; y < minY + height; y++) {
-                                BlockState state = level.getBlockState(new BlockPos(x, y, z));
-                                Block block = state.getBlock();
-                                if (isCandidate(state)) {
-                                    int zone = Zones.index(minY, height, y);
-                                    candidates[zone]++;
-                                    found[zone].merge(block, 1, Integer::sum);
-                                }
+                    chunks.add(new FarChunks.At(layer.level(), cx, cz));
+                }
+            }
+        }
+        Census[] result = new Census[ZONE_NAMES.length];
+        List<Map<Block, Integer>[]> found = List.of(newCounters(3), newCounters(3));
+        int[][] candidates = new int[2][3];
+        int[] next = {0};
+        long[] start = {0};
+        FarChunks.whenLoaded(helper, chunks, () -> {
+            start[0] = System.nanoTime();
+            helper.startSequence()
+                    .thenWaitUntil(() -> {
+                        At at = chunks.get(next[0]);
+                        int layer = next[0] / (SIDE * SIDE);
+                        countChunk(rows[layer], at, candidates[layer], found.get(layer));
+                        if (++next[0] < chunks.size()) {
+                            throw helper.assertionException("counted %s of %s chunks", next[0], chunks.size());
+                        }
+                    })
+                    .thenExecute(() -> {
+                        LOGGER.info(
+                                "Sampled {} chunks of 2 layers, one a tick, in {} ms",
+                                chunks.size(),
+                                Math.round((System.nanoTime() - start[0]) / 1e6));
+                        for (int layer = 0; layer < 2; layer++) {
+                            for (int index = 0; index < 3; index++) {
+                                // Zone 0 of a layer is its top third.
+                                result[layer * 3 + index] =
+                                        new Census(candidates[layer][index], found.get(layer)[index]);
                             }
                         }
+                        then.accept(result);
+                    });
+        });
+    }
+
+    private static void countChunk(Rows rows, FarChunks.At at, int[] candidates, Map<Block, Integer>[] found) {
+        ServerLevel level = rows.level();
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        for (int x = at.chunkX() << 4; x < (at.chunkX() << 4) + 16; x++) {
+            for (int z = at.chunkZ() << 4; z < (at.chunkZ() << 4) + 16; z++) {
+                for (int y = rows.minY(); y < rows.minY() + rows.height(); y++) {
+                    BlockState state = level.getBlockState(pos.set(x, y, z));
+                    if (isCandidate(state)) {
+                        int zone = Zones.index(rows.minY(), rows.height(), y);
+                        candidates[zone]++;
+                        found[zone].merge(state.getBlock(), 1, Integer::sum);
                     }
                 }
             }
-            LOGGER.info(
-                    "Sampled layer {} of {}: {} chunks in {} ms",
-                    layer,
-                    level.dimension().identifier(),
-                    SIDE * SIDE,
-                    Math.round((System.nanoTime() - start) / 1e6));
-            for (int index = 0; index < 3; index++) {
-                // Zone 0 of a layer is its top third.
-                result[(layer - 1) * 3 + index] = new Census(candidates[index], found[index]);
-            }
         }
-        return result;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

@@ -9,11 +9,14 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
-import io.github.pkeppeler.deepcharter.client.handbook.ItemRecipeLink;
 import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
 import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
+import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
+import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import java.util.ArrayList;
@@ -24,12 +27,15 @@ import java.util.Map;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Items;
 
 /**
  * Client GameTest for the quest map (#847): each chapter's directives as a flowchart on the handbook paper, the chapter tabs, the index
@@ -62,7 +68,6 @@ public class QuestMapClientTest implements FabricClientGameTest {
             aClassifiedChapterKeepsItsRedactedPage();
             pickingAStepMovesTheCard();
             theLinkOnTheCardOpensTheChapterPage();
-            clickingAnItemCallsTheRecipeHook();
             nothingOnAHandbookPageMoves();
             aFlowchartStepIsPickedByAClickAndNeverDragged();
             theBookOpensWhereItWasLeft();
@@ -72,6 +77,7 @@ public class QuestMapClientTest implements FabricClientGameTest {
             aDoneStepNeedsNothingMore();
             theBookReopensOnTheSamePageWhenProgressAddsPages();
         });
+        clickingAnItemOpensItsRecipeInTheCatalogue(context);
     }
 
     private static Identifier chapterId(int chapter) {
@@ -376,17 +382,27 @@ public class QuestMapClientTest implements FabricClientGameTest {
                 "the link goes to the chapter's first page " + firstPage(1) + ", got " + screen.page());
     }
 
-    private static void clickingAnItemCallsTheRecipeHook() {
-        HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
-        List<Identifier> clicked = new ArrayList<>();
-        ItemRecipeLink.handleWith(clicked::add);
-        try {
-            Box count = drawn(screen, "0/4").box();
-            int iconSize = QuestMapTuning.current().itemIconSize();
-            screen.mouseClicked(mouse(count.x() - iconSize / 2.0, count.y() + 2), false);
-            require(clicked.equals(List.of(IRON)), "a click on the iron icon asks for iron's recipe, got " + clicked);
-        } finally {
-            ItemRecipeLink.handleWith(item -> {});
+    /** A click on an item of the index card opens the inventory with the parts catalogue looking that item up. */
+    private static void clickingAnItemOpensItsRecipeInTheCatalogue(ClientGameTestContext context) {
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            ClientWait.until(context, "the player", client -> client.player != null && client.level != null);
+            // An empty inventory, so the card counts 0/4 of the iron.
+            singleplayer.getServer().runCommand("clear @p");
+            context.runOnClient(client -> {
+                HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
+                Box count = drawn(screen, "0/4").box();
+                int iconSize = QuestMapTuning.current().itemIconSize();
+                screen.mouseClicked(mouse(count.x() - iconSize / 2.0, count.y() + 2), false);
+            });
+            ClientWait.screen(context, InventoryScreen.class);
+            context.waitTicks(3);
+            CataloguePanel panel = CatalogueScene.panel(context);
+            CatalogueState.Lookup lookup =
+                    context.computeOnClient(client -> panel.state().lookup());
+            require(
+                    lookup != null && lookup.item() == Items.IRON_INGOT && lookup.mode() == CatalogueState.Mode.RECIPES,
+                    "a click on the iron icon opens the inventory at iron's recipes, got " + lookup);
+            context.setScreen(() -> null);
         }
     }
 
