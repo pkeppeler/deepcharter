@@ -51,8 +51,8 @@ public final class Drifters {
      */
     public record Noise(Vec3 pos, double radius, UUID listener, boolean pod) {}
 
-    /** A place that draws drifters: where it is, in the level a look found it. */
-    public record Source(Vec3 pos) {}
+    /** A place that draws drifters: where it is, in the level a look found it, and whether it is a pod's drill and not the crew on foot. */
+    public record Source(Vec3 pos, boolean pod) {}
 
     /** What each level's last look found. Server thread only; a level with nothing has no entry. */
     private static final Map<ResourceKey<Level>, List<Noise>> NOISES = new HashMap<>();
@@ -179,10 +179,10 @@ public final class Drifters {
         boolean foot = false;
         for (Noise noise : NOISES.getOrDefault(level.dimension(), List.of())) {
             if (noise.pod()) {
-                sources.add(new Source(noise.pos()));
+                sources.add(new Source(noise.pos(), true));
             } else if (!foot) {
                 foot = true;
-                sources.add(new Source(noise.pos()));
+                sources.add(new Source(noise.pos(), false));
             }
         }
         return sources;

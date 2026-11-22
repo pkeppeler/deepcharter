@@ -54,7 +54,7 @@ public class DrifterSpawnTest {
     private static final int CZ = 25_016;
     private static final int HALF_X = 23;
     private static final int HALF_Z = 2;
-    private static final int HALF_Y = 9;
+    private static final int HALF_HEIGHT = 9;
     /** Places a placement is tried at, a call at a time: one call in about ten finds one. */
     private static final int ATTEMPTS = 400;
     /** Calls that must all find no place or no room, for a test that a spawn is refused: all the calls miss by chance with a probability below 1e-12. */
@@ -68,13 +68,13 @@ public class DrifterSpawnTest {
     private static void room(ServerLevel level, int y) {
         RoomCarver.carve(
                 level,
-                new BlockPos(CX - HALF_X - 1, y - HALF_Y - 1, CZ - HALF_Z - 1),
-                new BlockPos(CX + HALF_X + 1, y + HALF_Y + 1, CZ + HALF_Z + 1),
+                new BlockPos(CX - HALF_X - 1, y - HALF_HEIGHT - 1, CZ - HALF_Z - 1),
+                new BlockPos(CX + HALF_X + 1, y + HALF_HEIGHT + 1, CZ + HALF_Z + 1),
                 Blocks.STONE.defaultBlockState());
         RoomCarver.carve(
                 level,
-                new BlockPos(CX - HALF_X, y - HALF_Y, CZ - HALF_Z),
-                new BlockPos(CX + HALF_X, y + HALF_Y, CZ + HALF_Z),
+                new BlockPos(CX - HALF_X, y - HALF_HEIGHT, CZ - HALF_Z),
+                new BlockPos(CX + HALF_X, y + HALF_HEIGHT, CZ + HALF_Z),
                 Blocks.AIR.defaultBlockState());
     }
 
@@ -88,16 +88,16 @@ public class DrifterSpawnTest {
                         "fillbiome %d %d %d %d %d %d %s"
                                 .formatted(
                                         CX - HALF_X - 1,
-                                        y - HALF_Y - 1,
+                                        y - HALF_HEIGHT - 1,
                                         CZ - HALF_Z - 1,
                                         CX + HALF_X + 1,
-                                        y + HALF_Y + 1,
+                                        y + HALF_HEIGHT + 1,
                                         CZ + HALF_Z + 1,
                                         HOLLOWS_TEST_BIOME));
     }
 
     private static Drifters.Source middle(int y) {
-        return new Drifters.Source(new Vec3(CX + 0.5, y, CZ + 0.5));
+        return new Drifters.Source(new Vec3(CX + 0.5, y, CZ + 0.5), true);
     }
 
     /** Calls the spawner until it places one, or fails the test after {@link #ATTEMPTS} calls. */
@@ -255,7 +255,7 @@ public class DrifterSpawnTest {
             expect(
                     helper,
                     !DrifterAlarm.isRinging(
-                            level, topY(CampaignBands.LAYER_1.minY(), CampaignBands.LAYER_1.height(), 0)),
+                            level, topY(CampaignBands.LAYER_1.minY(), CampaignBands.LAYER_1.height(), 2)),
                     "the alarm of layer 2 rings in layer 1");
             since[0] = helper.getTick();
         });
