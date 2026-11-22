@@ -1,0 +1,69 @@
+{
+	"format_version": "1.12.0",
+	"minecraft:geometry": [
+		{
+			"description": {
+				"identifier": "geometry.deepcharter.tally",
+				"texture_width": 64,
+				"texture_height": 64,
+				"visible_bounds_width": 3,
+				"visible_bounds_height": 3,
+				"visible_bounds_offset": [0, 1, 0]
+			},
+			"bones": [
+				{
+					"name": "root",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "body",
+					"parent": "root",
+					"pivot": [0, 5, 0],
+					"cubes": [
+						{"origin": [-4, 2, -4], "size": [8, 5, 8], "uv": [0, 0]}
+					]
+				},
+				{
+					"name": "dome",
+					"parent": "body",
+					"pivot": [0, 7, 0],
+					"cubes": [
+						{"origin": [-3, 7, -3], "size": [6, 2, 6], "uv": [0, 26]}
+					]
+				},
+				{
+					"name": "wheel",
+					"parent": "body",
+					"pivot": [0, 5, 0],
+					"cubes": [
+						{"origin": [-5, 4, -5], "size": [10, 1, 10], "uv": [0, 14]}
+					]
+				},
+				{
+					"name": "lens",
+					"parent": "body",
+					"pivot": [0, 5, -4],
+					"cubes": [
+						{"origin": [-1, 4, -5], "size": [2, 2, 1], "uv": [43, 26]}
+					]
+				},
+				{
+					"name": "clamp_l",
+					"parent": "body",
+					"pivot": [3, 2, 3],
+					"cubes": [
+						{"origin": [2, 0, 2], "size": [2, 2, 2], "uv": [25, 26]}
+					]
+				},
+				{
+					"name": "clamp_r",
+					"parent": "body",
+					"pivot": [-3, 2, 3],
+					"cubes": [
+						{"origin": [-4, 0, 2], "size": [2, 2, 2], "uv": [34, 26]}
+					]
+				}
+			]
+		}
+	]
+}

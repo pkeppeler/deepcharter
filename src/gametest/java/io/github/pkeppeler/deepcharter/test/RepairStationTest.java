@@ -670,7 +670,7 @@ public class RepairStationTest {
         Charter charter =
                 Charters.charterOfOrThrow(server, pilot.player().getUUID()).orElseThrow();
         MockPlayer passenger = MockPlayers.join(helper, "Stowaway");
-        BlockPos at = BlockPos.containing(x, 40, z);
+        BlockPos at = BlockPos.containing(x, TestLayers.worldY(1, 40), z);
         boolean[] used = {false};
         FarChunks.awaitEntityTicking(helper, one, at, () -> {
             // Only now: layer 1 is solid rock, and a rider put there while the chunk loads suffocates on a slow runner.
