@@ -1,7 +1,7 @@
 # Runs on every PR. Label events are deliberately not triggers here (they live in
 # client-tests.yml), so adding a label never re-runs or cancels the build.
 # The job names below are the REQUIRED_CHECKS in tools/merge-pr.sh; renaming one
-# means changing both. The weekly dependency audit lives in audit.yml.
+# means changing both. Every one merges the real main first (.github/actions/merge-main). The weekly dependency audit lives in audit.yml.
 name: CI
 
 on:
@@ -22,9 +22,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # The PR head merged with the real main, not refs/pull/N/merge (#979): the gate reads the recorded main sha.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
           persist-credentials: false
+      - uses: ./.github/actions/merge-main
       - uses: ./.github/actions/setup-python-uv
       - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
@@ -52,9 +56,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15 # tests take ~1 min on a runner; leave headroom for test growth
     steps:
+      # The PR head merged with the real main, not refs/pull/N/merge (#979): the gate reads the recorded main sha.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
           persist-credentials: false
+      - uses: ./.github/actions/merge-main
       # build-audio-pack.test.sh needs ffmpeg. It makes its own synthetic tones; CI never
       # has, reads or needs the original game audio.
       - uses: ./.github/actions/setup-python-uv

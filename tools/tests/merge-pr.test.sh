@@ -19,6 +19,10 @@ export REAL_PATH
 FIXTURES=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fixtures/gh-rest
 FIXTURE_LIB=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/gh-fixture.sh
 export FIXTURE_LIB
+# The origin/main sha the stubs report, and the sha every deciding run records unless a case says otherwise.
+MAIN_SHA=$(printf 'a%.0s' {1..40})
+export MAIN_SHA
+OLD_MAIN=$(printf 'b%.0s' {1..40})
 # shellcheck source=lib/gh-fixture.sh
 source "$FIXTURE_LIB"
 # The roadmap runs through tools/py, which runs the stub uv on the version .python-version names.
@@ -54,19 +58,16 @@ case "$method $path" in
     [[ ${STUB_MAP_FAIL-0} == 404 ]] && { echo "gh: Not Found (HTTP 404)"; exit 1; }
     [[ ${STUB_MAP_FAIL-0} == 500 ]] && { echo "gh: Server Error (HTTP 500)"; exit 1; }
     printf '%s' "${STUB_MAP_STALE-}" ;;
-  "GET "*/actions/runs\?*)
-    [[ ${STUB_CI_RUNS_FAIL-0} == 1 ]] && exit 1
-    # STUB_CI_RUNS: "<id>[:<conclusion>]" lines (default success). Like the real
-    # --jq, only ids of runs the select clause asks for are printed.
-    while IFS=: read -r id concl; do
-      [[ -n $id ]] || continue
-      [[ $* != *'.conclusion == "success"'* || ${concl:-success} == success ]] && echo "$id"
-    done <<<"${STUB_CI_RUNS-9001}"
-    exit 0 ;;
-  "GET "*/actions/runs/*)
-    [[ ${STUB_CI_CREATED_FAIL-0} == 1 ]] && exit 1
-    printf '%s' "${STUB_CI_CREATED-2026-10-08T03:40:43Z
-}" ;;
+  "GET "*/check-runs/*/annotations*)
+    # The merged-main annotation of run <id>: STUB_FIXTURE_ANNOTATIONS (a recorded response) run through the script's
+    # own --jq, else STUB_MERGED_MAIN_<id>, else STUB_MERGED_MAIN, else the default main sha. Empty prints nothing.
+    [[ ${STUB_ANN_FAIL-0} == 1 ]] && exit 1
+    if [[ -n ${STUB_FIXTURE_ANNOTATIONS-} ]]; then gh_fixture_jq "$STUB_FIXTURE_ANNOTATIONS" "$jq"; exit; fi
+    id=${path#*check-runs/}
+    id=${id%%/*}
+    var=STUB_MERGED_MAIN_$id
+    recorded=${!var-${STUB_MERGED_MAIN-$MAIN_SHA}}
+    [[ -z $recorded ]] || printf '%s\n' "$recorded" ;;
   "GET "*/check-runs*)
     echo "${STUB_RUNS-$DEFAULT_RUNS}"
     exit "${STUB_RUNS_RC:-0}" ;;
@@ -127,19 +128,9 @@ cat >"$work/bin/git" <<'STUB'
 echo "git $*" >>"$LOG"
 case "$1" in
   fetch) [[ ${STUB_FETCH_FAIL-0} == 1 ]] && exit 1 ;;
-  log)
-    # STUB_MAIN_LOG: "<hash> <iso time>" lines. Prints the hashes at or after --since.
-    [[ ${STUB_LOG_FAIL-0} == 1 ]] && exit 1
-    since=
-    for a in "$@"; do [[ $a == --since=* ]] && since=${a#--since=}; done
-    while read -r h t; do
-      [[ -z $h || $t < $since ]] || echo "$h"
-    done <<<"${STUB_MAIN_LOG-}" ;;
-  show)
-    # Files of a commit come from STUB_SHOW_<hash>.
-    [[ ${STUB_SHOW_FAIL-0} == 1 ]] && exit 1
-    var=STUB_SHOW_${!#}
-    printf '%s' "${!var-}" ;;
+  rev-parse) [[ ${STUB_REVPARSE_FAIL-0} == 1 ]] && exit 1; echo "${STUB_MAIN_SHA-$MAIN_SHA}" ;;
+  merge-base) exit "${STUB_MERGE_BASE_RC:-0}" ;; # a recorded sha that is (0) or is not (1) on origin/main
+  diff) [[ ${STUB_DIFF_FAIL-0} == 1 ]] && exit 1; printf '%s' "${STUB_DIFF-}" ;; # files changed on main since the recorded sha
   ls-tree)
     [[ ${STUB_MAIN_ADRS_FAIL-0} == 1 ]] && exit 1
     printf '%s' "${STUB_MAIN_ADRS-docs/adr/0007-seven.md
@@ -361,7 +352,7 @@ refusal "closed PR is reported with its state" "(state: CLOSED)" STUB_STATE=CLOS
 refusal "merged PR is detected from the merged flag" "(state: MERGED)" STUB_STATE=MERGED
 refusal "mergeable null is the UNKNOWN wait path" "is not mergeable (mergeable: UNKNOWN)" STUB_MERGEABLE=null
 refusal "mergeable false is a conflict" "(mergeable: CONFLICTING); merge origin/main into the branch" STUB_MERGEABLE=false
-refusal "stale-base refusal carries the stable marker" "[stale-base]" "STUB_MAIN_LOG=c1 2099-01-01T00:00:00Z" STUB_SHOW_c1=src/A.java
+refusal "stale-base refusal carries the stable marker" "[stale-base]" "STUB_MERGED_MAIN=$OLD_MAIN" STUB_DIFF=src/A.java
 
 # ADR numbers: a PR may not ADD docs/adr/NNNN-*.md when NNNN is already on
 # origin/main (any slug). Main's default ADRs are 0007 and 0018; next free is 0019.
@@ -595,56 +586,49 @@ for name in $required; do
     "STUB_RUNS=$(runs "${others[@]}" "$name:3:skipped")"
 done
 
-# Stale CI base: the PR's latest CI workflow run tested the merge ref against whatever
-# main was then. Every main commit since the run was created (minus a 2-minute margin)
-# that changed anything outside docs refuses the merge. Default stubs: the latest CI
-# run was created 03:40:43Z (so the window opens 03:38:43Z) and main has no commits.
+# Stale base (#979): CI records the main sha it merged in a `merged-main` annotation on each job's check run; the gate
+# refuses unless the deciding run of every required job (and of client-gametest) recorded the current origin/main.
+# Default stubs: every run recorded $MAIN_SHA, which is origin/main.
 stale_hint="by closing and reopening the PR [stale-base]"
-after="2026-10-08T03:47:00Z"
 run_script
-exited "no main commits since the CI run merges" 0
-logged "CI runs read for the pinned head sha" "gh api repos/pkeppeler/deepcharter/actions/runs?head_sha=abc123&event=pull_request&per_page=100 --paginate --jq .workflow_runs[] | select(.name == \"CI\" and .status == \"completed\" and .conclusion == \"success\") | .id"
-logged "latest CI run creation time read" "gh api repos/pkeppeler/deepcharter/actions/runs/9001 --jq .created_at"
-logged "main read from two minutes before the run" "git log --format=%H --since=2026-10-08T03:38:43Z origin/main"
-run_script "STUB_CI_RUNS=9001${nl}9005${nl}9003"
-exited "newest CI run is the one read" 0
-logged "newest CI run id used" "gh api repos/pkeppeler/deepcharter/actions/runs/9005 --jq .created_at"
-run_script "STUB_MAIN_LOG=c1 $after${nl}c2 $after${nl}c3 $after" "STUB_SHOW_c1=docs/ROADMAP.md${nl}docs/adr/0020-x.md" \
-  "STUB_SHOW_c2=README.md${nl}src/main/java/NOTES.md" STUB_SHOW_c3=.papercuts.jsonl
-exited "main commits only in docs, markdown and papercuts merge" 0
-logged "docs-only commits still merge" "$merge_line"
-logged "each commit's files read" "git show --name-only --format= --no-renames c3"
-code_log="STUB_MAIN_LOG=c1 $after"
-refusal "main commit in src" "main changed since its CI run" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
-refusal "refusal names the moved path" "src/main/java/Charters.java" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
-refusal "refusal names the CI run creation time" "CI run 9001 created 2026-10-08T03:40:43Z" "$code_log" STUB_SHOW_c1=src/A.java
-refusal "refusal gives the close/reopen fix and its marker" "$stale_hint" "$code_log" STUB_SHOW_c1=src/main/java/Charters.java
-refusal "main commit in a build file" "$stale_hint" "$code_log" STUB_SHOW_c1=build.gradle.kts
-refusal "build file beside another path" "build.gradle.kts" "$code_log" "STUB_SHOW_c1=gradle.properties${nl}build.gradle.kts"
-refusal "code beside docs still refuses" "tools/merge-pr.sh" "$code_log" "STUB_SHOW_c1=docs/ROADMAP.md${nl}tools/merge-pr.sh"
-refusal "code in a later commit refuses" "src/B.java" "STUB_MAIN_LOG=c1 $after${nl}c2 $after" STUB_SHOW_c1=docs/x.md STUB_SHOW_c2=src/B.java
-refusal "docs-looking directory outside docs/ refuses" "$stale_hint" "$code_log" STUB_SHOW_c1=docsx/a.txt
-refusal "markdown lookalike refuses" "$stale_hint" "$code_log" STUB_SHOW_c1=src/main/md
-refusal "nested papercuts lookalike refuses" "$stale_hint" "$code_log" STUB_SHOW_c1=sub/.papercuts.jsonl
-refusal "refusal lists only the first paths" "(+2 more)" "$code_log" \
-  "STUB_SHOW_c1=a.java${nl}b.java${nl}c.java${nl}d.java${nl}e.java${nl}f.java${nl}g.java"
-# The margin: a commit 03:39:30Z is before the run (03:40:43Z) but inside the 2 minutes.
-refusal "commit inside the margin window counts" "src/M.java" "STUB_MAIN_LOG=c1 2026-10-08T03:39:30Z" STUB_SHOW_c1=src/M.java
-run_script "STUB_MAIN_LOG=c1 2026-10-08T03:30:00Z" STUB_SHOW_c1=src/Old.java
-exited "commit before the margin window is ignored" 0
-run_script "STUB_CI_RUNS=9001${nl}9005:cancelled${nl}9007:failure"
-exited "newer cancelled and failed CI runs are skipped" 0
-logged "older successful CI run used" "gh api repos/pkeppeler/deepcharter/actions/runs/9001 --jq .created_at"
-refusal "only unsuccessful CI runs" "no successful CI run for abc123" "STUB_CI_RUNS=9001:cancelled${nl}9002:failure"
-refusal "no CI run for the head" "no successful CI run for abc123" STUB_CI_RUNS=
-refusal "CI runs unreadable" "no successful CI run for abc123" STUB_CI_RUNS_FAIL=1
-refusal "CI run has no start time" "no readable creation time on its CI run" STUB_CI_CREATED=
-refusal "CI run start unreadable" "no readable creation time on its CI run" STUB_CI_CREATED_FAIL=1
-refusal "CI run start is not a timestamp" "no readable creation time on its CI run" "STUB_CI_CREATED=yesterday"
-refusal "main log unreadable" "could not list the commits on origin/main" STUB_LOG_FAIL=1
-refusal "commit files unreadable" "could not read the files changed by origin/main commit c1" "$code_log" STUB_SHOW_FAIL=1
-run_script
-logged "origin/main fetched before comparing" "git fetch origin main"
+exited "runs that merged the current main pass" 0
+logged "main fetched before comparing" "git fetch origin main"
+logged "build run's annotations read" "gh api repos/pkeppeler/deepcharter/check-runs/2/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"
+logged "client-gametest run's annotations read" "gh api repos/pkeppeler/deepcharter/check-runs/3/annotations?per_page=100 --paginate --jq .[] | select(.title == \"merged-main\") | .message"
+not_logged "equal sha needs no file comparison" "^git diff"
+refusal "a run that merged an older main is stale" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=src/main/java/Charters.java"
+refusal "refusal names the run, both shas and the moved path" "build run 2 merged main bbbbbbbbb but origin/main is aaaaaaaaa: src/main/java/Charters.java changed since" \
+  "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=src/main/java/Charters.java"
+refusal "a run with no record is stale (a run from before CI recorded it)" "recorded no merged main sha" "STUB_MERGED_MAIN="
+refusal "a run with no record carries the marker" "$stale_hint" "STUB_MERGED_MAIN="
+refusal "a record that is not a sha is stale" "recorded no merged main sha" "STUB_MERGED_MAIN=main"
+refusal "annotations unreadable" "could not read the annotations of build run 2" STUB_ANN_FAIL=1
+refusal "only client-gametest merged an older main" "client-gametest run 3 merged main" "STUB_MERGED_MAIN_3=$OLD_MAIN" "STUB_DIFF=src/A.java"
+refusal "only tool-tests merged an older main" "tool-tests run 4 merged main" "STUB_DIFF=src/A.java" \
+  "STUB_RUNS=$(runs build:1:success tool-tests:4:success)" "STUB_MERGED_MAIN_1=$MAIN_SHA" "STUB_MERGED_MAIN_4=$OLD_MAIN"
+refusal "a recorded sha off origin/main is stale" "which is not on origin/main" "STUB_MERGED_MAIN=$OLD_MAIN" STUB_MERGE_BASE_RC=1
+refusal "files changed since unreadable" "could not list the files changed on origin/main since" "STUB_MERGED_MAIN=$OLD_MAIN" STUB_DIFF_FAIL=1
+refusal "origin/main sha unreadable" "could not read the sha of origin/main" STUB_REVPARSE_FAIL=1
+refusal "refusal lists only the first paths" "(+2 more)" "STUB_MERGED_MAIN=$OLD_MAIN" \
+  "STUB_DIFF=a.java${nl}b.java${nl}c.java${nl}d.java${nl}e.java${nl}f.java${nl}g.java"
+# Roadmap and papercut commits land on main after each merge and no required job reads those two files, so a main
+# that moved only by them is the same base. Anything else, a lookalike path included, is not.
+run_script "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=docs/ROADMAP.md${nl}.papercuts.jsonl"
+exited "main moved only by the roadmap and papercuts is the same base" 0
+logged "that comparison reads the changed files" "git diff --name-only --no-renames $OLD_MAIN $MAIN_SHA"
+refusal "another docs file moving is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=docs/ROADMAP.md${nl}docs/SPEC.md"
+refusal "code beside the roadmap is not neutral" "tools/merge-pr.sh" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=docs/ROADMAP.md${nl}tools/merge-pr.sh"
+refusal "nested papercuts lookalike is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=sub/.papercuts.jsonl"
+refusal "nested roadmap lookalike is not neutral" "$stale_hint" "STUB_MERGED_MAIN=$OLD_MAIN" "STUB_DIFF=sub/docs/ROADMAP.md"
+if command -v jq >/dev/null; then
+  # The recorded annotations of a real run (fixtures/gh-rest/README.md): the script's own filter reads its sha.
+  run_script STUB_FIXTURE_ANNOTATIONS="$FIXTURES/check-run-annotations.json" "STUB_MAIN_SHA=$(gh_fixture_jq "$FIXTURES/check-run-annotations.json" '.[] | select(.title == "merged-main") | .message')"
+  exited "the recorded annotation of a real run reads as its main sha" 0
+  refusal "a recorded real run is stale once main moves" "$stale_hint" STUB_FIXTURE_ANNOTATIONS="$FIXTURES/check-run-annotations.json" "STUB_MAIN_SHA=$OLD_MAIN" "STUB_DIFF=src/A.java"
+  refusal "a recorded run with no merged-main annotation is stale" "recorded no merged main sha" STUB_FIXTURE_ANNOTATIONS="$FIXTURES/check-run-annotations.no-record.json"
+else
+  echo "SKIP the recorded annotation cases (jq missing)"
+fi
 
 # Happy path: roadmap changed, so it is committed and pushed.
 run_script STUB_ROADMAP_CHANGED=1
@@ -748,6 +732,7 @@ check_args "trailing newline" $'7\n'
 run_check
 exited "check passes a PR the gate would merge" 0
 printed "check prints a required check's state" "check build: pass"
+printed "check prints the main a run merged" "merged main build (run 2): $MAIN_SHA"
 printed "check says the gate passes" "GATE OK: PR #7 at abc123 passes the merge gate"
 not_logged "check never merges" "^gh api -X PUT"
 not_logged "check never edits or retargets" "^gh api -X PATCH"
