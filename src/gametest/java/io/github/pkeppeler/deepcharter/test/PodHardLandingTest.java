@@ -1,9 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodFuel;
@@ -21,14 +20,12 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #319: a pod's landing costs hull by its sink speed, not by the distance it fell. A pod that brakes with its
@@ -297,12 +294,5 @@ public class PodHardLandingTest {
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
         return one;
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
@@ -38,7 +38,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
@@ -50,7 +49,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #380, the audit of gameplay decisions that ask an entity query. A query sees only the entities of loaded
@@ -71,12 +69,6 @@ public class EntityQueryAuditTest {
     private static final String STALE_UUID_NBT = "[I;" + (int) (STALE_UUID.getMostSignificantBits() >> 32) + ","
             + (int) STALE_UUID.getMostSignificantBits() + "," + (int) (STALE_UUID.getLeastSignificantBits() >> 32) + ","
             + (int) STALE_UUID.getLeastSignificantBits() + "]";
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
 
     /** Holds once the entities saved with the chunk at {@code pos} have loaded into the world, which is later than the chunk ticking. */
     private static BooleanSupplier entitiesLoaded(ServerLevel level, BlockPos pos) {
