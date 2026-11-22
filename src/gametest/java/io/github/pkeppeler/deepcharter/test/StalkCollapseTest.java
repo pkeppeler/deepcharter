@@ -64,8 +64,9 @@ public class StalkCollapseTest {
     private static final int COLLAPSE_WAIT = 200;
 
     /**
-     * Where the far player stands, past the item box. A drop flies out at {@link SurfaceTuning#scatterSpeed()} and comes to rest within
-     * about 3 blocks of the block that burst it, so within about 9 blocks of a great stalk's trunk.
+     * Where the far player stands, at x = 0, inside the item box but clear of where drops rest. A drop flies out at
+     * {@link SurfaceTuning#scatterSpeed()} and comes to rest within about 3 blocks of the block that burst it, out of this player's
+     * pickup range.
      */
     private static final int FAR_Z = 20;
 
