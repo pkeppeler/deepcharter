@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.layer.BlockReadouts;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.HandBreak;
@@ -25,7 +25,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.resources.ResourceKey;
@@ -46,7 +45,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for brute-forcing pod-only blocks with a hand tool (#858, ADR 0069): the one predicate, the constant
@@ -880,9 +878,10 @@ public class HandBreakTest {
         helper.succeed();
     }
 
-    private static String hintOf(BlockState state, ServerLevel level, ServerPlayer viewer) {
+    private static String hintOf(BlockState state, ServerLevel level, int layer, ServerPlayer viewer) {
+        // The layer is read from the position's height, so the block must sit inside it.
         return BlockReadouts.SHARED
-                .readout(state, level, BlockPos.ZERO, viewer)
+                .readout(state, level, TestLayers.pos(layer, X_READOUT, 40, 0), viewer)
                 .flatMap(readout -> readout.hint())
                 .map(hint -> hint.getContents() instanceof TranslatableContents translatable
                         ? translatable.getKey()
@@ -900,30 +899,30 @@ public class HandBreakTest {
         String plain = "hint.deepcharter.pod_drill_only";
         String burns = "hint.deepcharter.pod_drill_only_burns";
         hold(viewer, new ItemStack(Items.DIAMOND_PICKAXE));
-        expectHint(helper, burns, hintOf(crust, one, viewer), "crust with a diamond pick");
-        expectHint(helper, burns, hintOf(company, one, viewer), "Company rock with a diamond pick");
+        expectHint(helper, burns, hintOf(crust, one, 1, viewer), "crust with a diamond pick");
+        expectHint(helper, burns, hintOf(company, one, 1, viewer), "Company rock with a diamond pick");
         hold(viewer, new ItemStack(Items.IRON_PICKAXE));
-        expectHint(helper, plain, hintOf(crust, one, viewer), "crust with an iron pick");
+        expectHint(helper, plain, hintOf(crust, one, 1, viewer), "crust with an iron pick");
         expectHint(
                 helper,
                 "hint.deepcharter.company_rock",
-                hintOf(company, one, viewer),
+                hintOf(company, one, 1, viewer),
                 "Company rock with an iron pick: what does break it");
         ServerLevel two = TestLayers.level(helper, 2);
         hold(viewer, new ItemStack(Items.DIAMOND_PICKAXE));
         expectHint(
                 helper,
                 plain,
-                hintOf(Blocks.STONE.defaultBlockState(), two, viewer),
+                hintOf(Blocks.STONE.defaultBlockState(), two, 2, viewer),
                 "deep rock in layer 2 with a pick that cannot bite it there");
         hold(viewer, new ItemStack(Items.NETHERITE_PICKAXE));
         expectHint(
                 helper,
                 burns,
-                hintOf(Blocks.STONE.defaultBlockState(), two, viewer),
+                hintOf(Blocks.STONE.defaultBlockState(), two, 2, viewer),
                 "deep rock in layer 2 with netherite");
         viewer.setGameMode(GameType.CREATIVE);
-        expectHint(helper, "(none)", hintOf(crust, one, viewer), "crust read by a creative player");
+        expectHint(helper, "(none)", hintOf(crust, one, 1, viewer), "crust read by a creative player");
         helper.succeed();
     }
 
@@ -931,12 +930,5 @@ public class HandBreakTest {
         if (!expected.equals(actual)) {
             throw failure(helper, "%s: hint %s, expected %s", what, actual, expected);
         }
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

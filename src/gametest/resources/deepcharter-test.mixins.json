@@ -9,12 +9,13 @@
     "ChunkMapUnloadMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",
-    "LightSyncSendMixin"
+    "LightSyncSendMixin",
+    "ServerLevelForcedMixin"
   ],
   "client": [
-    "BreachEffectsMixin",
     "CardinalLightingMixin",
     "ClientGameTestImplMixin",
+    "ClientPacketListenerMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",
     "HudMixin",
@@ -22,8 +23,7 @@
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
     "MinecraftAttackMixin",
-    "SpriteAnimationStateMixin",
-    "TransmissionOverlayMixin"
+    "SpriteAnimationStateMixin"
   ],
   "injectors": {
     "defaultRequire": 1

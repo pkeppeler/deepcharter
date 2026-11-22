@@ -11,7 +11,7 @@ Player scale: a pod's bay is 4 wide and 4 high (a Prospector is 2.9 across), a s
 high. The headframe's beacon is at 30.
 
 Fixed by the game and kept clear here: the Conduit's casing (X -5..-3, Z -15..-13, up to Y 10), which ColonyBuilder's Conduit sets;
-the terminal blocks on the plinths (Y 2 over the row of plinths, Z -8) and the hangar's console, which ColonyBuilder and Hangar set.
+the terminals, each two blocks high from Y 1 on the ground of the row at Z -8, and the hangar's console, which ColonyBuilder and Hangar set.
 """
 from dataclasses import dataclass
 
@@ -24,10 +24,11 @@ CLEAR_HEIGHT = 36
 
 CONDUIT = (-5, -15, -3, -13)
 CONDUIT_TOP = 10
-# The row of terminal plinths on the north edge of the square: the plinths are 3 x 3 at Y 1, each terminal stands on its plinth at
-# Y 2, in the order of the colony's terminals (fuel pump, ore processor, upgrade terminal, repair station, contract terminal).
+# The row of terminals on the north edge of the square: each stands on the ground at Y 1 and is two blocks high (its monitor
+# is the upper half, at Y 2), in the order of the colony's terminals (fuel pump, ore processor, upgrade terminal, repair
+# station, contract terminal).
 TERMINAL_COLUMNS = (-8, -4, 0, 4, 8)
-PLINTH_Z = -8
+TERMINAL_Z = -8
 # The Host: his height in blocks, soles to raised hand, and the top of his plinth.
 HOST = 10
 PLINTH_TOP = 5
@@ -78,7 +79,7 @@ def _keep_clear(piece: Piece) -> None:
     for (x, y, z) in piece.blocks:
         if x0 <= x <= x1 and z0 <= z <= z1 and 0 <= y <= CONDUIT_TOP:
             raise ValueError(f"{piece.name}: a block at {x} {y} {z} is in the Conduit's casing")
-        if y == 2 and z == PLINTH_Z and x in TERMINAL_COLUMNS:
+        if y in (1, 2) and z == TERMINAL_Z and x in TERMINAL_COLUMNS:
             raise ValueError(f"{piece.name}: a block at {x} {y} {z} is where a terminal stands")
 
 
@@ -115,12 +116,9 @@ def hands() -> Piece:
 
 
 def terminals() -> Piece:
-    """The plinths of the terminals on the north edge of the square, each a footing with a hazard kerb on the square's side, and the
-    brass pipe that runs from the Conduit to the ore processor's plinth."""
+    """What stands round the terminals on the north edge of the square, which stand on the ground themselves: the brass pipe that runs
+    from the Conduit into the back of the ore processor's monitor."""
     p = Piece("terminals")
-    for col in TERMINAL_COLUMNS:
-        p.fill(col - 1, 1, PLINTH_Z - 1, col + 1, 1, PLINTH_Z + 1, state("concrete_footing"))
-        p.fill(col - 1, 1, PLINTH_Z + 1, col + 1, 1, PLINTH_Z + 1, state("hazard_band"))
     p.fill(-4, 2, -12, -4, 2, -9, state("pipe_brass", axis="z"))
     p.set(-4, 1, -11, state("steel_beam", axis="y"))
     return p
@@ -260,7 +258,7 @@ def hoist_house(doors: list[Door]) -> Piece:
 
 
 def works(doors: list[Door]) -> Piece:
-    """The compact ore house beside the headframe: one Works hall of two storeys, its bay and door on the square (the door between two terminal plinths), the tipple
+    """The compact ore house beside the headframe: one Works hall of two storeys, its bay and door on the square (the door between two terminals), the tipple
     bin's conveyor dropping into a crusher house on its roof, two ore bins on legs behind it and a stack."""
     p = Piece("works")
     x0, z0, x1, z1 = 3, -21, 16, -11
@@ -411,14 +409,14 @@ def lamp_and_pick(doors: list[Door]) -> Piece:
 
 # ------------------------------------------------------------------------------------------------------------- the town
 
-# Where each anchor is, from the pad's centre: the block a player stands in, for the terminals the block the terminal stands in,
+# Where each anchor is, from the pad's centre: the block a player stands in, for the terminals the lower half's block,
 # for the statue the block he stands in (over his plinth), for the candle the candle's block, for the Conduit its centre column.
 ANCHORS = {
-    "fuel_pump": (-8, 2, -8),
-    "ore_processor": (-4, 2, -8),
-    "upgrade_terminal": (0, 2, -8),
-    "repair_station": (4, 2, -8),
-    "contract_terminal": (8, 2, -8),
+    "fuel_pump": (-8, 1, -8),
+    "ore_processor": (-4, 1, -8),
+    "upgrade_terminal": (0, 1, -8),
+    "repair_station": (4, 1, -8),
+    "contract_terminal": (8, 1, -8),
     "hangar": (-23, 1, 7),
     "continuity_office": (18, 1, 0),
     "statue": (0, PLINTH_TOP + 1, 0),

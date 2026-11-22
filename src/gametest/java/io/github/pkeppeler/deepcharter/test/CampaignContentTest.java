@@ -1,7 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -41,7 +42,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -51,7 +51,6 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for what the campaign world holds besides terrain (#743, ADR 0059): the structure sites of each layer (ADR 0025), the
@@ -90,8 +89,8 @@ public class CampaignContentTest {
             "minecraft:block_predicate_filter");
 
     private static final String FIGURE = "deepcharter:lampless_figure";
-    /** The test preset, which holds the campaign sample dimension. */
-    private static final String PRESET = "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json";
+    /** The test data pack's campaign sample dimension. */
+    private static final String DIMENSION = "/data/deepcharter/dimension/campaign_sample.json";
 
     private static final String UNBUILT_BIOME = "deepcharter:unbuilt_depth";
 
@@ -349,10 +348,8 @@ public class CampaignContentTest {
     public void everyPlacedFeaturesHeightRangeIsInsideItsBand(GameTestHelper helper) throws IOException {
         Map<String, Band> bandOfBiome = new TreeMap<>();
         Map<String, int[]> zoneOfBiome = new TreeMap<>();
-        JsonObject source = read(helper, PRESET)
+        JsonObject source = read(helper, DIMENSION)
                 .getAsJsonObject()
-                .getAsJsonObject("dimensions")
-                .getAsJsonObject(SAMPLE)
                 .getAsJsonObject("generator")
                 .getAsJsonObject("biome_source");
         source.getAsJsonObject("surface")
@@ -588,19 +585,5 @@ public class CampaignContentTest {
         try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader);
         }
-    }
-
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        if (!condition) {
-            throw failure(helper, format, args);
-        }
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

@@ -1,7 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -28,7 +29,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.biome.Biome;
@@ -38,11 +38,10 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the campaign world's terrain (#742, ADR 0059): the bands, the rock of each, the crust at the floor of each layer, and
- * the biome of each band, on our own generator. The world is {@code deepcharter:campaign_sample}, a test-preset dimension, as
+ * the biome of each band, on our own generator. The world is {@code deepcharter:campaign_sample}, a test data-pack dimension, as
  * {@code surface_sample} is for the surface; the shipped game does not use it yet. The band table is {@link CampaignBands}.
  */
 public class CampaignTerrainTest {
@@ -361,10 +360,8 @@ public class CampaignTerrainTest {
                 CampaignBands.LAYER_2.minY() + crust));
         expect(helper, anchors.equals(expectedAnchors), "rule anchors %s, expected %s", anchors, expectedAnchors);
 
-        JsonObject dimension = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
-                .getAsJsonObject()
-                .getAsJsonObject("dimensions")
-                .getAsJsonObject(SAMPLE);
+        JsonObject dimension =
+                read(helper, "/data/deepcharter/dimension/campaign_sample.json").getAsJsonObject();
         JsonObject type = read(helper, "/data/deepcharter/dimension_type/campaign_sample.json")
                 .getAsJsonObject();
         expect(
@@ -433,7 +430,7 @@ public class CampaignTerrainTest {
             FeatureSorter.buildFeaturesPerStep(
                     biomes, biome -> biome.value().getGenerationSettings().features(), true);
         } catch (IllegalStateException e) {
-            throw fail(helper, "the biome features have an order cycle: %s", e.getMessage());
+            throw failure(helper, "the biome features have an order cycle: %s", e.getMessage());
         }
         helper.succeed();
     }
@@ -506,7 +503,7 @@ public class CampaignTerrainTest {
             if (object.has("type") && object.get("type").getAsString().equals("minecraft:y_above")) {
                 JsonObject anchor = object.getAsJsonObject("anchor");
                 if (!anchor.has("absolute")) {
-                    throw fail(helper, "a band rule must use absolute Ys, not %s", anchor);
+                    throw failure(helper, "a band rule must use absolute Ys, not %s", anchor);
                 }
                 out.add(anchor.get("absolute").getAsInt());
             }
@@ -552,23 +549,10 @@ public class CampaignTerrainTest {
         return key.orElseThrow(() -> new IllegalStateException("a biome with no key at " + pos));
     }
 
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean ok, @FormatString String format, @Nullable Object... args) {
-        if (!ok) {
-            throw fail(helper, format, args);
-        }
-    }
-
-    @FormatMethod
-    private static RuntimeException fail(GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
     private static JsonElement read(GameTestHelper helper, String resource) throws IOException {
         var stream = CampaignTerrainTest.class.getResourceAsStream(resource);
         if (stream == null) {
-            throw fail(helper, "missing resource %s", resource);
+            throw failure(helper, "missing resource %s", resource);
         }
         try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader);

@@ -6,12 +6,14 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -333,10 +335,13 @@ public class SalvageBootstrapTest {
                 + (double) (a.getZ() - b.getZ()) * (a.getZ() - b.getZ());
     }
 
-    @GameTest(dimension = "deepcharter:layer_1", maxTicks = MAX_TICKS)
+    @GameTest(dimension = "deepcharter:campaign_sample", maxTicks = MAX_TICKS)
     public void stalksGrowOnTheFloorsOfLayerOneCaves(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        List<BlockPos> stalks = BlockSurvey.find(level, 6, block("fungal_stalk"));
+        // The campaign level holds the surface and both layers: only the stalks in layer 1's band are this test's.
+        List<BlockPos> stalks = BlockSurvey.find(level, 6, block("fungal_stalk")).stream()
+                .filter(pos -> TestLayers.isIn(level, pos, 1))
+                .toList();
         LOGGER.info("[salvage] layer 1: {} stalk blocks", stalks.size());
         if (stalks.isEmpty()) {
             throw helper.assertionException("the caves of layer 1 hold no fungal stalk");
@@ -597,11 +602,11 @@ public class SalvageBootstrapTest {
                         bag.craftPart(helper, "fuel_valve");
                         BlockPos terminal = helper.absolutePos(new BlockPos(0, 1, 0));
                         HandbookChaptersOneToFiveTest.stand(helper, mock, terminal);
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.FUEL_PUMP.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.FUEL_PUMP.block().defaultBlockState(),
+                                3);
                         for (Item part : TerminalTypes.FUEL_PUMP.parts()) {
                             bag.take(part, 1, helper, "the fuel pump");
                             player.getInventory().add(new ItemStack(part));

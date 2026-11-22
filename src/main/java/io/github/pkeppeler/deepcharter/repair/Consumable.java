@@ -30,9 +30,10 @@ public enum Consumable {
     SHAPED_CHARGE("shaped_charge", 100),
     // SPEC section 11: an expensive escape, about 2 layer-2 runs; the cargo drop is the rest of the cost.
     QUANTUM_TELEPORTER("quantum_teleporter", 690),
-    // SPEC section 11: a layer-3 item measured as about 4 layer-2 runs (3.6 from the outpost, #320); the cargo drop is
+    // SPEC section 11: a layer-3 item measured as about 4 layer-2 runs (3.6 from the outpost, #320; $1,650 since #963,
+    // which made fuel cheaper and a run's net $455); the cargo drop is
     // the rest of the cost.
-    MATTER_TRANSMITTER("matter_transmitter", 1_500);
+    MATTER_TRANSMITTER("matter_transmitter", 1_650);
 
     private final Identifier itemId;
     private final long price;

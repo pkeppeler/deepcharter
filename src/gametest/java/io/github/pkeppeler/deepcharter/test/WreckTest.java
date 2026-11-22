@@ -1,10 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SNEAK;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
@@ -49,7 +48,6 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.MinecraftServer;
@@ -967,10 +965,11 @@ public class WreckTest {
         int x = 4600;
         int z = 3000;
         ServerLevel one = TestLayers.level(helper.getLevel().getServer(), 1);
-        for (BlockPos pos : BlockPos.betweenClosed(x - 2, 0, z - 2, x + 2, 2, z + 2)) {
+        for (BlockPos pos :
+                BlockPos.betweenClosed(x - 2, TestLayers.worldY(1, 0), z - 2, x + 2, TestLayers.worldY(1, 2), z + 2)) {
             one.setBlock(pos, LayerBlocks.BREACH_CRUST.defaultBlockState(), Block.UPDATE_CLIENTS);
         }
-        RoomCarver.carve(one, x - 2, x + 2, 1, 8, z - 2, z + 2, Blocks.AIR);
+        RoomCarver.carve(one, x - 2, x + 2, TestLayers.worldY(1, 1), TestLayers.worldY(1, 8), z - 2, z + 2, Blocks.AIR);
         MockPlayer pilot = MockPlayers.join(helper, "wreck-crust");
         pilot.teleportTo(one, TestLayers.vec(1, x, 1, z), 0f, 0f);
         PodEntity[] pod = {null};
@@ -1327,11 +1326,5 @@ public class WreckTest {
                         level,
                         EntitySpawnReason.LOAD)
                 .orElseThrow(() -> failure(helper, "the saved pod did not load"));
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }
