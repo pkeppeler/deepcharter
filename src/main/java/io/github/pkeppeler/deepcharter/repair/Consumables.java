@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.repair;
 
+import io.github.pkeppeler.deepcharter.layer.CaveIns;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodCharge;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -39,6 +40,10 @@ final class Consumables {
             case SHAPED_CHARGE -> PodCharge.set(pod, tuning, PodCharge.Kind.SHAPED);
             case QUANTUM_TELEPORTER -> Teleports.send(pod, tuning.quantumScatter());
             case MATTER_TRANSMITTER -> Teleports.send(pod, 0.0);
+            // The switch must cover every constant; the driver and its bolts are on foot, and RepairRegistry gives them
+            // their own items, so a use never comes here.
+            case BOLT_DRIVER, BOLT ->
+                throw new IllegalStateException(consumable + " is not used from the pilot's seat: BoltDriverItem");
         };
     }
 
@@ -78,6 +83,8 @@ final class Consumables {
             }
         }
         play(pod, sound);
+        // The blast shakes the roof over anyone on foot near it (#987).
+        CaveIns.blasted(level, pod.getBoundingBox().getCenter());
         return Optional.empty();
     }
 

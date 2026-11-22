@@ -33,7 +33,12 @@ public enum Consumable {
     // SPEC section 11: a layer-3 item measured as about 4 layer-2 runs (3.6 from the outpost, #320; $1,650 since #963,
     // which made fuel cheaper and a run's net $455); the cargo drop is
     // the rest of the cost.
-    MATTER_TRANSMITTER("matter_transmitter", 1_650);
+    MATTER_TRANSMITTER("matter_transmitter", 1_650),
+    // On foot (#987): the bolt driver is a tool and is kept, and the bolts it fires and sets are bought in packs
+    // (BoltDriverTuning.packSize). The driver costs about half a layer 2 run, the pack a fifteenth of one; the bands
+    // are EconomyAffordabilityTest's, and BoltDriverPacingTest holds what a fight and a stretch of tunnel cost.
+    BOLT_DRIVER("bolt_driver", 175),
+    BOLT("bolt", 24);
 
     private final Identifier itemId;
     private final long price;
@@ -50,6 +55,11 @@ public enum Consumable {
     /** Dollars, taken from the charter's account. */
     public long price() {
         return price;
+    }
+
+    /** Items the station hands over for one purchase: a pack of bolts, otherwise one. */
+    public int perPurchase() {
+        return this == BOLT ? BoltDriverTuning.DEFAULT.packSize() : 1;
     }
 
     public static Optional<Consumable> byItemId(Identifier id) {

@@ -84,7 +84,9 @@ public class RepairStationTest {
             Consumable.BLASTING_CHARGE, 40L,
             Consumable.SHAPED_CHARGE, 100L,
             Consumable.QUANTUM_TELEPORTER, 690L,
-            Consumable.MATTER_TRANSMITTER, 1_650L);
+            Consumable.MATTER_TRANSMITTER, 1_650L,
+            Consumable.BOLT_DRIVER, 175L,
+            Consumable.BOLT, 24L);
 
     private static final long PER_HP = 1L;
     private static final int ARENA = 4;
@@ -409,7 +411,7 @@ public class RepairStationTest {
         withStation(helper, station -> {
             if (SHOP_PRICES.size() != Consumable.values().length) {
                 throw helper.assertionException(
-                        "the shop sells %d items, the eight are %d", Consumable.values().length, SHOP_PRICES.size());
+                        "the shop sells %d items, the test prices %d", Consumable.values().length, SHOP_PRICES.size());
             }
             ServerPlayer player = station.pilot().player();
             fund(helper, station, 100_000);
@@ -427,7 +429,7 @@ public class RepairStationTest {
                         "buying " + consumable);
                 balance -= price;
                 expectAccount(helper, station, balance, "after buying " + consumable);
-                expectSpent(helper, player, consumable, 1, "after buying " + consumable);
+                expectSpent(helper, player, consumable, consumable.perPurchase(), "after buying " + consumable);
             }
             helper.succeed();
         });

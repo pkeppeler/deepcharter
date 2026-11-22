@@ -94,7 +94,8 @@ public final class RepairStation {
             return Consumables.refusal("unknown_item");
         }
         ServerPlayer player = context.player();
-        ItemStack stack = new ItemStack(RepairRegistry.item(item.get()));
+        ItemStack stack =
+                new ItemStack(RepairRegistry.item(item.get()), item.get().perPurchase());
         Inventory inventory = player.getInventory();
         // Checked first: a creative player's add() discards what does not fit, and the money is not given back.
         if (inventory.getSlotWithRemainingSpace(stack) < 0 && inventory.getFreeSlot() < 0) {

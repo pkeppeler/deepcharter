@@ -16,13 +16,15 @@ public final class RepairRegistry {
     static {
         for (Consumable consumable : Consumable.values()) {
             ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, consumable.itemId());
-            ITEMS.put(
-                    consumable,
-                    Registry.register(
-                            BuiltInRegistries.ITEM,
-                            key,
-                            new ConsumableItem(
-                                    consumable, new Item.Properties().setId(key).stacksTo(16))));
+            Item item = switch (consumable) {
+                case BOLT_DRIVER ->
+                    new BoltDriverItem(new Item.Properties().setId(key).stacksTo(1));
+                case BOLT -> new Item(new Item.Properties().setId(key).stacksTo(64));
+                default ->
+                    new ConsumableItem(
+                            consumable, new Item.Properties().setId(key).stacksTo(16));
+            };
+            ITEMS.put(consumable, Registry.register(BuiltInRegistries.ITEM, key, item));
         }
     }
 
