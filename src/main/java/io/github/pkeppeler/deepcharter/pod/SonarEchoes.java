@@ -75,10 +75,9 @@ final class SonarEchoes {
     }
 
     /**
-     * A creature in {@link SonarTags#ECHOING} within range returns an echo at its block: moved when it is going faster than
-     * {@link SonarTuning#movingSpeed()}, else ore (a body standing still is a dense return). One in {@link SonarTags#ORE_ECHOING} is ore at any
-     * speed, and one in {@link SonarTags#HOLLOW} returns nothing. A grounded creature's fall speed is gravity holding it down, not a move, so only its
-     * horizontal speed counts.
+     * What each creature in the sonar tags returns, at its block, by {@link SonarTags}' one table: ore for a machine, an empty cave for a thing
+     * that reads as one, ore or moved for a real creature by whether it is going faster than {@link SonarTuning#movingSpeed()}, nothing for the
+     * hollow. A grounded creature's fall speed is gravity holding it down, not a move, so only its horizontal speed counts.
      */
     private static void creatures(SonarPing ping, SonarEvents.Sink sink) {
         double range = ping.rangeBlocks();
@@ -89,15 +88,11 @@ final class SonarEchoes {
                 .getEntities(
                         ping.pod(),
                         AABB.ofSize(ping.origin(), 2 * range, 2 * range, 2 * range),
-                        e -> !e.is(SonarTags.HOLLOW)
-                                && (e.is(SonarTags.ECHOING) || e.is(SonarTags.ORE_ECHOING))
-                                && !ping.pod().hasPassenger(e))) {
+                        e -> SonarTags.of(e).isPresent() && !ping.pod().hasPassenger(e))) {
             if (creature.position().distanceToSqr(ping.origin()) <= range * range) {
-                sink.add(
-                        !creature.is(SonarTags.ORE_ECHOING) && speedSquared(creature) >= movingSquared
-                                ? SonarKind.MOVED
-                                : SonarKind.ORE,
-                        creature.blockPosition());
+                SonarTags.of(creature)
+                        .flatMap(signature -> signature.kind(speedSquared(creature) >= movingSquared))
+                        .ifPresent(kind -> sink.add(kind, creature.blockPosition()));
             }
         }
     }

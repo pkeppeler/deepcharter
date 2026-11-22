@@ -3,6 +3,9 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
@@ -33,6 +36,7 @@ import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,6 +45,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -49,13 +54,19 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.attributes.DefaultAttributes;
 import net.minecraft.world.entity.animal.chicken.Chicken;
+import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.entity.monster.zombie.Husk;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
@@ -126,7 +137,13 @@ public class PodSonarTest {
      * {@code check} on the tick after they settle. The test succeeds when {@code check} returns.
      */
     private static void scene(GameTestHelper helper, int x, Consumer<ServerLevel> build, Consumer<Scene> check) {
-        run(helper, x, build, scene -> {
+        scene(helper, x, List.of(), build, check);
+    }
+
+    /** As {@link #scene}, discarding {@code bodies} (the mobs the build adds) when the test ends, whether it passes or fails. */
+    private static void scene(
+            GameTestHelper helper, int x, List<Entity> bodies, Consumer<ServerLevel> build, Consumer<Scene> check) {
+        run(helper, x, bodies, build, scene -> {
             check.accept(scene);
             return true;
         });
@@ -134,6 +151,16 @@ public class PodSonarTest {
 
     /** As {@link #scene}, running {@code perTick} on every tick after the settle until it returns true. */
     private static void run(GameTestHelper helper, int x, Consumer<ServerLevel> build, Predicate<Scene> perTick) {
+        run(helper, x, List.of(), build, perTick);
+    }
+
+    /**
+     * As {@link #run(GameTestHelper, int, Consumer, Predicate)}, discarding {@code bodies} when the test ends. The mobs the sonar tags name (a husk, a
+     * cow, a pig, a sheep) exist only in the test mod's tags, but a mob left in a forced chunk keeps ticking and answering pings, so a failing test must
+     * not leave one behind.
+     */
+    private static void run(
+            GameTestHelper helper, int x, List<Entity> bodies, Consumer<ServerLevel> build, Predicate<Scene> perTick) {
         ServerLevel level = TestLayers.level(helper, 1);
         for (int cx = (x - REACH) >> 4; cx <= (x + REACH) >> 4; cx++) {
             for (int cz = (Z - REACH) >> 4; cz <= (Z + REACH) >> 4; cz++) {
@@ -161,9 +188,15 @@ public class PodSonarTest {
             scene[0] = new Scene(pod, pilot, navigator);
         });
         TestTicks.each(helper, () -> {
-            if (scene[0] != null && ++ticks[0] >= SETTLE_TICKS && perTick.test(scene[0])) {
-                scene[0].pod().discard();
-                helper.succeed();
+            try {
+                if (scene[0] != null && ++ticks[0] >= SETTLE_TICKS && perTick.test(scene[0])) {
+                    scene[0].pod().discard();
+                    bodies.forEach(Entity::discard);
+                    helper.succeed();
+                }
+            } catch (RuntimeException | Error e) {
+                bodies.forEach(Entity::discard);
+                throw e;
             }
         });
     }
@@ -356,8 +389,7 @@ public class PodSonarTest {
 
     // ---- signatures: what echoes and what does not (#924) ----
 
-    private static <T extends net.minecraft.world.entity.Mob> T still(
-            ServerLevel level, EntityType<T> type, double x, double y, double z) {
+    private static <T extends Mob> T still(ServerLevel level, EntityType<T> type, double x, double y, double z) {
         T mob = TestEntities.create(type, level);
         mob.removeFreeWill();
         mob.setPos(x, y, z);
@@ -381,6 +413,7 @@ public class PodSonarTest {
         scene(
                 helper,
                 x,
+                bodies,
                 level -> {
                     room(level, x + 8, FLOOR, Z, 2, 1, 4);
                     bodies.add(still(level, CreatureRegistry.TALLY, x + 9.5, FLOOR + 1, Z + 1.5));
@@ -426,6 +459,7 @@ public class PodSonarTest {
         scene(
                 helper,
                 x,
+                bodies,
                 level -> {
                     room(level, x + 8, FLOOR, Z, 2, 1, 4);
                     bodies.add(still(level, EntityTypes.COW, x + 9.5, FLOOR, Z + 1.5));
@@ -488,9 +522,11 @@ public class PodSonarTest {
         double[] startAway = new double[2];
         int[] age = {-1};
         int[] arrived = {0};
+        List<Entity> bodies = new ArrayList<>();
         run(
                 helper,
                 x,
+                bodies,
                 level -> {
                     corridor(helper, level, x, 56);
                     walkers[0] = walker(level, x + 36.5, 0.5);
@@ -500,6 +536,8 @@ public class PodSonarTest {
                     chicken[0].setPos(x + 20.5, FLOOR, Z + 0.5);
                     chicken[0].removeFreeWill();
                     level.addFreshEntity(chicken[0]);
+                    bodies.addAll(List.of(walkers));
+                    bodies.add(chicken[0]);
                 },
                 scene -> {
                     Vec3 pod = scene.pod().position();
@@ -569,6 +607,193 @@ public class PodSonarTest {
                     Stream.concat(Stream.of(walkers), Stream.of(chicken)).forEach(Entity::discard);
                     return true;
                 });
+    }
+
+    /** A thing that reads as an empty cave does so at any speed: CREATURES.md's Drifters, "sonar reads one as empty cave". */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void aCreatureInTheCaveTagReadsAsAnEmptyCaveStillOrMoving(GameTestHelper helper) {
+        int x = 8600;
+        List<Entity> bodies = new ArrayList<>();
+        scene(
+                helper,
+                x,
+                bodies,
+                level -> {
+                    room(level, x + 8, FLOOR, Z, 2, 1, 4);
+                    bodies.add(still(level, EntityTypes.SHEEP, x + 9.5, FLOOR, Z + 1.5));
+                    bodies.add(still(level, EntityTypes.SHEEP, x + 13.5, FLOOR, Z + 1.5));
+                },
+                scene -> {
+                    expect(helper, bodies.get(0).onGround(), "the sheep have settled on the floor");
+                    bodies.get(1).setDeltaMovement(TUNING.movingSpeed() * 4, 0, 0);
+                    PodSonar.ping(scene.pod());
+                    for (Entity sheep : bodies) {
+                        expectEcho(helper, scene.pod(), SonarKind.CAVE, sheep.blockPosition());
+                        expect(
+                                helper,
+                                !hasEcho(scene.pod(), SonarKind.MOVED, sheep.blockPosition())
+                                        && !hasEcho(scene.pod(), SonarKind.ORE, sheep.blockPosition()),
+                                "a cave signature is a cave and nothing else: %s",
+                                echoes(scene.pod()));
+                    }
+                });
+    }
+
+    /** Off the ground a creature's whole velocity counts: a no-gravity thing rising faster than a block a second moved. On the ground, a hop is not a walk. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void aCreatureRisingInTheAirReadsAsMovedAndOneOnTheGroundDoesNotForAVerticalSpeed(GameTestHelper helper) {
+        int x = 8664;
+        List<Entity> bodies = new ArrayList<>();
+        scene(
+                helper,
+                x,
+                bodies,
+                level -> {
+                    room(level, x + 8, FLOOR, Z, 2, 1, 4);
+                    bodies.add(still(level, EntityTypes.COW, x + 9.5, FLOOR + 2, Z + 1.5));
+                    bodies.add(still(level, EntityTypes.COW, x + 13.5, FLOOR, Z + 1.5));
+                },
+                scene -> {
+                    expect(helper, bodies.get(1).onGround(), "the second cow has settled on the floor");
+                    bodies.get(0).setNoGravity(true);
+                    bodies.get(0).setDeltaMovement(0, TUNING.movingSpeed() * 2, 0);
+                    bodies.get(1).setDeltaMovement(0, TUNING.movingSpeed() * 2, 0);
+                    PodSonar.ping(scene.pod());
+                    expectEcho(
+                            helper, scene.pod(), SonarKind.MOVED, bodies.get(0).blockPosition());
+                    expectEcho(helper, scene.pod(), SonarKind.ORE, bodies.get(1).blockPosition());
+                });
+    }
+
+    /** A cow that is in the hears tag and keeps all its own goals: the test's stand-in for a Sleeper's creature that has other things to do. */
+    private static Cow busyCow(ServerLevel level, double x) {
+        Cow cow = TestEntities.create(EntityTypes.COW, level);
+        cow.setPos(x, FLOOR, Z + 0.5);
+        level.addFreshEntity(cow);
+        return cow;
+    }
+
+    private static boolean headsFor(Mob mob, BlockPos target) {
+        return mob.getNavigation().isInProgress()
+                && Objects.equals(target, mob.getNavigation().getTargetPos());
+    }
+
+    /**
+     * The hold: a ping sends a creature for {@link SonarTuning#lureTicks()} ticks, and when its own goals send it elsewhere (here, at tick 13) it is
+     * sent again within 10 ticks; after the hold it is left alone. Measured on a cow that keeps its goals.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
+    public void pacingAPingHoldsTheCreaturesThatHeardItForTenSecondsAgainstTheirOwnGoals(GameTestHelper helper) {
+        int x = 8728;
+        List<Entity> bodies = new ArrayList<>();
+        Cow[] cow = new Cow[1];
+        int[] age = {-1};
+        double[] start = {0};
+        int[] sentAgain = {0};
+        run(
+                helper,
+                x,
+                bodies,
+                level -> {
+                    corridor(helper, level, x, 40);
+                    cow[0] = busyCow(level, x + 20.5);
+                    bodies.add(cow[0]);
+                },
+                scene -> {
+                    BlockPos origin = BlockPos.containing(scene.pod().position());
+                    if (age[0] < 0) {
+                        if (!cow[0].onGround()) {
+                            return false;
+                        }
+                        start[0] = cow[0].position().distanceTo(scene.pod().position());
+                        PodSonar.ping(scene.pod());
+                        expect(helper, headsFor(cow[0], origin), "the cow sets out for the ping");
+                        age[0] = 0;
+                        return false;
+                    }
+                    age[0]++;
+                    int hold = TUNING.lureTicks();
+                    if (age[0] == 13 || age[0] == hold + 13) {
+                        // Its own goals send it somewhere else.
+                        cow[0].getNavigation().moveTo(x + 38.5, FLOOR, Z + 0.5, 1.0);
+                        expect(helper, !headsFor(cow[0], origin), "the cow's own goal has taken it off the ping");
+                        if (age[0] == 13) {
+                            sentAgain[0] = 0;
+                        }
+                    }
+                    if (age[0] > 13 && age[0] <= 23 && sentAgain[0] == 0 && headsFor(cow[0], origin)) {
+                        sentAgain[0] = age[0];
+                    }
+                    if (age[0] == 150) {
+                        double away = cow[0].position().distanceTo(scene.pod().position());
+                        expect(
+                                helper,
+                                sentAgain[0] > 0 && away < start[0] - 6,
+                                "the cow was sent again at tick %s and came from %s to %s blocks",
+                                sentAgain[0],
+                                start[0],
+                                away);
+                    }
+                    if (age[0] == hold + 40) {
+                        expect(
+                                helper,
+                                !headsFor(cow[0], origin),
+                                "after the hold the cow is left to its own goals, and it is not heading for the ping");
+                        DeepCharter.LOGGER.info(
+                                "[sonar-lure] a cow with its own goals was sent again {} ticks after they took it off the ping, "
+                                        + "and left alone {} ticks after the hold of {}",
+                                sentAgain[0] - 13,
+                                40,
+                                hold);
+                        return true;
+                    }
+                    return false;
+                });
+    }
+
+    /**
+     * What the shipped {@code sonar_hears} tag promises: a creature in it can path the whole noise radius, which is its follow range (the
+     * pathfinder's node budget is {@code 16 x follow range}, fixed when the mob is built, so the lure cannot raise it). Reads the mod's own tag file, not
+     * the test mod's, so the creatures #918 and #936 add are held to it the day they are added.
+     */
+    @GameTest
+    public void everyCreatureInTheShippedHearsTagCanPathTheWholeNoise(GameTestHelper helper) {
+        java.nio.file.Path file = FabricLoader.getInstance()
+                .getModContainer(DeepCharter.MOD_ID)
+                .orElseThrow()
+                .findPath("data/deepcharter/tags/entity_type/sonar_hears.json")
+                .orElseThrow();
+        JsonArray values;
+        try {
+            values = JsonParser.parseString(java.nio.file.Files.readString(file))
+                    .getAsJsonObject()
+                    .getAsJsonArray("values");
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+        for (JsonElement value : values) {
+            String id = value.isJsonObject() ? value.getAsJsonObject().get("id").getAsString() : value.getAsString();
+            expect(
+                    helper,
+                    !id.startsWith("#"),
+                    "%s: a sonar_hears entry names a creature, not a tag, so this test can read its attributes",
+                    id);
+            EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.parse(id));
+            @SuppressWarnings("unchecked")
+            EntityType<? extends LivingEntity> living = (EntityType<? extends LivingEntity>) type;
+            expect(helper, DefaultAttributes.hasSupplier(living), "%s is in sonar_hears but is not a mob", id);
+            double range = DefaultAttributes.getSupplier(living).getBaseValue(Attributes.FOLLOW_RANGE);
+            expect(
+                    helper,
+                    range >= TUNING.noiseBlocks(),
+                    "%s is in the shipped sonar_hears tag with a follow range of %s, under the %s blocks a ping is heard: it would come only "
+                            + "part of the way. Set Attributes.FOLLOW_RANGE to at least SonarTuning.DEFAULT.noiseBlocks() in its attribute "
+                            + "builder (the lure never sets it), or take it out of the tag.",
+                    id,
+                    range,
+                    TUNING.noiseBlocks());
+        }
+        helper.succeed();
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)

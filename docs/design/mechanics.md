@@ -1843,9 +1843,12 @@ A default build is not harder than on main: nothing changes for a pod with no na
 - `sonar_echoes`: real things, the Sleeper's creatures and gnawers. An echo at the creature's block, **moved** when it goes faster than 1 block a second, else a still contact (an ore return: a body standing still is a dense return). A creature on the ground is judged by its horizontal speed, so gravity does not make a standing mob read as moving. It ships empty: no Sleeper creature is built yet (Drifters #918, gnawers #936); its first member is a line here.
 - `sonar_ore`: Company machines, an ore echo at any speed, as the pilot's scanner reads them. Tallies.
 - `sonar_hollow`: Moloch's things, no echo. The Retained (`lampless_figure`); masks join when built. It wins over the two tags above, so a type in a broad tag can still be silenced.
+- `sonar_cave`: things that read as an empty cave at any speed (CREATURES.md's Drifters: "sonar reads one as empty cave"). It ships empty.
 - `sonar_hears`: creatures a ping draws. It ships empty, for the same reason.
 
-**The lure.** On `SonarEvents.PINGED`, every creature in `sonar_hears` within the ping's noise radius (`SonarPing.hears`: a straight line of 48 blocks, through rock) gets a navigation to where the ping came from, at its own full pace. This is one order, not a leash: its own goals decide what it does on arrival and whether it keeps walking. A creature's pathfinder is also capped by its follow range, so a Sleeper's creature sets a follow range of at least the noise radius (48 blocks) in its attributes to come the whole way; one with a shorter reach comes as far as its path goes and stops (the measurement below).
+The tags map to kinds in one table (`SonarTags`), the first match deciding: hollow, ore, cave, echoes. A creature that joins a tag brings the attribute the tag needs: for `sonar_hears`, a follow range of at least the noise radius (checked by a test over the shipped tag).
+
+**The lure.** On `SonarEvents.PINGED`, every creature in `sonar_hears` within the ping's noise radius (`SonarPing.hears`: a straight line of 48 blocks, through rock) gets a navigation to where the ping came from, at its own full pace. The order holds for `SonarTuning.lureTicks` (200 ticks, 10 s, CREATURES.md's ten seconds of silence): while it holds, a creature whose own goals have sent it elsewhere is sent again within 10 ticks, and a new ping refreshes the hold. After it the creature is left to its goals, and what it does on arrival is the creature's. A creature's pathfinder is also capped by its follow range, so a Sleeper's creature sets a follow range of at least the noise radius (48 blocks) in its attributes to come the whole way; one with a shorter reach comes as far as its path goes and stops (the measurement below).
 
 **Ladder and trade-offs.** By hand, ping and read, and pay for it in who comes. The listening part (#1028) is the quiet way; the sonar burst (#928) the loud one; the robot navigator (#1029) cannot choose. No new cost: the noise was already there, and now something answers it.
 
@@ -1857,12 +1860,13 @@ A default build is not harder than on main: nothing changes for a pod with no na
 | The edge | 48.00 blocks hears, 48.01 does not | measured |
 | A walker from 36 blocks off at the hull | 375 ticks, 19 s: the husk's own pace, about 1.7 blocks a second over the 31 blocks it had to cover | measured (one husk in a straight 7-block-wide corridor) |
 | A walker heard from 47.5 blocks, follow range 35 | walked 34 blocks and stopped 13.9 blocks off | measured: why a Sleeper's creature sets its follow range to 48 |
+| The hold | a cow with all its own goals, taken off the ping at tick 13, was heading for it again within 10 ticks; 40 ticks after the 200-tick hold it was left alone | measured |
 | A walker at a player's walking pace (4.3 blocks a second) from the edge of the noise | 11 s to cover 48 blocks | modelled |
 | What the navigator can do with it | ping, mark, and the pilot has about the time it takes the nearest one to cross the gap | modelled |
 
 A default build is not harder than on main: no Sleeper creature is shipped, so nothing yet answers a ping. The first (#918) makes it so, and states its own pacing.
 
-**Knobs.** `SonarTuning.noiseBlocks` (48) is the radius; the tags are the signatures. **Open questions.** Should a ping also wake things that are not the Sleeper's? (CREATURES.md says the sonar burst does.) Should a creature that answers a ping hold the route for a few seconds, instead of one order? Neither is built.
+**Knobs.** `SonarTuning.noiseBlocks` (48) is the radius, `lureTicks` (200) the hold; the tags are the signatures. **Open questions.** Should a ping also wake things that are not the Sleeper's? (CREATURES.md says the sonar burst does.) Neither is built.
 
 ## The first tank and the Company recovery (#963, A)
 

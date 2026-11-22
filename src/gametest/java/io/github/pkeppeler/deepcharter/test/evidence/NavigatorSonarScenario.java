@@ -35,10 +35,12 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Evidence scenario "navigator-sonar" (#988): a mock player pilots a Prospector in a block of stone and the real client rides second, as the navigator.
- * Before the ping the scope is empty. One press of the ping key returns the contacts round the pod: ore (filled squares), a gas pocket close by (a hollow
- * square) and one far off that reads as an empty cave (a dot), a cave (dots), a body standing in a hollow (an ore echo, since it stands still), a Tally in a hollow far west (a Company machine: an ore echo) and a Retained in one far east (hollow: its room is an open cave and the figure returns nothing). The
- * navigator then turns toward the ore echo ahead and marks it, and the mark shows on the HUD. The echoes dim over their ten seconds, and the bar under the scope fills as the sonar clears for the next ping. The stills zoom on the scope.
+ * Evidence scenario "navigator-sonar" (#988, #924): a mock player pilots a Prospector in a block of stone and the real client rides second, as the
+ * navigator. Before the ping the scope is empty. One press of the ping key returns the contacts round the pod: ore (filled squares), a gas pocket close
+ * by (a hollow square) and one far off that reads as an empty cave (a dot), a cave (dots), and three bodies in hollows of their own. A body standing
+ * still is an ore echo; so is a Tally far west, a Company machine. A Retained far east is hollow: its room is an open cave on the scope, and the
+ * figure in it returns nothing. The navigator then turns toward the ore echo ahead and marks it, and the mark shows on the HUD. The echoes dim over
+ * their ten seconds, and the bar under the scope fills as the sonar clears for the next ping. The stills zoom on the scope.
  */
 public class NavigatorSonarScenario extends EvidenceScenario {
     private static final int X = 1600;
@@ -190,8 +192,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
         body.setPos(X + 4 * CELL + 2, FLOOR_Y + 1, Z - 2 * CELL + 2);
         level.addFreshEntity(body);
         // Far west, a Tally (a Company machine) in a hollow of its own: it echoes as ore. Far east, a Retained in
-        // another: the
-        // hollow returns an open cave and the figure in it returns nothing.
+        // another: the hollow returns an open cave and the figure in it returns nothing.
         room(level, X - 5 * CELL, FLOOR_Y, Z - 3 * CELL, 1, 1);
         Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
         tally.setNoAi(true);
