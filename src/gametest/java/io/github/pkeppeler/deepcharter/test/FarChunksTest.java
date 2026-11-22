@@ -24,6 +24,27 @@ public class FarChunksTest {
 
     private static final AtomicReference<Forced> FORCED_BY_A_FINISHED_TEST = new AtomicReference<>();
 
+    /** A wait fails past its limit only after {@link FarChunks#MIN_WAITED_TICKS} ticks, or past the ceiling: each clause is needed (#1002). */
+    @GameTest
+    public void aWaitFailsOnlyPastItsLimitAndTheTickFloorOrTheCeiling(GameTestHelper helper) {
+        long budget = 10_000_000_000L;
+        int floor = FarChunks.MIN_WAITED_TICKS;
+        boolean[] results = {
+            FarChunks.Deadline.failed(budget + 1, budget, floor - 1),
+            FarChunks.Deadline.failed(budget + 1, budget, floor),
+            FarChunks.Deadline.failed(budget - 1, budget, floor * 10),
+            FarChunks.Deadline.failed(FarChunks.CEILING_FACTOR * budget + 1, budget, 1),
+            FarChunks.Deadline.failed(FarChunks.CEILING_FACTOR * budget, budget, 1)
+        };
+        boolean[] expected = {false, true, false, true, false};
+        for (int i = 0; i < results.length; i++) {
+            if (results[i] != expected[i]) {
+                throw helper.assertionException("case %d failed the wait: %s, expected %s", i, results[i], expected[i]);
+            }
+        }
+        helper.succeed();
+    }
+
     @GameTest
     public void aChunkIsForcedWhileTheTestRuns(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();

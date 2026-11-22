@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.test.support.BlockLightOracle;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LightSyncSends;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -63,9 +64,6 @@ public class StructureLightBorderTest {
     private static final int CELL_SEARCH = 400;
     /** Block light spreads this far, so a lamp this near a border (counted to the far block of its side) lights the neighbour. */
     private static final int NEAR_BORDER = 3;
-
-    /** A batch of its own: this case loads its chunks on the server thread (see phase 0 of {@link #run}), which would starve a test beside it. */
-    private static final String SYNC_CHUNK_LOAD = "deepcharter-test:sync_chunk_load";
 
     private static final int REACH = 15;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 600;
@@ -477,22 +475,22 @@ public class StructureLightBorderTest {
         }
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aSeaLanternAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.SEA_LANTERN);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aKellsLavaAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.KELLS_LAVA);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aShaftCandleAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.CANDLE);
     }
 
-    @GameTest(environment = SYNC_CHUNK_LOAD, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theFamousWrecksLanternAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.FAMOUS_LANTERN);
     }
