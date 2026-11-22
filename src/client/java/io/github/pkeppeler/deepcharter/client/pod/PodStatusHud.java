@@ -13,7 +13,6 @@ import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodSounder;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.CompanyRecovery;
-import io.github.pkeppeler.deepcharter.repair.RecoveryTuning;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -72,7 +71,7 @@ public final class PodStatusHud {
             CompanyRecovery.secondsLeft(pod)
                     .ifPresent(seconds -> lines.add(new Line(
                             Component.translatable(
-                                    "hud.deepcharter.pod.recovery", seconds, RecoveryTuning.DEFAULT.fee()),
+                                    "hud.deepcharter.pod.recovery", seconds, CompanyRecovery.feeFor(pod)),
                             look.podStatusColor())));
         }
         return lines;

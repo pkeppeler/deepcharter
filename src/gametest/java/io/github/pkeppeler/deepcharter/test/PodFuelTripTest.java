@@ -45,6 +45,11 @@ public class PodFuelTripTest {
     private static final int MIN_BLOCKS_PER_TANK = 60;
 
     private static final int MIN_DRILL_SECONDS_PER_TANK = 180;
+    /** And no more: a tank that never runs dry makes the beep, the pump and the tank ladder pointless (a tank is 4 minutes of drilling, not 15). */
+    private static final int MAX_BLOCKS_PER_TANK = 98;
+
+    private static final int MAX_DRILL_SECONDS_PER_TANK = 360;
+    private static final double MAX_MIXED_MINUTES_PER_TANK = 6.0;
     /** Minutes of the first trip's mix of drilling, driving and climbing that a tank must last (the issue asks 3 to 4). */
     private static final double MIN_MIXED_MINUTES_PER_TANK = 3.5;
     /** Share of the tank a first trip must come home with, as slack for a slow pilot, a wrong turn and ore. */
@@ -115,12 +120,19 @@ public class PodFuelTripTest {
                         script.blocksDown(),
                         script.secondsOnTheStone());
             }
+            if (script.blocksDown() > MAX_BLOCKS_PER_TANK || script.secondsOnTheStone() > MAX_DRILL_SECONDS_PER_TANK) {
+                throw helper.assertionException(
+                        "one tank should not last more than %d s of drilling, it lasted %.0f s",
+                        MAX_DRILL_SECONDS_PER_TANK, script.secondsOnTheStone());
+            }
             helper.succeed();
         });
     }
 
     /**
-     * The first trip: down from the pad to {@value #TURNAROUND} blocks with a side tunnel at 20 and at the turnaround, and home on the rotor.
+     * The first trip (the issue asks "at least 3 to 4 minutes of mixed play"): the scripted pilot is quick and the trip is {@code seconds()} long, 2.5 minutes. The
+     * target is read as the tank carrying at least {@value #MIN_MIXED_MINUTES_PER_TANK} minutes of this mix, with {@value #MIN_SPARE_SHARE} of it left on return, because a
+     * human is slower than the script (looking at the scanner, turning, a wrong tunnel) and spends the slack. It is bounded above too. Down from the pad to {@value #TURNAROUND} blocks with a side tunnel at 20 and at the turnaround, and home on the rotor.
      * The low-fuel beep must come with the climb home still in the tank, and the tank must carry the trip's mix of work for minutes.
      */
     @GameTest(maxTicks = MAX_TICKS)
@@ -149,6 +161,11 @@ public class PodFuelTripTest {
                 throw helper.assertionException(
                         "a first tank should carry %.1f minutes of this trip's mix, it carries %.1f",
                         MIN_MIXED_MINUTES_PER_TANK, minutesOfThisMix);
+            }
+            if (minutesOfThisMix > MAX_MIXED_MINUTES_PER_TANK) {
+                throw helper.assertionException(
+                        "a first tank should not carry more than %.1f minutes of this trip's mix, it carries %.1f",
+                        MAX_MIXED_MINUTES_PER_TANK, minutesOfThisMix);
             }
             if (script.litres() < MIN_SPARE_SHARE * script.tankLitres()) {
                 throw helper.assertionException(

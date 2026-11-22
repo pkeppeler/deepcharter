@@ -447,6 +447,13 @@ public class EconomyAffordabilityTest {
             throw failure(helper, "a one-way bore of layer 1 burns %.1f L, expected %d", litres, BORE_LITRES);
         }
         for (int tier = 0; tier < BORE_TANKS_BY_TANK_TIER.length; tier++) {
+            // The refill counts are mostly 1 now that a tank is minutes of play (#963), so they pin little: each tier's
+            // price must also buy a bigger tank.
+            if (tier > 0
+                    && !(EarlyRunModel.mole(0, tier, 0).tankLitres()
+                            > EarlyRunModel.mole(0, tier - 1, 0).tankLitres())) {
+                throw failure(helper, "tank tier %d must hold more than tier %d", tier, tier - 1);
+            }
             int tanks = (int) Math.ceil(litres / EarlyRunModel.mole(0, tier, 0).tankLitres());
             LOGGER.info("[fuel] tank tier {}: {} tanks", tier, tanks);
             if (tanks != BORE_TANKS_BY_TANK_TIER[tier]) {

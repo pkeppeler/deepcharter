@@ -65,9 +65,9 @@ public class PodRecoveryHudClientTest implements FabricClientGameTest {
             if (seconds < 1 || seconds > RecoveryTuning.DEFAULT.delayTicks() / 20) {
                 throw new AssertionError("the countdown reads whole seconds of the minute, shows " + seconds);
             }
-            if (!Long.valueOf(RecoveryTuning.DEFAULT.fee()).equals(shown.get(1))) {
+            if (!Long.valueOf(RecoveryTuning.DEFAULT.feeAt(1)).equals(shown.get(1))) {
                 throw new AssertionError(
-                        "the line names the fee of " + RecoveryTuning.DEFAULT.fee() + ", shows " + shown.get(1));
+                        "the line names the fee of " + RecoveryTuning.DEFAULT.feeAt(1) + ", shows " + shown.get(1));
             }
 
             singleplayer.getServer().runOnServer(server -> {
