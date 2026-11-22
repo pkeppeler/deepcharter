@@ -39,18 +39,13 @@ TOKEN = re.compile(r"\S+")
 
 def trips(url: str) -> bool:
     """Whether the proxy refuses this URL."""
-    return len(url.split("://", 1)[1]) >= MAX_AFTER_SCHEME or LONG_RUN.search(url) is not None
-
-
-def blob_path(url: str) -> str | None:
-    match = BLOB.fullmatch(url)
-    return match.group("path") if match else None
+    return len(url.partition("://")[2]) >= MAX_AFTER_SCHEME or LONG_RUN.search(url) is not None
 
 
 def short_form(url: str) -> str:
     """What replaces a tripping URL: the backticked repo path of a blob URL, else nothing."""
-    path = blob_path(url)
-    return f"`{path}`" if path else ""
+    match = BLOB.fullmatch(url)
+    return f"`{match.group('path')}`" if match else ""
 
 
 def split_target(token: str, pre: str | None) -> tuple[str, str, bool]:
@@ -104,7 +99,7 @@ def rewrite(text: str) -> tuple[str, list[str]]:
 
     def token(match: re.Match[str]) -> str:
         tok = match.group(0)
-        if (("://" in tok and len(tok) - tok.index("://") - 3 >= MAX_AFTER_SCHEME) or LONG_RUN.search(tok)):
+        if trips(tok):
             found.append(tok)
             return PLACEHOLDER
         return tok
