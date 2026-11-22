@@ -20,6 +20,7 @@ import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
+import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
 import net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.resources.Identifier;
@@ -35,6 +36,7 @@ import net.minecraft.world.phys.Vec3;
  * with {@link MockPlayers#join}. Everything here runs on the server thread.
  */
 public final class MockPlayer {
+    private static final int TELEPORT_IDS = 32;
     private final MinecraftServer server;
     private final ServerPlayer player;
     private final Connection connection;
@@ -154,6 +156,18 @@ public final class MockPlayer {
                             + ", alive " + player.isAlive() + ", online " + isOnline() + ")");
         }
         confirmDimensionChange();
+    }
+
+    /**
+     * Answers every teleport the server is waiting on, as a real client does: until then the server drops the player's position and
+     * vehicle packets. Mounting a vehicle teleports the rider. The server numbers its teleports from 1 and keeps no list, so this
+     * answers each of the first {@link #TELEPORT_IDS} numbers; an answer to a number it is not waiting for is ignored.
+     */
+    public void acknowledgeTeleports() {
+        for (int id = 0; id < TELEPORT_IDS; id++) {
+            player.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(
+                    id, player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
+        }
     }
 
     /** Disconnect and remove the player, also one that respawned (#698). Safe to call when it has already left. */
