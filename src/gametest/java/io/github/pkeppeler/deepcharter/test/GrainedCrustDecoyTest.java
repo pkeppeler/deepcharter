@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
 import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource.Layer;
 import io.github.pkeppeler.deepcharter.layer.gen.GrainedCrustPass;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -68,7 +69,7 @@ public class GrainedCrustDecoyTest {
     private static final int SAMPLE_CHUNKS = 2;
     private static final int SAMPLE_STEP = 5;
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void theSameSeedGivesTheSameBoundaries(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         List<Layer> layers = bands(level, 24, 0);
@@ -88,7 +89,7 @@ public class GrainedCrustDecoyTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void aboutAThirdOfDrawnBoundariesAreGrained(GameTestHelper helper) {
         int drawn = 0;
         int grained = 0;
@@ -111,7 +112,7 @@ public class GrainedCrustDecoyTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void addingABandRedrawsNoExistingBoundary(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         List<Layer> all = bands(level, 12, 0);
@@ -161,7 +162,7 @@ public class GrainedCrustDecoyTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void aBoundaryIsTheSameKindInEveryChunk(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         List<Layer> layers = bands(level, 24, 0);
@@ -179,7 +180,7 @@ public class GrainedCrustDecoyTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void layerDataOverridesTheDraw(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         for (long seed : SEEDS) {
@@ -200,7 +201,7 @@ public class GrainedCrustDecoyTest {
     }
 
     /** Layer data that says nothing of a floor leaves it to the seed, and the word {@code floor_crust} reads back as the setting. */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void aLayerThatSaysNothingOfItsFloorIsLeftToTheSeed(GameTestHelper helper) throws IOException {
         ServerLevel level = helper.getLevel();
         JsonObject source = read(helper, "/data/deepcharter/dimension/campaign_sample.json")
@@ -231,7 +232,7 @@ public class GrainedCrustDecoyTest {
     }
 
     /** The crust pass only swaps the breach crust: rock, air and the rows above stay. */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void theSwapTouchesTheCrustRowsOnly(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         List<Layer> layers = bands(level, 2, 0, FloorCrust.GRAINED);
@@ -252,7 +253,7 @@ public class GrainedCrustDecoyTest {
     }
 
     /** The pass is in the unbuilt-depth biome, which every column of a campaign world holds, so no band's biome has to carry it. */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void everyCampaignColumnRunsTheCrustPass(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Holder<Biome> unbuilt = level.registryAccess()
@@ -276,7 +277,7 @@ public class GrainedCrustDecoyTest {
     }
 
     /** The first breach is breach crust, in the layer data: handbook chapter 8 teaches it. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theFirstBreachIsNormalCrustInTheLayerData(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         List<Layer> layers =
