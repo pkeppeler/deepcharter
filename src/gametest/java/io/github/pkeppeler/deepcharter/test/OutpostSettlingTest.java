@@ -6,6 +6,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.colony.ColonyKit;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.outpost.IncidentReportPayload;
@@ -20,6 +21,8 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Report;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Survey;
 import io.github.pkeppeler.deepcharter.outpost.SettlingTuning;
 import io.github.pkeppeler.deepcharter.outpost.SettlingTuning.LayerRates;
+import io.github.pkeppeler.deepcharter.outpost.VisitBreaks;
+import io.github.pkeppeler.deepcharter.outpost.VisitBreaks.Broken;
 import io.github.pkeppeler.deepcharter.outpost.VisitRoll;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -43,6 +46,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -57,6 +61,7 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
@@ -65,6 +70,8 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -500,6 +507,87 @@ public class OutpostSettlingTest {
                 .thenSucceed();
     }
 
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aSleepersVisitBreaksWhatTheDepthDoesNotHoldAndSpillsStorageIntoAHeap(GameTestHelper helper) {
+        Room room = SettlingRooms.stage(helper, 8, SettlingRooms.nobody());
+        SettlingRooms.stock(room, Items.COAL, 100);
+        whenLoaded(helper, room)
+                .thenExecute(() -> {
+                    ServerLevel level = room.level();
+                    BlockPos floor = room.floor();
+                    BlockPos cobble = floor.offset(3, 1, -3);
+                    BlockPos plate = floor.offset(-3, 1, -3);
+                    BlockPos pump = floor.offset(-3, 1, 3);
+                    BlockPos heap = floor.offset(0, 1, 3);
+                    level.setBlock(cobble, Blocks.COBBLESTONE.defaultBlockState(), 3);
+                    level.setBlock(plate, ColonyKit.RIVETED_PLATE.defaultBlockState(), 3);
+                    level.setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
+                    level.setBlock(heap, WreckRegistry.HEAP.defaultBlockState(), 3);
+                    BoundingBox hall = new BoundingBox(
+                            floor.getX() - 4,
+                            floor.getY() + 1,
+                            floor.getZ() - 4,
+                            floor.getX() + 4,
+                            floor.getY() + 4,
+                            floor.getZ() + 4);
+                    Predicate<BlockState> holds = state -> state.is(ColonyKit.RIVETED_PLATE);
+                    Broken broken =
+                            VisitBreaks.apply(level, room.outpost(), hall, holds, 1, 10, RandomSource.create(7));
+                    expect(
+                            helper,
+                            level.getBlockState(cobble).isAir(),
+                            "an unheld block is broken, it is %s",
+                            level.getBlockState(cobble));
+                    expect(
+                            helper,
+                            broken.lost().equals(Map.of(idOf(Items.COBBLESTONE), 1)),
+                            "the lost block is named: %s",
+                            broken.lost());
+                    expect(
+                            helper,
+                            level.getBlockState(room.barrel()).is(WreckRegistry.HEAP) && broken.heaps() == 1,
+                            "the barrel spilled into a heap: %s, %s heaps",
+                            level.getBlockState(room.barrel()),
+                            broken.heaps());
+                    Container spilled = SettlingRooms.containerAt(level, room.barrel());
+                    expect(
+                            helper,
+                            SettlingRooms.count(spilled, Items.COAL) == 100
+                                    && SettlingRooms.count(spilled, Items.BARREL) == 1,
+                            "the heap keeps the 100 coal and the barrel");
+                    expect(helper, level.getBlockState(plate).is(ColonyKit.RIVETED_PLATE), "a held block stays");
+                    expect(helper, level.getBlockState(pump).is(TerminalTypes.FUEL_PUMP.block()), "a terminal stays");
+                    expect(helper, level.getBlockState(heap).is(WreckRegistry.HEAP), "a heap stays");
+                    expect(helper, broken.changed().isPresent(), "the changed box is reported");
+                    expectNoItemEntities(helper, room);
+
+                    // A visit breaks at most maxBlocks: 5 blocks, 2 visits of 2, one is left.
+                    for (int i = 0; i < 5; i++) {
+                        level.setBlock(floor.offset(-2 + i, 2, 0), Blocks.COBBLESTONE.defaultBlockState(), 3);
+                    }
+                    Broken some = VisitBreaks.apply(
+                            level,
+                            room.outpost(),
+                            hall,
+                            holds.or(state -> state.is(WreckRegistry.HEAP)),
+                            2,
+                            2,
+                            RandomSource.create(9));
+                    int left = 0;
+                    for (int i = 0; i < 5; i++) {
+                        left += level.getBlockState(floor.offset(-2 + i, 2, 0)).is(Blocks.COBBLESTONE) ? 1 : 0;
+                    }
+                    expect(
+                            helper,
+                            left == 1 && some.lost().equals(Map.of(idOf(Items.COBBLESTONE), 4)),
+                            "2 visits of at most 2 blocks leave one of 5 blocks: %s left, lost %s",
+                            left,
+                            some.lost());
+                    expectNoItemEntities(helper, room);
+                })
+                .thenSucceed();
+    }
+
     private static void expectNoItemEntities(GameTestHelper helper, Room room) {
         // entity-query: not applicable, this is src/gametest: the room's chunks are entity-ticking
         List<ItemEntity> dropped =
@@ -665,7 +753,7 @@ public class OutpostSettlingTest {
                 data.all());
         expect(
                 helper,
-                outpost.dimension().equals(LayerChain.dimension(1)),
+                outpost.dimension().equals(TestLayers.dimension(1)),
                 "a version 1 outpost stands in the dimension of its layer, not %s",
                 outpost.dimension());
         expect(helper, outpost.centre().equals(new BlockPos(10, 20, 30)), "the middle is kept: %s", outpost.centre());
@@ -679,7 +767,7 @@ public class OutpostSettlingTest {
         CompoundTag expectedV2 = parse(
                 helper,
                 "{version:2,outposts:[{charter:[I;1,2,3,4],layer:1,dimension:\""
-                        + LayerChain.dimension(1).identifier()
+                        + TestLayers.dimension(1).identifier()
                         + "\",centre:[I;10,20,30]}]}");
         expect(helper, saved.equals(expectedV2), "version 2 pinned: %s", saved);
         OutpostData again = OutpostData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();

@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.outpost;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
+import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.outpost.OutpostData.Outpost;
@@ -9,6 +10,7 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Ledger;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Pending;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Report;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Survey;
+import io.github.pkeppeler.deepcharter.outpost.VisitBreaks.Broken;
 import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
 import io.github.pkeppeler.deepcharter.terminal.TerminalBlockEntity;
 import java.util.Comparator;
@@ -29,6 +31,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
@@ -175,7 +178,16 @@ public final class OutpostSettling {
                 terminals(level, zone),
                 StorageTakes.count(level, zone, OutpostSettling::isFuel),
                 StorageTakes.count(level, zone, OutpostSettling::isOre),
-                0);
+                VisitBreaks.candidates(level, outpost, zone, OutpostSettling::holds)
+                        .size());
+    }
+
+    /**
+     * True when the depth the outpost stands at rates {@code state} enough that a visit leaves it alone. Filled by the ratings of #989:
+     * until they are read here, every block counts as held, so no visit breaks anything, which changes nothing while the Sleeper's rate is 0.
+     */
+    private static boolean holds(BlockState state) {
+        return true;
     }
 
     private static boolean isDark(ServerLevel level, BlockPos pos) {
@@ -233,7 +245,14 @@ public final class OutpostSettling {
                 break;
             }
         }
-        Report done = new Report(pending.total(), taken, Map.of(), 0);
+        Broken broken = VisitBreaks.apply(
+                level, outpost, zone, OutpostSettling::holds, pending.sleepers(), tuning.maxBlocksPerVisit(), random);
+        broken.changed()
+                .ifPresent(box -> LightSync.holdSendUntilLit(
+                        level,
+                        new BlockPos(box.minX(), box.minY(), box.minZ()),
+                        new BlockPos(box.maxX(), box.maxY(), box.maxZ())));
+        Report done = new Report(pending.total(), taken, broken.lost(), broken.heaps());
         return ledger.withPending(Pending.NONE)
                 .withUnread(ledger.unread().plus(done))
                 .withSurvey(survey(level, outpost, zone));

@@ -713,10 +713,10 @@ public class OutpostTest {
     @GameTest
     public void outpostDataOfAnotherVersionIsKeptAndNeverThrowsOnAGameplayPath(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        if (OutpostData.VERSION != 1) {
+        if (OutpostData.VERSION != 2) {
             throw failure(
                     helper,
-                    "the saved outposts are version 1, not %d, until a change carries a migration test",
+                    "the saved outposts are version 2, not %d, until a change carries a migration test",
                     OutpostData.VERSION);
         }
         UnreadableChecks.assertSavedDataNoThrow(

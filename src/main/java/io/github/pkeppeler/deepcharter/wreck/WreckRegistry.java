@@ -57,7 +57,9 @@ public final class WreckRegistry {
                 new SalvageHeapBlock(BlockBehaviour.Properties.of()
                         .setId(blockKey)
                         .strength(2.0F)
-                        .sound(SoundType.WOOD)));
+                        .sound(SoundType.WOOD)
+                        // What a heap holds drops from its block entity when it breaks; the block itself drops nothing.
+                        .noLootTable()));
         ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, heapId());
         Registry.register(
                 BuiltInRegistries.ITEM,
