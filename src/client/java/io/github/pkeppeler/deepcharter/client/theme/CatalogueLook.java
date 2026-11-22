@@ -109,7 +109,6 @@ public record CatalogueLook(
      * @param chamfer how many pixels the casing's corners are cut by
      * @param grooveInset pixels from the casing's edge to the groove cut round it
      * @param lipWidth the width of the shadowed lip round the glass
-     * @param highlightInset pixels from the glass's corner to where the curved highlight starts along each edge: the glass sprite's corner radius, so the highlight begins where the glass's curve ends
      * @param vignetteWidth the width of the dark ring the glass's bulge puts round its edge
      * @param highlightLength the length of the curved highlight in the glass's top left corner
      * @param rivetPitch the distance between the rivets down a console's sides
@@ -149,7 +148,6 @@ public record CatalogueLook(
             int chamfer,
             int grooveInset,
             int lipWidth,
-            int highlightInset,
             int vignetteWidth,
             int highlightLength,
             int rivetPitch,
@@ -189,7 +187,6 @@ public record CatalogueLook(
                     d.integer("chamfer", 0, 8),
                     d.integer("grooveInset", 1, 16),
                     d.integer("lipWidth", 1, 8),
-                    d.integer("highlightInset", 0, 64),
                     d.integer("vignetteWidth", 0, 16),
                     d.integer("highlightLength", 0, 64),
                     d.integer("rivetPitch", 8, 256),

@@ -7,6 +7,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -58,9 +59,13 @@ public final class DrawnText {
 
     /** Like {@link #of(Screen)} with the mouse at ({@code mouseX}, {@code mouseY}), for what only a hovered thing draws. */
     public static List<Drawn> of(Screen screen, int mouseX, int mouseY) {
-        Minecraft client = Minecraft.getInstance();
-        Recorder recorder = new Recorder(client);
-        screen.extractRenderStateWithTooltipAndSubtitles(recorder, mouseX, mouseY, 0f);
+        return of(recorder -> screen.extractRenderStateWithTooltipAndSubtitles(recorder, mouseX, mouseY, 0f));
+    }
+
+    /** Runs {@code draw} on a recorder and returns the strings it drew, for something that is not a screen, such as a toast. Client thread. */
+    public static List<Drawn> of(Consumer<GuiGraphicsExtractor> draw) {
+        Recorder recorder = new Recorder(Minecraft.getInstance());
+        draw.accept(recorder);
         return List.copyOf(recorder.drawn);
     }
 

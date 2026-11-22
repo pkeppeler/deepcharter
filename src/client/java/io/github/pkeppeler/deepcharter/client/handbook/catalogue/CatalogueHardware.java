@@ -17,7 +17,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
  *
  * <p>A unit is drawn in this order: {@link #body} (casing, lip, phosphor), its content, {@link #glassFront} (the glass over the
  * content), then the controls on the deck. The glass's rounded corners are the shared glass sprite's ({@link PanelLook#GLASS}) and the
- * scanlines are the shared {@link CrtDraw} ones, so the shared CRT frame's corner fix reaches the catalogue with no change here.
+ * scanlines stop at those corners ({@link CrtDraw#roundedScanlines}, cut to {@link PanelLook#glassRadius()}), as the shared CRT glass's do.
  */
 final class CatalogueHardware {
     private CatalogueHardware() {}
@@ -67,10 +67,10 @@ final class CatalogueHardware {
     }
 
     /** What is over a unit's content: the shared glass sprite, the scanlines and the bulge, inside the glass only. */
-    static void glassFront(GuiGraphicsExtractor graphics, CatalogueLook look, Rect glass) {
+    static void glassFront(GuiGraphicsExtractor graphics, CatalogueLook look, PanelLook panel, Rect glass) {
         CatalogueLook.Casing c = look.casing();
         CrtDraw.sprite(graphics, PanelLook.GLASS, glass.x(), glass.y(), glass.width(), glass.height());
-        CrtDraw.roundedScanlines(graphics, glass.x(), glass.y(), glass.right(), glass.bottom(), c.highlightInset());
+        CrtDraw.roundedScanlines(graphics, glass.x(), glass.y(), glass.right(), glass.bottom(), panel.glassRadius());
         int width = c.vignetteWidth();
         for (int i = 0; i < width; i++) {
             int shade = Colors.withAlpha(c.vignetteColor(), (c.vignetteColor() >>> 24) * (width - i) / width);
@@ -79,11 +79,11 @@ final class CatalogueHardware {
             graphics.fill(glass.x() + i, glass.y(), glass.x() + i + 1, glass.bottom(), shade);
             graphics.fill(glass.right() - 1 - i, glass.y(), glass.right() - i, glass.bottom(), shade);
         }
-        // The highlight hugs the top left corner, from where the glass sprite's curve ends: the glass bulges toward the
-        // room's light.
+        // The highlight hugs the top left corner, from where the glass sprite's curve (its radius) ends: the glass
+        // bulges toward the room's light.
         int x = glass.x();
         int y = glass.y();
-        int inset = c.highlightInset();
+        int inset = panel.glassRadius();
         int length = c.highlightLength();
         graphics.fill(x + inset, y + 1, x + inset + length, y + 2, c.highlightColor());
         graphics.fill(x + 1, y + inset, x + 2, y + inset + length, c.highlightColor());
