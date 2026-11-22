@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
  * @param tow the chain links of the tow line between two pods
  * @param beam the fake light beams of a lit pod's headlamp and the colony floodlights
  * @param readout the block name and hint under the crosshair
+ * @param sonar the navigator's sonar scope
  */
 public record UiTheme(
         CrtTuning crt,
@@ -43,7 +44,8 @@ public record UiTheme(
         CockpitLook cockpit,
         TowChainLook tow,
         BeamLook beam,
-        ReadoutLook readout) {
+        ReadoutLook readout,
+        SonarLook sonar) {
     /** The areas, each one a file {@code theme/<name>.json}. */
     static final Set<String> AREAS = Set.of(
             "crt",
@@ -58,7 +60,8 @@ public record UiTheme(
             "cockpit",
             "tow",
             "beam",
-            "readout");
+            "readout",
+            "sonar");
 
     private static volatile @Nullable UiTheme current;
 
@@ -103,7 +106,8 @@ public record UiTheme(
                 CockpitLook.of(area(areas, "cockpit")),
                 TowChainLook.of(area(areas, "tow")),
                 BeamLook.of(area(areas, "beam")),
-                ReadoutLook.of(area(areas, "readout")));
+                ReadoutLook.of(area(areas, "readout")),
+                SonarLook.of(area(areas, "sonar")));
         if (theme.transmission().maxWidth() <= 2 * theme.crt().padding()) {
             throw new IllegalArgumentException(area(areas, "transmission")
                             .conflict(

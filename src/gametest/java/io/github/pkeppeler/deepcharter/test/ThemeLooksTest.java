@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
 import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
+import io.github.pkeppeler.deepcharter.client.theme.SonarLook;
 import io.github.pkeppeler.deepcharter.client.theme.TowChainLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.theme.UiTheme;
@@ -222,6 +223,29 @@ public class ThemeLooksTest {
                 "readout",
                 new ReadoutLook(14, 2, 1.0, 0xFF7CFC9A, 0xFFE8C170, 4, 6, 2),
                 ReadoutLook.of(area("readout", null)));
+        expect(
+                helper,
+                "sonar",
+                new SonarLook(
+                        81,
+                        4,
+                        0xFF7CE0FF,
+                        0xC0081018,
+                        0xFF000000,
+                        0x40FFFFFF,
+                        0xFF38F06E,
+                        0xFFE8E8F0,
+                        0xFFE040E0,
+                        0xFF7A8896,
+                        0xFFFF7A2A,
+                        0xFF7CE0FF,
+                        0x80000000,
+                        0xFFB0B0B0,
+                        60,
+                        0xFFFFFFFF,
+                        9,
+                        14),
+                SonarLook.of(area("sonar", null)));
         helper.succeed();
     }
 
@@ -634,7 +658,8 @@ public class ThemeLooksTest {
                 "cockpit",
                 "tow",
                 "beam",
-                "readout")) {
+                "readout",
+                "sonar")) {
             areas.put(name, area(name, null));
         }
         return areas;
@@ -657,6 +682,17 @@ public class ThemeLooksTest {
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeOutTicks\": 41 }")), "fadeOutTicks");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"settleTicks\": -1 }")), "settleTicks");
         rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"hintColor\": 5 }")), "hintColor");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theSonarScopeStaysWithinItsBounds(GameTestHelper helper) {
+        rejected(helper, () -> SonarLook.of(area("sonar", "{ \"scopePixels\": 80 }")), "scopePixels");
+        rejected(helper, () -> SonarLook.of(area("sonar", "{ \"scopePixels\": 9 }")), "scopePixels");
+        rejected(helper, () -> SonarLook.of(area("sonar", "{ \"minAlpha\": 256 }")), "minAlpha");
+        rejected(helper, () -> SonarLook.of(area("sonar", "{ \"markPixels\": 8 }")), "markPixels");
+        rejected(helper, () -> SonarLook.of(area("sonar", "{ \"markMargin\": 101 }")), "markMargin");
+        rejected(helper, () -> SonarLook.of(area("sonar", "{ \"oreColor\": 5 }")), "oreColor");
         helper.succeed();
     }
 
