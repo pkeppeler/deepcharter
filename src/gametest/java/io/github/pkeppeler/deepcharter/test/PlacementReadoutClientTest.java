@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.client.outpost.PlacementReadoutHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.outpost.Placements;
@@ -34,7 +35,7 @@ import net.minecraft.world.phys.HitResult;
  * Client GameTest for the placement readout and the spec sheet of #989. Layers 1 and 2 ask nothing, so with a block in hand and the crosshair on a
  * block there, a rated one or not, the readout says nothing and never fades in; a block's tooltip states its ratings; and the longest line the
  * readout can say fits the narrowest GUI the cockpit draws at. What the words are for a depth that asks something is {@code OutpostRatingsTest}'s,
- * checked against an example row. Where a depth has no rated material (layer 3 for now) the readout is up, and the box {@link HudKeepClear} gives
+ * checked against an example row. Where a depth has no rated material (the campaign's unbuilt depth, today) the readout is up, and the box {@link HudKeepClear} gives
  * for it is the box its text is drawn in, two lines under the block readout's, so a popup keeps clear of what is drawn; it is gone once the readout
  * is. It otherwise reads the HUD's state, not its pixels.
  */
@@ -101,19 +102,20 @@ public class PlacementReadoutClientTest implements FabricClientGameTest {
     }
 
     /**
-     * Layer 3 has no rated material yet, so a block in hand reads WILL NOT HOLD with a reason. The one rectangle {@link HudKeepClear} names for
+     * Unbuilt depth has no rated material, so a block in hand reads WILL NOT HOLD with a reason. The one rectangle {@link HudKeepClear} names for
      * it is worked out here from the theme and the font, holds every string the readout draws, and is gone when the block is put away.
      */
     private static void expectTheReadoutKeepsItsBoxClear(
             ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         singleplayer.getServer().runOnServer(server -> {
-            PlacementStage.build(server, 3);
+            PlacementStage.buildUnbuilt(server);
             PlacementStage.hold(server, new ItemStack(Items.OAK_PLANKS));
         });
         ClientWait.until(
                 context,
-                "the placement readout up in layer 3 and drawn",
-                client -> TestLayers.clientIsIn(client, 3)
+                "the placement readout up in unbuilt depth and drawn",
+                client -> client.player != null
+                        && client.player.getY() < CampaignBands.LAYER_2.minY()
                         && PlacementReadoutHud.shown().isPresent()
                         && !drawn(client).isEmpty());
         context.runOnClient(client -> {

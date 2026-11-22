@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import java.util.Set;
@@ -12,7 +13,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * A stage for the placement readout (#989): a lit pocket of air cut into the rock of a layer, the first player in it facing a block of the layer's
+ * A stage for the placement readout (#989): a lit pocket of air cut into the rock of a layer (or of unbuilt depth), the first player in it facing a block of the layer's
  * rock that hangs three blocks east of them at eye height, so the crosshair rests on its west face and a block in hand would be placed in the air
  * west of it. Built from the layer's own geometry, so it names no world Y.
  */
@@ -34,8 +35,25 @@ public final class PlacementStage {
     /** Cuts the pocket in {@code layer}, puts the first player in it facing the aimed block with an empty hand, and returns the spot. Run on the server. */
     public static Spot build(MinecraftServer server, int layer) {
         ServerLevel level = TestLayers.level(server, layer);
-        BlockPos floor = new BlockPos(
-                X, TestLayers.band(level, layer).minY() + LayerTuning.DEFAULT.crustThickness() + ABOVE_CRUST, Z);
+        return stage(
+                server,
+                level,
+                TestLayers.band(level, layer).minY() + LayerTuning.DEFAULT.crustThickness() + ABOVE_CRUST);
+    }
+
+    /**
+     * As {@link #build} in the campaign world's unbuilt depth, the one depth that asks something today: nothing is rated there, so any block
+     * in hand reads WILL NOT HOLD with a reason.
+     */
+    public static Spot buildUnbuilt(MinecraftServer server) {
+        return stage(
+                server,
+                TestLayers.level(server, 1),
+                CampaignBands.UNBUILT.minY() + LayerTuning.DEFAULT.crustThickness() + ABOVE_CRUST);
+    }
+
+    private static Spot stage(MinecraftServer server, ServerLevel level, int floorY) {
+        BlockPos floor = new BlockPos(X, floorY, Z);
         BlockPos rockMin = floor.offset(-4, -1, -4);
         BlockPos rockMax = floor.offset(6, 4, 4);
         RoomCarver.carve(
