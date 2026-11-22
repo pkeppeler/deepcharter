@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.creature.SporeClouds;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.DrifterArenas;
 import io.github.pkeppeler.deepcharter.test.support.DrifterArenas.Arena;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
@@ -566,7 +567,10 @@ public class DrifterTest {
      * The count is of pods, not of people: a Prospector with two people in it drilling is one source, and the people on foot are one more
      * however many they are. A per-person count would make the two walkers two sources, and the pod's second rider one.
      */
-    @GameTest(dimension = "deepcharter:campaign_sample", maxTicks = FarChunks.AWAIT_BUDGET_TICKS + HEAR_TICKS + 60)
+    @GameTest(
+            dimension = "deepcharter:campaign_sample",
+            environment = CampaignEnvironments.C,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + HEAR_TICKS + 60)
     public void aSourceIsAPodNotAPersonAndTheCrewOnFootIsOne(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos origin = new BlockPos(26_000, CampaignBands.LAYER_1.minY() + 80, 26_000);

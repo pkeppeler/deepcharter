@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.DrifterArenas.Arena;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LoudPods;
@@ -146,7 +147,7 @@ public class DrifterSpawnTest {
      * No drifter appears outside the hollows tag, in a room with every other condition. In the tag, one source holds one drifter, two sources
      * two, three sources still two (the top zone's cap); a ringing alarm lets one source hold two; the bottom zone's cap is four.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.C, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void driftersKeyOnTheTagAndAreCountedByPodsAndCappedByZone(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         CampaignBands.Band one = CampaignBands.LAYER_1;
@@ -218,7 +219,7 @@ public class DrifterSpawnTest {
     }
 
     /** A kill raises the alarm of the drifter's zone and no other, and a second one starts it again without stacking its length. */
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 120)
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.C, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 120)
     public void killingADrifterRaisesTheAlarmOfItsZone(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         CampaignBands.Band two = CampaignBands.LAYER_2;
@@ -285,7 +286,7 @@ public class DrifterSpawnTest {
     }
 
     /** A drifter that bursts on a pod drilling beside it was not killed: no alarm rings. */
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.C, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
     public void aBurstOnTouchRaisesNoAlarm(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         CampaignBands.Band two = CampaignBands.LAYER_2;
@@ -322,7 +323,7 @@ public class DrifterSpawnTest {
      * The alarm shows and ends: the pilot's readout carries the seconds it has left, the drone beats for a person in the zone, and after
      * {@link DrifterTuning.Alarm#ticks()} ticks the line goes and the zone is quiet. It is held in memory only, so there is no saved form to read.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 3_800)
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.C, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 3_800)
     public void theAlarmShowsDronesAndEnds(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         CampaignBands.Band one = CampaignBands.LAYER_1;
@@ -388,7 +389,7 @@ public class DrifterSpawnTest {
      * A drifter is placed in the zone of its source and in the world: a source 4 blocks from a zone's edge, and one 3 blocks under the layer's
      * ceiling (the surface band above is no zone), never places across either, in the 8 blocks up or down that a place may be off by.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 60)
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.C, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 60)
     public void aDrifterIsPlacedInTheZoneOfItsSourceAndNeverAcrossAnEdge(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         CampaignBands.Band one = CampaignBands.LAYER_1;
@@ -456,7 +457,10 @@ public class DrifterSpawnTest {
      * chance of a flake; the seed is of this zone alone (no other test uses layer 2's middle zone), so a timeout that skips the reset leaves
      * nothing another test draws from. The budget only bounds a failure.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 50_000)
+    @GameTest(
+            dimension = SAMPLE,
+            environment = CampaignEnvironments.C,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 50_000)
     public void theTickPlacesDriftersByPodsUpToTheZoneCap(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         CampaignBands.Band two = CampaignBands.LAYER_2;
