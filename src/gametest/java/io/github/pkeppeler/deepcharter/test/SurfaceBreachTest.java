@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonElement;
 import com.mojang.serialization.JsonOps;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
@@ -23,7 +23,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
@@ -39,7 +38,6 @@ import net.minecraft.world.level.levelgen.material.rule.MaterialRule;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.portal.PortalShape;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the surface: the breach in place between the surface band (layer 0) and layer 1 of the campaign level, the open
@@ -275,12 +273,6 @@ public class SurfaceBreachTest {
                 level, TestLayers.SURFACE, column.getX(), column.getX(), column.getZ(), column.getZ());
         RoomCarver.carve(
                 level, column.atY(floor), column.atY(floor + 10), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     private static void expectIn(GameTestHelper helper, Entity entity, int layer) {

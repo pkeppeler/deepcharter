@@ -34,7 +34,7 @@ public final class LayerRock {
     }
 
     /** True for rock in layer 2 and below. */
-    private static boolean isOutOfReachOfHands(Level level, BlockPos pos, BlockState state) {
+    static boolean isOutOfReachOfHands(Level level, BlockPos pos, BlockState state) {
         return state.is(DEEP_ROCK)
                 && LayerChain.bandAt(level, pos.getY()).stream().anyMatch(band -> band.layer() > 1);
     }

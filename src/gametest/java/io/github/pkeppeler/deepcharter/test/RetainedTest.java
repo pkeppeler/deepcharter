@@ -1,11 +1,11 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -49,7 +49,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -62,7 +61,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -536,7 +534,7 @@ public class RetainedTest {
                             held,
                             lost);
                     expect(helper, !arena.figure.isClinging(), "the figure still clings to the hull as it dies");
-                    expect(helper, lost < 15f, "the tank lost " + lost + " points before the drill killed the figure");
+                    expect(helper, lost < 15f, "the tank lost %s points before the drill killed the figure", lost);
                     expect(helper, arena.pod.hull() == hullAtGrab[0], "the hull was hurt");
                     expect(
                             helper,
@@ -561,11 +559,13 @@ public class RetainedTest {
                 expect(
                         helper,
                         told(arena, BITTEN_KEY) == 1,
-                        "the pilot was not told once that the cutter bites: " + arena.pilot.actionBarMessages());
+                        "the pilot was not told once that the cutter bites: %s",
+                        arena.pilot.actionBarMessages());
                 expect(
                         helper,
                         told(arena, DEAD_KEY) == 1,
-                        "the pilot was not told once that it is gone: " + arena.pilot.actionBarMessages());
+                        "the pilot was not told once that it is gone: %s",
+                        arena.pilot.actionBarMessages());
             }
             if (arena.figure.isRemoved()) {
                 arena.clear();
@@ -670,8 +670,9 @@ public class RetainedTest {
                     expect(
                             helper,
                             blows[0] == 2,
-                            "a figure of " + arena.figure.getMaxHealth() + " health took " + blows[0]
-                                    + " blows of 6 to die");
+                            "a figure of %s health took %s blows of 6 to die",
+                            arena.figure.getMaxHealth(),
+                            blows[0]);
                 }
                 return;
             }
@@ -794,14 +795,13 @@ public class RetainedTest {
             expect(
                     helper,
                     arena.figure.isClinging() && arena.figure.isAlive(),
-                    "the figure let go of a pod its pilot left, %d ticks after (clinging %s, alive %s, removed %s, pod removed %s, fuel %s)"
-                            .formatted(
-                                    helper.getTick() - leftAt[0],
-                                    arena.figure.isClinging(),
-                                    arena.figure.isAlive(),
-                                    arena.figure.isRemoved(),
-                                    arena.pod.isRemoved(),
-                                    arena.pod.fuel()));
+                    "the figure let go of a pod its pilot left, %d ticks after (clinging %s, alive %s, removed %s, pod removed %s, fuel %s)",
+                    helper.getTick() - leftAt[0],
+                    arena.figure.isClinging(),
+                    arena.figure.isAlive(),
+                    arena.figure.isRemoved(),
+                    arena.pod.isRemoved(),
+                    arena.pod.fuel());
             if (helper.getTick() - leftAt[0] >= NO_ANSWER_TICKS) {
                 expect(helper, arena.pod.fuel() < fuelAtLeaving[0], "the tank did not drain while the pod stood empty");
                 arena.clear();
@@ -868,10 +868,7 @@ public class RetainedTest {
             boolean naturalRoom = LamplessFigures.bandHasRoom(nether, true, spot.getY());
             boolean railRoom = LamplessFigures.bandHasRoom(nether, false, spot.getY());
             naturals.forEach(LamplessFigure::discard);
-            expect(
-                    helper,
-                    !naturalRoom,
-                    "a level that holds " + TUNING.maxPerBand() + " natural figures takes another");
+            expect(helper, !naturalRoom, "a level that holds %s natural figures takes another", TUNING.maxPerBand());
             expect(helper, railRoom, "the rail's figure is held back by natural figures");
             helper.succeed();
         });
@@ -904,18 +901,24 @@ public class RetainedTest {
         expect(
                 helper,
                 inOne >= tries * LAYER_ONE_MIN_ROLL_SHARE,
-                "layer 1 rolled %d of %d: under %s, rare for a pilot who is still shallow"
-                        .formatted(inOne, tries, LAYER_ONE_MIN_ROLL_SHARE));
+                "layer 1 rolled %d of %d: under %s, rare for a pilot who is still shallow",
+                inOne,
+                tries,
+                LAYER_ONE_MIN_ROLL_SHARE);
         expect(
                 helper,
                 inTwo >= tries * LAYER_TWO_MIN_ROLL_SHARE,
-                "layer 2 rolled %d of %d: under %s, rare for a pilot who is deep"
-                        .formatted(inTwo, tries, LAYER_TWO_MIN_ROLL_SHARE));
+                "layer 2 rolled %d of %d: under %s, rare for a pilot who is deep",
+                inTwo,
+                tries,
+                LAYER_TWO_MIN_ROLL_SHARE);
         expect(
                 helper,
                 inTwo >= inOne * 3,
-                "layer 1 rolled %d of %d and layer 2 %d: the roll does not rise with depth"
-                        .formatted(inOne, tries, inTwo));
+                "layer 1 rolled %d of %d and layer 2 %d: the roll does not rise with depth",
+                inOne,
+                tries,
+                inTwo);
         helper.succeed();
     }
 
@@ -964,7 +967,8 @@ public class RetainedTest {
                         expect(
                                 helper,
                                 LamplessFigures.canAppearAt(room.level(), room.column()),
-                                "a figure may not appear in the dark room of layer " + room.layer());
+                                "a figure may not appear in the dark room of layer %s",
+                                room.layer());
                         room.level().setBlock(room.column().above(), light(15), 3);
                     }
                     expectNowhereElse(helper, server, overworld, overworldPos, column);
@@ -980,7 +984,8 @@ public class RetainedTest {
                             expect(
                                     helper,
                                     !LamplessFigures.canAppearAt(room.level(), room.column()),
-                                    "a figure may appear beside a light of level 15 in layer " + room.layer());
+                                    "a figure may appear beside a light of level 15 in layer %s",
+                                    room.layer());
                             // room-carver: removes the light block this test placed itself in its own sealed room
                             room.level().setBlock(room.column().above(), Blocks.AIR.defaultBlockState(), 3);
                         }
@@ -1006,7 +1011,8 @@ public class RetainedTest {
                             expect(
                                     helper,
                                     LamplessFigures.canAppearAt(room.level(), room.column()),
-                                    "the room is dark again and a figure may not appear in layer " + room.layer());
+                                    "the room is dark again and a figure may not appear in layer %s",
+                                    room.layer());
                             expectNotOverAir(helper, room.level(), room.column());
                         }
                         helper.succeed();
@@ -1047,14 +1053,16 @@ public class RetainedTest {
             expect(
                     helper,
                     !LamplessFigures.canAppearAt(overworld, at.above()),
-                    "a figure may appear at the colony's " + anchor);
+                    "a figure may appear at the colony's %s",
+                    anchor);
         }
         for (ServerLevel other :
                 List.of(ClientLight.serverLevel(server, Level.NETHER), ClientLight.serverLevel(server, Level.END))) {
             expect(
                     helper,
                     !LamplessFigures.canAppearAt(other, column),
-                    "a figure may appear in " + other.dimension().identifier());
+                    "a figure may appear in %s",
+                    other.dimension().identifier());
         }
     }
 
@@ -1066,7 +1074,8 @@ public class RetainedTest {
         expect(
                 helper,
                 !over,
-                "a figure may appear over air in " + layer.dimension().identifier() + ", with nothing to stand on");
+                "a figure may appear over air in %s, with nothing to stand on",
+                layer.dimension().identifier());
     }
 
     /**
@@ -1096,12 +1105,11 @@ public class RetainedTest {
                 expect(
                         helper,
                         rolled > expected * 0.4 && rolled < expected * 1.8,
-                        "%d of %d tries passed; about %.0f expected at %s"
-                                .formatted(
-                                        rolled,
-                                        tries,
-                                        expected,
-                                        TUNING.natural().chancePerTry()));
+                        "%d of %d tries passed; about %.0f expected at %s",
+                        rolled,
+                        tries,
+                        expected,
+                        TUNING.natural().chancePerTry());
                 expect(
                         helper,
                         figure[0].checkSpawnRules(two, EntitySpawnReason.COMMAND),
@@ -1123,7 +1131,8 @@ public class RetainedTest {
                 expect(
                         helper,
                         since[0] < LIGHT_BUDGET_TICKS,
-                        "the light of level 15 did not reach the room in " + LIGHT_BUDGET_TICKS + " ticks");
+                        "the light of level 15 did not reach the room in %s ticks",
+                        LIGHT_BUDGET_TICKS);
             }
         });
         FarChunks.awaitEntityTicking(helper, two, column, () -> {
@@ -1149,7 +1158,9 @@ public class RetainedTest {
         expect(
                 helper,
                 inLayers.size() == 6,
-                "layers 1 and 2 have " + inLayers.size() + " biomes, not the 6 the test expects: " + inLayers);
+                "layers 1 and 2 have %s biomes, not the 6 the test expects: %s",
+                inLayers.size(),
+                inLayers);
         List<String> all = List.of(
                 "topsoil_claims",
                 "stone_benches",
@@ -1175,7 +1186,9 @@ public class RetainedTest {
             expect(
                     helper,
                     lists == inLayers.contains(biome),
-                    "%s %s the figure".formatted(biome, lists ? "lists" : "does not list"));
+                    "%s %s the figure",
+                    biome,
+                    lists ? "lists" : "does not list");
             if (lists) {
                 JsonObject entry = spawns.getAsJsonArray("monster").get(0).getAsJsonObject();
                 expect(
@@ -1183,8 +1196,8 @@ public class RetainedTest {
                         entry.get("weight").getAsInt() == 1
                                 && entry.get("count").getAsInt() == 1
                                 && spawns.getAsJsonArray("monster").size() == 1,
-                        biome
-                                + " lists the figure as more than one at a time, or with weight over 1, or beside another monster");
+                        "%s lists the figure as more than one at a time, or with weight over 1, or beside another monster",
+                        biome);
             }
         }
         helper.succeed();
@@ -1237,17 +1250,5 @@ public class RetainedTest {
             throw failure(helper, "a charter step was refused: %s", refusal.get());
         }
         return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
-    }
-
-    private static void expect(GameTestHelper helper, boolean condition, String message) {
-        if (!condition) {
-            throw failure(helper, "%s", message);
-        }
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

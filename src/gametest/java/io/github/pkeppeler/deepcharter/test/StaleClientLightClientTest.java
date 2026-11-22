@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyLayout;
@@ -140,7 +142,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
         require(
                 ClientLight.settledMismatch(context, server, Level.OVERWORLD, room(floor))
                         .isEmpty(),
-                "the room to be in step before the dig");
+                "Expected the room to be in step before the dig");
         BlockPos roof = floor.above(HEIGHT + 1);
         server.runOnServer(s -> {
             if (!player(s).gameMode.destroyBlock(roof)) {
@@ -251,7 +253,9 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             }
         });
         Optional<String> wiped = ClientLight.settledMismatch(context, server, Level.OVERWORLD, box);
-        require(wiped.isEmpty(), "the wiped piece " + piece.structure() + " to be in step: " + wiped.orElse(""));
+        require(
+                wiped.isEmpty(),
+                "Expected the wiped piece " + piece.structure() + " to be in step: " + wiped.orElse(""));
         server.runOnServer(s -> {
             StructureTemplate template =
                     s.getStructureTemplateManager().get(piece.structure()).orElseThrow();
@@ -451,11 +455,5 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 .min(Comparator.comparingDouble(
                         piece -> pieceBox(server, colony, piece).min().distSqr(near)))
                 .orElseThrow();
-    }
-
-    private static void require(boolean condition, String what) {
-        if (!condition) {
-            throw new AssertionError("Expected " + what);
-        }
     }
 }

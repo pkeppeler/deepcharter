@@ -5,6 +5,7 @@
   "mixins": [
     "ChunkHolderLightSuppressMixin",
     "ChunkMapAccess",
+    "ChunkMapSaveMixin",
     "ChunkMapUnloadMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",

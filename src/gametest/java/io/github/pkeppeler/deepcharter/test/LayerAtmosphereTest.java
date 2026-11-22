@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.LinkedHashMap;
@@ -39,7 +39,7 @@ public class LayerAtmosphereTest {
      * The biome in the middle of each third of the layer's band, by name: the zones top to bottom. The middle, because a cell at a band's edge
      * blends with the band beside it.
      */
-    private static Map<Identifier, BlockPos> zones(ServerLevel level, int layer) {
+    private static Map<Identifier, BlockPos> zones(GameTestHelper helper, ServerLevel level, int layer) {
         Map<Identifier, BlockPos> zones = new LinkedHashMap<>();
         LayerChain.Band band = TestLayers.band(level, layer);
         for (int zone = 0; zone < 3; zone++) {
@@ -48,7 +48,7 @@ public class LayerAtmosphereTest {
             Holder<Biome> biome = level.getBiome(pos);
             zones.putIfAbsent(biome.unwrapKey().orElseThrow().identifier(), pos);
         }
-        expect(zones.size() == 3, "layer %s has zones %s, wanted 3", layer, zones.keySet());
+        expect(helper, zones.size() == 3, "layer %s has zones %s, wanted 3", layer, zones.keySet());
         return zones;
     }
 
@@ -57,26 +57,31 @@ public class LayerAtmosphereTest {
         for (int layer = 1; layer <= LayerChain.count(helper.getLevel().registryAccess()); layer++) {
             Atmosphere wanted = Objects.requireNonNull(ATMOSPHERE.get(layer), "a layer has no atmosphere in this test");
             ServerLevel level = TestLayers.level(helper, layer);
-            zones(level, layer).forEach((zone, pos) -> {
+            zones(helper, level, layer).forEach((zone, pos) -> {
                 var biome = level.getBiome(pos).value().getAttributes();
                 expectEqual(
+                        helper,
                         zone + " fog start",
                         wanted.fogStart(),
                         biome.applyModifier(EnvironmentAttributes.FOG_START_DISTANCE, -1f));
                 expectEqual(
+                        helper,
                         zone + " fog end",
                         wanted.fogEnd(),
                         biome.applyModifier(EnvironmentAttributes.FOG_END_DISTANCE, -1f));
                 expectEqual(
+                        helper,
                         zone + " sky light factor",
                         0f,
                         biome.applyModifier(EnvironmentAttributes.SKY_LIGHT_FACTOR, -1f));
                 expect(
+                        helper,
                         biome.contains(EnvironmentAttributes.FOG_COLOR),
                         "the zone %s sets its own fog colour (it did before #744)",
                         zone);
                 Vector3fc ambient = biome.applyModifier(EnvironmentAttributes.AMBIENT_LIGHT_COLOR, new Vector3f());
                 expect(
+                        helper,
                         sameColour(ambient, wanted.ambientColour()),
                         "the zone %s ambient light colour is %s, wanted #%06x",
                         zone,
@@ -86,6 +91,7 @@ public class LayerAtmosphereTest {
                         List.of(EnvironmentAttributes.BED_RULE, EnvironmentAttributes.STRAW_BED_RULE)) {
                     BedRule bed = biome.applyModifier(rule, BedRule.CAN_SLEEP_WHEN_DARK);
                     expect(
+                            helper,
                             bed.canSleep() == BedRule.Rule.NEVER && bed.canSetSpawn() == BedRule.Rule.NEVER,
                             "the zone %s bed rule %s lets a player sleep or set a spawn: %s",
                             zone,
@@ -103,18 +109,21 @@ public class LayerAtmosphereTest {
         for (int layer = 1; layer <= LayerChain.count(helper.getLevel().registryAccess()); layer++) {
             Atmosphere wanted = Objects.requireNonNull(ATMOSPHERE.get(layer), "a layer has no atmosphere in this test");
             ServerLevel level = TestLayers.level(helper, layer);
-            zones(level, layer).forEach((zone, pos) -> {
+            zones(helper, level, layer).forEach((zone, pos) -> {
                 var read = level.environmentAttributes();
                 expectEqual(
+                        helper,
                         zone + " fog end at its place",
                         wanted.fogEnd(),
                         read.getValue(EnvironmentAttributes.FOG_END_DISTANCE, pos));
                 expectEqual(
+                        helper,
                         zone + " sky light factor at its place",
                         0f,
                         read.getValue(EnvironmentAttributes.SKY_LIGHT_FACTOR, pos));
                 Vector3fc ambient = read.getValue(EnvironmentAttributes.AMBIENT_LIGHT_COLOR, pos);
                 expect(
+                        helper,
                         sameColour(ambient, wanted.ambientColour()),
                         "the zone %s reads ambient light colour %s",
                         zone,
@@ -130,14 +139,7 @@ public class LayerAtmosphereTest {
                 && Math.abs(colour.z() - (rgb & 0xFF) / 255f) < 0.002f;
     }
 
-    private static void expectEqual(String what, Object expected, Object actual) {
-        expect(expected.equals(actual), "%s should be %s, was %s", what, expected, actual);
-    }
-
-    @FormatMethod
-    private static void expect(boolean condition, @FormatString String format, Object... args) {
-        if (!condition) {
-            throw new AssertionError(String.format(format, args));
-        }
+    private static void expectEqual(GameTestHelper helper, String what, Object expected, Object actual) {
+        expect(helper, expected.equals(actual), "%s should be %s, was %s", what, expected, actual);
     }
 }

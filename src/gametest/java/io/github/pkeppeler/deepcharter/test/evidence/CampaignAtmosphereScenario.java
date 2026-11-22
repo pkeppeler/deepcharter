@@ -26,6 +26,7 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
+import io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.Holds;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
@@ -221,10 +222,12 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
             boolean lit,
             float pitch,
             String name) {
-        BlockPos room = nextRoom(context, server, dimension, lit);
-        still(context, server, dimension, room, pitch, name);
-        if (lit && dimension.equals(CAMPAIGN)) {
-            netherShaded(context, server, room, pitch, name + "-nether");
+        try (Holds holds = Holds.of(server)) {
+            BlockPos room = nextRoom(context, server, holds, dimension, lit);
+            still(context, server, dimension, room, pitch, name);
+            if (lit && dimension.equals(CAMPAIGN)) {
+                netherShaded(context, server, room, pitch, name + "-nether");
+            }
         }
     }
 
@@ -259,8 +262,10 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
 
     private void figureStill(
             ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, String name) {
-        BlockPos room = nextRoom(context, server, dimension, false);
-        stillWithFigure(context, server, dimension, room, name);
+        try (Holds holds = Holds.of(server)) {
+            BlockPos room = nextRoom(context, server, holds, dimension, false);
+            stillWithFigure(context, server, dimension, room, name);
+        }
     }
 
     /** The X of the next room: past the shaft and the descent, a place of its own for each. */
@@ -270,11 +275,16 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
 
     /** The next room: a room of today's layer 1 or of the campaign type, at a place of its own, and in the zone's biome in both. */
     private BlockPos nextRoom(
-            ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, boolean lit) {
+            ClientGameTestContext context,
+            TestServerContext server,
+            Holds holds,
+            ResourceKey<Level> dimension,
+            boolean lit) {
         int x = nextRoomX();
         boolean campaign = dimension.equals(CAMPAIGN);
         BlockPos floor = campaign ? layer1Floor(x) : todayFloor(x);
-        BlockPos room = buildRoom(server, dimension, floor, campaign ? Optional.of(ZONE) : Optional.empty(), lit);
+        BlockPos room =
+                buildRoom(server, holds, dimension, floor, campaign ? Optional.of(ZONE) : Optional.empty(), lit);
         requireZone(server, dimension, room);
         awaitLight(context, server);
         return room;
@@ -283,20 +293,22 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
     /** The bottom of an open shaft under the campaign type's sky, next to today's sealed room, with the sky timeline at dusk and at night. */
     private void shaftBottom(
             ClientGameTestContext context, TestSingleplayerContext singleplayer, TestServerContext server) {
-        int x = SITE;
-        ResourceKey<Level> layer1 = TODAY;
-        BlockPos shaft = build(server, CAMPAIGN, ground(server, x), Optional.of(ZONE), true);
-        BlockPos room = build(server, layer1, todayFloor(x + SPACING), Optional.empty(), false);
-        awaitLight(context, server);
-        requireZone(server, CAMPAIGN, shaft);
-        requireZone(server, layer1, room);
-        record SkyTime(String name, long ticks) {}
-        for (SkyTime sky : List.of(new SkyTime("dusk", SKY_DUSK), new SkyTime("night", SKY_NIGHT))) {
-            EvidenceWorld.skyPhase(context, singleplayer, sky.ticks());
-            still(context, server, layer1, room, 0, "shaft-bottom-" + sky.name() + "-today");
-            still(context, server, CAMPAIGN, shaft, 0, "shaft-bottom-" + sky.name() + "-campaign");
+        try (Holds holds = Holds.of(server)) {
+            int x = SITE;
+            ResourceKey<Level> layer1 = TODAY;
+            BlockPos shaft = build(server, holds, CAMPAIGN, ground(server, x), Optional.of(ZONE), true);
+            BlockPos room = build(server, holds, layer1, todayFloor(x + SPACING), Optional.empty(), false);
+            awaitLight(context, server);
+            requireZone(server, CAMPAIGN, shaft);
+            requireZone(server, layer1, room);
+            record SkyTime(String name, long ticks) {}
+            for (SkyTime sky : List.of(new SkyTime("dusk", SKY_DUSK), new SkyTime("night", SKY_NIGHT))) {
+                EvidenceWorld.skyPhase(context, singleplayer, sky.ticks());
+                still(context, server, layer1, room, 0, "shaft-bottom-" + sky.name() + "-today");
+                still(context, server, CAMPAIGN, shaft, 0, "shaft-bottom-" + sky.name() + "-campaign");
+            }
+            // The descent is read by the light of the day's brightest sky.
         }
-        // The descent is read by the light of the day's brightest sky.
         EvidenceWorld.skyPhase(context, singleplayer, SKY_DUSK);
     }
 

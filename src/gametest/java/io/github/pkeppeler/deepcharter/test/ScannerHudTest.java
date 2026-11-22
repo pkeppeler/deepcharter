@@ -147,6 +147,8 @@ public class ScannerHudTest implements FabricClientGameTest {
             });
             Decal cockpitWindow = context.computeOnClient(client ->
                     CockpitHud.seated(client).map(CockpitLook.Layout::scanner).orElse(null));
+            // A directive's popup sits over the scanner panel at top right and is not what the pixels are about.
+            context.runOnClient(client -> client.gui.toastManager().clear());
             Path file = context.takeScreenshot(screenshotName);
             BufferedImage image;
             try {

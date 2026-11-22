@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 import io.github.pkeppeler.deepcharter.client.pod.FrontCameraFeed;
 import io.github.pkeppeler.deepcharter.client.pod.FrontCameraFeed.Inputs;
 import io.github.pkeppeler.deepcharter.client.pod.FrontCameraFeed.State;
@@ -196,12 +198,6 @@ public class FrontCameraClientTest implements FabricClientGameTest {
             }
         }
         return dropped;
-    }
-
-    private static void require(boolean condition, String message) {
-        if (!condition) {
-            throw new AssertionError(message);
-        }
     }
 
     private PodEntity seatedPod(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
