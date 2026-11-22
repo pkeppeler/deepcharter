@@ -26,7 +26,7 @@
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
-# Job names (ci.yml) that run on every PR; the label-gated client job is not listed.
+# Job names (ci.yml) that run on every PR; the path-gated client job (client-tests.yml) is not listed.
 REQUIRED_CHECKS=(build tool-tests)
 
 gate_only=0
@@ -211,6 +211,17 @@ done
 check_demo
 check_map_change
 check_map_fresh
+
+# A PR that tools/ci-client-needed.sh says needs the client suite (changed paths, a rename's old path too, or
+# the `gameplay` label) needs a passing `client-gametest` run: a draft push can end with only skipped CI on its
+# head (#885). $checks holds the newest non-skipped verdict per name.
+gameplay_flag=0
+has_label gameplay && gameplay_flag=1
+client_needed=$(cut -f2,3 <<<"$pr_files" | tr '\t' '\n' | tools/ci-client-needed.sh "$gameplay_flag") \
+  || refuse "could not decide whether the client suite is needed"
+if [[ $client_needed == true ]] && ! grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then
+  refuse "changes game code or is labelled gameplay but has no passing client-gametest run on $sha (a draft push or a skipped run does not count): push, or close and reopen the PR" # pipe-grep-q: fail-closed
+fi
 
 # Read the closing set again: a body edit may have reached GitHub's parse after the first read.
 checked_closes=$closes
