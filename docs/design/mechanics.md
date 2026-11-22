@@ -1829,3 +1829,30 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Pins.** `PodFuelTripTest` (the tank in the pilot's units, the beep, the ladder), `CompanyRecoveryTest` (the fee, the hull share, the clock's clearing paths, the real minute, an unreadable clock, a refused landing), `PodRecoveryHudClientTest` (the countdown line).
 
 **Open questions.** Whether a hauled pod should also owe a "parking" fee at the pad; whether a second pod in reach should be able to answer the call before the crew (the tow line already does). Neither is built. The ownership rule: the crew moves a pod only for the pilot aboard it and charges only the pod's owner charter, so it never moves or charges anyone else's.
+
+## Away settling (#1004, A)
+
+**Problem.** A dread that stops when you look away is not dread. [ADR 0072](../adr/0072-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md) wants the dark to keep working on an outpost nobody is near, and a Minecraft world only runs what is loaded. This builds the part that needs no creature: the ledger, the roll and what a visit takes. Rule: [ADR 0079](../adr/0079-away-settling-rolls-visits-in-fixed-windows-of-game-time-from-draws-surveyed-while-loaded-and-applies-them-when-the-zone-is-loaded.md).
+
+**The loop.** The server sweeps every outpost every 5 seconds. For the time since it last looked it rolls visits in one-minute windows of game time, from what the outpost had to lose the last time it was loaded. While a player is within 48 blocks (a spectator does not count) the time passes unrolled. When the whole zone is loaded the pending visits are met in the world: the Retained take a quarter of the pod fuel stored in the zone's barrels and chests (1 to 16 items a visit). The online members of the charter hear "Disturbance reported at Outpost 1." when a visit is rolled; the first of them to open one of the hall's terminals on return gets a typed incident report. Nothing is ever force-loaded, and a hall nobody loads keeps its visits until someone does.
+
+**The ladder** (hand, then automated, then mastery).
+1. **By hand: light.** The Retained come to dark places only. Keep the hall lit (the kit's lamps are, and a lamp is cheap) and nothing comes.
+2. **Automated: carry your fuel.** A pod's tank is not storage. Fuel in the pod, or in a pod's reserve tank, is never taken; only fuel left in a barrel is.
+3. **Mastery (later, #926 and #1005):** rated, damped, closed shells keep the Sleeper's and the Recovery out as well.
+
+**Trade-offs.** Stored fuel is convenient (a full barrel at the outpost saves the trip down) and is what the dark takes. The lamp costs nothing but the kit's own, so the real cost is a hall left dark and stocked: an outpost you build, stock, and abandon.
+
+**Pacing** (`AwaySettlingPacingTest`, median of 101 outposts, days of game time, 20 minutes each, for a dark hall that is never visited by a player):
+
+| Fuel items stored | Layer 1 (2 visits a day) | Layer 2 (6 visits a day) |
+|---|---|---|
+| 64 (one stack) | 7 days | 3 days |
+| 512 | 20 days | 7 days |
+| 1,728 (a full barrel) | 59 days | 20 days |
+
+**Harder or easier.** Harder than main for one case only: fuel left in a dark hall's storage, which nothing took before. A lit hall, a pod's tank, and a hall a player stays near are as they were. The early game is unchanged (the kit's lamps keep the first hall lit).
+
+**Knobs.** `SettlingTuning`: `windowTicks` 1200, `sweepIntervalTicks` 100, `nearBlocks` 48, the reach (8 out, 8 up, 2 down), `maxWindowsPerSweep` 2000, `pendingCap` 10000, `fuelShare` 0.25, `maxFuelItemsPerVisit` 16, `maxOrePerVisit` 4, `maxBlocksPerVisit` 3, and the per-layer rates (Retained 2 and 6 a day; the Sleeper's and the Recovery 0 until #1005 and #1006).
+
+**Open questions.** Whether "dark" should count the whole hall rather than any dark corner (a hall with one dead lamp is dark enough now). Whether outposts should have numbers of their own, so the alert does not name a layer. The incident report is read by the first member to return, so the rest of the charter never sees it; a shared log may be better. The salvage heap's art is the crate's.
