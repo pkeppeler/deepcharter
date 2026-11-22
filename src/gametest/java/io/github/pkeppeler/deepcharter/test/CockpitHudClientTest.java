@@ -222,6 +222,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         Set<String> expected = Stream.of(
                         "burning",
                         "stranded",
+                        "recovery",
                         "crust_ahead",
                         "crust_in",
                         "brace_waits",
@@ -240,7 +241,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 .collect(Collectors.toSet());
         if (!alerts.equals(expected)) {
             throw new AssertionError(
-                    "The warnings that light the fourth lamp are the burning hull, the glaze that holds or is spent, stranded, the crust, the brace that cannot work, the seepage, no brick, a hard landing and lava in or above the shaft: got "
+                    "The warnings that light the fourth lamp are the burning hull, the glaze that holds or is spent, stranded and the Company winch's countdown, the crust, the brace that cannot work, the seepage, no brick, a hard landing and lava in or above the shaft: got "
                             + alerts);
         }
         PodStatusHud.Line note = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.slag", 0, 0), 0);
