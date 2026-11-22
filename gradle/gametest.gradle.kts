@@ -81,9 +81,7 @@ object GametestScan {
 	private val flagSet = Regex("""\]\s*=\s*true\s*;|\bthis\s*\.\s*\w+\s*=\s*true\s*;|\.\s*set\s*\(\s*true\s*\)""")
 	private val oneShotCheck = Regex("""\bthrow\b|\bfail\s*\(|\bassert\w*\s*\(|\bexpect\w*\s*\(\s*helper\b""")
 
-	// The campaign world's tests run in one of four environments (CampaignEnvironments), each a batch of its own: all the tests of a batch
-	// run at once, and one batch of every campaign test kept about 150 forced chunks of the 2,352-row world live together (#957). A
-	// @GameTest whose dimension constant, read per file, is "deepcharter:campaign_sample" must name one. A dimension spelled as a literal is not seen.
+	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957). A dimension spelled as a literal is not seen.
 	private val campaignConstant = Regex("""\bString\s+(\w+)\s*=\s*"deepcharter:campaign_sample"\s*;""")
 	private val gameTestCall = Regex("""@GameTest\s*\(""")
 	private val dimensionArg = Regex("""\bdimension\s*=\s*(\w+)""")
@@ -124,7 +122,7 @@ object GametestScan {
 			val args = text.substring(open, closing(text, open) + 1)
 			val dimension = dimensionArg.find(args)?.groupValues?.get(1)
 			if (dimension in campaign && !campaignEnvironmentArg.containsMatchIn(args)) {
-				problems.add("$className:${lineOf(text, call.range.first) + 1} runs in the campaign world ($dimension) without an environment, so it joins a batch of every such test and the heap peak rises; add environment = CampaignEnvironments.A, B, C or D (test/support/CampaignEnvironments), the four batches of the campaign tests, choosing the one with the fewest tests or forced chunks")
+				problems.add("$className:${lineOf(text, call.range.first) + 1} runs in the campaign world ($dimension) without an environment; add environment = CampaignEnvironments.A, B, C or D (the fewest tests or forced chunks)")
 			}
 		}
 		return problems

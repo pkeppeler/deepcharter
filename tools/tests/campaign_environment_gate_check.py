@@ -1,7 +1,6 @@
-"""Tests the campaign-environment gate in gradle/gametest.gradle.kts: an @GameTest whose dimension constant is "deepcharter:campaign_sample" without environment = CampaignEnvironments.<A to D> fails the build.
+"""Tests the campaign-environment gate in gradle/gametest.gradle.kts: an @GameTest in the campaign world without environment = CampaignEnvironments.<A to D> fails the build.
 
-Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
-repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
+Needs the repo's Gradle wrapper on JDK 25, so the name misses the test_*.py glob (see gate_checks.py).
 Usage: tools/py tools/tests/gate_checks.py campaign_environment
 """
 import unittest
