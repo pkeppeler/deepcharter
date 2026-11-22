@@ -309,8 +309,8 @@ public class StalkCollapseTest {
         BlockPos here = helper.absolutePos(new BlockPos(0, BASE_ROW, 0)).above(SKY);
         BlockPos origin = new BlockPos(((here.getX() >> 4) << 4) + 15, here.getY(), here.getZ());
         GreatStalkLayout layout = layoutOf(BRAID_SEED);
-        for (int x = -OPTION_MAX_REACH; x <= OPTION_MAX_REACH; x++) {
-            for (int z = -OPTION_MAX_REACH; z <= OPTION_MAX_REACH; z++) {
+        for (int x = -BRAID_MAX_REACH; x <= BRAID_MAX_REACH; x++) {
+            for (int z = -BRAID_MAX_REACH; z <= BRAID_MAX_REACH; z++) {
                 level.setBlock(origin.offset(x, -1, z), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
                 for (int y = 0; y <= GREAT_CLEAR_HEIGHT; y++) {
                     level.setBlock(origin.offset(x, y, z), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
@@ -321,8 +321,8 @@ public class StalkCollapseTest {
             throw failure(helper, "the placer would not grow a great stalk on a chunk border");
         }
         Map<Cell, Part> grown = new HashMap<>();
-        for (int x = -OPTION_MAX_REACH; x <= OPTION_MAX_REACH; x++) {
-            for (int z = -OPTION_MAX_REACH; z <= OPTION_MAX_REACH; z++) {
+        for (int x = -BRAID_MAX_REACH; x <= BRAID_MAX_REACH; x++) {
+            for (int z = -BRAID_MAX_REACH; z <= BRAID_MAX_REACH; z++) {
                 for (int y = 0; y <= GREAT_CLEAR_HEIGHT; y++) {
                     Part part = partOf(level.getBlockState(origin.offset(x, y, z)));
                     if (part != null) {
@@ -354,9 +354,9 @@ public class StalkCollapseTest {
                         && layout.parts().get(cell) == Part.TRUNK)
                 .findFirst()
                 .orElseThrow();
-        clearOptionArea(helper);
-        level.setBlock(at(optionOrigin(helper), high), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-        if (GreatStalk.place(level, RandomSource.create(1), optionOrigin(helper))
+        clearBraidArea(helper);
+        level.setBlock(at(braidOrigin(helper), high), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+        if (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper))
                 || !standing(helper).isEmpty()) {
             throw failure(helper, "a great stalk grew under a roof lower than its trunks");
         }
@@ -409,43 +409,48 @@ public class StalkCollapseTest {
 
     // ---- The braid, the great stalk's shape (#910). ----
 
-    /** Where an option's origin stands in the test area: far enough from every edge that its widest reach (8 blocks) is cleared. */
-    private static final int OPTION_AT = 9;
+    /** Where the braid's origin stands in the test area: far enough from every edge that its widest reach (8 blocks) is cleared. */
+    private static final int BRAID_AT = 9;
 
     /** Chunks east of the test, far enough that none of the test's own are near, whose neighbour is not loaded. */
     private static final int UNLOADED_CHUNKS_AWAY = 4000;
 
-    private static final int OPTION_SEEDS = 40;
-    private static final int OPTION_PLACED_SEEDS = 6;
-    private static final int OPTION_CLEAR_HEIGHT = 22;
-    /** The most any block of a shape may stand from its origin horizontally: the placer writes the 3x3 chunks round the origin's. */
-    private static final int OPTION_MAX_REACH = 8;
+    private static final int BRAID_SEEDS = 40;
+    private static final int BRAID_PLACED_SEEDS = 6;
+    private static final int BRAID_CLEAR_HEIGHT = 22;
+    /** The most any block of the braid may stand from its origin horizontally: the placer writes the 3x3 chunks round the origin's. */
+    private static final int BRAID_MAX_REACH = 8;
 
     private static final int YIELD_LEAST = 50;
     private static final int YIELD_MOST = 90;
     private static final long BRAID_SEED = 3;
     private static final String BRAID_TRUNK_ALONE = "deepcharter-test:stalk_count_braid_trunk";
 
+    /** The trunk a cell of the layout belongs to. */
+    private static int ownerOf(GreatStalkLayout layout, Cell cell) {
+        return Objects.requireNonNull(layout.owners().get(cell), "every cell of a layout has an owner");
+    }
+
     private static GreatStalkLayout layoutOf(long seed) {
         return GreatStalkBraid.layout(RandomSource.create(seed)::nextInt);
     }
 
-    private static BlockPos optionOrigin(GameTestHelper helper) {
-        return helper.absolutePos(new BlockPos(OPTION_AT, BASE_ROW, OPTION_AT));
+    private static BlockPos braidOrigin(GameTestHelper helper) {
+        return helper.absolutePos(new BlockPos(BRAID_AT, BASE_ROW, BRAID_AT));
     }
 
     private static BlockPos at(BlockPos origin, Cell cell) {
         return origin.offset(cell.x(), cell.y(), cell.z());
     }
 
-    /** A flat stone floor under the area an option may grow in, and nothing above it. */
-    private static void clearOptionArea(GameTestHelper helper) {
+    /** A flat stone floor under the area the braid may grow in, and nothing above it. */
+    private static void clearBraidArea(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        BlockPos origin = optionOrigin(helper);
-        for (int dx = -OPTION_AT; dx <= OPTION_AT; dx++) {
-            for (int dz = -OPTION_AT; dz <= OPTION_AT; dz++) {
+        BlockPos origin = braidOrigin(helper);
+        for (int dx = -BRAID_AT; dx <= BRAID_AT; dx++) {
+            for (int dz = -BRAID_AT; dz <= BRAID_AT; dz++) {
                 level.setBlock(origin.offset(dx, -1, dz), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-                for (int y = 0; y <= OPTION_CLEAR_HEIGHT; y++) {
+                for (int y = 0; y <= BRAID_CLEAR_HEIGHT; y++) {
                     level.setBlock(origin.offset(dx, y, dz), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
                 }
             }
@@ -465,13 +470,13 @@ public class StalkCollapseTest {
         return null;
     }
 
-    /** The stalk blocks standing in the option area, by their cell relative to the option's origin. */
+    /** The stalk blocks standing in the braid area, by their cell relative to the braid's origin. */
     private static Map<Cell, Part> standing(GameTestHelper helper) {
-        BlockPos origin = optionOrigin(helper);
+        BlockPos origin = braidOrigin(helper);
         Map<Cell, Part> found = new HashMap<>();
-        for (int dx = -OPTION_AT; dx <= OPTION_AT; dx++) {
-            for (int dz = -OPTION_AT; dz <= OPTION_AT; dz++) {
-                for (int y = 0; y <= OPTION_CLEAR_HEIGHT; y++) {
+        for (int dx = -BRAID_AT; dx <= BRAID_AT; dx++) {
+            for (int dz = -BRAID_AT; dz <= BRAID_AT; dz++) {
+                for (int y = 0; y <= BRAID_CLEAR_HEIGHT; y++) {
                     Part part = partOf(helper.getLevel().getBlockState(origin.offset(dx, y, dz)));
                     if (part != null) {
                         found.put(new Cell(dx, y, dz), part);
@@ -483,21 +488,21 @@ public class StalkCollapseTest {
     }
 
     /**
-     * Holds the chunks the option area covers loaded: a collapse never loads a chunk beside the one it is in, so a stalk that reaches
+     * Holds the chunks the braid area covers loaded: a collapse never loads a chunk beside the one it is in, so a stalk that reaches
      * past the test's own chunks needs them held.
      */
-    private static void holdOptionArea(GameTestHelper helper) {
-        BlockPos origin = optionOrigin(helper);
-        for (int dx : new int[] {-OPTION_AT, OPTION_AT}) {
-            for (int dz : new int[] {-OPTION_AT, OPTION_AT}) {
+    private static void holdBraidArea(GameTestHelper helper) {
+        BlockPos origin = braidOrigin(helper);
+        for (int dx : new int[] {-BRAID_AT, BRAID_AT}) {
+            for (int dz : new int[] {-BRAID_AT, BRAID_AT}) {
                 FarChunks.force(helper, helper.getLevel(), (origin.getX() + dx) >> 4, (origin.getZ() + dz) >> 4);
             }
         }
     }
 
-    private static boolean growOption(GameTestHelper helper, long seed) {
-        clearOptionArea(helper);
-        return GreatStalk.place(helper.getLevel(), RandomSource.create(seed), optionOrigin(helper));
+    private static boolean growBraid(GameTestHelper helper, long seed) {
+        clearBraidArea(helper);
+        return GreatStalk.place(helper.getLevel(), RandomSource.create(seed), braidOrigin(helper));
     }
 
     private static boolean rotationallySymmetric(Set<Cell> cells) {
@@ -533,73 +538,66 @@ public class StalkCollapseTest {
     }
 
     /**
-     * What a shape's generator promises: every block is joined to the ground, stands within {@value #OPTION_MAX_REACH} blocks of the
+     * What the braid generator promises: every block is joined to the ground, stands within {@value #BRAID_MAX_REACH} blocks of the
      * origin, the whole is in the yield of a great stalk, the stalk is not rotationally symmetric, and two independent trunks never
      * touch. It grows in the world as the generator says.
      */
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void aBraidKeepsItsPromises(GameTestHelper helper) {
-        String shape = "the braid";
         Set<Integer> yields = new HashSet<>();
-        for (long seed = 1; seed <= OPTION_SEEDS; seed++) {
+        for (long seed = 1; seed <= BRAID_SEEDS; seed++) {
             GreatStalkLayout layout = layoutOf(seed);
             Set<Cell> cells = layout.parts().keySet();
             yields.add(cells.size());
             if (cells.size() < YIELD_LEAST || cells.size() > YIELD_MOST) {
                 throw failure(
-                        helper,
-                        "%s seed %s: %s blocks, outside %s to %s",
-                        shape,
-                        seed,
-                        cells.size(),
-                        YIELD_LEAST,
-                        YIELD_MOST);
+                        helper, "seed %s: %s blocks, outside %s to %s", seed, cells.size(), YIELD_LEAST, YIELD_MOST);
             }
             if (layout.without(Set.of()).parts().size() != cells.size()) {
-                throw failure(helper, "%s seed %s: a block is not joined to the ground", shape, seed);
+                throw failure(helper, "seed %s: a block is not joined to the ground", seed);
             }
             for (Cell cell : cells) {
-                if (Math.abs(cell.x()) > OPTION_MAX_REACH || Math.abs(cell.z()) > OPTION_MAX_REACH || cell.y() < 0) {
-                    throw failure(helper, "%s seed %s: a block at %s is out of bounds", shape, seed, cell);
+                if (Math.abs(cell.x()) > BRAID_MAX_REACH || Math.abs(cell.z()) > BRAID_MAX_REACH || cell.y() < 0) {
+                    throw failure(helper, "seed %s: a block at %s is out of bounds", seed, cell);
                 }
                 if (cell.y() == 0 && layout.parts().get(cell) != Part.TRUNK) {
                     throw failure(
                             helper,
-                            "%s seed %s: a %s at the base, %s",
-                            shape,
+                            "seed %s: a %s at the base, %s",
                             seed,
                             layout.parts().get(cell),
                             cell);
                 }
-                int owner = layout.owners().getOrDefault(cell, GreatStalkLayout.SHARED);
+                int owner = ownerOf(layout, cell);
                 for (Cell next : List.of(
                         new Cell(cell.x() + 1, cell.y(), cell.z()),
                         new Cell(cell.x(), cell.y() + 1, cell.z()),
                         new Cell(cell.x(), cell.y(), cell.z() + 1))) {
-                    int other = layout.owners().getOrDefault(next, owner);
-                    if (cells.contains(next)
-                            && other != owner
-                            && other != GreatStalkLayout.SHARED
-                            && owner != GreatStalkLayout.SHARED) {
+                    if (cells.contains(next) && ownerOf(layout, next) != owner) {
                         throw failure(
-                                helper, "%s seed %s: trunks %s and %s touch at %s", shape, seed, owner, other, cell);
+                                helper,
+                                "seed %s: trunks %s and %s touch at %s",
+                                seed,
+                                owner,
+                                ownerOf(layout, next),
+                                cell);
                     }
                 }
             }
             if (rotationallySymmetric(cells)) {
-                throw failure(helper, "%s seed %s: the stalk is rotationally symmetric", shape, seed);
+                throw failure(helper, "seed %s: the stalk is rotationally symmetric", seed);
             }
         }
         if (yields.size() < 3) {
-            throw failure(helper, "%s: every seed grew the same few shapes, block counts %s", shape, yields);
+            throw failure(helper, "every seed grew the same few shapes, block counts %s", yields);
         }
-        for (long seed = 1; seed <= OPTION_PLACED_SEEDS; seed++) {
+        for (long seed = 1; seed <= BRAID_PLACED_SEEDS; seed++) {
             GreatStalkLayout layout = layoutOf(seed);
-            if (!growOption(helper, seed)) {
-                throw failure(helper, "%s seed %s: the placer would not grow it on a flat stone floor", shape, seed);
+            if (!growBraid(helper, seed)) {
+                throw failure(helper, "seed %s: the placer would not grow it on a flat stone floor", seed);
             }
             if (!standing(helper).equals(layout.parts())) {
-                throw failure(helper, "%s seed %s: what grew is not what the generator laid out", shape, seed);
+                throw failure(helper, "seed %s: what grew is not what the generator laid out", seed);
             }
         }
         helper.succeed();
@@ -612,7 +610,6 @@ public class StalkCollapseTest {
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void aBraidNeedsGroundAndRoomForItsTrunks(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        String shape = "the braid";
         {
             GreatStalkLayout layout = layoutOf(1);
             Cell trunk = layout.parts().keySet().stream()
@@ -620,36 +617,35 @@ public class StalkCollapseTest {
                     .findFirst()
                     .orElseThrow();
             Cell base = new Cell(trunk.x(), 0, trunk.z());
-            clearOptionArea(helper);
-            level.setBlock(at(optionOrigin(helper), trunk), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-            if (GreatStalk.place(level, RandomSource.create(1), optionOrigin(helper))
+            clearBraidArea(helper);
+            level.setBlock(at(braidOrigin(helper), trunk), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+            if (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper))
                     || !standing(helper).isEmpty()) {
-                throw failure(helper, "%s grew over a block in its trunk", shape);
+                throw failure(helper, "the braid grew over a block in its trunk");
             }
-            clearOptionArea(helper);
-            level.setBlock(
-                    at(optionOrigin(helper), base).below(), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+            clearBraidArea(helper);
+            level.setBlock(at(braidOrigin(helper), base).below(), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
             if (layout.parts().containsKey(base)
                     && !layout.optional().contains(base)
-                    && (GreatStalk.place(level, RandomSource.create(1), optionOrigin(helper))
+                    && (GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper))
                             || !standing(helper).isEmpty())) {
-                throw failure(helper, "%s grew a trunk over a hole in the ground", shape);
+                throw failure(helper, "the braid grew a trunk over a hole in the ground");
             }
             Cell cap = layout.parts().entrySet().stream()
                     .filter(entry -> entry.getValue() == Part.CAP)
                     .map(Map.Entry::getKey)
                     .max(Comparator.comparingInt(Cell::y))
                     .orElseThrow();
-            clearOptionArea(helper);
-            level.setBlock(at(optionOrigin(helper), cap), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-            if (!GreatStalk.place(level, RandomSource.create(1), optionOrigin(helper))) {
-                throw failure(helper, "%s would not grow with a block in the way of one cap", shape);
+            clearBraidArea(helper);
+            level.setBlock(at(braidOrigin(helper), cap), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+            if (!GreatStalk.place(level, RandomSource.create(1), braidOrigin(helper))) {
+                throw failure(helper, "the braid would not grow with a block in the way of one cap");
             }
             Set<Cell> expected =
                     new HashSet<>(layout.without(Set.of(cap)).parts().keySet());
             if (!standing(helper).keySet().equals(expected)
-                    || !level.getBlockState(at(optionOrigin(helper), cap)).is(Blocks.STONE)) {
-                throw failure(helper, "%s did not leave out exactly the capped cell in its way", shape);
+                    || !level.getBlockState(at(braidOrigin(helper), cap)).is(Blocks.STONE)) {
+                throw failure(helper, "the braid did not leave out exactly the capped cell in its way");
             }
         }
         helper.succeed();
@@ -661,16 +657,14 @@ public class StalkCollapseTest {
      * touches the ground. Not the block broken.
      */
     private static Set<Cell> fallenBy(GreatStalkLayout layout, Cell broken) {
-        int owner = layout.owners().getOrDefault(broken, GreatStalkLayout.SHARED);
+        int owner = ownerOf(layout, broken);
         boolean hasAbove = layout.parts().containsKey(new Cell(broken.x(), broken.y() + 1, broken.z()));
         Map<Cell, Part> left = new LinkedHashMap<>(layout.parts());
         left.remove(broken);
         Set<Cell> fallen = new HashSet<>();
         if (hasAbove) {
             for (Cell cell : left.keySet()) {
-                boolean sameTrunk =
-                        owner == GreatStalkLayout.SHARED || layout.owners().getOrDefault(cell, -1) == owner;
-                if (cell.y() > broken.y() && sameTrunk) {
+                if (cell.y() > broken.y() && ownerOf(layout, cell) == owner) {
                     fallen.add(cell);
                 }
             }
@@ -692,7 +686,7 @@ public class StalkCollapseTest {
         return layout.parts().keySet().stream()
                 .filter(cell -> cell.y() == level
                         && layout.parts().get(cell) == Part.TRUNK
-                        && layout.owners().getOrDefault(cell, -1) == owner
+                        && ownerOf(layout, cell) == owner
                         && layout.parts().containsKey(new Cell(cell.x(), cell.y() + 1, cell.z())))
                 .sorted(Comparator.comparingInt(Cell::x).thenComparingInt(Cell::z))
                 .toList();
@@ -702,7 +696,7 @@ public class StalkCollapseTest {
     private static Map<String, Integer> handDrops(GameTestHelper helper, Collection<Cell> cells) {
         Map<String, Integer> total = new TreeMap<>();
         for (Cell cell : cells) {
-            BlockPos pos = at(optionOrigin(helper), cell);
+            BlockPos pos = at(braidOrigin(helper), cell);
             for (ItemStack drop : Block.getDrops(helper.getLevel().getBlockState(pos), helper.getLevel(), pos, null)) {
                 total.merge(BuiltInRegistries.ITEM.getKey(drop.getItem()).toString(), drop.getCount(), Integer::sum);
             }
@@ -711,20 +705,19 @@ public class StalkCollapseTest {
     }
 
     /**
-     * Grows the shape, breaks one block by hand and checks the collapse against {@link #fallenBy}: exactly those blocks are gone, nothing
+     * Grows the braid, breaks one block by hand and checks the collapse against {@link #fallenBy}: exactly those blocks are gone, nothing
      * stands that is not joined to the ground, and the drops are what breaking each of them by hand drops. With {@code countDrops}, the
      * test runs alone in its environment, so that the items lying about are its own.
      */
-    private void optionCollapse(
+    private void braidCollapse(
             GameTestHelper helper, long seed, Function<GreatStalkLayout, Cell> pick, boolean countDrops) {
-        String shape = "the braid";
         GreatStalkLayout layout = layoutOf(seed);
         Cell broken = pick.apply(layout);
         Set<Cell> fallen = fallenBy(layout, broken);
-        holdOptionArea(helper);
-        MockPlayer player = farPlayer(helper, "option-collapse");
-        if (!growOption(helper, seed)) {
-            throw failure(helper, "%s would not grow on a flat stone floor", shape);
+        holdBraidArea(helper);
+        MockPlayer player = farPlayer(helper, "braid-collapse");
+        if (!growBraid(helper, seed)) {
+            throw failure(helper, "the braid would not grow on a flat stone floor");
         }
         Set<Cell> everything = new HashSet<>(fallen);
         everything.add(broken);
@@ -732,7 +725,7 @@ public class StalkCollapseTest {
         if (byHand.getOrDefault("deepcharter:fungal_stalk", 0) != everything.size() || byHand.size() != 1) {
             throw failure(helper, "breaking %s blocks by hand would drop %s", everything.size(), byHand);
         }
-        breakByHand(helper, player, at(optionOrigin(helper), broken));
+        breakByHand(helper, player, at(braidOrigin(helper), broken));
         helper.runAfterDelay(COLLAPSE_WAIT, () -> {
             Set<Cell> expected = new HashSet<>(layout.parts().keySet());
             expected.removeAll(everything);
@@ -744,8 +737,7 @@ public class StalkCollapseTest {
                 extra.removeAll(expected);
                 throw failure(
                         helper,
-                        "%s: after breaking %s, %s blocks should fall and %s did not fall (%s), %s fell that should stand (%s)",
-                        shape,
+                        "after breaking %s, %s blocks should fall and %s did not fall (%s), %s fell that should stand (%s)",
                         broken,
                         fallen.size(),
                         extra.size(),
@@ -758,13 +750,12 @@ public class StalkCollapseTest {
                             .parts()
                             .size()
                     != after.size()) {
-                throw failure(helper, "%s: a block floats, joined to nothing, after the collapse", shape);
+                throw failure(helper, "a block floats, joined to nothing, after the collapse");
             }
             if (countDrops && !dropped(helper).equals(byHand)) {
                 throw failure(
                         helper,
-                        "%s: the collapse dropped %s, breaking the same blocks by hand drops %s",
-                        shape,
+                        "the collapse dropped %s, breaking the same blocks by hand drops %s",
                         dropped(helper),
                         byHand);
             }
@@ -775,7 +766,7 @@ public class StalkCollapseTest {
     /** A braid's trunk breaks: its upper part, with the shelves on it, falls; the other two trunks and the lower part stand. */
     @GameTest(maxTicks = TEST_MAX_TICKS, environment = BRAID_TRUNK_ALONE)
     public void breakingOneTrunkOfABraidLeavesTheOthersStanding(GameTestHelper helper) {
-        optionCollapse(
+        braidCollapse(
                 helper, BRAID_SEED, layout -> trunkCellsWithAbove(layout, 2, 7).getFirst(), true);
     }
 
@@ -785,7 +776,7 @@ public class StalkCollapseTest {
      */
     private static Function<GreatStalkLayout, Cell> kinkOf(int owner) {
         return layout -> layout.parts().keySet().stream()
-                .filter(cell -> layout.owners().getOrDefault(cell, -1) == owner
+                .filter(cell -> ownerOf(layout, cell) == owner
                         && layout.parts().get(cell) == Part.TRUNK
                         && cell.y() > 3
                         && !layout.parts().containsKey(new Cell(cell.x(), cell.y() + 1, cell.z()))
@@ -809,13 +800,13 @@ public class StalkCollapseTest {
 
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void breakingTheKinkOfABraidTrunkLeavesNothingFloating(GameTestHelper helper) {
-        optionCollapse(helper, BRAID_SEED, kinkOf(1), false);
+        braidCollapse(helper, BRAID_SEED, kinkOf(1), false);
     }
 
     /** A shelf breaks off its trunk's side: its outer half, no longer joined to anything, falls, and the strand hanging from a cap with it. */
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void breakingAShelfBringsDownWhatOnlyHungFromIt(GameTestHelper helper) {
-        optionCollapse(
+        braidCollapse(
                 helper,
                 BRAID_SEED,
                 layout -> layout.parts().keySet().stream()
@@ -829,8 +820,7 @@ public class StalkCollapseTest {
      * A player in the shade of a shelf or a cap, at the foot of the trunk it hangs from, takes nothing when that trunk comes down: a
      * block that would land in the player's cells bursts instead.
      */
-    private void optionNeverLandsOnAPlayer(GameTestHelper helper, long seed) {
-        String shape = "the braid";
+    private void braidNeverLandsOnAPlayer(GameTestHelper helper, long seed) {
         ServerLevel level = helper.getLevel();
         GreatStalkLayout layout = layoutOf(seed);
         // The cap block that hangs lowest over free ground, and the trunk base it hangs from.
@@ -841,24 +831,17 @@ public class StalkCollapseTest {
                         && !layout.parts().containsKey(new Cell(cell.x(), 1, cell.z())))
                 .min(Comparator.comparingInt(Cell::y).thenComparingInt(Cell::x).thenComparingInt(Cell::z))
                 .orElseThrow();
-        int shadeOwner = layout.owners().getOrDefault(shade, GreatStalkLayout.SHARED);
-        boolean ownBase = layout.parts().keySet().stream()
-                .anyMatch(cell -> cell.y() == 0
-                        && !layout.optional().contains(cell)
-                        && layout.owners().getOrDefault(cell, -1) == shadeOwner);
-        int owner = ownBase ? shadeOwner : GreatStalkLayout.SHARED;
+        int owner = ownerOf(layout, shade);
         Cell base = layout.parts().keySet().stream()
-                .filter(cell -> cell.y() == 0
-                        && !layout.optional().contains(cell)
-                        && layout.owners().getOrDefault(cell, -1) == owner)
+                .filter(cell -> cell.y() == 0 && !layout.optional().contains(cell) && ownerOf(layout, cell) == owner)
                 .min(Comparator.comparingInt(Cell::x).thenComparingInt(Cell::z))
                 .orElseThrow();
-        holdOptionArea(helper);
-        if (!growOption(helper, seed)) {
-            throw failure(helper, "%s would not grow on a flat stone floor", shape);
+        holdBraidArea(helper);
+        if (!growBraid(helper, seed)) {
+            throw failure(helper, "the braid would not grow on a flat stone floor");
         }
-        BlockPos origin = optionOrigin(helper);
-        MockPlayer player = MockPlayers.join(helper, "option-foot");
+        BlockPos origin = braidOrigin(helper);
+        MockPlayer player = MockPlayers.join(helper, "braid-foot");
         player.player().setGameMode(GameType.SURVIVAL);
         player.teleportTo(level, Vec3.atBottomCenterOf(origin.offset(shade.x(), 0, shade.z())), 0, 0);
         BlockPos feet = player.player().blockPosition();
@@ -868,8 +851,7 @@ public class StalkCollapseTest {
                 if (!level.getBlockState(cell).isAir()) {
                     throw failure(
                             helper,
-                            "%s: a block %s landed in the player's cell %s",
-                            shape,
+                            "a block %s landed in the player's cell %s",
                             level.getBlockState(cell),
                             cell.toShortString());
                 }
@@ -888,8 +870,7 @@ public class StalkCollapseTest {
                 missing.removeAll(after);
                 throw failure(
                         helper,
-                        "%s did not collapse as it should after breaking %s: %s stand that should not, %s are gone that should stand",
-                        shape,
+                        "the braid did not collapse as it should after breaking %s: %s stand that should not, %s are gone that should stand",
                         base,
                         extra,
                         missing);
@@ -897,8 +878,7 @@ public class StalkCollapseTest {
             if (player.player().getHealth() != health) {
                 throw failure(
                         helper,
-                        "%s: the player lost health: %s of %s",
-                        shape,
+                        "the player lost health: %s of %s",
                         player.player().getHealth(),
                         health);
             }
@@ -908,7 +888,7 @@ public class StalkCollapseTest {
 
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void aSagBraidNeverLandsOnAPlayerAtItsFoot(GameTestHelper helper) {
-        optionNeverLandsOnAPlayer(helper, BRAID_SEED);
+        braidNeverLandsOnAPlayer(helper, BRAID_SEED);
     }
 
     /** The great block's {@code falling} state, found by name: the property is the collapse's own. */
@@ -956,8 +936,8 @@ public class StalkCollapseTest {
     /** A falling great block that nothing is collapsing (a command placed it) comes down on its own, and does not stay in the air. */
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void aStrayFallingBlockComesDown(GameTestHelper helper) {
-        clearOptionArea(helper);
-        BlockPos pos = optionOrigin(helper).above(3);
+        clearBraidArea(helper);
+        BlockPos pos = braidOrigin(helper).above(3);
         helper.getLevel().setBlock(pos, falling(ours("great_stalk")), Block.UPDATE_ALL);
         helper.runAfterDelay(COLLAPSE_WAIT, () -> {
             if (!helper.getLevel().getBlockState(pos).isAir()) {

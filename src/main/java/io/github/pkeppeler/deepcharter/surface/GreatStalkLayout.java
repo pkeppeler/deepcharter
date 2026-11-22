@@ -13,14 +13,11 @@ import java.util.Set;
  * a shape can be inspected without a world.
  *
  * @param parts    what each cell is
- * @param owners   which trunk a cell belongs to: {@value #SHARED} for a cell of no one trunk, 1 and up for the braid's trunks and
- *                 their shelves. Two cells of different trunks never touch, so breaking one trunk never brings another down
+ * @param owners   which trunk a cell belongs to, 1 and up, for the braid's trunks and their shelves. Two cells of different trunks never
+ *                 touch, so breaking one trunk never brings another down
  * @param optional the cells a placer may leave out where the ground or the air forbids them (a root flare)
  */
 public record GreatStalkLayout(Map<Cell, Part> parts, Map<Cell, Integer> owners, Set<Cell> optional) {
-    /** The owner of the cells that belong to no one trunk in particular. */
-    public static final int SHARED = 0;
-
     /** One block position, relative to the stalk's origin. */
     public record Cell(int x, int y, int z) {
         Cell offset(int dx, int dy, int dz) {
@@ -112,11 +109,9 @@ public record GreatStalkLayout(Map<Cell, Part> parts, Map<Cell, Integer> owners,
         GreatStalkLayout build() {
             GreatStalkLayout layout = new GreatStalkLayout(parts, owners, optional);
             Set<Cell> touching = new HashSet<>();
-            parts.keySet().forEach(cell -> {
-                int owner = owners.getOrDefault(cell, SHARED);
+            owners.forEach((cell, owner) -> {
                 for (Cell next : layout.neighbours(cell)) {
-                    int other = owners.getOrDefault(next, SHARED);
-                    if (owner > other && other != SHARED) {
+                    if (owner > owners.getOrDefault(next, owner)) {
                         touching.add(cell);
                     }
                 }
