@@ -504,9 +504,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         && shown.getBlockY() <= floorFeetY
                         && shown.stranded()
                         && SignalDecay.intensity(shown) >= 1);
-        // The floor of the Claim completes a directive, and its popup slides in over the lamps at the right end of the
-        // ribbon. The server polls for it, so the popup is queued some ticks after the pod arrives, later than the
-        // shot clears the toasts. Await the sync that queues it, so the shot's clear removes it (#1023).
+        // The Claim floor completes a directive whose toast the server queues some ticks after arrival, over the lamps.
+        // Await its sync so the shot's clear removes it (#1023).
         ClientWait.until(
                 context,
                 "the Deep Claim directive synced to the client",
