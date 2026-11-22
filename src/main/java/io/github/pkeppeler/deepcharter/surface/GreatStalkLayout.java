@@ -13,9 +13,8 @@ import java.util.Set;
  * a shape can be inspected without a world.
  *
  * @param parts    what each cell is
- * @param owners   which trunk a cell belongs to: {@value #SHARED} for a cell that belongs to the whole stalk (a stem, a thick trunk, a
- *                 crown), 1 and up for the independent trunks and branches. Two cells of different independent owners never touch, so
- *                 breaking one trunk never brings another down
+ * @param owners   which trunk a cell belongs to: {@value #SHARED} for a cell of no one trunk, 1 and up for the braid's trunks and
+ *                 their shelves. Two cells of different trunks never touch, so breaking one trunk never brings another down
  * @param optional the cells a placer may leave out where the ground or the air forbids them (a root flare)
  */
 public record GreatStalkLayout(Map<Cell, Part> parts, Map<Cell, Integer> owners, Set<Cell> optional) {
