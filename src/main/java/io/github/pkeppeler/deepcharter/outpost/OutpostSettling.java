@@ -77,7 +77,8 @@ public final class OutpostSettling {
 
     /**
      * Settles every outpost of the world now, as a sweep does. Does nothing while the outposts or their ledgers cannot be read, and never
-     * throws: an outpost that fails is logged once and skipped, with its ledger unchanged, and the rest settle.
+     * throws: an outpost that fails is logged once, its pending visits are dropped and its windows marked settled, and the rest settle.
+     * What the failed attempt already took or broke stays done and is not in the report.
      */
     public static void settleAll(MinecraftServer server) {
         SettlingTuning tuning = SettlingTuning.DEFAULT;
@@ -91,16 +92,18 @@ public final class OutpostSettling {
             if (level == null) {
                 continue;
             }
+            long now = level.getGameTime();
+            long window = now / tuning.windowTicks();
+            Ledger ledger = visits.ledgerOf(outpost.charter(), outpost.layer(), window);
             try {
-                long now = level.getGameTime();
-                Ledger ledger = visits.ledgerOf(outpost.charter(), outpost.layer(), now / tuning.windowTicks());
                 visits.put(settle(level, outpost, ledger, now, tuning));
             } catch (RuntimeException e) {
-                // The ledger is not put: its visits stay pending and are met again at the next sweep. What the failed
-                // sweep already did to the world stays done.
+                // Dropped, not retried: the failure repeats for this outpost, and a retry would take fuel or break
+                // blocks again every sweep. What the attempt applied stays applied and is not in the report.
+                visits.put(ledger.withPending(Pending.NONE).withSettledTo(Math.max(ledger.settledTo(), window)));
                 if (FAILED.add(outpost.charter().toString() + "/" + outpost.layer())) {
                     DeepCharter.LOGGER.error(
-                            "Away settling failed for the outpost of charter {} in layer {}; skipped, its ledger is unchanged",
+                            "Away settling failed for the outpost of charter {} in layer {}; its visits are dropped",
                             outpost.charter(),
                             outpost.layer(),
                             e);
