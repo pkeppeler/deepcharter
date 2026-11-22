@@ -62,6 +62,9 @@ public class BoltDriverTest {
     /** A mock reads what the server sends it on its own tick, a tick or two later. */
     private static final int MESSAGE_TICKS = 3;
 
+    /** The rock of a cave-in falls two blocks and comes to rest well within this. */
+    private static final int ROCK_SETTLES_TICKS = 40;
+
     private static final Identifier CREAK = SoundEvents.CREAKING_TWITCH.location();
 
     @GameTest
@@ -452,6 +455,17 @@ public class BoltDriverTest {
                 }
                 if (!corridor.standing(7 + radius + 1)) {
                     throw failure(helper, "a cave-in takes the stretch round the person and no more");
+                }
+            }
+            if (elapsed == CAVE_IN.warnTicks() + ROCK_SETTLES_TICKS) {
+                int lying = 0;
+                for (int along = 7 - radius; along <= 7 + radius; along++) {
+                    if (corridor.level().getBlockState(corridor.floor(along)).is(Blocks.STONE)) {
+                        lying++;
+                    }
+                }
+                if (lying == 0) {
+                    throw failure(helper, "the roof fell as rock, which lies where it landed: none lies in the tunnel");
                 }
                 helper.succeed();
             }

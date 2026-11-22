@@ -216,7 +216,9 @@ public final class CaveIns {
         for (BlockPos at : loose) {
             BlockState rock = level.getBlockState(at);
             FallingBlockEntity falling = FallingBlockEntity.fall(level, at, rock);
-            falling.disableDrop();
+            // Rock that cannot land (the cell is taken) is lost, not dropped as an item; disableDrop() would skip the
+            // landing too.
+            falling.dropItem = false;
             falling.setHurtsEntities(CaveInTuning.DEFAULT.fallDamage(), CaveInTuning.DEFAULT.fallDamageMax());
         }
         // PLACEHOLDER sound until the sound pass.
