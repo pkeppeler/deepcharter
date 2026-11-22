@@ -19,6 +19,7 @@ import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
+import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundRecipeBookAddPacket;
 import net.minecraft.network.protocol.game.ClientboundRecipeBookRemovePacket;
 import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
@@ -51,6 +52,7 @@ public final class MockPlayer {
     private final List<Long> soundTicks = new ArrayList<>();
     private final List<CustomPacketPayload> payloads = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
+    private final MockClientLight clientLight = new MockClientLight();
     private final Set<RecipeDisplayId> recipeDisplays = new HashSet<>();
     private final Set<RecipeDisplayId> recipeDisplaysEverSent = new HashSet<>();
     private int recipeToasts;
@@ -95,6 +97,11 @@ public final class MockPlayer {
      */
     public Set<ChunkPos> chunksSent() {
         return Set.copyOf(chunksSent.keySet());
+    }
+
+    /** The light this player's client holds, from the chunk and light packets it was sent. Read on the mock's tick, so it lags by one. */
+    public MockClientLight clientLight() {
+        return clientLight;
     }
 
     /** How many times the server has sent this player the chunk; a chunk it already has is not sent again. */
@@ -254,6 +261,12 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundLevelChunkWithLightPacket packet) {
                     chunksSent.merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);
+                    clientLight.apply(
+                            server.getTickCount(), "chunk", new ChunkPos(packet.x(), packet.z()), packet.lightData());
+                }
+                if (outbound instanceof ClientboundLightUpdatePacket packet) {
+                    clientLight.apply(
+                            server.getTickCount(), "light", new ChunkPos(packet.x(), packet.z()), packet.lightData());
                 }
                 // connection.tick() above may have disconnected the player, which nulls its listener
                 if (outbound instanceof ClientboundChunkBatchFinishedPacket && player.connection != null) {

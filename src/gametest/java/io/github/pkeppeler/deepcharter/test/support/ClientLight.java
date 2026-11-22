@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.support;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -140,6 +141,25 @@ public final class ClientLight {
     }
 
     /**
+     * Waits until the client has applied every light update it was sent. A client queues the light of each chunk packet and light packet
+     * and applies ten a frame, in order ({@code ClientLevel.pollLightUpdates}), so a chunk can be present while its light is still
+     * queued, and reads full sky light until then (#998): a marker queued behind them runs once they have, and the client's own light
+     * engine is idle after it.
+     */
+    private static void awaitClientLightApplied(ClientGameTestContext context) {
+        AtomicBoolean applied = new AtomicBoolean();
+        context.runOnClient(client -> clientLevel(client).queueLightUpdate(() -> applied.set(true)));
+        ClientWait.until(
+                context, "the client to apply the light it was sent", applied::get, () -> "the client's light queue");
+        ClientWait.until(
+                context,
+                "the client's light engine to be idle",
+                () -> context.computeOnClient(
+                        client -> !clientLevel(client).getLightEngine().hasLightWork()),
+                () -> "client light work pending");
+    }
+
+    /**
      * Waits, on the wall clock, until the server's light engine is idle and the client has had {@link #PACKET_TICKS} ticks for the light
      * packets after it, then returns what a comparison of the box finds. Sends nothing: a mismatch is a light the client will keep.
      */
@@ -153,6 +173,7 @@ public final class ClientLight {
         // tick-wait: the packets that follow the last light job arrive within a few ticks; the comparison after is the
         // check
         context.waitTicks(PACKET_TICKS);
+        awaitClientLightApplied(context);
         return describeMismatch(context, server, dimension, box);
     }
 }
