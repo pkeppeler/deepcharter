@@ -11,13 +11,15 @@ val runVmArgs = project.extra["runVmArgs"] as () -> Map<String, List<String>>
 
 addVmArgToRuns(exitOnOom)
 
-// Server GameTest heap (#541, #805, #807, #816, #957). CI died of OutOfMemoryError at 2G with peaks of 1.23 to 1.45 GB (#805), so keep the
-// heap at 2x the measured peak or more, and re-measure when the suite grows by a tenth or a test adds a tall world to a campaign environment.
-// Method: -Xlog:gc plus a forced GC every 1.5 s. Mechanisms: ChunkMapUnloadMixin (chunks of a finished batch), ChunkMapSaveMixin (writes of
-// half-generated chunks), FarChunks.force (released when a test finishes), and CampaignEnvironments (the campaign tests' batches).
-// Measured 2026-11-22 after #818 (1454 tests, 4 vCPU, 3 runs at 3G with the campaign tests in four environments of 13 to 23): the highest live
-// set was 1560, 1555 and 1748 MB, in default batches of 50 whose layer tests reach the campaign level through TestLayers; the four environments
-// peaked at 1034 to 1517 MB. Main's tree (4G) peaked at 1946 MB. 2x 1748 MB is 3496 MB, so 3584m; 3G fits only a peak under 1.5 GB. Back to 3G when #1026 bounds the TestLayers batches.
+// Server GameTest heap (#541, #805, #807, #816, #957, #1026). CI died of OutOfMemoryError at 2G with peaks of 1.23 to 1.45 GB (#805), so keep the
+// heap at 2x the measured peak or more, and re-measure when the suite grows by a tenth, a test adds a tall world to a campaign environment, or
+// TestBatches.MAX_TESTS rises. Method: a forced GC every 1.5 s (jcmd GC.class_histogram) over a full run. Mechanisms: ChunkMapUnloadMixin (chunks of
+// a finished batch), ChunkMapSaveMixin (writes of half-generated chunks), FarChunks.force (released when a test finishes), CampaignEnvironments
+// (the campaign tests' batches) and TestBatches (at most 6 tests in any batch).
+// Measured 2026-11-22 (1478 tests, 4 vCPU, 3 runs at 3G): the live set grows about 20 to 60 MB per test that reaches the tall campaign level
+// (through TestLayers or a dimension), because a batch keeps its tests' chunks until it ends, over a floor of 0.4 to 0.9 GB (colony pads stay
+// pinned). Batches of 50 peaked at 1.5 to 1.7 GB, so 3G failed the 2x rule (#970 needed 3584m); batches of 6 peaked at 1412, 1168 and 1319 MB
+// (the highest in a campaign environment's first batch), and the suite took within 5% of main's time.
 val gameTestHeap = "-Xmx3072m"
 addVmArgToRun("gameTest", gameTestHeap)
 
