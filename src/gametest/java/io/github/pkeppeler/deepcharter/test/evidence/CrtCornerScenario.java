@@ -17,6 +17,9 @@ import org.jspecify.annotations.Nullable;
  * the hangar console and the contract terminal (the whole screen), and for the upgrade terminal the top-left and bottom-right corners of the
  * glass scaled up with nearest-neighbour ({@code crt-corner-top-left-zoom}, {@code crt-corner-bottom-right-zoom}) so the pixels read.
  * The crops are placed from the panel's own glass insets, not from a fixed spot.
+ *
+ * <p>#1012 adds the processor, repair station, fuel pump and generic terminal to the whole-screen stills, and for every screen the top-left corner
+ * zoomed ({@code crt-corner-title-zoom-<screen>}): the title's first stem sits there, and the glass used to shade it.
  */
 public class CrtCornerScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
@@ -44,12 +47,17 @@ public class CrtCornerScenario extends EvidenceScenario {
                             .map(charter -> charter.balance() == TerminalPanelScene.ACCOUNT)
                             .orElse(false),
                     client -> "charter " + ClientCharter.view());
-            shoot(context, "upgrade", scene, null, true);
-            shoot(context, "hangar", scene, null, false);
+            for (String screen : TerminalPanelScreens.SCENE_SCREENS) {
+                shoot(context, screen, scene, null, screen.equals("upgrade"));
+            }
         }
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             BlockPos contract = singleplayer.getServer().computeOnServer(TerminalPanelScene::setUpContract);
             shoot(context, TerminalPanelScreens.CONTRACT, null, contract, false);
+        }
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            BlockPos offline = singleplayer.getServer().computeOnServer(TerminalPanelScene::setUpOffline);
+            shoot(context, TerminalPanelScreens.GENERIC, null, offline, false);
         }
     }
 
@@ -67,6 +75,17 @@ public class CrtCornerScenario extends EvidenceScenario {
         }
         String still = "crt-corner-" + screen;
         screenshot(context, still);
+        // #1012: the title starts near the top-left corner of the glass, so every screen gets that corner zoomed, to
+        // show the title's first stem.
+        PanelLook.Insets titleGlass = PanelLook.current().glass();
+        zoomStill(
+                context,
+                still,
+                "crt-corner-title-zoom-" + screen,
+                titleGlass.left() - REACH_OUT,
+                titleGlass.top() - REACH_OUT,
+                CROP,
+                CROP);
         if (corners) {
             PanelLook.Insets glass = PanelLook.current().glass();
             zoomStill(
