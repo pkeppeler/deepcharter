@@ -58,6 +58,7 @@ import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
@@ -250,18 +251,30 @@ public class BandReadersTest {
         CharterId charter = Charters.charterOfOrThrow(server, mock.player().getUUID())
                 .orElseThrow()
                 .id();
-        mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
         FarChunks.awaitEntityTicking(
                 helper,
                 level,
                 floor,
                 () -> WorldData.with(server, OutpostData.TYPE, new OutpostData(), () -> {
+                    // Into the carved rock on the tick of the build: a wait for the chunk that outlasts a few ticks (a
+                    // test run alone, a
+                    // small batch) would suffocate the builder first, and a dead player is an entity in the hall's
+                    // volume.
+                    mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
                     Optional<Component> refusal = OutpostBuilder.build(mock.player(), level, floor, Direction.UP);
-                    expect(
-                            helper,
-                            refusal.isEmpty(),
-                            "the outpost in layer 1's band was refused: %s",
-                            refusal.map(Component::getString).orElse(""));
+                    if (refusal.isPresent()) {
+                        // entity-query: names what refused the kit, in the chunk this test forced and waited on
+                        List<String> inShell = level.getEntities(mock.player(), new AABB(floor).inflate(8)).stream()
+                                .map(entity -> entity.getType().toShortString() + " at " + entity.blockPosition())
+                                .toList();
+                        throw failure(
+                                helper,
+                                "the outpost in layer 1's band was refused: %s; entities near the hall: %s; the builder is %s at %s",
+                                refusal.get().getString(),
+                                inShell,
+                                mock.player().isAlive() ? "alive" : "dead",
+                                mock.player().blockPosition());
+                    }
                     expect(
                             helper,
                             OutpostData.get(server).of(charter, 1).isPresent(),
