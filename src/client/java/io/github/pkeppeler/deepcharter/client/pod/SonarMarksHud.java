@@ -25,6 +25,8 @@ public final class SonarMarksHud {
     private SonarMarksHud() {}
 
     public static void init() {
+        // keep-clear-ok: the marks are world-projected diamonds that follow the marked echo across the view, and at the
+        // screen edge when it is off screen; they have no fixed box for a popup to avoid
         HudElementRegistry.addLast(ID, SonarMarksHud::extract);
     }
 
