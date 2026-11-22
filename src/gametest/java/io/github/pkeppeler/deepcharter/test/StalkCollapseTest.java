@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.surface.GreatStalk;
 import io.github.pkeppeler.deepcharter.surface.GreatStalkBraid;
@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout.Cell;
 import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout.Part;
 import io.github.pkeppeler.deepcharter.surface.SurfaceTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.ItemSpawns;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
@@ -31,11 +32,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
@@ -60,21 +59,21 @@ public class StalkCollapseTest {
     private static final int FLOOR_ROW = 1;
     /** The first block a stalk stands in. */
     private static final int BASE_ROW = 2;
+    /** The test area's x and z range, in blocks of the test. */
+    private static final int AREA_MIN = -2;
+
+    private static final int AREA_MAX = 10;
+    /** How many rows above {@link #BASE_ROW} the area counts: more than the tallest great stalk and its cap reach. */
+    private static final int AREA_TOP = 30;
     /** Longer than a collapse takes: the sag delay plus one step for each layer of the tallest great stalk and its cap. */
     private static final int COLLAPSE_WAIT = 200;
 
     /**
-     * Where the far player stands, at x = 0, inside the item box but clear of where drops rest. A drop flies out at
-     * {@link SurfaceTuning#scatterSpeed()} and comes to rest within about 3 blocks of the block that burst it, out of this player's
-     * pickup range.
+     * Where the far player stands, at x = 0: off the stalk (the braid's cells reach z = 17 and the single column stands at z = 2), so
+     * that it takes no part in the collapse.
      */
     private static final int FAR_Z = 20;
 
-    /** The oldest an item of this test can be when it is counted: it was dropped after the break, {@link #COLLAPSE_WAIT} ticks before. */
-    private static final int MAX_ITEM_AGE = COLLAPSE_WAIT + 20;
-
-    private static final int ITEM_DEPTH = 20;
-    private static final int ITEM_HEIGHT = 60;
     private static final String SINGLE_ALONE = "deepcharter-test:stalk_count_single";
     /** How far above the test a build in the air stands, off every neighbour. */
     private static final int SKY = 40;
@@ -90,17 +89,11 @@ public class StalkCollapseTest {
         return BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
     }
 
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
     /** A flat stone floor under the test's whole area, and nothing above it. */
     private static void clearArea(GameTestHelper helper, int height) {
         ServerLevel level = helper.getLevel();
-        for (int x = -2; x <= 10; x++) {
-            for (int z = -2; z <= 10; z++) {
+        for (int x = AREA_MIN; x <= AREA_MAX; x++) {
+            for (int z = AREA_MIN; z <= AREA_MAX; z++) {
                 level.setBlock(
                         helper.absolutePos(new BlockPos(x, FLOOR_ROW, z)),
                         Blocks.STONE.defaultBlockState(),
@@ -113,9 +106,6 @@ public class StalkCollapseTest {
                 }
             }
         }
-        for (ItemEntity item : items(helper)) {
-            item.discard();
-        }
     }
 
     /**
@@ -123,8 +113,8 @@ public class StalkCollapseTest {
      * polls: it throws until they all are. Call it from the test method.
      */
     private static Runnable countable(GameTestHelper helper) {
-        BlockPos low = helper.absolutePos(new BlockPos(-ITEM_REACH, 0, -ITEM_REACH));
-        BlockPos high = helper.absolutePos(new BlockPos(ITEM_REACH, 0, ITEM_REACH));
+        BlockPos low = helper.absolutePos(new BlockPos(-AWAIT_REACH, 0, -AWAIT_REACH));
+        BlockPos high = helper.absolutePos(new BlockPos(AWAIT_REACH, 0, AWAIT_REACH));
         List<BlockPos> chunks = new ArrayList<>();
         for (int chunkX = low.getX() >> 4; chunkX <= high.getX() >> 4; chunkX++) {
             for (int chunkZ = low.getZ() >> 4; chunkZ <= high.getZ() >> 4; chunkZ++) {
@@ -142,47 +132,15 @@ public class StalkCollapseTest {
         };
     }
 
-    private static List<ItemEntity> items(GameTestHelper helper) {
-        BlockPos low = helper.absolutePos(new BlockPos(-ITEM_REACH, -ITEM_DEPTH, -ITEM_REACH));
-        BlockPos high = helper.absolutePos(new BlockPos(ITEM_REACH, ITEM_HEIGHT, ITEM_REACH));
-        return helper.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(low).minmax(new AABB(high)));
-    }
-
-    /** The items lying about that this test can have dropped, by item id. */
-    private static Map<String, Integer> dropped(GameTestHelper helper) {
-        Map<String, Integer> total = new TreeMap<>();
-        for (ItemEntity item : items(helper)) {
-            if (item.tickCount > MAX_ITEM_AGE) {
-                continue;
-            }
-            total.merge(
-                    BuiltInRegistries.ITEM.getKey(item.getItem().getItem()).toString(),
-                    item.getItem().getCount(),
-                    Integer::sum);
-        }
-        return total;
-    }
-
-    /** The failure of a count that is not the by-hand count, listing every item in the box, counted or not. */
+    /** The failure of a count that is not the by-hand count, listing every spawn of the collapse. */
     private static RuntimeException countMismatch(
-            GameTestHelper helper, Map<String, Integer> collapsed, Map<String, Integer> byHand) {
-        StringBuilder items = new StringBuilder();
-        for (ItemEntity item : items(helper)) {
-            items.append(String.format(
-                    "%n  %s x%s at %s, age %s, %s the test's bounds, %s",
-                    BuiltInRegistries.ITEM.getKey(item.getItem().getItem()),
-                    item.getItem().getCount(),
-                    item.blockPosition().toShortString(),
-                    item.tickCount,
-                    helper.getBounds().contains(item.position()) ? "inside" : "outside",
-                    item.tickCount > MAX_ITEM_AGE ? "too old to count" : "counted"));
-        }
+            GameTestHelper helper, ItemSpawns collapse, Map<String, Integer> collapsed, Map<String, Integer> byHand) {
         return failure(
                 helper,
-                "the collapse dropped %s, breaking the same blocks by hand dropped %s; the items in the box:%s",
+                "the collapse dropped %s, breaking the same blocks by hand dropped %s; the collapse's spawns:%n  %s",
                 collapsed,
                 byHand,
-                items);
+                String.join("%n  ".formatted(), collapse.spawns()));
     }
 
     private static MockPlayer farPlayer(GameTestHelper helper, String name) {
@@ -207,12 +165,19 @@ public class StalkCollapseTest {
         return state.is(ours("fungal_stalk")) || state.is(ours("great_stalk")) || state.is(ours("great_stalk_cap"));
     }
 
+    /** The area above the floor, absolute: where the stalk and its burst cells are. */
+    private static AABB stalkRegion(GameTestHelper helper) {
+        BlockPos low = helper.absolutePos(new BlockPos(AREA_MIN, BASE_ROW, AREA_MIN));
+        BlockPos high = helper.absolutePos(new BlockPos(AREA_MAX, BASE_ROW + AREA_TOP, AREA_MAX));
+        return new AABB(low).minmax(new AABB(high));
+    }
+
     /** Every stalk block of the area, absolute. */
     private static Set<BlockPos> stalkBlocks(GameTestHelper helper) {
         Set<BlockPos> found = new HashSet<>();
-        for (int x = -2; x <= 10; x++) {
-            for (int z = -2; z <= 10; z++) {
-                for (int y = BASE_ROW; y <= BASE_ROW + 30; y++) {
+        for (int x = AREA_MIN; x <= AREA_MAX; x++) {
+            for (int z = AREA_MIN; z <= AREA_MAX; z++) {
+                for (int y = BASE_ROW; y <= BASE_ROW + AREA_TOP; y++) {
                     BlockPos pos = helper.absolutePos(new BlockPos(x, y, z));
                     if (isStalkBlock(helper.getLevel().getBlockState(pos))) {
                         found.add(pos);
@@ -237,6 +202,7 @@ public class StalkCollapseTest {
         Runnable countable = countable(helper);
         MockPlayer player = farPlayer(helper, "stalk-collapse");
         AtomicReference<Map<String, Integer>> byHand = new AtomicReference<>();
+        AtomicReference<ItemSpawns> collapse = new AtomicReference<>();
         helper.startSequence()
                 .thenWaitUntil(countable)
                 .thenExecute(() -> {
@@ -244,10 +210,11 @@ public class StalkCollapseTest {
                     // The reference: every block from the break up, broken by hand from the top down, so nothing
                     // collapses.
                     column(helper, 2, 2, COLUMN_HEIGHT);
+                    ItemSpawns reference = ItemSpawns.start(helper, stalkRegion(helper));
                     for (int index = COLUMN_HEIGHT - 1; index >= BROKEN_SEGMENT; index--) {
                         breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + index, 2)));
                     }
-                    byHand.set(dropped(helper));
+                    byHand.set(reference.stop());
                     if (byHand.get().getOrDefault("deepcharter:fungal_stalk", 0) != COLUMN_HEIGHT - BROKEN_SEGMENT) {
                         throw failure(
                                 helper,
@@ -258,6 +225,7 @@ public class StalkCollapseTest {
                     clearArea(helper, COLUMN_HEIGHT);
                     // The collapse: one break.
                     column(helper, 2, 2, COLUMN_HEIGHT);
+                    collapse.set(ItemSpawns.start(helper, stalkRegion(helper)));
                     breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + BROKEN_SEGMENT, 2)));
                 })
                 .thenIdle(COLLAPSE_WAIT)
@@ -277,9 +245,9 @@ public class StalkCollapseTest {
                             .is(Blocks.STONE)) {
                         throw failure(helper, "the floor under the column was touched");
                     }
-                    Map<String, Integer> collapsed = dropped(helper);
+                    Map<String, Integer> collapsed = collapse.get().stop();
                     if (!collapsed.equals(byHand.get())) {
-                        throw countMismatch(helper, collapsed, byHand.get());
+                        throw countMismatch(helper, collapse.get(), collapsed, byHand.get());
                     }
                 })
                 .thenSucceed();
@@ -482,13 +450,12 @@ public class StalkCollapseTest {
     private static final int BRAID_MAX_REACH = 8;
 
     /**
-     * Items are counted this far from the test's origin on each side and above and below it: the braid's origin and widest reach, and
-     * the 4 blocks past it where drops come to rest. An item in an entity section that is not yet accessible is invisible to the count
-     * and to {@link #clearBraidArea}, and shows up when the section loads (#952), so the test that counts items waits for every chunk
-     * of this box ({@link #countable}) before it clears it, and counts only items {@link #MAX_ITEM_AGE} ticks old or less, which no
-     * leftover of an earlier test that never ticked here can be.
+     * The tests that count drops wait for every chunk this far from the test's origin to be entity-ticking before they start recording,
+     * so that no item of an earlier test that never ticked here loads (and spawns, to the recording) during the count (#952). It is the
+     * far edge of the braid area (the braid's origin and the {@value #BRAID_AT} blocks past it that {@link #clearBraidArea} clears), so
+     * it holds every spawn of the braid and the single column.
      */
-    private static final int ITEM_REACH = BRAID_AT + BRAID_MAX_REACH + 4;
+    private static final int AWAIT_REACH = 2 * BRAID_AT;
 
     private static final int YIELD_LEAST = 50;
     private static final int YIELD_MOST = 90;
@@ -524,9 +491,13 @@ public class StalkCollapseTest {
                 }
             }
         }
-        for (ItemEntity item : items(helper)) {
-            item.discard();
-        }
+    }
+
+    /** The braid area above its floor, absolute: where the braid and its burst cells are. */
+    private static AABB braidRegion(GameTestHelper helper) {
+        BlockPos origin = braidOrigin(helper);
+        return new AABB(origin.offset(-BRAID_AT, 0, -BRAID_AT))
+                .minmax(new AABB(origin.offset(BRAID_AT, BRAID_CLEAR_HEIGHT, BRAID_AT)));
     }
 
     private static @Nullable Part partOf(BlockState state) {
@@ -776,7 +747,7 @@ public class StalkCollapseTest {
     /**
      * Grows the braid, breaks one block by hand and checks the collapse against {@link #fallenBy}: exactly those blocks are gone, nothing
      * stands that is not joined to the ground, and the drops are what breaking each of them by hand drops. With {@code countDrops}, the
-     * test runs alone in its environment, so that the items lying about are its own.
+     * drops are counted where they spawn in {@link #braidRegion}, and the test runs alone in its environment.
      */
     private void braidCollapse(
             GameTestHelper helper, long seed, Function<GreatStalkLayout, Cell> pick, boolean countDrops) {
@@ -789,6 +760,7 @@ public class StalkCollapseTest {
         Runnable countable = countDrops ? countable(helper) : () -> {};
         MockPlayer player = farPlayer(helper, "braid-collapse");
         AtomicReference<Map<String, Integer>> byHand = new AtomicReference<>();
+        AtomicReference<ItemSpawns> collapse = new AtomicReference<>();
         helper.startSequence()
                 .thenWaitUntil(countable)
                 .thenExecute(() -> {
@@ -800,6 +772,9 @@ public class StalkCollapseTest {
                             || byHand.get().size() != 1) {
                         throw failure(
                                 helper, "breaking %s blocks by hand would drop %s", everything.size(), byHand.get());
+                    }
+                    if (countDrops) {
+                        collapse.set(ItemSpawns.start(helper, braidRegion(helper)));
                     }
                     breakByHand(helper, player, at(braidOrigin(helper), broken));
                 })
@@ -831,9 +806,9 @@ public class StalkCollapseTest {
                         throw failure(helper, "a block floats, joined to nothing, after the collapse");
                     }
                     if (countDrops) {
-                        Map<String, Integer> collapsed = dropped(helper);
+                        Map<String, Integer> collapsed = collapse.get().stop();
                         if (!collapsed.equals(byHand.get())) {
-                            throw countMismatch(helper, collapsed, byHand.get());
+                            throw countMismatch(helper, collapse.get(), collapsed, byHand.get());
                         }
                     }
                 })
