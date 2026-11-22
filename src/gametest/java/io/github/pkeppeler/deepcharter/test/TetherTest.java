@@ -61,7 +61,7 @@ public class TetherTest {
     private static final TetherTuning TUNING = TetherTuning.DEFAULT;
 
     /** A room in layer 1 where a line can pay out to its length: the floor of its bed, and where it stands. */
-    private static final int ROOM_FLOOR = 60;
+    private static final int ROOM_FLOOR = TestLayers.worldY(1, 20);
 
     private static final int ROOM_Z = 17008;
     private static final int ROOM_X = 17000;

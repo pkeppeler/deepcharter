@@ -37,7 +37,7 @@ import net.minecraft.world.phys.Vec3;
 public class TetherScenario extends EvidenceScenario {
     private static final int X = 5600;
     private static final int Z = 5600;
-    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
+    private static final int FLOOR_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness() + 1);
     /** Blocks the shelf stands above the pit's floor: more than the line's catch, so a fall hangs well clear of it. */
     private static final int SHELF = 22;
 
