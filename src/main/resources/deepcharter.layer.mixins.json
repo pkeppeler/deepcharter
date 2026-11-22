@@ -6,6 +6,7 @@
     "EnvironmentAttributeSystemBuilderMixin",
     "EnvironmentAttributeSystemInvoker",
     "BlockStateBaseMixin",
+    "PlayerChunkSenderMixin",
     "ServerPlayerGameModeMixin"
   ],
   "injectors": {

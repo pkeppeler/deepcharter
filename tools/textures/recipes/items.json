@@ -976,6 +976,30 @@
       "hl....mk...hl...",
       "hmmmmddk...lm...",
       ".mddddk....hl...",
-      "..kkkk.....kk..."]}]}
+      "..kkkk.....kk..."]}]},
+    "item/company_ration": {"template": "sprite", "args": {"legend": {
+      "h": "steel.6", "l": "steel.5", "m": "steel.4", "d": "steel.2", "k": "steel.0", "r": "company.3", "R": "company.2", "e": "enamel.3"}, "rows": [
+      "", "", "",
+      "...hhhhhhhh",
+      "..hllllllllm",
+      "..kkkkkkkkkk",
+      "..hrrrrrrrrm",
+      "..hrReeeeRrm",
+      "..hrReeeeRrm",
+      "..hrrrrrrrrm",
+      "..kkkkkkkkkk",
+      "..dlllllllmd",
+      "...ddddddddd"]}},
+    "item/stalk_meal": {"template": "sprite", "args": {"legend": {
+      "b": "iron.3", "B": "iron.2", "d": "iron.1", "m": "fungus.4", "M": "fungus.3", "n": "fungus.2"}, "rows": [
+      "", "", "", "",
+      "....mmMMmmm",
+      "..mMMmmMMMmMm",
+      "..nMmmnMmmMnn",
+      ".bbbbbbbbbbbbb",
+      ".bBBBBBBBBBBBb",
+      "..bBBBBBBBBBb",
+      "...dBBBBBBBd",
+      "....ddddddd"]}}
   }
 }

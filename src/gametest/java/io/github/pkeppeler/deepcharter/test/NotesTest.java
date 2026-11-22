@@ -10,19 +10,23 @@ import io.github.pkeppeler.deepcharter.handbook.NoteBlock;
 import io.github.pkeppeler.deepcharter.handbook.Notes;
 import io.github.pkeppeler.deepcharter.handbook.NotesData;
 import io.github.pkeppeler.deepcharter.handbook.NotesSyncPayload;
+import io.github.pkeppeler.deepcharter.handbook.OpenNotePayload;
 import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.ShippedNotes;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -40,6 +44,7 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -50,7 +55,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for #78: using a Note block files the Note for the whole charter, unread for each member; reading marks it for
- * the reader alone; a repeat adds nothing; a player on no charter files nothing; and the saved format is versioned.
+ * the reader alone; a repeat adds nothing; and the saved format is versioned.
  */
 public class NotesTest {
     private static final Identifier FIRST = Notes.id(1);
@@ -175,20 +180,61 @@ public class NotesTest {
     }
 
     @GameTest
-    public void aPlayerOnNoCharterFilesNothing(GameTestHelper helper) {
-        MinecraftServer server = helper.getLevel().getServer();
-        ServerPlayer loner = MockPlayers.join(helper, "Loner").player();
-
-        FindResult result = Notes.find(loner, FIRST);
-        use(helper, loner, 1);
-
-        if (result != FindResult.NO_CHARTER) {
-            throw helper.assertionException("a player on no charter gets NO_CHARTER, was %s", result);
+    public void aNoteWithNoTextOrUnreadableDataOpensNothing(GameTestHelper helper) {
+        Identifier note = Notes.id(Notes.MAX_NUMBER);
+        for (FindResult result : List.of(FindResult.UNKNOWN, FindResult.UNREADABLE)) {
+            if (OpenNotePayload.after(result, note).isPresent()) {
+                throw helper.assertionException("%s should open nothing", result);
+            }
         }
-        expectNotes(helper, server, loner, List.of());
-        // Founding a charter afterwards does not bring the Note back: it was never found.
-        found(helper, server, loner);
-        expectNotes(helper, server, loner, List.of());
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theOpenNotePayloadSurvivesTheWire(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), server.registryAccess());
+        OpenNotePayload.CODEC.encode(buf, new OpenNotePayload(SECOND));
+        OpenNotePayload decoded = OpenNotePayload.CODEC.decode(buf);
+        if (!decoded.note().equals(SECOND) || buf.isReadable()) {
+            throw helper.assertionException("the payload should round-trip to %s, was %s", SECOND, decoded);
+        }
+        helper.succeed();
+    }
+
+    @GameTest
+    public void everyFindResultHasALineInTheLanguageFile(GameTestHelper helper) {
+        for (FindResult result : FindResult.values()) {
+            String key = "deepcharter.handbook.note.use." + result.name().toLowerCase(Locale.ROOT);
+            if (!Language.getInstance().has(key)) {
+                throw helper.assertionException("%s has no line %s", result, key);
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theNoteBlockOpensTheNoteForEveryResultThatHasOne(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerPlayer director = MockPlayers.join(helper, "Director").player();
+        ServerPlayer loner = MockPlayers.join(helper, "Loner").player();
+        found(helper, server, director);
+        List<Identifier> opened = new ArrayList<>();
+
+        FindResult first = NoteBlock.use(director, FIRST, payload -> opened.add(payload.note()));
+        FindResult again = NoteBlock.use(director, FIRST, payload -> opened.add(payload.note()));
+        FindResult noCharter = NoteBlock.use(loner, SECOND, payload -> opened.add(payload.note()));
+        if (first != FindResult.FOUND || again != FindResult.ALREADY_FOUND || noCharter != FindResult.NO_CHARTER) {
+            throw helper.assertionException("results were %s, %s, %s", first, again, noCharter);
+        }
+        if (!opened.equals(List.of(FIRST, FIRST, SECOND))) {
+            throw helper.assertionException(
+                    "the block should open FOUND, ALREADY_FOUND and NO_CHARTER, opened %s", opened);
+        }
+        FindResult blank = NoteBlock.use(director, Notes.id(Notes.MAX_NUMBER), payload -> opened.add(payload.note()));
+        if (blank != FindResult.UNKNOWN || opened.size() != 3) {
+            throw helper.assertionException("a blank page opens nothing: %s, opened %s", blank, opened);
+        }
         helper.succeed();
     }
 

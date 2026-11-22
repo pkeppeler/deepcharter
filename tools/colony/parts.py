@@ -55,17 +55,20 @@ def box_walls(x0: int, z0: int, x1: int, z1: int) -> dict[str, Wall]:
             "east": Wall("east", x1, z0, z1)}
 
 
-def works_hall(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dict[str, tuple[int, ...]]) -> dict[str, Wall]:
+def works_hall(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dict[str, tuple[int, ...]],
+               dark: bool) -> dict[str, Wall]:
     """A hall in the Works' language: riveted plate walls from Y 1 to top, red pilasters at the corners and at the given places
     along each wall, each of those with a sodium lamp at the top of the ground floor outside and another inside, a brass band on the
     upper floor's line, glass windows on the upper floor, a row of glowing crusher hatches on the ground floor, a hazard parapet and
-    a railed flat roof at top + 1 with floodlights at its corners. Returns the four walls, for doors and signs."""
+    a railed flat roof at top + 1 with floodlights at its corners. dark leaves the lamps inside out, a dim glow in their place
+    (dim_glow). Returns the four walls, for doors and signs."""
     walls = box_walls(x0, z0, x1, z1)
     for side, wall in walls.items():
         columns = {wall.a0, wall.a1, *pilasters.get(side, ())}
         for a in pilasters.get(side, ()):
             p.set(*wall.outside(a, GROUND_TOP), state("wall_lamp", facing=wall.facing))
-            p.set(*wall.outside(a, GROUND_TOP, -1), state("wall_lamp", facing=wall.inward))
+            if not dark:
+                p.set(*wall.outside(a, GROUND_TOP, -1), state("wall_lamp", facing=wall.inward))
         for a in wall.cells():
             for y in range(1, top + 1):
                 if a in columns:
@@ -79,7 +82,11 @@ def works_hall(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters
                 else:
                     s = state("riveted_plate")
                 p.set(*wall.cell(a, y), s)
-    p.room(x0 + 1, 1, z0 + 1, x1 - 1, top, z1 - 1)
+    p.room(x0 + 1, 1, z0 + 1, x1 - 1, top, z1 - 1, dark)
+    if dark:
+        dim_glow(p, x0 + 1, z0 + 1, x1 - 1, z1 - 1, 3)
+        if top > 5:
+            dim_glow(p, x0 + 1, z0 + 1, x1 - 1, z1 - 1, top - 2)
     p.fill(x0 + 1, top + 1, z0 + 1, x1 - 1, top + 1, z1 - 1, state("riveted_plate"))
     p.walls(x0, z0, x1, z1, top + 1, top + 1, state("hazard_band"))
     railing_round(p, x0, z0, x1, z1, top + 2)
@@ -111,7 +118,7 @@ def machine_house(p: Piece, x0: int, z0: int, x1: int, z1: int, y0: int, y1: int
 
 
 def cabin(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dict[str, tuple[int, ...]],
-          dark: bool = False) -> dict[str, Wall]:
+          dark: bool) -> dict[str, Wall]:
     """A one-storey house in the Works' language, smaller than a hall: riveted plate with red pilasters at its corners and at the
     given places (each with a sodium lamp outside and another inside), a row of glass windows on the two floors under a brass band at
     top - 1, a hazard parapet round a flat roof. dark leaves the lamps inside out (a burnt-out bar), a dim glow in their place
@@ -145,7 +152,8 @@ def cabin(p: Piece, x0: int, z0: int, x1: int, z1: int, top: int, pilasters: dic
 
 # The invisible light blocks of a dark room: level 5 at a grid, three blocks apart, at one height (y). Light loses one level a step, so
 # a block at y lights every cell of a room up to 2 rows above and below it, within 1 block of it on each side, at level 1 at least: a
-# monster spawns only at block light 0, so no cell of the room is a spawn. The room stays dark to look at, 5 where it is brightest.
+# monster spawns only at block light 0, so no cell of the room is a spawn. The room stays dark to look at, 5 where it is brightest. A room
+# taller than 5 rows takes a second layer (a hall's upper floor).
 GLOW_LEVEL = 5
 GLOW_SPACING = 3
 
@@ -229,7 +237,7 @@ def track(p: Piece, x: int, z0: int, z1: int, facing: str = "south") -> None:
 def ore_cars(p: Piece, x: int, z: int, count: int) -> None:
     """A train of ore cars on the track along Z, coupled end to end from x, z."""
     for i in range(count):
-        p.set(x, 1, z + i, state("ore_car", facing="south"))
+        p.set(x, 1, z + i, state("ore_car", facing="south", looted="false"))
 
 
 def lattice_post(p: Piece, x: int, z: int, y0: int, y1: int, girder: str) -> None:

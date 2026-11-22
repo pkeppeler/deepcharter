@@ -146,7 +146,7 @@ val fabricApiModules = mapOf(
 		"fabric-api-base", "fabric-data-attachment-api-v1", "fabric-events-interaction-v0", "fabric-item-api-v1",
 		"fabric-key-mapping-api-v1", "fabric-lifecycle-events-v1", "fabric-menu-api-v1", "fabric-model-loading-api-v1",
 		"fabric-networking-api-v1", "fabric-particles-v1", "fabric-renderer-api-v1", "fabric-rendering-v1",
-		"fabric-resource-loader-v1",
+		"fabric-resource-loader-v1", "fabric-screen-api-v1",
 	),
 	"gametestImplementation" to listOf(
 		"fabric-api-base", "fabric-client-gametest-api-v1", "fabric-data-attachment-api-v1", "fabric-events-interaction-v0",
@@ -294,6 +294,11 @@ checkstyle {
 	toolVersion = libs.versions.checkstyle.get()
 	configFile = file("config/checkstyle/checkstyle.xml")
 	maxWarnings = 0
+}
+
+// The gametest source set outgrew Checkstyle's default worker heap: CI crashed with OutOfMemoryError (#899).
+tasks.withType<Checkstyle>().configureEach {
+	maxHeapSize = "1g"
 }
 
 // palantir-java-format owns Java formatting (run `just fmt`); spotlessCheck is part of check. tooling/ is third-party code and is not

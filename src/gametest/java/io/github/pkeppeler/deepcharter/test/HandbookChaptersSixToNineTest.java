@@ -405,7 +405,8 @@ public class HandbookChaptersSixToNineTest {
                                 Items.STONE_AXE,
                                 HandbookChaptersOneToFiveTest.ours("scrap_iron"),
                                 Items.IRON_INGOT,
-                                HandbookChaptersOneToFiveTest.ours("scanner_unit"))) {
+                                HandbookChaptersOneToFiveTest.ours("scanner_unit"),
+                                Items.TORCH)) {
                             HandbookChaptersOneToFiveTest.give(first, item);
                         }
                         for (String directive : through(5)) {
@@ -641,8 +642,11 @@ public class HandbookChaptersSixToNineTest {
                                 helper, server, "restoring the Prospector", both, restored);
                         expect(
                                 helper,
-                                completed(server, drifter).isEmpty(),
-                                "a player on no charter completes nothing, got %s",
+                                completed(server, drifter)
+                                        .equals(Set.of(
+                                                id(directive("company_property", "restore_prospector")),
+                                                id(directive("first_breach", "breach_workings")))),
+                                "a player on no charter earns only their own credit, got %s",
                                 completed(server, drifter));
 
                         // The floor of the Workings counts only from a Prospector's seat.
@@ -733,7 +737,7 @@ public class HandbookChaptersSixToNineTest {
 
     /**
      * A player who is on no charter, and one on another charter, complete nothing for the charter whose pod, terminal or crossing it
-     * was not: each event credits the charter of the player who did the deed, and no charter at all if there is none.
+     * was not: each event credits the charter of the player who did the deed, and the player alone if there is none (#843).
      */
     @GameTest
     public void eachTriggerCreditsOnlyTheCharterOfThePlayerWhoDidTheDeed(GameTestHelper helper) {
@@ -765,8 +769,14 @@ public class HandbookChaptersSixToNineTest {
             expectNothingNew(helper, server, "a drifter on no charter", member, memberBefore);
             expect(
                     helper,
-                    completed(server, drifter).isEmpty(),
-                    "a player on no charter completes nothing, got %s",
+                    completed(server, drifter)
+                            .equals(Set.of(
+                                    id(directive("seeing_below", "install_scanner")),
+                                    id(directive("seeing_below", "find_ore")),
+                                    id(directive("first_breach", "breach_workings")),
+                                    id(directive("meet_the_mole", "board_mole")),
+                                    id(directive("staying_safe", "repair_hull")))),
+                    "a player on no charter earns only their own credit, got %s",
                     completed(server, drifter));
             drifter.player().stopRiding();
 
