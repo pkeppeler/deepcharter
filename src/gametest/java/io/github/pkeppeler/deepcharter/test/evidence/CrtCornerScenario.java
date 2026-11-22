@@ -13,10 +13,10 @@ import net.minecraft.core.BlockPos;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Evidence scenario "crt-corner" for #907: the corner of the bezel on the CRT terminals. Stills: {@code crt-corner-<screen>} for the upgrade terminal,
- * the hangar console and the contract terminal (the whole screen), and for the upgrade terminal the top-left and bottom-right corners of the
- * glass scaled up with nearest-neighbour ({@code crt-corner-top-left-zoom}, {@code crt-corner-bottom-right-zoom}) so the pixels read.
- * The crops are placed from the panel's own glass insets, not from a fixed spot.
+ * Evidence scenario "crt-corner" for #907 and #1012: the corner of the bezel and the glass on the CRT terminals. Stills: {@code crt-corner-<screen>}
+ * for every terminal screen (the whole screen); {@code crt-corner-title-zoom-<screen>}, the top-left corner of the glass scaled up with
+ * nearest-neighbour so the pixels read, where a title's first stem sits; and for the upgrade terminal {@code crt-corner-bottom-right-zoom}. The
+ * crops are placed from the panel's own glass insets, not from a fixed spot.
  */
 public class CrtCornerScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
@@ -44,12 +44,17 @@ public class CrtCornerScenario extends EvidenceScenario {
                             .map(charter -> charter.balance() == TerminalPanelScene.ACCOUNT)
                             .orElse(false),
                     client -> "charter " + ClientCharter.view());
-            shoot(context, "upgrade", scene, null, true);
-            shoot(context, "hangar", scene, null, false);
+            for (String screen : TerminalPanelScreens.SCENE_SCREENS) {
+                shoot(context, screen, scene, null, screen.equals("upgrade"));
+            }
         }
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             BlockPos contract = singleplayer.getServer().computeOnServer(TerminalPanelScene::setUpContract);
             shoot(context, TerminalPanelScreens.CONTRACT, null, contract, false);
+        }
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            BlockPos offline = singleplayer.getServer().computeOnServer(TerminalPanelScene::setUpOffline);
+            shoot(context, TerminalPanelScreens.GENERIC, null, offline, false);
         }
     }
 
@@ -67,16 +72,16 @@ public class CrtCornerScenario extends EvidenceScenario {
         }
         String still = "crt-corner-" + screen;
         screenshot(context, still);
+        PanelLook.Insets glass = PanelLook.current().glass();
+        zoomStill(
+                context,
+                still,
+                "crt-corner-title-zoom-" + screen,
+                glass.left() - REACH_OUT,
+                glass.top() - REACH_OUT,
+                CROP,
+                CROP);
         if (corners) {
-            PanelLook.Insets glass = PanelLook.current().glass();
-            zoomStill(
-                    context,
-                    still,
-                    "crt-corner-top-left-zoom",
-                    glass.left() - REACH_OUT,
-                    glass.top() - REACH_OUT,
-                    CROP,
-                    CROP);
             zoomStill(
                     context,
                     still,
