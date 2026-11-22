@@ -13,7 +13,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
@@ -73,7 +72,7 @@ public record GrainedCrustPass() implements Feature {
                                 y,
                                 chunk.getPos().getMinBlockZ() + z);
                         if (chunk.getBlockState(pos).is(LayerBlocks.BREACH_CRUST)) {
-                            chunk.setBlockState(pos, grained, Block.UPDATE_CLIENTS);
+                            chunk.setBlockState(pos, grained, 0);
                             swapped++;
                         }
                     }

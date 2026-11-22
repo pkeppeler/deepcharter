@@ -1759,7 +1759,7 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Ladder.** None: a decoy is the same block with the same rules as a seam, so no counterplay tells them apart. A decoy that squeezes less would give the seam away.
 
-**Trade-offs.** A decoy costs the player nothing they would not pay at a seam, but it is a crust that the drill must bore straight down through, and one a pod cannot park on. The drill takes no crust hull damage through a grained crust (that is the breach crust's), only the squeeze if the pod stops.
+**Trade-offs.** A decoy costs the player nothing they would not pay at a seam, but it is a crust that the drill must bore straight down through, and one a pod cannot park on. The drill takes no crust hull damage through a grained crust (that is the breach crust's), only the squeeze if the pod stops. A generated grained crust next to fluid already in the world is not flagged changed (worldgen sends no neighbour update), so it absorbs only once that fluid flows; crust rows are rock-sealed in practice.
 
 **Knobs.** `grainDecoyChance` (1/3). **Open questions.** Whether the crust of the last layer (nothing below it) should be refused to the drill as the breach crust is: a grained one is not, today.
 

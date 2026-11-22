@@ -57,7 +57,9 @@ public class GrainedCrustDecoyTest {
     /** The synthetic bands: boundaries this far apart, from the top of the first, and a seed list that is not special. */
     private static final int BAND_HEIGHT = 64;
 
-    private static final int BAND_TOP = -64;
+    /** The synthetic bands start under the surface band, as the campaign's own do, and run down through the unbuilt depth. */
+    private static final int BAND_TOP = CampaignBands.SURFACE.minY();
+
     private static final long[] SEEDS = {0L, 1L, -1L, 42L, 8_675_309L, Long.MIN_VALUE, Long.MAX_VALUE, 0x5EEDL};
 
     /** The real generation's sample: this many chunks on a side, at this chunk, in a world of its own. */
@@ -114,9 +116,8 @@ public class GrainedCrustDecoyTest {
         ServerLevel level = helper.getLevel();
         List<Layer> all = bands(level, 12, 0);
         expect(helper, all.size() > 9, "too few bands to take one from the middle");
-        // The same bands with one added below the last, one above the first, and one between two (the others keep their
-        // Ys), and the
-        // list in another order: the position in the list is no part of a boundary's identity.
+        // The same bands with one added below the last, one above the first, and one between two (the others keep
+        // their Ys), and the list in another order: the position in the list is no part of a boundary's identity.
         List<Layer> base = new ArrayList<>(all);
         base.remove(8);
         base.remove(0);
