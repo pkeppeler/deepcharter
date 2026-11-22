@@ -11,9 +11,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Clientbound: open this Note to read, because the player used its block in the world. The Note's text is a language key, so a player
- * on no charter can read it too; nothing is filed for them ({@link FindResult#NO_CHARTER}). The read mark is reported through
- * {@link HandbookReadPayload}, which the server only accepts for a Note the player's charter has found.
+ * Clientbound: open this Note to read, because the player used its block in the world. The Note's text is a language
+ * key, so a player on no charter can read it too; it is filed for them alone until they found or join one
+ * ({@link FindResult#NO_CHARTER}). The read mark is reported through {@link HandbookReadPayload}, which the server only
+ * accepts for a Note the player has found, through their charter or on their own.
  */
 public record OpenNotePayload(Identifier note) implements CustomPacketPayload {
     public static final Type<OpenNotePayload> TYPE =

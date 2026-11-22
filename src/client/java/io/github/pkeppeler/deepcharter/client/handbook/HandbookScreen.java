@@ -105,6 +105,9 @@ public final class HandbookScreen extends Screen {
     /** Absent until {@link #init} has built the widgets. */
     private @Nullable Buttons buttons;
 
+    /** The screen closing returns to; none returns to the game. */
+    private @Nullable Screen parent;
+
     /**
      * @param pages    the pages of the Handbook tab, from {@link HandbookPages#of}
      * @param isRead   whether the player has already read an entry: a chapter or a Note
@@ -142,19 +145,31 @@ public final class HandbookScreen extends Screen {
 
     /** Opens the handbook with the chapters the server synced and the progress it last sent. Marks a viewed chapter read on the server. */
     public static void open(Minecraft client) {
+        open(client, null);
+    }
+
+    /** As {@link #open(Minecraft)}, and closing the handbook returns to {@code parent} (none: the game). */
+    public static void open(Minecraft client, @Nullable Screen parent) {
         if (client.player == null || client.getConnection() == null) {
             return;
         }
-        client.gui.setScreen(new HandbookScreen(
+        HandbookScreen screen = new HandbookScreen(
                 currentPages(client),
                 ClientReadMarks::isRead,
                 entry -> ClientPlayNetworking.send(new HandbookReadPayload(entry)),
-                ClientNotes.entries()));
+                ClientNotes.entries());
+        screen.parent = parent;
+        client.gui.setScreen(screen);
+    }
+
+    @Override
+    public void onClose() {
+        minecraft.gui.setScreen(parent);
     }
 
     /**
      * Opens the handbook on {@code note}, because the player used its block in the world. The Note is listed even when the charter has
-     * not found it (a player on no charter files nothing), so it can be read all the same.
+     * not found it, so it can be read all the same.
      */
     public static void openNoteFromWorld(Minecraft client, Identifier note) {
         if (client.player == null || client.getConnection() == null || !Notes.exists(note)) {
