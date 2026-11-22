@@ -148,10 +148,13 @@ public class TetherScenario extends EvidenceScenario {
                 }
             });
             context.waitTicks(10);
-            for (int driven = 0; driven < DRIVE_TICKS; driven += TICKS_PER_FRAME) {
+            for (int driven = 0; driven < DRIVE_TICKS; driven++) {
+                // The client sends its own input every tick, so the drive is set again on every one.
                 singleplayer.getServer().runOnServer(server -> player(server).setLastClientInput(FORWARD));
-                context.waitTicks(TICKS_PER_FRAME);
-                frame(context);
+                context.waitTicks(1);
+                if (driven % TICKS_PER_FRAME == 0) {
+                    frame(context);
+                }
             }
             singleplayer.getServer().runOnServer(server -> player(server).setLastClientInput(Input.EMPTY));
             screenshot(context, "tether-towing");
