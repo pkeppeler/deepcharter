@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.ui.ScrollList;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
@@ -26,7 +27,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.resources.language.I18n;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -595,7 +595,7 @@ public final class HandbookScreen extends Screen {
             }
             QuestMap.CardItem item = card.itemAt(event.x(), event.y());
             if (item != null) {
-                ItemRecipeLink.open(BuiltInRegistries.ITEM.getKey(item.item()));
+                CatalogueScreens.open(item.item());
                 return true;
             }
             if (card.box().contains(event.x(), event.y())) {
