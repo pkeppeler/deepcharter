@@ -32,7 +32,8 @@ public class SealedRoomArrivalLightTest {
     private static final int Z = 60_000;
     private static final int RADIUS = 4;
     private static final int HEIGHT = 4;
-    private static final int SETTLE_TICKS = 80;
+    /** Ticks after the light engine is idle that the net may still send: its window of 100 ticks, with a margin (restates {@code LightSync}). */
+    private static final int SETTLE_TICKS = 100 + 20;
 
     @GameTest(dimension = SAMPLE, maxTicks = 3_000)
     public void aRoomSealedInTheTickThePlayerArrivesIsSentItsDarkness(GameTestHelper helper) {
@@ -68,8 +69,6 @@ public class SealedRoomArrivalLightTest {
                             level, floor[0].offset(-RADIUS, 1, -RADIUS), floor[0].offset(RADIUS, HEIGHT, RADIUS));
                     BlockPos stand = floor[0].above(HEIGHT + 3).offset(10, 0, 0);
                     mock.teleportTo(level, Vec3.atBottomCenterOf(stand), 0f, 0f);
-                    System.out.println(
-                            "TMP998 carved+arrived tick=" + level.getServer().getTickCount());
                     phase[0] = 2;
                 }
                 case 2 -> {
@@ -90,16 +89,13 @@ public class SealedRoomArrivalLightTest {
                         return;
                     }
                     String stale = staleOf(mock, level, room);
-                    String events = String.join("\n", mock.clientLight().events());
-                    System.out.println(
-                            "TMP998 events at tick " + level.getServer().getTickCount() + ":\n" + events);
                     mock.leave();
                     if (!stale.isEmpty()) {
                         throw failure(
                                 helper,
                                 "the player's client keeps light the server does not store, in the room's chunks:%s packets: %s",
                                 stale,
-                                events.replace('\n', '|'));
+                                String.join("|", mock.clientLight().events()));
                     }
                     helper.succeed();
                 }

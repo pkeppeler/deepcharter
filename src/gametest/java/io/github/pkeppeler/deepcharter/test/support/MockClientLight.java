@@ -19,6 +19,9 @@ import org.jspecify.annotations.Nullable;
  * replaces the client's data, a section in its empty mask clears it, and a section in neither keeps what the client had. Server thread
  * only. A section the client holds no data for reads as dark here, as the server's missing section does, so {@link #staleSections}
  * finds a section whose light the client keeps from an older packet.
+ *
+ * <p>Blind spot: a real client reads full sky in a section it holds no data for when no section above has any, and this model reads
+ * dark, so a server that left a section out of both masks, or a light the client has queued and not applied, is not caught here.
  */
 public final class MockClientLight {
     private final Map<ChunkPos, Map<Integer, byte[]>> held = new HashMap<>();
