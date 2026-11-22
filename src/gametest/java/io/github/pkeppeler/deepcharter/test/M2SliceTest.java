@@ -31,6 +31,7 @@ import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -129,7 +130,7 @@ public class M2SliceTest {
     }
 
     private static void repair(GameTestHelper helper, ServerPlayer player, BlockPos terminal, TerminalType type) {
-        helper.getLevel().setBlock(terminal, type.block().defaultBlockState(), 3);
+        TerminalBlock.place(helper.getLevel(), terminal, type.block().defaultBlockState(), 3);
         for (var part : type.parts()) {
             player.getInventory().add(new net.minecraft.world.item.ItemStack(part));
             expectDone(helper, TerminalParts.insert(player, terminal, part), "putting " + part + " into " + type.id());
@@ -206,11 +207,11 @@ public class M2SliceTest {
                         // Chapter 4: the pump, flight, the bore and home.
                         first.stopRiding();
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.FUEL_PUMP.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.FUEL_PUMP.block().defaultBlockState(),
+                                3);
                         mole.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
                         mole.setFuel(0f);
                         expectDone(
@@ -231,15 +232,17 @@ public class M2SliceTest {
                         mole.setPos(Vec3.atBottomCenterOf(colony.center()));
                         poll(mole);
 
-                        // Chapter 5: sell ore, buy a part.
+                        // Chapter 5: the drill puts ore in the bay (#853), sell ore, buy a part.
+                        mole.cargo().tryAdd(mole, OreRegistry.stack(OreType.IRONIUM));
+                        poll(mole);
                         first.stopRiding();
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
                         mole.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
+                                3);
                         first.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
                         expectDone(
                                 helper,
@@ -248,11 +251,11 @@ public class M2SliceTest {
 
                         // Chapter 5 again: a part is bought at the upgrade terminal (tier 1 of every part is crafted,
                         // so the first purchase is a tier 2).
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(),
+                                3);
                         CompoundTag args = new CompoundTag();
                         args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.LIGHTS.id());
                         args.putInt(UpgradeTerminal.TIER_KEY, 2); // tier 1 is crafted and not sold (#536)
@@ -280,11 +283,11 @@ public class M2SliceTest {
                         first.stopRiding();
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.REPAIR_STATION.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.REPAIR_STATION.block().defaultBlockState(),
+                                3);
                         mole.damageHull(mole.maxHull() / 2);
                         expectDone(
                                 helper,
@@ -326,8 +329,11 @@ public class M2SliceTest {
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
 
                         // The hangar console restores it, for money and the catalyst.
-                        helper.getLevel()
-                                .setBlock(terminal, HangarTerminal.TYPE.block().defaultBlockState(), 3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                HangarTerminal.TYPE.block().defaultBlockState(),
+                                3);
                         wreck.setPos(Vec3.atBottomCenterOf(terminal).add(3, 0, 3));
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
                         for (int i = 0; i < 3; i++) {
@@ -362,11 +368,11 @@ public class M2SliceTest {
                         second.stopRiding();
 
                         // The Founder's hands: the player hands in four, the crewmate six.
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
+                                3);
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
                         HandbookChaptersOneToFiveTest.stand(helper, crew, terminal);
                         for (int i = 0; i < 4; i++) {

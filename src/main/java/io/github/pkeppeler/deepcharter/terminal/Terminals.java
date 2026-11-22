@@ -42,9 +42,10 @@ public final class Terminals {
 
     /**
      * Opens the terminal at {@code pos} for {@code player}: sends the client its {@link TerminalView}. An unrepaired terminal
-     * opens too, as its offline screen, which is where parts go in.
+     * opens too, as its offline screen, which is where parts go in. The upper half of a terminal opens its lower half.
      */
-    public static Optional<TerminalRefusal> open(ServerPlayer player, BlockPos pos) {
+    public static Optional<TerminalRefusal> open(ServerPlayer player, BlockPos clicked) {
+        BlockPos pos = TerminalBlock.lowerHalf(player.level(), clicked);
         return switch (access(player, pos)) {
             case Access.Denied denied -> refuse(player, denied.refusal());
             case Access.Granted granted -> {

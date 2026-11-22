@@ -25,7 +25,7 @@ no vanilla block or item.
 
 A file whose pixels already match is not rewritten, so a build on another zlib does not churn the repo. --check writes nothing:
 it exits 1 and lists every texture or .mcmeta that differs from what the recipes make, and every PNG under the managed
-directories (block/, item/) that no recipe makes. Art drawn or curated by hand is a PNG under sources/ beside the recipes
+directories (block/, item/, mob_effect/) that no recipe makes. Art drawn or curated by hand is a PNG under sources/ beside the recipes
 directory, which a recipe's source op draws, so it is checked like the rest. Standard library only.
 """
 import argparse
@@ -61,7 +61,7 @@ LAVA = tuple(MOD_ASSETS / f"minecraft/textures/block/{name}{suffix}" for name in
 # Where a variant pack keeps its textures, under its pack directory.
 PACK_TEXTURES = Path("assets/deepcharter/textures")
 # Directories of --out whose every PNG must come from a recipe.
-MANAGED = ("block", "item")
+MANAGED = ("block", "item", "mob_effect")
 # The directories of an overlay pack's assets/ where every file must be one it makes: its blockstates and models, and vanilla's
 # namespace, which it leaves alone.
 OVERLAY_OWNED = ("deepcharter/blockstates", "deepcharter/models", "minecraft")
@@ -170,7 +170,7 @@ def unmade_help(files: list[str]) -> str:
 def stray_help(stray: list[str]) -> str:
     """What to do about PNGs that no recipe makes: a rebuild cannot reproduce them, so the build and --check refuse them."""
     return (f"texgen: {len(stray)} PNG(s) have no recipe. Give each a recipe in tools/textures/recipes/blocks.json (a block/ texture) "
-            "or items.json (an item/ texture), named by its path without .png. For art drawn or curated by hand, put the PNG under "
+            "or items.json (an item/ texture), or effects.json (a mob_effect/ icon), named by its path without .png. For art drawn or curated by hand, put the PNG under "
             "tools/textures/sources/ and use the source op. See docs/design/skins.md#textures.\n  " + "\n  ".join(stray))
 
 
