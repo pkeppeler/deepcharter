@@ -43,7 +43,7 @@ What follows from it:
 ## 3. Principles
 
 1. **Every mob is a problem the upgrade loop answers**, with a part, a seat or a consumable. The Retained answered by lights is the template ([mechanics.md](design/mechanics.md#the-retained-at-dark-pods-449-a)).
-2. **Every mob costs you twice**: something in the pod and something on foot. Each has a reason to avoid it and is unsettling to meet.
+2. **Every mob costs you twice**: something in the pod and something on foot. It is unsettling to meet.
 3. **Sensed before seen.** Every mob has a tell on sonar, sound or light at least 3 seconds before it can cost you anything. A player who bought the sensor and paid attention is never caught cold.
 4. **Few, persistent, readable.** No packs, no farming, no experience. A mob's rule is stated plainly on first meeting: a one-time HUD or scanner line (SPEC section 5).
 5. **The worst an ordinary mob can do is cost you the run.** The worst a boss can do is leave a wreck to salvage (SPEC section 12).
@@ -55,16 +55,15 @@ What follows from it:
 
 - **Cadence.** A layer's ordinary creatures appear about once a run in its top zone, rising to every few minutes in its bottom zone. The Retained keep their tuning (common in layer 2, [mechanics.md](design/mechanics.md#the-retained-at-dark-pods-449-a)).
 - **Lethality.**
-  - Moloch's things never kill and never wreck. They take.
-  - The Sleeper's things and gnawers can wreck a pod that ignores them, but never in one hit and never without a tell.
-  - On foot, the Sleeper's things and gnawers can kill you (a Continuity Event). Moloch's never do: the Retained's hunger drain stops at a floor, as their fuel drain stops at 5 per cent.
+  - Moloch's things never kill and never wreck. They take. The Retained's hunger drain stops at a floor, as their fuel drain stops at 5 per cent.
+  - The Sleeper's things and gnawers can wreck a pod that ignores them, but never in one hit and never without a tell. On foot they can kill you (a Continuity Event).
   - A player who dies on foot leaves the pod where it stood.
   - Bosses can wreck pods.
 - **Crew size: scale by pods, not people.**
   - Each pod is its own source of noise and darkness, so a group spread over more pods draws more encounters, capped per zone. Big groups are loud.
   - A full pod faces exactly what a solo pod with robots faces, and handles it better. That rewards crew over passengers (SPEC section 8) and keeps solo play viable.
   - Each person on foot in the dark is their own draw for Moloch's things.
-  - A boss's health rises with each extra pod and each person on foot in its arena, up to 8 players. Solo play is tuned with robots seated.
+  - A boss's health rises with each extra pod and each person on foot in its arena, up to 8 players.
 
 ## 5. Bestiary
 
@@ -118,7 +117,7 @@ The Sleeper's: pod-sized glowing spore bladders that drift toward drill noise an
 
 #### Overgrowth
 
-A hazard of the Sleeper's growth, not a mob. A bore left unvisited grows over with pale soft growth: drillable at extra fuel, cut by hand on foot. Placed blocks never grow over, so a lined shaft stays open. Like every hazard, it never deletes a player's block.
+A hazard of the Sleeper's growth, not a mob. A bore left unvisited grows over with pale soft growth: drillable at extra fuel, cut by hand on foot. Placed blocks never grow over, so a lined shaft stays open.
 
 #### The kneeling shapes
 
@@ -155,7 +154,7 @@ The Sleeper's, LORE's fixed beat: blind crystal things that stand among the geod
 - **Draw: resonance.** Drilling crystal rings loudest; a sonar ping rings, and so does a charge. They freeze when it goes quiet and give up after about 10 seconds of silence.
 - **Pod:** they cut the hull hard. **On foot:** they cut health.
 - **Counters:** a damped drill head (a Lattice part: crystal rings less, the drill is slower); passive listening; decoy rounds and thrown decoys; the sonar burst; shattering them with charges (alarm).
-- **The navigator's dilemma:** a ping is both how you see them and how you call them. A robot navigator pings on its timer and cannot stay quiet.
+- **The navigator's dilemma:** a ping is both how you see them and how you call them.
 
 #### Echoes
 
@@ -175,9 +174,9 @@ Fell's, of Moloch's family. Company machines, including the siphon crawlers that
 
 - **Draw:** being unauthorised. They come more often the further a pod is below the authorised area (the altimeter's label in layer 6), and Tallies call them.
 - **Sensed:** a polite recorded chime; amber work lamps; an echo as ore.
-- **Pod:** a unit clamps the pod (no treads, no rotor) and siphons its cargo slot by slot. A receipt follows: *"Recovered: 6 Goldium. Credit: $0.00. Recovery fee: $40."* The fee never takes the account below zero. It never damages the hull.
+- **Pod:** a unit clamps the pod (no treads, no rotor) and siphons its cargo slot by slot. A receipt follows: *"Recovered: 6 Goldium. Credit: $0.00. Recovery fee: $40."* The fee never takes the account below zero.
 - **On foot:** shackles a person in place and takes the ore they carry.
-- **Counters:** the operator's arm or a person on foot cuts the clamp; the drill, charges and, from this layer, the Company turret break them. They drop nothing worth hauling.
+- **Counters:** the operator's arm or a person on foot cuts the clamp; the drill, charges and, from this layer, the Company turret break them.
 
 #### Checkpoint wardens
 
@@ -192,7 +191,7 @@ A presence ([LORE.md layer 6](LORE.md#6--the-magma-belt-blood)): a lampless figu
 The Sleeper's: slow lava-dwellers that seal wounds.
 
 - **Draw:** drill heat near the arteries.
-- **Pod:** they seal a fresh bore, behind or ahead, with hot crust: drillable, and hot on the hull. Your way home can be blocked, never erased. They break exposed unrated blocks like the rest of the family.
+- **Pod:** they seal a fresh bore, behind or ahead, with hot crust: drillable, and hot on the hull. Your way home can be blocked, never erased.
 - **On foot:** they burn on touch.
 - **Counters:** rated lining keeps a shaft open; the radiator; killing them (alarm).
 
@@ -226,10 +225,8 @@ The Retained work the lines under the Company's sign and never act (LORE section
 ## 6. Layer bosses
 
 - **They gate the ladder, not the depth.** Each sits on its layer's chassis wreck or catalyst. You can drill past one and go deeper, but the chassis cap brings you back: SPEC section 3's "you will regret it".
-- **Layers 3 to 7 only.** Act 1 has none.
 - **Act 2's bosses are the Sleeper's**, and you drive them off, never kill them. **Act 3's are Moloch's**, and you break them.
 - **Once per charter.** A boss wakes for a charter that has not beaten it. Another charter's crew in the lair is pulled into the fight; that is co-op, not a bug.
-- **Mixed by layer:** on foot, in pods, or both, as each entry says.
 
 #### The Hush
 
@@ -288,9 +285,8 @@ The story's shape is settled in [LORE.md section 12](LORE.md#12-the-finale) and 
 
 **Phase 2: Head Office stands up, in pods.**
 - It is built from what this charter sold. Its plating shows your ores, and its size and health come from the charter's lifetime sales, held between a floor and a ceiling, then scaled by pods present (section 4).
-- Only the drill and explosives hurt it; turret rounds glance off.
+- Only the drill and explosives hurt it (charges break its joints, the drill its plating); turret rounds glance off.
 - Its hands take a pod and pull its cargo into the chest furnace, and every ore it eats heals it. You win by going in empty-handed: the renunciation in rehearsal.
-- Charges break its joints; the drill breaks its plating.
 - It breaks but cannot die. The mask crawls out of the wreck, and the offer follows (LORE section 12).
 
 ## 8. Combat kit
@@ -342,7 +338,7 @@ SPEC section 10's rule stays: hazards never delete player-built blocks. Creature
 
 A creature can break only what it can reach. A block is **exposed** when it touches open space a creature can reach from outside; the outer layer of a building is its **shell**. Unrated blocks inside a closed, rated shell are safe, so decoration and colony materials inside are fine. A gap in the shell, or an open door, exposes everything behind it. Doors count as shell when closed and rated.
 
-Terminals and pads are never broken. Pods and wrecks are never touched while nobody is near.
+Terminals and pads are never broken (principle 8). Pods and wrecks are never touched while nobody is near.
 
 ### While nobody is near
 

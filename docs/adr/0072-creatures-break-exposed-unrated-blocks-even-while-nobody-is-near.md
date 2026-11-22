@@ -21,5 +21,5 @@ Hazards never delete player-built blocks (SPEC section 10), and creatures were l
 ## Consequences
 
 - An outpost needs a registered core (its bed or terminal) so the game knows which blocks to settle when it loads again. Shaft linings far from any outpost change only while loaded.
-- Visits are rolled on the world's clock for every outpost, loaded or not, from its draws: noise, darkness and stored ore. An unloaded outpost records them and applies them when it loads, and the alert goes out when a visit is rolled. Game time stops while the server is off, so a server that is down ruins nothing.
+- Visits are rolled on the world's clock for every outpost, loaded or not, and an unloaded outpost applies them when it loads ([CREATURES.md](../CREATURES.md#while-nobody-is-near)). Game time stops while the server is off, so a server that is down ruins nothing.
 - Exposure is computed from open space reachable from outside the shell, so the same rule holds whether the creature is really there or the loss is settled later.
