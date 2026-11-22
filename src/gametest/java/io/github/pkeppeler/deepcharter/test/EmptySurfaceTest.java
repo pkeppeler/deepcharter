@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands.Band;
 import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -75,7 +76,7 @@ public class EmptySurfaceTest {
      * The surface lists no creature at all. A layer lists the Retained as its one monster, in each of its three zones, and nothing else
      * in any category. The unbuilt depth lists nothing.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.B, maxTicks = MAX_TICKS)
     public void noBandListsAVanillaMonsterAndTheLayersKeepTheRetained(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ChunkGenerator generator = level.getChunkSource().getGenerator();
@@ -220,7 +221,7 @@ public class EmptySurfaceTest {
      * on the surface places nothing at all. The dark of a layer may place a Retained, whose own rules decide. The control below shows the
      * same loop does place a vanilla monster where a biome lists one.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.B, maxTicks = MAX_TICKS)
     public void naturalSpawningInTheDarkPlacesNoVanillaMonster(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         if (level.getDifficulty() == Difficulty.PEACEFUL) {
