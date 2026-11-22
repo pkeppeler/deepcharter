@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
@@ -64,6 +65,7 @@ import org.slf4j.LoggerFactory;
 public class SalvageBootstrapTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(SalvageBootstrapTest.class);
     private static final String SAMPLE = "deepcharter:surface_sample";
+    private static final String CAMPAIGN = "deepcharter:campaign_sample";
     private static final String YARD = "deepcharter:salvage_yard";
     private static final int MAX_TICKS = 12_000;
     /** The survey covers the chunks within this many of the origin, a little past the yard so that its edge shows. */
@@ -335,7 +337,7 @@ public class SalvageBootstrapTest {
                 + (double) (a.getZ() - b.getZ()) * (a.getZ() - b.getZ());
     }
 
-    @GameTest(dimension = "deepcharter:campaign_sample", maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = CAMPAIGN, maxTicks = MAX_TICKS)
     public void stalksGrowOnTheFloorsOfLayerOneCaves(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         // The campaign level holds the surface and both layers: only the stalks in layer 1's band are this test's.
