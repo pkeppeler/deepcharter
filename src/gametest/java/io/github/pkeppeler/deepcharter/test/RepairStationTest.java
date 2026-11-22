@@ -84,7 +84,7 @@ public class RepairStationTest {
             Map.entry(Consumable.BLASTING_CHARGE, 40L),
             Map.entry(Consumable.SHAPED_CHARGE, 100L),
             Map.entry(Consumable.QUANTUM_TELEPORTER, 690L),
-            Map.entry(Consumable.MATTER_TRANSMITTER, 1_500L),
+            Map.entry(Consumable.MATTER_TRANSMITTER, 1_650L),
             Map.entry(Consumable.THROWN_FLARE, 12L),
             Map.entry(Consumable.THROWN_DECOY, 25L),
             Map.entry(Consumable.THROWN_CHARGE, 55L));

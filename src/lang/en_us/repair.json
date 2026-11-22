@@ -38,5 +38,8 @@
   "screen.deepcharter.repair.no_pod": "No pod of yours is parked here",
   "screen.deepcharter.repair.repair": "REPAIR %s HP ($%s)",
   "screen.deepcharter.repair.scroll": "%s-%s OF %s - SCROLL",
-  "screen.deepcharter.repair.total": "REPAIR ALL"
+  "screen.deepcharter.repair.total": "REPAIR ALL",
+  "message.deepcharter.repair.recovery_called": "Stranded: winch in %ss, $%s. Refuel to cancel",
+  "message.deepcharter.repair.recovery_done": "Winched home. Fee $%s",
+  "message.deepcharter.repair.recovery_short": "Winched home. Paid $%s of $%s; hull took the rest"
 }
