@@ -1799,15 +1799,15 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Counterplay and its limits.** A flare keeps a Retained off a dark pod, and frees no one already held: the cutter or a blow still ends a grip (CREATURES section 3). A charge hurts a person at the blast, but never kills: it leaves half a heart at worst, so the cost of a bad throw is health and a lesson, not a run. Who is hurt is a rule (below). A decoy does nothing to Moloch's things: they are drawn to the dark.
 
-**Measured and modelled** (`ThrownKitPacingTest`, quoted by the PR). Measured from real runs: the throw ranges, the flare's burn, the decoy's lifetime and the charge's fuse, each from landing to its end; prices are read from `Consumable` and a run's net from `EarlyRunModel`, the economy test's own model ($115 in layer 1, $413 in layer 2). Modelled: how long each fight lasts, how fast a person walks (4.3 blocks a second) and the Listeners' patience (10 s).
+**Measured and modelled** (`ThrownKitPacingTest`, quoted by the PR). Measured from real runs: the throw ranges, the flare's burn, the decoy's lifetime and the charge's fuse, each from landing to its end; prices are read from `Consumable` and a run's net from `EarlyRunModel`, the economy test's own model ($124 in layer 1, $455 in layer 2). Modelled: how long each fight lasts, how fast a person walks (4.3 blocks a second) and the Listeners' patience (10 s).
 
 | What | Number | Band |
 |---|---|---|
 | Flat throw, level with the eyes (measured) | lands 11 blocks away after 11 ticks | 8 to 16 |
-| Lob, 15 degrees up (measured) | lands 24 blocks away after 24 ticks | 14 to 30 |
-| Holding a dark stretch for five minutes (modelled fight, measured burn) | 4 flares, $48, 12% of a layer 2 run | 2 to 6 throws, 5% to 25% |
-| The Hush, solo: a three minute tow under decoys, two charges | 6 throws, $210, 51% of a layer 2 run | 4 to 10 throws, 30% to 70% |
-| A Listener: a decoy, a charge | 2 throws, $80, 19% of a layer 2 run | 2 to 3 throws, 10% to 35% |
+| Lob, 15 degrees up (measured) | lands 24 blocks away after 25 ticks | 14 to 30 |
+| Holding a dark stretch for five minutes (modelled fight, measured burn) | 4 flares, $48, 11% of a layer 2 run | 2 to 6 throws, 5% to 25% |
+| The Hush, solo: a three minute tow under decoys, two charges | 6 throws, $210, 46% of a layer 2 run | 4 to 10 throws, 30% to 70% |
+| A Listener: a decoy, a charge | 2 throws, $80, 18% of a layer 2 run | 2 to 3 throws, 10% to 35% |
 | One flare against the Retained's cadence (measured burn) | 90 s against a 20 s wait after a kill: 4.5 gaps | 3 to 10 |
 | A decoy's lifetime (measured) | 45 s | 20 s to 90 s |
 | A charge's fuse against the walk out of its reach (measured fuse, modelled walk) | 61 ticks against 24 | at least twice, at most 6 s |
