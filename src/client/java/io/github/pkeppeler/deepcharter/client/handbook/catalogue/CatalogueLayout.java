@@ -230,7 +230,8 @@ public record CatalogueLayout(
         int gridBottom = glass.bottom() - look.contentBottom() - favouritesBlock - look.gridGap();
         int rows = Math.clamp((gridBottom - gridY + slackPerCell) / look.gridCell(), 0, look.gridRows());
         int favouritesLabelY = gridY + rows * look.gridCell() + look.gridGap();
-        Rect favourites = new Rect(left, favouritesLabelY, right - left, favouritesBlock);
+        Rect favourites =
+                new Rect(left, favouritesLabelY, (columns - 1) * look.gridCell() + look.slotSize(), favouritesBlock);
 
         int upper = glass.bottom() + c.deckGap();
         int lower = upper + c.deckRow() + c.deckRowGap();
