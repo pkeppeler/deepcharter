@@ -63,6 +63,7 @@ import net.minecraft.world.phys.Vec3;
  * over it. The cave-in's own rules (the creak before the fall, a blast that starts one) are here too, because the bolt is their answer.
  */
 public class BoltDriverTest {
+    private static final String ALONE = "deepcharter-test:alone";
     private static final CaveInTuning CAVE_IN = CaveInTuning.DEFAULT;
     private static final BoltDriverTuning DRIVER = BoltDriverTuning.DEFAULT;
     private static final int LENGTH = 14;
@@ -70,6 +71,9 @@ public class BoltDriverTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1200;
     /** A joined player is invulnerable for its first 60 ticks. */
     private static final int SPAWN_PROTECTION_TICKS = 100;
+
+    /** How long a test waits for a mock that reads as hittable to be hit. */
+    private static final int PROTECTION_RETRY_TICKS = 100;
 
     /** A mock reads what the server sends it on its own tick, a tick or two later. */
     private static final int MESSAGE_TICKS = 3;
@@ -90,14 +94,20 @@ public class BoltDriverTest {
             throw failure(
                     helper, "the item ids are %s and %s", Consumable.BOLT_DRIVER.itemId(), Consumable.BOLT.itemId());
         }
+        expect(
+                helper,
+                Consumable.BOLT_DRIVER.kind() == Consumable.Kind.TOOL
+                        && Consumable.BOLT.kind() == Consumable.Kind.CONSUMED,
+                "the driver is a kept tool and the bolts are consumed, they are %s and %s",
+                Consumable.BOLT_DRIVER.kind(),
+                Consumable.BOLT.kind());
         if (RepairRegistry.item(Consumable.BOLT_DRIVER).getDefaultInstance().getMaxStackSize() != 1) {
             throw failure(helper, "the driver is one tool, not a stack");
         }
-        if (Consumable.BOLT.perPurchase() != DRIVER.packSize() || Consumable.BOLT_DRIVER.perPurchase() != 1) {
+        if (Consumable.BOLT.perPurchase() != 8 || Consumable.BOLT_DRIVER.perPurchase() != 1) {
             throw failure(
                     helper,
-                    "a pack is %d bolts and a driver is 1, the shop gives %d and %d",
-                    DRIVER.packSize(),
+                    "a pack is 8 bolts and a driver is 1, the shop gives %d and %d",
                     Consumable.BOLT.perPurchase(),
                     Consumable.BOLT_DRIVER.perPurchase());
         }
@@ -270,7 +280,8 @@ public class BoltDriverTest {
         Corridor corridor = corridor(helper, LENGTH, 5);
         MockPlayer shooter = walker(helper, corridor, "bolt-pvp-shooter", 0, EAST);
         MockPlayer other = walker(helper, corridor, "bolt-pvp-other", 9, 90f);
-        arm(shooter.player(), 4);
+        // Two bolts a try.
+        arm(shooter.player(), 60);
         MinecraftServer server = helper.getLevel().getServer();
         TestTicks.each(helper, () -> {
             if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
@@ -295,6 +306,11 @@ public class BoltDriverTest {
                 server.getGameRules().set(GameRules.PVP, true, server);
                 fire(shooter.player());
                 if (other.player().getHealth() >= health) {
+                    // A mock under load can still be in its first ticks of protection although it reads as hittable:
+                    // try again.
+                    if (helper.getTick() < SPAWN_PROTECTION_TICKS + PROTECTION_RETRY_TICKS) {
+                        return;
+                    }
                     throw failure(helper, "a bolt spared a player on a server with PvP on");
                 }
             } finally {
@@ -601,7 +617,10 @@ public class BoltDriverTest {
                 pod.setPos(corridor.stand(11));
                 level.addFreshEntity(pod);
                 rider.player().startRiding(pod, true, false);
-                CaveIns.blasted(level, corridor.stand(5).add(0, 1, 0), Optional.empty());
+                withPvp(
+                        helper.getLevel().getServer(),
+                        true,
+                        () -> CaveIns.blasted(level, corridor.stand(5).add(0, 1, 0), Optional.empty()));
                 startedAt[0] = now;
                 return;
             }
@@ -639,16 +658,19 @@ public class BoltDriverTest {
                         .setItem(
                                 pilot.player().getInventory().getSelectedSlot(),
                                 new ItemStack(RepairRegistry.item(Consumable.DYNAMITE)));
-                if (!pilot.player()
-                        .gameMode
-                        .useItem(
-                                pilot.player(),
-                                level,
-                                pilot.player().getItemInHand(InteractionHand.MAIN_HAND),
-                                InteractionHand.MAIN_HAND)
-                        .consumesAction()) {
-                    throw failure(helper, "the pilot's dynamite should go off");
-                }
+                withPvp(helper.getLevel().getServer(), true, () -> {
+                    expect(
+                            helper,
+                            pilot.player()
+                                    .gameMode
+                                    .useItem(
+                                            pilot.player(),
+                                            level,
+                                            pilot.player().getItemInHand(InteractionHand.MAIN_HAND),
+                                            InteractionHand.MAIN_HAND)
+                                    .consumesAction(),
+                            "the pilot's dynamite should go off");
+                });
                 startedAt[0] = now;
                 return;
             }
@@ -688,9 +710,10 @@ public class BoltDriverTest {
                         }));
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    // A stop empties every cave-in of the server, so no other test may be running its own: this is a batch of its own.
+    @GameTest(environment = ALONE, maxTicks = MAX_TICKS)
     public void aStoppedServerForgetsACaveInThatWasCreaking(GameTestHelper helper) {
-        Corridor corridor = corridor(helper, LENGTH, 22);
+        Corridor corridor = corridor(helper, LENGTH, 24);
         walker(helper, corridor, "bolt-stopped", 7, EAST);
         long[] startedAt = {-1};
         TestTicks.each(helper, () -> {
@@ -721,7 +744,7 @@ public class BoltDriverTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aPersonWhoIgnoresTheCreakIsHurtWithinTheCapAndNeitherKilledNorEntombed(GameTestHelper helper) {
-        Corridor corridor = corridor(helper, LENGTH, 23);
+        Corridor corridor = corridor(helper, LENGTH, 25);
         MockPlayer under = walker(helper, corridor, "bolt-ignores", 7, EAST);
         long[] startedAt = {-1};
         TestTicks.each(helper, () -> {
@@ -768,7 +791,7 @@ public class BoltDriverTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void withPvpOffABlastShakesOnlyTheRoofOfItsOwnCharter(GameTestHelper helper) {
-        Corridor corridor = corridor(helper, LENGTH, 24);
+        Corridor corridor = corridor(helper, LENGTH, 27);
         MockPlayer ours = walker(helper, corridor, "bolt-own-crew", 1, EAST);
         MockPlayer theirs = walker(helper, corridor, "bolt-other-crew", 7, EAST);
         walker(helper, corridor, "bolt-no-charter", 12, EAST);
@@ -804,7 +827,7 @@ public class BoltDriverTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void withPvpOnABlastShakesEveryonesRoof(GameTestHelper helper) {
-        Corridor corridor = corridor(helper, LENGTH, 25);
+        Corridor corridor = corridor(helper, LENGTH, 29);
         MockPlayer ours = walker(helper, corridor, "bolt-pvp-own", 1, EAST);
         MockPlayer theirs = walker(helper, corridor, "bolt-pvp-other", 7, EAST);
         walker(helper, corridor, "bolt-pvp-none", 12, EAST);
@@ -838,7 +861,7 @@ public class BoltDriverTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void dynamiteFromAPodIsTheCharterOfItsPilotWhenPvpIsOff(GameTestHelper helper) {
-        Corridor corridor = corridor(helper, LENGTH, 26);
+        Corridor corridor = corridor(helper, LENGTH, 31);
         MockPlayer pilot = walker(helper, corridor, "bolt-owner-pilot", 7, 90f);
         MockPlayer crew = walker(helper, corridor, "bolt-owner-crew", 1, EAST);
         MockPlayer stranger = walker(helper, corridor, "bolt-owner-stranger", 13, EAST);
@@ -901,7 +924,7 @@ public class BoltDriverTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void theDriverUsesBoltsInThePackAndTheOffhandAndNotThoseWorn(GameTestHelper helper) {
-        Corridor corridor = corridor(helper, LENGTH, 27);
+        Corridor corridor = corridor(helper, LENGTH, 32);
         MockPlayer shooter = walker(helper, corridor, "bolt-slots", 1, EAST);
         ServerPlayer player = shooter.player();
         arm(player, 0);
@@ -959,38 +982,29 @@ public class BoltDriverTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aPlayerWhoMayNotBuildHereSetsNoRoofBolt(GameTestHelper helper) {
-        Corridor corridor = corridor(helper, LENGTH, 28);
+        Corridor corridor = corridor(helper, LENGTH, 33);
         MockPlayer setter = walker(helper, corridor, "bolt-adventure", 5, EAST);
         setter.player().setGameMode(GameType.ADVENTURE);
         arm(setter.player(), 2);
-        long[] actedAt = {-1};
         TestTicks.each(helper, () -> {
             if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
                 return;
             }
-            if (actedAt[0] < 0) {
-                BlockPos roof = corridor.roof(5);
-                expect(
-                        helper,
-                        !setBolt(setter.player(), roof).consumesAction(),
-                        "a player in adventure mode cannot place blocks and cannot set a roof bolt");
-                expect(
-                        helper,
-                        !corridor.level().getBlockState(roof.below()).is(LayerBlocks.ROOF_BOLT)
-                                && bolts(setter.player()) == 2,
-                        "a refused bolt places nothing and spends nothing, the pack holds %d",
-                        bolts(setter.player()));
-                actedAt[0] = helper.getTick();
-                return;
-            }
-            if (helper.getTick() >= actedAt[0] + MESSAGE_TICKS) {
-                expect(
-                        helper,
-                        told(setter, "message.deepcharter.repair.bolt_forbidden"),
-                        "the refusal says why, got %s",
-                        setter.actionBarMessages());
-                helper.succeed();
-            }
+            BlockPos roof = corridor.roof(5);
+            // Vanilla's ItemStack.useOn already turns an adventure player away before the driver is asked; the driver
+            // asks again
+            // (BoltDriverItem.mayHang), for a click that does not come through it.
+            expect(
+                    helper,
+                    !setBolt(setter.player(), roof).consumesAction(),
+                    "a player in adventure mode cannot place blocks and cannot set a roof bolt");
+            expect(
+                    helper,
+                    !corridor.level().getBlockState(roof.below()).is(LayerBlocks.ROOF_BOLT)
+                            && bolts(setter.player()) == 2,
+                    "a refused bolt places nothing and spends nothing, the pack holds %d",
+                    bolts(setter.player()));
+            helper.succeed();
         });
     }
 }

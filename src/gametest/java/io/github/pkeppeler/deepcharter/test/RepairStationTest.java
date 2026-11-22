@@ -70,7 +70,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Server GameTests for #70: hull repair, the shop, and the eight items the shop sells.
+ * Server GameTests for #70: hull repair, the shop, and every item the shop sells.
  *
  * <p>The repair state is one per world, so a test that needs a working repair station swaps in a fresh {@link RepairState} with
  * the whole chain repaired for its own duration ({@link #withStation}), and does all its work inside its first tick.
@@ -86,6 +86,7 @@ public class RepairStationTest {
             Map.entry(Consumable.SHAPED_CHARGE, 100L),
             Map.entry(Consumable.QUANTUM_TELEPORTER, 690L),
             Map.entry(Consumable.MATTER_TRANSMITTER, 1_650L),
+            Map.entry(Consumable.TETHER, 90L),
             Map.entry(Consumable.BOLT_DRIVER, 175L),
             Map.entry(Consumable.BOLT, 24L));
 
@@ -408,11 +409,12 @@ public class RepairStationTest {
     }
 
     @GameTest
-    public void theShopSellsTheSevenItemsAtTheirTunedPrices(GameTestHelper helper) {
+    public void theShopSellsEveryConsumableAtItsTunedPrice(GameTestHelper helper) {
         withStation(helper, station -> {
             if (SHOP_PRICES.size() != Consumable.values().length) {
                 throw helper.assertionException(
-                        "the shop sells %d items, the test prices %d", Consumable.values().length, SHOP_PRICES.size());
+                        "the shop sells %d items, the prices table lists %d",
+                        Consumable.values().length, SHOP_PRICES.size());
             }
             ServerPlayer player = station.pilot().player();
             fund(helper, station, 100_000);

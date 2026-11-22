@@ -104,10 +104,11 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                     .getHoverName()
                     .getString()
                     .toUpperCase(Locale.ROOT);
-            rows.add(new Row(
-                    Component.translatable("screen.deepcharter.repair.buy", name, consumable.price()),
-                    RepairStation.BUY,
-                    args));
+            Component label = consumable.perPurchase() > 1
+                    ? Component.translatable(
+                            "screen.deepcharter.repair.buy_pack", name, consumable.perPurchase(), consumable.price())
+                    : Component.translatable("screen.deepcharter.repair.buy", name, consumable.price());
+            rows.add(new Row(label, RepairStation.BUY, args));
         }
         return rows;
     }

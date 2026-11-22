@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.repair;
 import io.github.pkeppeler.deepcharter.layer.CaveIns;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import java.util.Optional;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -14,7 +15,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.Item;
@@ -28,15 +28,11 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The bolt driver (#987, CREATURES section 8): a mining roof-bolter, used on foot, kept and not used up. A right click on the underside of
- * a roof sets a roof bolt there, which holds the roof round it against a cave-in ({@code CaveIns}); a right click anywhere else fires a bolt
- * at range. Either spends one bolt from the pack. Only the server decides what a click does.
- *
- * <p>A shot is a ray, not an entity: a bolt this fast needs no flight to draw. It stops at the first block, which it never changes, and
- * at the first creature, which takes {@link BoltDriverTuning#damage()}. Another player takes it only where the server allows PvP.
+ * The bolt driver (#987, CREATURES section 8), used on foot and kept: a click on the underside of a roof sets a roof bolt, a click anywhere
+ * else fires a bolt at range, and either spends one bolt. A shot is a ray, not an entity; another player takes it only where PvP is allowed.
  */
 public final class BoltDriverItem extends Item {
-    /** How far from its line a creature is still hit, in blocks: a figure is narrow. */
+    // A figure is narrow: a creature within this many blocks of the bolt's line is still hit.
     private static final float HIT_MARGIN = 0.3F;
 
     public BoltDriverItem(Properties properties) {
@@ -53,17 +49,21 @@ public final class BoltDriverItem extends Item {
                 || !(context.getLevel() instanceof ServerLevel level)) {
             return InteractionResult.SUCCESS;
         }
+        BlockPos roof = context.getClickedPos();
         Optional<String> refusal = ready(player);
+        if (refusal.isEmpty() && !mayHang(level, player, roof, context.getItemInHand())) {
+            refusal = Optional.of("bolt_forbidden");
+        }
         if (refusal.isEmpty()) {
-            refusal = CaveIns.setBolt(level, context.getClickedPos(), BoltDriverTuning.DEFAULT.boltSpacing());
-            if (refusal.isEmpty() && !spend(player)) {
-                throw new IllegalStateException("a bolt was checked in the pack and is gone: " + player);
-            }
+            refusal = CaveIns.boltRefusal(level, roof, BoltDriverTuning.DEFAULT.boltSpacing());
         }
         if (refusal.isPresent()) {
             player.sendOverlayMessage(Component.translatable("message.deepcharter.repair." + refusal.get()));
             return InteractionResult.FAIL;
         }
+        // The bolt is spent before the roof bolt hangs: nothing is placed that was not paid for.
+        spend(player);
+        CaveIns.hangBolt(level, roof);
         player.getCooldowns().addCooldown(context.getItemInHand(), BoltDriverTuning.DEFAULT.setCooldownTicks());
         player.sendOverlayMessage(Component.translatable("message.deepcharter.repair.bolt_set"));
         return InteractionResult.SUCCESS;
@@ -79,12 +79,16 @@ public final class BoltDriverItem extends Item {
             shooter.sendOverlayMessage(Component.translatable("message.deepcharter.repair." + refusal.get()));
             return InteractionResult.FAIL;
         }
-        if (!spend(shooter)) {
-            throw new IllegalStateException("a bolt was checked in the pack and is gone: " + shooter);
-        }
+        spend(shooter);
         shoot(server, shooter);
         shooter.getCooldowns().addCooldown(shooter.getItemInHand(hand), BoltDriverTuning.DEFAULT.fireCooldownTicks());
         return InteractionResult.SUCCESS;
+    }
+
+    /** Whether the player may place a block in the cell under {@code roof}: the checks vanilla block placement makes. */
+    private static boolean mayHang(ServerLevel level, ServerPlayer player, BlockPos roof, ItemStack driver) {
+        BlockPos cell = roof.below();
+        return level.mayInteract(player, cell) && player.mayUseItemAt(cell, Direction.DOWN, driver);
     }
 
     /** Why the player cannot use the driver now: a pilot in the seat, or an empty pack. Empty when they can. */
@@ -92,27 +96,28 @@ public final class BoltDriverItem extends Item {
         if (player.getVehicle() instanceof PodEntity) {
             return Optional.of("bolt_on_foot");
         }
-        if (!player.hasInfiniteMaterials()
-                && player.getInventory().countItem(RepairRegistry.item(Consumable.BOLT)) == 0) {
+        if (!player.hasInfiniteMaterials() && packBolts(player).isEmpty()) {
             return Optional.of("bolt_none");
         }
         return Optional.empty();
     }
 
-    /** Takes one bolt from the pack; a creative player's pack is not touched. */
-    private static boolean spend(ServerPlayer player) {
-        if (player.hasInfiniteMaterials()) {
-            return true;
-        }
-        Inventory pack = player.getInventory();
-        for (int slot = 0; slot < pack.getContainerSize(); slot++) {
-            ItemStack stack = pack.getItem(slot);
-            if (stack.is(RepairRegistry.item(Consumable.BOLT))) {
-                stack.shrink(1);
-                return true;
+    /** The stack of bolts the driver draws from: the pack, then the offhand, never what is worn. Empty when there is none. */
+    private static ItemStack packBolts(ServerPlayer player) {
+        Item bolt = RepairRegistry.item(Consumable.BOLT);
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
+            if (stack.is(bolt)) {
+                return stack;
             }
         }
-        return false;
+        return player.getOffhandItem().is(bolt) ? player.getOffhandItem() : ItemStack.EMPTY;
+    }
+
+    /** Takes one bolt from the pack that {@link #ready} found; a creative player's pack is not touched. */
+    private static void spend(ServerPlayer player) {
+        if (!player.hasInfiniteMaterials()) {
+            packBolts(player).shrink(1);
+        }
     }
 
     private static void shoot(ServerLevel level, ServerPlayer player) {
@@ -123,8 +128,6 @@ public final class BoltDriverItem extends Item {
                 level.clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
         Vec3 end = block.getType() == HitResult.Type.MISS ? to : block.getLocation();
         AABB sweep = player.getBoundingBox().expandTowards(end.subtract(from)).inflate(1.0);
-        // The bolt's ray reaches only what is loaded round the shooter; a creature in an unloaded chunk is out of reach
-        // anyway.
         EntityHitResult hit = ProjectileUtil.getEntityHitResult(
                 level, player, from, end, sweep, target -> canHit(player, target), HIT_MARGIN);
         if (hit != null) {

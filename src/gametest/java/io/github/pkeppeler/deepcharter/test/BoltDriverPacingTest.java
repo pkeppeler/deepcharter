@@ -199,10 +199,11 @@ public class BoltDriverPacingTest {
         }
         placed[0] = 0;
         for (int along = first; along < corridor.length(); along += spacing) {
-            if (CaveIns.setBolt(level, corridor.roof(along), DRIVER.boltSpacing())
+            if (CaveIns.boltRefusal(level, corridor.roof(along), DRIVER.boltSpacing())
                     .isPresent()) {
                 throw new IllegalStateException("a bolt at " + along + " was refused");
             }
+            CaveIns.hangBolt(level, corridor.roof(along));
             placed[0]++;
         }
         int loose = 0;
@@ -280,7 +281,7 @@ public class BoltDriverPacingTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aCaveInCreaksForThreeSecondsAndBringsDownARoundStretchOfRoof(GameTestHelper helper) {
-        Corridor corridor = corridor(helper, 14, 29);
+        Corridor corridor = corridor(helper, 14, 35);
         ServerLevel level = corridor.level();
         BlockPos middle = corridor.floor(7);
         int half = CAVE_IN.stretchRadius();
@@ -375,7 +376,7 @@ public class BoltDriverPacingTest {
                 "[bolt-pacing] modelled: the driver ${} is {} of a layer 2 run, a pack of {} bolts ${} is {} (a layer 1 run nets ${})",
                 Consumable.BOLT_DRIVER.price(),
                 driver,
-                DRIVER.packSize(),
+                Consumable.BOLT.perPurchase(),
                 Consumable.BOLT.price(),
                 pack,
                 Math.round(layerOne.net()));

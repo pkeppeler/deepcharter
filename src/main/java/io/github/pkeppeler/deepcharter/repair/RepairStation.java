@@ -11,6 +11,8 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalActions;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -97,8 +99,8 @@ public final class RepairStation {
         ItemStack stack =
                 new ItemStack(RepairRegistry.item(item.get()), item.get().perPurchase());
         Inventory inventory = player.getInventory();
-        // Checked first: a creative player's add() discards what does not fit, and the money is not given back.
-        if (inventory.getSlotWithRemainingSpace(stack) < 0 && inventory.getFreeSlot() < 0) {
+        // Checked first: add() keeps only what fits, and the money is not given back. A pack must fit whole.
+        if (roomFor(inventory, stack) < stack.getCount()) {
             return Consumables.refusal("no_room");
         }
         Optional<CharterRefusal> unpaid = Charters.spend(
@@ -110,6 +112,21 @@ public final class RepairStation {
         }
         inventory.add(stack);
         return Optional.empty();
+    }
+
+    /** How many of {@code stack}'s item {@code inventory.add} can take: the pack's slots and the offhand, which it fills too. */
+    private static int roomFor(Inventory inventory, ItemStack stack) {
+        int room = 0;
+        List<ItemStack> slots = new ArrayList<>(inventory.getNonEquipmentItems());
+        slots.add(inventory.getItem(Inventory.SLOT_OFFHAND));
+        for (ItemStack held : slots) {
+            if (held.isEmpty()) {
+                room += stack.getMaxStackSize();
+            } else if (ItemStack.isSameItemSameComponents(held, stack)) {
+                room += Math.max(0, held.getMaxStackSize() - held.getCount());
+            }
+        }
+        return room;
     }
 
     /** The nearest pod parked at the station ({@link Terminals#parkedPods}) that the player's charter may use. */

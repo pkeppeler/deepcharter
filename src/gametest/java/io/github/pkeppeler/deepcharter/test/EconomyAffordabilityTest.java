@@ -93,6 +93,7 @@ public class EconomyAffordabilityTest {
             Map.entry(Consumable.SHAPED_CHARGE, new Target(false, 0.25, 1)),
             Map.entry(Consumable.HULL_NANOBOTS, new Target(true, 0.25, 1)),
             Map.entry(Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4)),
+            Map.entry(Consumable.TETHER, new Target(false, 0.25, 1)),
             // On foot (#987): the driver is about two fifths of a layer 2 run, a pack of bolts a twentieth.
             Map.entry(Consumable.BOLT_DRIVER, new Target(true, 0.25, 1)),
             Map.entry(Consumable.BOLT, new Target(true, 0.02, 0.25)));

@@ -34,18 +34,50 @@ public enum Consumable {
     // which made fuel cheaper and a run's net $455); the cargo drop is
     // the rest of the cost.
     MATTER_TRANSMITTER("matter_transmitter", 1_650),
-    // On foot (#987): a tool, kept; its bolts are bought in packs (BoltDriverTuning.packSize). The driver costs two
-    // fifths of a layer 2 run and a pack a twentieth. EconomyAffordabilityTest holds the bands and BoltDriverPacingTest
-    // what a fight and a stretch of tunnel cost.
-    BOLT_DRIVER("bolt_driver", 175),
-    BOLT("bolt", 24);
+    // On foot (#986): not used up. A person on foot clips it to a pod's winch, and it is theirs to keep. Priced at
+    // about
+    // three quarters of a stock layer 1 run, so the first descent pays for it once and no pod is ever without one.
+    TETHER("tether", 90, Kind.TOOL),
+    // On foot (#987): a tool, kept. The driver costs two fifths of a layer 2 run. EconomyAffordabilityTest holds the
+    // bands and BoltDriverPacingTest what a fight and a stretch of tunnel cost.
+    BOLT_DRIVER("bolt_driver", 175, Kind.TOOL),
+    // The driver's ammunition, bought in packs of 8 for a twentieth of a layer 2 run; the driver spends them.
+    BOLT("bolt", 24, 8);
+
+    /** What using the item does to it. */
+    public enum Kind {
+        /** Used from the pilot's seat through {@code Consumables.use}, and used up. */
+        CONSUMED,
+        /** Kept: the item handles its own use on foot, and {@code Consumables.use} is never called for it. */
+        TOOL
+    }
 
     private final Identifier itemId;
     private final long price;
+    private final Kind kind;
+    private final int perPurchase;
 
     Consumable(String path, long price) {
+        this(path, price, Kind.CONSUMED, 1);
+    }
+
+    Consumable(String path, long price, Kind kind) {
+        this(path, price, kind, 1);
+    }
+
+    Consumable(String path, long price, int perPurchase) {
+        this(path, price, Kind.CONSUMED, perPurchase);
+    }
+
+    private Consumable(String path, long price, Kind kind, int perPurchase) {
         this.itemId = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
         this.price = price;
+        this.kind = kind;
+        this.perPurchase = perPurchase;
+    }
+
+    public Kind kind() {
+        return kind;
     }
 
     public Identifier itemId() {
@@ -59,7 +91,7 @@ public enum Consumable {
 
     /** Items the station hands over for one purchase: a pack of bolts, otherwise one. */
     public int perPurchase() {
-        return this == BOLT ? BoltDriverTuning.DEFAULT.packSize() : 1;
+        return perPurchase;
     }
 
     public static Optional<Consumable> byItemId(Identifier id) {

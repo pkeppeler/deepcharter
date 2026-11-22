@@ -252,7 +252,8 @@ public final class CaveIns {
             level.sendParticles(
                     ParticleTypes.ASH, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 3, 0.3, 0.05, 0.3, 0.01);
         }
-        // PLACEHOLDER sound until the sound pass: the crust's creak, since the roof speaks the way the grain does. It is
+        // PLACEHOLDER sound until the sound pass: the crust's creak, since the roof speaks the way the grain does. It
+        // is
         // played at each person under the roof, as the crust's is, and where it was started when no one is.
         boolean heard = false;
         int radius = CaveInTuning.DEFAULT.stretchRadius();
@@ -302,7 +303,8 @@ public final class CaveIns {
             }
             CaveInTuning tuning = CaveInTuning.DEFAULT;
             float fallen = rock.getStartPos().getY() - person.getBlockY();
-            float damage = Math.min(Math.min(tuning.fallDamage() * fallen, tuning.fallDamageMax()), person.getHealth() - 1);
+            float damage =
+                    Math.min(Math.min(tuning.fallDamage() * fallen, tuning.fallDamageMax()), person.getHealth() - 1);
             if (damage > 0) {
                 person.hurtServer(level, level.damageSources().fallingBlock(rock), damage);
             }

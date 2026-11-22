@@ -17,5 +17,6 @@ public final class PodClientRegistry {
                     PodRegistry.typeOf(chassis), context -> new PodGeoRenderer(context, chassis));
         }
         TowChainRenderer.init();
+        TetherLineRenderer.init();
     }
 }
