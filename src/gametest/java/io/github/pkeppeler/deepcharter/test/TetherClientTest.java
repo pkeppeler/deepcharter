@@ -43,13 +43,22 @@ public class TetherClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             UUID podId = two.server().computeOnServer(server -> setUp(server.overworld(), two));
+            // The pod first: a line to a pod whose chunk is not ticking yet would end at once, as it does for a pod
+            // that has unloaded.
             ClientWait.until(
                     context,
-                    "the client sees the pod and its own clip to it",
-                    client -> podIfPresent(client, podId) != null
-                            && PodTether.podId(ClientSession.player(client))
-                                    .filter(podId::equals)
-                                    .isPresent());
+                    "the client sees the pod",
+                    client -> podIfPresent(client, podId) != null,
+                    client -> "pod seen " + (podIfPresent(client, podId) != null) + ", " + ClientWait.describe(client));
+            two.server().runOnServer(server -> clip(server.overworld(), two, podId));
+            ClientWait.until(
+                    context,
+                    "the client sees its own clip to the pod",
+                    client -> PodTether.podId(ClientSession.player(client))
+                            .filter(podId::equals)
+                            .isPresent(),
+                    client -> "clipped to " + PodTether.podId(ClientSession.player(client)) + ", "
+                            + ClientWait.describe(client));
             context.runOnClient(client -> {
                 PodEntity pod = Objects.requireNonNull(podIfPresent(client, podId));
                 Vec3 camera = ClientSession.player(client).position();
@@ -130,7 +139,7 @@ public class TetherClientTest implements FabricClientGameTest {
                 .orElseThrow();
     }
 
-    /** A stone slab high above the terrain, the real player on it beside a pod, clipped to it. */
+    /** A stone slab high above the terrain, the real player on it beside a pod. */
     private static UUID setUp(ServerLevel level, TwoPlayerServer two) {
         for (int x = X - 6; x <= X + 8; x++) {
             for (int z = Z - 6; z <= Z + 8; z++) {
@@ -146,7 +155,10 @@ public class TetherClientTest implements FabricClientGameTest {
         PodEntity pod = TestEntities.create(PodRegistry.POD, level);
         pod.setPos(X + 0.5, FLOOR_Y, Z + 0.5);
         level.addFreshEntity(pod);
-        PodTether.clip(real, pod);
         return pod.getUUID();
+    }
+
+    private static void clip(ServerLevel level, TwoPlayerServer two, UUID podId) {
+        PodTether.clip(real(level, two), TestEntities.require(level, podId, PodEntity.class));
     }
 }
