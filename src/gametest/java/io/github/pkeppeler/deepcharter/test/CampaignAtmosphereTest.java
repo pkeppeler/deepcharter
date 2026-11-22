@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerAtmosphere;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.TestClocks;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayList;
@@ -108,7 +109,7 @@ public class CampaignAtmosphereTest {
     /** A layer's zone, with the middle block of its rows. */
     private record Zone(int layer, Identifier biome, BlockPos middle) {}
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void aLayerReadsItsOwnBiomeAtEverySkyTimeGameplayTimeAndWeather(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         for (Zone zone : zones(level)) {
@@ -128,7 +129,7 @@ public class CampaignAtmosphereTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void theSurfaceBandReadsWhatTheFlatOverworldReads(GameTestHelper helper) {
         ServerLevel campaign = helper.getLevel();
         ServerLevel flat = TestLayers.level(helper, TestLayers.SURFACE);
@@ -167,7 +168,7 @@ public class CampaignAtmosphereTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void noSurfaceBiomeSetsWhatATimelineSets(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<EnvironmentAttribute<?>> driven = timelineAttributes(level);
@@ -189,7 +190,7 @@ public class CampaignAtmosphereTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void everyLayerBiomeSetsEachTimelineAttributeThatCanBeSeenUnderground(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<EnvironmentAttribute<?>> driven = timelineAttributes(level);
@@ -220,7 +221,7 @@ public class CampaignAtmosphereTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void everyTimelineAttributeIsSeenOrAcknowledged(GameTestHelper helper) {
         for (EnvironmentAttribute<?> attribute : timelineAttributes(helper.getLevel())) {
             if (LayerAtmosphere.isVisualOrAudio(attribute)) {
@@ -240,7 +241,7 @@ public class CampaignAtmosphereTest {
      * layer biome filled through the block {@code edge}, whose 4-block cell ends 4 blocks above it; the fraction is of the surface's own
      * factor, which is the sky timeline's here and was 1.0 there.
      */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void theEdgeOfLayerOneBlendsAsMeasuredInTheLayerAtmosphereStudy(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int edge = CampaignBands.LAYER_1.topExclusive() - 4;

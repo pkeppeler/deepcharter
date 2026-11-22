@@ -4,6 +4,7 @@ import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.test.support.BlockLightOracle;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LightBroadcastSuppression;
 import io.github.pkeppeler.deepcharter.test.support.LightSyncSends;
@@ -70,12 +71,12 @@ public class LightSyncSafetyNetTest {
 
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1_200;
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aLightChangeAfterAHoldNoBroadcastReachesAPlayerIsSent(GameTestHelper helper) {
         run(helper, true);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void noLightPacketIsSentWhenTheLightDidNotChangeAfterAHold(GameTestHelper helper) {
         run(helper, false);
     }
@@ -86,7 +87,7 @@ public class LightSyncSafetyNetTest {
      * watch alive end last, so the net's own record from the hold's end is dark, as the published light is: only what the player was
      * sent, lit, tells it to send. A net that compares with its own last sample sees dark, then dark.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aLightThatMovedAndCameBackAfterTheChunkWasSentIsSentAgain(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MockPlayer mock = MockPlayers.join(helper, "net-transient");
@@ -234,7 +235,7 @@ public class LightSyncSafetyNetTest {
      * is sent later, unheld, and a light change after that must reach the player. The player's chunk ticks and the chunk next to it,
      * the lamp's, ticks through it; the chunk beyond is loaded and neither ticks nor can be sent until the case forces it.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aNeighbourThatCannotBeSentWhenTheHoldIsRequestedIsWatched(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();

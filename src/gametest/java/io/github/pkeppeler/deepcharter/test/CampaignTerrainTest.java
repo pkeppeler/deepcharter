@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands.Band;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -74,7 +75,7 @@ public class CampaignTerrainTest {
     /** Air, and the lava the zone fill leaves in a layer (#743). */
     private static final Set<String> FLUIDS_AND_AIR = Set.of("minecraft:air", "minecraft:cave_air", "minecraft:lava");
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theBandsAreWhereTheDecisionPutsThem(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         expect(helper, CampaignBands.SURFACE.minY() == -64 && CampaignBands.SURFACE.maxY() == 319, "the surface band");
@@ -105,7 +106,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theFloorOfLayers1And2HoldsThreeRowsOfCrust(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int rows = CampaignBands.crustRows();
@@ -137,7 +138,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void crustIsOnlyAtTheFloorsSoNoneLiesUnderTheSurface(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<Integer> expected = new TreeSet<>();
@@ -170,7 +171,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void eachBandHoldsItsOwnRock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Map<String, Set<String>> found = new TreeMap<>();
@@ -207,7 +208,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void eachBandHasItsZoneBiome(GameTestHelper helper) throws IOException {
         ServerLevel level = helper.getLevel();
         BlockPos column = sampledColumns().getFirst();
@@ -262,7 +263,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void noVanillaBlockIsGenerated(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<String> vanilla = new TreeSet<>();
@@ -285,7 +286,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theDataMatchesTheBandTable(GameTestHelper helper) throws IOException {
         int crust = CampaignBands.crustRows();
         JsonObject settings = read(helper, "/data/deepcharter/worldgen/noise_settings/campaign.json")
@@ -408,7 +409,7 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theBiomeFeaturesHaveNoOrderCycle(GameTestHelper helper) {
         ChunkGenerator generator = helper.getLevel().getChunkSource().getGenerator();
         List<Holder<Biome>> biomes = List.copyOf(generator.getBiomeSource().possibleBiomes());

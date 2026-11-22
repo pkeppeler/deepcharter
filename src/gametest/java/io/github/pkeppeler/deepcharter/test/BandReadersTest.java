@@ -34,6 +34,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -131,7 +132,7 @@ public class BandReadersTest {
     }
 
     /** Layer 1's floor crust leads on to layer 2: the drill bores its last row, and it costs the hull a row of crust. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theCrustAtLayer1sFloorIsBored(GameTestHelper helper) {
         int x = 23000;
         int floor = ONE.minY();
@@ -160,7 +161,7 @@ public class BandReadersTest {
     }
 
     /** Layer 2's floor crust leads nowhere (unbuilt depth lies below it), so the pod stands on it and does not drill. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theCrustAtLayer2sFloorIsRefused(GameTestHelper helper) {
         int x = 23064;
         int floor = TWO.minY();
@@ -203,7 +204,7 @@ public class BandReadersTest {
      * Above layer 1's floor the crust warning counts from that band's floor: 7 slabs above its 3 crust rows, in the crust, and out of reach
      * higher up. Layer 2's floor has no warning (nothing is bored there), nor has the surface.
      */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void theBraceWarnsAboveEachBandFloorThatLeadsOn(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int crust = LayerTuning.DEFAULT.crustThickness();
@@ -243,7 +244,7 @@ public class BandReadersTest {
     // ---- OutpostRates and OutpostBuilder ----
 
     /** An outpost is built at the crust top of layer 1's band, and its rates apply by the band of the terminal's Y. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void anOutpostIsBuiltInLayer1sBandAndPricesByBand(GameTestHelper helper) {
         int x = 23192;
         ServerLevel level = helper.getLevel();
@@ -299,7 +300,7 @@ public class BandReadersTest {
                 }));
     }
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void theKitIsRefusedOnTheSurfaceBandAndInLayer2(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MockPlayer mock = MockPlayers.join(helper, "band-refused");
@@ -324,7 +325,7 @@ public class BandReadersTest {
     // ---- LayerBlocks.groundOf, through RoomSeal ----
 
     /** The shell of a room is sealed with the rock of the band it is cut in, and with plain stone in the surface band. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aSealFillsWithTheRockOfTheBandItIsIn(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int x = 23320;
@@ -359,7 +360,7 @@ public class BandReadersTest {
     // ---- HandbookTriggers.deepEnough ----
 
     /** A bore below the pad's ground by the tuned depth counts in the surface band; any Y in a layer band counts, and a bore near the ground does not. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aPodInALayerBandCountsAsDeepEnough(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
@@ -412,7 +413,7 @@ public class BandReadersTest {
     // ---- WorkOrders.offered and CockpitReading.deepestBlocks, from the band table ----
 
     /** The depths the work orders open at and the cockpit's depth gauge ends at are the ones the layer dimensions gave. */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void theBandTableGivesTheDepthsTheLayerDimensionsGave(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         expect(
@@ -448,7 +449,7 @@ public class BandReadersTest {
      * The Morale Initiative opens at the top of layer 3, depth 575, as the band table gives it for the level the player is in: a charter at
      * 574 is not offered it and one at 575 is. The cockpit's depth gauge is the pod's depth out of the deepest block, 575.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void workOrdersOpenAndTheGaugeEndsAtTheDepthsOfTheBandTable(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
@@ -499,7 +500,7 @@ public class BandReadersTest {
 
     // ---- Zones ----
 
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void zonesFollowTheBandAtAY(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         expect(
@@ -520,7 +521,7 @@ public class BandReadersTest {
     // ---- LayerChain ----
 
     /** The overworld, whatever its dimension type, is one surface band the height of its level, and no layer. */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void anOverworldThatIsNotTheCampaignIsOneSurfaceBand(GameTestHelper helper) {
         ServerLevel overworld = helper.getLevel().getServer().overworld();
         expect(helper, !LayerChain.isCampaign(overworld), "the test overworld is a campaign level");
@@ -545,7 +546,7 @@ public class BandReadersTest {
     }
 
     /** A gas pocket is solid, so goto never puts the player inside one: it passes over the pocket in the only room of the column and ends in the pocket it cuts. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void gotoNeverStandsAPlayerInGas(GameTestHelper helper) throws CommandSyntaxException {
         int x = 23512;
         ServerLevel level = helper.getLevel();
@@ -584,7 +585,7 @@ public class BandReadersTest {
     }
 
     /** In the campaign world goto stays in the level and lands in the layer's band, on a floor, with room to stand. */
-    @GameTest(dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void gotoLandsInTheBandOfTheLayer(GameTestHelper helper) throws CommandSyntaxException {
         MockPlayer mock = MockPlayers.join(helper, "band-goto");
         ServerLevel level = helper.getLevel();
