@@ -1,11 +1,14 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.surface.GreatStalk;
 import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout;
 import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout.Cell;
 import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout.Part;
 import io.github.pkeppeler.deepcharter.surface.GreatStalkShape;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
+import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -38,11 +41,16 @@ public class GreatStalkOptionsScenario extends EvidenceScenario {
 
     private static final int PAD_REACH = 10;
     private static final int PAD_HEIGHT = 24;
-    /** The camera looks north at a stalk from this far south of its base and this far above it, at the point this high up it. */
-    private static final double DISTANCE = 26;
+    /**
+     * A single option is framed from its grown bounds: the camera stands {@link #FILL} of the stalk's height away (never nearer than
+     * {@link #LEAST_DISTANCE}), a third of the way up it, and aims at its middle, so the stalk fills most of the frame and its neighbours,
+     * 22 blocks off along the row, stay outside it. It looks along a line across the row, away from the colony for the front view.
+     */
+    private static final double FILL = 0.8;
 
-    private static final double EYE_HEIGHT = 7;
-    private static final double LOOK_HEIGHT = 7;
+    private static final double LEAST_DISTANCE = 11;
+    private static final double EYE_FRACTION = 1.0 / 3;
+    private static final double LOOK_FRACTION = 0.5;
     /** All three together are seen from further off, at the middle of the line. */
     private static final double GROUP_DISTANCE = 52;
 
@@ -110,19 +118,47 @@ public class GreatStalkOptionsScenario extends EvidenceScenario {
     }
 
     private void stills(ClientGameTestContext context, TextureTestWorld world, List<BlockPos> origins) {
+        context.runOnClient(client -> client.gui.toastManager().clear());
+        int away = awayFromColony(world, origins.get(origins.size() / 2));
         for (int index = 0; index < OPTIONS.size(); index++) {
-            look(world, origins.get(index), DISTANCE, EYE_HEIGHT, LOOK_HEIGHT);
-            world.still(OPTIONS.get(index).name());
+            Option option = OPTIONS.get(index);
+            look(world, origins.get(index), option, away);
+            world.still(option.name() + "-front");
+            look(world, origins.get(index), option, -away);
+            world.still(option.name() + "-back");
         }
-        look(world, origins.get(origins.size() / 2), GROUP_DISTANCE, GROUP_EYE_HEIGHT, GROUP_LOOK_HEIGHT);
+        Vec3 middle = Vec3.atBottomCenterOf(origins.get(origins.size() / 2)).add(1, 0, 1);
+        world.view(
+                0, middle.add(0, GROUP_EYE_HEIGHT, GROUP_DISTANCE), middle.add(0, GROUP_LOOK_HEIGHT, 0), SETTLE_TICKS);
         world.still("all-three");
         frame(context);
     }
 
-    /** The camera {@code distance} blocks south of the base of the stalk at {@code origin}, looking north. */
-    private static void look(TextureTestWorld world, BlockPos origin, double distance, double eye, double target) {
-        Vec3 base = Vec3.atBottomCenterOf(origin).add(1, 0, 1);
-        world.view(0, base.add(0, eye, distance), base.add(0, target, 0), SETTLE_TICKS);
+    /** Which way along z points away from the colony from {@code at}: 1 for south, -1 for north. */
+    private static int awayFromColony(TextureTestWorld world, BlockPos at) {
+        BlockPos colony = world.serverGet(server -> TestColony.anchor(
+                Colony.placed(server).orElseThrow(() -> new AssertionError("no colony")), ColonyAnchor.STATUE));
+        return at.getZ() >= colony.getZ() ? 1 : -1;
+    }
+
+    /**
+     * The camera looking along z in the direction {@code toward} at the option grown at {@code origin}: it stands {@link #FILL} of the
+     * stalk's height behind the middle of its footprint (a third of the way up), and aims at the middle of it.
+     */
+    private static void look(TextureTestWorld world, BlockPos origin, Option option, int toward) {
+        GreatStalkLayout layout = option.shape().layout(RandomSource.create(option.seed())::nextInt);
+        int height = layout.parts().keySet().stream().mapToInt(Cell::y).max().orElseThrow() + 1;
+        double low = layout.parts().keySet().stream().mapToInt(Cell::x).min().orElseThrow();
+        double high = layout.parts().keySet().stream().mapToInt(Cell::x).max().orElseThrow();
+        double lowZ = layout.parts().keySet().stream().mapToInt(Cell::z).min().orElseThrow();
+        double highZ = layout.parts().keySet().stream().mapToInt(Cell::z).max().orElseThrow();
+        Vec3 middle = Vec3.atBottomCenterOf(origin).add((low + high) / 2 + 0.5, 0, (lowZ + highZ) / 2 + 0.5);
+        double distance = Math.max(LEAST_DISTANCE, FILL * height) + (highZ - lowZ) / 2;
+        world.view(
+                0,
+                middle.add(0, height * EYE_FRACTION, -toward * distance),
+                middle.add(0, height * LOOK_FRACTION, 0),
+                SETTLE_TICKS);
     }
 
     /** Each option in turn: the camera on it, one break, and the frames until what hung from it is down. */
@@ -137,7 +173,7 @@ public class GreatStalkOptionsScenario extends EvidenceScenario {
                             && layout.parts().containsKey(new Cell(cell.x(), cell.y() + 1, cell.z())))
                     .min(Comparator.comparingInt(Cell::x).thenComparingInt(Cell::z))
                     .orElseThrow();
-            look(world, origin, DISTANCE, EYE_HEIGHT, LOOK_HEIGHT);
+            look(world, origin, option, awayFromColony(world, origin));
             frame(context);
             world.serverDo(
                     server -> TestLayers.level(server, 0).destroyBlock(origin.offset(cut.x(), cut.y(), cut.z()), true));

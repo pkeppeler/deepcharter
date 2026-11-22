@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Function;
@@ -40,6 +41,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -625,6 +628,9 @@ public class StalkCollapseTest {
 
     /** Where an option's origin stands in the test area: far enough from every edge that its widest reach (8 blocks) is cleared. */
     private static final int OPTION_AT = 9;
+
+    /** Chunks east of the test, far enough that none of the test's own are near, whose neighbour is not loaded. */
+    private static final int UNLOADED_CHUNKS_AWAY = 4000;
 
     private static final int OPTION_SEEDS = 40;
     private static final int OPTION_PLACED_SEEDS = 6;
@@ -1215,5 +1221,61 @@ public class StalkCollapseTest {
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void aSagForkNeverLandsOnAPlayerAtItsFoot(GameTestHelper helper) {
         optionNeverLandsOnAPlayer(helper, GreatStalkShape.FORK, FORK_SEED);
+    }
+
+    /** The great block's {@code falling} state, found by name: the property is the collapse's own. */
+    private static BlockState falling(Block block) {
+        BooleanProperty property = (BooleanProperty) block.getStateDefinition().getProperty("falling");
+        return block.defaultBlockState()
+                .setValue(Objects.requireNonNull(property, "great blocks have a falling state"), true);
+    }
+
+    /**
+     * #876: a collapse never loads a chunk beside the one it is in. A great stalk on the east edge of a chunk whose east neighbour is not
+     * loaded is broken (and a falling block of it broken by hand); the neighbour is still not loaded after.
+     */
+    @GameTest(maxTicks = TEST_MAX_TICKS)
+    public void aCollapseAtAChunkEdgeNeverLoadsTheChunkBeside(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos here = helper.absolutePos(new BlockPos(0, BASE_ROW, 0));
+        int chunkX = (here.getX() >> 4) + UNLOADED_CHUNKS_AWAY;
+        int chunkZ = here.getZ() >> 4;
+        LevelChunk chunk = level.getChunk(chunkX, chunkZ);
+        if (level.getChunkSource().hasChunk(chunkX + 1, chunkZ)) {
+            throw failure(helper, "the chunk beside the test chunk is loaded before the test starts");
+        }
+        BlockPos edge = new BlockPos((chunkX << 4) + 15, here.getY(), chunkZ << 4);
+        // A removal is announced to the block as the world does it, but without changing the world: vanilla's own light
+        // and neighbour
+        // updates across the edge load the chunk beside it, and are not the collapse's.
+        for (Block block : List.of(ours("great_stalk"), ours("great_stalk_cap"))) {
+            for (boolean fallingState : new boolean[] {false, true}) {
+                chunk.setBlockState(edge, Blocks.AIR.defaultBlockState(), 0);
+                BlockState removed = fallingState ? falling(block) : block.defaultBlockState();
+                removed.affectNeighborsAfterRemoval(level, edge, false);
+                if (level.getChunkSource().hasChunk(chunkX + 1, chunkZ)) {
+                    throw failure(
+                            helper,
+                            "breaking %s (falling %s) at a chunk's edge loaded the chunk beside it",
+                            block,
+                            fallingState);
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    /** A falling great block that nothing is collapsing (a command placed it) comes down on its own, and does not stay in the air. */
+    @GameTest(maxTicks = TEST_MAX_TICKS)
+    public void aStrayFallingBlockComesDown(GameTestHelper helper) {
+        clearOptionArea(helper);
+        BlockPos pos = optionOrigin(helper).above(3);
+        helper.getLevel().setBlock(pos, falling(ours("great_stalk")), Block.UPDATE_ALL);
+        helper.runAfterDelay(COLLAPSE_WAIT, () -> {
+            if (!helper.getLevel().getBlockState(pos).isAir()) {
+                throw failure(helper, "a stray falling block still hangs in the air");
+            }
+            helper.succeed();
+        });
     }
 }

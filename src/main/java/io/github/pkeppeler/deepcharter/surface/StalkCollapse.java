@@ -51,6 +51,8 @@ import net.minecraft.world.phys.AABB;
 final class StalkCollapse {
     /** The most blocks one collapse lowers, so that no chain of touching great stalks makes a step cost a lot. */
     private static final int MOST_BLOCKS = 1024;
+    // A great stalk is at most 90 blocks (every shape's yield, tested), far under this, so a walk never reaches it for
+    // one.
 
     private static final Direction[] JOINS = {
         Direction.UP, Direction.DOWN, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST
@@ -98,6 +100,11 @@ final class StalkCollapse {
         return (state.getBlock() instanceof GreatStalkBlock block && block.isCap()) || ordinary(state);
     }
 
+    /** Whether the chunk of {@code pos} is loaded: a collapse never loads one, so what is in an unloaded chunk is not joined to anything. */
+    private static boolean loaded(ServerLevel level, BlockPos pos) {
+        return level.getChunkSource().hasChunk(pos.getX() >> 4, pos.getZ() >> 4);
+    }
+
     /** Whether the block below is a solid floor for {@code pos}. */
     private static boolean standsOnSomething(ServerLevel level, BlockPos pos) {
         BlockPos below = pos.below();
@@ -128,6 +135,9 @@ final class StalkCollapse {
             // them.
             for (Direction direction : Direction.values()) {
                 BlockPos next = pos.relative(direction);
+                if (!loaded(level, next)) {
+                    continue;
+                }
                 BlockState state = level.getBlockState(next);
                 if (falling(state)) {
                     level.scheduleTick(next, state.getBlock(), SurfaceTuning.DEFAULT.collapseStepTicks());
@@ -146,7 +156,8 @@ final class StalkCollapse {
         if (great(removed)) {
             for (Direction direction : HELD_BY) {
                 BlockPos next = pos.relative(direction);
-                if (!claimed.contains(next)
+                if (loaded(level, next)
+                        && !claimed.contains(next)
                         && collapses(level.getBlockState(next))
                         && !standsOnSomething(level, next)
                         && !grounded(level, next)) {
@@ -178,6 +189,16 @@ final class StalkCollapse {
     }
 
     /**
+     * A great block was placed: one that is falling but that no collapse is carrying (a command placed it, or it was left by a
+     * collapse that a save or a walk's cap cut off) gets a step, so that it never stays in the air. A collapse's own placing is not this.
+     */
+    static void placed(ServerLevel level, BlockPos pos, BlockState state) {
+        if (!stepping && falling(state)) {
+            level.scheduleTick(pos, state.getBlock(), SurfaceTuning.DEFAULT.collapseDelayTicks());
+        }
+    }
+
+    /**
      * Whether the stalk blocks joined to {@code start}, face to face, stand on the ground: one of them has something solid under it that
      * is not a stalk block. What it cannot tell (more blocks than a collapse lowers, or a join into a chunk that is not loaded) it
      * counts as standing.
@@ -194,9 +215,7 @@ final class StalkCollapse {
             }
             for (Direction direction : Direction.values()) {
                 BlockPos next = pos.relative(direction);
-                if (level.getChunkSource().hasChunk(next.getX() >> 4, next.getZ() >> 4)
-                        && collapses(level.getBlockState(next))
-                        && found.add(next)) {
+                if (loaded(level, next) && collapses(level.getBlockState(next)) && found.add(next)) {
                     queue.add(next);
                 }
             }
@@ -301,6 +320,10 @@ final class StalkCollapse {
             BlockPos pos = queue.poll();
             for (Direction direction : Direction.values()) {
                 BlockPos next = pos.relative(direction);
+                if (!loaded(level, next)) {
+                    // What is not loaded may be holding it up.
+                    return false;
+                }
                 BlockState nextState = level.getBlockState(next);
                 if (falling.contains(next) || !collapses(nextState)) {
                     continue;
@@ -340,7 +363,7 @@ final class StalkCollapse {
             BlockState state = level.getBlockState(pos);
             for (Direction direction : JOINS) {
                 BlockPos next = pos.relative(direction);
-                if (!level.getChunkSource().hasChunk(next.getX() >> 4, next.getZ() >> 4)) {
+                if (!loaded(level, next)) {
                     // A collapse at a chunk's edge never loads the chunk beside it: what is not loaded is not joined.
                     continue;
                 }
