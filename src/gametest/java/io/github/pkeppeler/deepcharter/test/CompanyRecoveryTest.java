@@ -62,6 +62,9 @@ public class CompanyRecoveryTest {
     private static final int Z = 12_000;
     private static final RecoveryTuning TUNING = RecoveryTuning.DEFAULT;
     private static final int HEIGHT_IN_LAYER = 40;
+    /** A batch of its own: the blocked landing floods the colony's pad and the world spawn, which every colony test of a shared batch reads. */
+    private static final String ALONE = "deepcharter-test:alone";
+
     private static final int LONG_RUN = FarChunks.AWAIT_BUDGET_TICKS + 4000;
     private static final int SHORT_RUN = FarChunks.AWAIT_BUDGET_TICKS + 400;
 
@@ -582,7 +585,7 @@ public class CompanyRecoveryTest {
 
     // A blocked landing
 
-    @GameTest(maxTicks = LONG_RUN)
+    @GameTest(maxTicks = LONG_RUN, environment = ALONE)
     public void aBlockedColonyIsARefusalThatRestoresThePodAndRefundsTheFee(GameTestHelper helper) {
         Plan plan = new Plan();
         plan.balance = 100;

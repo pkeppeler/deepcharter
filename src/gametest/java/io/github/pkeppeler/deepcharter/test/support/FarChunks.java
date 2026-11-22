@@ -77,12 +77,13 @@ public final class FarChunks {
     }
 
     /**
-     * Forces a chunk for the rest of the world, since the runner unforces every forced chunk at each batch end (#669). As {@link #force},
-     * the ticket loads the chunk on the worker threads: a caller that reads it waits first ({@link #awaitEntityTicking}).
+     * Forces a chunk for the rest of the world, since the runner unforces every forced chunk at each batch end (#669). It loads the chunk
+     * on the server thread, once, when the colony is built. A ticket alone, as {@link #force} takes, made {@code ColonyTest} find the pad
+     * gone on the first tick of a full run now and then (#1020), so the pad's load stays synchronous.
      */
     public static void pin(ServerLevel level, int chunkX, int chunkZ) {
         PINNED.add(new Chunk(level, ChunkPos.pack(chunkX, chunkZ)));
-        level.getChunkSource().updateChunkForced(new ChunkPos(chunkX, chunkZ), true);
+        level.setChunkForced(chunkX, chunkZ, true);
     }
 
     /** Whether {@link #pin} holds this chunk, exempt from the runner's batch-end unforce. */

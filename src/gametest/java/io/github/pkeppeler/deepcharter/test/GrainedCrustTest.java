@@ -652,7 +652,6 @@ public class GrainedCrustTest {
         ServerLevel level = room(helper, x);
         box(level, x + 3, x + 3, FLOOR, FLOOR + 3, Z, Z, LayerBlocks.GRAINED_CRUST);
         BlockPos chest = new BlockPos(x + 2, FLOOR, Z);
-        level.setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
         MockPlayer player = MockPlayers.join(helper, "grain-chest");
         player.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 2.5), 0f, 0f);
         Arrival<Boolean> ready = ready(helper, level, x);
@@ -664,6 +663,10 @@ public class GrainedCrustTest {
             }
             int tick = (int) helper.getTick();
             if (step[0] == 0) {
+                // Set beside the grain when the player uses it: the grain sheds a block that changes next to it at its
+                // next pulse, which
+                // a chest set while the chunk loaded would not outlast.
+                level.setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
                 ItemStack stack = new ItemStack(Items.COBBLESTONE);
                 player.player().setItemInHand(InteractionHand.MAIN_HAND, stack);
                 BlockHitResult hit =
