@@ -392,7 +392,7 @@ public class BoltDriverTest {
                         helper, "the driver should set a roof bolt against the underside of bare rock, got %s", set);
             }
             if (!corridor.level().getBlockState(cell).is(LayerBlocks.ROOF_BOLT)
-                    || !CaveIns.isBolted(corridor.level(), roof)) {
+                    || !CaveIns.boltNear(corridor.level(), roof, CAVE_IN.boltReach())) {
                 throw failure(
                         helper,
                         "a roof bolt should hang under the roof, found %s",
@@ -701,7 +701,7 @@ public class BoltDriverTest {
                         () -> "the corridor's chunk",
                         () -> {
                             if (!level.getBlockState(cell).is(LayerBlocks.ROOF_BOLT)
-                                    || !CaveIns.isBolted(level, roof)) {
+                                    || !CaveIns.boltNear(level, roof, CAVE_IN.boltReach())) {
                                 throw failure(
                                         helper,
                                         "a roof bolt was lost across a save and a load: %s",

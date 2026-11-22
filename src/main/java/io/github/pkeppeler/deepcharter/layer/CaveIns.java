@@ -188,11 +188,6 @@ public final class CaveIns {
         return level.getChunkSource().hasChunk(at.getX() >> 4, at.getZ() >> 4);
     }
 
-    /** Whether a roof bolt holds {@code roof}: one within {@link CaveInTuning#boltReach()} of it. */
-    public static boolean isBolted(ServerLevel level, BlockPos roof) {
-        return holds(boltsNear(level, roof, CaveInTuning.DEFAULT.boltReach()), roof);
-    }
-
     /** Whether another roof bolt hangs within {@code spacing} blocks of the cell {@code at}. */
     public static boolean boltNear(ServerLevel level, BlockPos at, double spacing) {
         for (BlockPos other : boltsNear(level, at, spacing)) {
