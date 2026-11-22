@@ -27,6 +27,7 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Evidence scenario "m3-tether" (#986): a person on foot clips a tether to their pod's winch on a shelf over a deep pit, steps off the
@@ -136,13 +137,15 @@ public class TetherScenario extends EvidenceScenario {
                 frame(context);
             }
             screenshot(context, "tether-tow-hooked");
-            double start = singleplayer
+            Vec3 start = singleplayer
                     .getServer()
-                    .computeOnServer(server -> pod(server, pods[1]).getZ());
+                    .computeOnServer(server -> pod(server, pods[1]).position());
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = player(server);
                 PodEntity pod = pod(server, pods[0]);
                 pod.setFuel(100f);
+                // A pod heads where its pilot looks: south, down the length of the shelf.
+                player.teleportTo(level(server), player.getX(), player.getY(), player.getZ(), Set.of(), 0f, 10f, true);
                 if (!player.startRiding(pod)) {
                     throw new AssertionError("the person could not climb into the pod");
                 }
@@ -159,11 +162,19 @@ public class TetherScenario extends EvidenceScenario {
             singleplayer.getServer().runOnServer(server -> player(server).setLastClientInput(Input.EMPTY));
             screenshot(context, "tether-towing");
             double towed = singleplayer
-                            .getServer()
-                            .computeOnServer(server -> pod(server, pods[1]).getZ())
-                    - start;
+                    .getServer()
+                    .computeOnServer(server -> pod(server, pods[1]).position())
+                    .subtract(start)
+                    .horizontalDistance();
             if (towed < MIN_TOWED_BLOCKS) {
-                throw new AssertionError("the wreck should trail the pod, it moved " + towed + " blocks");
+                throw new AssertionError("the wreck should trail the pod, it moved " + towed + " blocks; "
+                        + singleplayer
+                                .getServer()
+                                .computeOnServer(server -> "pod at "
+                                        + pod(server, pods[0]).position()
+                                        + ", fuel " + pod(server, pods[0]).fuel()
+                                        + ", wreck at " + pod(server, pods[1]).position()
+                                        + ", towed by " + PodTowing.towerId(pod(server, pods[1]))));
             }
         }
     }
