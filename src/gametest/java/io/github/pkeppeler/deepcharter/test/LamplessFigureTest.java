@@ -452,20 +452,24 @@ public class LamplessFigureTest {
     }
 
     @GameTest
-    public void onlyTheRailLevelLooksForSitesAndOnlyOnTheInterval(GameTestHelper helper) {
+    public void onlyTheCampaignLevelLooksForSitesAndOnlyOnTheInterval(GameTestHelper helper) {
         int interval = TUNING.spawnIntervalTicks();
         for (long time : new long[] {0, interval, 7L * interval}) {
-            expectSpawnTick(helper, TestLayers.dimension(StructureKind.RAILS.layer()), time, true);
+            expectSpawnTick(
+                    helper,
+                    TestLayers.level(helper, StructureKind.RAILS.layer()).dimension(),
+                    time,
+                    true);
         }
         for (long time : new long[] {1, interval - 1, interval + 1, 7L * interval + 3}) {
-            expectSpawnTick(helper, TestLayers.dimension(StructureKind.RAILS.layer()), time, false);
+            expectSpawnTick(
+                    helper,
+                    TestLayers.level(helper, StructureKind.RAILS.layer()).dimension(),
+                    time,
+                    false);
         }
-        for (ResourceKey<Level> other : List.of(
-                Level.OVERWORLD,
-                Level.NETHER,
-                Level.END,
-                TestLayers.dimension(1),
-                TestLayers.dimension(StructureKind.RAILS.layer() + 1))) {
+        // The campaign level holds every layer, so it is the one level that looks; the others never do.
+        for (ResourceKey<Level> other : List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
             expectSpawnTick(helper, other, 0, false);
             expectSpawnTick(helper, other, interval, false);
         }

@@ -35,7 +35,11 @@ import org.jspecify.annotations.Nullable;
  * <p>Stills per layer {@code N}: {@code layer-N-pods-at-rest} and {@code layer-N-driving}. The clip is the drive in layer 2.
  */
 public class LdlDarkLayersScenario extends EvidenceScenario {
-    private static final BlockPos FLOOR = new BlockPos(3000, LAYER_ROOM_Y, 3000);
+    /** The chamber's floor block in {@code layer}: the same column, the same height over the layer's floor. */
+    private static BlockPos floor(int layer) {
+        return new BlockPos(3000, TestLayers.worldY(layer, LAYER_ROOM_LOCAL_Y), 3000);
+    }
+
     private static final int LENGTH = 40;
     private static final int HALF_WIDTH = 6;
     private static final int HEIGHT = 6;
@@ -70,6 +74,7 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
     }
 
     private void visit(ClientGameTestContext context, TestSingleplayerContext singleplayer, int layer) {
+        BlockPos floor = floor(layer);
         int[] litId = {0};
         UUID[] litUuid = {null};
         singleplayer.getServer().runOnServer(server -> {
@@ -77,8 +82,8 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
             player.stopRiding();
             ServerLevel level = TestLayers.level(server, layer);
             // The chamber's chunks stay loaded and ticking, so the pods in them cannot unload before the player mounts.
-            for (int cx = (FLOOR.getX() - 1) >> 4; cx <= (FLOOR.getX() + LENGTH) >> 4; cx++) {
-                for (int cz = (FLOOR.getZ() - HALF_WIDTH - 1) >> 4; cz <= (FLOOR.getZ() + HALF_WIDTH + 1) >> 4; cz++) {
+            for (int cx = (floor.getX() - 1) >> 4; cx <= (floor.getX() + LENGTH) >> 4; cx++) {
+                for (int cz = (floor.getZ() - HALF_WIDTH - 1) >> 4; cz <= (floor.getZ() + HALF_WIDTH + 1) >> 4; cz++) {
                     // force-ok: no GameTestHelper to release through; the world is discarded
                     level.setChunkForced(cx, cz, true);
                     level.getChunk(cx, cz);
@@ -86,19 +91,19 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
             }
             RoomCarver.carve(
                     level,
-                    FLOOR.offset(-1, 0, -HALF_WIDTH - 1),
-                    FLOOR.offset(LENGTH, HEIGHT + 1, HALF_WIDTH + 1),
+                    floor.offset(-1, 0, -HALF_WIDTH - 1),
+                    floor.offset(LENGTH, HEIGHT + 1, HALF_WIDTH + 1),
                     Blocks.STONE.defaultBlockState(),
                     Block.UPDATE_ALL);
             RoomCarver.carve(
                     level,
-                    FLOOR.offset(0, 1, -HALF_WIDTH),
-                    FLOOR.offset(LENGTH - 1, HEIGHT, HALF_WIDTH),
+                    floor.offset(0, 1, -HALF_WIDTH),
+                    floor.offset(LENGTH - 1, HEIGHT, HALF_WIDTH),
                     Blocks.AIR.defaultBlockState(),
                     Block.UPDATE_ALL);
-            player.teleportTo(level, FLOOR.getX() + 1, FLOOR.getY() + 1, FLOOR.getZ() + 0.5, Set.of(), -90f, 4f, true);
+            player.teleportTo(level, floor.getX() + 1, floor.getY() + 1, floor.getZ() + 0.5, Set.of(), -90f, 4f, true);
             PodEntity lit = TestEntities.create(PodRegistry.POD, level);
-            lit.setPos(FLOOR.getX() + LIT_X, FLOOR.getY() + 1, FLOOR.getZ() + 0.5);
+            lit.setPos(floor.getX() + LIT_X, floor.getY() + 1, floor.getZ() + 0.5);
             lit.setFuel(100f);
             level.addFreshEntity(lit);
             PodComponents.register(
@@ -114,7 +119,7 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
                             LIGHTS_TIER,
                             PodComponents.registration(lit).orElseThrow().owner()));
             PodEntity dark = TestEntities.create(PodRegistry.POD, level);
-            dark.setPos(FLOOR.getX() + 5, FLOOR.getY() + 1, FLOOR.getZ() - 3);
+            dark.setPos(floor.getX() + 5, floor.getY() + 1, floor.getZ() - 3);
             dark.setFuel(100f);
             level.addFreshEntity(dark);
             litId[0] = lit.getId();
@@ -138,7 +143,7 @@ public class LdlDarkLayersScenario extends EvidenceScenario {
                 () -> singleplayer.getServer().computeOnServer(server -> litPod(server, layer, litUuid[0]) != null),
                 () -> singleplayer.getServer().computeOnServer(server -> {
                     ServerLevel level = TestLayers.level(server, layer);
-                    BlockPos spot = FLOOR.offset(LIT_X, 1, 0);
+                    BlockPos spot = floor.offset(LIT_X, 1, 0);
                     return "pod " + litUuid[0] + " not in " + level.dimension().identifier() + "; chunk at " + spot
                             + " loaded: " + level.isLoaded(spot);
                 }));
