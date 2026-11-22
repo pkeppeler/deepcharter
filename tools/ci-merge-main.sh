@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: tools/ci-merge-main.sh <pr-head-sha>   (CI: .github/actions/merge-main)
+# Usage: tools/ci-merge-main.sh <pr-head-sha>   (run by .github/actions/merge-main, from main)
 #
 # In a checkout of the PR head: fetch origin/main now, merge it in, and check the result. Prints a `merged-main`
 # notice annotation holding the main sha (tools/merge-pr.sh reads it back) and, when $GITHUB_OUTPUT is set,

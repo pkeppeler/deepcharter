@@ -41,8 +41,24 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          path: .ci-main
+          sparse-checkout: |
+            .github/actions/merge-main
+            tools/ci-merge-main.sh
+          persist-credentials: false
+      # bootstrap-979: until main has the action, use the PR's own copy. Delete this step once #982 is on main.
+      - shell: bash
+        run: |
+          if [ ! -f .ci-main/.github/actions/merge-main/action.yml ]; then
+            mkdir -p .ci-main/.github/actions .ci-main/tools
+            cp -r .github/actions/merge-main .ci-main/.github/actions/
+            cp tools/ci-merge-main.sh .ci-main/tools/
+          fi
       - id: merge
-        uses: ./.github/actions/merge-main
+        uses: ./.ci-main/.github/actions/merge-main
       - id: decide
         env:
           GAMEPLAY_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'gameplay') && '1' || '0' }}
@@ -63,5 +79,21 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: ./.github/actions/merge-main
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          path: .ci-main
+          sparse-checkout: |
+            .github/actions/merge-main
+            tools/ci-merge-main.sh
+          persist-credentials: false
+      # bootstrap-979: until main has the action, use the PR's own copy. Delete this step once #982 is on main.
+      - shell: bash
+        run: |
+          if [ ! -f .ci-main/.github/actions/merge-main/action.yml ]; then
+            mkdir -p .ci-main/.github/actions .ci-main/tools
+            cp -r .github/actions/merge-main .ci-main/.github/actions/
+            cp tools/ci-merge-main.sh .ci-main/tools/
+          fi
+      - uses: ./.ci-main/.github/actions/merge-main
       - uses: ./.github/actions/client-gametest
