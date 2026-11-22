@@ -57,7 +57,6 @@ public final class BlockReadoutHud {
                         Math.ceil(height * look.scale()));
     }
 
-    /** The width, before the scale, of the wider of the two lines. */
     private static int widest(Font font, Readout readout) {
         int widest = font.width(readout.name());
         return readout.hint().map(hint -> Math.max(widest, font.width(hint))).orElse(widest);
@@ -125,7 +124,7 @@ public final class BlockReadoutHud {
         graphics.pose().popMatrix();
     }
 
-    /** {@code text} centred in whole pixels in a line {@code widest} wide, from the box's integer origin, so what is drawn is inside the box that is kept clear. */
+    /** Whole-pixel centring from the box's integer origin, so the text stays inside the box kept clear. */
     private static void centred(
             GuiGraphicsExtractor graphics, Font font, int widest, Component text, int y, int color) {
         graphics.text(font, text, (widest - font.width(text)) / 2, y, color, true);

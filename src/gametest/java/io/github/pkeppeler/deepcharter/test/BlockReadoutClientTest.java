@@ -116,11 +116,21 @@ public class BlockReadoutClientTest implements FabricClientGameTest {
                     client.font.width(readout.name()),
                     readout.hint().map(client.font::width).orElse(0));
             int expectedWidth = (int) Math.ceil(widest * look.scale());
+            int lines = readout.hint().isPresent() ? 2 : 1;
+            int expectedHeight =
+                    (int) Math.ceil((lines * client.font.lineHeight + (lines - 1) * look.lineGap()) * look.scale());
             require(
-                    kept.x() == (width - expectedWidth) / 2 && kept.width() == expectedWidth,
-                    "the kept box " + kept + " is centred and as wide as the wider line, " + expectedWidth);
+                    kept.x() == (width - expectedWidth) / 2
+                            && kept.width() == expectedWidth
+                            && kept.y() == height / 2 + look.offsetY()
+                            && kept.height() == expectedHeight,
+                    "the kept box " + kept + " is centred, " + expectedWidth + " wide (the wider line) and "
+                            + expectedHeight + " high (its lines), below the crosshair");
+            require(width % 2 == 1, "this check needs an odd GUI width to catch the half-pixel overflow, got " + width);
+            List<Drawn> drawn = drawn(client);
+            require(drawn.size() == lines, "the readout should draw " + lines + " strings, drew " + drawn);
             Box box = new Box(kept.x(), kept.y(), kept.width(), kept.height());
-            for (Drawn text : drawn(client)) {
+            for (Drawn text : drawn) {
                 require(
                         text.box().x() >= box.x()
                                 && text.box().y() >= box.y()
