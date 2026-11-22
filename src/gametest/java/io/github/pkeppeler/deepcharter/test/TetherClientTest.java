@@ -109,7 +109,8 @@ public class TetherClientTest implements FabricClientGameTest {
                         PodTether.unclip(real, PodTether.Unclipped.UNHOOKED),
                         "the real player should have been clipped, they are at " + real.position() + ", alive "
                                 + real.isAlive() + ", pod "
-                                + PodTether.pod(real).map(PodEntity::position));
+                                + PodTether.pod(real).map(PodEntity::position) + ", entity "
+                                + server.overworld().getEntity(podId));
             });
             ClientWait.until(
                     context,
