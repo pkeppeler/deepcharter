@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
 import io.github.pkeppeler.deepcharter.creature.FootGrips;
@@ -10,6 +11,8 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreTuning;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.repair.CompanyRecovery;
+import io.github.pkeppeler.deepcharter.repair.RecoveryTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -83,6 +86,13 @@ public class RetainedOnFootTest {
     private static final int LIGHT_BUDGET_TICKS = 200;
     /** Ticks a dead figure has to be gone, and the person freed: the dissolve (20 ticks) and a margin. */
     private static final int FREED_BUDGET_TICKS = 60;
+    /** Ticks for the crew's winch to start and the figure to trail out of its ticking chunk: the fuel burns out, then the clock (fast forwarded) runs. */
+    private static final int TRAIL_BUDGET_TICKS = 200;
+    /** The shortest haul that counts, in blocks: the room is thousands of blocks from the colony. */
+    private static final double MINIMUM_HAUL_BLOCKS = 1000;
+    /** The figure's latch speed, blocks a tick. */
+    private static final double FOOT_LATCH_SPEED =
+            CreatureTuning.DEFAULT.cling().latchSpeed();
 
     private static final String APPROACH_KEY = "creature.deepcharter.foot_approach";
     private static final String GRAB_KEY = "creature.deepcharter.foot_grab";
@@ -246,6 +256,15 @@ public class RetainedOnFootTest {
 
     /** The speed the person has is the free speed less what the same mass of ore takes, and the Overburdened status says so. */
     private static void expectSlowedLikeOre(GameTestHelper helper, Room room, float speedFree) {
+        expectOreSpeed(helper, room, speedFree);
+        MobEffectInstance status = room.player().getEffect(OreRegistry.OVERBURDENED);
+        if (status == null) {
+            throw failure(helper, "a held person shows no Overburdened status");
+        }
+    }
+
+    /** The speed alone: a person seated in a pod shows no status, as a pod carries its pilot at its own speed. */
+    private static void expectOreSpeed(GameTestHelper helper, Room room, float speedFree) {
         OreTuning ore = OreTuning.DEFAULT;
         double slowdown = Math.min(ore.maxSlowdown(), FOOT.loadMass() * ore.slowdownPerMass());
         float expected = (float) (speedFree * (1 - slowdown));
@@ -258,10 +277,6 @@ public class RetainedOnFootTest {
                     FOOT.loadMass(),
                     speedFree,
                     expected);
-        }
-        MobEffectInstance status = room.player().getEffect(OreRegistry.OVERBURDENED);
-        if (status == null) {
-            throw failure(helper, "a held person shows no Overburdened status");
         }
     }
 
@@ -834,6 +849,135 @@ public class RetainedOnFootTest {
         });
         FarChunks.awaitEntityTicking(
                 helper, level, origin, () -> made[0] = Room.build(helper, level, origin, HALF - 1));
+    }
+
+    /**
+     * A held, seated pilot is winched home by the Company crew ({@code CompanyRecovery}, #965) to the colony in the same level, thousands
+     * of blocks away. The grip is kept, as the design says: only the figure's death frees. The figure trails at its latch speed with no
+     * physics, never jumping to the person, and the weight stays. Its drain runs in the figure's own tick, and a figure ticks only
+     * where a player is near, so once the figure has trailed out of its ticking chunk the drain stops and the figure stands where it was
+     * left. When that chunk unloads the figure goes with it and the person is freed, the same weakness as a relog (#999).
+     */
+    @GameTest(
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS
+                    + APPROACH_BUDGET_TICKS
+                    + TRAIL_BUDGET_TICKS
+                    + HOLD_AT_FLOOR_TICKS
+                    + FREED_BUDGET_TICKS
+                    + 200)
+    public void aSameLevelWinchKeepsTheGripButTheFigureOnlyTrailsWhereItsChunkTicks(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(13);
+        Room[] made = {null};
+        PodEntity[] pod = {null};
+        float[] speedFree = {0};
+        long[] boardedAt = {0};
+        long[] hauledAt = {-1};
+        long[] frozenAt = {-1};
+        long[] releasedAt = {-1};
+        int[] foodAtFreeze = {0};
+        Vec3[] last = {null};
+        TestTicks.each(helper, () -> {
+            Room room = made[0];
+            if (room == null) {
+                return;
+            }
+            ServerPlayer player = room.player();
+            if (pod[0] == null) {
+                if (room.figure.isClinging()) {
+                    pod[0] = TestEntities.create(PodRegistry.POD, level);
+                    pod[0].setPos(player.position());
+                    level.addFreshEntity(pod[0]);
+                    if (!player.startRiding(pod[0], true, false)) {
+                        throw failure(helper, "the held person could not mount the pod");
+                    }
+                    // The last sliver of fuel: the pod burns it and strands itself, and the crew is called.
+                    pod[0].setFuel(0.01f);
+                    boardedAt[0] = helper.getTick();
+                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS) {
+                    throw failure(helper, "the figure had not taken hold of the person");
+                }
+                return;
+            }
+            if (hauledAt[0] < 0) {
+                PodEntity riding = player.getVehicle() instanceof PodEntity ride ? ride : pod[0];
+                Versioned.readable(riding, CompanyRecovery.STATE)
+                        .filter(CompanyRecovery.State::waiting)
+                        .filter(state -> level.getGameTime() - state.since() < RecoveryTuning.DEFAULT.delayTicks())
+                        .ifPresent(state -> Versioned.modifyOrThrow(
+                                riding,
+                                CompanyRecovery.STATE,
+                                old -> new CompanyRecovery.State(state.since() - RecoveryTuning.DEFAULT.delayTicks())));
+                if (player.position().distanceTo(Vec3.atBottomCenterOf(origin)) > MINIMUM_HAUL_BLOCKS) {
+                    hauledAt[0] = helper.getTick();
+                    room.fillFood();
+                    last[0] = room.figure.position();
+                } else if (helper.getTick() - boardedAt[0] > TRAIL_BUDGET_TICKS) {
+                    throw failure(helper, "the crew never winched the pod home");
+                }
+                return;
+            }
+            long since = helper.getTick() - hauledAt[0];
+            if (since == 1) {
+                Vec3 landed = player.position();
+                if (player.level() != level || !(player.getVehicle() instanceof PodEntity)) {
+                    throw failure(helper, "the winch left the level or the seat: the person is in %s", player.level());
+                }
+                if (room.figure.position().distanceTo(landed) < MINIMUM_HAUL_BLOCKS) {
+                    throw failure(
+                            helper,
+                            "the figure is only %s blocks from the person after the winch",
+                            room.figure.distanceTo(player));
+                }
+            }
+            if (since < 5 && room.figure.position().distanceTo(last[0]) > FOOT_LATCH_SPEED + EPSILON) {
+                throw failure(
+                        helper,
+                        "the figure moved %s blocks in a tick: it jumped to the person, not trailed at %s",
+                        room.figure.position().distanceTo(last[0]),
+                        FOOT_LATCH_SPEED);
+            }
+            last[0] = room.figure.position();
+            if (releasedAt[0] < 0) {
+                if (FootGrips.holder(player) != room.figure || !room.figure.isAlive()) {
+                    throw failure(helper, "the winch freed the person %s ticks after it landed", since);
+                }
+                expectOreSpeed(helper, room, speedFree[0]);
+                if (frozenAt[0] < 0) {
+                    if (!level.isPositionEntityTicking(room.figure.blockPosition())) {
+                        frozenAt[0] = since;
+                        foodAtFreeze[0] = player.getFoodData().getFoodLevel();
+                    } else if (since > TRAIL_BUDGET_TICKS) {
+                        throw failure(helper, "the figure still ticks %s ticks after the winch", since);
+                    }
+                } else if (since - frozenAt[0] >= HOLD_AT_FLOOR_TICKS) {
+                    // Nobody is near the figure: it does not tick, so nothing drains, and the weight stays until its
+                    // chunk goes.
+                    if (player.getFoodData().getFoodLevel() != foodAtFreeze[0]) {
+                        throw failure(
+                                helper,
+                                "the food went from %s to %s while the figure stood in a chunk that does not tick",
+                                foodAtFreeze[0],
+                                player.getFoodData().getFoodLevel());
+                    }
+                    FarChunks.release(helper, level, origin.getX() >> 4, origin.getZ() >> 4);
+                    releasedAt[0] = since;
+                }
+                return;
+            }
+            if (FootGrips.holder(player) == null
+                    && Math.abs(player.getAttributeValue(Attributes.MOVEMENT_SPEED) - speedFree[0]) < EPSILON) {
+                pod[0].discard();
+                room.clear();
+                helper.succeed();
+            } else if (since - releasedAt[0] > FREED_BUDGET_TICKS) {
+                throw failure(helper, "the person is still held after the figure's chunk was let go");
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            made[0] = Room.build(helper, level, origin, HALF - 1);
+            speedFree[0] = (float) made[0].player().getAttributeValue(Attributes.MOVEMENT_SPEED);
+        });
     }
 
     /** On Peaceful a figure draws no person, and one that holds a person lets go when the difficulty turns Peaceful (W3 of the #977 review). */
