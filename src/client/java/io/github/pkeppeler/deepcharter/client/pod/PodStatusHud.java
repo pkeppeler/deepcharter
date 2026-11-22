@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.pod;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodBrace;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -37,6 +38,7 @@ public final class PodStatusHud {
 
     public static void init() {
         HudElementRegistry.addLast(ID, PodStatusHud::extract);
+        HudKeepClear.register(PodStatusHud::keepClear);
     }
 
     /**
@@ -265,6 +267,30 @@ public final class PodStatusHud {
         outOfBrickLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLiningDryColor())));
         hardLandingLine(pod).ifPresent(line -> readout.add(new Line(line, look.podHardLandingColor())));
         return readout;
+    }
+
+    /** The plain readout's block, top left, while it is drawn: a pilot's pod and no cockpit on this GUI. */
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        LocalPlayer player = client.player;
+        if (player == null
+                || !(player.getVehicle() instanceof PodEntity pod)
+                || !PodSeat.showsPodStatus(pod, player)
+                || CockpitHud.seated(client, guiWidth, guiHeight).isPresent()) {
+            return;
+        }
+        HudLook look = HudLook.current();
+        List<Line> lines = readout(player, pod);
+        int widest = lines.stream()
+                .mapToInt(line -> client.font.width(line.text()))
+                .max()
+                .orElse(0);
+        int pitch = client.font.lineHeight + look.podStatusLineGap();
+        into.add(new HudKeepClear.Rect(
+                "pod readout",
+                look.podStatusMargin(),
+                look.podStatusMargin(),
+                widest,
+                lines.size() * pitch - look.podStatusLineGap()));
     }
 
     private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {

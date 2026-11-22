@@ -5,10 +5,12 @@ import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
+import java.util.List;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
@@ -47,6 +49,22 @@ public final class ScannerHud {
     public static void init() {
         ClientTickEvents.END_CLIENT_TICK.register(ScannerHud::tick);
         HudElementRegistry.addLast(ID, ScannerHud::extract);
+        HudKeepClear.register(ScannerHud::keepClear);
+    }
+
+    /** The plain panel, top right, while it is drawn: the pod has a map and no cockpit on this GUI. */
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        ScanSlice scanned = slice;
+        if (scanned == null || CockpitHud.seated(client, guiWidth, guiHeight).isPresent()) {
+            return;
+        }
+        ScanArea area = scanned.area();
+        int cell = cellSize(guiWidth, guiHeight, area);
+        int left = cellLeft(guiWidth, guiHeight, area, -area.halfWidth()) - FRAME;
+        int right = cellLeft(guiWidth, guiHeight, area, area.halfWidth()) + cell + FRAME;
+        int top = ScannerLook.current().margin();
+        int bottom = cellTop(guiWidth, guiHeight, area, -area.down()) + cell + FRAME;
+        into.add(new HudKeepClear.Rect("scanner panel", left, top, right - left, bottom - top));
     }
 
     /**

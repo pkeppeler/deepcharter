@@ -6,6 +6,8 @@ import io.github.pkeppeler.deepcharter.client.theme.BreachLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
+import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
@@ -33,6 +35,23 @@ public final class BreachHud {
         HudElementRegistry.addLast(ALTIMETER, BreachHud::extractAltimeter);
         ClientLifecycleEvents.CLIENT_STARTED.register(
                 client -> HudElementRegistry.addLast(BREACH, BreachHud::extractBreach));
+        HudKeepClear.register(BreachHud::keepClear);
+    }
+
+    /** The altimeter's reading, top centre, while no cockpit draws it in the ribbon's recess (the ribbon is kept clear whole). */
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        if (client.player == null
+                || client.level == null
+                || CockpitHud.seated(client, guiWidth, guiHeight).isPresent()) {
+            return;
+        }
+        int width = client.font.width(Altimeter.reading(client.level, client.player.getBlockY()));
+        into.add(new HudKeepClear.Rect(
+                "altimeter",
+                (guiWidth - width) / 2,
+                HudLook.current().altimeterMargin(),
+                width,
+                client.font.lineHeight));
     }
 
     private static void extractAltimeter(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
