@@ -18,6 +18,7 @@ import java.util.function.Function;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -176,14 +177,12 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context,
                 "both pods standing at their start",
-                client -> TestEntities.require(ClientLight.clientLevel(client), rig.ownPodId())
-                                        .position()
-                                        .distanceToSqr(rig.ownStart())
-                                < 0.04
-                        && TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId())
-                                        .position()
-                                        .distanceToSqr(rig.mockStart())
-                                < 0.04);
+                () -> context.computeOnClient(client -> standsAt(client, rig.ownPodId(), rig.ownStart())
+                        && standsAt(client, rig.mockPodId(), rig.mockStart())),
+                () -> "own pod on the client " + onClient(context, rig.ownPodId()) + ", on the server "
+                        + serverPosition(two, rig.ownPodId()) + ", for " + rig.ownStart() + "; mock pod on the client "
+                        + onClient(context, rig.mockPodId()) + ", on the server " + serverPosition(two, rig.mockPodId())
+                        + ", for " + rig.mockStart());
         context.waitTicks(SETTLE_TICKS);
 
         Subject pilot = new Subject("the pilot's own view");
@@ -213,6 +212,18 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         for (Subject subject : List.of(pilot, watched)) {
             expectSmooth(drive.name() + ", " + subject.name(), subject.frames(), drive);
         }
+    }
+
+    private static Vec3 onClient(ClientGameTestContext context, int podId) {
+        return context.computeOnClient(client ->
+                TestEntities.require(ClientLight.clientLevel(client), podId).position());
+    }
+
+    private static boolean standsAt(Minecraft client, int podId, Vec3 at) {
+        return TestEntities.require(ClientLight.clientLevel(client), podId)
+                        .position()
+                        .distanceToSqr(at)
+                < 0.04;
     }
 
     /** Sets the pod down at {@code at}, still, with no fall behind it. */
