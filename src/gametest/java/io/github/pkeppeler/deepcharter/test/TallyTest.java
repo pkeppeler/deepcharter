@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TallyTimings;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
@@ -285,7 +286,7 @@ public class TallyTest {
 
     /**
      * (#917) The cutter: the pilot drills the moment the Tally clamps, and the cutter breaks it before it can take its sample. It dies in
-     * {@link TallyTuning#cutterBreakTicks} and a margin, the bay keeps all its ore, and it drops nothing.
+     * {@link TallyTimings#cutterBreakTicks} and a margin, the bay keeps all its ore, and it drops nothing.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + CLAMP_BUDGET_TICKS + 200)
     public void theCutterBreaksAClampedTallyBeforeItTakesTheSample(GameTestHelper helper) {
@@ -312,13 +313,14 @@ public class TallyTest {
             if (!arena.tally.isAlive()) {
                 if (brokeAt[0] < 0) {
                     brokeAt[0] = helper.getTick();
-                    if (since < TUNING.cutterBreakTicks() || since > TUNING.cutterBreakTicks() + CUTTER_SLACK_TICKS) {
+                    if (since < TallyTimings.cutterBreakTicks(TUNING)
+                            || since > TallyTimings.cutterBreakTicks(TUNING) + CUTTER_SLACK_TICKS) {
                         throw failure(
                                 helper,
                                 "the cutter broke the Tally %s ticks after the pilot drilled, outside %s to %s",
                                 since,
-                                TUNING.cutterBreakTicks(),
-                                TUNING.cutterBreakTicks() + CUTTER_SLACK_TICKS);
+                                TallyTimings.cutterBreakTicks(TUNING),
+                                TallyTimings.cutterBreakTicks(TUNING) + CUTTER_SLACK_TICKS);
                     }
                     LOGGER.info(
                             "[tally] cutter: the Tally broke {} ticks after the pilot drilled (health {})",
@@ -346,7 +348,7 @@ public class TallyTest {
                 }
                 arena.clear();
                 helper.succeed();
-            } else if (since > TUNING.cutterBreakTicks() + 20) {
+            } else if (since > TallyTimings.cutterBreakTicks(TUNING) + 20) {
                 throw failure(
                         helper,
                         "the Tally lived %s ticks after the pilot drilled (health %s)",

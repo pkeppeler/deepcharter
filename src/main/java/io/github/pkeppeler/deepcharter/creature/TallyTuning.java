@@ -75,10 +75,4 @@ public record TallyTuning(
             throw new IllegalArgumentException("tally tuning out of range: " + this);
         }
     }
-
-    /** Ticks the cutter takes to break a clamped Tally once the pod drills: the first bite as the drill starts, then one each {@code biteTicks}. */
-    public int cutterBreakTicks() {
-        int bites = (int) Math.ceil(maxHealth / biteDamage);
-        return (bites - 1) * biteTicks;
-    }
 }

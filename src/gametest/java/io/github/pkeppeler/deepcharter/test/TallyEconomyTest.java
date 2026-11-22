@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Run;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Zone;
+import io.github.pkeppeler.deepcharter.test.support.TallyTimings;
 import java.util.Map;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -68,7 +69,7 @@ public class TallyEconomyTest {
     @GameTest
     public void theTrailTakesAboutThirtySecondsAndAPilotWhoWatchesBreaksItInTime(GameTestHelper helper) {
         double trail = (double) TUNING.trailTicks() / TICKS_PER_SECOND;
-        double cutter = (double) TUNING.cutterBreakTicks() / TICKS_PER_SECOND;
+        double cutter = (double) TallyTimings.cutterBreakTicks(TUNING) / TICKS_PER_SECOND;
         double hold = (double) TUNING.podSampleTicks() / TICKS_PER_SECOND;
         LOGGER.info(
                 "[tally-economy] trail {} s, the cutter breaks it in {} s, the hatch hold is {} s, the foot hold {} s",

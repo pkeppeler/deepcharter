@@ -40,8 +40,14 @@ public class TallySkimScenario extends EvidenceScenario {
     /** The pod's place for the cutter: two and a half blocks from the west wall. */
     private static final double NEAR_WALL_X = 3.5;
 
-    private static final double TALLY_X = 12.5;
-    private static final double TALLY_Z = -3.5;
+    /**
+     * The Tally starts beside the pod on the camera's side, up and to the left of the view (the camera hangs 4 blocks behind the pilot, looking
+     * west), so that it trails in frame with its amber eye toward the lens; coming from the front it trailed out of view behind the pod.
+     */
+    private static final double TALLY_X = POD_X + 2.5;
+
+    private static final double TALLY_Z = -2.5;
+    private static final double TALLY_HEIGHT = 3;
     private static final int ORES = 3;
     private static final int TICKS_PER_FRAME = 2;
     /** Frames of the Tally flying to its trail, before the wait. */
@@ -163,7 +169,7 @@ public class TallySkimScenario extends EvidenceScenario {
             chamber.serverDo(server -> {
                 ServerLevel level = RetainedChamber.layer(server);
                 Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
-                tally.setPos(RetainedChamber.at(TALLY_X, 2, TALLY_Z));
+                tally.setPos(RetainedChamber.at(TALLY_X, TALLY_HEIGHT, TALLY_Z));
                 level.addFreshEntity(tally);
                 tallyId = tally.getId();
             });
