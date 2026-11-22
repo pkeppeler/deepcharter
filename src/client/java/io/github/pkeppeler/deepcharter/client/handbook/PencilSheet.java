@@ -35,10 +35,10 @@ final class PencilSheet {
         QuestMapTuning q = QuestMapTuning.current();
         int count = Math.max(1, entries.size());
         int pitch = Math.min(q.pencilRowPitch(), (bottom - top + q.pencilRowGap()) / count);
-        int boxHeight = Math.max(lineHeight + 2, pitch - q.pencilRowGap());
+        int boxHeight = Math.max(lineHeight + q.pencilTextTop(), pitch - q.pencilRowGap());
         int sourceWidth = width * q.pencilSourcePercent() / 100;
         int markWidth = 2 * q.pencilMarkSize() + 1;
-        int payoffWidth = width - sourceWidth - q.pencilArrowMin() - markWidth - 2;
+        int payoffWidth = width - sourceWidth - q.pencilArrowMin() - markWidth - q.pencilMarkGap();
         List<Row> rows = new ArrayList<>();
         for (int i = 0; i < entries.size(); i++) {
             int y = top + i * pitch;
@@ -47,7 +47,7 @@ final class PencilSheet {
                     entries.get(i),
                     new QuestMap.Rect(left, y, sourceWidth, boxHeight),
                     new QuestMap.Rect(payoffLeft, y, payoffWidth, boxHeight),
-                    payoffLeft - 1 - q.pencilMarkSize() - 1,
+                    payoffLeft - q.pencilMarkGap() - q.pencilMarkSize(),
                     y + boxHeight / 2));
         }
         return new Layout(List.copyOf(rows));
@@ -69,7 +69,7 @@ final class PencilSheet {
         int seed = 0;
         for (Row row : layout.rows()) {
             PencilPath path = row.entry().path();
-            boolean done = row.entry().done();
+            boolean done = row.entry().done() || ClientPencil.isDone(path);
             seed++;
             box(graphics, font, row.source(), sourceLabel(path), pencil, seed);
             box(
@@ -80,8 +80,8 @@ final class PencilSheet {
                     pencil,
                     seed + 50);
             int midY = row.markY();
-            int tip = row.markX() - q.pencilMarkSize() - 2;
-            int start = row.source().right() + 1;
+            int tip = row.markX() - q.pencilMarkSize() - q.pencilTipGap();
+            int start = row.source().right() + q.pencilStartGap();
             PaperDraw.arrow(
                     graphics,
                     new int[][] {
@@ -95,7 +95,7 @@ final class PencilSheet {
                     done ? 0 : q.dashOff());
             PaperDraw.cross(graphics, row.markX(), midY, q.pencilMarkSize(), pencil);
             if (done) {
-                PaperDraw.ring(graphics, row.markX(), midY, q.pencilMarkSize() + 2, pencil);
+                PaperDraw.ring(graphics, row.markX(), midY, q.pencilMarkSize() + q.pencilRingExtra(), pencil);
             }
         }
     }
@@ -104,12 +104,12 @@ final class PencilSheet {
             GuiGraphicsExtractor graphics, Font font, QuestMap.Rect box, Component text, int color, int seed) {
         QuestMapTuning q = QuestMapTuning.current();
         PaperDraw.sketchBox(graphics, box.x(), box.y(), box.right(), box.bottom(), color, seed, q.pencilWobble());
-        int lines = Math.max(1, (box.h() - 2) / (font.lineHeight + 1));
-        int y = box.y() + 2;
+        int lines = Math.max(1, (box.h() - q.pencilTextTop()) / (font.lineHeight + q.pencilLineGap()));
+        int y = box.y() + q.pencilTextTop();
         for (String line : QuestMap.clip(font, text.getString(), box.w() - 2 * q.pencilBoxInset(), lines)) {
             graphics.text(
                     font, PaperDraw.ink(Component.literal(line), color), box.x() + q.pencilBoxInset(), y, color, false);
-            y += font.lineHeight + 1;
+            y += font.lineHeight + q.pencilLineGap();
         }
     }
 }

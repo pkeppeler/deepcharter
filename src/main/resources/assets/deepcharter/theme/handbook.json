@@ -108,5 +108,11 @@
   "pencilArrowMin": 36,
   "pencilBoxInset": 3,
   "pencilMarkSize": 4,
-  "pencilWobble": 1
+  "pencilWobble": 1,
+  "pencilRingExtra": 2,
+  "pencilTextTop": 2,
+  "pencilLineGap": 1,
+  "pencilTipGap": 4,
+  "pencilStartGap": 1,
+  "pencilMarkGap": 2
 }

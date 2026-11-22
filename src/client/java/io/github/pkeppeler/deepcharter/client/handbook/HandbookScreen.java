@@ -436,6 +436,14 @@ public final class HandbookScreen extends Screen {
         int count = mapPages.size() + (pencilPage >= 0 ? 1 : 0);
         int pitch = Math.min(
                 tuning().tabHeight() + q.chapterTabGap(), (paperHeight - q.chapterTabTop()) / Math.max(1, count));
+        int tabsTop = paperTop + q.chapterTabTop();
+        int minPitch = font.lineHeight + q.chapterTabGap();
+        if (pitch < minPitch) {
+            // a window too short for the tabs to be a line of text each: they stand taller, and the column starts
+            // higher
+            pitch = minPitch;
+            tabsTop = Math.max(0, paperTop + paperHeight - count * pitch);
+        }
         int tabHeight = pitch - q.chapterTabGap();
         List<PaperButton> tabs = new ArrayList<>();
         for (int number = 1; number <= count; number++) {
@@ -443,7 +451,7 @@ public final class HandbookScreen extends Screen {
             boolean pencil = number > mapPages.size();
             PaperButton tab = addRenderableWidget(new PaperButton(
                     paperLeft + paperWidth - 1,
-                    paperTop + q.chapterTabTop() + (number - 1) * pitch,
+                    tabsTop + (number - 1) * pitch,
                     q.chapterTabWidth(),
                     tabHeight,
                     pencil
@@ -1103,10 +1111,19 @@ public final class HandbookScreen extends Screen {
                 tr("pencil.label"),
                 textLeft,
                 paperTop + tuning().topMargin(),
-                textWidth,
+                mapWidth(),
                 tuning().faintInkColor());
-        y = PaperDraw.wrapped(graphics, font, tr("pencil.title"), textLeft, y + 3, textWidth, tuning().inkColor());
-        PencilSheet.draw(graphics, font, pencilLayout(pencil, titleRule(graphics, y)));
+        y = PaperDraw.wrapped(
+                graphics,
+                font,
+                tr("pencil.title"),
+                textLeft,
+                y + QuestMapTuning.current().headingGap(),
+                mapWidth(),
+                tuning().inkColor());
+        // as drawMap's rule: across the whole sheet the rows are drawn on
+        graphics.fill(textLeft, y + 1, textLeft + mapWidth(), y + 2, Colors.opaque(tuning().inkColor()));
+        PencilSheet.draw(graphics, font, pencilLayout(pencil, y + tuning().paragraphGap() + 2));
     }
 
     private PencilSheet.Layout pencilLayout(HandbookPage.Pencil pencil, int top) {

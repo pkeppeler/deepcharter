@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
+import io.github.pkeppeler.deepcharter.handbook.PencilPath;
 import io.github.pkeppeler.deepcharter.handbook.PencilPaths;
 import java.util.Collection;
 import java.util.List;
@@ -15,8 +16,14 @@ public final class ClientPencil {
 
     private ClientPencil() {}
 
-    static void set(Collection<Identifier> newCompleted) {
+    /** Takes the set the server sent. A pencil sheet that is open inks in a path it completes at its next draw. */
+    public static void set(Collection<Identifier> newCompleted) {
         completed = Set.copyOf(newCompleted);
+    }
+
+    /** Whether the charter has reached the place of {@code path}, as the server last said. */
+    public static boolean isDone(PencilPath path) {
+        return completed.contains(path.id());
     }
 
     /** The paths the sheet draws for the Notes in {@link ClientNotes}, each marked done when the charter has reached its place. */

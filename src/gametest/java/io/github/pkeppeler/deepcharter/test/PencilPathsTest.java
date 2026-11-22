@@ -23,14 +23,18 @@ import io.github.pkeppeler.deepcharter.test.support.TestCharters;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.netty.buffer.Unpooled;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.locale.Language;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
@@ -98,8 +102,8 @@ public class PencilPathsTest {
                     PencilPaths.ONES_BELOW.place(), PencilPaths.OLD_SHAFT.place());
         }
         for (PencilPath path : PencilPaths.ALL) {
-            if (!net.minecraft.locale.Language.getInstance().has(path.hintKey())
-                    || !net.minecraft.locale.Language.getInstance().has(path.placeKey())) {
+            if (!Language.getInstance().has(path.hintKey())
+                    || !Language.getInstance().has(path.placeKey())) {
                 throw helper.assertionException(
                         "%s needs the lang keys %s and %s", path.id(), path.hintKey(), path.placeKey());
             }
@@ -383,6 +387,31 @@ public class PencilPathsTest {
             throw helper.assertionException("a level that holds no layer 2 is never the place");
         }
 
+        // The layer's band: the shaft's column one block above or below it, or in the other layer's level, is no place.
+        LayerChain.Band band = TestLayers.band(layer, StructureKind.KELLS_SHAFT.layer());
+        BlockPos above = new BlockPos(
+                shaft.origin().getX(), band.maxY() + 1, shaft.origin().getZ());
+        BlockPos below = new BlockPos(
+                shaft.origin().getX(), band.minY() - 1, shaft.origin().getZ());
+        Optional<StructureSite> inside = LayerStructures.siteNear(layer, StructureKind.KELLS_SHAFT, shaft.origin());
+        if (!inside.equals(Optional.of(shaft))) {
+            throw helper.assertionException("control: inside the band the nearest shaft is %s, was %s", shaft, inside);
+        }
+        for (BlockPos outside : List.of(above, below)) {
+            if (LayerStructures.siteNear(layer, StructureKind.KELLS_SHAFT, outside)
+                            .isPresent()
+                    || new PencilPlace.Structure(StructureKind.KELLS_SHAFT).reached(layer, outside, Set.of())) {
+                throw helper.assertionException(
+                        "%s is outside layer 2's band: no shaft, no place", outside.toShortString());
+            }
+        }
+        ServerLevel layerOne = TestLayers.level(server, 1);
+        if (LayerStructures.siteNear(layerOne, StructureKind.KELLS_SHAFT, shaft.origin())
+                        .isPresent()
+                || new PencilPlace.Structure(StructureKind.KELLS_SHAFT).reached(layerOne, shaft.origin(), Set.of())) {
+            throw helper.assertionException("layer 1's level holds no layer 2, so it holds no Kells' shaft");
+        }
+
         // The shaft: one block past the reach is out, the reach itself is in, and the path needs N10.
         find(helper, director, 10, FindResult.FOUND);
         crewMock.teleportTo(layer, Vec3.atBottomCenterOf(shaftOut), 0, 0);
@@ -401,6 +430,154 @@ public class PencilPathsTest {
         if (completed(server, rival).contains(PencilPaths.OLD_SHAFT.id())) {
             throw helper.assertionException("the rival never found N10 and stood nowhere near the shaft");
         }
+    }
+
+    /**
+     * The real server tick does the work: no call of {@code poll}. A survival player on a charter that found N07 stands at the wreck and
+     * the path completes within one poll interval; a creative player of another charter that found it too, standing there as long, does
+     * not.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+    public void reachingTheWreckCompletesItThroughTheRealServerTick(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        ServerLevel layer = TestLayers.level(server, StructureKind.WRECK.layer());
+        StructureSite wreck =
+                LayerStructures.prospector(layer).orElseThrow(() -> helper.assertionException("no Prospector site"));
+        boolean[] arrived = {false};
+        FarChunks.awaitEntityTicking(helper, layer, wreck.origin(), () -> arrived[0] = true);
+        MockPlayer[] players = new MockPlayer[2];
+        long[] started = {0};
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    if (!arrived[0]) {
+                        throw helper.assertionException("waiting for the wreck's chunk");
+                    }
+                })
+                .thenExecute(() -> {
+                    players[0] = survivor(helper, "Director");
+                    players[1] = survivor(helper, "Rival");
+                    for (MockPlayer mock : players) {
+                        mock.player().setPermanentlyInvulnerable(true);
+                        TestCharters.found(helper, server, mock.player());
+                        find(helper, mock.player(), 7, FindResult.FOUND);
+                    }
+                    players[1].player().setGameMode(GameType.CREATIVE);
+                    for (MockPlayer mock : players) {
+                        mock.teleportTo(layer, Vec3.atBottomCenterOf(wreck.origin()), 0, 0);
+                    }
+                    started[0] = helper.getTick();
+                })
+                .thenWaitUntil(() -> {
+                    if (!completed(server, players[0].player()).contains(PencilPaths.ONES_BELOW.id())) {
+                        throw helper.assertionException("the server tick has not completed the path yet");
+                    }
+                })
+                .thenExecute(() -> {
+                    long waited = helper.getTick() - started[0];
+                    if (waited > HandbookTuning.DEFAULT.triggerPollTicks() + 2) {
+                        throw helper.assertionException(
+                                "the path completes within one poll interval, took %s ticks", waited);
+                    }
+                    if (!completed(server, players[1].player()).isEmpty()) {
+                        throw helper.assertionException("the creative control completes nothing");
+                    }
+                })
+                .thenSucceed();
+    }
+
+    /** The paths of the newest {@link PencilSyncPayload} {@code mock} was sent; the test fails when it was sent none. */
+    private static List<Identifier> latestSync(GameTestHelper helper, MockPlayer mock) {
+        List<PencilSyncPayload> sent = mock.payloadsOf(PencilSyncPayload.class);
+        if (sent.isEmpty()) {
+            throw helper.assertionException(
+                    "%s was sent no pencil sync", mock.player().getGameProfile().name());
+        }
+        return sent.getLast().completed();
+    }
+
+    /**
+     * Every event that changes whose paths a player has sends them the new set: a join, founding, joining a charter, leaving it,
+     * joining it again, and reviving a dormant one. Each step is read from the newest payload the mock was sent.
+     */
+    @GameTest(maxTicks = 100)
+    public void everyJoinAndCharterEventSendsThePlayerTheirNewSet(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        MockPlayer alpha = survivor(helper, "Alpha");
+        MockPlayer beta = survivor(helper, "Beta");
+        MockPlayer gamma = survivor(helper, "Gamma");
+        for (MockPlayer mock : List.of(alpha, beta, gamma)) {
+            mock.announceChannel(PencilSyncPayload.TYPE);
+        }
+        PencilPathsData data = PencilPathsData.get(server);
+        data.addToPlayer(alpha.player().getUUID(), List.of(PencilPaths.ONES_BELOW.id()));
+        data.addToPlayer(beta.player().getUUID(), List.of(PencilPaths.OLD_SHAFT.id()));
+        List<Identifier> both = List.of(PencilPaths.OLD_SHAFT.id(), PencilPaths.ONES_BELOW.id());
+        CharterId[] charters = new CharterId[2];
+        // The mock reads the channel a tick late, so each step idles before it reads.
+        helper.startSequence()
+                .thenExecute(() -> ServerPlayerEvents.JOIN.invoker().onJoin(beta.player()))
+                .thenIdle(3)
+                .thenExecute(() -> {
+                    if (!latestSync(helper, beta).equals(List.of(PencilPaths.OLD_SHAFT.id()))) {
+                        throw helper.assertionException(
+                                "a join sends the player's own paths: %s", latestSync(helper, beta));
+                    }
+                    charters[0] = TestCharters.found(helper, server, alpha.player());
+                })
+                .thenIdle(3)
+                .thenExecute(() -> {
+                    if (!latestSync(helper, alpha).equals(List.of(PencilPaths.ONES_BELOW.id()))) {
+                        throw helper.assertionException(
+                                "founding sends the founder the carried set: %s", latestSync(helper, alpha));
+                    }
+                    TestCharters.join(helper, server, charters[0], alpha.player(), beta.player());
+                })
+                .thenIdle(3)
+                .thenExecute(() -> {
+                    if (!latestSync(helper, beta).equals(both)) {
+                        throw helper.assertionException(
+                                "joining sends the charter's set with the joiner's: %s", latestSync(helper, beta));
+                    }
+                    Charters.leave(server, beta.player().getUUID());
+                })
+                .thenIdle(3)
+                .thenExecute(() -> {
+                    if (!latestSync(helper, beta).equals(List.of(PencilPaths.OLD_SHAFT.id()))) {
+                        throw helper.assertionException(
+                                "leaving sends the leaver their own set again: %s", latestSync(helper, beta));
+                    }
+                    TestCharters.join(helper, server, charters[0], alpha.player(), beta.player());
+                })
+                .thenIdle(3)
+                .thenExecute(() -> {
+                    if (!latestSync(helper, beta).equals(both)) {
+                        throw helper.assertionException(
+                                "joining again sends the charter's set: %s", latestSync(helper, beta));
+                    }
+                    charters[1] = TestCharters.found(helper, server, gamma.player());
+                    data.addToCharter(charters[1], List.of(PencilPaths.ONES_BELOW.id()));
+                    Charters.leave(server, gamma.player().getUUID());
+                })
+                .thenIdle(3)
+                .thenExecute(() -> {
+                    if (!latestSync(helper, gamma).isEmpty()) {
+                        throw helper.assertionException(
+                                "control: a leaver with no paths of their own is sent none: %s",
+                                latestSync(helper, gamma));
+                    }
+                    Charters.revive(server, gamma.player().getUUID(), charters[1])
+                            .ifPresent(refusal -> {
+                                throw helper.assertionException("reviving should succeed, was refused: %s", refusal);
+                            });
+                })
+                .thenIdle(3)
+                .thenExecute(() -> {
+                    if (!latestSync(helper, gamma).equals(List.of(PencilPaths.ONES_BELOW.id()))) {
+                        throw helper.assertionException(
+                                "reviving sends the dormant charter's set: %s", latestSync(helper, gamma));
+                    }
+                })
+                .thenSucceed();
     }
 
     @GameTest
@@ -434,7 +611,7 @@ public class PencilPathsTest {
                 || current.getListOrEmpty("charters").size() != 1) {
             throw helper.assertionException("the version 1 form has a charters list of one entry: %s", saved);
         }
-        List<String> savedPaths = new java.util.ArrayList<>();
+        List<String> savedPaths = new ArrayList<>();
         current.getListOrEmpty("charters")
                 .getCompoundOrEmpty(0)
                 .getListOrEmpty("paths")

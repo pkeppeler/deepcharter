@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
+import java.util.Random;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
@@ -210,7 +211,7 @@ final class PaperDraw {
         if (wobble == 0) {
             return 0;
         }
-        return new java.util.Random(seed * 1_000_003L + index * 7_919L).nextInt(2 * wobble + 1) - wobble;
+        return new Random(seed * 1_000_003L + index * 7_919L).nextInt(2 * wobble + 1) - wobble;
     }
 
     /** A ring of radius {@code radius} round ({@code x}, {@code y}): the circle that marks a spot as done. */

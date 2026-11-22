@@ -30,8 +30,7 @@ import net.minecraft.server.level.ServerPlayer;
  * spectator or a creative player completes nothing. Only the levels that hold the place's layer can answer yes, so the surface, the
  * Nether and the End never complete a path in a layer.
  *
- * <p>A wax cylinder found where a path ends (#864, #871; the issue 849 comment) is a place and a payoff of the same kind, to be
- * added as a {@link PencilPlace} when the cylinder item is on main. The sheet needs nothing more than the path's two language keys.
+ * <p>A wax cylinder payoff (#864, #871) is one more {@link PencilPlace}, once the item is on main.
  *
  * <p>Everything on a tick, join or sync path reads through {@link #readableData}: when the saved charters, Notes or paths are of a
  * version this build cannot read, it logs once and does nothing, and {@link #completedFor} is empty.

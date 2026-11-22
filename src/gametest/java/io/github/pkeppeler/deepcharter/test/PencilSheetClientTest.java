@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.ClientPencil;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookMemory;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookPages;
@@ -22,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -40,6 +42,8 @@ public class PencilSheetClientTest implements FabricClientGameTest {
     private static final int HEIGHT = 240;
     private static final int MIN_WIDTH = 200;
     private static final int MIN_HEIGHT = 100;
+    /** As many chapters as ship, so the tab column is as long as a player's at the smallest window. */
+    private static final int CHAPTERS = 9;
 
     /** The shipped paths, the first still open and the second reached. */
     private static final List<HandbookPage.PencilEntry> SHIPPED = List.of(
@@ -53,6 +57,7 @@ public class PencilSheetClientTest implements FabricClientGameTest {
             theSheetComesAfterTheLastChapterAndOnlyWhenAPathIsDrawn();
             theSheetDrawsTheNotesTheHintsAndTheReachedPlaces();
             theSheetIsAFixedPage();
+            aPathCompletingWhileTheBookIsOpenIsInkedInAtOnce();
             everythingFitsTheSheetAtTheDefaultWindowAndTheSmallest();
             theTabOpensTheSheetAndTheChapterTabsLeaveIt();
             theBookReopensOnTheSheet();
@@ -61,7 +66,7 @@ public class PencilSheetClientTest implements FabricClientGameTest {
 
     private static Map<Identifier, HandbookChapter> chapters() {
         Map<Identifier, HandbookChapter> chapters = new LinkedHashMap<>();
-        for (int chapter = 1; chapter <= 2; chapter++) {
+        for (int chapter = 1; chapter <= CHAPTERS; chapter++) {
             Identifier id = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "test" + chapter);
             chapters.put(
                     id,
@@ -151,7 +156,7 @@ public class PencilSheetClientTest implements FabricClientGameTest {
         List<HandbookPage> pages = pages(SHIPPED);
         int sheet = pencilPage(pages);
         require(
-                pages.get(sheet - 1) instanceof HandbookPage.Chapter last && last.number() == 2,
+                pages.get(sheet - 1) instanceof HandbookPage.Chapter last && last.number() == CHAPTERS,
                 "the sheet is bound right after the last chapter's map, page " + sheet);
         require(pages.get(sheet + 1) instanceof HandbookPage.Appendix, "and before the end page");
         require(pages.size() == plain.size() + 1, "one sheet holds both shipped paths");
@@ -212,6 +217,23 @@ public class PencilSheetClientTest implements FabricClientGameTest {
         require(DrawnText.of(screen).equals(before), "a drag or a scroll on the pencil sheet moves nothing");
     }
 
+    /** The server's sync reaches an open sheet: its next draw shows the place the path now names. */
+    private static void aPathCompletingWhileTheBookIsOpenIsInkedInAtOnce() {
+        HandbookScreen screen = sheet(new HandbookMemory(), WIDTH, HEIGHT);
+        String place = Component.translatable(PencilPaths.ONES_BELOW.placeKey()).getString();
+        require(
+                texts(screen).stream().noneMatch(text -> text.startsWith(place)),
+                "setup: the first path is open on the sheet: " + texts(screen));
+        try {
+            ClientPencil.set(List.of(PencilPaths.ONES_BELOW.id()));
+            require(
+                    texts(screen).stream().anyMatch(text -> text.startsWith(place)),
+                    "the open sheet names the place once the sync says it is reached: " + texts(screen));
+        } finally {
+            ClientPencil.set(List.of());
+        }
+    }
+
     private static void everythingFitsTheSheetAtTheDefaultWindowAndTheSmallest() {
         int[][] windows = {{WIDTH, HEIGHT}, {MIN_WIDTH, MIN_HEIGHT}};
         for (int[] window : windows) {
@@ -237,6 +259,15 @@ public class PencilSheetClientTest implements FabricClientGameTest {
             require(
                     tab.getX() >= 0 && tab.getRight() <= window[0] && tab.getBottom() <= window[1],
                     where + ": the pencil tab is on the screen");
+            int lineHeight = Minecraft.getInstance().font.lineHeight;
+            for (var child : screen.children()) {
+                if (child instanceof AbstractWidget widget && widget.visible && widget.getX() >= screen.width / 2) {
+                    require(
+                            widget.getHeight() >= lineHeight && widget.getY() >= 0 && widget.getBottom() <= window[1],
+                            where + ": the side tab '" + widget.getMessage().getString() + "' is " + widget.getHeight()
+                                    + " px tall at y " + widget.getY() + ", a line of text is " + lineHeight);
+                }
+            }
         }
     }
 

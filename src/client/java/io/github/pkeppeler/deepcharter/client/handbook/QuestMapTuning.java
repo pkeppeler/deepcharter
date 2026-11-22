@@ -89,6 +89,12 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param pencilBoxInset space between a pencil box's edge and its text
  * @param pencilMarkSize how far the arms of the x at a payoff reach from its middle
  * @param pencilWobble how far, in pixels, the pencil boxes' corners overshoot and their sides drift: the hand in a hand-drawn box
+ * @param pencilRingExtra how far the ring of a reached path stands out past the arms of its x
+ * @param pencilTextTop space between a pencil box's top edge and its first line of text
+ * @param pencilLineGap space between two lines of text in a pencil box
+ * @param pencilTipGap space between the tip of the dashed pencil line and the arms of the x it points at
+ * @param pencilStartGap space between a Note's box and the start of the dashed pencil line
+ * @param pencilMarkGap space between the x and the payoff box
  */
 public record QuestMapTuning(
         int chapterTabWidth,
@@ -171,7 +177,13 @@ public record QuestMapTuning(
         int pencilArrowMin,
         int pencilBoxInset,
         int pencilMarkSize,
-        int pencilWobble) {
+        int pencilWobble,
+        int pencilRingExtra,
+        int pencilTextTop,
+        int pencilLineGap,
+        int pencilTipGap,
+        int pencilStartGap,
+        int pencilMarkGap) {
     public static QuestMapTuning current() {
         return UiTheme.current().questMap();
     }
@@ -258,6 +270,12 @@ public record QuestMapTuning(
                 d.integer("pencilArrowMin", 1),
                 d.integer("pencilBoxInset", 0),
                 d.integer("pencilMarkSize", 1),
-                d.integer("pencilWobble", 0, 3));
+                d.integer("pencilWobble", 0, 3),
+                d.integer("pencilRingExtra", 0),
+                d.integer("pencilTextTop", 0),
+                d.integer("pencilLineGap", 0),
+                d.integer("pencilTipGap", 0),
+                d.integer("pencilStartGap", 0),
+                d.integer("pencilMarkGap", 0));
     }
 }
