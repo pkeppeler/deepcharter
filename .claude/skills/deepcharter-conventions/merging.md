@@ -11,6 +11,7 @@ Merge only through `tools/merge-pr.sh <n>`, which refuses and gives the reason. 
 
 ## GitHub and CI gotchas
 
+- The merge proxy refuses (HTTP 403) a commit title or message with a URL of 150+ characters after `://` or an 80-character run after `?`, `/`, `=` or `#`. `merge-pr.sh` sends the title and body through `tools/merge_message.py`, which turns a long blob URL into its backticked path and drops other long URLs (keeping link text); the PR body is not edited, and `--check` warns when a rewrite will happen (#1007). A failed merge request prints the API's error text.
 - The gate reads the closing set from the PR body with `tools/closing_refs.py` (grammar in its docstring; `tools/roadmap.py` uses it too). Only the first reference after a keyword counts, so write `Closes #1` and `Closes #2` as two keywords; prose such as "the same fix #252 verified" counts too, so phrase it another way. A link made by hand in the sidebar is not seen.
 - `tools/mark-review-passed.sh` refuses when GitHub's head sha differs from `git ls-remote origin <branch>` (right after a close/reopen it can lag the push): wait, or close and reopen.
 - The gate blocks on any failing check on the head sha, not only `REQUIRED_CHECKS`.
