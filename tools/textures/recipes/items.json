@@ -960,6 +960,23 @@
       "........xy..l",
       "........yk.ld",
       ".........kkd"]}},
+    "item/tether": {"template": "sprite", "args": {"legend": {
+      "h": "hazard.3", "l": "hazard.3", "m": "hazard.2", "d": "hazard.1", "s": "steel.5", "t": "steel.3", "k": "steel.1"}, "rows": [
+      "",
+      ".....ssss",
+      "....s....s",
+      "....s....s",
+      "....sttttk",
+      ".....kkkk",
+      "...hhllmmd",
+      "..hlmmmmmdd",
+      ".hlmdddddmd",
+      ".hlmd...dmd",
+      ".hlmd...dmd",
+      ".hlmdddddmd",
+      "..hlmmmmmdd",
+      "...hhllmmd",
+      ".....dddd"]}},
     "item/tow_chain": {"kind": "cutout", "layers": [{"op": "pixels", "legend": {"h": "steel.5", "l": "steel.4", "m": "steel.3", "d": "steel.2", "k": "steel.1"}, "rows": [
       "..hhhh.....hh...",
       ".hllllm....hl...",
