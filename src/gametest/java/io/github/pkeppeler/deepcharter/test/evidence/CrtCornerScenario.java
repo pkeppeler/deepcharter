@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -60,16 +61,14 @@ public class CrtCornerScenario extends EvidenceScenario {
             shoot(context, TerminalPanelScreens.GENERIC, null, offline, false);
         }
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-            singleplayer.getServer().runCommand("time set noon"); // a fixed, bright light behind the glass
-            ClientWait.until(context, "the player", client -> client.player != null && client.level != null);
-            shootCatalogue(context);
+            shootCatalogue(context, singleplayer);
         }
     }
 
     /** The parts catalogue's two consoles beside the inventory: the whole screen, and the title corner of each console's glass. */
-    private void shootCatalogue(ClientGameTestContext context) {
-        CatalogueScene.openInventory(context);
-        CatalogueLayout layout = CatalogueScene.layout(context, CatalogueScene.panel(context));
+    private void shootCatalogue(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        CataloguePanel panel = CatalogueScene.openRecipeConsole(context, singleplayer);
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
         context.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
         context.runOnClient(client -> client.gui.toastManager().clear());
         for (int i = 0; i < HOLD_FRAMES; i++) {

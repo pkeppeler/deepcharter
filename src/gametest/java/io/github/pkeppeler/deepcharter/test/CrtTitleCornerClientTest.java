@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
@@ -77,9 +78,7 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
             check(context, TerminalPanelScreens.GENERIC, null, offline, problems);
         }
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
-            singleplayer.getServer().runCommand("time set noon"); // a fixed, bright light behind the glass
-            ClientWait.until(context, "the player", client -> client.player != null && client.level != null);
-            checkCatalogue(context, problems);
+            checkCatalogue(context, singleplayer, problems);
         }
         require(problems.isEmpty(), "titles dimmed by the glass:\n" + String.join("\n", problems));
     }
@@ -117,9 +116,10 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
      * The parts catalogue's two consoles beside the inventory (#996): each draws the shared glass sprite and its own vignette and highlight, with
      * its title at the glass's {@code pad} and {@code titleTop}. The search console's title is the shelf's, the recipe console's the card's.
      */
-    private static void checkCatalogue(ClientGameTestContext context, List<String> problems) {
-        CatalogueScene.openInventory(context);
-        CatalogueLayout layout = CatalogueScene.layout(context, CatalogueScene.panel(context));
+    private static void checkCatalogue(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer, List<String> problems) {
+        CataloguePanel panel = CatalogueScene.openRecipeConsole(context, singleplayer);
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
         context.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
         context.runOnClient(client -> client.gui.toastManager().clear());
         context.waitTicks(
