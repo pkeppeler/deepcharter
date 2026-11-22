@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -24,6 +25,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.lighting.LevelLightEngine;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Light is computed off the server thread, so a client sent a chunk while light is pending keeps the old light: vanilla holds a
@@ -36,7 +38,7 @@ import net.minecraft.world.level.lighting.LevelLightEngine;
  * the player's client keeps the old light.
  *
  * <p>The safety net (#863, ADR 0068): {@code LightSync} records the light each player was sent of a chunk in a hold's 3x3, and for
- * a window after the hold ends sends a player whose chunk's published light differs from it.
+ * a window that starts when the chunk can be sent sends a player whose chunk's published light differs from it.
  */
 public final class LightSync {
     /** Server ticks a hold may last before it is reported as stuck (30 s). */
@@ -63,7 +65,7 @@ public final class LightSync {
 
     private static final Map<Key, Hold> HOLDS = new ConcurrentHashMap<>();
 
-    /** Server ticks a chunk's published light is compared after its hold ended (5 s). */
+    /** Server ticks a chunk's published light is compared after the chunk can be sent (5 s). */
     private static final int NET_WINDOW_TICKS = 100;
     /** Server ticks between two comparisons. */
     private static final int NET_INTERVAL_TICKS = 10;
@@ -74,13 +76,31 @@ public final class LightSync {
 
         int nextCheck;
         int until;
+        /** Set when the window runs out; null while it runs. */
+        @Nullable
+        Settling settling;
+        /** The tick the chunk was first seen held or unsendable, or -1. */
+        int unsentSince = -1;
+
+        boolean reported;
+        /** Set once the light engine has been waited for {@value #TIMEOUT_TICKS} ticks. */
+        boolean slowReported;
 
         NetWatch(int nextCheck) {
             this.nextCheck = nextCheck;
         }
+
+        void keepOpen(int now) {
+            until = Math.max(until, now + NET_WINDOW_TICKS);
+            settling = null;
+            slowReported = false;
+        }
     }
 
-    /** The chunks in the 3x3 of a hold, from its request to the end of its window. Server thread only. */
+    /** The light tasks queued for a chunk when its window ran out, and the tick they were queued. */
+    private record Settling(CompletableFuture<?> tasks, int since) {}
+
+    /** The chunks in the 3x3 of a hold, until the window after they can be sent runs out and the light settles. Server thread only. */
     private static final Map<Key, NetWatch> NET = new HashMap<>();
 
     private LightSync() {}
@@ -199,7 +219,7 @@ public final class LightSync {
         if (watch != null) {
             int now = key.level.getServer().getTickCount();
             watch.nextCheck = now + NET_INTERVAL_TICKS;
-            watch.until = now + NET_WINDOW_TICKS;
+            watch.keepOpen(now);
         }
         ClientboundLightUpdatePacket light = null;
         for (ServerPlayer player : key.level.players()) {
@@ -239,7 +259,7 @@ public final class LightSync {
     private static void watchNet(ServerLevel level, ChunkPos chunk, int now) {
         Key key = new Key(level, chunk);
         NetWatch watch = NET.computeIfAbsent(key, k -> new NetWatch(now + NET_INTERVAL_TICKS));
-        watch.until = now + TIMEOUT_TICKS + NET_WINDOW_TICKS;
+        watch.keepOpen(now);
         if (level.getChunkSource().chunkMap.getChunkToSend(chunk.pack()) == null) {
             return;
         }
@@ -254,11 +274,12 @@ public final class LightSync {
         NetWatch watch = NET.get(new Key(player.level(), chunk.getPos()));
         if (watch != null) {
             watch.held.put(player.getUUID(), lightPrint(player.level(), chunk.getPos()));
+            watch.keepOpen(player.level().getServer().getTickCount());
         }
     }
 
     /**
-     * For {@value #NET_WINDOW_TICKS} ticks after a hold ended, every {@value #NET_INTERVAL_TICKS} ticks, sends each player whose
+     * For {@value #NET_WINDOW_TICKS} ticks after a watched chunk can be sent, every {@value #NET_INTERVAL_TICKS} ticks, sends each player whose
      * recorded light of the chunk differs from its published light one light packet. A player vanilla also served gets a duplicate.
      */
     private static void compareLight(MinecraftServer server) {
@@ -271,24 +292,48 @@ public final class LightSync {
             if (key.level.getServer() != server) {
                 continue;
             }
-            if (now > watch.until || key.level.getChunkSource().getChunkNow(key.chunk.x(), key.chunk.z()) == null) {
-                watches.remove(); // the window is over, or the chunk unloaded
+            if (key.level.getChunkSource().getChunkNow(key.chunk.x(), key.chunk.z()) == null) {
+                watches.remove(); // the chunk unloaded
                 continue;
             }
-            if (now < watch.nextCheck || HOLDS.containsKey(key)) {
+            boolean held = HOLDS.containsKey(key);
+            if (held || key.level.getChunkSource().chunkMap.getChunkToSend(key.chunk.pack()) == null) {
+                // Not sent yet, so nothing it was sent can be stale: the window starts when it can be sent (#954).
+                watch.keepOpen(now);
+                if (watch.unsentSince < 0) {
+                    watch.unsentSince = now;
+                } else if (!watch.reported && timedOut(now - watch.unsentSince)) {
+                    watch.reported = true;
+                    DeepCharter.LOGGER.warn(
+                            "A light watch has waited {} ticks for chunk {} in {} to be sendable",
+                            now - watch.unsentSince,
+                            key.chunk,
+                            key.level.dimension().identifier());
+                }
+            } else {
+                watch.unsentSince = -1;
+                watch.reported = false;
+            }
+            boolean over = !held && windowOver(key, watch, now);
+            if (!over && (now < watch.nextCheck || held)) {
                 continue;
             }
             watch.nextCheck = now + NET_INTERVAL_TICKS;
             Set<UUID> tracking = trackers(key.level, key.chunk);
             watch.held.keySet().retainAll(tracking);
+            if (over) {
+                watches.remove(); // after this last comparison
+            }
             if (watch.held.isEmpty()) {
                 continue;
             }
             int print = lightPrint(key.level, key.chunk);
             ClientboundLightUpdatePacket light = null;
             for (ServerPlayer player : key.level.players()) {
-                Integer held = watch.held.get(player.getUUID());
-                if (held != null && held != print && !player.connection.chunkSender.isPending(key.chunk.pack())) {
+                Integer sentPrint = watch.held.get(player.getUUID());
+                if (sentPrint != null
+                        && sentPrint != print
+                        && !player.connection.chunkSender.isPending(key.chunk.pack())) {
                     if (light == null) {
                         light = new ClientboundLightUpdatePacket(key.chunk, key.level.getLightEngine(), null, null);
                     }
@@ -296,6 +341,38 @@ public final class LightSync {
                 }
             }
         }
+    }
+
+    /**
+     * Whether the watch is over: its window has run out and the light tasks queued for the chunk by then have run. A light engine
+     * that is behind publishes in wall time, not in ticks, so no tick count ends the watch before they have: a player would keep
+     * the old light (#954). A watch that has waited {@value #TIMEOUT_TICKS} ticks is reported once and kept.
+     */
+    private static boolean windowOver(Key key, NetWatch watch, int now) {
+        if (now <= watch.until) {
+            return false;
+        }
+        if (watch.held.isEmpty()) {
+            return true; // no player to send to
+        }
+        Settling settling = watch.settling;
+        if (settling == null) {
+            settling = new Settling(
+                    key.level.getChunkSource().getLightEngine().waitForPendingTasks(key.chunk.x(), key.chunk.z()), now);
+            watch.settling = settling;
+        }
+        if (settling.tasks.isDone()) {
+            return true;
+        }
+        if (!watch.slowReported && timedOut(now - settling.since)) {
+            watch.slowReported = true;
+            DeepCharter.LOGGER.warn(
+                    "A light watch of chunk {} in {} has waited {} ticks for the light engine to run its tasks",
+                    key.chunk,
+                    key.level.dimension().identifier(),
+                    now - settling.since);
+        }
+        return false;
     }
 
     private static void sendLight(ServerPlayer player, ClientboundLightUpdatePacket light) {
