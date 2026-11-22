@@ -36,7 +36,7 @@ import org.jspecify.annotations.Nullable;
  */
 public class ColonyInteriorLightTest {
     /**
-     * The brightest block a dark room (the Lamp and Pick) may hold: its dim glow is invisible light blocks of level 5
+     * The brightest block a dark room may hold: its dim glow is invisible light blocks of level 5
      * (tools/colony/parts.py GLOW_LEVEL), so a lamp inside, which gives 14, fails the test. Light that leaks in through the door
      * from the lamp outside is not a block of the room and is not counted.
      */

@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.wreck.Wrecks;
@@ -91,7 +92,7 @@ public final class Hangar {
                     .block()
                     .defaultBlockState()
                     .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.WEST);
-            level.setBlock(console, state, 3);
+            TerminalBlock.place(level, console, state, 3);
         }
     }
 

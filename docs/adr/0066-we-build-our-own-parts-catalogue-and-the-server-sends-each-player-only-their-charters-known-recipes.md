@@ -19,7 +19,7 @@ Research, 2026-11-21:
 ## Decision
 
 - **Viewer and known recipes**: our own, closely modelled on EMI, with a recipe known per charter. Rules in [SPEC §5](../SPEC.md#parts-catalogue). A quest step makes a recipe known ([ADR 0065](0065-the-handbooks-directives-are-a-quest-map-and-earlier-miners-pencil-paths-continue-it-past-layer-2.md)).
-- **Server filter**: the server sends each player only their charter's known recipes. This should fit Minecraft's recipe sync since 1.21.2 (inferred, not yet built).
+- **Server filter**: the server sends each player only their charter's known recipes. It uses Minecraft's recipe book and its add and remove packets ([ADR 0070](0070-the-server-recipe-book-holds-exactly-the-known-recipes-and-the-vanilla-recipe-packets-carry-it.md)).
 - **Spec sheet**: each item's catalogue page ([SPEC](../SPEC.md#the-world-is-a-mystery-the-rules-never-are)).
 - **Copied code**: EMI's search and recipe-tree code may be copied from the PF-EMI port (MIT, keeping EMI's notice), with an audit page in the PR that copies it. Never copy `com/unascribed/qdcss`: it has no licence header, and its source licence could not be confirmed.
 

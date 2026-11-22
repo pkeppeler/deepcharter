@@ -1,32 +1,62 @@
 {
   "variants": {
-    "active=false,facing=north": {
+    "active=false,facing=north,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet"
+    },
+    "active=false,facing=north,half=upper": {
       "model": "deepcharter:block/repair_station"
     },
-    "active=true,facing=north": {
-      "model": "deepcharter:block/repair_station_active"
+    "active=false,facing=east,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet",
+      "y": 90
     },
-    "active=false,facing=east": {
+    "active=false,facing=east,half=upper": {
       "model": "deepcharter:block/repair_station",
       "y": 90
     },
-    "active=true,facing=east": {
-      "model": "deepcharter:block/repair_station_active",
-      "y": 90
+    "active=false,facing=south,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet",
+      "y": 180
     },
-    "active=false,facing=south": {
+    "active=false,facing=south,half=upper": {
       "model": "deepcharter:block/repair_station",
       "y": 180
     },
-    "active=true,facing=south": {
-      "model": "deepcharter:block/repair_station_active",
-      "y": 180
+    "active=false,facing=west,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet",
+      "y": 270
     },
-    "active=false,facing=west": {
+    "active=false,facing=west,half=upper": {
       "model": "deepcharter:block/repair_station",
       "y": 270
     },
-    "active=true,facing=west": {
+    "active=true,facing=north,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet"
+    },
+    "active=true,facing=north,half=upper": {
+      "model": "deepcharter:block/repair_station_active"
+    },
+    "active=true,facing=east,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet",
+      "y": 90
+    },
+    "active=true,facing=east,half=upper": {
+      "model": "deepcharter:block/repair_station_active",
+      "y": 90
+    },
+    "active=true,facing=south,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet",
+      "y": 180
+    },
+    "active=true,facing=south,half=upper": {
+      "model": "deepcharter:block/repair_station_active",
+      "y": 180
+    },
+    "active=true,facing=west,half=lower": {
+      "model": "deepcharter:block/terminal_cabinet",
+      "y": 270
+    },
+    "active=true,facing=west,half=upper": {
       "model": "deepcharter:block/repair_station_active",
       "y": 270
     }
