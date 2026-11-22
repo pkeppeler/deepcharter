@@ -628,10 +628,10 @@ public class OvergrowthTest {
                         .getAsJsonArray("values");
                 shippedEmpty |= values.isEmpty();
                 values.forEach(value -> {
-                    if (!value.getAsString().equals(Hollows.BIOME.toString())) {
+                    if (!value.getAsString().startsWith("deepcharter-test:")) {
                         throw failure(
                                 helper,
-                                "the tag lists %s: only the test biome belongs in it until #972 (delete this test there)",
+                                "the tag lists %s: only biomes of the test data (deepcharter-test:) belong in it until #972 (delete this test there)",
                                 value);
                     }
                 });
