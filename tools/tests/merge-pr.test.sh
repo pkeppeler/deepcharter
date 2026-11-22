@@ -625,7 +625,7 @@ if command -v jq >/dev/null; then
   run_script STUB_FIXTURE_ANNOTATIONS="$FIXTURES/check-run-annotations.json" "STUB_MAIN_SHA=$(gh_fixture_jq "$FIXTURES/check-run-annotations.json" '.[] | select(.title == "merged-main") | .message')"
   exited "the recorded annotation of a real run reads as its main sha" 0
   refusal "a recorded real run is stale once main moves" "$stale_hint" STUB_FIXTURE_ANNOTATIONS="$FIXTURES/check-run-annotations.json" "STUB_MAIN_SHA=$OLD_MAIN" "STUB_DIFF=src/A.java"
-  refusal "a recorded run with no merged-main annotation is stale" "recorded no merged main sha" STUB_FIXTURE_ANNOTATIONS="$FIXTURES/check-run-annotations.no-record.json"
+  refusal "a recorded run with no merged-main annotation is stale" "recorded no merged main sha" STUB_FIXTURE_ANNOTATIONS="$FIXTURES/check-run-annotations.no-record.hand-edited.json"
 else
   echo "SKIP the recorded annotation cases (jq missing)"
 fi
