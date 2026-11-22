@@ -315,6 +315,8 @@ refusal "closing set changes before the merge" "closing set changed during the g
   "STUB_BODY_LATER=Closes #12${nl}Closes #13"
 refusal "closing set emptied before the merge" "closing set changed during the gate (was #12, now empty)" STUB_BODY_LATER=
 refusal "closes branch issue and another" "closes #12 #13 but" "STUB_BODY=Closes #12${nl}Closes #13"
+refusal "closing set refusal teaches the rule" "(the closing set must be exactly {#12}): mention any other issue in prose, not after a closing keyword, and close it by hand after the merge" \
+  "STUB_BODY=Closes #12${nl}Closes #13"
 refusal "closes two others" "closes #13 #14 but" "STUB_BODY=Closes #13${nl}Closes #14"
 refusal "closes the same number in another repo" "closes owner/repo#12 but" "STUB_BODY=Closes owner/repo#12"
 refusal "closes branch issue and another repo's" "closes #12 owner/repo#54 but" "STUB_BODY=Closes #12${nl}Closes owner/repo#54"
