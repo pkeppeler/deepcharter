@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.layer.OvergrowthTuning;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.Hollows;
@@ -67,13 +68,34 @@ public class OvergrowthScenario extends EvidenceScenario {
                 // The growth stills are taken from a spectator's eye in the chamber, with the pod parked behind the
                 // camera.
                 player.setGameMode(GameType.SPECTATOR);
-                player.teleportTo(
-                        one, middle.getX() + 0.5, FLOOR_Y + 2, middle.getZ() - 6.5, Set.of(), 0f, LOOK_AHEAD, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(middle.getX() - 6.5, FLOOR_Y, middle.getZ() - 6.5);
                 one.addFreshEntity(pod);
                 return middle;
             });
+            // The scene is built while the client is elsewhere, and the player arrives once the server has lit it: a
+            // client that is
+            // sent a room while the light engine still works on it keeps the stale light (issue 427) and the stills
+            // come out dark.
+            ClientWait.until(
+                    context,
+                    "the server's light engine to be idle",
+                    () -> ClientLight.serverLightIdle(context, singleplayer.getServer()),
+                    () -> "light work pending");
+            singleplayer
+                    .getServer()
+                    .runOnServer(server -> server.getPlayerList()
+                            .getPlayers()
+                            .getFirst()
+                            .teleportTo(
+                                    TestLayers.level(server, 1),
+                                    site.getX() + 0.5,
+                                    FLOOR_Y + 2,
+                                    site.getZ() - 6.5,
+                                    Set.of(),
+                                    0f,
+                                    LOOK_AHEAD,
+                                    true));
             ClientWait.until(
                     context,
                     "the player in layer 1",
