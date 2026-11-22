@@ -1,0 +1,123 @@
+"""Tests the campaign-environment gate in gradle/gametest.gradle.kts: an @GameTest whose dimension constant is "deepcharter:campaign_sample" without environment = CampaignEnvironments.<A to D> fails the build.
+
+Its fixture trees go through the scan of generateGametestModJson in one Gradle run (gate_checks.py, gate_batch.py), so it needs the
+repo's Gradle wrapper on JDK 25. Its name misses the test_*.py glob of the tool-tests job, which has no JDK 25; the build job and the pre-push hook run it.
+Usage: tools/py tools/tests/gate_checks.py campaign_environment
+"""
+import unittest
+
+import gate_batch
+from gate_batch import Case
+
+SERVER_TEST = """
+public class FixtureTest {
+    @GameTest
+    public void passes(GameTestHelper helper) {
+    }
+}
+"""
+CLIENT_SCENARIO = """
+public class FixtureScenario extends EvidenceScenario {
+}
+"""
+# Clean files: each must be left alone by the gate.
+CLEAN = {
+    "NamedTest.java": """
+public class NamedTest {
+    private static final String SAMPLE = "deepcharter:campaign_sample";
+
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = 100)
+    public void named(GameTestHelper helper) {
+    }
+
+    @GameTest(
+            dimension = SAMPLE,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600,
+            environment = CampaignEnvironments.D)
+    public void wrapped(GameTestHelper helper) {
+    }
+}
+""",
+    # SAMPLE names another world here, as in SurfaceTerrainTest.
+    "SurfaceTest.java": """
+public class SurfaceTest {
+    private static final String SAMPLE = "deepcharter:surface_sample";
+
+    @GameTest(dimension = SAMPLE)
+    public void surface(GameTestHelper helper) {
+    }
+}
+""",
+    "NoDimensionTest.java": """
+public class NoDimensionTest {
+    private static final String SAMPLE = "deepcharter:campaign_sample";
+
+    @GameTest(maxTicks = 100)
+    public void inTheDefaultWorld(GameTestHelper helper) {
+    }
+
+    @GameTest
+    public void bare(GameTestHelper helper) {
+    }
+}
+""",
+    "MentionsTest.java": """
+public class MentionsTest {
+    private static final String SAMPLE = "deepcharter:campaign_sample";
+
+    // @GameTest(dimension = SAMPLE) in a comment is not a test
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
+    public void passes(GameTestHelper helper) {
+        String text = "@GameTest(dimension = SAMPLE)";
+    }
+}
+""",
+}
+CLASS_LINE = "public class CampaignTest"
+CONSTANT = 'private static final String SAMPLE = "deepcharter:campaign_sample";'
+# label: (annotation, line the gate reports)
+BAD = {
+    "no environment": ("@GameTest(dimension = SAMPLE)", 5),
+    "other attributes": ("@GameTest(dimension = SAMPLE, maxTicks = 100)", 5),
+    "wrapped": ("@GameTest(\n            dimension = SAMPLE,\n            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)", 5),
+    "another environment": ("@GameTest(environment = ALONE, dimension = SAMPLE)", 5),
+    "an environment out of the four": ("@GameTest(environment = CampaignEnvironments.E, dimension = SAMPLE)", 5),
+}
+
+
+def violating(annotation: str) -> str:
+    return f"""
+{CLASS_LINE} {{
+    {CONSTANT}
+
+    {annotation}
+    public void campaign(GameTestHelper helper) {{
+    }}
+}}
+"""
+
+
+def fixture(extra: dict[str, str]) -> dict[str, str]:
+    return {"FixtureTest.java": SERVER_TEST, "FixtureScenario.java": CLIENT_SCENARIO, **CLEAN, **extra}
+
+
+CASES = {
+    "clean": Case(fixture({}), None),
+    **{label: Case(fixture({"CampaignTest.java": violating(annotation)}), None) for label, (annotation, _) in BAD.items()},
+}
+
+
+class CampaignEnvironmentGateTest(unittest.TestCase):
+    def test_clean_files_pass(self):
+        result = gate_batch.result(f"{__name__}/clean")
+        self.assertTrue(result.ok, result.message)
+
+    def test_a_campaign_test_without_one_of_the_four_environments_fails(self):
+        for label, (_, line) in BAD.items():
+            with self.subTest(label):
+                result = gate_batch.result(f"{__name__}/{label}")
+                self.assertFalse(result.ok, f"the gate should fail the build for {label}")
+                self.assertIn(f"CampaignTest:{line} runs in the campaign world (SAMPLE) without an environment", result.message)
+                self.assertIn("CampaignEnvironments.A, B, C or D", result.message)
+                for clean in ("NamedTest", "SurfaceTest", "NoDimensionTest", "MentionsTest"):
+                    self.assertNotIn(clean, result.message)
