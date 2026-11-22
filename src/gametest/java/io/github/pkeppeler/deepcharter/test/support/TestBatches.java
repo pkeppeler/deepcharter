@@ -12,23 +12,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The most tests one GameTest batch holds (#1026). A batch runs its tests at once and keeps every chunk they load until it ends, so
- * the live set grows with its size: 20 to 60 MB for each test that reaches the tall campaign level, through {@link TestLayers} or a
- * dimension, over a floor of 0.4 to 0.9 GB. Vanilla batches 50 and peaked at 1.5 to 1.7 GB. A test that reaches the campaign level
- * through {@link TestLayers} names no dimension, so no environment can bound it; the cap bounds every batch, with
- * {@code GameTestBatchFactoryMixin}, and {@code TestBatchesTest} checks the batches that came out. {@code gameTestHeap}
- * ({@code gradle/run-jvm.gradle.kts}) is measured with it: raise a cap and measure again.
+ * The most tests one GameTest batch holds (#1026). A batch keeps every chunk its tests load until it ends, so the live set grows with
+ * its size: 20 to 60 MB for each test that reaches the tall campaign level over a floor of 0.4 to 0.9 GB. Vanilla's 50 peaked at 1.5
+ * to 1.7 GB. A test that reaches the campaign level through {@link TestLayers} names no dimension, so no environment bounds it; this
+ * cap does, through {@code GameTestBatchFactoryMixin}, and {@code TestBatchesTest} checks the result. Raise a cap and re-measure
+ * {@code gameTestHeap} ({@code gradle/run-jvm.gradle.kts}).
  *
  * <p>A campaign environment ({@link CampaignEnvironments}) holds the heaviest tests, so its batches are smaller. 6 everywhere also
- * kept the peak under 1.45 GB, but short batches tick faster than the light and chunk threads work, and tests that race them failed
- * more often (#1049).
+ * kept the peak under 1.45 GB, but tests that race the light and chunk threads failed more often in short batches (#1049).
  */
 public final class TestBatches {
-    /** The cap of a batch of any other environment. */
-    public static final int MAX_TESTS = 20;
+    private static final int MAX_TESTS = 20;
 
-    /** The cap of a batch of a {@link CampaignEnvironments} environment. */
-    public static final int MAX_CAMPAIGN_TESTS = 6;
+    private static final int MAX_CAMPAIGN_TESTS = 6;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TestBatches.class);
 
