@@ -176,9 +176,7 @@ public final class ClientLight {
                 () -> "light work pending");
         Optional<String> mismatch = Optional.empty();
         for (int round = 1; round <= ROUNDS; round++) {
-            // tick-wait: a packet sent after the light job arrives within a few ticks; the flush and the comparison
-            // after
-            // are the check
+            // tick-wait: a packet sent after the light job arrives within a few ticks; the comparison is the check
             context.waitTicks(PACKET_TICKS);
             awaitClientLightApplied(context);
             mismatch = describeMismatch(context, server, dimension, box);

@@ -99,7 +99,6 @@ public class SealedRoomArrivalLightTest {
                     }
                     helper.succeed();
                 }
-                default -> throw new IllegalStateException("phase " + phase[0]);
             }
         });
     }
