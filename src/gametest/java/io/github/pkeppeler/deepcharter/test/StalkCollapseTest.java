@@ -47,7 +47,7 @@ public class StalkCollapseTest {
     private static final int FLOOR_ROW = 1;
     /** The first block a stalk stands in. */
     private static final int BASE_ROW = 2;
-    /** The test area spans this block of the test on each side, in x and z. */
+    /** The test area's x and z range, in blocks of the test. */
     private static final int AREA_MIN = -2;
 
     private static final int AREA_MAX = 10;

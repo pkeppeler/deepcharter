@@ -12,11 +12,11 @@ import net.minecraft.world.phys.AABB;
 
 /**
  * The item drops a test makes, counted where they spawn and not where they come to rest: a drop can be pushed out of the cell it
- * spawned in and slide far, so no box around the test holds every resting drop (#967). A recording ends with {@link #stop} or, however
- * the test finishes (a throw and a timeout too), with {@link #release}, which {@code GameTestInfoMixin} calls from {@code finish}.
+ * spawned in and slide far, so no box around the test holds every resting drop (#967). A recording ends with {@link #stop} or, on any
+ * exit of the test, with {@link #release} from {@code GameTestInfoMixin}'s {@code finish}.
  *
  * <p>A Fabric event cannot be unregistered, so the one listener stays and reads {@link #RECORDINGS}; a recording holds plain values
- * only, never a player. Everything runs on the server thread.
+ * only. Everything runs on the server thread.
  */
 public final class ItemSpawns {
     private static final List<ItemSpawns> RECORDINGS = new ArrayList<>();
@@ -48,7 +48,7 @@ public final class ItemSpawns {
         return recording;
     }
 
-    /** Ends every recording of the test with these bounds. Called when a test finishes. */
+    /** Ends every recording of the test with these bounds. */
     public static void release(AABB testBounds) {
         RECORDINGS.removeIf(recording -> recording.testBounds.equals(testBounds));
     }
