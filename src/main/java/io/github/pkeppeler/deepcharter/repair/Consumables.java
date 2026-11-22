@@ -15,14 +15,18 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 
 /**
- * What each item does (SPEC sections 10 and 11). All of them work on the pod the player is piloting, and
- * on no other: an item used on foot, or in a wreck, is refused and kept.
+ * What each item does (SPEC sections 10 and 11). All of them but the thrown kit work on the pod the player is piloting, and
+ * on no other: an item used on foot, or in a wreck, is refused and kept. The thrown kit (#985) is the other way round: it is
+ * thrown on foot and refused from a seat, and {@link ThrownKit} does it.
  */
 final class Consumables {
     private Consumables() {}
 
     /** Server only: applies the item for {@code player}. Empty when it worked (the caller uses it up), or the reason it did not. */
     static Optional<Component> use(ServerPlayer player, Consumable consumable) {
+        if (consumable.thrown()) {
+            return ThrownKit.throwFrom(player, consumable, ThrownKitTuning.DEFAULT);
+        }
         if (!(player.getVehicle() instanceof PodEntity pod) || pod.getControllingPassenger() != player) {
             return refusal("not_piloting");
         }
@@ -39,6 +43,8 @@ final class Consumables {
             case SHAPED_CHARGE -> PodCharge.set(pod, tuning, PodCharge.Kind.SHAPED);
             case QUANTUM_TELEPORTER -> Teleports.send(pod, tuning.quantumScatter());
             case MATTER_TRANSMITTER -> Teleports.send(pod, 0.0);
+            case THROWN_FLARE, THROWN_DECOY, THROWN_CHARGE ->
+                throw new IllegalStateException(consumable + " is thrown on foot and handled above");
             // The switch must cover every constant; a TOOL never reaches here, because RepairRegistry gives it its own
             // item.
             case TETHER ->

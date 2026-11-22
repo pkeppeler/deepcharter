@@ -47,6 +47,9 @@ for a in "$@"; do
   [[ $prev == -X ]] && method=$a
   [[ $prev == --jq ]] && jq=$a
   [[ $a == repos/* ]] && path=$a
+  # The commit message the merge request sends, byte for byte, for the tests to judge.
+  [[ $a == commit_message=* ]] && printf '%s' "${a#commit_message=}" >"$LOG.message"
+  [[ $a == commit_title=* ]] && printf '%s' "${a#commit_title=}" >"$LOG.title"
   prev=$a
 done
 case "$method $path" in
@@ -82,7 +85,10 @@ case "$method $path" in
     fi ;;
   "GET "*/pulls\?base=*) [[ ${STUB_LIST_FAIL-0} == 1 ]] && exit 1; printf '%s' "${STUB_STACKED-}" ;; # open PR numbers whose base is the head branch
   "PATCH "*/pulls/*) [[ ${STUB_EDIT_FAIL-0} == 1 ]] && exit 1; exit 0 ;;
-  "PUT "*/pulls/*/merge) touch "$LOG.merged"; exit "${STUB_MERGE_RC:-0}" ;;
+  "PUT "*/pulls/*/merge)
+    touch "$LOG.merged"
+    [[ -z ${STUB_MERGE_ERR-} ]] || echo "$STUB_MERGE_ERR" >&2
+    exit "${STUB_MERGE_RC:-0}" ;;
   "POST "*/issues/*) exit 0 ;;
   "GET "*/pulls/*)
     [[ ${STUB_VIEW_FAIL-0} == 1 ]] && exit 1
@@ -102,7 +108,7 @@ case "$method $path" in
       .draft) [[ ${STUB_DRAFT_FAIL-0} == 1 ]] && exit 1; echo "${STUB_DRAFT-false}" ;;
       .head.ref) echo "${STUB_BRANCH-12-some-slug}" ;;
       .base.ref) [[ ${STUB_BASE_FAIL-0} == 1 ]] && exit 1; echo "${STUB_BASE-main}" ;;
-      .title) echo "A title" ;;
+      .title) echo "${STUB_TITLE-A title}" ;;
       *.body*)
         # The gate reads the body twice before the closing set is re-read: reads after those answer with
         # STUB_BODY_LATER, STUB_BODY_FAIL_AT=<n> fails the nth read.
@@ -159,7 +165,7 @@ STUB
 cat >"$work/bin/uv" <<'STUB'
 #!/usr/bin/env bash
 # The closing-reference parser really runs (through the real uv) and is not logged; everything else is the roadmap.
-if [[ $* == *closing_refs.py* ]]; then PATH=$REAL_PATH exec uv "$@"; fi
+if [[ $* == *closing_refs.py* || $* == *merge_message.py* ]]; then PATH=$REAL_PATH exec uv "$@"; fi
 echo "uv $*" >>"$LOG"
 exit "${STUB_ROADMAP_RC:-0}"
 STUB
@@ -216,7 +222,7 @@ rc=0
 pass() { cases=$((cases + 1)); echo "ok   $1"; }
 fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
-reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push" "$LOG.body"; : >"$LOG"; }
+reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push" "$LOG.body" "$LOG.message" "$LOG.title"; : >"$LOG"; }
 
 # run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
 run_script() {
@@ -562,7 +568,7 @@ exited "runs as ./merge-pr.sh from tools/" 0
 # script has no override seam).
 mkdir "$work/tools"
 cp -R "$tools/lib" "$work/tools/lib"
-cp "$tools/py" "$tools/closing_refs.py" "$tools/ci-client-needed.sh" "$work/tools/"
+cp "$tools/py" "$tools/closing_refs.py" "$tools/merge_message.py" "$tools/ci-client-needed.sh" "$work/tools/"
 cp "$tools/../.python-version" "$work/.python-version"
 sed 's/^REQUIRED_CHECKS=(.*)$/REQUIRED_CHECKS=(build lint)/' "$script" >"$work/tools/merge-pr.sh"
 grep -q 'REQUIRED_CHECKS=(build lint)' "$work/tools/merge-pr.sh" || fail "required-checks copy was not patched"
@@ -684,6 +690,47 @@ run_script STUB_MERGE_RC=1 STUB_STATE_AFTER=OPEN
 exited "failed merge exits nonzero" 1
 printed "failed merge says not merged" "PR #7 is not merged"
 not_logged "failed merge skips roadmap" "^uv"
+
+# The API's refusal text reaches the output (#1007).
+run_script STUB_MERGE_RC=1 STUB_STATE_AFTER=OPEN "STUB_MERGE_ERR=gh: Merge refused: commit_message contains a URL (HTTP 403)"
+printed "failed merge prints the API's error" "Merge refused: commit_message contains a URL (HTTP 403)"
+
+# Long URLs in the body are shortened in the commit message only (#1007).
+adr_path=docs/adr/0074-pods-stay-server-authoritative-and-the-client-slides-them-over-two-ticks.md
+adr_url=https://github.com/pkeppeler/deepcharter/blob/961-smooth-pod-driving/$adr_path
+run80=$(printf 'a%.0s' {1..80})
+short_url=https://github.com/pkeppeler/deepcharter/blob/main/docs/SPEC.md
+sent() { cat "$LOG.message"; }
+sent_is() { if [[ $(sent) == "$2" ]]; then pass "$1"; else fail "$1 (sent: $(sent))"; fi; }
+sent_has_no_tripping_url() {
+  local tripping
+  tripping=$(tools/py tools/merge_message.py --list <"$LOG.message")
+  if [[ -z $tripping ]]; then pass "$1"; else fail "$1 (sent: $(sent))"; fi
+}
+sent_title_has_no_tripping_url() {
+  local tripping
+  tripping=$(tools/py tools/merge_message.py --list <"$LOG.title")
+  if [[ -z $tripping ]]; then pass "$1"; else fail "$1 (sent: $(cat "$LOG.title"))"; fi
+}
+run_script "STUB_BODY=Closes #12${nl}ADR: [74]($adr_url) and $adr_url"
+exited "a 150-character ADR blob link: merged" 0
+sent_is "the ADR blob link is sent as its backticked path" "Closes #12${nl}ADR: 74 (\`$adr_path\`) and \`$adr_path\`"
+sent_has_no_tripping_url "the sent message has no tripping URL (ADR link)"
+run_script "STUB_BODY=Closes #12${nl}Clip https://example.com/m/$run80.mp4 end"
+sent_is "a URL with an 80-character run is removed" "Closes #12${nl}Clip  end"
+sent_has_no_tripping_url "the sent message has no tripping URL (long run)"
+run_script "STUB_BODY=Closes #12${nl}[spec]($short_url) https://example.com/a?b=c"
+sent_is "short URLs are kept" "Closes #12${nl}[spec]($short_url) https://example.com/a?b=c"
+run_script "STUB_TITLE=Fix $adr_url"
+if [[ $(cat "$LOG.title") == "Fix \`$adr_path\` (#7)" ]]; then pass "a tripping URL in the title is rewritten"; else fail "a tripping URL in the title is rewritten (sent: $(cat "$LOG.title"))"; fi
+run_script "STUB_TITLE=Fix https://example.com/m/$run80"
+sent_title_has_no_tripping_url "the sent title has no tripping URL"
+run_check "STUB_BODY=Closes #12${nl}ADR $adr_url"
+exited "--check with a long URL still passes" 0
+printed "--check warns about a long URL" "WARNING: the title or body holds 1 URL(s) the merge proxy refuses"
+printed "--check says the merge rewrites it" "the merge rewrites them in the commit message"
+run_check STUB_BODY="Closes #12${nl}[spec]($short_url)"
+if [[ $out == *"merge proxy refuses"* ]]; then fail "--check is quiet about a short URL"; else pass "--check is quiet about a short URL"; fi
 
 # Roadmap script missing on main: warn, still succeed.
 run_script STUB_ROADMAP_PRESENT=0
