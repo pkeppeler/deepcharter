@@ -246,7 +246,7 @@ public class LightSyncSafetyNetTest {
      * request (#954): the ticks of a server and the light engine's thread run at different speeds under load, so how many ticks a
      * neighbour waits to be sent is not bounded.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS + LATE_SEND_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS + LATE_SEND_TICKS)
     public void aNeighbourSentLongAfterTheHoldWasRequestedIsWatched(GameTestHelper helper) {
         neighbourSentLater(helper, "net-late", 120, LATE_SEND_TICKS);
     }

@@ -104,7 +104,7 @@ public class OrePlacementTest {
     private static final String CAMPAIGN = "deepcharter:campaign_sample";
 
     /** The tables in the campaign world (#743): the zone fill runs in each layer's band, so each of its six zones holds the ore of the same rows. */
-    @GameTest(dimension = CAMPAIGN, maxTicks = 6000)
+    @GameTest(environment = CampaignEnvironments.C, dimension = CAMPAIGN, maxTicks = 6000)
     public void oreAndHazardFrequenciesMatchTheTablesPerZone(GameTestHelper helper) {
         expectTables(helper, sample(helper));
         helper.succeed();
@@ -200,7 +200,7 @@ public class OrePlacementTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = CAMPAIGN, maxTicks = 6000)
+    @GameTest(environment = CampaignEnvironments.C, dimension = CAMPAIGN, maxTicks = 6000)
     public void hazardsStartWhereTheIssueSaysAndCicatriumIsDeep(GameTestHelper helper) {
         Census[] sample = sample(helper);
         for (int zone = 0; zone < ZONE_NAMES.length; zone++) {
