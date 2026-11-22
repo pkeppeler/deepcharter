@@ -21,6 +21,8 @@ import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -68,6 +70,10 @@ public class OvergrowthScenario extends EvidenceScenario {
                 // The growth stills are taken from a spectator's eye in the chamber, with the pod parked behind the
                 // camera.
                 player.setGameMode(GameType.SPECTATOR);
+                // The layer's lightmap is near black: night vision lifts it for the stills without touching the world's
+                // light.
+                player.addEffect(new MobEffectInstance(
+                        MobEffects.NIGHT_VISION, MobEffectInstance.INFINITE_DURATION, 0, false, false));
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
                 pod.setPos(middle.getX() - 6.5, FLOOR_Y, middle.getZ() - 6.5);
                 one.addFreshEntity(pod);
