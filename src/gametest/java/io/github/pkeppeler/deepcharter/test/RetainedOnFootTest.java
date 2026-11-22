@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.repair.RecoveryTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestCleanups;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
@@ -78,6 +79,10 @@ public class RetainedOnFootTest {
 
     /** Ticks the grip is watched after food reached the floor: over two points of drain at 6 seconds a point, so a missing floor shows. */
     private static final int HOLD_AT_FLOOR_TICKS = 260;
+    /** Ticks a figure stranded in a chunk that does not tick is watched for a drain: the same over-two-points span as the floor hold. */
+    private static final int FROZEN_FOOD_WINDOW_TICKS = 260;
+    /** Ticks after the winch lands in which the figure is checked for jumping: a figure that teleported to the person shows in the first ticks. */
+    private static final int JUMP_WATCH_TICKS = 5;
     /** Ticks a light, or a person's answer that does not kill, is watched. */
     private static final int WATCH_TICKS = 160;
     /** Ticks between two blows by hand: a hurt mob ignores a blow that is no stronger than the last for 10 ticks. */
@@ -862,7 +867,7 @@ public class RetainedOnFootTest {
             maxTicks = FarChunks.AWAIT_BUDGET_TICKS
                     + APPROACH_BUDGET_TICKS
                     + TRAIL_BUDGET_TICKS
-                    + HOLD_AT_FLOOR_TICKS
+                    + FROZEN_FOOD_WINDOW_TICKS
                     + FREED_BUDGET_TICKS
                     + 200)
     public void aSameLevelWinchKeepsTheGripButTheFigureOnlyTrailsWhereItsChunkTicks(GameTestHelper helper) {
@@ -877,6 +882,15 @@ public class RetainedOnFootTest {
         long[] releasedAt = {-1};
         int[] foodAtFreeze = {0};
         Vec3[] last = {null};
+        // The winched pod lands on the colony pad, which tests share: it goes on every exit, not only on success.
+        TestCleanups.onFinish(helper, () -> {
+            if (pod[0] != null) {
+                pod[0].discard();
+            }
+            if (made[0] != null) {
+                made[0].clear();
+            }
+        });
         TestTicks.each(helper, () -> {
             Room room = made[0];
             if (room == null) {
@@ -930,7 +944,7 @@ public class RetainedOnFootTest {
                             room.figure.distanceTo(player));
                 }
             }
-            if (since < 5 && room.figure.position().distanceTo(last[0]) > FOOT_LATCH_SPEED + EPSILON) {
+            if (since < JUMP_WATCH_TICKS && room.figure.position().distanceTo(last[0]) > FOOT_LATCH_SPEED + EPSILON) {
                 throw failure(
                         helper,
                         "the figure moved %s blocks in a tick: it jumped to the person, not trailed at %s",
@@ -950,7 +964,7 @@ public class RetainedOnFootTest {
                     } else if (since > TRAIL_BUDGET_TICKS) {
                         throw failure(helper, "the figure still ticks %s ticks after the winch", since);
                     }
-                } else if (since - frozenAt[0] >= HOLD_AT_FLOOR_TICKS) {
+                } else if (since - frozenAt[0] >= FROZEN_FOOD_WINDOW_TICKS) {
                     // Nobody is near the figure: it does not tick, so nothing drains, and the weight stays until its
                     // chunk goes.
                     if (player.getFoodData().getFoodLevel() != foodAtFreeze[0]) {
@@ -967,8 +981,6 @@ public class RetainedOnFootTest {
             }
             if (FootGrips.holder(player) == null
                     && Math.abs(player.getAttributeValue(Attributes.MOVEMENT_SPEED) - speedFree[0]) < EPSILON) {
-                pod[0].discard();
-                room.clear();
                 helper.succeed();
             } else if (since - releasedAt[0] > FREED_BUDGET_TICKS) {
                 throw failure(helper, "the person is still held after the figure's chunk was let go");
