@@ -3,8 +3,10 @@ package io.github.pkeppeler.deepcharter.client.layer;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.layer.BlockReadouts;
 import io.github.pkeppeler.deepcharter.layer.BlockReadouts.Readout;
+import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -35,6 +37,27 @@ public final class BlockReadoutHud {
         HudElementRegistry.attachElementAfter(VanillaHudElements.CROSSHAIR, ID, BlockReadoutHud::extract);
         ClientTickEvents.END_CLIENT_TICK.register(BlockReadoutHud::tick);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> FADE.reset());
+        HudKeepClear.register(BlockReadoutHud::keepClear);
+    }
+
+    /** The name and hint under the crosshair, while the readout is up. */
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        Optional<Readout> readout = shown();
+        if (readout.isEmpty() || !visible(client)) {
+            return;
+        }
+        ReadoutLook look = ReadoutLook.current();
+        Font font = client.font;
+        int widest = font.width(readout.get().name());
+        int height = font.lineHeight;
+        if (readout.get().hint().isPresent()) {
+            widest = Math.max(widest, font.width(readout.get().hint().get()));
+            height += font.lineHeight + look.lineGap();
+        }
+        int width = (int) Math.ceil(widest * look.scale());
+        into.add(new HudKeepClear.Rect(
+                "block readout", (guiWidth - width) / 2, guiHeight / 2 + look.offsetY(), width, (int)
+                        Math.ceil(height * look.scale())));
     }
 
     /** What the crosshair rests on, as the readout says it: empty with no world, in a screen, or with the HUD hidden. */

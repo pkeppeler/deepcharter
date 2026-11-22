@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.StepToast;
 import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
+import io.github.pkeppeler.deepcharter.client.layer.BlockReadoutHud;
 import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
@@ -15,6 +16,7 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook.Layout;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
+import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
@@ -378,6 +380,22 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                             font.width(account.get()),
                             font.lineHeight));
         }
+        BlockReadoutHud.shown().ifPresent(readout -> {
+            ReadoutLook look = ReadoutLook.current();
+            int widest = font.width(readout.name());
+            int lines = readout.hint().isPresent() ? 2 : 1;
+            if (readout.hint().isPresent()) {
+                widest = Math.max(widest, font.width(readout.hint().get()));
+            }
+            double scale = look.scale();
+            hud.put(
+                    "block readout",
+                    new Box(
+                            (width - (int) Math.ceil(widest * scale)) / 2,
+                            height / 2 + look.offsetY(),
+                            (int) Math.ceil(widest * scale),
+                            (int) Math.ceil((lines * font.lineHeight + (lines - 1) * look.lineGap()) * scale)));
+        });
         if (TransmissionOverlay.active()) {
             TransmissionLook look = TransmissionLook.current();
             CrtTuning crt = CrtTuning.current();

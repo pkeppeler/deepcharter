@@ -36,10 +36,10 @@ public final class StepToast implements Toast {
 
     private final List<String> lines;
     private Visibility visibility = Visibility.HIDE;
-    /** Where the slip was put in the frame {@link #stamp} names; null when it found no clear place. */
+    /** Where the slip was put when {@link #placedAtMillis} says; null when it found no clear place. */
     private HudKeepClear.@Nullable Rect placement;
 
-    private long stamp = Long.MIN_VALUE;
+    private long placedAtMillis = Long.MIN_VALUE;
     private long lastUpdateMillis = -1;
     private long waitedMillis;
 
@@ -110,9 +110,14 @@ public final class StepToast implements Toast {
         return Optional.empty();
     }
 
-    /** Where the slip is in the frame it was last drawn, or empty when it found no clear place then or is not on screen. */
+    /**
+     * Where the slip is, or empty when it found no clear place at its last frame or has not been placed for {@code toastStaleMillis}
+     * (it was cleared or its time is up): a slip is placed again in every frame it is on screen.
+     */
     public Optional<HudKeepClear.Rect> placement() {
-        return stamp == Minecraft.getInstance().getFrameTimeNs() ? Optional.ofNullable(placement) : Optional.empty();
+        return Util.getMillis() - placedAtMillis <= QuestMapTuning.current().toastStaleMillis()
+                ? Optional.ofNullable(placement)
+                : Optional.empty();
     }
 
     @Override
@@ -150,7 +155,7 @@ public final class StepToast implements Toast {
         PLACED.removeIf(other -> other == this || other.placement().isEmpty());
         PLACED.forEach(other -> other.placement().ifPresent(avoid::add));
         placement = place(guiWidth, guiHeight, width(), height(), avoid).orElse(null);
-        stamp = client.getFrameTimeNs();
+        placedAtMillis = Util.getMillis();
         if (placement == null) {
             return 0;
         }
