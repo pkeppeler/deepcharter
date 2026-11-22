@@ -1,4 +1,4 @@
-"""Tests the constant-parameter gate (tools/TestOnlyGate.java --constant-params, gradle/constant-param-gate.gradle.kts): a parameter of a
+"""Tests the constant-parameter gate (tools/ConstantParamGate.java, gradle/constant-param-gate.gradle.kts): a parameter of a
 mod method or constructor that every production caller passes the same literal fails the build, unless a caller varies it, a method handle
 reaches the method, the method is an override, a record's canonical constructor, varargs, annotated or in a @Mixin class, it has no
 production caller, or a `// const-param: <reason>` marker with a real reason binds to its exact declaration. A test caller is not a caller:
@@ -189,6 +189,21 @@ public class Greens {
 
     public void swap(int left, int right) {
     }
+
+    public void either(Object kind) {
+    }
+}
+""",
+    "fx/pa/Kind.java": """package fx.pa;
+
+public enum Kind {
+    A
+}
+""",
+    "fx/pb/Kind.java": """package fx.pb;
+
+public enum Kind {
+    A
 }
 """,
     "fx/Point.java": """package fx;
@@ -237,6 +252,125 @@ public class Crate implements Box<String> {
     }
 }
 """,
+    # Where the gate's stack walk must stay in step: wide values under dup2 and its kin, a wide call result, a switch expression, an
+    # invokedynamic concat, a long compound assignment and a literal boxed into Object. Each sink is called once, with the literals the
+    # RED rows name and the other arguments varying.
+    "fx/Sinks.java": """package fx;
+
+public class Sinks {
+    public void dupWide(long first, int second) {
+    }
+
+    public void dupX1Wide(long first, int second) {
+    }
+
+    public void dupX2Wide(long first, int second) {
+    }
+
+    public void dupX2Narrow(int first, int second) {
+    }
+
+    public void compoundIndex(long first, int second) {
+    }
+
+    public void nested(int first, long second, int third) {
+    }
+
+    public void switched(int first, int second) {
+    }
+
+    public void switchedSame(int first, int second) {
+    }
+
+    public void concat(int first, String second, int third) {
+    }
+
+    public void compoundLong(int first, long second) {
+    }
+
+    public void boxed(Object first, int second) {
+    }
+
+    public void boxedBool(Object flag) {
+    }
+
+    public void boxedChar(Object letter) {
+    }
+
+    public void localStore(int first, int second) {
+    }
+}
+""",
+    "fx/Flows.java": """package fx;
+
+public class Flows {
+    static long staticWide;
+    long wide;
+    long[] longs = new long[4];
+    int[] ints = new int[4];
+    int index;
+    long total;
+
+    long square(long value) {
+        return value * value;
+    }
+
+    void run(Sinks sinks, int k) {
+        sinks.dupWide(staticWide = 5L, 7);
+        sinks.dupX1Wide(this.wide = 5L, 6);
+        sinks.dupX2Wide(longs[index] = 5L, 8);
+        sinks.dupX2Narrow(ints[index] = 3, 9);
+        sinks.compoundIndex(longs[index++] += 2L, 4);
+        sinks.nested(7, square(3L), 5);
+        sinks.switched(
+                5,
+                switch (k) {
+                    case 1 -> 10;
+                    default -> {
+                        square(1L);
+                        yield 11;
+                    }
+                });
+        sinks.switchedSame(
+                switch (k) {
+                    case 1 -> 3;
+                    default -> 3;
+                },
+                6);
+        sinks.concat(5, "x" + 5L + k, 8);
+        sinks.compoundLong(5, total += 2L);
+        int scratch;
+        sinks.localStore(5, scratch = 3);
+        sinks.boxed(7, 4);
+        sinks.boxedBool(true);
+        sinks.boxedChar('x');
+    }
+}
+""",
+    # A declaration the parser cannot match to the compiled method: the written type is Item, the erased one Number.
+    "fx/Hard.java": """package fx;
+
+public class Hard<Item extends Number> {
+    public Hard(Item value) {
+    }
+
+    public <Other extends Number> int bounded(Other value) {
+        return value.intValue();
+    }
+}
+""",
+    "fx/Marked.java": """package fx;
+
+// const-param: the generic bounds defeat the declaration parser, so the class carries the marker
+public class Marked<Item extends Number> {
+    public Marked(Item value) {
+    }
+
+    public <Other extends Number> int bounded(Other value) {
+        return value.intValue();
+    }
+}
+""",
     "fx/Mod.java": """package fx;
 
 public class Mod {
@@ -267,11 +401,16 @@ public class Mod {
         greens.take(Greens.TOKEN);
         greens.swap(1, 2);
         greens.swap(2, 1);
+        greens.either(fx.pa.Kind.A);
+        greens.either(fx.pb.Kind.A);
         new Injected().hook(1);
         total += new Point(1, 2).x();
         total += shape.scale(3) + new Square().scale(3);
         box.put("a");
         new Crate().put("a");
+        new Flows().run(new Sinks(), a);
+        total += new Hard<Integer>(1).bounded(3);
+        total += new Marked<Integer>(1).bounded(3);
         return total;
     }
 }
@@ -296,7 +435,35 @@ RED = [
     ("fx/Reds.java", "public int stockPhrase(", "Reds.stockPhrase(int)", "value", "1", 1, "fx.Reds#stockPhrase(I)#value", BARE),
     ("fx/Reds.java", "public int blankSeparated(", "Reds.blankSeparated(int)", "value", "1", 1, "fx.Reds#blankSeparated(I)#value", ""),
     ("fx/Mode.java", "Mode(int weight)", "new Mode(int)", "weight", "1", 2, "fx.Mode#<init>(Ljava/lang/String;II)#weight", ""),
+    ("fx/Sinks.java", "public void dupWide(", "Sinks.dupWide(long, int)", "first", "5L", 1, "fx.Sinks#dupWide(JI)#first", ""),
+    ("fx/Sinks.java", "public void dupWide(", "Sinks.dupWide(long, int)", "second", "7", 1, "fx.Sinks#dupWide(JI)#second", ""),
+    ("fx/Sinks.java", "public void dupX1Wide(", "Sinks.dupX1Wide(long, int)", "first", "5L", 1, "fx.Sinks#dupX1Wide(JI)#first", ""),
+    ("fx/Sinks.java", "public void dupX1Wide(", "Sinks.dupX1Wide(long, int)", "second", "6", 1, "fx.Sinks#dupX1Wide(JI)#second", ""),
+    ("fx/Sinks.java", "public void dupX2Wide(", "Sinks.dupX2Wide(long, int)", "first", "5L", 1, "fx.Sinks#dupX2Wide(JI)#first", ""),
+    ("fx/Sinks.java", "public void dupX2Wide(", "Sinks.dupX2Wide(long, int)", "second", "8", 1, "fx.Sinks#dupX2Wide(JI)#second", ""),
+    ("fx/Sinks.java", "public void dupX2Narrow(", "Sinks.dupX2Narrow(int, int)", "first", "3", 1, "fx.Sinks#dupX2Narrow(II)#first", ""),
+    ("fx/Sinks.java", "public void dupX2Narrow(", "Sinks.dupX2Narrow(int, int)", "second", "9", 1, "fx.Sinks#dupX2Narrow(II)#second", ""),
+    ("fx/Sinks.java", "public void compoundIndex(", "Sinks.compoundIndex(long, int)", "second", "4", 1, "fx.Sinks#compoundIndex(JI)#second", ""),
+    ("fx/Sinks.java", "public void nested(", "Sinks.nested(int, long, int)", "first", "7", 1, "fx.Sinks#nested(IJI)#first", ""),
+    ("fx/Sinks.java", "public void nested(", "Sinks.nested(int, long, int)", "third", "5", 1, "fx.Sinks#nested(IJI)#third", ""),
+    ("fx/Sinks.java", "public void switched(", "Sinks.switched(int, int)", "first", "5", 1, "fx.Sinks#switched(II)#first", ""),
+    ("fx/Sinks.java", "public void switchedSame(", "Sinks.switchedSame(int, int)", "first", "3", 1, "fx.Sinks#switchedSame(II)#first", ""),
+    ("fx/Sinks.java", "public void switchedSame(", "Sinks.switchedSame(int, int)", "second", "6", 1, "fx.Sinks#switchedSame(II)#second", ""),
+    ("fx/Sinks.java", "public void concat(", "Sinks.concat(int, String, int)", "first", "5", 1, "fx.Sinks#concat(ILjava/lang/String;I)#first", ""),
+    ("fx/Sinks.java", "public void concat(", "Sinks.concat(int, String, int)", "third", "8", 1, "fx.Sinks#concat(ILjava/lang/String;I)#third", ""),
+    ("fx/Sinks.java", "public void compoundLong(", "Sinks.compoundLong(int, long)", "first", "5", 1, "fx.Sinks#compoundLong(IJ)#first", ""),
+    ("fx/Sinks.java", "public void localStore(", "Sinks.localStore(int, int)", "first", "5", 1, "fx.Sinks#localStore(II)#first", ""),
+    ("fx/Sinks.java", "public void localStore(", "Sinks.localStore(int, int)", "second", "3", 1, "fx.Sinks#localStore(II)#second", ""),
+    ("fx/Sinks.java", "public void boxed(", "Sinks.boxed(Object, int)", "first", "7", 1, "fx.Sinks#boxed(Ljava/lang/Object;I)#first", ""),
+    ("fx/Sinks.java", "public void boxed(", "Sinks.boxed(Object, int)", "second", "4", 1, "fx.Sinks#boxed(Ljava/lang/Object;I)#second", ""),
+    ("fx/Sinks.java", "public void boxedBool(", "Sinks.boxedBool(Object)", "flag", "true", 1, "fx.Sinks#boxedBool(Ljava/lang/Object;)#flag", ""),
+    ("fx/Sinks.java", "public void boxedChar(", "Sinks.boxedChar(Object)", "letter", "'x'", 1, "fx.Sinks#boxedChar(Ljava/lang/Object;)#letter", ""),
     ("fx/Outer.java", "public Inner(int size)", "new Outer.Inner(int)", "size", "4", 1, "fx.Outer$Inner#<init>(Lfx/Outer;I)#size", ""),
+]
+# (file, class declaration text, how the gate names the member, its --list key): a declaration the parser cannot match, reported at the class line
+NOT_LOCATED = [
+    ("fx/Hard.java", "public class Hard", "new Hard(Number)", "fx.Hard#<init>(Ljava/lang/Number;)#?"),
+    ("fx/Hard.java", "public class Hard", "Hard.bounded(Number)", "fx.Hard#bounded(Ljava/lang/Number;)#?"),
 ]
 
 TESTS = {"fxtest/ModTest.java": """package fxtest;
@@ -339,7 +506,7 @@ class Tree:
         return next(number for number, line in enumerate(lines, 1) if text in line)
 
     def scan(self, *extra: str) -> subprocess.CompletedProcess[str]:
-        command = ["java", str(REPO / "tools/TestOnlyGate.java"), "--constant-params", "--production", str(self.work / "classes/mod"),
+        command = ["java", str(REPO / "tools/ConstantParamGate.java"), "--production", str(self.work / "classes/mod"),
                    "--sources", str(self.work / "mod"), "--root", str(self.work), *extra]
         done = subprocess.run(command, capture_output=True, text=True, check=False)
         done.stderr = "".join(line for line in done.stderr.splitlines(keepends=True) if not line.startswith("Picked up"))
@@ -348,7 +515,9 @@ class Tree:
     def expected(self) -> set[str]:
         return {f"mod/{file}:{self.line(file, text)} {label} parameter '{parameter}' is always {literal} "
                 f"({calls} production call{'' if calls == 1 else 's'}){extra}"
-                for file, text, label, parameter, literal, calls, _, extra in RED}
+                for file, text, label, parameter, literal, calls, _, extra in RED} | {
+            f"mod/{file}:{self.line(file, text)} declaration not located: {label}; mark the class or simplify the declaration"
+            for file, text, label, _ in NOT_LOCATED}
 
 
 def findings(done: subprocess.CompletedProcess[str]) -> set[str]:
@@ -381,7 +550,7 @@ class ConstantParamGateTest(unittest.TestCase):
     def test_list_prints_one_key_per_parameter(self):
         done = self.tree.scan("--list")
         self.assertEqual(0, done.returncode, done.stderr)
-        self.assertEqual({key for *_, key, _ in RED}, set(done.stdout.split()))
+        self.assertEqual({key for *_, key, _ in RED} | {key for *_, key in NOT_LOCATED}, set(done.stdout.split()))
 
     def test_a_finding_never_reports_line_zero(self):
         self.assertNotIn(":0 ", self.tree.scan().stderr)

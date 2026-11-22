@@ -188,7 +188,7 @@ public record PodStats(
                 maxHull,
                 horizontalSpeed,
                 enginePower,
-                thrustAcceleration,
+                0f,
                 maxClimbSpeed,
                 hardLandingSpeed,
                 hullDamagePerSpeed,

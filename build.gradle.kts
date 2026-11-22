@@ -307,7 +307,7 @@ tasks.withType<Checkstyle>().configureEach {
 // Python, not files, so no target here touches them.
 spotless {
 	java {
-		target("src/**/*.java", "gradle/OomProbe.java", "tools/TestOnlyGate.java")
+		target("src/**/*.java", "gradle/OomProbe.java", "tools/TestOnlyGate.java", "tools/ConstantParamGate.java")
 		palantirJavaFormat(libs.versions.palantirJavaFormat.get())
 		removeUnusedImports()
 	}
