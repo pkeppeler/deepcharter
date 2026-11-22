@@ -453,13 +453,15 @@ public class DrifterSpawnTest {
      * ringing so that a roll comes in a few checks: none while {@code spawn_mobs} is off; one pod holds two (1 plus the alarm's 1), a second pod
      * three (the middle zone's cap), and each new drifter comes at least a check after the last. The drifters are held still so that none
      * bursts on its pod. The roll and the placement draw from a seeded source ({@link Drifters#seed}), so the counts are reproducible, not a
-     * chance of a flake; the budget only bounds a failure.
+     * chance of a flake; the seed is of this zone alone (no other test uses layer 2's middle zone), so a timeout that skips the reset leaves
+     * nothing another test draws from. The budget only bounds a failure.
      */
     @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 50_000)
     public void theTickPlacesDriftersByPodsUpToTheZoneCap(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         CampaignBands.Band two = CampaignBands.LAYER_2;
         int y = topY(two.minY(), two.height(), 1);
+        DrifterAlarm.Zone zone = DrifterAlarm.Zone.at(level, y).orElseThrow();
         List<BlockPos> columns = columns(y);
         int ready = columns.size();
         int[] arrived = {0};
@@ -477,7 +479,7 @@ public class DrifterSpawnTest {
             try {
                 if (!set[0]) {
                     set[0] = true;
-                    Drifters.seed(RandomSource.create(SEED));
+                    Drifters.seed(zone, RandomSource.create(SEED));
                     room(level, y);
                     hollows(level, y);
                     pods[0] = podAt(helper, level, y, 0, pilots, 0);
@@ -532,7 +534,7 @@ public class DrifterSpawnTest {
                                 "two pods hold %d drifters, the zone's cap is 3",
                                 alive.size());
                         if (alive.size() == 3 && tick >= 1_500) {
-                            finish(level, alive, pods, pilots);
+                            finish(level, zone, alive, pods, pilots);
                             helper.succeed();
                         } else if (tick > 20_000 && alive.size() < 3) {
                             throw failure(helper, "two pods drew %d drifters in %d ticks, not 3", alive.size(), tick);
@@ -540,7 +542,7 @@ public class DrifterSpawnTest {
                     }
                 }
             } catch (RuntimeException e) {
-                Drifters.seed(null);
+                Drifters.seed(zone, null);
                 level.getServer().getGameRules().set(GameRules.SPAWN_MOBS, false, level.getServer());
                 throw e;
             }
@@ -563,8 +565,12 @@ public class DrifterSpawnTest {
     }
 
     private static void finish(
-            ServerLevel level, List<? extends Drifter> alive, PodEntity[] pods, MockPlayer[] pilots) {
-        Drifters.seed(null);
+            ServerLevel level,
+            DrifterAlarm.Zone zone,
+            List<? extends Drifter> alive,
+            PodEntity[] pods,
+            MockPlayer[] pilots) {
+        Drifters.seed(zone, null);
         level.getServer().getGameRules().set(GameRules.SPAWN_MOBS, false, level.getServer());
         alive.forEach(Drifter::discard);
         for (int i = 0; i < pods.length; i++) {

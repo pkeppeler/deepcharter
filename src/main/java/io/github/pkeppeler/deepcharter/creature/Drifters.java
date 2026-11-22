@@ -65,18 +65,23 @@ public final class Drifters {
     /** Where each person on foot stood at the last look, to tell walking from standing. Server thread only. */
     private static Map<Seen, Vec3> lastSeen = new HashMap<>();
 
-    /** The source of chance for the roll and the placement in place of the level's, or null. Server thread only. */
-    private static @Nullable RandomSource seeded;
+    /** The source of chance for the rolls and placements of a zone, in place of the level's, by zone. Server thread only. */
+    private static final Map<DrifterAlarm.Zone, RandomSource> SEEDED = new HashMap<>();
 
     private Drifters() {}
 
     /**
-     * Makes the tick roll and place with {@code random} in place of the level's, so a test's counts do not depend on chance; null restores
-     * the level's.
+     * Makes the tick roll and place for sources in {@code zone} with {@code random} in place of the level's, so a test's counts do not
+     * depend on chance; null restores the level's. Other zones, and other levels, keep the level's.
      */
-    // test-seam: a test seeds the tick's chance so that its drifter counts are exact, not a probability
-    public static void seed(@Nullable RandomSource random) {
-        seeded = random;
+    // test-seam: a test seeds the chance of a zone it alone uses so that its drifter counts are exact, not a
+    // probability
+    public static void seed(DrifterAlarm.Zone zone, @Nullable RandomSource random) {
+        if (random == null) {
+            SEEDED.remove(zone);
+        } else {
+            SEEDED.put(zone, random);
+        }
     }
 
     public static void init() {
@@ -88,7 +93,7 @@ public final class Drifters {
     private static void clear() {
         NOISES.clear();
         lastSeen = new HashMap<>();
-        seeded = null;
+        SEEDED.clear();
     }
 
     /** The nearest noise that reaches {@code from}, as far as its radius times {@code senseMult}. */
@@ -113,10 +118,10 @@ public final class Drifters {
             look(level);
         }
         if (now % tuning.spawn().checkTicks() == 0 && mayPlace(level)) {
-            RandomSource random = seeded != null ? seeded : level.getRandom();
             List<Source> sources = sources(level);
             for (Source source : sources) {
                 Optional<DrifterAlarm.Zone> zone = zoneOf(level, source);
+                RandomSource random = zone.map(SEEDED::get).orElse(level.getRandom());
                 if (zone.isPresent()
                         && rolls(
                                 zone.get().index(),
