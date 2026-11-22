@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.theme;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
+import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
 import java.util.Map;
@@ -15,6 +16,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @param crt the terminal screens, their widgets and the CRT drawing helpers
  * @param handbook the handbook paper
+ * @param questMap the flowchart of a chapter, drawn on the handbook paper
  * @param scanner the scanner minimap
  * @param hud the pod readout, the altimeter and the account line
  * @param transmission the transmission panel
@@ -26,10 +28,12 @@ import org.jspecify.annotations.Nullable;
  * @param tow the chain links of the tow line between two pods
  * @param beam the fake light beams of a lit pod's headlamp and the colony floodlights
  * @param catalogue the size and place of the parts catalogue and its recipe panel, beside the inventory
+ * @param readout the block name and hint under the crosshair
  */
 public record UiTheme(
         CrtTuning crt,
         HandbookScreenTuning handbook,
+        QuestMapTuning questMap,
         ScannerLook scanner,
         HudLook hud,
         TransmissionLook transmission,
@@ -40,7 +44,8 @@ public record UiTheme(
         CockpitLook cockpit,
         TowChainLook tow,
         BeamLook beam,
-        CatalogueLook catalogue) {
+        CatalogueLook catalogue,
+        ReadoutLook readout) {
     /** The areas, each one a file {@code theme/<name>.json}. */
     static final Set<String> AREAS = Set.of(
             "crt",
@@ -55,7 +60,8 @@ public record UiTheme(
             "cockpit",
             "tow",
             "beam",
-            "catalogue");
+            "catalogue",
+            "readout");
 
     private static volatile @Nullable UiTheme current;
 
@@ -89,6 +95,7 @@ public record UiTheme(
         UiTheme theme = new UiTheme(
                 CrtTuning.of(area(areas, "crt")),
                 HandbookScreenTuning.of(area(areas, "handbook")),
+                QuestMapTuning.of(area(areas, "handbook")),
                 ScannerLook.of(area(areas, "scanner")),
                 HudLook.of(area(areas, "hud")),
                 TransmissionLook.of(area(areas, "transmission")),
@@ -99,7 +106,8 @@ public record UiTheme(
                 CockpitLook.of(area(areas, "cockpit")),
                 TowChainLook.of(area(areas, "tow")),
                 BeamLook.of(area(areas, "beam")),
-                CatalogueLook.of(area(areas, "catalogue")));
+                CatalogueLook.of(area(areas, "catalogue")),
+                ReadoutLook.of(area(areas, "readout")));
         if (theme.transmission().maxWidth() <= 2 * theme.crt().padding()) {
             throw new IllegalArgumentException(area(areas, "transmission")
                             .conflict(

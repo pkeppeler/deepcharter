@@ -48,6 +48,7 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
+    private final List<Long> soundTicks = new ArrayList<>();
     private final List<CustomPacketPayload> payloads = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
     private final Set<RecipeDisplayId> recipeDisplays = new HashSet<>();
@@ -81,6 +82,11 @@ public final class MockPlayer {
     /** The id of every sound the server has played to this player alone (a sound entity packet) so far, oldest first. Read on the mock's tick, so it lags by one. */
     public List<Identifier> soundsHeard() {
         return List.copyOf(sounds);
+    }
+
+    /** The level game time at which the mock read each sound of {@link #soundsHeard()}, in order: the play tick or the next. */
+    public List<Long> soundTicks() {
+        return List.copyOf(soundTicks);
     }
 
     /**
@@ -231,6 +237,7 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundSoundEntityPacket packet) {
                     sounds.add(packet.getSound().value().location());
+                    soundTicks.add(player.level().getGameTime());
                 }
                 if (outbound instanceof ClientboundRecipeBookAddPacket packet) {
                     if (packet.replace()) {

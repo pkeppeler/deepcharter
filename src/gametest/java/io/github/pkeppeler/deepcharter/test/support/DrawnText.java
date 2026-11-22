@@ -41,6 +41,16 @@ public final class DrawnText {
         }
     }
 
+    /** The characters of {@code text}, without its styles. */
+    public static String plain(FormattedCharSequence text) {
+        StringBuilder out = new StringBuilder();
+        text.accept((index, style, codePoint) -> {
+            out.appendCodePoint(codePoint);
+            return true;
+        });
+        return out.toString();
+    }
+
     /** Renders {@code screen} into a recorder and returns the strings it drew outside any widget. Client thread. */
     public static List<Drawn> of(Screen screen) {
         return of(screen, -1, -1);
@@ -120,12 +130,12 @@ public final class DrawnText {
 
         @Override
         public void text(Font font, FormattedCharSequence text, int x, int y, int color) {
-            record(string(text), font.width(text), font, x, y);
+            record(plain(text), font.width(text), font, x, y);
         }
 
         @Override
         public void text(Font font, FormattedCharSequence text, int x, int y, int color, boolean shadow) {
-            record(string(text), font.width(text), font, x, y);
+            record(plain(text), font.width(text), font, x, y);
         }
 
         @Override
@@ -150,16 +160,7 @@ public final class DrawnText {
 
         @Override
         public void centeredText(Font font, FormattedCharSequence text, int x, int y, int color) {
-            record(string(text), font.width(text), font, x - font.width(text) / 2, y);
-        }
-
-        private static String string(FormattedCharSequence text) {
-            StringBuilder out = new StringBuilder();
-            text.accept((index, style, codePoint) -> {
-                out.appendCodePoint(codePoint);
-                return true;
-            });
-            return out.toString();
+            record(plain(text), font.width(text), font, x - font.width(text) / 2, y);
         }
 
         private void record(String text, int width, Font font, int x, int y) {

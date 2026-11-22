@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
+import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.client.theme.TowChainLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
@@ -214,6 +215,11 @@ public class ThemeLooksTest {
                         new BeamStyle(0xFFFFF0D2, 26, 0.12, 2.6, 0.03, 0.35, 0.1, 6, 0.9, 1.5),
                         new BeamStyle(0xFFFFCF6E, 30, 0.25, 5.0, 0.015, 0.35, 0.05, 24, 0.4, 0.55)),
                 BeamLook.of(area("beam", null)));
+        expect(
+                helper,
+                "readout",
+                new ReadoutLook(14, 2, 1.0, 0xFF7CFC9A, 0xFFE8C170, 4, 6, 2),
+                ReadoutLook.of(area("readout", null)));
         helper.succeed();
     }
 
@@ -504,7 +510,8 @@ public class ThemeLooksTest {
                 "cockpit",
                 "tow",
                 "beam",
-                "catalogue")) {
+                "catalogue",
+                "readout")) {
             areas.put(name, area(name, null));
         }
         return areas;
@@ -537,6 +544,16 @@ public class ThemeLooksTest {
         rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"minPanelWidth\": 200 }")), "minPanelWidth");
         rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"gridColumns\": 0 }")), "gridColumns");
         rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"cycleMillis\": 5 }")), "cycleMillis");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theBlockReadoutStaysWithinItsBounds(GameTestHelper helper) {
+        rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"scale\": 3 }")), "scale");
+        rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeInTicks\": 0 }")), "fadeInTicks");
+        rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeOutTicks\": 41 }")), "fadeOutTicks");
+        rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"settleTicks\": -1 }")), "settleTicks");
+        rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"hintColor\": 5 }")), "hintColor");
         helper.succeed();
     }
 

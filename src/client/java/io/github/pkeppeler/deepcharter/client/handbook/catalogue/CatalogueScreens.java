@@ -71,11 +71,9 @@ public final class CatalogueScreens {
     }
 
     /**
-     * Shows the recipes of {@code item}: the entry point of the quest map's "recipe one click away" link. Opens the inventory first when
+     * Shows the recipes of {@code item}: what a click on an item of the quest map's index card calls, the "recipe one click away" link. Opens the inventory first when
      * no screen with a catalogue is open. An item the charter knows no recipe of is shown as such, never its recipes.
      */
-    // test-seam: the join point of the quest map's "recipe one click away" (#880), which calls it when it merges; the
-    // catalogue test calls it now
     public static void open(Item item) {
         Minecraft client = Minecraft.getInstance();
         LocalPlayer player = client.player;
