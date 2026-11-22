@@ -75,9 +75,8 @@ public final class LightSync {
         int nextCheck;
         int until;
 
-        NetWatch(int nextCheck, int until) {
+        NetWatch(int nextCheck) {
             this.nextCheck = nextCheck;
-            this.until = until;
         }
     }
 
@@ -239,7 +238,7 @@ public final class LightSync {
     /** Starts or extends the watch of a chunk and records the light of the players already sent it; the others are recorded at their send. */
     private static void watchNet(ServerLevel level, ChunkPos chunk, int now) {
         Key key = new Key(level, chunk);
-        NetWatch watch = NET.computeIfAbsent(key, k -> new NetWatch(now + NET_INTERVAL_TICKS, 0));
+        NetWatch watch = NET.computeIfAbsent(key, k -> new NetWatch(now + NET_INTERVAL_TICKS));
         watch.until = now + TIMEOUT_TICKS + NET_WINDOW_TICKS;
         if (level.getChunkSource().chunkMap.getChunkToSend(chunk.pack()) == null) {
             return;

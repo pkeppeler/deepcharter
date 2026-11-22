@@ -130,6 +130,7 @@ final class QuestMap {
      * each both with the note below and beside. The next chapter's title, the redaction bars with their stamp and the note always
      * stay. Nothing is scaled.
      */
+    // const-param: the screen passes its font's line height, which a resource pack's font changes
     static Layout layout(int mapWidth, int availableHeight, Model model, int lineHeight, int noteLines) {
         Layout smallest = null;
         for (Ahead shown : Ahead.values()) {
