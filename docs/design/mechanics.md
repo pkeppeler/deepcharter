@@ -1227,6 +1227,53 @@ The helmet lamp is a 2 by 2 pixel lens in the hard hat's bracket, dull amber, no
 - Should a killed figure drop something (a lamp, a scrap of company cloth), so that killing them pays? Answered by the creatures session (#13): no loot, so the dead keep their dignity. A brass Continuity tag that becomes a Note is a proposal ([CREATURES.md](../CREATURES.md#3-principles)).
 - The warning, hurt and death sounds are placeholders (vanilla sculk and soul sounds); the audio pass should give them a voice.
 
+## Tallies skim a sample (#917, A)
+
+**The problem.** The Conduit is the landmark of the whole game and nothing about it is alive. CREATURES.md gives Moloch's family a second small thing besides the Retained: a counting drone that costs you ore, not fuel, and that the player can always see coming. Moloch's things take and never break ([ADR 0072](../adr/0072-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)).
+
+**What it does.**
+
+1. **Where.** In layers 1 and 2, within 48 blocks (square) of the Conduit's axis. The casing is solid rock, so a Tally appears in dark open air near a pod or a person that holds ore, 10 to 20 blocks off, and flies down the bore. It never breaks a block and never touches the casing.
+2. **What draws it.** A pod with a pilot, power, no lights and ore in the bay; or a person on foot in the dark (block light under 3) who carries ore. A pod or person with no ore draws nothing: there is nothing to sample.
+3. **Sensed.** A click every couple of seconds, an amber eye the size of a pin, and a scanner that reads it as ore: a block of ore that moves. The pilot gets one line when one finds the pod.
+4. **The skim.** A Tally that trails its mark for 30 seconds clamps to the cargo hatch (a person's pack on foot), holds it for 3 seconds (2 on foot), takes the **cheapest** ore held as a "quality sample" and flies off. One sample per Tally.
+5. **Counters.** The cutter bites it on the hatch while the pod drills and breaks it in 1 second, so a pilot who reads the clamp line and drills into rock loses nothing. On foot one blow breaks it, however light. A lit pod draws none. It drops nothing.
+
+**The ladder.** By hand: the cutter and a blow teach it. Automated: a lights part keeps it off a pod. Mastery: none needed; it stays a tax. Outrunning it works too: a pod that leaves its sense for 5 seconds drops it.
+
+**Trade-offs.** A Tally costs the one thing the lights part does not otherwise protect, the haul. The cheapest-ore rule keeps a skim a pinch: it can cost at most the zone's cheapest ore, and hauling one cheap ore among dear ones draws it to the cheap one.
+
+**Knobs.** `TallyTuning`: the zone (48), the check interval (10 s), the chance per check (layer 1 3 per cent, layer 2 10 per cent), the trail (600 ticks), the holds (60 and 40 ticks), the Tally's health (6) and the cutter's bite (2 each 10 ticks).
+
+### Pacing
+
+Rows are **measured** (asserted by a test, `TallyTest`) or **modelled** (computed in `TallyEconomyTest` from assumed shares). `[tally]` and `[tally-economy]` lines log them.
+
+| Row | Kind | Value |
+|---|---|---|
+| Trail, then clamp (a pod that stays put, real flight) | measured | 637 to 683 ticks (32 to 34 s): the 30 s trail and an approach; the test asserts 600 to 700 |
+| Clamp to gone | measured | 100 ticks at the hatch (3 s hold, 2 s flight off); 80 ticks on foot |
+| The cutter, drill to broken | measured | 21 ticks, about 1 s; the test asserts 20 to 25 (health 6, 2 a bite, a bite every 10 ticks, the first at once) |
+| One blow of 1 on foot | measured | breaks it |
+| A Tally walled off from the pod | measured | never clamps and takes nothing |
+| Skims a run | modelled | layer 1 0.09, layer 2 0.29 |
+| Expected loss at the zone's mean ore | modelled | layer 1 $4.8 of a stock Mole's $115 net (4.2 per cent); layer 2 $24.8 of a tier 2 run's $413 (6.0 per cent) |
+| The worst skim | modelled | one ore of $30 in layer 1: 26 per cent of a layer 1 run's net |
+
+The modelled rows rest on three guesses, none measured: a 4-minute run, half of it in the casing zone; 60 per cent of Tallies keep the pod in sense for the whole trail; and 40 per cent of clamps find the pilot not answering inside the hold. The answering pilot is the 40 per cent: one who reads the clamp line and drills loses nothing, so a Tally is a tax on the inattentive and on the climb home, where the pod does not drill.
+
+**Rules worth stating.**
+
+- A Tally latches only from beside its mark (within `trailGapBlocks + 1`). One that cannot get there, walled off in a pocket, keeps trailing and never clamps, and it never passes through rock.
+- Once clamped it takes its sample even if the pilot leaves, a parked pod included; it lets go only when its pod or person is removed (a log-off) or it is broken. A light does not free it.
+- Layers 1 and 2 only. The Conduit beyond the Ramp is act 3.
+- Not in Peaceful: a Tally neither comes nor skims there.
+- A pod flown by a creative player draws none.
+
+**Does this make the default harder?** Yes, a little: 4 to 6 per cent of a run on average, where before nothing here touched the haul. A first run that loses a $30 ore is a quarter of its net.
+
+**Open.** Their act 3 job, calling the Recovery units, is [#930](https://github.com/pkeppeler/deepcharter/issues/930). The Tally has no call yet; it only needs a hook where a Tally sees an unauthorised pod.
+
 ## The Retained on foot (#916, A)
 
 **Problem.** Every mob costs you in the pod and on foot ([CREATURES.md](../CREATURES.md#the-retained)). The Retained cost a dark pod its fuel, but a person who climbs out cost them nothing: the dark was only a problem inside the hull. The creatures session decided they come to a person in the dark the same way. They still never deal damage ([ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md), amended for #916).

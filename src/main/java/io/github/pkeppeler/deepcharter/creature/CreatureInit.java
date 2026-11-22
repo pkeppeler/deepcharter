@@ -11,5 +11,6 @@ public final class CreatureInit {
         CreatureRegistry.register();
         LamplessFigures.init();
         FootGrips.init();
+        Tallies.init();
     }
 }
