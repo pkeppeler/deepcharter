@@ -235,12 +235,13 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         "lava_near",
                         "lava_above",
                         "glaze_holding",
-                        "glaze_spent")
+                        "glaze_spent",
+                        "drifter_alarm")
                 .map(name -> "hud.deepcharter.pod." + name)
                 .collect(Collectors.toSet());
         if (!alerts.equals(expected)) {
             throw new AssertionError(
-                    "The warnings that light the fourth lamp are the burning hull, the glaze that holds or is spent, stranded, the crust, the brace that cannot work, the seepage, no brick, a hard landing and lava in or above the shaft: got "
+                    "The warnings that light the fourth lamp are the burning hull, the glaze that holds or is spent, stranded, the crust, the brace that cannot work, the seepage, no brick, a hard landing, lava in or above the shaft and the hollows' alarm: got "
                             + alerts);
         }
         PodStatusHud.Line note = new PodStatusHud.Line(Component.translatable("hud.deepcharter.pod.slag", 0, 0), 0);
