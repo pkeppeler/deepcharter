@@ -35,7 +35,7 @@ The user's design session (deepcharter-93) is raising it with the user.
 
 Client GameTests and evidence recordings render a real window. When the Mac's display sleeps, the render thread blocks and the run hangs at resource load with no error. Overnight, the display sleeps: the running `caffeinate -imsu` keeps the system awake but not the display, since it has no `-d`. One agent started its own `caffeinate -d`, which the rules forbid; the orchestrator stopped it.
 
-The workaround: when a PR's client suite can't run locally overnight, the PR carries the `gameplay` label so CI runs the client suite, and the PR body says so. To let local client runs and recordings work unattended, run `caffeinate -dimsu` instead. That is the user's call.
+The workaround: when a PR's client suite can't run locally overnight, the PR body says so (CI runs the client suite on game-code PRs; the `gameplay` label is its manual override). To let local client runs and recordings work unattended, run `caffeinate -dimsu` instead. That is the user's call.
 
 ## 2026-10-07: Subagents hit the usage limit (work paused, resumes by itself)
 
@@ -102,7 +102,7 @@ M2 (#51-#85) ends with a playable build for you and your friends (#85: v0.2.0). 
 - **The Minecraft server EULA:** you accept it when you run the server zip. The zip ships with `eula=false`.
 - **The private audio pack:** #57 builds a pack from the original game's sounds into `private/`. Git ignores that folder. You give it to your friends privately. It is never committed or uploaded.
 - **The lore text:** your lore session (PR #34) supplies the transmission, Note and handbook text. The agents use placeholders until it merges.
-- **The creatures session (#13):** the lampless figure (#83) is a placeholder until then.
+- **The creatures session (#13):** the lampless figure (#83) is a placeholder until then. **Answered 2026-11-21:** the session ran; the design is in [CREATURES.md](CREATURES.md).
 - **Roadmap note:** the Prospector chassis (#82) moves from M3 to M2. SPEC §5 (chapter 9) and §16 put its salvage in the onboarding. This is not a change to the SPEC, but you should know.
 - **SPEC §8 (provisional):** the Prospector navigator seat strains the "no passengers" rule. **Answered 2026-10-11 (#200, #507):** passengers are allowed; crew roles stay the goal.
 
@@ -122,7 +122,7 @@ SPEC §7 says "later tiers reveal hazards". It does not say how the scanner show
 
 **What M0 delivered:**
 1. **The mod builds and starts.** Fabric 26.3 shows the title screen with Deep Charter loaded. See the screenshot in [PR #20](https://github.com/pkeppeler/deepcharter/pull/20).
-2. **Every PR runs CI.** CI builds the mod, runs the server tests and runs the tool tests. PRs with the `gameplay` label also run the in-game tests on GitHub's machines, with software graphics. See [PR #22](https://github.com/pkeppeler/deepcharter/pull/22) and [PR #38](https://github.com/pkeppeler/deepcharter/pull/38).
+2. **Every PR runs CI.** CI builds the mod, runs the server tests and runs the tool tests. PRs that change game code (or carry the `gameplay` label) also run the in-game tests on GitHub's machines, with software graphics. See [PR #22](https://github.com/pkeppeler/deepcharter/pull/22) and [PR #38](https://github.com/pkeppeler/deepcharter/pull/38).
 3. **The merge gate.** `tools/merge-pr.sh` merges only when all of these are true:
    - the checks are green
    - a second review passed on the exact commit
