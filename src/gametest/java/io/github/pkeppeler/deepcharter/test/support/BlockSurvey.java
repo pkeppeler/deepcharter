@@ -35,7 +35,9 @@ public final class BlockSurvey {
         return find(chunks, wanted, (chunkX, chunkZ) -> {
             LevelChunk chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
             if (chunk == null) {
-                throw new IllegalStateException("chunk " + chunkX + ", " + chunkZ + " is not loaded: await it first");
+                throw new IllegalStateException("chunk (" + chunkX + ", " + chunkZ + ") of "
+                        + level.dimension().identifier()
+                        + " is not loaded; call FarChunks.whenLoaded(helper, BlockSurvey.area(level, n), ...) first");
             }
             return chunk;
         });

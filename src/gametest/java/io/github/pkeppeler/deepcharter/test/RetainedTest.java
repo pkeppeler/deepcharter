@@ -289,7 +289,7 @@ public class RetainedTest {
             if (clungAt[0] < 0) {
                 if (arena.figure.isClinging()) {
                     clungAt[0] = arena.age(helper);
-                } else if (arena.age(helper) > APPROACH_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS) {
+                } else if (arena.age(helper) > APPROACH_BUDGET_TICKS + 20) {
                     throw failure(helper, "the figure from (%d, %d) had not grabbed the pod", u, v);
                 }
                 return;

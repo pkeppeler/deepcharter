@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.UUID;
@@ -105,6 +106,11 @@ public class OrePlacementTest {
     private static Census @Nullable [] census;
 
     private static Census @Nullable [] campaignCensus;
+
+    /** Whether a test of this batch is counting the layers' census or the campaign's, so a second one waits for it instead of counting too. */
+    private static boolean censusPending;
+
+    private static boolean campaignCensusPending;
 
     private static final String CAMPAIGN = "deepcharter:campaign_sample";
 
@@ -840,6 +846,17 @@ public class OrePlacementTest {
             then.accept(census);
             return;
         }
+        if (censusPending) {
+            helper.startSequence()
+                    .thenWaitUntil(() -> {
+                        if (census == null) {
+                            throw helper.assertionException("waiting for the census of the other test");
+                        }
+                    })
+                    .thenExecute(() -> then.accept(Objects.requireNonNull(census)));
+            return;
+        }
+        censusPending = true;
         count(
                 helper,
                 layer -> {
@@ -859,6 +876,17 @@ public class OrePlacementTest {
             then.accept(campaignCensus);
             return;
         }
+        if (campaignCensusPending) {
+            helper.startSequence()
+                    .thenWaitUntil(() -> {
+                        if (campaignCensus == null) {
+                            throw helper.assertionException("waiting for the census of the other test");
+                        }
+                    })
+                    .thenExecute(() -> then.accept(Objects.requireNonNull(campaignCensus)));
+            return;
+        }
+        campaignCensusPending = true;
         count(
                 helper,
                 layer -> {

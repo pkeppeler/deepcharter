@@ -265,7 +265,8 @@ public class StructureLightBorderTest {
         player.player().setGameMode(GameType.SPECTATOR);
         UUID id = player.player().getUUID();
         LightSyncSends.watch(id);
-        FarChunks.Deadline deadline = FarChunks.deadline();
+        FarChunks.Deadline deadline = FarChunks.deadline(60);
+        FarChunks.Deadline loadDeadline = FarChunks.deadline();
         int[] phase = {0};
         int[] waited = {0};
         int[][][] before = {null};
@@ -277,12 +278,7 @@ public class StructureLightBorderTest {
             try {
                 switch (phase[0]) {
                     case 0 -> {
-                        // Loading the chunks draws the structure. With the test's own Conduit (the famous wreck's case)
-                        // it must happen
-                        // inside WorldData.with, which ends on this tick, so that case loads on the server thread and
-                        // runs in an
-                        // environment of its own (SYNC_CHUNK_LOAD). The others load on the worker threads, and phase 1
-                        // waits.
+                        // Only the conduit case loads here: its site swap lasts one tick.
                         if (placement.fakeConduit().isPresent()) {
                             inContext(
                                     placement,
@@ -299,7 +295,7 @@ public class StructureLightBorderTest {
                     case 1 -> {
                         boolean loaded = placement.withRing().stream()
                                 .allMatch(chunk -> level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null);
-                        deadline.await(helper, level, loaded, () -> "the chunks round " + pair + " did not load");
+                        loadDeadline.await(helper, level, loaded, () -> "the chunks round " + pair + " did not load");
                         if (!loaded) {
                             return;
                         }
