@@ -9,7 +9,6 @@ import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,10 +30,13 @@ public class ThrownKitScenario extends EvidenceScenario {
     private static final int FLOOR_Y = LIVE_GAUGES_FLOOR_Y;
     private static final int TICKS_PER_FRAME = 3;
     private static final int MAX_TICKS = 600;
-    /** A flat throw lands 11 blocks off; the slab of Company rock round that is 7 wide and 9 deep, two rows thick. */
-    private static final int SLAB_FROM = 7;
+    /** A throw 8 degrees down lands about 7 blocks off, a charge's blast reach clear of the thrower; the slab of Company rock round that is 7 wide and 8 deep, two rows thick. */
+    private static final int SLAB_FROM = 4;
 
-    private static final int SLAB_TO = 15;
+    private static final int SLAB_TO = 11;
+    /** How far down the person looks to throw, and to see the floor ahead. */
+    private static final float DOWN = 8f;
+
     private static final int SLAB_HALF_WIDTH = 3;
     /** Turns, in degrees, from the way the room faces: positive turns to the player's right. */
     private static final float LEFT = -25f;
@@ -74,13 +76,12 @@ public class ThrownKitScenario extends EvidenceScenario {
                 }
                 ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
                 player.setGameMode(GameType.SURVIVAL);
-                player.teleportTo(one, X + 0.5, FLOOR_Y, Z + 0.5, Set.of(), AHEAD, 0f, true);
+                player.teleportTo(one, X + 0.5, FLOOR_Y, Z + 0.5, Set.of(), AHEAD, DOWN, true);
             });
             ClientWait.until(
                     context,
                     "the person on foot in layer 1",
                     client -> client.player != null && TestLayers.clientIsIn(client, 1));
-            context.runOnClient(client -> client.options.setCameraType(CameraType.THIRD_PERSON_BACK));
             context.waitTicks(30);
             for (int i = 0; i < 6; i++) {
                 frame(context);
@@ -133,7 +134,7 @@ public class ThrownKitScenario extends EvidenceScenario {
     private static void throwItem(TestSingleplayerContext singleplayer, Consumable item, float yaw) {
         singleplayer.getServer().runOnServer(server -> {
             ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
-            player.teleportTo(TestLayers.level(server, 1), X + 0.5, FLOOR_Y, Z + 0.5, Set.of(), yaw, 0f, true);
+            player.teleportTo(TestLayers.level(server, 1), X + 0.5, FLOOR_Y, Z + 0.5, Set.of(), yaw, DOWN, true);
             player.getInventory()
                     .setItem(player.getInventory().getSelectedSlot(), new ItemStack(RepairRegistry.item(item)));
             player.getCooldowns()
