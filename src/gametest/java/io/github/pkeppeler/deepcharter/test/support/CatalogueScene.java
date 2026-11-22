@@ -30,11 +30,12 @@ public final class CatalogueScene {
     }
 
     /**
-     * Opens the inventory with the recipe console showing (R on the scanner unit's cell, with two iron and two copper in hand so the server
-     * teaches its recipe, ADR 0070). Without a known recipe the catalogue lists nothing and the console is not drawn. Returns the catalogue.
+     * Gives the player two iron and two copper, opens the inventory and waits until the server has taught the scanner unit's recipe from what
+     * the player holds (ADR 0070). Without a known recipe the catalogue lists nothing. Returns the catalogue.
      */
-    public static CataloguePanel openRecipeConsole(
+    public static CataloguePanel teachScannerRecipe(
             ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        ClientWait.until(context, "the player", client -> client.player != null && client.level != null);
         singleplayer.getServer().runCommand("give @p minecraft:iron_ingot 2");
         singleplayer.getServer().runCommand("give @p minecraft:copper_ingot 2");
         ClientWait.until(
@@ -50,18 +51,35 @@ public final class CatalogueScene {
                 client -> !panel.catalogue()
                         .recipesFor(ScannerRegistry.SCANNER_UNIT)
                         .isEmpty());
+        return panel;
+    }
+
+    /** Empties the search and the lookup. The caller waits a tick or two for the list to follow. */
+    public static void clearSearch(ClientGameTestContext context, CataloguePanel panel) {
         context.runOnClient(client -> {
             panel.state().setQuery("");
             panel.state().clear();
         });
+    }
+
+    /** Turns the catalogue to {@code page}, counting from 0. */
+    public static void showPage(ClientGameTestContext context, CataloguePanel panel, int perPage, int page) {
+        context.runOnClient(client -> {
+            int pages = CatalogueState.pages(panel.shownItems().size(), perPage);
+            panel.state().turn(page - panel.state().page(pages), pages);
+        });
+    }
+
+    /** Opens the inventory with the recipe console showing: R on the scanner unit's cell once its recipe is taught. Returns the catalogue. */
+    public static CataloguePanel openRecipeConsole(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        CataloguePanel panel = teachScannerRecipe(context, singleplayer);
+        clearSearch(context, panel);
         context.waitTicks(2); // tick-wait: the catalogue lists what it now knows before the cell is looked up
         CatalogueLayout layout = layout(context, panel);
         int perPage = layout.shelf().perPage();
         int index = indexOf(context, panel, ScannerRegistry.SCANNER_UNIT);
-        context.runOnClient(client -> {
-            int pages = CatalogueState.pages(panel.shownItems().size(), perPage);
-            panel.state().turn(index / perPage - panel.state().page(pages), pages);
-        });
+        showPage(context, panel, perPage, index / perPage);
         hover(context, gridCell(layout, index % perPage));
         context.getInput().pressKey(InputConstants.KEY_R);
         ClientWait.until(context, "the recipe console", client -> panel.showsRecipePanel());
