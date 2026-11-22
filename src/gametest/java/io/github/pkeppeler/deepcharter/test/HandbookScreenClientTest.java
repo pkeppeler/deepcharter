@@ -188,8 +188,10 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
                             chapter,
                             Component.literal("Chapter " + chapter),
                             List.of(
-                                    new HandbookChapter.Entry(directive(chapter, 1), Component.literal("one")),
-                                    new HandbookChapter.Entry(directive(chapter, 2), Component.literal("two")))));
+                                    new HandbookChapter.Entry(
+                                            directive(chapter, 1), Component.literal("one"), List.of()),
+                                    new HandbookChapter.Entry(
+                                            directive(chapter, 2), Component.literal("two"), List.of()))));
         }
         return chapters;
     }
@@ -257,7 +259,8 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
                     new HandbookChapter(
                             chapter,
                             Component.literal("Chapter " + chapter),
-                            List.of(new HandbookChapter.Entry(directive(chapter, 1), Component.literal("one")))));
+                            List.of(new HandbookChapter.Entry(
+                                    directive(chapter, 1), Component.literal("one"), List.of()))));
         }
         return chapters;
     }
@@ -652,7 +655,8 @@ public class HandbookScreenClientTest implements FabricClientGameTest {
                     new HandbookChapter(
                             chapter,
                             Component.literal("PLACEHOLDER: a rather long chapter title number " + chapter),
-                            List.of(new HandbookChapter.Entry(directive(chapter, 1), Component.literal("one")))));
+                            List.of(new HandbookChapter.Entry(
+                                    directive(chapter, 1), Component.literal("one"), List.of()))));
         }
         return chapters;
     }

@@ -252,7 +252,8 @@ class TownTest(unittest.TestCase):
         cls.cells = town.world(cls.built)
 
     def free(self, x: int, y: int, z: int) -> bool:
-        return (x, y, z) not in self.cells
+        """Nothing stands there but, at most, a light block: invisible, no collision (the dim glow of a dark room, parts.dim_glow)."""
+        return self.cells.get((x, y, z), ("minecraft:light",))[0] == "minecraft:light"
 
     def test_the_pad_the_game_flattens_is_the_pad_the_town_is_drawn_for(self):
         size, height = java_constants("ColonyTuning.java", r"DEFAULT =\s*new ColonyTuning\((\d+), (\d+),")
@@ -307,6 +308,47 @@ class TownTest(unittest.TestCase):
                         for y in range(y0, y1 + 1):
                             block = self.cells.get((x, y, z))
                             self.assertTrue(block is None or "window" not in block[0], f"a window stands inside the room at {(x, y, z)}")
+
+    def room_blocks(self, low: tuple[int, int, int], high: tuple[int, int, int]) -> list[tuple[str, dict]]:
+        return [block for x in range(low[0], high[0] + 1) for y in range(low[1], high[1] + 1) for z in range(low[2], high[2] + 1)
+                if (block := self.cells.get((x, y, z)))]
+
+    def test_a_few_rooms_are_lit_and_most_stay_dark(self):
+        """A town of lit rooms with nobody in them is eerie, so only the buildings named in town.LIT_PIECES have lamps inside; every
+        other room is marked dark, which ColonyInteriorLightTest holds to the dim glow's ceiling. Every room still has light (the glow)."""
+        rooms = self.built.rooms()
+        lit = {path for path, _, _, dark in rooms if not dark}
+        dim = {path for path, _, _, dark in rooms if dark}
+        self.assertEqual(lit, set(town.LIT_PIECES))
+        self.assertGreater(len(dim), len(lit), f"dark {sorted(dim)} must outnumber lit {sorted(lit)}")
+        for path, (x0, y0, z0), (x1, y1, z1), dark in rooms:
+            with self.subTest(room=path, at=(x0, z0)):
+                names = {block[0] for block in self.room_blocks((x0, y0, z0), (x1, y1, z1))}
+                if dark:
+                    self.assertNotIn("deepcharter:wall_lamp", names, f"{path}: a lamp inside a dark room")
+                self.assertEqual("minecraft:light" in names, dark, f"{path}: the dim glow belongs to dark rooms only")
+        for path in town.LIT_PIECES:
+            lamps = {block[0] for p, low, high, _ in rooms if p == path for block in self.room_blocks(low, high)}
+            self.assertIn("deepcharter:wall_lamp", lamps, f"{path} is named lit but holds no lamp")
+
+    def test_nothing_blue_shows_through_a_window(self):
+        """The cold-blue glints (#874) were drawn on the glass itself, so every pane showed dots over the room. No kit texture that
+        uses the palette's cold blue may be the glass, or sit in the cell behind it."""
+        recipes = json.loads((ROOT / "tools/textures/recipes/colony_kit.json").read_text())["recipes"]
+
+        def cold(value) -> bool:
+            if isinstance(value, str):
+                return value.startswith("cold.")
+            children = value.values() if isinstance(value, dict) else value if isinstance(value, list) else ()
+            return any(cold(child) for child in children)
+
+        blue = {key.rsplit("/", 1)[1] for key, recipe in recipes.items() if cold(recipe)}
+        self.assertNotIn("window_glass", blue)
+        for (x, y, z), (name, props) in self.cells.items():
+            if name == "deepcharter:window_glass":
+                dx, dz = FACING[props["facing"]]
+                behind = self.cells.get((x - dx, y, z - dz), ("", {}))[0]
+                self.assertNotIn(behind.removeprefix("deepcharter:"), blue, f"{behind} stands behind the window at {(x, y, z)}")
 
     def test_every_building_with_a_door_or_bay_has_a_room(self):
         """ColonyInteriorLightTest checks only the rooms a piece records, so a building that bypasses works_hall, cabin and
