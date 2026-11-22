@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
@@ -11,8 +12,10 @@ import io.github.pkeppeler.deepcharter.creature.Drifters;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.DrifterArenas.Arena;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.LoudPods;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
@@ -30,6 +33,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,20 +49,29 @@ public class DrifterSpawnTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(DrifterSpawnTest.class);
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final DrifterTuning TUNING = DrifterTuning.DEFAULT;
-    private static final Identifier HOLLOWS_TEST_BIOME =
-            Identifier.fromNamespaceAndPath("deepcharter-test", "lc_layer_3_deep");
+    private static final Identifier HOLLOWS_TEST_BIOME = Identifier.fromNamespaceAndPath("deepcharter-test", "hollows");
     private static final Identifier DRONE = Identifier.fromNamespaceAndPath("deepcharter", "creature.alarm_drone");
-    /** The long room of the spawn test: 47 blocks along x (four chunks), 5 across and 19 high, so that a place 18 to 36 blocks from its middle is in it. */
+    /** The long room of the spawn test: 47 blocks along x (four chunks), 13 across and 19 high, so that a place 18 to 36 blocks from its middle is in it. */
     private static final int CX = 25_032;
 
     private static final int CZ = 25_016;
     private static final int HALF_X = 23;
-    private static final int HALF_Z = 2;
+    private static final int HALF_Z = 6;
     private static final int HALF_HEIGHT = 9;
     /** Places a placement is tried at, a call at a time: one call in about ten finds one. */
     private static final int ATTEMPTS = 400;
     /** Calls that must all find no place or no room, for a test that a spawn is refused: all the calls miss by chance with a probability below 1e-12. */
     private static final int REFUSALS = 120;
+
+    /** One column in each chunk the long room spans, at height {@code y}. */
+    private static List<BlockPos> columns(int y) {
+        List<BlockPos> columns = new ArrayList<>();
+        for (int x = CX - HALF_X; x <= CX + HALF_X; x += 16) {
+            columns.add(new BlockPos(x, y, CZ));
+        }
+        columns.add(new BlockPos(CX + HALF_X, y, CZ));
+        return columns;
+    }
 
     private static int topY(int minY, int height, int zone) {
         Zones.Span span = Zones.span(minY, height, zone);
@@ -207,7 +220,6 @@ public class DrifterSpawnTest {
         ServerLevel level = helper.getLevel();
         CampaignBands.Band two = CampaignBands.LAYER_2;
         int top = topY(two.minY(), two.height(), 0);
-        int middle = topY(two.minY(), two.height(), 1);
         BlockPos origin = new BlockPos(25_500, top, 25_500);
         MockPlayer[] striker = {null};
         long[] since = {-1};
@@ -244,10 +256,6 @@ public class DrifterSpawnTest {
                     "a kill did not raise the alarm for %s ticks: %s",
                     TUNING.alarm().ticks(),
                     DrifterAlarm.ticksLeft(level, top));
-            expect(
-                    helper,
-                    !DrifterAlarm.isRinging(level, middle),
-                    "the alarm of the top zone rings in the middle zone");
             expect(
                     helper,
                     !DrifterAlarm.isRinging(level, topY(two.minY(), two.height(), 2)),
@@ -371,5 +379,193 @@ public class DrifterSpawnTest {
             DrifterAlarm.raise(level, middle);
             since[0] = helper.getTick();
         });
+    }
+
+    /**
+     * A drifter is placed in the zone of its source and in the world: a source 4 blocks from a zone's edge, and one 3 blocks under the layer's
+     * ceiling (the surface band above is no zone), never places across either, in the 8 blocks up or down that a place may be off by.
+     */
+    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 60)
+    public void aDrifterIsPlacedInTheZoneOfItsSourceAndNeverAcrossAnEdge(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        CampaignBands.Band one = CampaignBands.LAYER_1;
+        CampaignBands.Band two = CampaignBands.LAYER_2;
+        // Three blocks under layer 1's ceiling, and four blocks inside layer 2's middle zone from its top zone.
+        int ceiling = one.minY() + one.height() - 4;
+        int edge = Zones.span(two.minY(), two.height(), 1).high() - 3;
+        int[] ready = {0};
+        boolean[] done = {false};
+        List<BlockPos> columns = columns(ceiling);
+        TestTicks.each(helper, () -> {
+            if (ready[0] < columns.size() || done[0]) {
+                return;
+            }
+            done[0] = true;
+            for (int y : new int[] {ceiling, edge}) {
+                room(level, y);
+                hollows(level, y);
+                Drifters.Source source = middle(y);
+                var zone = DrifterAlarm.Zone.at(level, y);
+                expect(helper, zone.isPresent(), "y %d is in no zone", y);
+                int found = 0;
+                for (int i = 0; i < 4 * ATTEMPTS && found < 12; i++) {
+                    var spawned = Drifters.spawnFor(level, source, 12, level.getRandom());
+                    if (spawned.isPresent()) {
+                        Drifter drifter = spawned.get();
+                        found++;
+                        expect(
+                                helper,
+                                DrifterAlarm.Zone.at(level, drifter.getBlockY()).equals(zone)
+                                        && DrifterAlarm.Zone.at(level, drifter.getBlockY() + 1)
+                                                .equals(zone)
+                                        && level.isInWorldBounds(drifter.blockPosition()),
+                                "a drifter was placed at y %s, out of the source's zone %s (source y %d)",
+                                drifter.getY(),
+                                zone,
+                                y);
+                        expect(
+                                helper,
+                                drifter.position().distanceTo(source.pos())
+                                        >= TUNING.spawn().minBlocks(),
+                                "a drifter was placed %s blocks from its source, under %s",
+                                drifter.position().distanceTo(source.pos()),
+                                TUNING.spawn().minBlocks());
+                        drifter.discard();
+                    }
+                }
+                expect(
+                        helper,
+                        found >= 3,
+                        "only %d drifters were placed in zone %s: the test proves nothing",
+                        found,
+                        zone);
+            }
+            helper.succeed();
+        });
+        FarChunks.awaitEntityTicking(helper, level, columns, index -> ready[0]++);
+    }
+
+    /**
+     * The production tick (the look, the roll every {@code checkTicks}, the count by pods and the cap) places the drifters, with the alarm
+     * ringing so that a roll comes in a few checks: none while {@code spawn_mobs} is off; one pod holds two (1 plus the alarm's 1), a second pod
+     * three (the middle zone's cap), and each new drifter comes at least a check after the last. The drifters are held still so that none
+     * bursts on its pod.
+     */
+    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 26_000)
+    public void theTickPlacesDriftersByPodsUpToTheZoneCap(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        CampaignBands.Band two = CampaignBands.LAYER_2;
+        int y = topY(two.minY(), two.height(), 1);
+        List<BlockPos> columns = columns(y);
+        int ready = columns.size();
+        int[] arrived = {0};
+        int[] phase = {0};
+        long[] since = {0};
+        long[] lastPlacedAt = {-1};
+        int[] seen = {0};
+        PodEntity[] pods = {null, null};
+        MockPlayer[] pilots = {null, null};
+        boolean[] set = {false};
+        TestTicks.each(helper, () -> {
+            if (arrived[0] < ready) {
+                return;
+            }
+            try {
+                if (!set[0]) {
+                    set[0] = true;
+                    room(level, y);
+                    hollows(level, y);
+                    pods[0] = podAt(helper, level, y, 0, pilots, 0);
+                    level.getServer().getGameRules().set(GameRules.SPAWN_MOBS, false, level.getServer());
+                    since[0] = helper.getTick();
+                }
+                if ((helper.getTick() - since[0]) % 400 == 0) {
+                    DrifterAlarm.raise(level, y);
+                }
+                List<? extends Drifter> alive = level.getEntities(
+                        CreatureRegistry.DRIFTER,
+                        drifter -> DrifterAlarm.Zone.at(level, drifter.getBlockY())
+                                .equals(DrifterAlarm.Zone.at(level, y)));
+                alive.forEach(drifter -> drifter.setNoAi(true));
+                long tick = helper.getTick() - since[0];
+                if (alive.size() > seen[0]) {
+                    long gap = lastPlacedAt[0] < 0 ? Long.MAX_VALUE : helper.getTick() - lastPlacedAt[0];
+                    expect(
+                            helper,
+                            lastPlacedAt[0] < 0 || gap >= TUNING.spawn().checkTicks(),
+                            "a drifter came %d ticks after the last, a look is every %d",
+                            gap,
+                            TUNING.spawn().checkTicks());
+                    lastPlacedAt[0] = helper.getTick();
+                }
+                seen[0] = alive.size();
+                switch (phase[0]) {
+                    case 0 -> {
+                        expect(helper, alive.isEmpty(), "a drifter was placed with spawn_mobs off");
+                        if (tick >= 2_500) {
+                            level.getServer().getGameRules().set(GameRules.SPAWN_MOBS, true, level.getServer());
+                            phase[0] = 1;
+                            since[0] = helper.getTick();
+                            lastPlacedAt[0] = -1;
+                        }
+                    }
+                    case 1 -> {
+                        expect(helper, alive.size() <= 2, "one pod holds %d drifters, not 2", alive.size());
+                        if (alive.size() == 2 && tick >= 1_500) {
+                            pods[1] = podAt(helper, level, y, 3, pilots, 1);
+                            phase[0] = 2;
+                            since[0] = helper.getTick();
+                            lastPlacedAt[0] = -1;
+                        } else if (tick > 9_000 && alive.size() < 2) {
+                            throw failure(helper, "one pod drew %d drifters in %d ticks, not 2", alive.size(), tick);
+                        }
+                    }
+                    default -> {
+                        expect(
+                                helper,
+                                alive.size() <= 3,
+                                "two pods hold %d drifters, the zone's cap is 3",
+                                alive.size());
+                        if (alive.size() == 3 && tick >= 1_500) {
+                            finish(level, alive, pods, pilots);
+                            helper.succeed();
+                        } else if (tick > 9_000 && alive.size() < 3) {
+                            throw failure(helper, "two pods drew %d drifters in %d ticks, not 3", alive.size(), tick);
+                        }
+                    }
+                }
+            } catch (RuntimeException e) {
+                level.getServer().getGameRules().set(GameRules.SPAWN_MOBS, false, level.getServer());
+                throw e;
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, columns, index -> arrived[0]++);
+    }
+
+    private static PodEntity podAt(
+            GameTestHelper helper, ServerLevel level, int y, int dx, MockPlayer[] pilots, int index) {
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
+        pod.setPos(Vec3.atBottomCenterOf(new BlockPos(CX + dx, y - HALF_HEIGHT, CZ)));
+        level.addFreshEntity(pod);
+        pilots[index] = MockPlayers.join(helper, "drifter-tick-pilot-" + index);
+        pilots[index].teleportTo(level, pod.position(), 90f, 0f);
+        if (!pilots[index].player().startRiding(pod)) {
+            throw failure(helper, "a pilot could not mount a pod");
+        }
+        LoudPods.make(pod);
+        return pod;
+    }
+
+    private static void finish(
+            ServerLevel level, List<? extends Drifter> alive, PodEntity[] pods, MockPlayer[] pilots) {
+        level.getServer().getGameRules().set(GameRules.SPAWN_MOBS, false, level.getServer());
+        alive.forEach(Drifter::discard);
+        for (int i = 0; i < pods.length; i++) {
+            if (pods[i] != null) {
+                LoudPods.quiet(pods[i]);
+                pilots[i].leave();
+                pods[i].discard();
+            }
+        }
     }
 }

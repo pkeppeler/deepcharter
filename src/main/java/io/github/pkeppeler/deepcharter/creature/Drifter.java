@@ -12,6 +12,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
@@ -23,18 +24,10 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A Drifter (#973, CREATURES.md section 5): a pod-sized spore bladder of the Sleeper's, drifting toward what is loud, a drill, a sprint, a
- * footstep ({@link Drifters}). It glows and hisses, so it is sensed before it is seen. It bursts into spore gas ({@link SporeClouds}) when it
- * touches a pod or a person, or when a pod drills beside it, but only after it has been drawn without a break for
- * {@link DrifterTuning#armTicks()}: a drifter that comes into the noise is always at least three seconds from costing anything. Once the noise
- * stops it drifts on, harmless, past whatever is there.
- *
- * <p>A hit that pops it (a person's blow, an arrow, a charge) bursts it where it floats and raises the alarm of its zone
- * ({@link DrifterAlarm}); the gas is as far from the hit as the one who made it, which is the counterplay: pop it at range. A burst of its
- * own, on touch, raises nothing: it was not killed.
- *
- * <p>Sonar does not exist yet. A drifter is mostly gas: the entity type tag {@code deepcharter:sonar_echo/empty_cave} says it reads as empty cave,
- * for the sonar work (#924) to read. It is not saved: one whose chunk unloads is gone, and the spawner makes another.
+ * A Drifter (#973, CREATURES.md section 5): a pod-sized spore bladder that drifts toward what is loud ({@link Drifters}) and bursts into gas
+ * ({@link SporeClouds}) on touch or when a pod drills beside it, but only after {@link DrifterTuning#armTicks()} of hearing a noise, so there
+ * is always a tell. A hit that pops it raises the alarm of its zone ({@link DrifterAlarm}); a burst of its own raises nothing. Sonar does not
+ * exist yet: the entity type tag {@code deepcharter:sonar_echo/empty_cave} says it reads as empty cave, for #924. It is not saved.
  */
 public class Drifter extends Mob {
     /** Whether the drifter is drawn to a noise now. Synced, for the client's pulse. */
@@ -102,6 +95,11 @@ public class Drifter extends Mob {
     @Override
     protected void customServerAiStep(ServerLevel level) {
         super.customServerAiStep(level);
+        // Peaceful removes monsters: one the mod placed before the difficulty was lowered goes too.
+        if (level.getDifficulty() == Difficulty.PEACEFUL) {
+            discard();
+            return;
+        }
         DrifterTuning tuning = DrifterTuning.DEFAULT;
         double sense =
                 DrifterAlarm.isRinging(level, getBlockY()) ? tuning.alarm().senseMult() : 1.0;

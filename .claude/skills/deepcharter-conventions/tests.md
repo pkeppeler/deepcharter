@@ -55,6 +55,7 @@ Stubs marked `// Filled by #N` belong to that issue. Tests live in `src/gametest
 - A render-path feature with its own update loop (`FloodlightBeams`) needs a client GameTest driving it, not only an evidence scenario.
 - A change to shared client visuals runs every client test class that reads them, not only its own (#630 missed `TextureLayersClientTest`).
 - A control assertion must be shown to fail without the feature in every scenario it runs; a case that passes by closeness to a dark control is a log row, not an assertion.
+- A cadence or cap test drives the production tick path (the look, the roll, the count, the cap); a test that samples a helper the tick calls, or asserts arithmetic on tuning constants, is a log of the numbers and not a test of the cadence (`DrifterSpawnTest.theTickPlacesDriftersByPodsUpToTheZoneCap`).
 - Prove a regression test with a mutation check: break the code under test in your worktree, see it go red, revert (#627's first case was vacuous).
 
 ## Client slots

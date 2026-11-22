@@ -9,16 +9,21 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 
 /** Plays a sound to one player and to no one else. */
-final class SoundPackets {
+public final class SoundPackets {
     private SoundPackets() {}
 
     static void playTo(ServerPlayer player, DeepSound sound) {
+        playTo(player, sound, SoundSource.PLAYERS);
+    }
+
+    /** As {@link #playTo(ServerPlayer, DeepSound)}, in the volume slider of {@code source}. */
+    public static void playTo(ServerPlayer player, DeepSound sound, SoundSource source) {
         if (player.connection == null) {
             return;
         }
         Holder<SoundEvent> event = BuiltInRegistries.SOUND_EVENT.wrapAsHolder(sound.event());
         player.connection.send(new ClientboundSoundEntityPacket(
-                event, SoundSource.PLAYERS, player, 1f, 1f, player.getRandom().nextLong()));
+                event, source, player, 1f, 1f, player.getRandom().nextLong()));
     }
 
     /** Stops a sound that {@link #playTo} started, wherever it has got to. */

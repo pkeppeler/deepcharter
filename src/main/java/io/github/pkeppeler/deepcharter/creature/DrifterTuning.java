@@ -57,13 +57,20 @@ public record DrifterTuning(
      * @param sprint      a person on foot sprinting
      * @param footstep    a person on foot walking; one who sneaks, or stands still, makes none
      * @param footstepMin blocks a tick a person must cover to be heard walking
+     * @param footstepMax blocks a tick a person can cover on foot: more is a teleport, which makes no noise
      * @param lookTicks   ticks between two looks at what makes a noise
      */
-    public record Noise(double drill, double sprint, double footstep, double footstepMin, int lookTicks) {
-        public static final Noise DEFAULT = new Noise(28, 20, 10, 0.1, 5);
+    public record Noise(
+            double drill, double sprint, double footstep, double footstepMin, double footstepMax, int lookTicks) {
+        public static final Noise DEFAULT = new Noise(28, 20, 10, 0.1, 1.0, 5);
 
         public Noise {
-            if (!(drill > sprint && sprint > footstep && footstep > 0 && footstepMin > 0 && lookTicks > 0)) {
+            if (!(drill > sprint
+                    && sprint > footstep
+                    && footstep > 0
+                    && footstepMin > 0
+                    && footstepMax > footstepMin
+                    && lookTicks > 0)) {
                 throw new IllegalArgumentException("noise tuning out of range: " + this);
             }
         }
@@ -110,7 +117,7 @@ public record DrifterTuning(
             double maxBlocks,
             int tries) {
         public static final Spawn DEFAULT =
-                new Spawn(100, List.of(0.25, 1.0 / 3.0, 0.5), List.of(2, 3, 4), 1, 18, 36, 12);
+                new Spawn(100, List.of(0.25, 1.0 / 3.0, 0.5), List.of(2, 3, 4), 1, 18, 36, 24);
 
         public Spawn {
             perMinute = List.copyOf(perMinute);

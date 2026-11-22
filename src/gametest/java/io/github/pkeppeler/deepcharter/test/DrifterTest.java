@@ -597,6 +597,13 @@ public class DrifterTest {
             both[0] |= podSources == 1 && onFoot == 1;
             expect(helper, podSources <= 1, "two people in one Prospector are %d sources: %s", podSources, here);
             expect(helper, onFoot <= 1, "two people on foot are %d sources, not 1: %s", onFoot, here);
+            Drifters.heardBy(level, arena.pod().position(), 1.0)
+                    .filter(noise -> noise.pod())
+                    .ifPresent(noise -> expect(
+                            helper,
+                            noise.listener().equals(arena.pilot().player().getUUID()),
+                            "the cue of a pod goes to %s, not the pilot",
+                            noise.listener()));
             if (tick == HEAR_TICKS) {
                 expect(helper, both[0], "the pod and the crew on foot were never both heard: %s", here);
                 first[0].leave();
@@ -607,8 +614,9 @@ public class DrifterTest {
             }
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
-            made[0] = Arena.build(helper, level, origin, PodRegistry.PROSPECTOR);
+            // The passenger joins first, so that a level's player list meets them before the pilot.
             second[0] = MockPlayers.join(helper, "drifter-second");
+            made[0] = Arena.build(helper, level, origin, PodRegistry.PROSPECTOR);
             second[0].teleportTo(level, made[0].pod().position(), 90f, 0f);
             expect(helper, second[0].player().startRiding(made[0].pod()), "the second seat is taken");
             made[0].pilot().setInput(SPRINT);
@@ -620,7 +628,7 @@ public class DrifterTest {
         });
     }
 
-    /** The drifter is not saved and a hit that pops it bursts it where it floats: the entity type is registered under the id the map and the tag name. */
+    /** The drifter is named in the sonar tag, floats and is not saved. */
     @GameTest
     public void theDrifterIsRegisteredAndNamedInTheSonarTag(GameTestHelper helper) {
         TagKey<EntityType<?>> tag = TagKey.create(
@@ -635,6 +643,7 @@ public class DrifterTest {
                 helper,
                 TestEntities.create(CreatureRegistry.DRIFTER, helper.getLevel()).isNoGravity(),
                 "a bladder of gas has weight");
+        expect(helper, !CreatureRegistry.DRIFTER.canSerialize(), "a drifter is saved with its chunk");
         helper.succeed();
     }
 }

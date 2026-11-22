@@ -6,7 +6,9 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
+import io.github.pkeppeler.deepcharter.sound.SoundPackets;
 import io.netty.buffer.ByteBuf;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -17,10 +19,9 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.minecraft.core.Holder;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -29,14 +30,9 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 
 /**
- * The alarm (#973, CREATURES.md section 2): killing a Drifter raises the alarm of its zone for a few minutes. In that zone every
- * source of noise draws drifters more often and may hold more of them ({@link DrifterTuning.Alarm}), and they hear farther. The game
- * says so plainly: a deeper drone beats in the zone, and the pilot's readout carries a line with the seconds left.
- *
- * <p>A zone is a third of a layer by height ({@link Zones#index}), the same cut the Retained and the biomes use, so the alarm needs no
- * zone names and the layers that have none yet work. The alarm is held in memory and never saved: a few minutes of alarm that a
- * restart forgets cost the player nothing they could have kept (mechanics.md says why). The pod's readout is a synced attachment that is
- * not persistent, for the same reason.
+ * The alarm (#973, CREATURES.md section 2): killing a Drifter rings the alarm of its zone for a few minutes ({@link DrifterTuning.Alarm}). A
+ * zone is a third of a layer by height ({@link Zones#index}), so no zone names are needed. The alarm and the pod's readout of it are held in
+ * memory only: a restart forgets a few minutes of alarm, which costs the player nothing they could keep (mechanics.md).
  */
 public final class DrifterAlarm {
     public static final int VERSION = 1;
@@ -102,14 +98,34 @@ public final class DrifterAlarm {
         ServerLifecycleEvents.SERVER_STARTING.register(server -> RINGS_UNTIL.clear());
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> RINGS_UNTIL.clear());
         ServerTickEvents.END_LEVEL_TICK.register(DrifterAlarm::tick);
+        // A pod with no one aboard shows no alarm: the next rider is not told a number from a minute ago.
+        PodEvents.AFTER_TICK.register(pod -> {
+            if (pod.getPassengers().isEmpty()) {
+                show(pod, State.QUIET);
+            }
+        });
     }
 
-    /** Starts the alarm of the zone at {@code y}, or starts it again if it rings: the length never stacks. Nothing happens outside a zone. */
+    /**
+     * Starts the alarm of the zone at {@code y}, or starts it again if it rings: the length never stacks. When it was quiet, a person on foot in
+     * the zone is told once (a pilot's readout says it). Nothing happens outside a zone.
+     */
     public static void raise(ServerLevel level, int y) {
-        Zone.at(level, y)
-                .ifPresent(zone -> RINGS_UNTIL.put(
-                        zone,
-                        level.getGameTime() + DrifterTuning.DEFAULT.alarm().ticks()));
+        Optional<Zone> zone = Zone.at(level, y);
+        if (zone.isEmpty()) {
+            return;
+        }
+        boolean wasQuiet = !isRinging(level, y);
+        RINGS_UNTIL.put(
+                zone.get(), level.getGameTime() + DrifterTuning.DEFAULT.alarm().ticks());
+        if (wasQuiet) {
+            for (ServerPlayer person : level.players()) {
+                if (!(person.getVehicle() instanceof PodEntity)
+                        && Zone.at(level, person.getBlockY()).equals(zone)) {
+                    person.sendOverlayMessage(Component.translatable("creature.deepcharter.alarm_foot"));
+                }
+            }
+        }
     }
 
     /** Ticks the alarm of the zone at {@code y} still rings: 0 when it is quiet. */
@@ -144,13 +160,7 @@ public final class DrifterAlarm {
         for (ServerPlayer player : level.players()) {
             long left = ticksLeft(level, player.getBlockY());
             if (left > 0 && beat) {
-                player.connection.send(new ClientboundSoundEntityPacket(
-                        Holder.direct(DeepSound.CREATURE_ALARM_DRONE.event()),
-                        SoundSource.HOSTILE,
-                        player,
-                        1.0f,
-                        1.0f,
-                        level.getRandom().nextLong()));
+                SoundPackets.playTo(player, DeepSound.CREATURE_ALARM_DRONE, SoundSource.HOSTILE);
             }
             if (player.getVehicle() instanceof PodEntity pod) {
                 show(pod, new State((int) Math.ceilDiv(left, TICKS_PER_SECOND)));

@@ -5,18 +5,16 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.Drifter;
 import io.github.pkeppeler.deepcharter.creature.DrifterAlarm;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
-import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientPacks;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.LoudPods;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestPacks;
 import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
@@ -29,8 +27,8 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Evidence scenario "drifters" (#973): a pilot sits in a pod that drills (the drill's noise only: the pod is held in place so that the camera
- * keeps its view) at the west end of a dark hall in layer 1. At the far end a drifter glows. It drifts down the hall toward the drill, and the
+ * Evidence scenario "drifters" (#973): a pilot sits in a pod that drills (only the drill's noise: the pod makes it but does not bore, so it stays
+ * where it is and the camera keeps its view) at the west end of a dark hall in layer 1. At the far end a drifter glows. It drifts down the hall toward the drill, and the
  * stills show the glow far off, the glow near, the burst and the spore gas round the hull with the hull falling, and then the alarm: a second
  * drifter is struck, and the plain HUD's readout carries the alarm line. The pilot is shielded from the gas by the hull; the hull is what it eats.
  */
@@ -46,17 +44,6 @@ public class DrifterScenario extends EvidenceScenario {
     private static final double NEAR_BLOCKS = 9;
     /** Ticks of frames shown in the gas, after the burst: the cloud hangs 160. */
     private static final int GAS_FRAMES = 20;
-
-    /** The pods this scenario holds loud: the drill's noise with no drilling. Ids only, because an event cannot be unregistered. */
-    private static final Set<UUID> LOUD = ConcurrentHashMap.newKeySet();
-
-    static {
-        PodEvents.AFTER_TICK.register(pod -> {
-            if (LOUD.contains(pod.getUUID())) {
-                pod.setDrilling(true);
-            }
-        });
-    }
 
     @Override
     protected String name() {
@@ -104,9 +91,7 @@ public class DrifterScenario extends EvidenceScenario {
             screenshot(context, "drifters-quiet");
 
             // The drill's noise starts: the drifter hears it 24 blocks off and drifts down the hall.
-            singleplayer
-                    .getServer()
-                    .runOnServer(server -> LOUD.add(pilotPod(server).getUUID()));
+            singleplayer.getServer().runOnServer(server -> LoudPods.make(pilotPod(server)));
             int ticks = 0;
             boolean far = false;
             while (distance(singleplayer, first[0]) > NEAR_BLOCKS) {
@@ -175,7 +160,7 @@ public class DrifterScenario extends EvidenceScenario {
             }
             screenshot(context, "drifters-alarm-line");
             singleplayer.getServer().runOnServer(server -> {
-                LOUD.remove(pilotPod(server).getUUID());
+                LoudPods.quiet(pilotPod(server));
                 if (!DrifterAlarm.isRinging(TestLayers.level(server, 1), FLOOR_Y)) {
                     throw new AssertionError("the alarm of the zone does not ring on the server");
                 }

@@ -23,25 +23,26 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * The Drifters' world (#973): what makes a noise in the hollows, and when a source of noise draws a new drifter. Spawning keys on the biome tag
- * {@link #FUNGAL_HOLLOWS}, which the shipped data leaves empty (the worldgen of layer 3, #972, fills it): a source in a biome outside it draws
- * nothing, and so does a drifter's place outside it. Nothing is saved: a drifter is made from the noise as it stands.
- *
- * <p>The count is of pods, not of people ({@link DrifterTuning.Spawn}): a source is a pod that is drilling with a person aboard, once however
- * many sit in it, and the people on foot who make a noise together are one more. Each source rolls once a look at the chance of its zone
- * (a third of a layer by height: {@link DrifterAlarm.Zone}), up to what one source may have alive and what the zone may hold, and the
- * alarm of the zone ({@link DrifterAlarm}) multiplies the chance and the allowance.
+ * The Drifters' world (#973): what makes a noise in the hollows, and when a source of noise draws a new drifter. Placement keys on the biome tag
+ * {@link #FUNGAL_HOLLOWS}, empty in shipped data until the worldgen of layer 3 (#972) fills it. The count is of pods, not of people: see
+ * {@link DrifterTuning.Spawn}. Nothing is saved.
  */
 public final class Drifters {
-    /** The biomes in which drifters appear. Empty in the shipped data; the test data pack names a test biome. */
+    /**
+     * The biomes in which drifters appear. Empty in the shipped data; the test data pack names a test biome. The same tag as #976's
+     * {@code Overgrowth.HOLLOWS}: whichever of the two PRs merges second folds one constant into the other.
+     */
     public static final TagKey<Biome> FUNGAL_HOLLOWS =
             TagKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "fungal_hollows"));
 
@@ -57,8 +58,11 @@ public final class Drifters {
     /** What each level's last look found. Server thread only; a level with nothing has no entry. */
     private static final Map<ResourceKey<Level>, List<Noise>> NOISES = new HashMap<>();
 
+    /** Where a person stood on foot, and in which level. */
+    private record Seen(ResourceKey<Level> dimension, UUID person) {}
+
     /** Where each person on foot stood at the last look, to tell walking from standing. Server thread only. */
-    private static Map<UUID, Vec3> lastSeen = new HashMap<>();
+    private static Map<Seen, Vec3> lastSeen = new HashMap<>();
 
     private Drifters() {}
 
@@ -94,7 +98,7 @@ public final class Drifters {
         if (now % tuning.noise().lookTicks() == 0) {
             look(level);
         }
-        if (now % tuning.spawn().checkTicks() == 0) {
+        if (now % tuning.spawn().checkTicks() == 0 && mayPlace(level)) {
             List<Source> sources = sources(level);
             for (Source source : sources) {
                 Optional<DrifterAlarm.Zone> zone = zoneOf(level, source);
@@ -113,33 +117,46 @@ public final class Drifters {
         }
     }
 
+    /** A mob the mod places itself honours the game's off switches: the {@code spawn_mobs} rule, and Peaceful, which removes monsters. */
+    private static boolean mayPlace(ServerLevel level) {
+        return level.getGameRules().get(GameRules.SPAWN_MOBS) && level.getDifficulty() != Difficulty.PEACEFUL;
+    }
+
     private static Optional<DrifterAlarm.Zone> zoneOf(ServerLevel level, Source source) {
         return DrifterAlarm.Zone.at(level, BlockPos.containing(source.pos()).getY());
     }
 
     /**
      * Listens to the level: every pod drilling with a person aboard makes the drill's noise, and every person on foot makes the sprint's
-     * or the footstep's, by how far they went since the last look. A spectator, and a person who sneaks or stands, make none.
+     * or the footstep's, by how far they went since the last look in this level. A spectator, a creative player, one who sneaks or stands,
+     * and one who was moved a long way at once (a teleport, a change of level) make none.
      */
     private static void look(ServerLevel level) {
         DrifterTuning.Noise tuning = DrifterTuning.DEFAULT.noise();
         List<Noise> heard = new ArrayList<>();
         Set<PodEntity> pods = new HashSet<>();
-        Map<UUID, Vec3> now = new HashMap<>();
+        Map<Seen, Vec3> now = new HashMap<>();
         for (ServerPlayer player : level.players()) {
             if (player.isSpectator()) {
                 continue;
             }
             if (player.getVehicle() instanceof PodEntity pod) {
                 if (pod.drilling() && !Wrecks.isWreck(pod) && pods.add(pod)) {
-                    heard.add(new Noise(pod.position(), tuning.drill(), player.getUUID(), true));
+                    // The cue goes to the pilot, whoever the loop met first.
+                    UUID listener =
+                            pod.getControllingPassenger() instanceof Player pilot ? pilot.getUUID() : player.getUUID();
+                    heard.add(new Noise(pod.position(), tuning.drill(), listener, true));
                 }
                 continue;
             }
-            now.put(player.getUUID(), player.position());
-            Vec3 before = lastSeen.get(player.getUUID());
+            Seen key = new Seen(level.dimension(), player.getUUID());
+            now.put(key, player.position());
+            Vec3 before = lastSeen.get(key);
             double moved = before == null ? 0 : horizontalDistance(before, player.position()) / tuning.lookTicks();
-            if (moved >= tuning.footstepMin() && !player.isShiftKeyDown()) {
+            if (!player.isCreative()
+                    && !player.isShiftKeyDown()
+                    && moved >= tuning.footstepMin()
+                    && moved <= tuning.footstepMax()) {
                 heard.add(new Noise(
                         player.position(),
                         player.isSprinting() ? tuning.sprint() : tuning.footstep(),
@@ -147,7 +164,7 @@ public final class Drifters {
                         false));
             }
         }
-        lastSeen = merge(level, now);
+        lastSeen = forget(level, now);
         if (heard.isEmpty()) {
             NOISES.remove(level.dimension());
         } else {
@@ -155,15 +172,19 @@ public final class Drifters {
         }
     }
 
-    /** The people seen on foot in this level now, and those seen in another level at the last look, so one level's look does not forget another's. */
-    private static Map<UUID, Vec3> merge(ServerLevel level, Map<UUID, Vec3> seenHere) {
-        Map<UUID, Vec3> merged = new HashMap<>(seenHere);
-        for (Map.Entry<UUID, Vec3> entry : lastSeen.entrySet()) {
-            if (level.getPlayerByUUID(entry.getKey()) == null) {
-                merged.putIfAbsent(entry.getKey(), entry.getValue());
+    /** The people seen on foot in this level now, and those seen in other levels, but not those who are no longer online. */
+    private static Map<Seen, Vec3> forget(ServerLevel level, Map<Seen, Vec3> seenHere) {
+        Map<Seen, Vec3> kept = new HashMap<>(seenHere);
+        for (Map.Entry<Seen, Vec3> entry : lastSeen.entrySet()) {
+            if (!entry.getKey().dimension().equals(level.dimension())
+                    && level.getServer()
+                                    .getPlayerList()
+                                    .getPlayer(entry.getKey().person())
+                            != null) {
+                kept.put(entry.getKey(), entry.getValue());
             }
         }
-        return merged;
+        return kept;
     }
 
     private static double horizontalDistance(Vec3 a, Vec3 b) {
@@ -225,7 +246,7 @@ public final class Drifters {
         if (alive.size() >= room) {
             return Optional.empty();
         }
-        Optional<Vec3> place = place(level, from, random, tuning);
+        Optional<Vec3> place = place(level, from, zone.get(), random, tuning);
         if (place.isEmpty()) {
             return Optional.empty();
         }
@@ -240,15 +261,27 @@ public final class Drifters {
         return Optional.of(drifter);
     }
 
-    /** A free place, loaded and ticking, in a hollows biome, between the least and the most distance from {@code from}. */
+    /**
+     * A free place, loaded and ticking, in a hollows biome, in the source's own zone and the world's bounds, between the least and the most
+     * distance from {@code from}.
+     */
     private static Optional<Vec3> place(
-            ServerLevel level, BlockPos from, RandomSource random, DrifterTuning.Spawn tuning) {
+            ServerLevel level, BlockPos from, DrifterAlarm.Zone zone, RandomSource random, DrifterTuning.Spawn tuning) {
+        Vec3 source = Vec3.atCenterOf(from);
         for (int attempt = 0; attempt < tuning.tries(); attempt++) {
             double angle = random.nextDouble() * Mth.TWO_PI;
             double distance = Mth.lerp(random.nextDouble(), tuning.minBlocks(), tuning.maxBlocks());
             BlockPos pos = from.offset((int) Math.round(Math.cos(angle) * distance), random.nextInt(-8, 9), (int)
                     Math.round(Math.sin(angle) * distance));
-            if (level.isPositionEntityTicking(pos) && level.getBiome(pos).is(FUNGAL_HOLLOWS) && room(level, pos)) {
+            double away = Vec3.atBottomCenterOf(pos).distanceTo(source);
+            if (level.isInWorldBounds(pos)
+                    && level.isInWorldBounds(pos.above())
+                    && away >= tuning.minBlocks()
+                    && DrifterAlarm.Zone.at(level, pos.getY()).equals(Optional.of(zone))
+                    && DrifterAlarm.Zone.at(level, pos.getY() + 1).equals(Optional.of(zone))
+                    && level.isPositionEntityTicking(pos)
+                    && level.getBiome(pos).is(FUNGAL_HOLLOWS)
+                    && room(level, pos)) {
                 return Optional.of(Vec3.atBottomCenterOf(pos));
             }
         }
@@ -258,10 +291,12 @@ public final class Drifters {
     /** Whether a bladder's box, with its feet at {@code pos}, is all open air or gas. */
     private static boolean room(ServerLevel level, BlockPos pos) {
         AABB box = CreatureRegistry.DRIFTER.getDimensions().makeBoundingBox(Vec3.atBottomCenterOf(pos));
-        return new LoadedBlocks(level)
-                .getBlockStates(box)
-                .allMatch(state -> state.getCollisionShape(level, pos).isEmpty()
-                        && state.getFluidState().isEmpty());
+        LoadedBlocks blocks = new LoadedBlocks(level);
+        return BlockPos.betweenClosedStream(box).allMatch(cell -> {
+            BlockState state = blocks.getBlockState(cell);
+            return state.getCollisionShape(blocks, cell).isEmpty()
+                    && state.getFluidState().isEmpty();
+        });
     }
 
     /** The drifters whose box a person's or a pod's box touches, for the burst: a query round a drifter that ticks. */

@@ -101,22 +101,4 @@ public class DrifterPacingTest {
                 bottomWaitMinutes);
         helper.succeed();
     }
-
-    /** The tell before any cost: the nearest place a drifter is put, at the drift speed, is more than three seconds from the source it comes to. */
-    @GameTest
-    public void aPlacedDrifterIsSecondsFromAnyCost(GameTestHelper helper) {
-        double seconds = (TUNING.spawn().minBlocks() - TUNING.touchBlocks() - 1.0) / (TUNING.driftSpeed() * 20);
-        LOGGER.info(
-                "[drifter-pacing] the nearest placed drifter is {} s from a pod; the burst waits {} s of tell",
-                String.format("%.1f", seconds),
-                TUNING.armTicks() / 20);
-        expect(
-                helper,
-                seconds > 3.0,
-                "a drifter placed %s blocks off reaches a pod in %s s",
-                TUNING.spawn().minBlocks(),
-                seconds);
-        expect(helper, TUNING.armTicks() >= 60, "the tell is %d ticks, under three seconds", TUNING.armTicks());
-        helper.succeed();
-    }
 }

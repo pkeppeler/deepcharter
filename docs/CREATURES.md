@@ -45,7 +45,7 @@ What follows from it:
 1. **Every mob is a problem the upgrade loop answers**, with a part, a seat or a consumable. The Retained answered by lights is the template ([mechanics.md](design/mechanics.md#the-retained-at-dark-pods-449-a)).
 2. **Every mob costs you twice**: something in the pod and something on foot. It is unsettling to meet.
 3. **Sensed before seen.** Every mob has a tell on sonar, sound or light at least 3 seconds before it can cost you anything. A player who bought the sensor and paid attention is never caught cold.
-4. **Few, persistent, readable.** No packs, no farming, no experience. A mob's rule is stated plainly on first meeting: a one-time HUD or scanner line (SPEC section 5).
+4. **Few, persistent, readable.** No packs, no farming, no experience. A mob's rule is stated plainly on first meeting: a one-time HUD or scanner line (SPEC section 5). Drifters are the one exception to "persistent": they are not saved, and one whose chunk unloads is gone and the zone places another ([mechanics.md](design/mechanics.md#drifters-and-the-alarm-973-a)).
 5. **The worst an ordinary mob can do is cost you the run.** The worst a boss can do is leave a wreck to salvage (SPEC section 12).
 6. **Fighting costs money.** Ammunition is bought consumables, so every fight feeds pillar 1.
 7. **The dead keep their dignity** ([LORE guardrails](LORE.md#guardrails)). The Retained drop no loot and come apart in ash, never a body. Proposal: now and then one leaves a brass Continuity tag that becomes a Note with a name on it, and the records board counts names recovered.

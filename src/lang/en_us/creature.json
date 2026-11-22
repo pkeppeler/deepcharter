@@ -6,5 +6,5 @@
   "creature.deepcharter.drifter_pod": "A pale glow drifts toward the drill, hissing. Stop drilling and it will pass.",
   "creature.deepcharter.drifter_foot": "A pale glow drifts toward the sound of you. Stand still and it will pass.",
   "creature.deepcharter.spores": "Spores are eating the hull. Drive clear.",
-  "hud.deepcharter.pod.drifter_alarm": "ALARM: THE HOLLOWS ARE AWAKE %s S"
+  "creature.deepcharter.alarm_foot": "The hollows are awake. More will come to the sound of you."
 }
