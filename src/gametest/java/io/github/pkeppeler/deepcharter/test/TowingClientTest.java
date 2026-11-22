@@ -67,8 +67,11 @@ public class TowingClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context,
                     "the client sees the towed pod follow its tower " + MIN_FOLLOWED_BLOCKS + " blocks",
-                    client -> podIfPresent(client, rig.towed()) instanceof PodEntity towed
-                            && towed.position().subtract(towedStart).horizontalDistance() >= MIN_FOLLOWED_BLOCKS);
+                    client -> {
+                        PodEntity towed = podIfPresent(client, rig.towed());
+                        return towed != null
+                                && towed.position().subtract(towedStart).horizontalDistance() >= MIN_FOLLOWED_BLOCKS;
+                    });
             two.server().runOnServer(server -> two.mock().releaseInput());
             context.waitTicks(10);
 
