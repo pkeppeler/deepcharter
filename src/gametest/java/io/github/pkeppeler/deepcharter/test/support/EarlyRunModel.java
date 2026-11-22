@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.outpost.OutpostTuning;
@@ -183,11 +184,7 @@ public final class EarlyRunModel {
 
     /** Blocks of layer 1, which a run in layer 2 climbs through twice (the shaft is already bored). */
     public static int layerOneBlocks() {
-        return json("/data/deepcharter/dimension/layer_1.json")
-                .getAsJsonObject("generator")
-                .getAsJsonObject("biome_source")
-                .get("height")
-                .getAsInt();
+        return CampaignBands.layer(1).height();
     }
 
     /** The stats of a Mole with the given part tiers (0 for stock), as PodComponents would scale them. */

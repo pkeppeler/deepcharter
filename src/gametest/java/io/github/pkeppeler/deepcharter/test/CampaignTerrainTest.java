@@ -41,7 +41,7 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 
 /**
  * Server GameTests for the campaign world's terrain (#742, ADR 0059): the bands, the rock of each, the crust at the floor of each layer, and
- * the biome of each band, on our own generator. The world is {@code deepcharter:campaign_sample}, a test-preset dimension, as
+ * the biome of each band, on our own generator. The world is {@code deepcharter:campaign_sample}, a test data-pack dimension, as
  * {@code surface_sample} is for the surface; the shipped game does not use it yet. The band table is {@link CampaignBands}.
  */
 public class CampaignTerrainTest {
@@ -360,10 +360,8 @@ public class CampaignTerrainTest {
                 CampaignBands.LAYER_2.minY() + crust));
         expect(helper, anchors.equals(expectedAnchors), "rule anchors %s, expected %s", anchors, expectedAnchors);
 
-        JsonObject dimension = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
-                .getAsJsonObject()
-                .getAsJsonObject("dimensions")
-                .getAsJsonObject(SAMPLE);
+        JsonObject dimension =
+                read(helper, "/data/deepcharter/dimension/campaign_sample.json").getAsJsonObject();
         JsonObject type = read(helper, "/data/deepcharter/dimension_type/campaign_sample.json")
                 .getAsJsonObject();
         expect(

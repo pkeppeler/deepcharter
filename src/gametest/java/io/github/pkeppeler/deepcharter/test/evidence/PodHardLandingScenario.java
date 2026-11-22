@@ -32,7 +32,7 @@ import net.minecraft.world.phys.AABB;
 public class PodHardLandingScenario extends EvidenceScenario {
     private static final int X = 5200;
     private static final int Z = 5200;
-    private static final int FLOOR_Y = LayerTuning.DEFAULT.crustThickness() + 1;
+    private static final int FLOOR_Y = TestLayers.worldY(1, LayerTuning.DEFAULT.crustThickness() + 1);
     private static final int SHAFT_BLOCKS = 96;
     private static final int BRAKED_TICKS_PER_FRAME = 5;
     private static final int FALL_TICKS_PER_FRAME = 2;
