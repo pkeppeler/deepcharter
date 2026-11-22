@@ -293,6 +293,17 @@ public class M2SliceTest {
                                 helper,
                                 Terminals.act(first, terminal, RepairStation.REPAIR_TOTAL, new CompoundTag()),
                                 "repairing the hull");
+                        // The descent starts in the surface band of the campaign level and passes into layer 1 in
+                        // place.
+                        director.teleportTo(
+                                one,
+                                new Vec3(
+                                        X,
+                                        TestLayers.band(one, TestLayers.SURFACE).minY() + 6,
+                                        Z),
+                                0,
+                                0);
+                        BreachEvents.CROSSED.invoker().onCrossed(first, one, one, TestLayers.SURFACE, 1);
                         director.teleportTo(one, new Vec3(X, zoneY(one, 1, 2), Z), 0, 0);
                         HandbookTriggers.pollPlayer(server, first);
 
