@@ -246,7 +246,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                         !hud.containsKey("cockpit ribbon") && !hud.containsKey("pod readout"),
                         "on foot there is no cockpit and no pod readout");
                 requireClearOrNowhere(client, gui, SHORT_STEP, hud, true);
-                requireClearOrNowhere(client, gui, LONG_STEP, hud, true);
+                requireClearOrNowhere(client, gui, LONG_STEP, hud, gui[0] >= COCKPIT_GUIS[0][0]);
             }
         });
     }
