@@ -14,9 +14,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 
 /**
- * Which handbook entries (chapters, notes) one player has read. Unlike directive progress it belongs to the player, not the
- * charter: a note a crewmate found is unread for you. The state is the player attachment {@link HandbookRegistry#READ_MARKS}, kept
- * on death and sent to its owner only.
+ * What one player has read or been told once: handbook entries (chapters, notes) and one-time hints such as
+ * {@code deepcharter:hint/first_ore}, which are not entries and never reach the handbook screen. Unlike directive progress it
+ * belongs to the player, not the charter: a note a crewmate found is unread for you. The state is the player attachment
+ * {@link HandbookRegistry#READ_MARKS}, kept on death and sent to its owner only.
  */
 public record ReadMarks(Set<Identifier> read) {
     public static final int VERSION = 1;
