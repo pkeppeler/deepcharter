@@ -3,7 +3,6 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
-import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.QUIET;
 
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.layer.Depth;
@@ -15,6 +14,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -589,7 +589,7 @@ public class GrainedCrustTest {
         });
     }
 
-    @GameTest(environment = QUIET, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void aWarningCreakComesBeforeEachPulseToWhatWouldBeSqueezed(GameTestHelper helper) {
         warningsComeBeforeEachPulse(helper, 5080, 0);
     }

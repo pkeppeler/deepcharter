@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
-import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.QUIET;
 
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
@@ -12,6 +11,7 @@ import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.test.support.BlockLightOracle;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.LightSyncSends;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -464,22 +464,22 @@ public class StructureLightBorderTest {
         }
     }
 
-    @GameTest(environment = QUIET, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aSeaLanternAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.SEA_LANTERN);
     }
 
-    @GameTest(environment = QUIET, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aKellsLavaAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.KELLS_LAVA);
     }
 
-    @GameTest(environment = QUIET, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aShaftCandleAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.CANDLE);
     }
 
-    @GameTest(environment = QUIET, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theFamousWrecksLanternAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.FAMOUS_LANTERN);
     }

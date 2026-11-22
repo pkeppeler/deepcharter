@@ -1,7 +1,5 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.HEAVY;
-
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -12,6 +10,7 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TerminalParts;
@@ -205,7 +204,7 @@ public class SalvageBootstrapTest {
         return Math.sqrt((double) pos.getX() * pos.getX() + (double) pos.getZ() * pos.getZ());
     }
 
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void cratesLieAroundTheColonyWithinTheYardRadiusAndNoFurther(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int radius = yardRadius();
@@ -258,7 +257,7 @@ public class SalvageBootstrapTest {
     }
 
     /** The yard's edges are read in biome cells of 4 blocks, at the corner of each, so it is exact to a cell: a block a cell and a block inside is in, a cell outside is out. */
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theYardEndsAtItsRadiusOnTheBlock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int radius = yardRadius();
@@ -292,7 +291,7 @@ public class SalvageBootstrapTest {
     }
 
     /** Stalks grow on the floors of craters, and in patches among the crates of the yard (#855), and nowhere else on the plains. */
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void stalksStandOnlyInCratersAndTheYardsPatches(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         List<BlockPos> stalks = survey(level).stalks();
@@ -328,7 +327,7 @@ public class SalvageBootstrapTest {
     }
 
     /** How far a player walks from a crate to the nearest stalk column: the wood is a walk from the salvage, not a trek. */
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aStalkColumnIsAWalkFromEveryCrate(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         List<BlockPos> bases = columnBases(survey(level).stalks());
@@ -367,7 +366,7 @@ public class SalvageBootstrapTest {
                 + (double) (a.getZ() - b.getZ()) * (a.getZ() - b.getZ());
     }
 
-    @GameTest(environment = HEAVY, dimension = "deepcharter:campaign_sample", maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = "deepcharter:campaign_sample", maxTicks = MAX_TICKS)
     public void stalksGrowOnTheFloorsOfLayerOneCaves(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         // The campaign level holds the surface and both layers: only the stalks in layer 1's band are this test's.

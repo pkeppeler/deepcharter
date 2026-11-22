@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
-import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.HEAVY;
 
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.colony.Colony;
@@ -18,6 +17,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodTowing;
 import io.github.pkeppeler.deepcharter.pod.TowTuning;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -97,7 +97,7 @@ public class CampaignCrossingTest {
         return mock;
     }
 
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = 1000)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = 1000)
     public void eachDescentAndAscentRaisesOneEventAndJitterInTheCrustNone(GameTestHelper helper) {
         int layer1Floor = CampaignBands.LAYER_1.minY();
         int crust = CampaignBands.crustRows();
@@ -145,7 +145,7 @@ public class CampaignCrossingTest {
         });
     }
 
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = 1000)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = 1000)
     public void aDescentSendsTheTransmissionOpensChapterEightPlaysTheHymnAndRaisesTheDeepestPoint(
             GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
@@ -193,7 +193,7 @@ public class CampaignCrossingTest {
         });
     }
 
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aTowedPodFollowsAcrossTheBoundaryAndIsNotCarried(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         double x = 21400.5;
@@ -252,7 +252,7 @@ public class CampaignCrossingTest {
         });
     }
 
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = 400)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = 400)
     public void aPlayerWhoLeavesTheLevelAndComesBackLowerIsSettledNotCrossed(GameTestHelper helper) {
         ServerLevel campaign = helper.getLevel();
         ServerLevel overworld = campaign.getServer().overworld();
@@ -285,7 +285,7 @@ public class CampaignCrossingTest {
      * A respawn that stays in the level cannot be driven here (the dead player respawns at the overworld spawn), so
      * the test moves the player to the surface as the respawn would and raises the same Fabric event.
      */
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = 400)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = 400)
     public void aPlayerWhoRespawnsAtTheSurfaceOfTheSameLevelRaisesNoAscents(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MockPlayer mock = floater(helper, "cross-respawn", 21800.5, 21800.5, CampaignBands.LAYER_2.minY() + 100);
@@ -310,7 +310,7 @@ public class CampaignCrossingTest {
         });
     }
 
-    @GameTest(environment = HEAVY, dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void aCrossingInOneLevelSendsTheRumbleWithNoFade(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel campaign = helper.getLevel();
@@ -332,7 +332,7 @@ public class CampaignCrossingTest {
      * A crossing moves nobody (ADR 0061), so the old pocket (a carved room that skipped the Conduit's casing) is gone, and a pod that
      * crosses a band boundary in the Conduit's own column leaves the casing whole. Cycle-2 review of #818 found this untested.
      */
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1000)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1000)
     public void aPodCrossingInPlaceAtTheConduitsColumnLeavesTheConduitWhole(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ColonySite.Placed colony = Colony.placed(level.getServer())
@@ -430,7 +430,7 @@ public class CampaignCrossingTest {
         }
     }
 
-    @GameTest(environment = HEAVY, dimension = SAMPLE)
+    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE)
     public void theBandTableReadsTheSameForEveryY(GameTestHelper helper) {
         List<String> seen = new ArrayList<>();
         for (int y : new int[] {319, -64, -65, -256, -257, -512, -513}) {

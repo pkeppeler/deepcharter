@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
-import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.HEAVY;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -10,6 +9,7 @@ import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -103,7 +103,7 @@ public class SurfaceTerrainTest {
     /** Placed on the ground by the surface features (#245), not by the material rule. */
     private static final Set<String> FEATURE_BLOCKS = Set.of("deepcharter:salvage_crate", "deepcharter:fungal_stalk");
 
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theGroundHoldsOnlyRegolithRockAndBasalt(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         LayerChain.Band surface = TestLayers.band(level, TestLayers.SURFACE);
@@ -188,7 +188,7 @@ public class SurfaceTerrainTest {
 
     // The motion-blocking heightmaps read the vanilla block tag minecraft:blocks_motion_no_leaves, not a block's
     // collision (#350).
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theMotionBlockingHeightmapsAgreeWithTheWorldSurface(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ChunkGenerator generator = level.getChunkSource().getGenerator();
@@ -246,7 +246,7 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void everyBiomeHasItsOwnTopBlock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         expectTopBlock(helper, level, "deepcharter:regolith_plains", 0, "deepcharter:regolith");
@@ -255,7 +255,7 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void noCreatureSpawnsInTheSurfaceBiomesButMonstersStay(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ChunkGenerator generator = level.getChunkSource().getGenerator();
@@ -308,7 +308,7 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void cratersMesasAndTheGreatPitAreOnTheLand(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int[] heights = survey(level);
@@ -376,7 +376,7 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = HEAVY, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theColonyPadIsFlatAndTheLandAroundItHasNoSheerCliffs(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ChunkGenerator generator = level.getChunkSource().getGenerator();

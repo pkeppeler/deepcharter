@@ -1,10 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.HEAVY;
-
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,7 +49,7 @@ public class CampaignSurfaceParityTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(CampaignSurfaceParityTest.class);
     private static final int MAX_TICKS = 20_000;
 
-    @GameTest(environment = HEAVY, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, maxTicks = MAX_TICKS)
     public void theCampaignGroundIsTheGroundOfTheSurfaceOnlyWorld(GameTestHelper helper) {
         ServerLevel campaign = ClientLight.serverLevel(helper.getLevel().getServer(), CAMPAIGN);
         ServerLevel surface = ClientLight.serverLevel(helper.getLevel().getServer(), SURFACE_SAMPLE);

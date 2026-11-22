@@ -11,25 +11,14 @@ val runVmArgs = project.extra["runVmArgs"] as () -> Map<String, List<String>>
 
 addVmArgToRuns(exitOnOom)
 
-// Server GameTest heap. No -Xmx was set, so the JVM took a quarter of RAM: 4 GB on the 16 GB Mac, and the suite (1050 tests) ran
-// out of it at about 80% (#541). Two leaks filled it. GameTestHelper.onEachTick queued one lambda per remaining tick (#548;
-// TestTicks.each replaced it). Chunks that FarChunks forced stayed forced to the end of the run, and each forced chunk pins the
-// proto chunks around it, so one layer level held 34,000 chunks (#569; FarChunks.force lets go when the test finishes).
-// Measured 2026-10-15 (-Xlog:gc; 1110 tests for the 1 GB and 1.5 GB sweep, 1132 for the peak): 1 GB fails (Full GCs at 1022M), 1.5 GB passes with 6 Full GCs, 2 GB passes with none.
-// The live set was 300 to 550 MB, peaking at 1.13 GB while one batch of about 50 tests runs. POI is not the holder (#636).
-// Measured 2026-11-20 (-Xlog:gc, 1250 tests): CI died of OutOfMemoryError at 2 GB twice (#805). The live set is 300 to 450 MB between
-// batches and peaks at 1.23 to 1.45 GB where the campaign tests run (the CampaignCrossingTest cases and OrePlacementTest's campaign
-// case each generate a tall world).
-// Carry-over traced 2026-11-21 (#807; numbers from a 4 vCPU VM, -Xlog:gc and a forced GC at each batch start). Holder: not a leak.
-// Chunks of a finished batch sat in ChunkMap.pendingUnloads of each level (9,300 proto chunks, 870 MB live at the next batch start,
-// no ticket left). Fix: ChunkMapUnloadMixin (gametest mod; its Javadoc has the mechanism).
-// Highest sample, always at the batch after the campaign batch: 1039, 1189, 1382 MB before (3 runs), 1022 MB after (1 run); next-batch
-// carry-over 816 to 899 MB -> 510 to 594 MB. `./gradlew build` at 3G: 1 Full GC, live 930 MB (the #805 run: 2, 1093 MB).
-// Chunk writes of half-generated chunks filled it after the campaign batch: ChunkMapSaveMixin skips them (#816). Measured 2026-11-22 (1353
-// tests, forced GC every 1.5 s): peak 1.9 GB while the campaign tests run together, 1.3 GB live at the batch after it, baseline 450 to
-// 560 MB (1 run, at 3G). 4G is over twice that peak: it stays until #957 splits the campaign batch.
-// Re-measure when the suite grows by a tenth or when a test adds a tall world to the campaign batch; below 2x the peak is where CI died.
-val gameTestHeap = "-Xmx4G"
+// Server GameTest heap (#541, #805, #807, #816, #957). CI died of OutOfMemoryError at 2G with peaks of 1.23 to 1.45 GB (#805), so keep the
+// heap at 2x the measured peak or more, and re-measure when the suite grows by a tenth or a test adds a tall world to a campaign environment.
+// Method: -Xlog:gc plus a forced GC every 1.5 s. Mechanisms: ChunkMapUnloadMixin (chunks of a finished batch), ChunkMapSaveMixin (writes of
+// half-generated chunks), FarChunks.force (released when a test finishes), and CampaignEnvironments (the campaign tests' batches).
+// Measured 2026-11-22 after #818 (1454 tests, 4 vCPU, 3 runs at 3G with the campaign tests in four environments of 13 to 23): the highest live
+// set was 1560, 1555 and 1748 MB, in default batches of 50 whose layer tests reach the campaign level through TestLayers; the four environments
+// peaked at 1034 to 1517 MB. Main's tree (4G) peaked at 1946 MB. 2x 1748 MB is 3496 MB, so 3584m; 3G fits only a peak under 1.5 GB. Back to 3G when #1026 bounds the TestLayers batches.
+val gameTestHeap = "-Xmx3584m"
 addVmArgToRun("gameTest", gameTestHeap)
 
 // Client GameTest heap. It had none (a quarter of RAM: 4 GB on the 16 GB runner), and the first client run on the campaign overworld

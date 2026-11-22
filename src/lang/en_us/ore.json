@@ -13,6 +13,7 @@
   "deepcharter.ore.company_rock_cutter_hot": "Company rock: the cutter runs hot, repair the hull first",
   "deepcharter.ore.company_rock_refused": "Company rock: can't drill",
   "deepcharter.ore.first_pickup": "Ore is heavy. It slows you down and won't stack. Haul it in your pod's cargo bay.",
+  "deepcharter.ore.gas_blast": "Gas blast: the hull took %s",
   "deepcharter.ore.tooltip.haul": "Won't stack. Haul it in your pod's cargo bay.",
   "deepcharter.ore.tooltip.heavy": "Heavy: it slows you while you carry it.",
   "effect.deepcharter.overburdened": "Ore-laden",

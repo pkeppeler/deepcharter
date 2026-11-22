@@ -5,7 +5,6 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.JUMP;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
-import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.QUIET;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -22,6 +21,7 @@ import io.github.pkeppeler.deepcharter.creature.LamplessFigures;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -940,7 +940,7 @@ public class RetainedTest {
      * and in the overworld (where the colony and the hangar stand), the Nether and the End it may not appear at all. The light takes a few
      * ticks to spread, so the test waits for it, in three phases: dark, lit, dark again.
      */
-    @GameTest(environment = QUIET, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aFigureMayAppearInTheDarkOfLayersOneAndTwoAndNowhereElse(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         // The two layers are bands of one level: each has its own room, at the same height over its floor.
@@ -1081,7 +1081,7 @@ public class RetainedTest {
      * What the game's spawner asks of a figure it tries to place: the roll passes about {@code chancePerTry} of the tries, no try passes beside a
      * light, and a figure made by a command is never refused.
      */
-    @GameTest(environment = QUIET, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theGamesOwnSpawnerRollsRareAndOnlyWhereTheRulesAllow(GameTestHelper helper) {
         ServerLevel two = TestLayers.level(helper.getLevel().getServer(), 2);
         BlockPos column = TestLayers.pos(2, 7272, 128, 7208);

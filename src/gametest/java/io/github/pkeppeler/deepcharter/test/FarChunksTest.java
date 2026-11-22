@@ -8,7 +8,6 @@ import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.concurrent.atomic.AtomicReference;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
-import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -23,6 +22,27 @@ public class FarChunksTest {
     private record Forced(ServerLevel level, ChunkPos chunk) {}
 
     private static final AtomicReference<Forced> FORCED_BY_A_FINISHED_TEST = new AtomicReference<>();
+
+    /** A wait fails past its limit only after {@link FarChunks#MIN_WAITED_TICKS} ticks, or past the ceiling: each clause is needed (#1002). */
+    @GameTest
+    public void aWaitFailsOnlyPastItsLimitAndTheTickFloorOrTheCeiling(GameTestHelper helper) {
+        long budget = 10_000_000_000L;
+        int floor = FarChunks.MIN_WAITED_TICKS;
+        boolean[] results = {
+            FarChunks.Deadline.failed(budget + 1, budget, floor - 1),
+            FarChunks.Deadline.failed(budget + 1, budget, floor),
+            FarChunks.Deadline.failed(budget - 1, budget, floor * 10),
+            FarChunks.Deadline.failed(FarChunks.CEILING_FACTOR * budget + 1, budget, 1),
+            FarChunks.Deadline.failed(FarChunks.CEILING_FACTOR * budget, budget, 1)
+        };
+        boolean[] expected = {false, true, false, true, false};
+        for (int i = 0; i < results.length; i++) {
+            if (results[i] != expected[i]) {
+                throw helper.assertionException("case %d failed the wait: %s, expected %s", i, results[i], expected[i]);
+            }
+        }
+        helper.succeed();
+    }
 
     @GameTest
     public void aChunkIsForcedWhileTheTestRuns(GameTestHelper helper) {
@@ -51,45 +71,6 @@ public class FarChunksTest {
             }
             helper.succeed();
         });
-    }
-
-    /**
-     * A first tick that other tests' work stretches to a minute is not the waiter's time (#803): a deadline of 30 s survives it, counts
-     * the ticks that follow at a second each, and still fails a wait that never settles.
-     */
-    @GameTest
-    public void aStalledTickDoesNotUseUpTheDeadline(GameTestHelper helper) {
-        long second = 1_000_000_000L;
-        long[] now = {0};
-        ServerLevel level = helper.getLevel();
-        FarChunks.Deadline deadline = FarChunks.deadline(30, () -> now[0]);
-        // 1 s of the 30 is used by each of these ticks, however long it took.
-        now[0] += 90 * second;
-        deadline.await(helper, level, false, () -> "ran out in a stalled first tick");
-        for (int tick = 0; tick < 20; tick++) {
-            now[0] += second;
-            deadline.await(helper, level, false, () -> "ran out too soon");
-        }
-        now[0] += 120 * second;
-        deadline.await(helper, level, false, () -> "ran out in a second stalled tick");
-        for (int tick = 0; tick < 7; tick++) {
-            now[0] += second;
-            deadline.await(helper, level, false, () -> "ran out too soon after the second stall");
-        }
-        // 29 s are used now: the next tick uses the 30th, and the limit is passed at a second more.
-        try {
-            now[0] += second;
-            deadline.await(helper, level, false, () -> "the limit is not passed yet");
-            now[0] += second;
-            deadline.await(helper, level, false, () -> "never settles");
-        } catch (GameTestAssertException expected) {
-            if (!expected.getMessage().contains("never settles")) {
-                throw helper.assertionException("the wait failed too soon: " + expected.getMessage());
-            }
-            helper.succeed();
-            return;
-        }
-        throw helper.assertionException("a wait that never settles must fail once the 30 s of ticks are used");
     }
 
     /**
