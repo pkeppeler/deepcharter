@@ -38,6 +38,7 @@ import net.minecraft.resources.Identifier;
  */
 public class QuestMapClientTest implements FabricClientGameTest {
     private static final int LEFT_MOUSE = 1;
+    private static final String INTRO_TAB = "i";
     private static final int WIDTH = 427;
     private static final int HEIGHT = 240;
     private static final int MIN_WIDTH = 200;
@@ -55,12 +56,14 @@ public class QuestMapClientTest implements FabricClientGameTest {
             theMapShowsTheStepsTheCardAndTheRoadAhead();
             theNextChapterShowsFaintStepsWhenTheyFit();
             nothingBeyondTheNextChapterIsReadable();
+            everyPageShowsTheTabsAndSelectsItsSection();
             chapterTabsOpenTheirChapterMaps();
             aClassifiedChapterKeepsItsRedactedPage();
             pickingAStepMovesTheCard();
             theLinkOnTheCardOpensTheChapterPage();
             clickingAnItemCallsTheRecipeHook();
-            draggingPansAndScrollingZooms();
+            nothingOnAHandbookPageMoves();
+            aFlowchartStepIsPickedByAClickAndNeverDragged();
             theBookOpensWhereItWasLeft();
             theMapFitsTheDefaultWindowAndTheSmallest();
             everyShippedMapFitsTheSheetWhole();
@@ -260,10 +263,15 @@ public class QuestMapClientTest implements FabricClientGameTest {
                 "the next chapter's steps carry no checkbox: " + texts(preview));
     }
 
+    /** The intro tab first, then one tab for each chapter, in the order they step down the sheet's right edge. */
     private static List<AbstractWidget> tabs(HandbookScreen screen) {
         List<AbstractWidget> tabs = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
+        labels.add(INTRO_TAB);
         for (int chapter = 1; chapter <= IDS.size(); chapter++) {
-            String label = Integer.toString(chapter);
+            labels.add(Integer.toString(chapter));
+        }
+        for (String label : labels) {
             for (var child : screen.children()) {
                 if (child instanceof AbstractWidget widget
                         && widget.getMessage().getString().equals(label)
@@ -275,26 +283,60 @@ public class QuestMapClientTest implements FabricClientGameTest {
         return tabs;
     }
 
+    /** The section whose tab a page selects: 0 for the intro, a chapter's number, or -1 for the end pages, which have no tab. */
+    private static int sectionOf(HandbookPage page) {
+        return switch (page) {
+            case HandbookPage.Cover cover -> 0;
+            case HandbookPage.Slip slip -> 0;
+            case HandbookPage.Letter letter -> 0;
+            case HandbookPage.Contents contents -> 0;
+            case HandbookPage.ChapterText text -> text.number();
+            case HandbookPage.Chapter map -> map.number();
+            case HandbookPage.Appendix appendix -> -1;
+            case HandbookPage.Contract contract -> -1;
+        };
+    }
+
+    private static void everyPageShowsTheTabsAndSelectsItsSection() {
+        HandbookScreen screen = screen(new HandbookMemory(), WIDTH, HEIGHT);
+        List<HandbookPage> pages = pages();
+        require(tabs(screen).size() == IDS.size() + 1, "a tab for the intro and one for each chapter");
+        for (int index = 0; index < pages.size(); index++) {
+            screen.goTo(index);
+            List<AbstractWidget> tabs = tabs(screen);
+            require(
+                    tabs.stream().allMatch(tab -> tab.visible),
+                    "page " + index + " (" + pages.get(index).getClass().getSimpleName() + ") shows every tab");
+            require(
+                    screen.section() == sectionOf(pages.get(index)),
+                    "page " + index + " selects the tab of section " + sectionOf(pages.get(index)) + ", got "
+                            + screen.section());
+        }
+    }
+
     private static void chapterTabsOpenTheirChapterMaps() {
         HandbookScreen screen = screen(new HandbookMemory(), WIDTH, HEIGHT);
-        require(tabs(screen).size() == IDS.size(), "a tab for each chapter");
-        require(tabs(screen).stream().noneMatch(tab -> tab.visible), "the cover has no chapter tabs");
-        screen.goTo(mapPage(1));
         List<AbstractWidget> tabs = tabs(screen);
-        require(tabs.stream().allMatch(tab -> tab.visible), "a chapter's map shows every chapter tab");
         for (int i = 1; i < tabs.size(); i++) {
             require(
                     tabs.get(i).getY() > tabs.get(i - 1).getY()
                             && tabs.get(i).getX() == tabs.get(0).getX(),
                     "the tabs step down the sheet's right edge");
         }
-        AbstractWidget three = tabs.get(2);
-        screen.mouseClicked(mouse(three.getX() + 2, three.getY() + 2), false);
-        require(
-                screen.page() == mapPage(3),
-                "tab 3 opens chapter 3's map, page " + mapPage(3) + ", got " + screen.page());
-        screen.goTo(firstPage(2));
-        require(tabs(screen).stream().allMatch(tab -> tab.visible), "a chapter's text pages show the tabs too");
+        // from any page, a tab jumps to its section: the intro tab to the cover, a chapter's tab to its map
+        int pageCount = pages().size();
+        for (int from = 0; from < pageCount; from++) {
+            for (int tab = 0; tab < tabs.size(); tab++) {
+                screen.goTo(from);
+                AbstractWidget clicked = tabs.get(tab);
+                screen.mouseClicked(mouse(clicked.getX() + 2, clicked.getY() + 2), false);
+                int expected = tab == 0 ? 0 : mapPage(tab);
+                require(
+                        screen.page() == expected,
+                        "from page " + from + ", tab " + clicked.getMessage().getString() + " opens page " + expected
+                                + ", got " + screen.page());
+            }
+        }
     }
 
     private static void aClassifiedChapterKeepsItsRedactedPage() {
@@ -346,51 +388,55 @@ public class QuestMapClientTest implements FabricClientGameTest {
         }
     }
 
-    private static void draggingPansAndScrollingZooms() {
+    /** On every page, a press, a drag and a scroll leave everything drawn where it was: nothing of the book pans, moves or zooms. */
+    private static void nothingOnAHandbookPageMoves() {
+        HandbookScreen screen = screen(new HandbookMemory(), WIDTH, HEIGHT);
+        List<HandbookPage> pages = pages();
+        for (int index = 0; index < pages.size(); index++) {
+            screen.goTo(index);
+            settle(screen);
+            // a press on the sheet, left of its tabs, where a flowchart's first step sits on a map page
+            double x = screen.width / 2.0 - 60;
+            double y = screen.height / 2.0 - 30;
+            screen.mouseClicked(mouse(x, y), false);
+            List<Drawn> before = DrawnText.of(screen);
+            screen.mouseDragged(mouse(x + 7, y + 5), 7, 5);
+            screen.mouseReleased(mouse(x + 7, y + 5));
+            screen.mouseScrolled(x, y, 0, 1);
+            screen.mouseScrolled(x, y, 0, -1);
+            require(
+                    DrawnText.of(screen).equals(before),
+                    "page " + index + " (" + pages.get(index).getClass().getSimpleName()
+                            + ") moved under a drag or a scroll");
+        }
+    }
+
+    private static void aFlowchartStepIsPickedByAClickAndNeverDragged() {
         HandbookScreen screen = mapScreen(new HandbookMemory(), 1);
         Box one = drawn(screen, done("Do thing 1.1")).box();
         Box two = drawn(screen, done("Do thing 1.2")).box();
-        // an empty spot of the sheet, under the flowchart's last row, takes the drag
-        double emptyX = one.x() + 10;
-        double emptyY = one.y() + QuestMapTuning.current().stepHeight() - 1;
-        screen.mouseClicked(mouse(emptyX, emptyY), false);
+        screen.mouseClicked(mouse(one.x() + 1, one.y() + 1), false);
         require(
-                screen.mouseDragged(mouse(emptyX + 6, emptyY + 4), 6, 4),
-                "a drag that begins on the flowchart pans it");
-        screen.mouseReleased(mouse(emptyX + 6, emptyY + 4));
-        Box moved = drawn(screen, done("Do thing 1.1")).box();
+                !screen.mouseDragged(mouse(one.x() + 7, one.y() + 5), 6, 4),
+                "a drag that begins on a step is nobody's: the flowchart does not pan");
+        screen.mouseReleased(mouse(one.x() + 7, one.y() + 5));
         require(
-                moved.x() == one.x() + 6 && moved.y() == one.y() + 4,
-                "the flowchart moves with the drag: from " + one.x() + "," + one.y() + " to " + moved.x() + ","
-                        + moved.y());
-        require(!screen.mouseDragged(mouse(emptyX, emptyY), 5, 5), "a drag after the release is not the flowchart's");
-        screen.mouseScrolled(moved.x() + 1, moved.y() + 1, 0, 1);
-        Box zoomedTwo = drawn(screen, done("Do thing 1.2")).box();
-        Box zoomedOne = drawn(screen, done("Do thing 1.1")).box();
-        require(
-                zoomedTwo.x() - zoomedOne.x() > two.x() - one.x(),
-                "scrolling up zooms in: the steps stand further apart");
+                drawn(screen, done("Do thing 1.1")).box().equals(one)
+                        && drawn(screen, done("Do thing 1.2")).box().equals(two),
+                "the steps stay where they are after a drag");
     }
 
     private static void theBookOpensWhereItWasLeft() {
         HandbookMemory memory = new HandbookMemory();
         HandbookScreen first = mapScreen(memory, 1);
-        Box before = drawn(first, open("Do thing 1.6")).box();
-        double emptyY = before.y()
-                + QuestMapTuning.current().stepHeight()
-                - 1
-                - QuestMapTuning.current().stepPitch();
-        first.mouseClicked(mouse(before.x() + 4, emptyY), false);
-        first.mouseDragged(mouse(before.x() + 9, emptyY + 2), 5, 2);
-        first.mouseReleased(mouse(before.x() + 9, emptyY + 2));
-        first.mouseScrolled(before.x() + 20, before.y() + 20, 0, 1);
-        Box after = drawn(first, open("Do thing 1.6")).box();
-        require(!after.equals(before), "setup: the flowchart moved");
+        click(first, drawn(first, done("Do thing 1.2")).box());
         HandbookScreen second = screen(memory, WIDTH, HEIGHT);
         require(second.page() == mapPage(1), "the book opens on the page it was left on, got " + second.page());
         require(
-                drawn(second, open("Do thing 1.6")).box().equals(after),
-                "the book opens with the flowchart panned and zoomed as it was left");
+                texts(second)
+                        .contains(Component.translatable("deepcharter.handbook.quest.step", 2)
+                                .getString()),
+                "the book opens with the step picked as it was left: " + texts(second));
         require(screen(new HandbookMemory(), WIDTH, HEIGHT).page() == 0, "a book with no memory opens at the cover");
     }
 
