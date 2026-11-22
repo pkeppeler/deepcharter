@@ -58,7 +58,7 @@ public class PodLinerTest {
     private static final AtomicInteger OWNERS = new AtomicInteger();
 
     private static final int Z = 3416;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int RADIUS = 4;
     private static final int PLENTY = 200;
     private static final int DRILL_TICKS = 2600;
@@ -730,6 +730,11 @@ public class PodLinerTest {
             this.pod = pod;
         }
 
+        /** True once the liner has an anchor, which {@link #start} is read from. */
+        boolean started() {
+            return last != null;
+        }
+
         void tick() {
             Optional<PodLiner.Anchor> now =
                     Versioned.readable(pod, PodLiner.STATE).orElseThrow().anchor();
@@ -797,7 +802,7 @@ public class PodLinerTest {
                 return;
             }
             rig.watch().tick();
-            if (rig.pod().blockPosition().getY() > rig.watch().start - 10) {
+            if (!rig.watch().started() || rig.pod().blockPosition().getY() > rig.watch().start - 10) {
                 return;
             }
             rig.pilot.releaseInput();
@@ -807,10 +812,13 @@ public class PodLinerTest {
             if (!rings.equals(expected)) {
                 throw failure(
                         helper,
-                        "tier %s over 10 slabs should lay %s (the depth below the start, the bricks), it laid %s",
+                        "tier %s over 10 slabs should lay %s (the depth below the start, the bricks), it laid %s (start %s, pod at %s after %s ticks)",
                         tier,
                         expected,
-                        rings);
+                        rings,
+                        rig.watch().start,
+                        rig.pod().position(),
+                        rig.pod().tickCount);
             }
             rig.pod().discard();
             helper.succeed();

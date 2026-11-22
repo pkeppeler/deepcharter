@@ -10,16 +10,17 @@ import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.hangar.Hangar;
 import io.github.pkeppeler.deepcharter.hangar.HangarTerminal;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
+import io.github.pkeppeler.deepcharter.test.support.ClientTestWatchdog;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -69,9 +70,16 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
 
     private final List<Result> results = new ArrayList<>();
 
+    private static final int LIMIT_SECONDS = 360;
+    /** One server tick's budget at 20 ticks a second, in nanoseconds. */
+    private static final long TICK_BUDGET_NANOS = 50_000_000L;
+
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
+        // Long by design: six trials of two layers over a tall campaign level. A loaded runner stretches
+        // it past the 180 s of a class (it ran 181 s and 146 s), so it has more.
+        ClientTestWatchdog.shared().arm(getClass().getSimpleName(), Duration.ofSeconds(LIMIT_SECONDS));
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the player in the world", client -> client.player != null && client.level != null);
@@ -86,15 +94,14 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             digIntoSealedRoom(context, server);
             carveThenArrive(context, server, false);
             carveThenArrive(context, server, true);
-            for (int trial = 0; trial < TRIALS; trial++) {
-                breachInto(context, server, 1, trial);
-                breachInto(context, server, 2, trial);
-            }
+            visitTheCampaignLevel(context, server);
             colonyPieceReplaced(context, server);
             hostHandsAndHangarConsole(context, server);
             for (int trial = 0; trial < TRIALS; trial++) {
+                // A layer is a band of one level, so two layers' sites in one cell share chunk columns:
+                // each layer has cells of its own, or the second visit finds the chunks already sent.
                 layerStructuresOnArrival(context, server, 1, CELL + trial);
-                layerStructuresOnArrival(context, server, 2, CELL + trial);
+                layerStructuresOnArrival(context, server, 2, CELL + TRIALS + trial);
             }
         }
         StringBuilder table = new StringBuilder("stale client light, per path:");
@@ -208,57 +215,18 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
     }
 
     /**
-     * The player crosses a breach into {@code layer}: {@code BreachService} carves the pocket and teleports the player in the same tick.
-     * Layer 2's rock holds lava, which lights what it touches, so a pocket carved out of it must not keep that glow on the client.
+     * The player leaves the overworld for layer 1 of the campaign level and the cases after it bring them back: the client then has the
+     * overworld's chunks sent again, as the breach crossings this test made before they were in place did.
      */
-    private void breachInto(ClientGameTestContext context, TestServerContext server, int layer, int trial) {
-        ResourceKey<Level> from = TestLayers.dimension(layer - 1);
-        ResourceKey<Level> to = TestLayers.dimension(layer);
-        int column = 4_000 + layer * 1_000 + trial * 200;
-        arriveSpectator(
-                context,
-                server,
-                from,
-                new BlockPos(
-                        column,
-                        server.computeOnServer(
-                                s -> TestLayers.band(s, layer - 1).minY() + 40),
-                        column));
-        server.runOnServer(s -> {
-            ServerLevel level = ClientLight.serverLevel(s, from);
-            player(s)
-                    .teleportTo(
-                            level,
-                            column + 0.5,
-                            TestLayers.band(level, layer - 1).minY() - 2,
-                            column + 0.5,
-                            Set.of(),
-                            0,
-                            0,
-                            true);
-        });
-        ClientWait.until(
-                context,
-                "the client to cross into layer " + layer,
-                client -> ClientLight.clientLevel(client).dimension().equals(to),
-                ClientWait::describe);
-        BlockPos arrival = server.computeOnServer(s -> player(s).blockPosition());
-        int radius = LayerTuning.DEFAULT.pocketRadius();
-        Box pocket = new Box(
-                arrival.offset(-radius, -1, -radius),
-                arrival.offset(radius, LayerTuning.DEFAULT.pocketHeight() - 1, radius));
-        ClientWait.until(
-                context,
-                "the client to hold the chunks of the pocket",
-                client -> ClientLight.chunksPresent(ClientLight.clientLevel(client), pocket),
-                client -> "chunks missing in " + pocket);
-        record(
-                "a breach crossing into layer " + layer + " carves its pocket in the tick the player arrives (#" + trial
-                        + ")",
-                context,
-                server,
-                to,
-                pocket);
+    private void visitTheCampaignLevel(ClientGameTestContext context, TestServerContext server) {
+        int y = server.computeOnServer(s -> TestLayers.worldY(1, 40));
+        server.runOnServer(s -> player(s).setGameMode(GameType.SPECTATOR));
+        ResourceKey<Level> campaign = server.computeOnServer(s -> TestLayers.dimension(s, 1));
+        BlockPos at = new BlockPos(4_000, y, 4_000);
+        arrive(context, server, campaign, at);
+        // The tall level's chunks stall the client and the server for seconds: the next case starts after both are
+        // done.
+        quiet(context, server, campaign, new Box(at, at));
     }
 
     /**
@@ -272,6 +240,9 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
         ColonyLayout.Piece piece =
                 server.computeOnServer(s -> nearestPiece(s, colony, player(s).blockPosition()));
         Box box = server.computeOnServer(s -> pieceBox(s, colony, piece));
+        // The wipe is judged by a light packet that follows it: the client must hold the piece's chunks and neither
+        // side may be behind.
+        quiet(context, server, Level.OVERWORLD, box);
         server.runOnServer(s -> {
             for (BlockPos pos : BlockPos.betweenClosed(box.min(), box.max())) {
                 s.overworld()
@@ -344,7 +315,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
      */
     private void layerStructuresOnArrival(
             ClientGameTestContext context, TestServerContext server, int layer, int cell) {
-        ResourceKey<Level> dimension = TestLayers.dimension(layer);
+        ResourceKey<Level> dimension = server.computeOnServer(s -> TestLayers.dimension(s, layer));
         List<StructureSite> sites = server.computeOnServer(s -> {
             BlockPos conduit = Colony.anchor(s, ColonyAnchor.CONDUIT).orElseThrow();
             ServerLevel level = ClientLight.serverLevel(s, dimension);
@@ -357,6 +328,10 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             return found;
         });
         for (StructureSite site : sites) {
+            BoundingBox bounds = site.bounds();
+            Box box = new Box(
+                    new BlockPos(bounds.minX(), bounds.minY(), bounds.minZ()),
+                    new BlockPos(bounds.maxX(), bounds.maxY(), bounds.maxZ()));
             BlockPos stand = site.origin().above(2);
             server.runOnServer(s -> {
                 ServerPlayer player = player(s);
@@ -371,16 +346,13 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                         0,
                         true);
             });
-            BoundingBox bounds = site.bounds();
-            Box box = new Box(
-                    new BlockPos(bounds.minX(), bounds.minY(), bounds.minZ()),
-                    new BlockPos(bounds.maxX(), bounds.maxY(), bounds.maxZ()));
             ClientWait.until(
                     context,
                     "the client to hold the chunks of the " + site.kind() + " in layer " + layer,
                     client -> ClientLight.clientLevel(client).dimension().equals(dimension)
                             && ClientLight.chunksPresent(ClientLight.clientLevel(client), box),
                     client -> "chunks missing in " + box);
+            quiet(context, server, dimension, box);
             record(
                     "layer " + layer + " structure " + site.kind() + " in cell " + cell
                             + " drawn as its chunk loads for an arriving client",
@@ -402,6 +374,27 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
         results.add(new Result(path, ClientLight.settledMismatch(context, server, dimension, box)));
     }
 
+    /**
+     * Waits until the client is in {@code dimension} with no screen open (the loading screen of a level change is one), holds the chunks
+     * of {@code box} and has rendered them, the server holds those chunks as sendable (full, light done), its light engine is idle and its
+     * ticks are back under the 50 ms budget. Never waits on the two sides' light agreeing: that is what the comparison after it checks.
+     */
+    private static void quiet(
+            ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, Box box) {
+        ClientWait.until(
+                context,
+                "the client to be settled in " + dimension.identifier() + " and the server quiet",
+                () -> ClientLight.clientHolds(context, dimension, box)
+                        && context.computeOnClient(
+                                client -> client.gui.screen() == null && client.levelRenderer.hasRenderedAllSections())
+                        && ClientLight.serverChunksSendable(server, dimension, box)
+                        && ClientLight.serverLightIdle(context, server)
+                        && server.computeOnServer(s -> s.getAverageTickTimeNanos() <= TICK_BUDGET_NANOS),
+                () ->
+                        "a screen open, chunks missing or unrendered, a server chunk not yet sendable, light pending or the"
+                                + " server behind");
+    }
+
     /** Moves the player to {@code at} in {@code dimension} and waits until the client has the chunk, so the player is in range. */
     private static void arrive(
             ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, BlockPos at) {
@@ -412,12 +405,6 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 client -> ClientLight.clientLevel(client).dimension().equals(dimension)
                         && ClientLight.clientLevel(client).getChunkSource().hasChunk(at.getX() >> 4, at.getZ() >> 4),
                 client -> "no chunk at " + at.toShortString());
-    }
-
-    private static void arriveSpectator(
-            ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, BlockPos at) {
-        server.runOnServer(s -> player(s).setGameMode(GameType.SPECTATOR));
-        arrive(context, server, dimension, at);
     }
 
     private static void teleport(MinecraftServer server, ServerLevel level, BlockPos at) {
