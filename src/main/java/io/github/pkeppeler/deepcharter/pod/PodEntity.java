@@ -34,8 +34,8 @@ public class PodEntity extends Entity {
     private final PodCargo cargo = new PodCargo();
     // Neither saved nor synced: a loaded pod starts its slab over. Server only.
     private PodDrill.@Nullable Progress drillProgress;
-    // Neither saved nor synced: the burning fuse of a blasting charge (PodCharge); a pod that unloads loses it. Server
-    // only.
+    // Neither saved nor synced: the burning fuse of a blasting charge (PodCharge); a pod that unloads loses it.
+    // Server only.
     private PodCharge.@Nullable Fuse fuse;
 
     public PodEntity(EntityType<? extends PodEntity> type, Level level) {

@@ -170,8 +170,8 @@ public final class GrainedCrust {
      * before it hurts. The animated texture is flavour only: it is not tied to the world clock.
      */
     private static void warn(Level level, Entity squeezed) {
-        // PLACEHOLDER sound until the sound pass: the entity's own sound packet, so that the crew or the player hears
-        // it.
+        // PLACEHOLDER sound until the sound pass: the entity's own sound packet, so that the crew or the player
+        // hears it.
         level.playSound(null, squeezed, SoundEvents.CREAKING_TWITCH, SoundSource.NEUTRAL, 0.8F, 0.7F);
         if (level instanceof ServerLevel server) {
             server.sendParticles(

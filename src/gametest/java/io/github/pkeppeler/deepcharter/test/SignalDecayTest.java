@@ -134,8 +134,8 @@ public class SignalDecayTest {
                 }
             }
         }
-        // A Mole's cap is 2: its best console still has the last slab or so, and only the Prospector's third tier is
-        // immune.
+        // A Mole's cap is 2: its best console still has the last slab or so, and only the Prospector's third tier
+        // is immune.
         if (!(SignalDecay.intensity(1, 0, 2) == 1) || Chassis.MOLE.tierCap() >= ComponentTrack.CONSOLE.maxTier()) {
             throw failure(helper, "a tier 2 console is not immune at the floor, and a Mole cannot fit the immune tier");
         }

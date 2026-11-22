@@ -207,8 +207,8 @@ public class StalkCollapseTest {
                 .thenWaitUntil(countable)
                 .thenExecute(() -> {
                     clearArea(helper, COLUMN_HEIGHT);
-                    // The reference: every block from the break up, broken by hand from the top down, so nothing
-                    // collapses.
+                    // The reference: every block from the break up, broken by hand from the top down, so
+                    // nothing collapses.
                     column(helper, 2, 2, COLUMN_HEIGHT);
                     ItemSpawns reference = ItemSpawns.start(helper, stalkRegion(helper));
                     for (int index = COLUMN_HEIGHT - 1; index >= BROKEN_SEGMENT; index--) {

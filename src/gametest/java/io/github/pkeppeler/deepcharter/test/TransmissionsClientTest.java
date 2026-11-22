@@ -132,8 +132,8 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     greenPixels(context.takeScreenshot("transmission-overlay")) >= 50,
                     "The overlay should draw its text on screen");
 
-            // The breach fade keeps running under the text: at its black plateau the text is the only bright thing on
-            // screen.
+            // The breach fade keeps running under the text: at its black plateau the text is the only bright thing
+            // on screen.
             context.runOnClient(client -> {
                 TransmissionOverlay.reset();
                 BreachEffects.begin(true);
@@ -229,8 +229,8 @@ public class TransmissionsClientTest implements FabricClientGameTest {
                     !(redPixels(context.takeScreenshot("transmission-unknown")) < 20),
                     "A transmission from an unknown sender has a red header");
 
-            // Offline: the client leaves, the mock stays. The mock is sent these at once, the client when it logs in
-            // again.
+            // Offline: the client leaves, the mock stays. The mock is sent these at once, the client when it logs
+            // in again.
             two.connection().close();
             ClientWait.until(context, "the client out of the world", client -> client.level == null);
             for (int tick = 0; two.server().computeOnServer(server -> server.getPlayerCount()) > MOCK_ONLY; tick++) {

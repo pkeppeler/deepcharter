@@ -224,8 +224,8 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
         ResourceKey<Level> campaign = server.computeOnServer(s -> TestLayers.dimension(s, 1));
         BlockPos at = new BlockPos(4_000, y, 4_000);
         arrive(context, server, campaign, at);
-        // The tall level's chunks stall the client and the server for seconds: the next case starts after both are
-        // done.
+        // The tall level's chunks stall the client and the server for seconds: the next case starts after both
+        // are done.
         quiet(context, server, campaign, new Box(at, at));
     }
 

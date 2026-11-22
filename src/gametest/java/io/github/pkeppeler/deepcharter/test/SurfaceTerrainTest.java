@@ -384,8 +384,8 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
-    // The GameTest server bakes its overworld from the flat preset, so the surface is tried in a copy of the shipped
-    // overworld.
+    // The GameTest server bakes its overworld from the flat preset, so the surface is tried in a copy of the
+    // shipped overworld.
     @GameTest
     public void theSampleDimensionMatchesTheShippedOverworld(GameTestHelper helper) throws IOException {
         JsonElement shipped = read(helper, "/data/minecraft/dimension/overworld.json");

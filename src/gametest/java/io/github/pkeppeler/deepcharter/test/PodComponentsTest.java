@@ -392,8 +392,8 @@ public class PodComponentsTest {
             if (!PodStats.of(copy).equals(before)) {
                 throw failure(helper, "the reloaded pod has other stats: %s, wanted %s", PodStats.of(copy), before);
             }
-            // Version 1 is the first format of this attachment, so there is no earlier format to load. A new version
-            // must
+            // Version 1 is the first format of this attachment, so there is no earlier format to load. A new
+            // version must
             // add that test here, next to the unknown-version test below.
             helper.succeed();
         } finally {

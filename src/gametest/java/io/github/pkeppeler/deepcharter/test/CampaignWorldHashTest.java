@@ -54,8 +54,8 @@ public class CampaignWorldHashTest {
         }
         List<String> lines = new ArrayList<>();
         lines.add("seed " + helper.getLevel().getSeed());
-        // One state's hash is of its string, computed once: the same state hashes alike in every chunk and in every
-        // tree.
+        // One state's hash is of its string, computed once: the same state hashes alike in every chunk and in
+        // every tree.
         Map<BlockState, Long> stateHashes = new HashMap<>();
         for (String world : WORLDS) {
             ServerLevel level = ClientLight.serverLevel(

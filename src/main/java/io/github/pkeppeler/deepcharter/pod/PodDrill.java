@@ -70,8 +70,8 @@ public final class PodDrill {
         // sliding onto it (off a ledge, past a wall's edge) is how it reaches something to drill.
         boolean centred = centre(pod, slab, stats);
         if (slab.acrossGrain()) {
-            // The grain does not bite across it (#746): the drill skates, with sparks, a squeal and heat, and makes no
-            // progress.
+            // The grain does not bite across it (#746): the drill skates, with sparks, a squeal and heat, and makes
+            // no progress.
             GrainedCrust.skate(pod, wanted);
             stop(pod);
             return;

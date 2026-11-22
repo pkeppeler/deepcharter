@@ -51,8 +51,8 @@ public final class TowChain {
         double bx = towedX - nx * towedRadius;
         double by = towedY - ny * towedRadius;
         double bz = towedZ - nz * towedRadius;
-        // Pods that overlap have their hitches crossed over: the line is the short way between them, never a negative
-        // length.
+        // Pods that overlap have their hitches crossed over: the line is the short way between them, never a
+        // negative length.
         double chord = Math.max(0.0, between - towerRadius - towedRadius);
         double sag = Math.sqrt(3.0 * chord * Math.max(0.0, rope - chord) / 8.0);
         double arc = chord < EPSILON ? 2.0 * sag : chord + 8.0 * sag * sag / (3.0 * chord);

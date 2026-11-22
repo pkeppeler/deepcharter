@@ -49,8 +49,8 @@ import net.minecraft.world.phys.AABB;
 final class StalkCollapse {
     /** The most blocks one collapse lowers, so that no chain of touching great stalks makes a step cost a lot. */
     private static final int MOST_BLOCKS = 1024;
-    // A great stalk is at most 90 blocks (its yield, tested), far under this, so a walk never reaches it for
-    // one.
+    // A great stalk is at most 90 blocks (its yield, tested), far under this, so a walk never reaches it
+    // for one.
 
     private static final Direction[] JOINS = {
         Direction.UP, Direction.DOWN, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST
@@ -129,8 +129,8 @@ final class StalkCollapse {
             return;
         }
         if (falling(removed)) {
-            // A block that was falling was broken by hand: what was joined to it falls on, as two masses if it split
-            // them.
+            // A block that was falling was broken by hand: what was joined to it falls on, as two masses if it
+            // split them.
             for (Direction direction : Direction.values()) {
                 BlockPos next = pos.relative(direction);
                 if (!loaded(level, next)) {
@@ -261,8 +261,8 @@ final class StalkCollapse {
         } finally {
             stepping = false;
         }
-        // What is left may have come apart: the next step is a tick on the lowest block of each piece, the anchor's
-        // cell
+        // What is left may have come apart: the next step is a tick on the lowest block of each piece, the
+        // anchor's cell
         // first, so that a piece that fell into it goes on as it was.
         moved.addFirst(anchor);
         Set<BlockPos> ticked = new HashSet<>();

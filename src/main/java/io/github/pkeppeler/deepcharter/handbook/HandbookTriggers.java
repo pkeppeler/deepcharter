@@ -240,8 +240,8 @@ public final class HandbookTriggers {
         if (pod.chassis().equals(Chassis.PROSPECTOR) && PodTowing.isTowed(pod)) {
             towedProspector(pod);
         }
-        // The scan reads thousands of blocks: it runs once for the pod, and only when a rider's charter still lacks the
-        // directive.
+        // The scan reads thousands of blocks: it runs once for the pod, and only when a rider's charter still lacks
+        // the directive.
         Supplier<Boolean> seesOre = Suppliers.memoize(() -> ScanSlice.hasOre(new LoadedBlocks(pod.level()), pod));
         for (Entity passenger : pod.getPassengers()) {
             if (passenger instanceof ServerPlayer player) {

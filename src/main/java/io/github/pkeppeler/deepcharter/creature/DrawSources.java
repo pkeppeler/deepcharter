@@ -98,8 +98,8 @@ public final class DrawSources {
      */
     // test-seam: the permanent hook every creature drawn to the drill calls. Its callers are Drifters (#918, in PR
     // #975), Listeners (#928)
-    // and the Hush, none on main yet; the first to land adds the call, and the decoy goes on sale with it
-    // (Consumable.THROWN_DECOY).
+    // and the Hush, none on main yet; the first to land adds the call, and the decoy goes on sale with
+    // it (Consumable.THROWN_DECOY).
     public static Vec3 noiseTarget(ServerLevel level, Vec3 from, Vec3 drillAt) {
         List<Decoy> decoys = DECOYS.get(level.dimension());
         if (decoys == null) {

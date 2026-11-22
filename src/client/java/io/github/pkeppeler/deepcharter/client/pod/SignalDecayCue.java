@@ -52,8 +52,8 @@ public final class SignalDecayCue {
         }
         dark = intensity >= 1;
         double interval = decay.cueSlowTicks() + (decay.cueFastTicks() - decay.cueSlowTicks()) * intensity;
-        // The gap varies from crackle to crackle, the same way for every pilot at one tick: from half to one and a half
-        // intervals.
+        // The gap varies from crackle to crackle, the same way for every pilot at one tick: from half to one and a
+        // half intervals.
         if (++sinceCrackle
                 >= interval * (0.5 + SignalDecay.jump(Instrument.SCANNER, seed, client.level.getGameTime()))) {
             sinceCrackle = 0;

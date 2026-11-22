@@ -68,8 +68,8 @@ public class ThemeLooksTest {
         }
     }
 
-    // The expected values below are the literals the Java held before #226, written out. Do not read them from the
-    // files.
+    // The expected values below are the literals the Java held before #226, written out. Do not read them from
+    // the files.
 
     @GameTest
     public void theDefaultCrtLookIsTheOldOne(GameTestHelper helper) {

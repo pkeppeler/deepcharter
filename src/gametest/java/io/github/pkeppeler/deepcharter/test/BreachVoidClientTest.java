@@ -238,8 +238,8 @@ public class BreachVoidClientTest implements FabricClientGameTest {
                                         .getLightEngine()
                                         .hasLightWork()),
                 () -> "chunks still rendering or light still settling");
-        // tick-wait: the fog colour is computed per frame, and a few frames must pass after the last chunk section is
-        // built
+        // tick-wait: the fog colour is computed per frame, and a few frames must pass after the last chunk section
+        // is built
         context.waitTicks(10);
         return context.takeScreenshot(name);
     }

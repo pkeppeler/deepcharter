@@ -43,8 +43,8 @@ public class TetherClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             UUID podId = two.server().computeOnServer(server -> setUp(server.overworld(), two));
-            // The pod first, and the person standing. A line to a pod in a chunk that is not ticking yet ends at once,
-            // like
+            // The pod first, and the person standing. A line to a pod in a chunk that is not ticking yet ends at
+            // once, like
             // one to a pod that unloaded, and a person still falling through chunks the client has not got snaps it.
             ClientWait.until(
                     context,

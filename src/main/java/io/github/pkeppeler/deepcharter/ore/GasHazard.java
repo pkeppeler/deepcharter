@@ -75,8 +75,8 @@ public final class GasHazard {
                 PodCues.hurtHull(
                         pod, taken, "deepcharter.ore.gas_blast", DeepSound.POD_EXPLOSION, ParticleTypes.SNEEZE, 24);
             }
-            // A blast at the edge of the loaded chunks clears the rock it can reach without loading one; the rest
-            // stays.
+            // A blast at the edge of the loaded chunks clears the rock it can reach without loading one; the
+            // rest stays.
             LoadedBlocks blocks = new LoadedBlocks(level);
             for (BlockPos cell :
                     BlockPos.betweenClosed(pos.offset(-radius, -radius, -radius), pos.offset(radius, radius, radius))) {

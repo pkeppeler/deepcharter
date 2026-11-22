@@ -67,8 +67,8 @@ public class NoVanillaAdvancementsClientTest implements FabricClientGameTest {
                         .flatMap(collection -> collection.getRecipes().stream())
                         .forEach(entry -> clientBook.add(entry.id()));
             });
-            // ADR 0070: the log teaches recipes, so the book may fill, but only with the server book's
-            // (KnownRecipesTest).
+            // ADR 0070: the log teaches recipes, so the book may fill, but only with the server
+            // book's (KnownRecipesTest).
             Set<RecipeDisplayId> known = singleplayer.getServer().computeOnServer(server -> {
                 Set<RecipeDisplayId> ids = new HashSet<>();
                 server.getPlayerList()

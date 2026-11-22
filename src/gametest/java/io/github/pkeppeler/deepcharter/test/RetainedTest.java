@@ -144,8 +144,8 @@ public class RetainedTest {
                     for (int y = -1; y <= ARENA_HEIGHT; y++) {
                         boolean shell =
                                 y == -1 || y == ARENA_HEIGHT || Math.abs(u) == HALF + 1 || Math.abs(v) == HALF + 1;
-                        // room-carver: a closed arena of its own stone shell in the overworld test structure, not layer
-                        // rock
+                        // room-carver: a closed arena of its own stone shell in the overworld test structure, not
+                        // layer rock
                         level.setBlock(
                                 origin.offset(u, y, v), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
                     }
@@ -582,8 +582,8 @@ public class RetainedTest {
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
             made[0] = Arena.build(helper, level, origin, false);
-            // A bore of stone under the pod, so that it drills for as long as the test needs and does not fall into the
-            // void.
+            // A bore of stone under the pod, so that it drills for as long as the test needs and does not fall into
+            // the void.
             for (int u = -HALF; u <= HALF; u++) {
                 for (int v = -HALF; v <= HALF; v++) {
                     for (int y = BORE_DEPTH; y < 0; y++) {
@@ -1230,8 +1230,8 @@ public class RetainedTest {
                 for (int v = -3; v <= 3; v++) {
                     for (int y = -1; y <= 5; y++) {
                         boolean shell = y == -1 || y == 5 || Math.abs(u) == 3 || Math.abs(v) == 3;
-                        // room-carver: a closed room of its own stone shell in the overworld test structure, not layer
-                        // rock
+                        // room-carver: a closed room of its own stone shell in the overworld test structure, not
+                        // layer rock
                         level.setBlock(
                                 feet.offset(u, y, v), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
                     }

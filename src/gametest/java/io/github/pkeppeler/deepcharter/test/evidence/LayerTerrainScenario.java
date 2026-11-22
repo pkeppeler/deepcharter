@@ -104,8 +104,8 @@ public class LayerTerrainScenario extends EvidenceScenario {
                 first = false;
             }
             context.waitTicks(TICKS_PER_FRAME);
-            // Vanilla covers the screen with "Loading terrain" while the client waits for chunks; leave those frames
-            // out.
+            // Vanilla covers the screen with "Loading terrain" while the client waits for chunks; leave those
+            // frames out.
             if (context.computeOnClient(client -> client.gui.screen() == null)) {
                 frame(context);
             }

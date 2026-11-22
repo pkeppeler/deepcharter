@@ -623,8 +623,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
     /** Draws the screen and checks the text of the panels against the glass it must lie in. */
     private static void everyStringIsInsideItsGlass(
             ClientGameTestContext context, AbstractContainerScreen<?> screen, String when) {
-        // A hovered item's name is drawn and recorded too, and sits in no glass: nothing is hovered while the text is
-        // read.
+        // A hovered item's name is drawn and recorded too, and sits in no glass: nothing is hovered while the text
+        // is read.
         CatalogueScene.parkCursor(
                 context, CatalogueScene.layout(context, context.computeOnClient(client -> panelOf(screen))));
         context.runOnClient(client -> {
@@ -857,8 +857,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
 
     private static void rAndUShowRecipesAndUsesOfAHoveredItem(
             ClientGameTestContext context, AbstractContainerScreen<?> screen, CataloguePanel panel) {
-        // The server may have taught more recipes of these items meanwhile: the counters below count the fixtures
-        // alone.
+        // The server may have taught more recipes of these items meanwhile: the counters below count the
+        // fixtures alone.
         context.runOnClient(
                 client -> CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
         context.waitTicks(2);

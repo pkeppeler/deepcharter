@@ -290,8 +290,8 @@ public class MockPlayersTest {
         MockPlayer mock = MockPlayers.join(helper, "retention-outside");
         OUTSIDE_PROBE.set(new WeakReference<>(mock.player()));
         helper.runAfterDelay(100_000, () -> mock.player().getName());
-        // MinecraftServer.execute runs a task at once on the server thread, inside the tick; an end-of-tick event does
-        // not.
+        // MinecraftServer.execute runs a task at once on the server thread, inside the tick; an end-of-tick event
+        // does not.
         AFTER_TICK.set(helper::succeed);
     }
 

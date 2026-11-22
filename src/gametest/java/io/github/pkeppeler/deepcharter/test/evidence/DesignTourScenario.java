@@ -197,8 +197,8 @@ public class DesignTourScenario extends EvidenceScenario {
     }
 
     private void runHidden(ClientGameTestContext context) {
-        // A real world, as a new player gets one: the vanilla terrain of the seed, not the flat world of the other
-        // scenarios.
+        // A real world, as a new player gets one: the vanilla terrain of the seed, not the flat world of the
+        // other scenarios.
         try (TestSingleplayerContext singleplayer = context.worldBuilder()
                 .setUseConsistentSettings(false)
                 .adjustSettings(state -> state.setSeed("deepcharter-design-tour"))
@@ -404,8 +404,8 @@ public class DesignTourScenario extends EvidenceScenario {
             return true;
         }
 
-        // ------------------------------------------------------------------------------------------------ handbook,
-        // items
+        // ------------------------------------------------------------------------------------------------
+        // handbook, items
 
         private void handbook() {
             ClientWait.until(ctx, "the handbook in the hotbar", client -> handbookSlot(client) >= 0);
@@ -478,8 +478,8 @@ public class DesignTourScenario extends EvidenceScenario {
             }
         }
 
-        // ------------------------------------------------------------------------------------------------ surface,
-        // colony
+        // ------------------------------------------------------------------------------------------------
+        // surface, colony
 
         private void setUpCamera() {
             serverDo(server -> {
@@ -585,8 +585,8 @@ public class DesignTourScenario extends EvidenceScenario {
         }
 
         private void surface() {
-            // From south of the town's south row, where nothing of the colony is in the way to the south, east and
-            // west.
+            // From south of the town's south row, where nothing of the colony is in the way to the south, east
+            // and west.
             Vec3 stand = p(0, EYE, 30);
             String[] names = {"south", "east", "west", "north"};
             Vec3[] targets = {p(0, EYE, 128), p(100, EYE, 28), p(-100, EYE, 28), p(0, EYE, -72)};
@@ -619,9 +619,8 @@ public class DesignTourScenario extends EvidenceScenario {
             shoot("colony-aerial-south", 0, p(0, 38, 62), middle, 80, town);
             shoot("colony-aerial-northwest", 0, p(-52, 38, -52), middle, 30, town);
             shoot("colony-aerial-northeast", 0, p(52, 38, -52), middle, 30, town);
-            // From out on the graded land, looking back at the pad's edge: the south margin, and the east side where
-            // the
-            // land is higher.
+            // From out on the graded land, looking back at the pad's edge: the south margin, and the east side
+            // where the land is higher.
             shoot("colony-margin-looking-back-south", 0, p(14, 12, 60), p(0, 6, 8), 30, town);
             shoot("colony-margin-from-the-east", 0, p(60, 14, 8), p(0, 6, -4), 30, town);
             shoot("colony-from-straight-above", 0, p(0, 80, 6), p(0, 0, -2), 30, town);
@@ -644,10 +643,10 @@ public class DesignTourScenario extends EvidenceScenario {
                 frame(ctx);
             }
 
-            // Close-ups, each from the open side of the building (the square for the plinths, the street for the
-            // doors).
-            // Every view is
-            // measured from the building's own anchor, so it follows the building when the colony is redrawn.
+            // Close-ups, each from the open side of the building (the square for the plinths, the street for
+            // the doors).
+            // Every view is measured from the building's own anchor, so it follows the building
+            // when the colony is redrawn.
             for (TerminalType type : TerminalTypes.all()) {
                 Optional<ColonyAnchor> anchor = ColonyAnchor.forTerminal(type);
                 if (anchor.isPresent()) {
@@ -744,8 +743,8 @@ public class DesignTourScenario extends EvidenceScenario {
                     40,
                     new Subject("the coal blocks of the bar", state -> state.is(Blocks.COAL_BLOCK), 3));
 
-            // The Conduit stands in the headframe: its casing shows through the open front of the tower, and the tower
-            // is
+            // The Conduit stands in the headframe: its casing shows through the open front of the tower, and the
+            // tower is
             // the subject
             // from the sides.
             Vec3 conduit = rel(ColonyAnchor.CONDUIT, 0, 0, 0);
@@ -797,9 +796,8 @@ public class DesignTourScenario extends EvidenceScenario {
             still("screen-hangar-console-offline");
             ctx.setScreen(() -> null);
 
-            // Repair the four colony terminals at once, and park a worked pod at each one so the screens have something
-            // to
-            // show.
+            // Repair the four colony terminals at once, and park a worked pod at each one so the screens
+            // have something to show.
             serverDo(server -> {
                 RepairState state = RepairState.get(server);
                 for (TerminalType type : order) {
@@ -1017,8 +1015,8 @@ public class DesignTourScenario extends EvidenceScenario {
             podAngles("prospector-lit-dark", 0, base, 7.5, 2.9, FSB);
             serverDo(server -> litProspector.discard());
 
-            // The lampless figure, still, in the dark room: once with night vision so it can be seen, once as the
-            // player
+            // The lampless figure, still, in the dark room: once with night vision so it can be seen, once as
+            // the player
             // would see it.
             LamplessFigure figure = serverGet(server -> {
                 ServerLevel level = server.overworld();
@@ -1051,8 +1049,8 @@ public class DesignTourScenario extends EvidenceScenario {
             still("lampless-figure-close");
             serverDo(server -> figure.discard());
 
-            // A figure beside a lit pod. It stands at rest beside the pod and stays whole: a light does not fade it
-            // (#485).
+            // A figure beside a lit pod. It stands at rest beside the pod and stays whole: a light does not fade
+            // it (#485).
             PodEntity lamp = spawnPod(PodRegistry.POD, 0, base.add(3, 0, 0), 0f, true);
             awaitLight(lamp);
             LamplessFigure walker = serverGet(server -> {
@@ -1327,8 +1325,8 @@ public class DesignTourScenario extends EvidenceScenario {
                     case GALLERY -> {
                         view(2, at(site, -8, 2, 0), at(site, 12, 1.5, 0), 120);
                         still("structure-gallery-toward-the-rubble");
-                        // The board is on the near end wall and the rubble at the far end, so stand toward the board's
-                        // end,
+                        // The board is on the near end wall and the rubble at the far end, so stand toward the
+                        // board's end,
                         // in the clear.
                         shoot(
                                 "structure-gallery-quota-board",
@@ -1355,8 +1353,8 @@ public class DesignTourScenario extends EvidenceScenario {
                                 at(site, 7.5, 1.5, 0),
                                 20,
                                 new Subject("the shelves", state -> state.is(Blocks.BOOKSHELF), 1.5));
-                        // Down the middle of the hall, clear of the stone pillars, at the lit sea lantern above the
-                        // clock.
+                        // Down the middle of the hall, clear of the stone pillars, at the lit sea lantern above
+                        // the clock.
                         shoot(
                                 "structure-punch-clock-lit-clock",
                                 2,
@@ -1398,8 +1396,8 @@ public class DesignTourScenario extends EvidenceScenario {
             still("structure-wreck-prospector-0002-side");
             view(2, at(prospector, -5, 2, 0), pod, 20);
             still("structure-wreck-prospector-0002-back");
-            // The burning lamp is the lantern at (3, 2): close, from the side away from the pod, so the pod is not in
-            // front
+            // The burning lamp is the lantern at (3, 2): close, from the side away from the pod, so the pod is not
+            // in front
             // of it.
             shoot(
                     "structure-wreck-the-lamp",
@@ -1568,8 +1566,8 @@ public class DesignTourScenario extends EvidenceScenario {
                 player.teleportTo(
                         TestLayers.level(server, layer), eye.x, eye.y - EYE, eye.z, Set.of(), yaw, pitch, true);
             });
-            // Arrived exactly, looking exactly: a camera still a block short, or a turn short, makes a different
-            // picture.
+            // Arrived exactly, looking exactly: a camera still a block short, or a turn short, makes a
+            // different picture.
             ClientWait.until(
                     ctx,
                     "the camera at the eye in layer " + layer + ", facing yaw " + yaw + " and pitch " + pitch,

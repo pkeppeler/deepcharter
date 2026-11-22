@@ -47,9 +47,8 @@ import net.minecraft.world.phys.Vec3;
  * across the breach into layer 2, in place in the campaign level. The evidence scenario "m1-two-pods" replays the same flow with a recording.
  */
 public class TwoPlayerClientTest implements FabricClientGameTest {
-    // Layer 1 is crust at local y 0-2, then stone; the pods stand a row above the crust, so the stone row is their
-    // first
-    // bore.
+    // Layer 1 is crust at local y 0-2, then stone; the pods stand a row above the crust, so the stone row
+    // is their first bore.
     private static final int X = 4000;
     private static final int Z = 4000;
     private static final int FLOOR_Y = TestLayers.worldY(1, 4);
@@ -416,8 +415,8 @@ public class TwoPlayerClientTest implements FabricClientGameTest {
 
     /** The scanner is drawn while riding: its pod marker is in the middle of the pod's cells, whatever else is on screen. */
     private static void expectScannerShowsPod(ClientGameTestContext context, String screenshotName) {
-        // A vanilla toast and a transmission are drawn over the top right of the screen, where the Ribbon hangs its
-        // scanner.
+        // A vanilla toast and a transmission are drawn over the top right of the screen, where the Ribbon hangs
+        // its scanner.
         context.runOnClient(client -> {
             client.gui.toastManager().clear();
             TransmissionOverlay.reset();

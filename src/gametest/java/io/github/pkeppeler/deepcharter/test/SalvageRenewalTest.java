@@ -119,8 +119,8 @@ public class SalvageRenewalTest {
     @GameTest
     public void thePressNeedsTheHopperWhichTakesAWholeRunToBuy(GameTestHelper helper) {
         Run firstRun = EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0);
-        // The hopper's tier 1 is a crafted unit (#536); its recipe is tuned to the minutes its old $100 took to earn
-        // (FirstTierPartsCostTest).
+        // The hopper's tier 1 is a crafted unit (#536); its recipe is tuned to the minutes its old $100 took to
+        // earn (FirstTierPartsCostTest).
         long hopper = HOPPER_OLD_PRICE;
         LOGGER.info("[renewal] the hopper took ${} to earn, a stock run nets ${}", hopper, Math.round(firstRun.net()));
         if (firstRun.toAfford(hopper) != 1) {
