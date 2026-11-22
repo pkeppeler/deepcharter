@@ -18,7 +18,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
-import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
@@ -28,8 +27,6 @@ import org.jspecify.annotations.Nullable;
  * hand switches it off or starts it again ({@link WreckPhonographBlockEntity}).
  */
 public final class WreckPhonographBlock extends BaseEntityBlock {
-    private static final VoxelShape SHAPE = Shapes.box(0.0625, 0, 0.0625, 0.9375, 0.875, 0.9375);
-
     WreckPhonographBlock(Properties properties) {
         super(properties);
         registerDefaultState(stateDefinition.any().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
@@ -50,7 +47,7 @@ public final class WreckPhonographBlock extends BaseEntityBlock {
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return SHAPE;
+        return PhonographBlock.SHAPE;
     }
 
     @Override

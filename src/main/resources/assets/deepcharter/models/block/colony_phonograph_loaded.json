@@ -1,0 +1,1262 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "#wood",
+    "wood": "deepcharter:block/phonograph_wood",
+    "top": "deepcharter:block/phonograph_top",
+    "steel": "deepcharter:block/phonograph_steel",
+    "horn": "deepcharter:block/phonograph_horn",
+    "bore": "deepcharter:block/phonograph_bore",
+    "wax": "deepcharter:block/phonograph_wax",
+    "wax_end": "deepcharter:block/phonograph_wax_end",
+    "front": "deepcharter:block/colony_phonograph_front",
+    "plate": "deepcharter:block/colony/riveted_plate"
+  },
+  "elements": [
+    {
+      "name": "plinth",
+      "from": [
+        1,
+        0,
+        1
+      ],
+      "to": [
+        15,
+        1,
+        15
+      ],
+      "faces": {
+        "down": {
+          "texture": "#wood"
+        },
+        "up": {
+          "texture": "#wood"
+        },
+        "north": {
+          "texture": "#wood"
+        },
+        "south": {
+          "texture": "#wood"
+        },
+        "west": {
+          "texture": "#wood"
+        },
+        "east": {
+          "texture": "#wood"
+        }
+      }
+    },
+    {
+      "name": "body",
+      "from": [
+        2,
+        1,
+        2
+      ],
+      "to": [
+        14,
+        7,
+        14
+      ],
+      "faces": {
+        "down": {
+          "texture": "#wood"
+        },
+        "up": {
+          "texture": "#wood"
+        },
+        "north": {
+          "texture": "#front"
+        },
+        "south": {
+          "texture": "#wood"
+        },
+        "west": {
+          "texture": "#wood"
+        },
+        "east": {
+          "texture": "#wood"
+        }
+      }
+    },
+    {
+      "name": "lid",
+      "from": [
+        1,
+        7,
+        1
+      ],
+      "to": [
+        15,
+        8,
+        15
+      ],
+      "faces": {
+        "down": {
+          "texture": "#wood"
+        },
+        "up": {
+          "texture": "#top"
+        },
+        "north": {
+          "texture": "#wood"
+        },
+        "south": {
+          "texture": "#wood"
+        },
+        "west": {
+          "texture": "#wood"
+        },
+        "east": {
+          "texture": "#wood"
+        }
+      }
+    },
+    {
+      "name": "post_west",
+      "from": [
+        3,
+        8,
+        4
+      ],
+      "to": [
+        4,
+        12,
+        6
+      ],
+      "faces": {
+        "down": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "name": "post_east",
+      "from": [
+        12,
+        8,
+        4
+      ],
+      "to": [
+        13,
+        12,
+        6
+      ],
+      "faces": {
+        "down": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "name": "mandrel",
+      "from": [
+        4,
+        10,
+        4.5
+      ],
+      "to": [
+        12,
+        11,
+        5.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "name": "reproducer",
+      "from": [
+        7,
+        12,
+        4.5
+      ],
+      "to": [
+        9,
+        13.5,
+        6.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "name": "arm",
+      "from": [
+        7.5,
+        12,
+        6.5
+      ],
+      "to": [
+        8.5,
+        13,
+        10.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "crank_shaft",
+      "from": [
+        13,
+        10,
+        5
+      ],
+      "to": [
+        14.5,
+        11,
+        6
+      ],
+      "faces": {
+        "down": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "name": "crank_arm",
+      "from": [
+        14,
+        8.5,
+        5
+      ],
+      "to": [
+        15,
+        11,
+        6
+      ],
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "crank_knob",
+      "from": [
+        15,
+        8,
+        4.5
+      ],
+      "to": [
+        16,
+        9.5,
+        6.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "name": "cylinder_a",
+      "from": [
+        5,
+        9.5,
+        3
+      ],
+      "to": [
+        11,
+        11.5,
+        7
+      ],
+      "faces": {
+        "down": {
+          "texture": "#wax"
+        },
+        "up": {
+          "texture": "#wax"
+        },
+        "north": {
+          "texture": "#wax"
+        },
+        "south": {
+          "texture": "#wax"
+        },
+        "west": {
+          "texture": "#wax_end",
+          "uv": [
+            6,
+            7,
+            10,
+            9
+          ]
+        },
+        "east": {
+          "texture": "#wax_end",
+          "uv": [
+            6,
+            7,
+            10,
+            9
+          ]
+        }
+      }
+    },
+    {
+      "name": "cylinder_b",
+      "from": [
+        5.2,
+        8.5,
+        4
+      ],
+      "to": [
+        10.8,
+        12.5,
+        6
+      ],
+      "faces": {
+        "down": {
+          "texture": "#wax"
+        },
+        "up": {
+          "texture": "#wax"
+        },
+        "north": {
+          "texture": "#wax"
+        },
+        "south": {
+          "texture": "#wax"
+        },
+        "west": {
+          "texture": "#wax"
+        },
+        "east": {
+          "texture": "#wax"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_0",
+      "from": [
+        7.25,
+        7.25,
+        13.3
+      ],
+      "to": [
+        8.75,
+        8.75,
+        14.5
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_1",
+      "from": [
+        7.0,
+        7.0,
+        12.1
+      ],
+      "to": [
+        9.0,
+        9.0,
+        13.3
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_2_a",
+      "from": [
+        6.6,
+        7.09,
+        10.9
+      ],
+      "to": [
+        9.4,
+        8.91,
+        12.1
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_2_b",
+      "from": [
+        7.09,
+        6.6,
+        10.9
+      ],
+      "to": [
+        8.91,
+        9.4,
+        12.1
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_3_a",
+      "from": [
+        6.0,
+        6.7,
+        9.7
+      ],
+      "to": [
+        10.0,
+        9.3,
+        10.9
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_3_b",
+      "from": [
+        6.7,
+        6.0,
+        9.7
+      ],
+      "to": [
+        9.3,
+        10.0,
+        10.9
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_4_a",
+      "from": [
+        5.3,
+        6.245,
+        8.7
+      ],
+      "to": [
+        10.7,
+        9.755,
+        9.7
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_4_b",
+      "from": [
+        6.245,
+        5.3,
+        8.7
+      ],
+      "to": [
+        9.755,
+        10.7,
+        9.7
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_5_a",
+      "from": [
+        4.6,
+        5.79,
+        8.0
+      ],
+      "to": [
+        11.4,
+        10.21,
+        8.7
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#bore"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_5_b",
+      "from": [
+        5.79,
+        4.6,
+        8.0
+      ],
+      "to": [
+        10.21,
+        11.4,
+        8.7
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#bore"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_lip_top",
+      "from": [
+        4.2,
+        11.0,
+        7.4
+      ],
+      "to": [
+        11.8,
+        11.8,
+        8.0
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_lip_bottom",
+      "from": [
+        4.2,
+        4.2,
+        7.4
+      ],
+      "to": [
+        11.8,
+        5.0,
+        8.0
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_lip_west",
+      "from": [
+        4.2,
+        5.0,
+        7.4
+      ],
+      "to": [
+        5.0,
+        11.0,
+        8.0
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_lip_east",
+      "from": [
+        11.0,
+        5.0,
+        7.4
+      ],
+      "to": [
+        11.8,
+        11.0,
+        8.0
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          14.5
+        ],
+        "axis": "x",
+        "angle": 45
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "rack_base",
+      "from": [
+        1,
+        8,
+        8
+      ],
+      "to": [
+        4.5,
+        8.8,
+        14.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#plate"
+        },
+        "up": {
+          "texture": "#plate"
+        },
+        "north": {
+          "texture": "#plate"
+        },
+        "south": {
+          "texture": "#plate"
+        },
+        "west": {
+          "texture": "#plate"
+        },
+        "east": {
+          "texture": "#plate"
+        }
+      }
+    },
+    {
+      "name": "rack_wall",
+      "from": [
+        1,
+        8.8,
+        8
+      ],
+      "to": [
+        1.6,
+        12.4,
+        14.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#plate"
+        },
+        "up": {
+          "texture": "#plate"
+        },
+        "north": {
+          "texture": "#plate"
+        },
+        "south": {
+          "texture": "#plate"
+        },
+        "west": {
+          "texture": "#plate"
+        },
+        "east": {
+          "texture": "#plate"
+        }
+      }
+    },
+    {
+      "name": "rack_rail",
+      "from": [
+        1,
+        11.8,
+        8
+      ],
+      "to": [
+        2.4,
+        12.4,
+        14.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#plate"
+        },
+        "up": {
+          "texture": "#plate"
+        },
+        "north": {
+          "texture": "#plate"
+        },
+        "south": {
+          "texture": "#plate"
+        },
+        "west": {
+          "texture": "#plate"
+        },
+        "east": {
+          "texture": "#plate"
+        }
+      }
+    },
+    {
+      "name": "rack_cylinder_0",
+      "from": [
+        1.8,
+        8.8,
+        8.6
+      ],
+      "to": [
+        4.2,
+        11.6,
+        10.4
+      ],
+      "faces": {
+        "down": {
+          "texture": "#wax_end"
+        },
+        "up": {
+          "texture": "#wax_end",
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ]
+        },
+        "north": {
+          "texture": "#wax"
+        },
+        "south": {
+          "texture": "#wax"
+        },
+        "west": {
+          "texture": "#wax"
+        },
+        "east": {
+          "texture": "#wax"
+        }
+      }
+    },
+    {
+      "name": "rack_cylinder_1",
+      "from": [
+        1.8,
+        8.8,
+        10.6
+      ],
+      "to": [
+        4.2,
+        11.6,
+        12.4
+      ],
+      "faces": {
+        "down": {
+          "texture": "#wax_end"
+        },
+        "up": {
+          "texture": "#wax_end",
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ]
+        },
+        "north": {
+          "texture": "#wax"
+        },
+        "south": {
+          "texture": "#wax"
+        },
+        "west": {
+          "texture": "#wax"
+        },
+        "east": {
+          "texture": "#wax"
+        }
+      }
+    },
+    {
+      "name": "rack_cylinder_2",
+      "from": [
+        1.8,
+        8.8,
+        12.6
+      ],
+      "to": [
+        4.2,
+        11.6,
+        14.4
+      ],
+      "faces": {
+        "down": {
+          "texture": "#wax_end"
+        },
+        "up": {
+          "texture": "#wax_end",
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ]
+        },
+        "north": {
+          "texture": "#wax"
+        },
+        "south": {
+          "texture": "#wax"
+        },
+        "west": {
+          "texture": "#wax"
+        },
+        "east": {
+          "texture": "#wax"
+        }
+      }
+    }
+  ]
+}
