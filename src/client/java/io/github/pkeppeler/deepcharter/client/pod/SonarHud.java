@@ -8,17 +8,19 @@ import io.github.pkeppeler.deepcharter.pod.PodSeat;
 import io.github.pkeppeler.deepcharter.pod.PodSonar;
 import io.github.pkeppeler.deepcharter.pod.SonarEcho;
 import io.github.pkeppeler.deepcharter.pod.SonarKind;
+import io.github.pkeppeler.deepcharter.pod.SonarMark;
 import io.github.pkeppeler.deepcharter.pod.SonarTuning;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
@@ -41,6 +43,23 @@ public final class SonarHud {
         HudElementRegistry.addLast(ID, SonarHud::extract);
     }
 
+    /**
+     * What the local player's sonar shows this frame, resolved once: the pod they ride, its readable picture, the game time and the player. Empty
+     * for anyone who does not sit in a pod's navigator seat, and when the pod's picture is unreadable.
+     */
+    public record Frame(PodEntity pod, PodSonar.State state, long now, LocalPlayer player) {
+        /**
+         * What a press of the mark key means: the echo or the mark nearest the direction the navigator looks, within {@link SonarTuning#aimDegrees()}.
+         * A mark counts after its echo has faded, so it can be taken off.
+         */
+        Optional<SonarEcho> aimed() {
+            List<SonarEcho> candidates = new ArrayList<>(state.shown(now));
+            state.activeMarks(now).forEach(mark -> candidates.add(new SonarEcho(mark.kind(), mark.pos())));
+            return SonarAim.pick(
+                    player.getEyePosition(), player.getLookAngle(), candidates, SonarTuning.DEFAULT.aimDegrees());
+        }
+    }
+
     /** The pod whose sonar the local player works: the pod they ride, when they sit in its navigator seat. */
     static Optional<PodEntity> navigatedPod(Minecraft client) {
         if (client.player != null
@@ -53,37 +72,26 @@ public final class SonarHud {
         return Optional.empty();
     }
 
-    /** The echo the navigator is looking toward, within {@link SonarTuning#aimDegrees()}: the one a press of the mark key marks. Empty for anyone who is not the navigator. */
-    static Optional<SonarEcho> aimedEcho(Minecraft client) {
+    /** The local player's sonar this frame, or empty when they are not working one; see {@link Frame}. */
+    public static Optional<Frame> frame(Minecraft client) {
         LocalPlayer player = client.player;
         ClientLevel level = client.level;
         if (level == null || player == null) {
             return Optional.empty();
         }
         return navigatedPod(client)
-                .flatMap(PodSonar::reading)
-                .flatMap(state -> SonarAim.pick(
-                        player.getEyePosition(),
-                        player.getLookAngle(),
-                        state.shown(level.getGameTime()),
-                        SonarTuning.DEFAULT.aimDegrees()));
-    }
-
-    /** Whether the scope is on screen for the local player. */
-    public static boolean shown(Minecraft client) {
-        return client.level != null
-                && navigatedPod(client).flatMap(PodSonar::reading).isPresent();
+                .flatMap(pod -> PodSonar.reading(pod).map(state -> new Frame(pod, state, level.getGameTime(), player)));
     }
 
     private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
-        ClientLevel level = client.level;
-        if (level == null || !shown(client)) {
+        Optional<Frame> frame = frame(client);
+        if (frame.isEmpty()) {
             return;
         }
-        PodEntity pod = navigatedPod(client).orElseThrow();
-        PodSonar.State state = PodSonar.reading(pod).orElseThrow();
-        long now = level.getGameTime();
+        PodEntity pod = frame.get().pod();
+        PodSonar.State state = frame.get().state();
+        long now = frame.get().now();
         SonarLook look = SonarLook.current();
         int side = look.scopePixels();
         int radius = side / 2;
@@ -108,21 +116,16 @@ public final class SonarHud {
                             pod.position(), pod.getDirection(), echo.pos(), SonarTuning.DEFAULT.rangeBlocks(), radius)
                     .ifPresent(dot -> echo(graphics, look, echo.kind(), cx + dot.x(), cy + dot.y(), dot.rise(), alpha));
         }
-        Optional<SonarEcho> aimed = aimedEcho(client);
-        Set<BlockPos> marked = new HashSet<>();
-        state.activeMarks(now).forEach(mark -> marked.add(mark.pos()));
-        for (SonarEcho echo : state.shown(now)) {
-            boolean isAimed = aimed.filter(echo::equals).isPresent();
-            if (isAimed || marked.contains(echo.pos())) {
-                SonarScope.project(
-                                pod.position(),
-                                pod.getDirection(),
-                                echo.pos(),
-                                SonarTuning.DEFAULT.rangeBlocks(),
-                                radius)
-                        .ifPresent(dot -> bracket(graphics, look.markColor(), cx + dot.x(), cy + dot.y(), isAimed));
-            }
+        for (SonarMark mark : state.activeMarks(now)) {
+            SonarScope.project(
+                            pod.position(), pod.getDirection(), mark.pos(), SonarTuning.DEFAULT.rangeBlocks(), radius)
+                    .ifPresent(dot -> bracket(graphics, look.markColor(), cx + dot.x(), cy + dot.y(), false));
         }
+        frame.get()
+                .aimed()
+                .flatMap(echo -> SonarScope.project(
+                        pod.position(), pod.getDirection(), echo.pos(), SonarTuning.DEFAULT.rangeBlocks(), radius))
+                .ifPresent(dot -> bracket(graphics, look.markColor(), cx + dot.x(), cy + dot.y(), true));
         // The pod: a square at the middle, and its nose pointing up the scope.
         graphics.fill(cx - 1, cy - 1, cx + 2, cy + 2, look.podColor());
         graphics.fill(cx, cy - 3, cx + 1, cy - 1, look.podColor());
@@ -153,16 +156,32 @@ public final class SonarHud {
         }
     }
 
+    /** The pixels of the ring of each radius, as offsets from the pod packed as {@code dx * 65536 + (dy & 0xFFFF)}, worked out once. */
+    private static final Map<Integer, int[]> RING_POINTS = new ConcurrentHashMap<>();
+
+    private static int[] ringPoints(int ring) {
+        return RING_POINTS.computeIfAbsent(ring, radius -> {
+            int steps = Math.max(32, 8 * radius);
+            int[] points = new int[steps];
+            for (int i = 0; i < steps; i++) {
+                double angle = 2 * Math.PI * i / steps;
+                int dx = (int) Math.round(radius * Math.cos(angle));
+                int dy = (int) Math.round(radius * Math.sin(angle));
+                int low = dy & 0xFFFF;
+                points[i] = dx * 65536 + low;
+            }
+            return points;
+        });
+    }
+
     /** Rings at half and the whole range, and the cross through the pod. A ring is a run of single pixels, so no texture is needed. */
     private static void rings(GuiGraphicsExtractor graphics, SonarLook look, int cx, int cy, int radius) {
         graphics.fill(cx - radius, cy, cx + radius + 1, cy + 1, look.ringColor());
         graphics.fill(cx, cy - radius, cx + 1, cy + radius + 1, look.ringColor());
         for (int ring : new int[] {radius / 2, radius}) {
-            int steps = Math.max(32, 8 * ring);
-            for (int i = 0; i < steps; i++) {
-                double angle = 2 * Math.PI * i / steps;
-                int x = cx + (int) Math.round(ring * Math.cos(angle));
-                int y = cy + (int) Math.round(ring * Math.sin(angle));
+            for (int point : ringPoints(ring)) {
+                int x = cx + (point >> 16);
+                int y = cy + (short) point;
                 graphics.fill(x, y, x + 1, y + 1, look.ringColor());
             }
         }

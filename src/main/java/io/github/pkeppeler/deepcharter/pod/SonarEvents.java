@@ -10,8 +10,8 @@ import net.minecraft.core.BlockPos;
  * <ul>
  *   <li>{@link #COLLECT}: what a ping returns. The blocks and the creatures in {@code deepcharter:sonar_echoes} are listeners of it; a creature
  *       signature (#924) is another, and picks one of the {@link SonarKind}s.</li>
- *   <li>{@link #PINGED}: the ping's noise, after the pod has paid and its echoes are set. A creature drawn to noise listens here and asks
- *       {@link SonarPing#hears}.</li>
+ *   <li>{@link #PINGED}: the ping's noise, after the pod has paid and its echoes are set. Nothing in the game listens yet: #924 makes the
+ *       Sleeper's creatures answer it, and adds the distance test with its first caller.</li>
  * </ul>
  */
 public final class SonarEvents {
@@ -23,7 +23,7 @@ public final class SonarEvents {
                 }
             });
 
-    /** A pod has pinged: the noise {@link SonarPing#noiseBlocks()} wide that the Sleeper's answer. */
+    /** A pod has pinged. The ping carries its noise radius, {@link SonarPing#noiseBlocks()}, and where it came from. */
     public static final Event<Pinged> PINGED = EventFactory.createArrayBacked(Pinged.class, listeners -> ping -> {
         for (Pinged listener : listeners) {
             listener.onPinged(ping);

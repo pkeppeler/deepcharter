@@ -71,7 +71,10 @@ public class SonarHudClientTest implements FabricClientGameTest {
                             && pod.getId() == podId
                             && pod.getPassengers().size() == 2
                             && pod.getPassengers().get(1) == client.player);
-            ClientWait.until(context, "the sonar scope for the navigator", SonarHud::shown);
+            ClientWait.until(
+                    context,
+                    "the sonar scope for the navigator",
+                    client -> SonarHud.frame(client).isPresent());
             ScopeShot before = ScopeShot.take(context, "sonar-navigator-before");
             context.getInput().pressKey(SonarKeys.PING);
             ClientWait.until(
@@ -157,7 +160,7 @@ public class SonarHudClientTest implements FabricClientGameTest {
                             && pod.getPassengers().size() == 1);
             context.waitTicks(2);
             require(
-                    !context.computeOnClient(SonarHud::shown),
+                    !context.computeOnClient(client -> SonarHud.frame(client).isPresent()),
                     "the pilot of a Prospector sees no sonar scope: it is the navigator's");
         }
     }

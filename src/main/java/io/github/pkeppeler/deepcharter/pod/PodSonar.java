@@ -9,8 +9,10 @@ import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.netty.buffer.ByteBuf;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
@@ -64,14 +66,16 @@ public final class PodSonar {
      * @param pingedAt the game time of the ping that returned {@code echoes}
      * @param echoes   the contacts of that ping, nearest kind first, until they fade
      * @param marks    the targets the navigator marked on the pilot's HUD, oldest first, until they lapse
+     * @param markReadyAt the game time from which the pod takes another mark
      */
-    public record State(long readyAt, long pingedAt, List<SonarEcho> echoes, List<SonarMark> marks) {
-        public static final State EMPTY = new State(0L, 0L, List.of(), List.of());
+    public record State(long readyAt, long pingedAt, List<SonarEcho> echoes, List<SonarMark> marks, long markReadyAt) {
+        public static final State EMPTY = new State(0L, 0L, List.of(), List.of(), 0L);
         public static final MapCodec<State> BODY = RecordCodecBuilder.mapCodec(instance -> instance.group(
                         Codec.LONG.fieldOf("readyAt").forGetter(State::readyAt),
                         Codec.LONG.fieldOf("pingedAt").forGetter(State::pingedAt),
                         SonarEcho.CODEC.listOf().fieldOf("echoes").forGetter(State::echoes),
-                        SonarMark.CODEC.listOf().fieldOf("marks").forGetter(State::marks))
+                        SonarMark.CODEC.listOf().fieldOf("marks").forGetter(State::marks),
+                        Codec.LONG.fieldOf("markReadyAt").forGetter(State::markReadyAt))
                 .apply(instance, State::new));
         public static final StreamCodec<ByteBuf, State> STREAM = StreamCodec.composite(
                 ByteBufCodecs.VAR_LONG,
@@ -82,6 +86,8 @@ public final class PodSonar {
                 State::echoes,
                 SonarMark.STREAM.apply(ByteBufCodecs.list()),
                 State::marks,
+                ByteBufCodecs.VAR_LONG,
+                State::markReadyAt,
                 State::new);
 
         public State {
@@ -90,11 +96,11 @@ public final class PodSonar {
         }
 
         State withEchoes(long pingedAt, long readyAt, List<SonarEcho> echoes) {
-            return new State(readyAt, pingedAt, echoes, marks);
+            return new State(readyAt, pingedAt, echoes, marks, markReadyAt);
         }
 
-        State withMarks(List<SonarMark> marks) {
-            return new State(readyAt, pingedAt, echoes, marks);
+        State withMarks(List<SonarMark> marks, long markReadyAt) {
+            return new State(readyAt, pingedAt, echoes, marks, markReadyAt);
         }
 
         /** The marks that still hold at game time {@code now}. */
@@ -204,13 +210,9 @@ public final class PodSonar {
     }
 
     private static List<SonarEcho> collect(SonarPing ping) {
-        List<SonarEcho> found = new ArrayList<>();
-        SonarEvents.COLLECT.invoker().collect(ping, (kind, pos) -> {
-            SonarEcho echo = new SonarEcho(kind, pos);
-            if (!found.contains(echo)) {
-                found.add(echo);
-            }
-        });
+        Set<SonarEcho> unique = new LinkedHashSet<>();
+        SonarEvents.COLLECT.invoker().collect(ping, (kind, pos) -> unique.add(new SonarEcho(kind, pos)));
+        List<SonarEcho> found = new ArrayList<>(unique);
         Vec3 origin = ping.origin();
         found.sort(Comparator.comparingInt((SonarEcho echo) -> echo.kind().rank())
                 .thenComparingDouble(echo -> echo.pos().distToCenterSqr(origin)));
@@ -225,6 +227,9 @@ public final class PodSonar {
             return;
         }
         State state = read.get();
+        if (state.echoes().isEmpty() && state.marks().isEmpty()) {
+            return;
+        }
         long now = pod.level().getGameTime();
         boolean echoesFaded = !state.echoes().isEmpty() && state.shown(now).isEmpty();
         boolean marksLapsed = state.activeMarks(now).size() != state.marks().size();
@@ -235,7 +240,8 @@ public final class PodSonar {
                             state.readyAt(),
                             state.pingedAt(),
                             echoesFaded ? List.of() : state.echoes(),
-                            state.activeMarks(now))));
+                            state.activeMarks(now),
+                            state.markReadyAt())));
         }
     }
 
@@ -245,6 +251,8 @@ public final class PodSonar {
         UNMARKED(""),
         NOT_NAVIGATOR("deepcharter.pod.sonar.not_navigator"),
         NO_ECHO("deepcharter.pod.sonar.no_echo"),
+        /** Too soon after the last mark: refused with no word and no write. */
+        TOO_FAST(""),
         UNREADABLE("deepcharter.pod.sonar.unreadable");
 
         private final String key;
@@ -282,9 +290,13 @@ public final class PodSonar {
         }
         long now = pod.level().getGameTime();
         State state = read.get();
+        if (now < state.markReadyAt()) {
+            return MarkResult.TOO_FAST;
+        }
+        long next = now + SonarTuning.DEFAULT.markCooldownTicks();
         List<SonarMark> marks = new ArrayList<>(state.activeMarks(now));
         if (marks.removeIf(mark -> mark.pos().equals(pos))) {
-            pod.setAttached(STATE, Versioned.of(state.withMarks(marks)));
+            pod.setAttached(STATE, Versioned.of(state.withMarks(marks, next)));
             return MarkResult.UNMARKED;
         }
         Optional<SonarEcho> echo =
@@ -296,7 +308,7 @@ public final class PodSonar {
         while (marks.size() > SonarTuning.DEFAULT.maxMarks()) {
             marks.removeFirst();
         }
-        pod.setAttached(STATE, Versioned.of(state.withMarks(marks)));
+        pod.setAttached(STATE, Versioned.of(state.withMarks(marks, next)));
         return MarkResult.MARKED;
     }
 }

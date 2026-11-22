@@ -524,6 +524,11 @@ public class PodSonarTest {
                 });
     }
 
+    /** What #924's creatures will ask of a ping, written here so the radius is pinned before they do: within the noise radius of where it came from. */
+    private static boolean withinNoise(SonarPing ping, Vec3 listener) {
+        return ping.origin().distanceToSqr(listener) <= (double) ping.noiseBlocks() * ping.noiseBlocks();
+    }
+
     /** How far a ping is heard: the noise event carries the radius, and a listener answers it by that radius. Measured on a real ping. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void pacingAPingIsHeardFortyEightBlocksAndAfterItsEchoesAreSet(GameTestHelper helper) {
@@ -551,11 +556,14 @@ public class PodSonarTest {
                     ping.noiseBlocks(),
                     ping.rangeBlocks());
             expect(helper, ping.origin().equals(origin) && ping.pod() == scene.pod(), "the noise is the pod's");
-            expect(helper, ping.hears(origin.add(ping.noiseBlocks(), 0, 0)), "something 48 blocks off hears it");
             expect(
                     helper,
-                    !ping.hears(origin.add(ping.noiseBlocks() + 0.01, 0, 0)),
-                    "something just past 48 blocks does not");
+                    withinNoise(ping, origin.add(ping.noiseBlocks(), 0, 0)),
+                    "something 48 blocks off is in the noise");
+            expect(
+                    helper,
+                    !withinNoise(ping, origin.add(ping.noiseBlocks() + 0.01, 0, 0)),
+                    "something just past 48 blocks is not");
             expect(
                     helper,
                     echoesAtTheNoise.get(0) == 1,
@@ -648,6 +656,61 @@ public class PodSonarTest {
                 .toList();
     }
 
+    /** Lets the pod take another mark at once, which the mark wait would hold for a few ticks. */
+    private static void freeMark(PodEntity pod) {
+        PodSonar.State state = PodSonar.reading(pod).orElseThrow();
+        pod.setAttached(
+                PodSonar.STATE,
+                Versioned.of(new PodSonar.State(state.readyAt(), state.pingedAt(), state.echoes(), state.marks(), 0L)));
+    }
+
+    /** The mark wait: a second mark inside it is refused with no write, so a client cannot force a sync at packet rate. Measured on the world clock. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void pacingAPodTakesAMarkEveryFiveTicksAtMost(GameTestHelper helper) {
+        int x = 8088;
+        ServerLevel level = TestLayers.level(helper, 1);
+        long[] marked = {-1};
+        BlockPos ore = middle(x + 9, FLOOR + 1, Z + 1);
+        run(helper, x, l -> block(l, x + 9, FLOOR + 1, Z + 1, OreBlocks.of(OreType.IRONIUM)), scene -> {
+            PodEntity pod = scene.pod();
+            long now = level.getGameTime();
+            if (marked[0] < 0) {
+                PodSonar.ping(pod);
+                expect(helper, PodSonar.mark(pod, ore) == PodSonar.MarkResult.MARKED, "the first mark goes on");
+                marked[0] = now;
+                PodSonar.State before = PodSonar.reading(pod).orElseThrow();
+                expect(
+                        helper,
+                        PodSonar.mark(pod, ore) == PodSonar.MarkResult.TOO_FAST,
+                        "a second in the same tick is refused");
+                expect(
+                        helper,
+                        PodSonar.reading(pod).orElseThrow().equals(before),
+                        "a refused mark changes nothing, so nothing syncs");
+                return false;
+            }
+            long age = now - marked[0];
+            PodSonar.MarkResult result = PodSonar.mark(pod, ore);
+            if (age < TUNING.markCooldownTicks()) {
+                expect(
+                        helper,
+                        result == PodSonar.MarkResult.TOO_FAST,
+                        "at %s ticks the mark is refused, got %s",
+                        age,
+                        result);
+                return false;
+            }
+            expect(
+                    helper,
+                    age == TUNING.markCooldownTicks() && result == PodSonar.MarkResult.UNMARKED,
+                    "the next mark is accepted at %s ticks, at %s it was %s",
+                    TUNING.markCooldownTicks(),
+                    age,
+                    result);
+            return true;
+        });
+    }
+
     /** The navigator marks an echo; the pilot reads the mark off the pod's picture, and it outlives the echo it came from. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aMarkShowsOnThePodAndOutlivesItsEcho(GameTestHelper helper) {
@@ -725,11 +788,16 @@ public class PodSonarTest {
                             .toList();
                     expect(
                             helper,
-                            PodSonar.mark(pod, middles.get(0)) == PodSonar.MarkResult.MARKED
-                                    && PodSonar.mark(pod, middles.get(0)) == PodSonar.MarkResult.UNMARKED,
-                            "marking an echo twice marks it and then takes the mark off");
+                            PodSonar.mark(pod, middles.get(0)) == PodSonar.MarkResult.MARKED,
+                            "marking an echo marks it");
+                    freeMark(pod);
+                    expect(
+                            helper,
+                            PodSonar.mark(pod, middles.get(0)) == PodSonar.MarkResult.UNMARKED,
+                            "and marking it again takes the mark off");
                     expect(helper, marked(pod).isEmpty(), "and nothing is marked then, got %s", marked(pod));
                     for (BlockPos echo : middles) {
+                        freeMark(pod);
                         expect(helper, PodSonar.mark(pod, echo) == PodSonar.MarkResult.MARKED, "marking %s", echo);
                     }
                     expect(
@@ -761,7 +829,8 @@ public class PodSonarTest {
                                 List.of(),
                                 List.of(
                                         new SonarMark(SonarKind.ORE, lapsed, now - TUNING.markLifetimeTicks()),
-                                        new SonarMark(SonarKind.GAS, fresh, now - TUNING.markLifetimeTicks() + 2)))));
+                                        new SonarMark(SonarKind.GAS, fresh, now - TUNING.markLifetimeTicks() + 2)),
+                                0L)));
                 return false;
             }
             expect(
@@ -784,7 +853,8 @@ public class PodSonarTest {
                 500L,
                 420L,
                 List.of(new SonarEcho(SonarKind.GAS, new BlockPos(1, -2, 3))),
-                List.of(new SonarMark(SonarKind.MOVED, new BlockPos(4, 5, 6), 430L)));
+                List.of(new SonarMark(SonarKind.MOVED, new BlockPos(4, 5, 6), 430L)),
+                435L);
         pod.setAttached(PodSonar.STATE, Versioned.of(state));
         TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
         pod.saveWithoutId(output);
@@ -810,7 +880,8 @@ public class PodSonarTest {
                         new SonarEcho(SonarKind.GAS, new BlockPos(4, 5, 6)),
                         new SonarEcho(SonarKind.CAVE, new BlockPos(7, 8, 9)),
                         new SonarEcho(SonarKind.MOVED, new BlockPos(10, 11, 12))),
-                List.of(new SonarMark(SonarKind.CAVE, new BlockPos(7, 8, 9), 4L)));
+                List.of(new SonarMark(SonarKind.CAVE, new BlockPos(7, 8, 9), 4L)),
+                9L);
         Tag saved = codec.encodeStart(NbtOps.INSTANCE, Versioned.of(state)).getOrThrow();
         CompoundTag expected = new CompoundTag();
         expected.putInt("version", 1);
@@ -833,6 +904,7 @@ public class PodSonarTest {
         net.minecraft.nbt.ListTag marks = new net.minecraft.nbt.ListTag();
         marks.add(mark);
         expected.put("marks", marks);
+        expected.putLong("markReadyAt", 9L);
         expect(helper, saved.equals(expected), "the saved sonar picture should be %s, is %s", expected, saved);
         Versioned<PodSonar.State> back = codec.parse(NbtOps.INSTANCE, expected).getOrThrow();
         expect(helper, back.equals(Versioned.of(state)), "and it reads back as saved, got %s", back);

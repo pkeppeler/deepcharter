@@ -17,7 +17,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 
 /**
- * The navigator's keys: V pings the sonar, and B marks the echo they are looking toward ({@link SonarAim}), or takes its mark off. The server decides what
+ * The navigator's keys: V pings the sonar, and G marks the echo they are looking toward ({@link SonarAim}), or takes its mark off. The server decides what
  * each does, and tells the player when it refuses.
  */
 public final class SonarKeys {
@@ -30,7 +30,7 @@ public final class SonarKeys {
     public static final KeyMapping MARK = new KeyMapping(
             "key.deepcharter.sonar_mark",
             InputConstants.Type.KEYBOARD,
-            InputConstants.KEY_B,
+            InputConstants.KEY_G,
             HandbookKeys.OPEN.getCategory());
 
     private SonarKeys() {}
@@ -40,29 +40,36 @@ public final class SonarKeys {
         KeyMappingHelper.registerKeyMapping(MARK);
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (PING.consumeClick()) {
-                if (client.player != null
-                        && client.gui.screen() == null
-                        && client.player.getVehicle() instanceof PodEntity pod
-                        && PodSeat.find(pod, client.player)
-                                .filter(seat -> seat == PodSeat.NAVIGATOR)
-                                .isPresent()) {
-                    ClientPlayNetworking.send(new SonarPingPayload());
-                }
+                press(client, () -> ClientPlayNetworking.send(new SonarPingPayload()));
             }
             while (MARK.consumeClick()) {
-                if (client.player != null && client.gui.screen() == null) {
-                    mark(client, client.player);
-                }
+                press(client, () -> mark(client));
             }
         });
     }
 
-    private static void mark(Minecraft client, LocalPlayer player) {
-        Optional<SonarEcho> aimed = SonarHud.aimedEcho(client);
+    /**
+     * Runs {@code navigatorAction} for the navigator. A pilot who presses a sonar key in the pod is told on the action bar that it is the
+     * navigator's (the server says the same to anyone who gets a packet through); a player on foot or in a screen gets nothing.
+     */
+    private static void press(Minecraft client, Runnable navigatorAction) {
+        LocalPlayer player = client.player;
+        if (player == null || client.gui.screen() != null || !(player.getVehicle() instanceof PodEntity pod)) {
+            return;
+        }
+        if (PodSeat.find(pod, player).filter(seat -> seat == PodSeat.NAVIGATOR).isPresent()) {
+            navigatorAction.run();
+        } else {
+            player.sendOverlayMessage(Component.translatable("deepcharter.pod.sonar.not_navigator"));
+        }
+    }
+
+    private static void mark(Minecraft client) {
+        Optional<SonarEcho> aimed = SonarHud.frame(client).flatMap(SonarHud.Frame::aimed);
         if (aimed.isPresent()) {
             ClientPlayNetworking.send(new SonarMarkPayload(aimed.get().pos()));
-        } else if (SonarHud.navigatedPod(client).isPresent()) {
-            player.sendOverlayMessage(Component.translatable("deepcharter.pod.sonar.no_aim"));
+        } else if (client.player != null) {
+            client.player.sendOverlayMessage(Component.translatable("deepcharter.pod.sonar.no_aim"));
         }
     }
 }

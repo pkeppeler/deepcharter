@@ -12,11 +12,4 @@ import net.minecraft.world.phys.Vec3;
  * @param rangeBlocks how far it returns echoes
  * @param noiseBlocks how far it is heard
  */
-public record SonarPing(PodEntity pod, ServerLevel level, Vec3 origin, int rangeBlocks, int noiseBlocks) {
-    /** True when something at {@code listener} in the pod's level hears this ping: within its noise radius. */
-    // test-seam: the call #924's creatures make to hear a ping; nothing in this PR listens yet, and the tests pin the
-    // radius through it
-    public boolean hears(Vec3 listener) {
-        return origin.distanceToSqr(listener) <= (double) noiseBlocks * noiseBlocks;
-    }
-}
+public record SonarPing(PodEntity pod, ServerLevel level, Vec3 origin, int rangeBlocks, int noiseBlocks) {}

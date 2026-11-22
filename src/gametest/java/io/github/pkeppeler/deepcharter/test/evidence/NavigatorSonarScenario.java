@@ -71,7 +71,10 @@ public class NavigatorSonarScenario extends EvidenceScenario {
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity pod
                             && pod.getPassengers().size() == 2
                             && pod.getPassengers().get(1) == client.player);
-            ClientWait.until(context, "the sonar scope on the navigator's screen", SonarHud::shown);
+            ClientWait.until(
+                    context,
+                    "the sonar scope on the navigator's screen",
+                    client -> SonarHud.frame(client).isPresent());
             for (int i = 0; i < FRAMES_BEFORE; i++) {
                 context.waitTicks(TICKS_PER_FRAME);
                 frame(context);

@@ -98,7 +98,7 @@ public class ProspectorChassisClientTest implements FabricClientGameTest {
             int navigatorBars = hullBarPixels(navigator);
             require(
                     navigatorBars == 0,
-                    "The navigator should see the scanner only, but " + navigatorBars
+                    "The navigator should see no pod status lines, but " + navigatorBars
                             + " pixels of lit hull bar are on screen");
 
             two.server().runOnServer(server -> two.mock().player().stopRiding());
