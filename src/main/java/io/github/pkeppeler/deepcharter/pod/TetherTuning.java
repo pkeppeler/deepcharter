@@ -11,7 +11,7 @@ package io.github.pkeppeler.deepcharter.pod;
  * @param snagTicks         ticks the winch may haul against a line that rock lies across before the line snaps
  * @param snapCooldownTicks ticks a snapped tether cannot be clipped on again
  * @param noiseInterval     ticks between two loud clanks of a winch that is hauling
- * @param noiseRadius       blocks the clank carries, to the noise hook ({@link PodTether#NOISE}) that creatures listen at
+ * @param noiseRadius       blocks the clank carries, as the pull of the winch's decoy in {@code DrawSources}
  * @param stallTicks        ticks of hauling over which a person must close on the pod by {@link #stallProgress}, or the haul counts as snagged
  * @param stallProgress     blocks of line a person must gain on the pod over {@link #stallTicks}: less means the person is stuck on something the line's ray missed
  */
