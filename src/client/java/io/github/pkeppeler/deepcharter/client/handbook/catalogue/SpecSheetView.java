@@ -142,7 +142,7 @@ final class SpecSheetView {
         }
 
         graphics.nextStratum();
-        CatalogueHardware.glassFront(graphics, look, layout.glass());
+        CatalogueHardware.glassFront(graphics, look, panel, layout.glass());
         graphics.nextStratum();
         CatalogueHardware.legendSwitch(
                 graphics,

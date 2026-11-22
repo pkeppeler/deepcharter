@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.GlassCorners.requireClearOfCorners;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.DeepCharter;
@@ -772,31 +773,6 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
     /** The 16 by 16 item a catalogue cell draws inside its outline. */
     private static Rect icon(Rect cell, CatalogueLook look) {
         return new Rect(cell.x() + look.iconInset(), cell.y() + look.iconInset(), 16, 16);
-    }
-
-    /**
-     * Fails when a row of {@code box} reaches past the rounded corner of {@code glass} ({@link PanelLook#cornerInset}). A positive {@code ring}
-     * is the width of the dark ring that dims the glass's edge: inside a corner's rows the box must also keep that far from the sides, and
-     * from the top and bottom edges.
-     */
-    private static void requireClearOfCorners(Rect box, Rect glass, int ring, String what) {
-        int radius = PanelLook.current().glassRadius();
-        for (int y = box.y(); y < box.bottom(); y++) {
-            int row = y - glass.y();
-            int inset = Math.max(
-                    PanelLook.cornerInset(radius, row), PanelLook.cornerInset(radius, glass.height() - 1 - row));
-            boolean inCorner = inset > 0;
-            int margin = inCorner ? Math.max(inset, ring) : 0;
-            require(
-                    box.x() >= glass.x() + margin && box.right() <= glass.right() - margin,
-                    what + " " + box + " is cut by the rounded corner of the glass " + glass + " at row " + row
-                            + ", where the glass starts " + margin + " pixels in (radius " + radius + ", ring " + ring
-                            + ")");
-            require(
-                    ring == 0 || (row >= ring && glass.height() - row > ring),
-                    what + " " + box + " is under the dark ring at the top or bottom of the glass " + glass + " at row "
-                            + row + " (ring " + ring + ")");
-        }
     }
 
     /** What the screen draws with the mouse where it really is, so the catalogue keeps the hover it has. */

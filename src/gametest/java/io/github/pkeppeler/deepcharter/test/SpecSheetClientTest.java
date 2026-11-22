@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+import static io.github.pkeppeler.deepcharter.test.support.GlassCorners.requireClearOfCorners;
 
 import com.google.common.base.Splitter;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -11,6 +12,8 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetOpener;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetScreen;
+import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
+import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheet;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheetPopups;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheets;
@@ -116,7 +119,7 @@ public class SpecSheetClientTest implements FabricClientGameTest {
 
     // ---------------------------------------------------------------- the sheet, with no game running
 
-    private static void everySheetLiesInsideItsGlass() {
+    private static void everySheetLiesInsideItsGlass(Minecraft client) {
         List<Item> items = everyItemASheetIsChecked();
         for (int[] size : SIZES) {
             for (Item item : items) {
@@ -140,6 +143,7 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                             texts.contains(expected),
                             "the sheet of " + what + " draws '" + expected + "' whole, it draws " + texts);
                 }
+                requireTitleAndCellClearOfTheCorners(client, drawn, glass.getFirst(), what);
                 String blurb = SpecSheets.of(item).blurb().getString();
                 String drawnBlurb = String.join(" ", texts);
                 for (String word : Splitter.on(' ').split(blurb)) {
@@ -156,6 +160,41 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 glass.get(0).height() < glass.get(1).height(),
                 "a short sheet is a short console and a long one is taller, the glasses are " + glass);
         System.out.println("[spec-sheet] checked " + items.size() + " sheets at " + SIZES.length + " sizes");
+    }
+
+    /**
+     * The glass has rounded corners and a dark ring at its edge (#984): the sheet's title, which sits in the glass's top rows, and the
+     * item's cell and icon under it must be clear of both, as the catalogue's own are. The title is the first string drawn in the glass;
+     * the cell stands where {@code SpecSheetLayout} puts it, under the title's rule.
+     */
+    private static void requireTitleAndCellClearOfTheCorners(
+            Minecraft client, List<Drawn> drawn, Rect glass, String what) {
+        CatalogueLook look = CatalogueLook.current();
+        int ring = look.casing().vignetteWidth();
+        Drawn title = drawn.stream()
+                .filter(text -> inside(boxOf(text), glass))
+                .min(java.util.Comparator.comparingInt(text -> text.box().y()))
+                .orElseThrow(() -> new AssertionError("the sheet of " + what + " draws nothing in its glass"));
+        requireClearOfCorners(boxOf(title), glass, ring, "the title '" + title.shortText() + "' of " + what);
+        int top = glass.y()
+                + look.titleTop()
+                + client.font.lineHeight
+                + CrtTuning.current().headerRuleGap()
+                + 1
+                + look.titleGap();
+        Rect cell = new Rect(glass.x() + look.pad(), top, look.slotSize(), look.slotSize());
+        requireClearOfCorners(cell, glass, 0, "the item cell " + cell + " of " + what);
+        Rect icon = new Rect(
+                cell.x() + look.iconInset(),
+                cell.y() + look.iconInset(),
+                look.slotSize() - 2 * look.iconInset(),
+                look.slotSize() - 2 * look.iconInset());
+        requireClearOfCorners(icon, glass, ring, "the item icon in " + cell + " of " + what);
+    }
+
+    private static Rect boxOf(Drawn text) {
+        return new Rect(
+                text.box().x(), text.box().y(), text.box().width(), text.box().height());
     }
 
     /** The close switch's legend is drawn on its plate, under the glass. */
@@ -257,7 +296,7 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                     context, "the player's inventory", client -> client.player != null && client.level != null);
             // Item components are bound only once a world is loaded, so a sheet cannot be built before it.
             context.runOnClient(client -> {
-                everySheetLiesInsideItsGlass();
+                everySheetLiesInsideItsGlass(client);
                 theRatingsAreTheGamesOwnNumbers();
                 everyCompanyItemSpeaksInTheCompanysVoice();
             });
