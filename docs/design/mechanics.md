@@ -1830,6 +1830,32 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Open questions.** Whether a hauled pod should also owe a "parking" fee at the pad; whether a second pod in reach should be able to answer the call before the crew (the tow line already does). Neither is built. The ownership rule: the crew moves a pod only for the pilot aboard it and charges only the pod's owner charter, so it never moves or charges anyone else's.
 
+## The tether (#986, A)
+
+**Problem.** A person on foot (SPEC section 9) has nothing between them and a long fall, a grip they cannot walk out of, or a wreck to haul away. CREATURES section 8 lists "a line to the pod's winch: pulls you back, and tows in the Hush fight" as the on-foot kit's answer.
+
+**The line.** The tether is a $90 item at the repair station (0.73 of a stock layer 1 run, `TetherPacingTest`), and a tool: nothing uses it up. Used on a pod the person's charter may access (`PodComponents.mayAccess`; an unowned pod is anyone's, a wreck has no winch) it clips on; used again on the same pod, or sneaking in the air, it unhooks. It pays out `TetherTuning.length` (24 blocks) from the middle of the hull. The 24 crosses a gallery (25 long) and the Prospector's wreck room (11) and not the rail line (63), and is five tow lines (`TetherPacingTest` reads the hollows from the generator).
+
+**Winching.** Using the tether in the air toggles the winch: it hauls the person toward the pod at `winchSpeed` (0.5 blocks a tick, 10 a second, about twice a sprint) and stops by itself at the hull. The whole line takes 2.4 s (`TetherTest`, measured). The pilot, from the seat, uses the tether in the air to start the winch of everyone clipped to the pod. A pod with no power (stranded) has no winch. The pull is a velocity the person's own client moves them by, with its own collision: a push along clear air, never a teleport.
+
+**What the line does to a fall.** Past its length a taut line pulls back, so a person who steps off a lip hangs on it, with no fall to land. The line is a path, not a straight rope: straight when clear, or over one corner (up the face from the person to the winch's height, then across), which is how a person hanging below a ledge is caught and hauled up the face and over it. A line stretched past `snapMargin` (3 blocks) snaps; the longest free fall on a 24 block line is about two blocks a tick at the catch, which holds.
+
+**Snags.** Rock or lava across every route snags the line: the winch does not haul, the person is told, and a line that stays snagged for `snagTicks` (2 seconds) snaps. The winch refuses a lava path (A), so the pilot's reel never drags a crewmate into it; a person already in lava is hauled out. A haul the centre ray calls clear but that closes less than `stallProgress` blocks on the pod in `stallTicks` (the body is stuck on rock the ray missed) counts as snagged and goes quiet. Walking to a clear line starts it over. A snapped line is not lost, only slow to rig again: the tether cools down for `snapCooldownTicks` (10 seconds), the cost of jamming a winch. Unhooking a snagged or taut line pays the same cooldown, and stopping a snagged winch by hand snaps the line, so the price cannot be dodged; unhooking a slack line is free.
+
+**Towing.** With the line clipped, using the tether on a second pod hooks that pod to the first with the tow cable's own cable and rules (`PodTowing`, ADR 0022 and 0049): the charter must be allowed at it, it must be in the tow line's reach, and a pod tows one pod. A wreck is towable. Using it on a towed pod frees it. The person need not ride the tower, so a crew can hook a wreck from the ground and then drive off with it.
+
+**Noise.** A hauling winch reports to `PodTether.NOISE` (position and `noiseRadius` 40) every 10 ticks, and plays a clank. Nothing listens yet: `creature/DrawSources` (#990) is not on main, and #1027 moves the winch's noise there and deletes the event.
+
+**Ends.** A clip is a session's: it is not saved, and holds only the pod's UUID. It ends on the next tick when the person dies, boards a pod, changes level, or their pod is removed, unloads or is wrecked; a person who reconnects starts free.
+
+**Trade-offs.** It costs a hotbar slot and $90. The line is short enough that a pod is still the way to go anywhere; the winch pulls only when the way is clear, so a cave with corners needs the person to walk the line clear; a snagged line costs ten seconds in a fight.
+
+**Knobs.** `TetherTuning`: `length` 24, `snapMargin` 3, `clipReach` 6, `winchSpeed` 0.5, `arriveGap` 1, `snagTicks` 40, `snapCooldownTicks` 200, `noiseInterval` 10, `noiseRadius` 40, `stallTicks` 20, `stallProgress` 0.05. The price is `Consumable.TETHER`.
+
+**Pins.** `TetherTest` (clip and reach, another charter's refusal, unhook, every end, the length and the snap, the winch's time over the line, the snag and the cleared line, the lip, the loud winch, the pilot, a stranded pod, the tow), `TetherPacingTest` (cost against the run net, length against the hollows), `TetherClientTest` (the drawn line), `RepairStationTest` and `EconomyAffordabilityTest` (the price).
+
+**Open questions.** The Retained's grip on foot (#925) is not built, so there is nothing to winch out of yet: the winch sets a velocity, which a slow from a grip does not touch. The suit timer is not built either. The winch makes the placeholder grindstone sound until the sound pass.
+
 ## Pod hazard cues (#854, A)
 
 **Problem.** A gas blast and a hard landing cost hull, and an overloaded pod's jump did nothing, each with no cue of its own. A player could not tell what had happened, or that the cargo was the reason the rotor would not lift.
