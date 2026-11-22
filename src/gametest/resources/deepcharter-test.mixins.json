@@ -3,20 +3,18 @@
   "package": "io.github.pkeppeler.deepcharter.test.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ChunkHolderTraceMixin",
+    "ChunkHolderLightSuppressMixin",
     "ChunkMapAccess",
+    "ChunkMapSaveMixin",
     "ChunkMapUnloadMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",
-    "LightSyncSendMixin",
-    "LightTraceServerMixin",
-    "PlayerChunkSenderTraceMixin",
-    "ThreadedLightEngineAccess"
+    "LightSyncSendMixin"
   ],
   "client": [
     "CardinalLightingMixin",
-    "ClientLightTraceMixin",
     "ClientGameTestImplMixin",
+    "ClientPacketListenerMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",
     "HudMixin",

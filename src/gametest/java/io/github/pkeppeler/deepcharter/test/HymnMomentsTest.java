@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
@@ -17,12 +17,10 @@ import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.List;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #249: the Lamp Hymn plays to one player at the moments it is for (founding a charter at the colony, joining one,
@@ -226,13 +224,5 @@ public class HymnMomentsTest {
             expect(helper, watcher.soundsHeard().isEmpty(), "the watcher heard %s", watcher.soundsHeard());
             helper.succeed();
         });
-    }
-
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        if (!condition) {
-            throw helper.assertionException(Component.literal(String.format(format, args)));
-        }
     }
 }

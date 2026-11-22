@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test.mixin;
 
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.ItemSpawns;
 import io.github.pkeppeler.deepcharter.test.support.PendingWork;
 import io.github.pkeppeler.deepcharter.test.support.SlowTests;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
@@ -61,6 +62,7 @@ public abstract class GameTestInfoMixin implements PendingWork {
             return;
         }
         FarChunks.release(bounds);
+        ItemSpawns.release(bounds);
     }
 
     @Override

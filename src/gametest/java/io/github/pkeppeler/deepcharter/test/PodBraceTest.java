@@ -1,9 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -29,12 +28,10 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the crust warning and the breach brace (#378). Layer 1 is crust at local y 0 to 2 (its lowest rows) (3 rows of 8 hull each), so a pod with its
@@ -48,12 +45,6 @@ public class PodBraceTest {
     private static final int PATCH = PodBraceTuning.DEFAULT.patchTicks();
     /** Slabs the pilot bores, each one a fall into a new hole. */
     private static final int SLABS = 4;
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
 
     private static MockPlayer owner(GameTestHelper helper) {
         MockPlayer owner = MockPlayers.join(helper, "Brace owner " + OWNERS.incrementAndGet());

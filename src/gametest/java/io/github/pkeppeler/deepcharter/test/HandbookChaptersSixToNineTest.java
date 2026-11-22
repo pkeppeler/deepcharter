@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import com.google.gson.JsonObject;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
@@ -29,6 +31,7 @@ import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
@@ -166,12 +169,6 @@ public class HandbookChaptersSixToNineTest {
         }
         directives.addAll(List.of(extra));
         return directives;
-    }
-
-    private static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {
-        if (!condition) {
-            throw helper.assertionException(format, args);
-        }
     }
 
     /** A Y inside zone {@code index} of the layer (0 is the top third, 2 the bottom). */
@@ -425,11 +422,11 @@ public class HandbookChaptersSixToNineTest {
                         pods.add(mole);
                         PodComponents.register(mole, charter);
                         mole.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(),
+                                3);
                         CompoundTag args = new CompoundTag();
                         args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.HULL.id());
                         args.putInt(UpgradeTerminal.TIER_KEY, 2); // tier 1 is crafted and not sold (#536)
@@ -480,11 +477,11 @@ public class HandbookChaptersSixToNineTest {
                         // Chapter 7: the hull is repaired at the station, and the crew reaches the Deep Claim.
                         first.stopRiding();
                         HandbookChaptersOneToFiveTest.stand(helper, director, terminal);
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.REPAIR_STATION.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.REPAIR_STATION.block().defaultBlockState(),
+                                3);
                         mole.damageHull(mole.maxHull() / 2);
                         HandbookChaptersOneToFiveTest.expectDone(
                                 helper,

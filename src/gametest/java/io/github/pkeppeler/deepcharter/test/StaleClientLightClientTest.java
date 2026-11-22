@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
+
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyLayout;
@@ -16,7 +18,6 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientTestWatchdog;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.HangarConsole;
-import io.github.pkeppeler.deepcharter.test.support.LightTrace;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.time.Duration;
@@ -103,7 +104,6 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 layerStructuresOnArrival(context, server, 2, CELL + TRIALS + trial);
             }
         }
-        LOGGER.info("light trace counts since the start: " + LightTrace.counts());
         StringBuilder table = new StringBuilder("stale client light, per path:");
         results.forEach(result -> table.append("\n  ")
                 .append(result.mismatch().isPresent() ? "STALE " : "ok    ")
@@ -142,7 +142,7 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
         require(
                 ClientLight.settledMismatch(context, server, Level.OVERWORLD, room(floor))
                         .isEmpty(),
-                "the room to be in step before the dig");
+                "Expected the room to be in step before the dig");
         BlockPos roof = floor.above(HEIGHT + 1);
         server.runOnServer(s -> {
             if (!player(s).gameMode.destroyBlock(roof)) {
@@ -179,8 +179,6 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             }
         });
         BlockPos stand = floor.above(HEIGHT + 3).offset(10, 0, 0);
-        LightTrace.clear();
-        LightTrace.watch(Level.OVERWORLD, room(floor));
         // The breach (sameTick): the pocket is carved and the player teleported in one server task.
         server.runOnServer(s -> {
             carveRoom(s.overworld(), floor);
@@ -255,7 +253,9 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             }
         });
         Optional<String> wiped = ClientLight.settledMismatch(context, server, Level.OVERWORLD, box);
-        require(wiped.isEmpty(), "the wiped piece " + piece.structure() + " to be in step: " + wiped.orElse(""));
+        require(
+                wiped.isEmpty(),
+                "Expected the wiped piece " + piece.structure() + " to be in step: " + wiped.orElse(""));
         server.runOnServer(s -> {
             StructureTemplate template =
                     s.getStructureTemplateManager().get(piece.structure()).orElseThrow();
@@ -316,8 +316,6 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
     private void layerStructuresOnArrival(
             ClientGameTestContext context, TestServerContext server, int layer, int cell) {
         ResourceKey<Level> dimension = server.computeOnServer(s -> TestLayers.dimension(s, layer));
-        // The timeline of a stale report covers this cell: its sites share chunks.
-        LightTrace.clear();
         List<StructureSite> sites = server.computeOnServer(s -> {
             BlockPos conduit = Colony.anchor(s, ColonyAnchor.CONDUIT).orElseThrow();
             ServerLevel level = ClientLight.serverLevel(s, dimension);
@@ -334,7 +332,6 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
             Box box = new Box(
                     new BlockPos(bounds.minX(), bounds.minY(), bounds.minZ()),
                     new BlockPos(bounds.maxX(), bounds.maxY(), bounds.maxZ()));
-            LightTrace.watch(dimension, box);
             BlockPos stand = site.origin().above(2);
             server.runOnServer(s -> {
                 ServerPlayer player = player(s);
@@ -458,11 +455,5 @@ public class StaleClientLightClientTest implements FabricClientGameTest {
                 .min(Comparator.comparingDouble(
                         piece -> pieceBox(server, colony, piece).min().distSqr(near)))
                 .orElseThrow();
-    }
-
-    private static void require(boolean condition, String what) {
-        if (!condition) {
-            throw new AssertionError("Expected " + what);
-        }
     }
 }

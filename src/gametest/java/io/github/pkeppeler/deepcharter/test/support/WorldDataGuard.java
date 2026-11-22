@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonyDisplays;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.colony.WorldFormat;
 import io.github.pkeppeler.deepcharter.handbook.HandbookProgressData;
+import io.github.pkeppeler.deepcharter.handbook.KnownRecipesData;
 import io.github.pkeppeler.deepcharter.handbook.NotesData;
 import io.github.pkeppeler.deepcharter.handbook.PersonalHandbookData;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
@@ -42,6 +43,7 @@ public final class WorldDataGuard implements ModInitializer {
             ColonySite.TYPE,
             HandbookProgressData.TYPE,
             NotesData.TYPE,
+            KnownRecipesData.TYPE,
             PersonalHandbookData.TYPE,
             HangarData.TYPE,
             WorkOrderData.TYPE,

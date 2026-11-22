@@ -1,9 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.TestEnvironments.HEAVY;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
@@ -26,13 +25,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.phys.AABB;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for when a chunk of the campaign world draws its structure sites (#799, ADR 0025): once the colony's pad is chosen, not
@@ -47,12 +44,6 @@ public class BandStructuresTest {
     private static final int PAD_CELL = -12;
     /** The cell that a chunk loaded before the pad was chosen draws, when the pad is. */
     private static final int EARLY_CELL = -13;
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
 
     /** The colony as it stands while its build is under way: the pad chosen and every anchor known, nothing finished. */
     private static ColonySite begun(MinecraftServer server) {

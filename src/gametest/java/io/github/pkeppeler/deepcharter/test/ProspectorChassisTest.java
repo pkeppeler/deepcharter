@@ -1,10 +1,10 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -67,7 +67,6 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #82: the Prospector is a two-seat chassis with its own hitbox, a 3 x 3 bore and a tier 3 cap; wrecks of it
@@ -1222,12 +1221,6 @@ public class ProspectorChassisTest {
         return found;
     }
 
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        FoundingMoleHangarTest.expect(helper, condition, format, args);
-    }
-
     private static void expectThrows(GameTestHelper helper, Runnable body, String what) {
         try {
             body.run();
@@ -1235,11 +1228,5 @@ public class ProspectorChassisTest {
             return;
         }
         throw failure(helper, "%s should throw", what);
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return FoundingMoleHangarTest.failure(helper, format, args);
     }
 }

@@ -25,9 +25,11 @@ addVmArgToRuns(exitOnOom)
 // no ticket left). Fix: ChunkMapUnloadMixin (gametest mod; its Javadoc has the mechanism).
 // Highest sample, always at the batch after the campaign batch: 1039, 1189, 1382 MB before (3 runs), 1022 MB after (1 run); next-batch
 // carry-over 816 to 899 MB -> 510 to 594 MB. `./gradlew build` at 3G: 1 Full GC, live 930 MB (the #805 run: 2, 1093 MB).
-// 3G stays: a lower heap needs a measured peak below 1 GB, and one run is not that. The remaining 1 GB there is #816.
+// Chunk writes of half-generated chunks filled it after the campaign batch: ChunkMapSaveMixin skips them (#816). Measured 2026-11-22 (1353
+// tests, forced GC every 1.5 s): peak 1.9 GB while the campaign tests run together, 1.3 GB live at the batch after it, baseline 450 to
+// 560 MB (1 run, at 3G). 4G is over twice that peak: it stays until #957 splits the campaign batch.
 // Re-measure when the suite grows by a tenth or when a test adds a tall world to the campaign batch; below 2x the peak is where CI died.
-val gameTestHeap = "-Xmx3G"
+val gameTestHeap = "-Xmx4G"
 addVmArgToRun("gameTest", gameTestHeap)
 
 // Client GameTest heap. It had none (a quarter of RAM: 4 GB on the 16 GB runner), and the first client run on the campaign overworld
