@@ -5,8 +5,12 @@ import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceFragments;
+import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceScheduler;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceTuning;
+import io.github.pkeppeler.deepcharter.sound.ambience.ClockCaller;
+import io.github.pkeppeler.deepcharter.sound.ambience.ClockHour;
+import io.github.pkeppeler.deepcharter.sound.ambience.ClockTuning;
 import io.github.pkeppeler.deepcharter.sound.ambience.QuietTracker;
 import io.github.pkeppeler.deepcharter.sound.ambience.RetainedSight;
 import io.github.pkeppeler.deepcharter.sound.ambience.RetainedWarning;
@@ -51,12 +55,15 @@ import org.jspecify.annotations.Nullable;
  */
 public final class AmbienceTicker {
     private static final SplittableRandom RANDOM = new SplittableRandom();
-    private static final HornFinder HORNS = new HornFinder();
+    private static final BlockFinder HORNS = new BlockFinder(AmbienceRegistry.COMPANY_HORN);
+    private static final BlockFinder CLOCKS = new BlockFinder(AmbienceRegistry.COMPANY_CLOCK);
 
     private static AmbienceTuning tuning = AmbienceTuning.DEFAULT;
     private static AmbienceScheduler scheduler = newScheduler();
     private static final WarningTuning WARNING_TUNING = WarningTuning.DEFAULT;
     private static final RetainedWarning WARNING = new RetainedWarning(WARNING_TUNING);
+    private static final ClockTuning CLOCK_TUNING = ClockTuning.DEFAULT;
+    private static ClockCaller clockCaller = new ClockCaller(CLOCK_TUNING, RANDOM.split());
 
     private static @Nullable QuietTracker<SoundInstance> quiet;
     /** The wreck phonograph's song alone, and for longer after it than the rest: the warning keeps away from it. */
@@ -88,6 +95,8 @@ public final class AmbienceTicker {
         wreckSong = null;
         WARNING.reset();
         HORNS.clear();
+        CLOCKS.clear();
+        clockCaller = new ClockCaller(CLOCK_TUNING, RANDOM.split());
     }
 
     private static AmbienceScheduler newScheduler() {
@@ -96,8 +105,10 @@ public final class AmbienceTicker {
 
     private static void reset() {
         scheduler.reset();
+        clockCaller.reset();
         WARNING.reset();
         HORNS.clear();
+        CLOCKS.clear();
         if (quiet != null) {
             quiet.clear();
         }
@@ -161,8 +172,9 @@ public final class AmbienceTicker {
                 : HORNS.nearest(level, layer, feet, now, tuning.hornRange());
         boolean quietNow = tracker.quiet(now);
         boolean warned = warn(client, level, quietNow);
-        // A fragment due on the tick the song sounds waits, as it does for any sound.
-        Optional<AmbienceScheduler.Pick> pick = scheduler.tick(layer, horn.isPresent(), quietNow || warned);
+        boolean called = callHour(sounds, level, layer, feet, quietNow || warned);
+        // A fragment due on the tick the song or a call sounds waits, as it does for any sound.
+        Optional<AmbienceScheduler.Pick> pick = scheduler.tick(layer, horn.isPresent(), quietNow || warned || called);
         if (pick.isEmpty()) {
             return;
         }
@@ -176,6 +188,38 @@ public final class AmbienceTicker {
             SpotPicker.pick(level, client.player.getEyePosition(), tuning, RANDOM)
                     .ifPresent(spot -> sounds.play(at(fragment, spot)));
         }
+    }
+
+    /**
+     * The punch clock (#938): near a Company clock, asks {@link ClockCaller} whether it calls an hour, and strikes the hour or hours it names
+     * from the clock, one after the other. Returns whether it did.
+     */
+    private static boolean callHour(
+            SoundManager sounds, ClientLevel level, int layer, BlockPos feet, boolean quietNow) {
+        Optional<BlockPos> clock = layer == LayerChain.SURFACE
+                ? Optional.empty()
+                : CLOCKS.nearest(level, layer, feet, now, CLOCK_TUNING.range());
+        if (clock.isEmpty()) {
+            return false;
+        }
+        OptionalInt hour = ClockHour.of(level);
+        if (hour.isEmpty()) {
+            return false;
+        }
+        Optional<ClockCaller.Call> call = clockCaller.tick(true, quietNow, hour.getAsInt());
+        if (call.isEmpty()) {
+            return false;
+        }
+        Vec3 at = Vec3.atCenterOf(clock.get());
+        for (ClockCaller.Chime chime : call.get().chimes()) {
+            SoundEvent strike = AmbienceFragments.clockHour(chime.hour());
+            if (chime.delayTicks() == 0) {
+                sounds.play(at(strike, at));
+            } else {
+                sounds.playDelayed(at(strike, at), chime.delayTicks());
+            }
+        }
+        return true;
     }
 
     /**

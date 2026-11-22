@@ -112,6 +112,33 @@ ok "rebuilds over an earlier build" build "$out"
 ok "defaults to private/audio" build
 ok "the default output exists" test -f "$repo/private/audio/deepcharter-audio-pack.zip"
 
+# The punch clock's overlay (#938): tools/sounds/lambert_clock.py writes <out>/lambert-clock/, which the build merges into the pack.
+overlay_out=$repo/private/overlay
+mkdir -p "$overlay_out/lambert-clock/sounds"
+tone "$overlay_out/lambert-clock/sounds/ambience_clock_hour_3_1.ogg" 300
+cat >"$overlay_out/lambert-clock/entries.txt" <<'ENTRIES'
+"ambience.clock.hour_3": { "replace": true, "sounds": [{ "name": "deepcharter:ambience_clock_hour_3_1", "attenuation_distance": 32 }] }
+ENTRIES
+ok "builds with an overlay" build "$overlay_out"
+ok "the overlay's file is in the pack" test -f "$overlay_out/deepcharter-audio-pack/assets/deepcharter/sounds/ambience_clock_hour_3_1.ogg"
+check_overlay() {
+  "$py" -c '
+import json, sys
+d = json.load(open(sys.argv[1]))
+ok = (d["ambience.clock.hour_3"]["replace"] is True
+      and d["ambience.clock.hour_3"]["sounds"][0]["name"] == "deepcharter:ambience_clock_hour_3_1"
+      and d["test.single"]["sounds"] == ["deepcharter:test_single_1"])
+sys.exit(0 if ok else 1)' "$overlay_out/deepcharter-audio-pack/assets/deepcharter/sounds.json"
+}
+ok "the pack's sounds.json holds the overlay's slot beside the mapped ones" check_overlay
+ok "the overlay stays outside the zip's source names" test -f "$overlay_out/deepcharter-audio-pack.zip"
+printf '"ambience.clock.hour_4": { "replace": true, "sounds": [{ "name": "deepcharter:ambience_clock_hour_4_1" }] }\n' >>"$overlay_out/lambert-clock/entries.txt"
+overlay_msg=$(build "$overlay_out" 2>&1 || true)
+ok "an overlay slot naming a missing file is refused" grep -qF 'ambience_clock_hour_4_1' <<<"$overlay_msg"
+printf '"pod.engine_idle": { "replace": true, "sounds": [{ "name": "deepcharter:ambience_clock_hour_3_1" }] }\n' >"$overlay_out/lambert-clock/entries.txt"
+overlay_msg=$(build "$overlay_out" 2>&1 || true)
+ok "an overlay slot outside ambience.clock.* is refused" grep -qF 'only ambience.clock' <<<"$overlay_msg"
+
 # Refusals: the output path must be confirmed ignored by git.
 ok "accepts an output path reached through a symlink to the repo" build "$work/link/private/via-link"
 refuses() { # refuses <description> <expected error text> <script args...>: exits non-zero and says why

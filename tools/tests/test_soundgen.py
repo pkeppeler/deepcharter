@@ -57,6 +57,72 @@ class CommittedSoundsTest(unittest.TestCase):
             self.assertLess(error / energy, 0.25, f"{name}: the OGG is not the sound its recipe makes")
 
 
+def strikes(clip):
+    """How many times the clip is struck: the sharp rises of the 10 ms envelope of its highs (the hammer's click, which a ring that beats
+    and swells again does not have)."""
+    size = recipes.RATE // 100
+    highs = [b - a for a, b in zip(clip.left, clip.left[1:])]
+    env = [math.sqrt(sum(v * v for v in highs[i : i + size]) / size) for i in range(0, len(highs) - size, size)]
+    top = max(env)
+    # A strike is the loudest of its neighbours within 0.35 s each way and not much weaker than the loudest.
+    return sum(
+        1
+        for i, level in enumerate(env)
+        if level > 0.15 * top and level == max(env[max(0, i - 35) : i + 36])
+    )
+
+
+class ClockChimeTest(unittest.TestCase):
+    """The punch clock's stand-in (#938): a cracked clock bell that strikes N times for hour N, mono and quiet."""
+
+    def test_hour_n_strikes_n_times(self):
+        for hour in range(1, 13):
+            self.assertEqual(hour, strikes(recipes.render(f"clock/hour_{hour}")), f"hour {hour}")
+
+    def test_every_clock_sound_is_declared_mono_and_a_recipe(self):
+        names = {f"clock/hour_{hour}" for hour in range(1, 13)} | {"clock/fragment_a", "clock/fragment_b"}
+        self.assertEqual(names, set(recipes.MONO))
+        self.assertLessEqual(names, set(recipes.RECIPES))
+        for name in names:
+            clip = recipes.render(name)
+            self.assertEqual(clip.left, clip.right, f"{name}: a mono sound has one voice")
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "ffmpeg is needed to read the OGGs")
+    def test_the_committed_oggs_are_mono_and_about_minus_thirty_lufs(self):
+        for name in sorted(recipes.MONO):
+            ogg = soundgen.OUT / f"{name}.ogg"
+            channels = subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "stream=channels", "-of", "csv=p=0", str(ogg)],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            self.assertEqual("1", channels, f"{name}: Minecraft positions mono sounds only")
+            report = subprocess.run(
+                ["ffmpeg", "-nostdin", "-i", str(ogg), "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True
+            ).stderr
+            loudness = float(re.findall(r"I:\s+(-?[\d.]+) LUFS", report)[-1])
+            self.assertTrue(-32.0 <= loudness <= -28.0, f"{name}: {loudness} LUFS")
+
+    def test_a_mono_recipe_is_encoded_mono_and_the_others_stereo(self):
+        if not shutil.which("ffmpeg"):
+            self.skipTest("ffmpeg is needed to encode")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "sounds"
+            code, _, err = run("--out", str(out), "--manifest", str(Path(tmp) / "manifest.json"), "clock/hour_1", "hymn/colony")
+            self.assertEqual(0, code, err)
+            channels = {
+                name: subprocess.run(
+                    ["ffprobe", "-v", "error", "-show_entries", "stream=channels", "-of", "csv=p=0", str(out / f"{name}.ogg")],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout.strip()
+                for name in ("clock/hour_1", "hymn/colony")
+            }
+            self.assertEqual({"clock/hour_1": "1", "hymn/colony": "2"}, channels)
+
+
 class HymnLengthTest(unittest.TestCase):
     def test_the_game_knows_how_long_each_hymn_plays(self):
         # HymnMoments does not start a hymn on top of the player's last one; it counts SoundTuning.hymnTicks, which must match the files.

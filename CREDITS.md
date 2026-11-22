@@ -24,3 +24,11 @@ Faint fragments of the same recordings (and of four more) are heard in the dark 
 One more of the same playbacks is the song a wrecked pod's phonograph plays, and a faint, filtered line of it heard far off in the dark. It is never a wax cylinder and never one of the ambience's fragments. [tools/sounds/first_sounds.py](tools/sounds/first_sounds.py) makes both variants, the phonograph's treatment for the wreck and a faint, filtered one with a long reverb tail for the dark, and [tools/sounds/first_sounds.json](tools/sounds/first_sounds.json) records the source's hash and the cut.
 
 - **Au Clair de la Lune, vocal solo.** Phonautogram by Édouard-Léon Scott de Martinville (Apr. 9, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY. Source: https://firstsounds.org/sounds/Scott-Feaster-No-36.mp3
+
+## The punch clock (private pack only)
+
+The punch clock's chime that ships in the jar is the game's own work: a synthesized, cracked clock bell made by [tools/sounds/recipes.py](tools/sounds/recipes.py), with no recording in it.
+
+A locally built private audio pack can replace it with the voice of Frank Lambert's 1878 "Experimental Talking Clock", calling out the hours, which [tools/sounds/lambert_clock.py](tools/sounds/lambert_clock.py) cuts. That recording is **not** in this repository and is not shipped: its ID3 notice says "(C)(P) Glenn Sage (Tinfoil.com). Do not copy, modify or distribute without permission." Nothing cut from it is committed or uploaded; the pack stays on the machine that built it.
+
+- **Experimental Talking Clock.** Frank Lambert, 1878 (lead cylinder); digital transfer, editing and compilation by Glenn Sage (Tinfoil.com). Source: https://www.tinfoil.com/lam-clock~.mp3, notes at https://tinfoil.com/cm-0101.htm

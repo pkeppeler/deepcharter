@@ -5,6 +5,11 @@
 # Each sound event in tools/audio-pack-map.txt gets its source file(s) converted to mono OGG
 # (ffmpeg, libvorbis). The pack's sounds.json replaces the mod's vanilla placeholders.
 #
+# The punch clock's hours (#938) have no original: `tools/sounds/lambert_clock.py <mp3>` writes an overlay beside the pack,
+# <out>/lambert-clock/ (sounds/*.ogg and entries.txt, one sounds.json slot per line), from a recording that may not be committed or
+# shared. When it is there this script copies it into the pack, so it replaces the mod's own chimes by id. Only ambience.clock.* slots
+# whose files are in the overlay are accepted.
+#
 # The originals are never committed or uploaded. The script refuses any output path that
 # `git check-ignore` does not confirm is ignored, so the converted audio cannot be staged by
 # accident. The map file holds only ids and file names.
@@ -131,6 +136,31 @@ else
   exit 1
 fi
 
+# The Lambert overlay, if the script made one: checked before anything is written.
+overlay=$out/lambert-clock
+overlay_entries=()
+if [[ -f $overlay/entries.txt ]]; then
+  while IFS= read -r line; do
+    [[ -z $line ]] && continue
+    if [[ ! $line =~ ^\"ambience\.clock\.[a-z0-9_]+\":\ \{\ \"replace\":\ true,\ \"sounds\":\ \[.*\]\ \}$ ]]; then
+      echo "error: bad line in $overlay/entries.txt (only ambience.clock.* slots): $line" >&2
+      exit 1
+    fi
+    names=$(grep -o "\"$namespace:[a-z0-9_]*\"" <<<"$line" | tr -d '"' | sed "s/^$namespace://")
+    [[ -n $names ]] || {
+      echo "error: no sound named in $overlay/entries.txt: $line" >&2
+      exit 1
+    }
+    for name in $names; do
+      if [[ ! -f $overlay/sounds/$name.ogg ]]; then
+        echo "error: $overlay/entries.txt names $name, which is not in $overlay/sounds" >&2
+        exit 1
+      fi
+    done
+    overlay_entries+=("$line")
+  done <"$overlay/entries.txt"
+fi
+
 rm -rf "$pack"
 rm -f "$zipfile"
 sounds_dir=$pack/assets/$namespace/sounds
@@ -152,14 +182,22 @@ mkdir -p "$sounds_dir"
     printf '%s  "%s": { "replace": true, "sounds": [%s] }' "$sep" "$id" "$refs"
     sep=$',\n'
   done
+  for line in ${overlay_entries[@]+"${overlay_entries[@]}"}; do
+    printf '%s  %s' "$sep" "$line"
+    sep=$',\n'
+  done
   printf '\n}\n'
 } >"$pack/assets/$namespace/sounds.json"
+
+if [[ ${#overlay_entries[@]} -gt 0 ]]; then
+  cp "$overlay"/sounds/*.ogg "$sounds_dir/"
+fi
 
 printf '{\n  "pack": {\n    "description": "Deep Charter private audio (do not share)",\n    "min_format": %s,\n    "max_format": %s\n  }\n}\n' "$pack_format" "$pack_format" >"$pack/pack.mcmeta"
 
 (cd "$pack" && zip -q -X -r "$zipfile" pack.mcmeta assets)
 
-echo "built ${#ids[@]} sound events:"
+echo "built $((${#ids[@]} + ${#overlay_entries[@]})) sound events (${#overlay_entries[@]} from the Lambert overlay):"
 echo "  $pack"
 echo "  $zipfile"
 echo "Keep it private: hand the zip to friends directly. Never commit or upload it."

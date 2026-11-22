@@ -1754,6 +1754,26 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Open.** The creatures session (#13) may later change how the Retained use the song (a figure that hums it, a sighting that ends it). The cue is a client reading of the figures and needs nothing from them. The story bay is drawn from the choice of the colony's pad, as its lamp is, so it has the phonograph whenever it has the lamp; no fallback bay is needed. The warning's suppression after a wreck's song is global (any `song.wreck` heard, one minute of grace), not by distance, which is enough while one phonograph sings; more would need a distance rule. Seen is a 70 degree view cone, not the render frustum.
 
+## The punch clock that calls the hours (#938, A)
+
+**Problem.** The lore's "punch clock still ticking" (Shift Change, layer 2) has only ever been a lit block. The user's call (2026-11-22) was to use the old recordings more widely, and Frank Lambert's 1878 talking clock, a lead cylinder of him calling out the hours (and skipping ten), is the obvious one for a clock. It must stay rare and a little wrong.
+
+**The pieces.**
+- **The clock** is a Company punch clock block (`company_clock`, scenery like the horn: no collision, instant to break, no drop, no rule) that the PUNCH_CLOCK hall places before its lit one, a few blocks from the PA horn.
+- **Rare:** a player within 24 blocks of it may hear it strike an hour. `ClockCaller` (pure, in `src/main`; `AmbienceTicker` feeds it and plays the sound) draws the gap between 30 and 90 minutes of play, so about one call an hour, the first not before five minutes. Its timer runs only while a player is near and is kept when they leave, so a visitor passing through hears nothing and one who lingers hears it. It has no period to learn. It waits (a drawn 20 to 90 seconds, then tries again) while the hymn, a phonograph, a transmission, a fragment or a song sounds, and the ambience's own fragments wait for it.
+- **Right, wrong or skipped:** about 40% of the calls are the world's hour on a twelve-hour dial (0 is six in the morning; midday and midnight are twelve), 40% another hour, and 20% the hour before and then the hour after, the true one missing, as Lambert skips ten. A call is never the same hours as the one before, whatever the hour is.
+- **The sound:** one event per hour, `ambience.clock.hour_1` to `hour_12`. The public jar's stand-in is ours, a cracked mechanical clock bell (`tools/sounds/recipes.py`, `clock/hour_N`: partials out of tune with twins a hair off, a hammer click and a rattle, mono, about -30 LUFS) that strikes N times for hour N. A locally built private pack may replace each by id.
+- **Deep fragments:** `ambience.clock.fragment` is one more voice in the `broken` tier's pool (a slowed, low, cracked strike or two, out of count), so in the layers below the Old Workings the ambience's draw sometimes gives it from the dark, rarely and never twice in a row, like any fragment. The stand-in is a recipe too (`clock/fragment_a`, `clock/fragment_b`).
+- **The private path for Lambert's voice.** The recording carries "(C)(P) Glenn Sage (Tinfoil.com). Do not copy, modify or distribute without permission", so neither it nor any cut of it is in the repo. `tools/sounds/lambert_clock.py <mp3>` cuts the eleven words of its clear section (0:22 to 0:33) into the hours, and four slowed, pitched-down fragments from its indistinct sections, into `private/audio/lambert-clock/` (git-ignored, refused anywhere else), and `tools/build-audio-pack.sh` merges that into the pack, which replaces the stand-ins by id. Hour 10 has no cut, as Lambert skipped it, so the stand-in strikes there. The standing rule from the user: a source whose tags or page carry an explicit no-copy or no-distribute notice goes to the private pack only; anything else is committed with a credit line.
+
+**Trade-offs.** Nothing to pay and nothing to learn: it is never a signal. The wrong hours are the point, and they teach nothing false because nothing depends on the hour. The risk is annoyance, which the rate answers.
+
+**Decisions.** The clock lives in the layer-2 hall only: the colony is the safe hub, and a second clock would dilute a place. The deep layers get the clock as fragments from the dark instead of a clock to find. The cuts in `HOURS_CUTS` were found by looking at the recording's envelope, not by ear, and are marked so.
+
+**Knobs.** `ClockTuning` (range, gaps, shares of right, wrong and skipped calls, the strike length); the volume and `attenuation_distance` of each event in `sounds.json`; the chime's recipe in `tools/sounds/recipes.py`; `HOURS_CUTS` and `FRAGMENT_CUTS` in `tools/sounds/lambert_clock.py`.
+
+**Open.** The Lambert cuts want a listen. A clock in a wreck or the colony is one more `company_clock` in a structure.
+
 ## Company rations (#838, A)
 
 **Problem.** A new player's first playtest found no food anywhere and starved before reaching the first crop. The surface has no animals or plants, and the first terminal repair takes real time.

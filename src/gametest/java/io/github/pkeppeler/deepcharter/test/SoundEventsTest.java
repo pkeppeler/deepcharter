@@ -269,7 +269,7 @@ public class SoundEventsTest {
         Set<String> declared = new TreeSet<>();
         for (DeepSound sound : DeepSound.values()) {
             String path = sound.event().location().getPath();
-            if (!path.startsWith("ambience.")) {
+            if (!path.startsWith("ambience.") || path.startsWith("ambience.clock.")) {
                 continue;
             }
             String[] parts = path.split("\\.", -1);
@@ -292,6 +292,53 @@ public class SoundEventsTest {
         }
         if (!manifest.keySet().equals(declared)) {
             throw failure(helper, "the manifest holds %s and DeepSound %s", manifest.keySet(), declared);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The punch clock's stand-in chimes (#938) are recipes of tools/sounds/recipes.py: one event per hour 1 to 12 and the deep fragments'
+     * pool, each file mono and in the recipes' manifest, and the private audio pack's map leaves them alone (a locally built Lambert
+     * overlay, tools/sounds/lambert_clock.py, replaces them by id).
+     */
+    @GameTest
+    public void theClockChimesAreMonoRecipesAndNotInThePackMap(GameTestHelper helper) throws IOException {
+        Path root = repoRoot(helper);
+        JsonObject recipes;
+        try (Reader reader = Files.newBufferedReader(root.resolve("tools/sounds/manifest.json"))) {
+            recipes = JsonParser.parseReader(reader).getAsJsonObject();
+        }
+        JsonObject slots = soundsJson(helper);
+        Set<String> ids = new TreeSet<>();
+        for (int hour = 1; hour <= 12; hour++) {
+            ids.add("ambience.clock.hour_" + hour);
+        }
+        ids.add("ambience.clock.fragment");
+        Set<String> declared = new TreeSet<>();
+        Arrays.stream(DeepSound.values())
+                .map(sound -> sound.event().location().getPath())
+                .filter(path -> path.startsWith("ambience.clock."))
+                .forEach(declared::add);
+        if (!declared.equals(ids)) {
+            throw failure(helper, "DeepSound has the clock events %s, expected %s", declared, ids);
+        }
+        Set<String> mapped = mappedIds(helper);
+        for (String id : ids) {
+            if (mapped.contains(id)) {
+                throw failure(helper, "%s is in the pack map, which needs an original file", id);
+            }
+            for (JsonElement entry : slots.getAsJsonObject(id).getAsJsonArray("sounds")) {
+                String name = entry.getAsJsonObject().get("name").getAsString().substring("deepcharter:".length());
+                if (!name.startsWith("clock/") || !recipes.has(name)) {
+                    throw failure(helper, "%s plays %s, which is not a clock recipe", id, name);
+                }
+                Path file = root.resolve("src/main/resources/assets/deepcharter/sounds/" + name + ".ogg");
+                byte[] head = Arrays.copyOf(Files.readAllBytes(file), 256);
+                int identification = indexOf(head, new byte[] {1, 'v', 'o', 'r', 'b', 'i', 's'});
+                if (identification < 0 || head[identification + 11] != 1) {
+                    throw failure(helper, "%s is not a mono Vorbis file", file);
+                }
+            }
         }
         helper.succeed();
     }

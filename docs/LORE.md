@@ -204,7 +204,7 @@ Zones: **Topsoil Claims → Stone Benches → Deep Claim.**
 Zones: **Upper Levels → Shift Change → Prospector's Run.**
 
 - **Upper Levels:** collapsed galleries, timber props, ore carts loaded and never hauled.
-- **Shift Change:** the colony's underground rail hub. A punch clock still ticking; 400 time cards: all but one punched IN at 23:00 on the Friday, none OUT. The unpunched card is Roz's.
+- **Shift Change:** the colony's underground rail hub. A punch clock still ticking, which now and then strikes an hour, and not always the hour; 400 time cards: all but one punched IN at 23:00 on the Friday, none OUT. The unpunched card is Roz's.
 - **Prospector's Run:** the rail line to the breach, the Prospector wreck with one light still on, and **something moving in the dark**: a lampless figure walking the rails. It never attacks. It never stops. More of them walk the caverns and shafts of layers 1 and 2, rare, and some carry a lamp; they come to a dark pod, cling to it and drain its fuel (section 6). They are the deep's ordinary mob, a thing to avoid: not a boss.
 - Relays with loop counters. Personnel: *"Crosstalk is a known fault on the Company side. No action is required!"*
 - The handbook ends here: *"Further documentation is restricted to Senior Personnel,"* and Roz's margin: *"Nobody's ever been promoted."*

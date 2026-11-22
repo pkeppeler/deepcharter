@@ -16,6 +16,8 @@ import net.minecraft.sounds.SoundEvent;
  */
 public final class AmbienceFragments {
     private static final String PREFIX = "ambience.";
+    /** The name of the punch clock's fragments in the broken tier's pool. */
+    private static final String CLOCK = "clock";
 
     private static final Map<AmbienceTier, List<String>> POOLS = new EnumMap<>(AmbienceTier.class);
     private static final Map<String, DeepSound> SOUNDS = new HashMap<>();
@@ -34,11 +36,22 @@ public final class AmbienceFragments {
         }
     }
 
+    static {
+        // The punch clock's deep fragments (#938) are one more voice of the broken tier, named "clock" in it.
+        POOLS.computeIfAbsent(AmbienceTier.BROKEN, t -> new ArrayList<>()).add(CLOCK);
+        SOUNDS.put(AmbienceTier.BROKEN.id() + "." + CLOCK, DeepSound.AMBIENCE_CLOCK_FRAGMENT);
+    }
+
     private AmbienceFragments() {}
 
     /** The fragments of each tier, by name. */
     public static Map<AmbienceTier, List<String>> pools() {
         return POOLS;
+    }
+
+    /** The punch clock's chime for an hour, 1 to 12: it strikes that many times. */
+    public static SoundEvent clockHour(int hour) {
+        return DeepSound.valueOf("AMBIENCE_CLOCK_HOUR_" + hour).event();
     }
 
     /** The sound event of a fragment in a tier. */

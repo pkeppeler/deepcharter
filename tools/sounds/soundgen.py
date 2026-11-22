@@ -55,8 +55,12 @@ def _encoder_args():
     return ["-c:a", "vorbis", "-strict", "-2", "-q:a", "4"]
 
 
-def _encode(clip, target):
+def _encode(clip, target, mono=False):
+    """Encodes the clip as stereo Vorbis, or as mono (Minecraft positions mono sounds only) when `mono`, which needs libvorbis."""
     target.parent.mkdir(parents=True, exist_ok=True)
+    encoder = _encoder_args()
+    if mono and encoder[1] != "libvorbis":
+        raise SystemExit("soundgen: ffmpeg has no libvorbis; its native Vorbis encoder writes stereo, and a mono sound is needed")
     with tempfile.TemporaryDirectory() as tmp:
         source = Path(tmp) / "clip.wav"
         with wave.open(str(source), "wb") as out:
@@ -65,7 +69,7 @@ def _encode(clip, target):
             out.setframerate(recipes.RATE)
             out.writeframes(clip.interleaved().tobytes())
         subprocess.run(
-            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(source), "-map_metadata", "-1", "-ac", "2", *_encoder_args(), str(target)],
+            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(source), "-map_metadata", "-1", "-ac", "1" if mono else "2", *encoder, str(target)],
             check=True,
         )
 
@@ -85,7 +89,7 @@ def build(names, out, manifest):
         if old and old["pcm_sha256"] == pcm and target.is_file() and _sha256(target) == old["ogg_sha256"]:
             entries[name] = old
             continue
-        _encode(clip, target)
+        _encode(clip, target, mono=name in recipes.MONO)
         entries[name] = {"pcm_sha256": pcm, "ogg_sha256": _sha256(target)}
         print(f"built {name}")
     manifest.write_text(json.dumps(entries, indent=2, sort_keys=True) + "\n")

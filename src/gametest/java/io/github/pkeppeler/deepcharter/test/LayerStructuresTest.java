@@ -105,6 +105,8 @@ public class LayerStructuresTest {
                         HandbookRegistry.NOTE,
                         1,
                         AmbienceRegistry.COMPANY_HORN,
+                        1,
+                        AmbienceRegistry.COMPANY_CLOCK,
                         1);
             case RAILS -> Map.of(Blocks.OAK_PLANKS, 1, Blocks.OAK_LOG, 1, Blocks.RAIL, 1);
             case KELLS_SHAFT -> Map.of(SlagBrick.BLOCK, 12, Blocks.OAK_PLANKS, 1, Blocks.RAIL, 1, Blocks.LAVA, 2);

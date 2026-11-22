@@ -11,11 +11,22 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
-/** Registers the Company horn. It has no item: it is only ever set by the structure that holds it, and breaks without a drop. */
+/** Registers the Company horn and the Company punch clock. Neither has no item: each is only ever set by the structure that holds it, and breaks without a drop. */
 public final class AmbienceRegistry {
     public static final Block COMPANY_HORN = register(
             "company_horn",
             key -> new CompanyHornBlock(BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .instabreak()
+                    .noCollision()
+                    .noOcclusion()
+                    .noLootTable()
+                    .sound(SoundType.METAL)));
+
+    /** The punch clock of the hall in Shift Change, which rarely calls an hour (#938). Scenery like the horn. */
+    public static final Block COMPANY_CLOCK = register(
+            "company_clock",
+            key -> new CompanyClockBlock(BlockBehaviour.Properties.of()
                     .setId(key)
                     .instabreak()
                     .noCollision()

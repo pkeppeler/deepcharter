@@ -83,7 +83,8 @@ public enum StructureKind {
     /**
      * The colony's underground rail hub in Shift Change: two tracks, a wall of shelves for the time cards, the punch clock that
      * is still lit and the Note (N09) on the table before the shelves. A Company horn hangs from the roof over the middle of the hall: a
-     * player near it hears the ambience's fragments from it ({@code AmbienceTicker}).
+     * player near it hears the ambience's fragments from it ({@code AmbienceTicker}). A Company punch clock stands before the lit one and rarely calls an hour,
+     * sometimes the wrong one (#938).
      */
     PUNCH_CLOCK(2, 1, 8, 8, OptionalInt.of(5)) {
         @Override
@@ -108,6 +109,7 @@ public enum StructureKind {
             p.set(5, 0, 0, Blocks.SPRUCE_PLANKS.defaultBlockState());
             p.set(5, 1, 0, NoteBlock.stateOf(9));
             p.set(0, 4, 0, AmbienceRegistry.COMPANY_HORN.defaultBlockState());
+            p.set(-6, 0, 0, AmbienceRegistry.COMPANY_CLOCK.defaultBlockState());
         }
     },
     /** The rail line of Prospector's Run: a long timbered drift with a single track, broken in places, and nothing at the end of it but the Kells' shaft. */
