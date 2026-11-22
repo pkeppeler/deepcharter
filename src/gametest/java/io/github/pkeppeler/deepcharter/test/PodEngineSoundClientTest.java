@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PacketJitter;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
@@ -20,6 +21,7 @@ import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.sounds.SoundEventListener;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.client.sounds.WeighedSoundEvents;
+import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +46,9 @@ public class PodEngineSoundClientTest implements FabricClientGameTest {
 
     /** The pilot's pod's loops sound within this distance of the pilot; the mock's pod is eight blocks away. */
     private static final double OWN_RADIUS_SQUARED = 9;
+
+    /** A step of the pod's client position above this, in one tick, is a move; the log lists them so a loop that starts can be put beside one. */
+    private static final double PODS_STILL = 0.001;
 
     private static final String ENGINE_DRIVE = "pod.engine_drive";
     private static final String ENGINE_IDLE = "pod.engine_idle";
@@ -146,10 +151,19 @@ public class PodEngineSoundClientTest implements FabricClientGameTest {
 
     private static void drive(ClientGameTestContext context, Heard heard) {
         int[] tick = {0};
+        Vec3[] last = {null};
+        List<String> moves = new ArrayList<>();
         Runnable sample = () -> {
             context.waitTick();
             tick[0]++;
-            context.runOnClient(client -> heard.sample(client.getSoundManager(), tick[0]));
+            context.runOnClient(client -> {
+                heard.sample(client.getSoundManager(), tick[0]);
+                Vec3 at = TestEntities.vehicle(ClientSession.player(client)).position();
+                if (last[0] != null && at.distanceTo(last[0]) > PODS_STILL) {
+                    moves.add(tick[0] + ": " + at.distanceTo(last[0]));
+                }
+                last[0] = at;
+            });
         };
         ClientWait.until(
                 context,
@@ -178,6 +192,8 @@ public class PodEngineSoundClientTest implements FabricClientGameTest {
         LOGGER.info(
                 "PodEngineSoundClientTest: cab loops: {}",
                 cab.stream().map(Trace::describe).toList());
+        LOGGER.info(
+                "PodEngineSoundClientTest: client ticks the pilot's pod moved by more than {}: {}", PODS_STILL, moves);
         require(!cab.isEmpty(), "The pilot heard no engine loop in the cab");
         require(
                 cab.stream()
