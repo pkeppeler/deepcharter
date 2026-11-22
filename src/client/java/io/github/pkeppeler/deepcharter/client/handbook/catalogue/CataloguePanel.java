@@ -552,7 +552,7 @@ public final class CataloguePanel {
         }
 
         graphics.nextStratum();
-        CatalogueHardware.glassFront(graphics, look, now.catalogueGlass());
+        CatalogueHardware.glassFront(graphics, look, panel, now.catalogueGlass());
         graphics.nextStratum();
 
         // The controls are on the deck under the glass, over the casing.
@@ -670,7 +670,7 @@ public final class CataloguePanel {
         }
 
         graphics.nextStratum();
-        CatalogueHardware.glassFront(graphics, look, now.recipeGlass());
+        CatalogueHardware.glassFront(graphics, look, panel, now.recipeGlass());
         graphics.nextStratum();
         Rect spec = card.spec();
         CatalogueHardware.legendSwitch(

@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.KnownRecipe;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.PartsCatalogue;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetHook;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
+import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueFixtures;
@@ -683,6 +684,102 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         });
     }
 
+    /**
+     * The glass has rounded corners (#984): no drawn string and no item icon of the two consoles may reach the region outside the arcs, which
+     * the scanlines and the glass sprite blank. The window is {@code width} by {@code height}, the smallest the layout draws at or the
+     * default.
+     */
+    private static void nothingIsCutByTheGlassCorners(
+            ClientGameTestContext context, AbstractContainerScreen<?> screen, int width, int height) {
+        CatalogueScene.parkCursor(
+                context, CatalogueScene.layout(context, context.computeOnClient(client -> panelOf(screen))));
+        context.runOnClient(client -> {
+            CatalogueLayout layout = Objects.requireNonNull(panelOf(screen).layout(), "the panels are laid out");
+            String at = " at " + width + " by " + height;
+            int radius = PanelLook.current().glassRadius();
+            List<Rect> glasses = List.of(layout.catalogueGlass(), layout.recipeGlass());
+            for (Drawn text : drawn(client, screen)) {
+                Rect box = new Rect(
+                        text.box().x(),
+                        text.box().y(),
+                        text.box().width(),
+                        text.box().height());
+                for (Rect glass : glasses) {
+                    if (inside(box, glass)) {
+                        requireClearOfCorners(box, glass, radius, "text '" + text.shortText() + "'" + at);
+                    }
+                }
+            }
+            CatalogueLook look = CatalogueLook.current();
+            CatalogueLayout.Shelf shelf = layout.shelf();
+            List<Rect> shelfCells = new ArrayList<>();
+            for (int row = 0; row < shelf.rows(); row++) {
+                for (int column = 0; column < shelf.columns(); column++) {
+                    shelfCells.add(new Rect(
+                            shelf.left() + column * look.gridCell(),
+                            shelf.gridY() + row * look.gridCell(),
+                            look.slotSize(),
+                            look.slotSize()));
+                }
+            }
+            for (int column = 0; column < shelf.columns(); column++) {
+                shelfCells.add(new Rect(
+                        shelf.left() + column * look.gridCell(),
+                        shelf.favouritesY(),
+                        look.slotSize(),
+                        look.slotSize()));
+            }
+            for (Rect cell : shelfCells) {
+                requireClearOfCorners(
+                        icon(cell, look), layout.catalogueGlass(), radius, "the item icon in " + cell + at);
+            }
+            CatalogueLayout.Card card = layout.card();
+            List<Rect> icons = new ArrayList<>();
+            for (int row = 0; row < 3; row++) {
+                for (int column = 0; column < 3; column++) {
+                    icons.add(icon(
+                            new Rect(
+                                    card.left() + column * look.recipeCell(),
+                                    card.gridY() + row * look.recipeCell(),
+                                    look.slotSize(),
+                                    look.slotSize()),
+                            look));
+                }
+            }
+            icons.add(icon(
+                    new Rect(
+                            card.left() + look.resultX(),
+                            card.gridY() + look.resultY(),
+                            look.slotSize(),
+                            look.slotSize()),
+                    look));
+            for (int row = 0; row < card.needRows(); row++) {
+                icons.add(new Rect(card.left(), card.needTop() + row * look.needRow(), 16, 16));
+            }
+            for (Rect icon : icons) {
+                requireClearOfCorners(icon, layout.recipeGlass(), radius, "the recipe item icon " + icon + at);
+            }
+        });
+    }
+
+    /** The 16 by 16 item a catalogue cell draws inside its outline. */
+    private static Rect icon(Rect cell, CatalogueLook look) {
+        return new Rect(cell.x() + look.iconInset(), cell.y() + look.iconInset(), 16, 16);
+    }
+
+    /** Fails when a row of {@code box} reaches past the rounded corner of {@code glass}: the row's first inside pixel is {@link PanelLook#cornerInset}. */
+    private static void requireClearOfCorners(Rect box, Rect glass, int radius, String what) {
+        for (int y = box.y(); y < box.bottom(); y++) {
+            int row = y - glass.y();
+            int inset = Math.max(
+                    PanelLook.cornerInset(radius, row), PanelLook.cornerInset(radius, glass.height() - 1 - row));
+            require(
+                    box.x() >= glass.x() + inset && box.right() <= glass.right() - inset,
+                    what + " " + box + " is cut by the rounded corner of the glass " + glass + " at row " + row
+                            + ", where the glass starts " + inset + " pixels in (radius " + radius + ")");
+        }
+    }
+
     /** What the screen draws with the mouse where it really is, so the catalogue keeps the hover it has. */
     private static List<Drawn> drawn(Minecraft client, Screen screen) {
         var window = client.getWindow();
@@ -1163,10 +1260,14 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             context.runOnClient(client -> screen.resize(width, HEIGHT));
             context.waitTicks(2);
             everyStringIsInsideItsGlass(context, screen, "at " + width + " by " + HEIGHT);
+            nothingIsCutByTheGlassCorners(context, screen, width, HEIGHT);
             require(
                     context.computeOnClient(client -> leftPos(screen)) == (width - CatalogueLayout.IMAGE_WIDTH) / 2,
                     "the inventory image is centred at " + width);
         }
+        context.runOnClient(client -> screen.resize(NARROWEST, shortest()));
+        context.waitTicks(2);
+        nothingIsCutByTheGlassCorners(context, screen, NARROWEST, shortest());
         for (int width : new int[] {NARROWEST - 1, 320}) {
             context.runOnClient(client -> screen.resize(width, HEIGHT));
             context.waitTicks(2);
