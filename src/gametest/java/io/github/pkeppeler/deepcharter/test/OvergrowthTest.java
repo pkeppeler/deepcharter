@@ -48,6 +48,8 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Server GameTests for overgrowth (#974): an unvisited bore grows over from its walls inward after the delay, a visited one does not, a
@@ -58,6 +60,7 @@ import org.jspecify.annotations.Nullable;
  * instead of waiting for it, as the production tick does; one waits.
  */
 public class OvergrowthTest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OvergrowthTest.class);
     private static final OvergrowthTuning TUNING = OvergrowthTuning.DEFAULT;
     private static final int Z = 6600;
     private static final int FLOOR = TestLayers.worldY(1, 60);
@@ -156,7 +159,7 @@ public class OvergrowthTest {
                 throw failure(helper, "a spectator in the bore counted as a visit");
             }
             visitor.player().setGameMode(GameType.SURVIVAL);
-            Overgrowth.stampVisit(level, chunk, later - 1);
+            Overgrowth.stampVisit(level, chunk, start + TUNING.visitStampTicks() - 1);
             if (lastVisit(chunk) != start) {
                 throw failure(
                         helper, "a visit was stamped less than %d ticks after the last", TUNING.visitStampTicks());
@@ -388,7 +391,6 @@ public class OvergrowthTest {
             if (!cells.contains(growth.asLong()) || !cells.contains(rock.asLong())) {
                 throw failure(helper, "a hand cut should leave a bore: the chunk holds %d cells", cells.size());
             }
-            // entity-query: a test reads the drops it just made
             List<ItemEntity> drops = level.getEntitiesOfClass(ItemEntity.class, new AABB(growth).inflate(4));
             if (drops.stream().anyMatch(drop -> drop.getItem().is(LayerBlocks.OVERGROWTH.asItem()))) {
                 throw failure(helper, "cut growth dropped %s, it drops nothing", drops);
@@ -607,9 +609,13 @@ public class OvergrowthTest {
                         fewest + (long) SLACK_PASSES * TUNING.passTicks(),
                         toClose);
             }
-            System.out.printf(
-                    "[overgrowth] pacing: first growth %d ticks (%.1f s) after the bore was cut; closed (%d cells) %d ticks (%.1f s) after the first%n",
-                    first[0] - marked[0], (first[0] - marked[0]) / 20.0, BORE_CELLS, toClose, toClose / 20.0);
+            LOGGER.info(
+                    "[overgrowth] pacing: first growth {} ticks ({} s) after the bore was cut; closed ({} cells) {} ticks ({} s) after the first",
+                    first[0] - marked[0],
+                    (first[0] - marked[0]) / 20.0,
+                    BORE_CELLS,
+                    toClose,
+                    toClose / 20.0);
             helper.succeed();
         });
     }
