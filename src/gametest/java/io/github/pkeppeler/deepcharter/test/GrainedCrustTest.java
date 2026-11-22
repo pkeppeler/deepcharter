@@ -590,7 +590,16 @@ public class GrainedCrustTest {
 
     @GameTest(maxTicks = MAX_TICKS)
     public void aWarningCreakComesBeforeEachPulseToWhatWouldBeSqueezed(GameTestHelper helper) {
-        int x = 5080;
+        warningsComeBeforeEachPulse(helper, 5080, 0);
+    }
+
+    /** Judged by the tick played, not the tick looked: a late first look (#958) must not shift a creak into the window. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aWarningCreakHeardBeforeTheTestLooksStillCameOnItsTick(GameTestHelper helper) {
+        warningsComeBeforeEachPulse(helper, 5200, 3);
+    }
+
+    private static void warningsComeBeforeEachPulse(GameTestHelper helper, int x, int lookAfterPulses) {
         ServerLevel level = room(helper, x);
         pad(level, x);
         MockPlayer walker = MockPlayers.join(helper, "grain-warned");
@@ -603,17 +612,22 @@ public class GrainedCrustTest {
         Arrival<Boolean> ready = ready(helper, level, x);
         int period = TUNING.grainPulseTicks();
         int warnAt = period - WARN_TICKS;
-        int[] cues = {0};
-        int[] seen = {0};
+        // Mid-pulse, so a late look's own phase is never in the warning window.
+        long lookFrom = (level.getGameTime() / period + lookAfterPulses) * period + period / 2;
         TestTicks.each(helper, () -> {
-            if (!ready.isPresent()) {
+            if (!ready.isPresent() || level.getGameTime() < lookFrom) {
                 return;
             }
-            int heard =
-                    (int) walker.soundsHeard().stream().filter(WARNING::equals).count();
-            if (heard > seen[0]) {
-                // A mock reads its sounds on its own tick, so a cue is seen a tick or two late.
-                long phase = level.getGameTime() % period;
+            List<Identifier> heard = walker.soundsHeard();
+            List<Long> playedAt = walker.soundTicks();
+            int cues = 0;
+            for (int i = 0; i < heard.size(); i++) {
+                if (!WARNING.equals(heard.get(i))) {
+                    continue;
+                }
+                cues++;
+                // A mock reads its sounds on its own tick, so a cue is read a tick or two after it was played.
+                long phase = playedAt.get(i) % period;
                 if (phase < warnAt || phase > warnAt + 3) {
                     throw failure(
                             helper,
@@ -622,10 +636,8 @@ public class GrainedCrustTest {
                             period,
                             WARN_TICKS);
                 }
-                cues[0] += heard - seen[0];
-                seen[0] = heard;
             }
-            if (cues[0] >= 2) {
+            if (cues >= 2) {
                 if (bystander.soundsHeard().contains(WARNING)) {
                     throw failure(helper, "a player who would not be squeezed was warned");
                 }

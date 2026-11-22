@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
@@ -861,7 +862,11 @@ public class UpgradeTerminalTest {
         if (Charters.deposit(server, charter, account).isPresent()) {
             throw failure(helper, "funding the account should succeed");
         }
-        helper.setBlock(TERMINAL, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState());
+        TerminalBlock.place(
+                helper.getLevel(),
+                helper.absolutePos(TERMINAL),
+                TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(),
+                3);
         BlockPos terminal = helper.absolutePos(TERMINAL);
         Vec3 centre = Vec3.atCenterOf(terminal);
         mock.teleportTo(helper.getLevel(), new Vec3(centre.x + 2, centre.y - player.getEyeHeight(), centre.z), 0, 0);

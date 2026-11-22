@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.pod.PodLining;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -443,8 +444,11 @@ public class OreProcessorClientTest implements FabricClientGameTest {
         ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
         require(Charters.found(server, player.getUUID(), CHARTER).isEmpty(), "founding should succeed");
         BlockPos processor = player.blockPosition().relative(Direction.EAST, 2);
-        server.overworld()
-                .setBlock(processor, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(),
+                processor,
+                TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
+                3);
         RepairState state = RepairState.get(server);
         for (TerminalType type : List.of(TerminalTypes.FUEL_PUMP, TerminalTypes.ORE_PROCESSOR)) {
             type.parts().forEach(part -> state.insert(type, part));
