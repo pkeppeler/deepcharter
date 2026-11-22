@@ -39,6 +39,8 @@ final class Consumables {
             case SHAPED_CHARGE -> PodCharge.set(pod, tuning, PodCharge.Kind.SHAPED);
             case QUANTUM_TELEPORTER -> Teleports.send(pod, tuning.quantumScatter());
             case MATTER_TRANSMITTER -> Teleports.send(pod, 0.0);
+            case TETHER ->
+                throw new IllegalStateException("the tether is not used up here: TetherItem handles its own use");
         };
     }
 

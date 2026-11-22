@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.repair;
 
+import io.github.pkeppeler.deepcharter.pod.TetherItem;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
@@ -16,13 +17,11 @@ public final class RepairRegistry {
     static {
         for (Consumable consumable : Consumable.values()) {
             ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, consumable.itemId());
-            ITEMS.put(
-                    consumable,
-                    Registry.register(
-                            BuiltInRegistries.ITEM,
-                            key,
-                            new ConsumableItem(
-                                    consumable, new Item.Properties().setId(key).stacksTo(16))));
+            Item item = consumable == Consumable.TETHER
+                    ? new TetherItem(new Item.Properties().setId(key).stacksTo(1))
+                    : new ConsumableItem(
+                            consumable, new Item.Properties().setId(key).stacksTo(16));
+            ITEMS.put(consumable, Registry.register(BuiltInRegistries.ITEM, key, item));
         }
     }
 

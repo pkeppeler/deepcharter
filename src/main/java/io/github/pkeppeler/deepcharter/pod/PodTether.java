@@ -1,0 +1,506 @@
+package io.github.pkeppeler.deepcharter.pod;
+
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.repair.Consumable;
+import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import io.github.pkeppeler.deepcharter.wreck.Wrecks;
+import io.netty.buffer.ByteBuf;
+import java.util.Collections;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.WeakHashMap;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
+import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.fabricmc.fabric.api.event.Event;
+import net.fabricmc.fabric.api.event.EventFactory;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import net.minecraft.core.UUIDUtil;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+
+/**
+ * The tether (#986): a line from a person on foot to the winch of their pod. A person uses a {@link TetherItem} on a pod their charter
+ * may access ({@link PodComponents#mayAccess}) to clip on, and the line pays out {@link TetherTuning#length} blocks. Using the tether
+ * in the air starts the winch, which hauls the person home through open air at {@link TetherTuning#winchSpeed}; the pilot of the pod
+ * can start it for everyone clipped to it too. A taut line holds a person at its length, which catches a fall.
+ *
+ * <p>The winch never pulls through rock. A line with rock across it is snagged: the winch does not haul, and a line that stays
+ * snagged for {@link TetherTuning#snagTicks} snaps. A line snaps too when it is stretched past {@link TetherTuning#snapMargin}, and a
+ * snapped tether cannot be clipped on again for {@link TetherTuning#snapCooldownTicks}. The pull is a velocity the client moves itself
+ * by, with its own collision, so it is a push along clear air and never a teleport. A winch is loud: while it hauls it reports to
+ * {@link #NOISE} every {@link TetherTuning#noiseInterval} ticks, which is where creatures that listen for a drawing noise attach.
+ *
+ * <p>Using the tether on a second pod while clipped hooks that pod to the first one with the tow cable's own rules ({@link PodTowing}),
+ * so a person on foot can tow a wreck.
+ *
+ * <p>The clip is a person's attachment, {@link #STATE}, synced so that everyone sees the line, and never saved: it holds the pod's UUID,
+ * and every way the link can go stale ends it ({@link Unclipped}) on the next server tick, so a person never keeps a reference to a pod
+ * that is gone, and a new session starts free. Listeners never throw on an unreadable state: it reads as no clip.
+ */
+public final class PodTether {
+    public static final int VERSION = 1;
+
+    /** The pod a person on foot is clipped to, and whether its winch is hauling them. */
+    public record State(Optional<UUID> pod, boolean winching) {
+        public static final State EMPTY = new State(Optional.empty(), false);
+        public static final MapCodec<State> BODY = RecordCodecBuilder.mapCodec(instance -> instance.group(
+                        UUIDUtil.CODEC.optionalFieldOf("pod").forGetter(State::pod),
+                        Codec.BOOL.optionalFieldOf("winching", false).forGetter(State::winching))
+                .apply(instance, State::new));
+        public static final StreamCodec<ByteBuf, State> STREAM = StreamCodec.composite(
+                ByteBufCodecs.optional(UUIDUtil.STREAM_CODEC),
+                State::pod,
+                ByteBufCodecs.BOOL,
+                State::winching,
+                State::new);
+    }
+
+    /**
+     * Not persistent: a clip is a session's. {@link Versioned} is for the sync, so that a client on another build reads it as a marker.
+     * Nothing copies it to a respawned player.
+     */
+    public static final AttachmentType<Versioned<State>> STATE = AttachmentRegistry.create(
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "pod_tether"),
+            builder -> builder.initializer(() -> Versioned.of(State.EMPTY))
+                    .syncWith(Versioned.streamCodec(VERSION, State.STREAM), AttachmentSyncPredicate.all()));
+
+    /** Why a person cannot clip to a pod. */
+    public enum Refusal {
+        NOT_ON_FOOT,
+        WRECK,
+        NOT_ALLOWED,
+        TOO_FAR,
+        ALREADY_CLIPPED,
+        COOLING_DOWN,
+        UNREADABLE;
+
+        public Component message() {
+            return Component.translatable("message.deepcharter.tether.refused." + name().toLowerCase(Locale.ROOT));
+        }
+    }
+
+    /** How a clip ended. The ones that tell the person say why. */
+    public enum Unclipped {
+        /** By hand. */
+        UNHOOKED(true, false),
+        DIED(false, false),
+        /** The person got into a pod. */
+        BOARDED(false, false),
+        /** The pod was removed, unloaded or is in another level than the person. */
+        POD_GONE(true, false),
+        /** The pod is a wreck. */
+        POD_LOST(true, false),
+        /** The line was stretched past its margin. */
+        SNAPPED(true, true),
+        /** The line stayed snagged on rock. */
+        SNAGGED(true, true);
+
+        private final boolean tells;
+        private final boolean snaps;
+
+        Unclipped(boolean tells, boolean snaps) {
+            this.tells = tells;
+            this.snaps = snaps;
+        }
+
+        public Component message() {
+            return Component.translatable("message.deepcharter.tether.unclipped." + name().toLowerCase(Locale.ROOT));
+        }
+    }
+
+    /** A loud winch. Fired on the server thread, from the tick that hauls. */
+    public interface Noise {
+        /**
+         * A winch is hauling.
+         *
+         * @param level  the level the winch is in
+         * @param at     the winch's place
+         * @param radius blocks the noise carries
+         */
+        void onNoise(ServerLevel level, Vec3 at, double radius);
+    }
+
+    /**
+     * The hook for what listens to a winch (CREATURES section 6, the Hush: the winch is loud). A creature feature registers here to
+     * draw things to {@code at}; the tether does not know who listens. Fabric events cannot be unregistered, so a listener acts only
+     * on what it marks.
+     */
+    public static final Event<Noise> NOISE =
+            EventFactory.createArrayBacked(Noise.class, listeners -> (level, at, radius) -> {
+                for (Noise listener : listeners) {
+                    listener.onNoise(level, at, radius);
+                }
+            });
+
+    /** Server only, not saved: how long each person's line has been snagged and how long its winch has hauled. Weak, so a person who leaves keeps nothing. */
+    private static final Map<ServerPlayer, Strain> STRAINS = Collections.synchronizedMap(new WeakHashMap<>());
+
+    private static final double EPSILON = 1e-7;
+    /** Blocks past the length that a taut line is pulled back by on top of the overshoot, so a person at the end of the line is not left at rest on the edge of it. */
+    private static final double HOLD_SLACK = 0.05;
+
+    /**
+     * Blocks past the arrive distance that still count as home. A person at the hull sags a tick's fall below the winch's pull each tick, so
+     * they would hover just short of the arrive distance with the winch still running.
+     */
+    private static final double ARRIVE_SLACK = 0.3;
+
+    private static final class Strain {
+        int snagged;
+        int hauled;
+    }
+
+    private PodTether() {}
+
+    public static void init() {
+        ServerTickEvents.END_SERVER_TICK.register(PodTether::tick);
+        UseEntityCallback.EVENT.register(PodTether::onUse);
+    }
+
+    private static State read(Player person) {
+        return Versioned.readable(person, STATE).orElse(State.EMPTY);
+    }
+
+    /** The UUID of the pod the person is clipped to, whether or not it is in the world. Safe on either side. */
+    public static Optional<UUID> podId(Player person) {
+        return read(person).pod();
+    }
+
+    public static boolean isClipped(Player person) {
+        return podId(person).isPresent();
+    }
+
+    /** True while the person's winch is hauling them. Safe on either side. */
+    public static boolean isWinching(Player person) {
+        return read(person).winching();
+    }
+
+    /** The pod the person is clipped to, when it is in their level and still there. */
+    public static Optional<PodEntity> pod(ServerPlayer person) {
+        Optional<UUID> id = podId(person);
+        // entity-query: the pod of a line that is not loaded reads as gone, which ends the clip (a person is never
+        // gated on it)
+        if (id.isEmpty() || !(person.level().getEntity(id.get()) instanceof PodEntity pod) || pod.isRemoved()) {
+            return Optional.empty();
+        }
+        return Optional.of(pod);
+    }
+
+    /** Where the line is fixed on the pod: the middle of its hull. */
+    public static Vec3 anchor(PodEntity pod) {
+        return pod.getBoundingBox().getCenter();
+    }
+
+    /** Why {@code person} cannot clip to {@code pod} now, or empty. Never throws. */
+    public static Optional<Refusal> clipRefusal(ServerPlayer person, PodEntity pod) {
+        if (person.isPassenger()) {
+            return Optional.of(Refusal.NOT_ON_FOOT);
+        }
+        MinecraftServer server = person.level().getServer();
+        if (!Charters.isReadable(server)) {
+            return Optional.of(Refusal.UNREADABLE);
+        }
+        if (isWrecked(pod)) {
+            return Optional.of(Refusal.WRECK);
+        }
+        if (person.getCooldowns().isOnCooldown(new ItemStack(RepairRegistry.item(Consumable.TETHER)))) {
+            return Optional.of(Refusal.COOLING_DOWN);
+        }
+        Optional<Charter> charter = Charters.readableCharterOf(server, person.getUUID());
+        if (!PodComponents.mayAccess(pod, charter)) {
+            return Optional.of(Refusal.NOT_ALLOWED);
+        }
+        if (isClipped(person)) {
+            return Optional.of(Refusal.ALREADY_CLIPPED);
+        }
+        double reach = TetherTuning.DEFAULT.clipReach();
+        if (pod.level() != person.level() || pod.getBoundingBox().distanceToSqr(person.position()) > reach * reach) {
+            return Optional.of(Refusal.TOO_FAR);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Server only: clips {@code person} to {@code pod}.
+     *
+     * @throws IllegalStateException if the clip is refused (see {@link #clipRefusal})
+     */
+    public static void clip(ServerPlayer person, PodEntity pod) {
+        Optional<Refusal> refusal = clipRefusal(person, pod);
+        if (refusal.isPresent()) {
+            throw new IllegalStateException(
+                    "person " + person.getUUID() + " cannot clip to pod " + pod.getUUID() + ": " + refusal.get());
+        }
+        STRAINS.remove(person);
+        person.setAttached(STATE, Versioned.of(new State(Optional.of(pod.getUUID()), false)));
+    }
+
+    /**
+     * Server only: ends the person's clip and its winch. A snap also leaves the tether on a cooldown. Returns false, and changes
+     * nothing, when they were not clipped.
+     */
+    public static boolean unclip(ServerPlayer person, Unclipped cause) {
+        if (!isClipped(person)) {
+            return false;
+        }
+        person.removeAttached(STATE);
+        STRAINS.remove(person);
+        if (cause.snaps) {
+            person.getCooldowns()
+                    .addCooldown(
+                            new ItemStack(RepairRegistry.item(Consumable.TETHER)),
+                            TetherTuning.DEFAULT.snapCooldownTicks());
+        }
+        if (cause.tells && person.isAlive()) {
+            person.sendOverlayMessage(cause.message());
+        }
+        return true;
+    }
+
+    /**
+     * Server only: starts or stops the person's winch. Returns whether it is hauling now: false for a person who is not clipped, and for
+     * a pod with no power, which the person is told.
+     */
+    public static boolean setWinching(ServerPlayer person, boolean winching) {
+        State state = read(person);
+        if (state.pod().isEmpty()) {
+            return false;
+        }
+        if (winching) {
+            Optional<PodEntity> pod = pod(person);
+            if (pod.isEmpty() || !PodEvents.isPowered(pod.get())) {
+                person.sendOverlayMessage(Component.translatable("message.deepcharter.tether.no_power"));
+                return false;
+            }
+        }
+        if (state.winching() != winching) {
+            STRAINS.remove(person);
+            person.setAttached(STATE, Versioned.of(new State(state.pod(), winching)));
+        }
+        return winching;
+    }
+
+    private static boolean isWrecked(PodEntity pod) {
+        return Wrecks.isWreck(pod) || pod.hull() <= 0f;
+    }
+
+    /** Blocks between the middles of the pod and the person at which the winch counts them home. */
+    private static double arriveDistance(PodEntity pod, ServerPlayer person) {
+        return pod.chassis().width() / 2.0 + TetherTuning.DEFAULT.arriveGap() + person.getBbWidth() / 2.0;
+    }
+
+    private static boolean clearLine(ServerLevel level, Vec3 from, Vec3 to, ServerPlayer person) {
+        return level.clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, person))
+                        .getType()
+                == HitResult.Type.MISS;
+    }
+
+    private static void tick(MinecraftServer server) {
+        for (ServerPlayer person : server.getPlayerList().getPlayers()) {
+            if (isClipped(person)) {
+                tickLine(person);
+            }
+        }
+    }
+
+    private static void tickLine(ServerPlayer person) {
+        if (!person.isAlive() || person.isSpectator()) {
+            unclip(person, Unclipped.DIED);
+            return;
+        }
+        if (person.isPassenger()) {
+            unclip(person, Unclipped.BOARDED);
+            return;
+        }
+        Optional<PodEntity> found = pod(person);
+        if (found.isEmpty()) {
+            unclip(person, Unclipped.POD_GONE);
+            return;
+        }
+        PodEntity pod = found.get();
+        if (isWrecked(pod)) {
+            unclip(person, Unclipped.POD_LOST);
+            return;
+        }
+        TetherTuning tuning = TetherTuning.DEFAULT;
+        ServerLevel level = person.level();
+        Vec3 from = anchor(pod);
+        Vec3 at = person.getBoundingBox().getCenter();
+        double distance = from.distanceTo(at);
+        if (distance > tuning.length() + tuning.snapMargin()) {
+            unclip(person, Unclipped.SNAPPED);
+            return;
+        }
+        boolean clear = clearLine(level, from, at, person);
+        Strain strain = STRAINS.computeIfAbsent(person, key -> new Strain());
+        boolean hauling = false;
+        if (isWinching(person)) {
+            if (!PodEvents.isPowered(pod)) {
+                setWinching(person, false);
+                person.sendOverlayMessage(Component.translatable("message.deepcharter.tether.no_power"));
+            } else if (distance <= arriveDistance(pod, person) + ARRIVE_SLACK) {
+                setWinching(person, false);
+                person.sendOverlayMessage(Component.translatable("message.deepcharter.tether.arrived"));
+            } else if (!clear) {
+                strain.snagged++;
+                if (strain.snagged == 1) {
+                    person.sendOverlayMessage(Component.translatable("message.deepcharter.tether.snagged"));
+                }
+                if (strain.snagged >= tuning.snagTicks()) {
+                    unclip(person, Unclipped.SNAGGED);
+                    return;
+                }
+            } else {
+                strain.snagged = 0;
+                double step = Math.min(tuning.winchSpeed(), distance - arriveDistance(pod, person));
+                push(person, from.subtract(at), step);
+                loud(level, pod, strain, tuning);
+                hauling = true;
+            }
+        } else {
+            strain.snagged = 0;
+        }
+        if (!hauling && distance > tuning.length() && clear) {
+            // Taut: the line holds the person at its length, which catches a fall too.
+            push(person, from.subtract(at), Math.min(tuning.winchSpeed(), distance - tuning.length() + HOLD_SLACK));
+        }
+    }
+
+    /** Gives the person a velocity of {@code speed} along {@code direction}, which their client moves them by, with its own collision. */
+    private static void push(ServerPlayer person, Vec3 direction, double speed) {
+        if (direction.lengthSqr() < EPSILON) {
+            return;
+        }
+        person.setDeltaMovement(direction.normalize().scale(speed));
+        // A player is moved by its own client, which has to be told: the server-side velocity is not read by it.
+        person.connection.send(new ClientboundSetEntityMotionPacket(person));
+        person.resetFallDistance();
+    }
+
+    private static void loud(ServerLevel level, PodEntity pod, Strain strain, TetherTuning tuning) {
+        if (strain.hauled++ % tuning.noiseInterval() == 0) {
+            Vec3 at = anchor(pod);
+            // PLACEHOLDER sound until the sound pass.
+            level.playSound(null, at.x, at.y, at.z, SoundEvents.GRINDSTONE_USE, SoundSource.NEUTRAL, 1.2F, 0.6F);
+            NOISE.invoker().onNoise(level, at, tuning.noiseRadius());
+        }
+    }
+
+    /** What the tether does when it is used in the air: unhooks (sneaking), starts or stops the winch (clipped), or reels in a crew from the seat. */
+    static InteractionResult useInAir(ServerPlayer person) {
+        if (person.isShiftKeyDown()) {
+            return unclip(person, Unclipped.UNHOOKED) ? InteractionResult.SUCCESS : InteractionResult.PASS;
+        }
+        if (isClipped(person)) {
+            boolean hauling = setWinching(person, !isWinching(person));
+            if (hauling || !isWinching(person)) {
+                person.sendOverlayMessage(Component.translatable(
+                        hauling ? "message.deepcharter.tether.hauling" : "message.deepcharter.tether.hauling_stopped"));
+            }
+            return InteractionResult.SUCCESS;
+        }
+        if (person.getVehicle() instanceof PodEntity pod && pod.getControllingPassenger() == person) {
+            int reeled = 0;
+            for (ServerPlayer other : person.level().getServer().getPlayerList().getPlayers()) {
+                if (Optional.of(pod.getUUID()).equals(podId(other)) && setWinching(other, true)) {
+                    other.sendOverlayMessage(Component.translatable("message.deepcharter.tether.reeled_in"));
+                    reeled++;
+                }
+            }
+            if (reeled > 0) {
+                return InteractionResult.SUCCESS;
+            }
+        }
+        person.sendOverlayMessage(Component.translatable("message.deepcharter.tether.not_clipped"));
+        return InteractionResult.FAIL;
+    }
+
+    private static InteractionResult onUse(
+            Player player, Level level, InteractionHand hand, Entity entity, EntityHitResult hit) {
+        if (!(entity instanceof PodEntity target)
+                || !(player.getItemInHand(hand).getItem() instanceof TetherItem)
+                || player.isSpectator()) {
+            return InteractionResult.PASS;
+        }
+        if (!(player instanceof ServerPlayer person)) {
+            // The client guesses a hit and the server settles it.
+            return InteractionResult.SUCCESS;
+        }
+        if (isClipped(person)) {
+            return useOnSecondPod(person, target);
+        }
+        Optional<Refusal> refusal = clipRefusal(person, target);
+        if (refusal.isPresent()) {
+            person.sendOverlayMessage(refusal.get().message());
+            return InteractionResult.FAIL;
+        }
+        clip(person, target);
+        person.sendOverlayMessage(Component.translatable("message.deepcharter.tether.clipped"));
+        return InteractionResult.SUCCESS;
+    }
+
+    /** The tether used on a pod while clipped: on its own pod it unhooks, on another it hooks or frees a tow from the pod the person is clipped to. */
+    private static InteractionResult useOnSecondPod(ServerPlayer person, PodEntity target) {
+        if (Optional.of(target.getUUID()).equals(podId(person))) {
+            unclip(person, Unclipped.UNHOOKED);
+            return InteractionResult.SUCCESS;
+        }
+        Optional<PodEntity> mine = pod(person);
+        if (mine.isEmpty()) {
+            unclip(person, Unclipped.POD_GONE);
+            return InteractionResult.FAIL;
+        }
+        PodEntity tower = mine.get();
+        if (PodTowing.towerId(target).filter(tower.getUUID()::equals).isPresent()) {
+            PodTowing.detach(target);
+            person.sendOverlayMessage(Component.translatable("message.deepcharter.towing.detached"));
+            return InteractionResult.SUCCESS;
+        }
+        Optional<Charter> charter = Charters.readableCharterOf(person.level().getServer(), person.getUUID());
+        if (!PodComponents.mayAccess(target, charter)) {
+            person.sendOverlayMessage(PodTowing.Refusal.NOT_ALLOWED_TO_TOW.message());
+            return InteractionResult.FAIL;
+        }
+        Optional<PodTowing.Refusal> refusal = PodTowing.refusal(tower, target);
+        if (refusal.isPresent()) {
+            person.sendOverlayMessage(refusal.get().message());
+            return InteractionResult.FAIL;
+        }
+        PodTowing.attach(tower, target);
+        person.sendOverlayMessage(Component.translatable("message.deepcharter.towing.attached"));
+        for (Entity rider : target.getPassengers()) {
+            if (rider instanceof ServerPlayer crew) {
+                crew.sendOverlayMessage(Component.translatable("message.deepcharter.towing.being_towed"));
+            }
+        }
+        return InteractionResult.SUCCESS;
+    }
+}
