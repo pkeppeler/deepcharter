@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.surface.GreatStalk;
 import io.github.pkeppeler.deepcharter.surface.SurfaceTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.ItemSpawns;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
@@ -15,10 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -28,7 +26,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -50,13 +47,16 @@ public class StalkCollapseTest {
     private static final int FLOOR_ROW = 1;
     /** The first block a stalk stands in. */
     private static final int BASE_ROW = 2;
+    /** The test area spans this block of the test on each side, in x and z. */
+    private static final int AREA_MIN = -2;
+
+    private static final int AREA_MAX = 10;
+    /** How many rows above {@link #BASE_ROW} the area counts: more than the tallest great stalk and its cap reach. */
+    private static final int AREA_TOP = 30;
     /** Longer than a collapse takes: the sag delay plus one step for each layer of the tallest great stalk and its cap. */
     private static final int COLLAPSE_WAIT = 200;
 
-    /**
-     * Where the far player stands, past the item box. A drop flies out at {@link SurfaceTuning#scatterSpeed()} and comes to rest within
-     * about 3 blocks of the block that burst it, so within about 9 blocks of a great stalk's trunk.
-     */
+    /** Where the far player stands: off the stalk, so that it takes no part in the collapse. */
     private static final int FAR_Z = 20;
 
     /**
@@ -98,8 +98,8 @@ public class StalkCollapseTest {
     /** A flat stone floor under the test's whole area, and nothing above it. */
     private static void clearArea(GameTestHelper helper, int height) {
         ServerLevel level = helper.getLevel();
-        for (int x = -2; x <= 10; x++) {
-            for (int z = -2; z <= 10; z++) {
+        for (int x = AREA_MIN; x <= AREA_MAX; x++) {
+            for (int z = AREA_MIN; z <= AREA_MAX; z++) {
                 level.setBlock(
                         helper.absolutePos(new BlockPos(x, FLOOR_ROW, z)),
                         Blocks.STONE.defaultBlockState(),
@@ -138,68 +138,9 @@ public class StalkCollapseTest {
         };
     }
 
-    /** Every recording that is running. A Fabric event cannot be unregistered, so the one listener stays and reads this list. */
-    private static final List<Recording> RECORDINGS = new CopyOnWriteArrayList<>();
-
-    static {
-        ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
-            if (entity instanceof ItemEntity item) {
-                for (Recording recording : RECORDINGS) {
-                    recording.offer(item);
-                }
-            }
-        });
-    }
-
-    /**
-     * The drops a test makes, counted where they spawn and not where they come to rest: a drop does not stay in the cell it bursts in, the
-     * layer above sags into that cell and pushes it out, speed added each tick, so a trunk's drop was seen 13 blocks from the origin and
-     * the scatter has no bound a box could hold (#967). The burst cell is always on the stalk, so the region is bounded. It holds plain
-     * values only (a listener cannot be unregistered, so it never holds a player).
-     */
-    private static final class Recording {
-        private final AABB region;
-        private final Map<String, Integer> counts = new TreeMap<>();
-        private final List<String> spawns = new ArrayList<>();
-
-        private Recording(AABB region) {
-            this.region = region;
-        }
-
-        /** Starts recording the item spawns in the region of the stalk of the test area. */
-        static Recording start(GameTestHelper helper) {
-            BlockPos low = helper.absolutePos(new BlockPos(-2, BASE_ROW, -2));
-            BlockPos high = helper.absolutePos(new BlockPos(10, BASE_ROW + 30, 10));
-            Recording recording = new Recording(new AABB(low).minmax(new AABB(high)));
-            RECORDINGS.add(recording);
-            return recording;
-        }
-
-        synchronized void offer(ItemEntity item) {
-            if (!region.contains(item.position())) {
-                return;
-            }
-            String id = BuiltInRegistries.ITEM.getKey(item.getItem().getItem()).toString();
-            counts.merge(id, item.getItem().getCount(), Integer::sum);
-            spawns.add(String.format(
-                    "%s x%s at %s",
-                    id, item.getItem().getCount(), item.blockPosition().toShortString()));
-        }
-
-        /** Stops recording and returns the spawns by item id. */
-        synchronized Map<String, Integer> stop() {
-            RECORDINGS.remove(this);
-            return new TreeMap<>(counts);
-        }
-
-        synchronized List<String> spawns() {
-            return List.copyOf(spawns);
-        }
-    }
-
     /** The failure of a count that is not the by-hand count, listing every spawn of the collapse. */
     private static RuntimeException countMismatch(
-            GameTestHelper helper, Recording collapse, Map<String, Integer> collapsed, Map<String, Integer> byHand) {
+            GameTestHelper helper, ItemSpawns collapse, Map<String, Integer> collapsed, Map<String, Integer> byHand) {
         return failure(
                 helper,
                 "the collapse dropped %s, breaking the same blocks by hand dropped %s; the collapse's spawns:%n  %s",
@@ -238,12 +179,19 @@ public class StalkCollapseTest {
         return state.is(ours("fungal_stalk")) || state.is(ours("great_stalk")) || state.is(ours("great_stalk_cap"));
     }
 
+    /** The area above the floor, absolute: where the stalk and its burst cells are. */
+    private static AABB stalkRegion(GameTestHelper helper) {
+        BlockPos low = helper.absolutePos(new BlockPos(AREA_MIN, BASE_ROW, AREA_MIN));
+        BlockPos high = helper.absolutePos(new BlockPos(AREA_MAX, BASE_ROW + AREA_TOP, AREA_MAX));
+        return new AABB(low).minmax(new AABB(high));
+    }
+
     /** Every stalk block of the area, absolute. */
     private static Set<BlockPos> stalkBlocks(GameTestHelper helper) {
         Set<BlockPos> found = new HashSet<>();
-        for (int x = -2; x <= 10; x++) {
-            for (int z = -2; z <= 10; z++) {
-                for (int y = BASE_ROW; y <= BASE_ROW + 30; y++) {
+        for (int x = AREA_MIN; x <= AREA_MAX; x++) {
+            for (int z = AREA_MIN; z <= AREA_MAX; z++) {
+                for (int y = BASE_ROW; y <= BASE_ROW + AREA_TOP; y++) {
                     BlockPos pos = helper.absolutePos(new BlockPos(x, y, z));
                     if (isStalkBlock(helper.getLevel().getBlockState(pos))) {
                         found.add(pos);
@@ -281,7 +229,7 @@ public class StalkCollapseTest {
         Runnable countable = countable(helper);
         MockPlayer player = farPlayer(helper, "stalk-collapse");
         AtomicReference<Map<String, Integer>> byHand = new AtomicReference<>();
-        AtomicReference<Recording> collapse = new AtomicReference<>();
+        AtomicReference<ItemSpawns> collapse = new AtomicReference<>();
         helper.startSequence()
                 .thenWaitUntil(countable)
                 .thenExecute(() -> {
@@ -289,7 +237,7 @@ public class StalkCollapseTest {
                     // The reference: every block from the break up, broken by hand from the top down, so nothing
                     // collapses.
                     column(helper, 2, 2, COLUMN_HEIGHT);
-                    Recording reference = Recording.start(helper);
+                    ItemSpawns reference = ItemSpawns.start(helper, stalkRegion(helper));
                     for (int index = COLUMN_HEIGHT - 1; index >= BROKEN_SEGMENT; index--) {
                         breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + index, 2)));
                     }
@@ -304,7 +252,7 @@ public class StalkCollapseTest {
                     clearArea(helper, COLUMN_HEIGHT);
                     // The collapse: one break.
                     column(helper, 2, 2, COLUMN_HEIGHT);
-                    collapse.set(Recording.start(helper));
+                    collapse.set(ItemSpawns.start(helper, stalkRegion(helper)));
                     breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + BROKEN_SEGMENT, 2)));
                 })
                 .thenIdle(COLLAPSE_WAIT)
@@ -411,7 +359,7 @@ public class StalkCollapseTest {
         Runnable countable = countable(helper);
         MockPlayer player = farPlayer(helper, "great-collapse");
         Plan plan = new Plan();
-        AtomicReference<Recording> collapse = new AtomicReference<>();
+        AtomicReference<ItemSpawns> collapse = new AtomicReference<>();
         helper.startSequence()
                 .thenWaitUntil(countable)
                 .thenExecute(() -> {
@@ -427,7 +375,7 @@ public class StalkCollapseTest {
                         }
                     }
                     // The reference: the same blocks, broken by hand from the top down.
-                    Recording reference = Recording.start(helper);
+                    ItemSpawns reference = ItemSpawns.start(helper, stalkRegion(helper));
                     List<BlockPos> order = new ArrayList<>(plan.falls);
                     order.sort(Comparator.<BlockPos>comparingInt(BlockPos::getY).reversed());
                     for (BlockPos pos : order) {
@@ -443,7 +391,7 @@ public class StalkCollapseTest {
                     }
                     clearArea(helper, reach + 4);
                     greatStalk(helper, 3, 3);
-                    collapse.set(Recording.start(helper));
+                    collapse.set(ItemSpawns.start(helper, stalkRegion(helper)));
                     breakByHand(helper, player, plan.broken);
                 })
                 .thenIdle(COLLAPSE_WAIT)
