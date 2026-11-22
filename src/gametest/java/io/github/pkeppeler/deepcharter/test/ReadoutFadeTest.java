@@ -63,7 +63,7 @@ public class ReadoutFadeTest {
         tick(fade, STONE, 10);
         for (int i = 0; i < 6; i++) {
             tick(fade, i % 2 == 0 ? DIRT : STONE, 1);
-            expect(helper, !fade.shown().equals(DIRT), "dirt flashed after %s ticks of a sweep", i + 1);
+            expect(helper, !fade.shown().equals(DIRT), "dirt flashed after %d ticks of a sweep", i + 1);
         }
         helper.succeed();
     }
@@ -125,7 +125,7 @@ public class ReadoutFadeTest {
             expect(
                     helper,
                     Math.abs(fade.alpha(1f) - expected[step]) < EPSILON,
-                    "fade-in step %s: expected %s, got %s",
+                    "fade-in step %d: expected %s, got %s",
                     step + 1,
                     expected[step],
                     fade.alpha(1f));
