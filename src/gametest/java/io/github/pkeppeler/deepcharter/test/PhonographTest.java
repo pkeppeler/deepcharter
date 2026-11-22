@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.sound.SoundTuning;
 import io.github.pkeppeler.deepcharter.sound.phonograph.PhonographBlock;
@@ -59,8 +62,7 @@ public class PhonographTest {
         if (found instanceof PhonographBlockEntity phonograph) {
             return phonograph;
         }
-        throw helper.assertionException(
-                "there is no phonograph block entity at %s, but %s", PLACE, String.valueOf(found));
+        throw failure(helper, "there is no phonograph block entity at %s, but %s", PLACE, String.valueOf(found));
     }
 
     /** Uses {@code stack} on the phonograph with the main hand, as a player's right click does. */
@@ -88,12 +90,6 @@ public class PhonographTest {
         // A creative player's hand is not spent by what it puts in.
         player.player().setGameMode(GameType.SURVIVAL);
         return player;
-    }
-
-    private static void expect(GameTestHelper helper, boolean ok, String what, Object... args) {
-        if (!ok) {
-            throw helper.assertionException(what, args);
-        }
     }
 
     private static boolean loaded(GameTestHelper helper) {
@@ -304,7 +300,7 @@ public class PhonographTest {
         MockPlayer nearOther = join(helper, "near-other");
         nearOther.teleportTo(level, Vec3.atBottomCenterOf(otherPos).add(2, 0, 0), 0f, 0f);
         if (!(level.getBlockEntity(otherPos) instanceof PhonographBlockEntity other)) {
-            throw helper.assertionException("the second phonograph has no block entity");
+            throw failure(helper, "the second phonograph has no block entity");
         }
         use(helper, nearMine, cylinder(Recording.OTHELLO), false);
         nearOther.player().setItemInHand(InteractionHand.MAIN_HAND, cylinder(Recording.OTHELLO));
@@ -384,7 +380,7 @@ public class PhonographTest {
         ItemStack result = level.recipeAccess()
                 .getRecipeFor(RecipeType.CRAFTING, input, level)
                 .map(holder -> holder.value().assemble(input))
-                .orElseThrow(() -> helper.assertionException("no recipe takes copper, iron and planks in that shape"));
+                .orElseThrow(() -> failure(helper, "no recipe takes copper, iron and planks in that shape"));
         expect(helper, result.is(PhonographRegistry.PHONOGRAPH.asItem()), "it crafts a phonograph, got %s", result);
         List<ItemStack> noIron = new ArrayList<>(grid);
         noIron.set(4, new ItemStack(Items.COPPER_INGOT));

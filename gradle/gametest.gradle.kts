@@ -66,6 +66,9 @@ object GametestScan {
 	// GameTestHelper.onEachTick queues one runnable per remaining tick of the test's maxTicks, and the runner keeps every finished test until
 	// the run ends, so the suite's live heap grew to 4.4 GB (#548). TestTicks.each keeps one. No suppression: there is no case for the queue.
 	private val onEachTickCall = Regex("""\bonEachTick\b""")
+	// A copy of test/support/Failures: a static failure(...) or fail(...), or a void expect(...) or require(...) over a boolean, with or without a GameTestHelper before it.
+	private val failureNameCopy = Regex("""\bstatic\s+[\w.<>?]+\s+(?:failure|fail)\s*\(""")
+	private val conditionCopy = Regex("""\bstatic\s+void\s+(?:expect|require)\s*\(\s*(?:final\s+)?(?:@\w+\s+)*(?:GameTestHelper\s+\w+\s*,\s*(?:final\s+)?(?:@\w+\s+)*)?boolean\b""")
 
 	// GameTestHelper.succeedWhen (and a sequence's thenWaitUntil) catches whatever its body throws, helper.fail included, and polls again; only
 	// the last exception, at the deadline, fails the test. So a check that runs on one poll only, behind a flag the poll sets itself, cannot
@@ -218,6 +221,11 @@ object GametestScan {
 					if (!marked(markedNear, rawLines, line, HUD_TOGGLE_MARKER)) {
 						problems.add("$className:${line + 1} toggles the HUD directly, which the next client test inherits; hide it with ClientChecks.withHudHidden (or show it with withHudShown), which restore it in a finally, or mark a deliberate toggle with '$HUD_TOGGLE_MARKER <reason>'")
 					}
+				}
+			}
+			if (source.name != "Failures.java" && source.name != "ClientChecks.java") {
+				for (copy in failureNameCopy.findAll(text) + conditionCopy.findAll(text)) {
+					problems.add("$className:${lineOf(text, copy.range.first) + 1} declares its own failure, fail, expect or require; use Failures.failure(helper, format, args...) and Failures.expect(helper, condition, format, args...) (test/support), which fill the placeholders and are checked as format strings")
 				}
 			}
 			for (call in onEachTickCall.findAll(text)) {
