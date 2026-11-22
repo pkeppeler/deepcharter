@@ -185,15 +185,10 @@ public final class ClientLight {
                     + client.options.gamma().get() + " darkness="
                     + client.options.darknessEffectScale().get();
         });
-        ChunkPos chunk = ChunkPos.containing(pos);
         LOGGER.info(
-                "[still-light] still={} pos={},{},{} chunk={},{} client: {} | server: {}",
+                "[still-light] still={} pos={} client: {} | server: {}",
                 name,
-                pos.getX(),
-                pos.getY(),
-                pos.getZ(),
-                chunk.x(),
-                chunk.z(),
+                pos.toShortString(),
                 clientRead,
                 serverRead);
     }
