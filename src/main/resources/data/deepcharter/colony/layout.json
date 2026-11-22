@@ -23,11 +23,11 @@
     {
       "structure": "deepcharter:colony/terminals",
       "offset": [
-        -9,
+        -4,
         1,
         -12
       ],
-      "blocks": 50,
+      "blocks": 5,
       "displays": 0
     },
     {
@@ -166,12 +166,12 @@
     ],
     "contract_terminal": [
       8,
-      2,
+      1,
       -8
     ],
     "fuel_pump": [
       -8,
-      2,
+      1,
       -8
     ],
     "hangar": [
@@ -186,7 +186,7 @@
     ],
     "ore_processor": [
       -4,
-      2,
+      1,
       -8
     ],
     "pay_office": [
@@ -201,7 +201,7 @@
     ],
     "repair_station": [
       4,
-      2,
+      1,
       -8
     ],
     "statue": [
@@ -211,7 +211,7 @@
     ],
     "upgrade_terminal": [
       0,
-      2,
+      1,
       -8
     ]
   },

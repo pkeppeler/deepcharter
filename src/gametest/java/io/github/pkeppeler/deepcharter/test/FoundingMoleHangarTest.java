@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEvents;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.pod.Serials;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalEvents;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
@@ -226,7 +227,11 @@ public class FoundingMoleHangarTest {
             }
         }
         BlockPos relative = new BlockPos(1, 2, 1);
-        helper.setBlock(relative, HangarTerminal.TYPE.block().defaultBlockState());
+        TerminalBlock.place(
+                helper.getLevel(),
+                helper.absolutePos(relative),
+                HangarTerminal.TYPE.block().defaultBlockState(),
+                3);
         BlockPos pos = helper.absolutePos(relative);
         stand(helper, mock, pos);
         return pos;
