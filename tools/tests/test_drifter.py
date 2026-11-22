@@ -11,6 +11,7 @@ import drifter  # noqa: E402
 import pngio  # noqa: E402
 
 HITBOX_PIXELS = 32
+HALO_PIXELS = 30
 
 
 class CommittedFiles(unittest.TestCase):
@@ -26,14 +27,18 @@ class Look(unittest.TestCase):
         # A box turned 45 degrees about one axis reaches sqrt(2) times its half width along the others.
         reach = drifter.SHELL / 2 * 2**0.5
         self.assertLess(drifter.SHELL, HITBOX_PIXELS)
+        self.assertLess(drifter.HALO, HITBOX_PIXELS)
+        self.assertEqual(HALO_PIXELS, drifter.HALO)
         self.assertLessEqual(reach * 2, HITBOX_PIXELS * 2**0.5)
 
     def test_the_glowmask_is_clear_where_the_skin_is_a_plain_shell(self):
         image = pngio.decode(drifter.build()[drifter.GLOWMASK_FILE])
-        lit = sum(1 for i in range(3, len(image.pixels), 4) if image.pixels[i] == 255)
+        bright = sum(1 for i in range(3, len(image.pixels), 4) if image.pixels[i] == 255)
+        soft = sum(1 for i in range(3, len(image.pixels), 4) if 0 < image.pixels[i] < 255)
         total = image.width * image.height
-        self.assertGreater(lit, 0)
-        self.assertLess(lit / total, 0.15, "a glowmask that lights a sixth of the sheet is a lamp, not a glow")
+        self.assertGreater(bright, 0)
+        self.assertLess(bright / total, 0.1, "the bright texels are the core, the veins and the tips, not the sheet")
+        self.assertLess(soft / total, 0.5, "the soft glow of the shell and the halo stays on their faces")
 
     def test_the_animations_the_renderer_asks_for_exist(self):
         held = json.loads(drifter.animation_json())["animations"]

@@ -30,16 +30,21 @@ MODEL_FILE = ASSETS / f"geckolib/models/creature/{ID}.geo.json"
 TEXTURE_FILE = ASSETS / f"textures/entity/{ID}.png"
 GLOWMASK_FILE = ASSETS / f"textures/entity/{ID}_glowmask.png"
 ANIMATION_FILE = ASSETS / f"geckolib/animations/creature/{ID}.animation.json"
-SIZE = 128
+SIZE = 256
 SHELL = 26
-CORE = 8
+HALO = 30
+CORE = 12
 TENDRIL = (2, 14, 2)
 CENTRE_Y = 18
 TENDRIL_BONES = ("tendril_a", "tendril_b", "tendril_c", "tendril_d")
 # Where the boxes sit on the texture: a box's UV area is 2 (depth + width) across and depth + height down.
 SHELL_UV = (0, 0)
-CORE_UV = (0, 52)
-TENDRIL_UV = (40, 52)
+HALO_UV = (0, 56)
+CORE_UV = (0, 120)
+TENDRIL_UV = (60, 120)
+# The glow of the shell and of the halo round it: the cold light, soft, drawn at full bright over the whole bladder.
+SHELL_GLOW_ALPHA = 150
+HALO_GLOW_ALPHA = 80
 SKIN = (150, 205, 175)
 SKIN_ALPHA = (95, 150)
 COLD = (150, 255, 215)
@@ -68,7 +73,7 @@ def box_area(uv, size):
 def shell_cubes():
     """Three boxes of the same size turned against each other, so the bladder is round enough from every side."""
     cubes = []
-    for rotation in ([0, 0, 0], [0, 45, 0], [45, 0, 45]):
+    for rotation in ([0, 0, 0], [0, 45, 0], [45, 0, 0], [0, 0, 45], [45, 0, 45], [0, 22.5, 0], [22.5, 0, 22.5]):
         cube = {
             "origin": [-SHELL / 2, CENTRE_Y - SHELL / 2, -SHELL / 2],
             "size": [SHELL, SHELL, SHELL],
@@ -78,6 +83,11 @@ def shell_cubes():
             cube["pivot"] = [0, CENTRE_Y, 0]
             cube["rotation"] = rotation
         cubes.append(cube)
+    cubes.append({
+        "origin": [-HALO / 2, CENTRE_Y - HALO / 2, -HALO / 2],
+        "size": [HALO, HALO, HALO],
+        "uv": list(HALO_UV),
+    })
     return cubes
 
 
@@ -122,7 +132,7 @@ def veins(rng, area):
     """The texels of a face that are a vein: a few random walks, so the same veins glow in the mask and darken the skin."""
     x0, y0, w, h = area
     cells = set()
-    for _ in range(18):
+    for _ in range(60):
         x, y = rng.randrange(w), rng.randrange(h)
         for _ in range(rng.randint(5, 14)):
             cells.add((x0 + x, y0 + y))
@@ -145,6 +155,12 @@ def paint():
                 glow.set(x, y, COLD, 255)
             else:
                 skin.set(x, y, rgb, rng.randint(*SKIN_ALPHA))
+                glow.set(x, y, COLD, SHELL_GLOW_ALPHA)
+    halo = box_area(HALO_UV, (HALO,) * 3)
+    for y in range(halo[1], halo[1] + halo[3]):
+        for x in range(halo[0], halo[0] + halo[2]):
+            skin.set(x, y, SKIN, 20)
+            glow.set(x, y, COLD, HALO_GLOW_ALPHA)
     core = box_area(CORE_UV, (CORE,) * 3)
     for y in range(core[1], core[1] + core[3]):
         for x in range(core[0], core[0] + core[2]):
