@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -21,7 +23,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -55,15 +56,13 @@ public class AssetCompletenessTest {
         if (ours(BuiltInRegistries.BLOCK).size() < 15
                 || ours(BuiltInRegistries.ITEM).size() < 50
                 || ours(BuiltInRegistries.ENTITY_TYPE).size() < 3) {
-            throw fail(
+            throw failure(
                     helper,
-                    List.of(
-                            "the walk found %d blocks, %d items and %d entities of %s: it is not looking at the registries"
-                                    .formatted(
-                                            ours(BuiltInRegistries.BLOCK).size(),
-                                            ours(BuiltInRegistries.ITEM).size(),
-                                            ours(BuiltInRegistries.ENTITY_TYPE).size(),
-                                            DeepCharter.MOD_ID)));
+                    "1 asset problem(s):\n  the walk found %d blocks, %d items and %d entities of %s: it is not looking at the registries",
+                    ours(BuiltInRegistries.BLOCK).size(),
+                    ours(BuiltInRegistries.ITEM).size(),
+                    ours(BuiltInRegistries.ENTITY_TYPE).size(),
+                    DeepCharter.MOD_ID);
         }
         helper.succeed();
     }
@@ -315,13 +314,8 @@ public class AssetCompletenessTest {
 
     private static void finish(GameTestHelper helper, List<String> problems) {
         if (!problems.isEmpty()) {
-            throw fail(helper, problems);
+            throw failure(helper, "%d asset problem(s):\n  %s", problems.size(), String.join("\n  ", problems));
         }
         helper.succeed();
-    }
-
-    private static RuntimeException fail(GameTestHelper helper, List<String> problems) {
-        return helper.assertionException(
-                Component.literal(problems.size() + " asset problem(s):\n  " + String.join("\n  ", problems)));
     }
 }
