@@ -37,7 +37,7 @@ final class FungalStalkBlock extends RotatedPillarBlock {
     protected void affectNeighborsAfterRemoval(
             BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
         super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
-        StalkCollapse.removed(level, pos);
+        StalkCollapse.removed(level, pos, state);
     }
 
     @Override

@@ -60,11 +60,11 @@ public class StaleLightScenario extends EvidenceScenario {
     }
 
     private void runHidden(ClientGameTestContext context) {
-        ResourceKey<Level> layer = TestLayers.dimension(2);
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             ClientWait.until(
                     context, "the player in the world", client -> client.player != null && client.level != null);
             TestServerContext server = singleplayer.getServer();
+            ResourceKey<Level> layer = server.computeOnServer(s -> TestLayers.dimension(s, 2));
             ClientWait.until(
                     context,
                     "the colony built",

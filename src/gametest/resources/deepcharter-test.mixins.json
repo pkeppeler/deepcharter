@@ -12,17 +12,16 @@
     "LightSyncSendMixin"
   ],
   "client": [
-    "BreachEffectsMixin",
     "CardinalLightingMixin",
     "ClientGameTestImplMixin",
+    "ClientPacketListenerMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",
     "HudMixin",
     "LamplessFigureRendererMixin",
     "LamplessFiguresMixin",
     "LightmapFlickerMixin",
-    "SpriteAnimationStateMixin",
-    "TransmissionOverlayMixin"
+    "SpriteAnimationStateMixin"
   ],
   "injectors": {
     "defaultRequire": 1
