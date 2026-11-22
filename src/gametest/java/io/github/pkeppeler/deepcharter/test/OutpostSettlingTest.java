@@ -831,6 +831,9 @@ public class OutpostSettlingTest {
         helper.succeed();
     }
 
+    /** A version 1 outpost was built in a format 1 world, where layer 1 is a dimension of its own (ADR 0059, ADR 0079). */
+    private static final Identifier V1_DIMENSION = Identifier.fromNamespaceAndPath("deepcharter", "layer_1");
+
     @GameTest
     public void aVersionOneOutpostListLoadsWithItsLayersDimensionAndSavesAsVersionTwo(GameTestHelper helper) {
         CompoundTag v1 = parse(helper, "{version:1,outposts:[{charter:[I;1,2,3,4],layer:1,centre:[I;10,20,30]}]}");
@@ -844,8 +847,8 @@ public class OutpostSettlingTest {
                 data.all());
         expect(
                 helper,
-                outpost.dimension().equals(TestLayers.dimension(1)),
-                "a version 1 outpost stands in the dimension of its layer, not %s",
+                outpost.dimension().identifier().equals(V1_DIMENSION),
+                "a version 1 outpost stands in the dimension of its layer (a world before the campaign world), not %s",
                 outpost.dimension());
         expect(helper, outpost.centre().equals(new BlockPos(10, 20, 30)), "the middle is kept: %s", outpost.centre());
         CompoundTag saved = (CompoundTag)
@@ -858,7 +861,7 @@ public class OutpostSettlingTest {
         CompoundTag expectedV2 = parse(
                 helper,
                 "{version:2,outposts:[{charter:[I;1,2,3,4],layer:1,dimension:\""
-                        + TestLayers.dimension(1).identifier()
+                        + V1_DIMENSION
                         + "\",centre:[I;10,20,30]}]}");
         expect(helper, saved.equals(expectedV2), "version 2 pinned: %s", saved);
         OutpostData again = OutpostData.CODEC.parse(NbtOps.INSTANCE, saved).getOrThrow();
