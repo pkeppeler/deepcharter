@@ -86,6 +86,7 @@
   "deepcharter.handbook.notes.entry": "%s. %s",
   "deepcharter.handbook.notes.label": "Note %s",
   "deepcharter.handbook.notes.new": "NEW",
+  "hint.deepcharter.right_click_read": "Right-click to read",
   "item.deepcharter.handbook": "Employee Handbook",
   "key.category.deepcharter.main": "Deep Charter",
   "key.deepcharter.handbook": "Open the Employee Handbook",
@@ -157,5 +158,9 @@
   "deepcharter.handbook.directive.company_property.tow_prospector": "Tow the Prospector to the colony.",
   "deepcharter.handbook.directive.company_property.restore_prospector": "Restore the Prospector.",
   "deepcharter.handbook.directive.company_property.reach_workings_floor": "Reach the floor of the Old Workings.",
-  "deepcharter.handbook.appendix.title.part": "%s (%s/%s)"
+  "deepcharter.handbook.appendix.title.part": "%s (%s/%s)",
+  "deepcharter.handbook.quest.ahead": "Chapter %s: %s",
+  "deepcharter.handbook.quest.see_page": "see p. %s",
+  "deepcharter.handbook.quest.step": "Step %s",
+  "deepcharter.handbook.quest.toast": "Directive complete"
 }

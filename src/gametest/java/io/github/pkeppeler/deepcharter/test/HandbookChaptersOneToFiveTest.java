@@ -189,6 +189,76 @@ public class HandbookChaptersOneToFiveTest {
         helper.succeed();
     }
 
+    /**
+     * A directive may list the items its step needs, for the quest map's index card (#847). Every need of a shipped directive is a
+     * registered item with a positive count, and the scanner directive needs exactly what the scanner unit's recipe takes.
+     */
+    @GameTest
+    public void everyNeedOfAShippedDirectiveIsARealItemAndTheScannerDirectiveNeedsItsRecipe(GameTestHelper helper) {
+        Map<Identifier, Integer> scannerNeeds = new LinkedHashMap<>();
+        for (HandbookChapter chapter : shipped(helper.getLevel().getServer()).values()) {
+            for (HandbookChapter.Entry entry : chapter.directives()) {
+                for (HandbookChapter.Need need : entry.needs()) {
+                    if (BuiltInRegistries.ITEM.getOptional(need.item()).isEmpty() || need.count() < 1) {
+                        throw helper.assertionException(
+                                "directive %s needs %s x%s, which is not a registered item or not a count",
+                                entry.id(), need.item(), need.count());
+                    }
+                    if (entry.id().toString().equals(directive("welcome", "craft_scanner"))) {
+                        scannerNeeds.put(need.item(), need.count());
+                    }
+                }
+            }
+        }
+        Map<Identifier, Integer> recipe = new LinkedHashMap<>();
+        try (InputStream stream =
+                HandbookChaptersOneToFiveTest.class.getResourceAsStream("/data/deepcharter/recipe/scanner_unit.json")) {
+            JsonObject json = JsonParser.parseReader(new InputStreamReader(
+                            Objects.requireNonNull(stream, "no scanner recipe"), StandardCharsets.UTF_8))
+                    .getAsJsonObject();
+            JsonObject key = json.getAsJsonObject("key");
+            for (var row : json.getAsJsonArray("pattern")) {
+                for (char symbol : row.getAsString().toCharArray()) {
+                    if (symbol != ' ') {
+                        recipe.merge(
+                                Identifier.parse(key.get(String.valueOf(symbol)).getAsString()), 1, Integer::sum);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+        if (!scannerNeeds.equals(recipe)) {
+            throw helper.assertionException(
+                    "the craft_scanner directive should need what the scanner unit recipe takes, %s, got %s",
+                    recipe, scannerNeeds);
+        }
+        helper.succeed();
+    }
+
+    /** A directive without {@code needs} needs nothing, and a need with no items is refused when the chapter loads. */
+    @GameTest
+    public void needsAreOptionalAndACountOfZeroIsRefused(GameTestHelper helper) {
+        JsonObject bare = JsonParser.parseString("{\"id\": \"deepcharter:x\", \"text\": \"x\"}")
+                .getAsJsonObject();
+        HandbookChapter.Entry entry = HandbookChapter.Entry.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, bare)
+                .getOrThrow();
+        if (!entry.needs().isEmpty()) {
+            throw helper.assertionException("an entry without needs should need nothing, got %s", entry.needs());
+        }
+        JsonObject zero = JsonParser.parseString(
+                        "{\"id\": \"deepcharter:x\", \"text\": \"x\", \"needs\": [{\"item\": \"minecraft:stick\", \"count\": 0}]}")
+                .getAsJsonObject();
+        if (HandbookChapter.Entry.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, zero)
+                .result()
+                .isPresent()) {
+            throw helper.assertionException("a need of count 0 should be refused");
+        }
+        helper.succeed();
+    }
+
     static final Pattern PROSE_KEY =
             Pattern.compile("deepcharter\\.handbook\\.(chapter\\..*\\.(text\\.\\d+(\\.margin)?|margin)|appendix\\..*)");
 
