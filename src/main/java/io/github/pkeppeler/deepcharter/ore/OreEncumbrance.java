@@ -1,11 +1,14 @@
 package io.github.pkeppeler.deepcharter.ore;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.handbook.ReadMarks;
 import java.util.Objects;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -13,9 +16,17 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.BundleContents;
 import net.minecraft.world.item.component.ItemContainerContents;
 
-/** Carried ore slows a player on foot (SPEC section 4), so that the pod is the hauler. Ore in a shulker box or a bundle counts. */
+/**
+ * Carried ore slows a player on foot (SPEC section 4), so that the pod is the hauler. Ore in a shulker box or a bundle counts.
+ * This class is the one source of the slowdown: the Overburdened status ({@link OreRegistry#OVERBURDENED}) and the one-time line on a
+ * player's first ore only show it (#853), and are set here from the same number, on the same tick.
+ */
 public final class OreEncumbrance {
     private static final Identifier LOAD = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "ore_load");
+
+    /** The read mark that records the one-time line on a player's first ore (the player's {@code ReadMarks}, which also holds one-time hints). */
+    public static final Identifier FIRST_PICKUP_MARK =
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hint/first_ore");
 
     private OreEncumbrance() {}
 
@@ -53,7 +64,8 @@ public final class OreEncumbrance {
 
     private static void apply(ServerPlayer player) {
         OreTuning tuning = OreTuning.DEFAULT;
-        double slowdown = Math.min(tuning.maxSlowdown(), carriedMass(player) * tuning.slowdownPerMass());
+        float mass = carriedMass(player);
+        double slowdown = Math.min(tuning.maxSlowdown(), mass * tuning.slowdownPerMass());
         AttributeInstance speed = Objects.requireNonNull(
                 player.getAttribute(Attributes.MOVEMENT_SPEED), "a player has no movement speed attribute");
         // Setting a modifier marks the attribute dirty, which sends a packet, even when the value is the same.
@@ -66,5 +78,40 @@ public final class OreEncumbrance {
             speed.addOrUpdateTransientModifier(
                     new AttributeModifier(LOAD, -slowdown, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         }
+        // A pod carries its pilot at its own speed, so a rider is not slowed and the status would say otherwise.
+        showStatus(player, player.isPassenger() ? 0 : slowdown);
+        if (mass > 0) {
+            explainFirstOre(player);
+        }
+    }
+
+    /**
+     * Shows the weight as an endless status whose level is the units of ore carried, one level for each {@code massScale} of mass and no
+     * more than the cap allows. It is set only when it differs, because every change is a packet, and it is put back on the next tick
+     * if milk or a command cleared it.
+     */
+    private static void showStatus(ServerPlayer player, double slowdown) {
+        MobEffectInstance shown = player.getEffect(OreRegistry.OVERBURDENED);
+        if (slowdown <= 0) {
+            if (shown != null) {
+                player.removeEffect(OreRegistry.OVERBURDENED);
+            }
+            return;
+        }
+        OreTuning tuning = OreTuning.DEFAULT;
+        int level = Math.max(1, (int) Math.round(slowdown / (tuning.slowdownPerMass() * tuning.massScale())));
+        if (shown == null || shown.getAmplifier() != level - 1) {
+            player.addEffect(new MobEffectInstance(
+                    OreRegistry.OVERBURDENED, MobEffectInstance.INFINITE_DURATION, level - 1, false, true, true));
+        }
+    }
+
+    /** Says once per player, and keeps that as a read mark, why they now move slowly. Says nothing when the marks cannot be read. */
+    private static void explainFirstOre(ServerPlayer player) {
+        if (!ReadMarks.isReadable(player) || ReadMarks.isRead(player, FIRST_PICKUP_MARK)) {
+            return;
+        }
+        ReadMarks.mark(player, FIRST_PICKUP_MARK);
+        player.sendSystemMessage(Component.translatable("deepcharter.ore.first_pickup"));
     }
 }
