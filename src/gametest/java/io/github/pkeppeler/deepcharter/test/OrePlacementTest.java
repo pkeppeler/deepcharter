@@ -10,7 +10,6 @@ import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.Depth;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
-import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.GasHazard;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
@@ -45,8 +44,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.GameType;
@@ -103,20 +100,12 @@ public class OrePlacementTest {
 
     private static Census @Nullable [] census;
 
-    private static Census @Nullable [] campaignCensus;
-
     private static final String CAMPAIGN = "deepcharter:campaign_sample";
 
-    @GameTest(maxTicks = 6000)
+    /** The tables in the campaign world (#743): the zone fill runs in each layer's band, so each of its six zones holds the ore of the same rows. */
+    @GameTest(dimension = CAMPAIGN, maxTicks = 6000)
     public void oreAndHazardFrequenciesMatchTheTablesPerZone(GameTestHelper helper) {
         expectTables(helper, sample(helper));
-        helper.succeed();
-    }
-
-    /** The same tables in the campaign world (#743): the zone fill runs in each layer's band, so each of its six zones holds the ore of the same rows. */
-    @GameTest(dimension = CAMPAIGN, maxTicks = 6000)
-    public void oreAndHazardFrequenciesMatchTheTablesPerZoneInTheCampaignWorld(GameTestHelper helper) {
-        expectTables(helper, campaignSample(helper));
         helper.succeed();
     }
 
@@ -210,7 +199,7 @@ public class OrePlacementTest {
         helper.succeed();
     }
 
-    @GameTest(maxTicks = 6000)
+    @GameTest(dimension = CAMPAIGN, maxTicks = 6000)
     public void hazardsStartWhereTheIssueSaysAndCicatriumIsDeep(GameTestHelper helper) {
         Census[] sample = sample(helper);
         for (int zone = 0; zone < ZONE_NAMES.length; zone++) {
@@ -438,7 +427,7 @@ public class OrePlacementTest {
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodDrillingIntoGasPaysTheBlast(GameTestHelper helper) {
         int x = 9000;
-        int floor = 60;
+        int floor = TestLayers.worldY(1, 60);
         ServerLevel level = TestLayers.level(helper, 1);
         room(level, x, floor);
         BlockPos gas = new BlockPos(x - 1, floor - 1, Z - 1);
@@ -478,7 +467,8 @@ public class OrePlacementTest {
         MockPlayer mock = MockPlayers.join(helper, "ore-hands");
         ServerLevel one = TestLayers.level(helper, 1);
         ServerLevel two = TestLayers.level(helper, 2);
-        BlockPos pos = TestLayers.pos(1, 7200, 80, Z);
+        BlockPos pos = TestLayers.pos(2, 7200, 80, Z);
+        BlockPos pos1 = TestLayers.pos(1, 7200, 80, Z);
         Block ironium = OreBlocks.of(OreType.IRONIUM);
         mock.teleportTo(two, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
         mock.player().setGameMode(GameType.SURVIVAL);
@@ -498,10 +488,10 @@ public class OrePlacementTest {
         if (mock.player().gameMode.destroyBlock(pos) || !two.getBlockState(pos).is(ironium)) {
             throw failure(helper, "an adventure player broke ironium ore by hand in layer_2");
         }
-        mock.teleportTo(one, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
+        mock.teleportTo(one, Vec3.atBottomCenterOf(pos1.above(4)), 0, 0);
         mock.player().setGameMode(GameType.SURVIVAL);
-        one.setBlock(pos, ironium.defaultBlockState(), 3);
-        if (!mock.player().gameMode.destroyBlock(pos)) {
+        one.setBlock(pos1, ironium.defaultBlockState(), 3);
+        if (!mock.player().gameMode.destroyBlock(pos1)) {
             throw failure(helper, "a survival player could not break ironium ore by hand in layer_1");
         }
         helper.succeed();
@@ -510,8 +500,8 @@ public class OrePlacementTest {
     @GameTest
     public void handsCannotBreakCompanyRockInAnyLayer(GameTestHelper helper) {
         MockPlayer mock = MockPlayers.join(helper, "company-hands");
-        BlockPos pos = TestLayers.pos(1, 7300, 80, Z);
         for (int layer = 1; layer <= 2; layer++) {
+            BlockPos pos = TestLayers.pos(layer, 7300, 80, Z);
             ServerLevel level = TestLayers.level(helper, layer);
             mock.teleportTo(level, Vec3.atBottomCenterOf(pos.above(4)), 0, 0);
             level.setBlock(pos, HazardBlocks.COMPANY_ROCK.defaultBlockState(), 3);
@@ -535,7 +525,7 @@ public class OrePlacementTest {
      */
     @GameTest(maxTicks = MAX_TICKS)
     public void aPodDrillCannotBoreCompanyRockOrAnyUndiggableBlock(GameTestHelper helper) {
-        int floor = 60;
+        int floor = TestLayers.worldY(1, 60);
         Block[] blockers = {HazardBlocks.COMPANY_ROCK, Blocks.COARSE_DIRT};
         ServerLevel level = TestLayers.level(helper, 1);
         Rig[] refused = new Rig[blockers.length];
@@ -681,125 +671,6 @@ public class OrePlacementTest {
         });
     }
 
-    /** A crossing carves a pocket with lava and gas around it: the carve seals them out, so nothing flows or blasts in. */
-    @GameTest(maxTicks = 400)
-    public void aDescendingArrivalPocketIsSealedAgainstLavaAndGas(GameTestHelper helper) {
-        ServerLevel from = TestLayers.level(helper, 1);
-        ServerLevel to = TestLayers.level(helper, 2);
-        BlockPos bottom = new BlockPos(7600, TestLayers.band(to, 2).maxY() - LayerTuning.DEFAULT.pocketHeight(), Z);
-        expectSealedArrival(
-                helper,
-                "seal-down",
-                from,
-                new Vec3(7600.5, TestLayers.band(from, 1).minY() - 2, Z + 0.5),
-                to,
-                bottom,
-                true);
-    }
-
-    @GameTest(maxTicks = 400)
-    public void anAscendingArrivalPocketIsSealedAgainstLavaAndGas(GameTestHelper helper) {
-        ServerLevel from = TestLayers.level(helper, 2);
-        ServerLevel to = TestLayers.level(helper, 1);
-        BlockPos bottom = new BlockPos(7700, TestLayers.band(to, 1).minY() + LayerTuning.DEFAULT.crustThickness(), Z);
-        expectSealedArrival(
-                helper,
-                "seal-up",
-                from,
-                new Vec3(7700.5, TestLayers.band(from, 2).maxY() + 2, Z + 0.5),
-                to,
-                bottom,
-                false);
-    }
-
-    private static void expectSealedArrival(
-            GameTestHelper helper,
-            String name,
-            ServerLevel from,
-            Vec3 start,
-            ServerLevel to,
-            BlockPos bottom,
-            boolean floorIsRock) {
-        int radius = LayerTuning.DEFAULT.pocketRadius();
-        int height = LayerTuning.DEFAULT.pocketHeight();
-        int reach = radius + 1;
-        // Lava and gas on every face of the shell: the sides, the ceiling and (where it is not the crust) the floor.
-        for (int i = -radius; i <= radius; i += radius) {
-            for (int dy = 0; dy < height; dy += 2) {
-                to.setBlock(bottom.offset(reach, dy, i), Blocks.LAVA.defaultBlockState(), 2);
-                to.setBlock(bottom.offset(-reach, dy, i), Blocks.LAVA.defaultBlockState(), 2);
-                to.setBlock(bottom.offset(i, dy, reach), Blocks.LAVA.defaultBlockState(), 2);
-                to.setBlock(bottom.offset(i, dy, -reach), Blocks.LAVA.defaultBlockState(), 2);
-                to.setBlock(bottom.offset(reach, dy + 1, i), HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
-                to.setBlock(bottom.offset(i, dy + 1, -reach), HazardBlocks.GAS_POCKET.defaultBlockState(), 2);
-            }
-            to.setBlock(bottom.offset(i, height, 0), Blocks.LAVA.defaultBlockState(), 2);
-            if (floorIsRock) {
-                to.setBlock(bottom.offset(i, -1, 0), Blocks.LAVA.defaultBlockState(), 2);
-            }
-        }
-        MockPlayer mock = MockPlayers.join(helper, name);
-        mock.teleportTo(from, start, 0, 0);
-        long[] arrivedAt = {-1};
-        TestTicks.each(helper, () -> {
-            if (!mock.player().level().dimension().equals(to.dimension())) {
-                return;
-            }
-            if (arrivedAt[0] < 0) {
-                arrivedAt[0] = helper.getTick();
-            }
-            for (BlockPos pos : BlockPos.betweenClosed(
-                    bottom.offset(-radius, 0, -radius), bottom.offset(radius, height - 1, radius))) {
-                if (!to.getBlockState(pos).isAir()) {
-                    throw failure(
-                            helper,
-                            "the arrival pocket holds %s at %s %d ticks after arrival",
-                            to.getBlockState(pos).getBlock(),
-                            pos.toShortString(),
-                            helper.getTick() - arrivedAt[0]);
-                }
-            }
-            if (mock.player().getHealth() < mock.player().getMaxHealth()) {
-                throw failure(
-                        helper,
-                        "the arriving player was hurt: health %s",
-                        mock.player().getHealth());
-            }
-            if (helper.getTick() - arrivedAt[0] >= 100) {
-                helper.succeed();
-            }
-        });
-    }
-
-    @GameTest(maxTicks = MAX_TICKS)
-    public void aPilotIsToldWhenCompanyRockRefusesTheDrill(GameTestHelper helper) {
-        int x = 9300;
-        int floor = 60;
-        ServerLevel level = TestLayers.level(helper, 1);
-        room(level, x, floor);
-        level.setBlock(new BlockPos(x - 1, floor - 1, Z - 1), HazardBlocks.COMPANY_ROCK.defaultBlockState(), 2);
-        Rig rig = Rig.await(helper, level, new Vec3(x, floor, Z), "company-pilot");
-        TestTicks.each(helper, () -> {
-            if (!rig.pod.isPresent()) {
-                return;
-            }
-            for (Component message : rig.pilot.actionBarMessages()) {
-                if (message.getContents() instanceof TranslatableContents translatable
-                        && translatable.getKey().equals("deepcharter.ore.company_rock_refused")) {
-                    rig.pod.get().discard();
-                    helper.succeed();
-                    return;
-                }
-            }
-            if (rig.pod.get().tickCount > 200) {
-                throw failure(
-                        helper,
-                        "the pilot got no company-rock message in 200 pod ticks: %s",
-                        rig.pilot.actionBarMessages());
-            }
-        });
-    }
-
     private static void expectCubeIsStoneAroundAir(
             GameTestHelper helper, ServerLevel level, BlockPos centre, String what) {
         for (BlockPos pos : BlockPos.betweenClosed(centre.offset(-3, -3, -3), centre.offset(3, 3, 3))) {
@@ -824,27 +695,15 @@ public class OrePlacementTest {
         return blocks;
     }
 
-    /** Counts the blocks of {@link #SIDE} x {@link #SIDE} chunks of each layer, once for all the tests of the class. */
+    /** Counts the blocks of {@link #SIDE} x {@link #SIDE} chunks of each layer's band, once for all the tests of the class. */
     private static Census[] sample(GameTestHelper helper) {
         if (census == null) {
             census = count(layer -> {
-                ServerLevel level = TestLayers.level(helper, layer);
-                LayerChain.Band band = TestLayers.band(level, layer);
-                return new Rows(level, band.minY(), band.height());
-            });
-        }
-        return census;
-    }
-
-    /** {@link #sample} for the campaign world, whose layers are bands of one level. */
-    private static Census[] campaignSample(GameTestHelper helper) {
-        if (campaignCensus == null) {
-            campaignCensus = count(layer -> {
                 CampaignBands.Band band = CampaignBands.layer(layer);
                 return new Rows(helper.getLevel(), band.minY(), band.height());
             });
         }
-        return campaignCensus;
+        return census;
     }
 
     /** The rows of one layer: the level that holds it and the Ys it spans in that level. */

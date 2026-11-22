@@ -1227,6 +1227,53 @@ The helmet lamp is a 2 by 2 pixel lens in the hard hat's bracket, dull amber, no
 - Should a killed figure drop something (a lamp, a scrap of company cloth), so that killing them pays? Answered by the creatures session (#13): no loot, so the dead keep their dignity. A brass Continuity tag that becomes a Note is a proposal ([CREATURES.md](../CREATURES.md#3-principles)).
 - The warning, hurt and death sounds are placeholders (vanilla sculk and soul sounds); the audio pass should give them a voice.
 
+## Tallies skim a sample (#917, A)
+
+**The problem.** The Conduit is the landmark of the whole game and nothing about it is alive. CREATURES.md gives Moloch's family a second small thing besides the Retained: a counting drone that costs you ore, not fuel, and that the player can always see coming. Moloch's things take and never break ([ADR 0072](../adr/0072-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)).
+
+**What it does.**
+
+1. **Where.** In layers 1 and 2, within 48 blocks (square) of the Conduit's axis. The casing is solid rock, so a Tally appears in dark open air near a pod or a person that holds ore, 10 to 20 blocks off, and flies down the bore. It never breaks a block and never touches the casing.
+2. **What draws it.** A pod with a pilot, power, no lights and ore in the bay; or a person on foot in the dark (block light under 3) who carries ore. A pod or person with no ore draws nothing: there is nothing to sample.
+3. **Sensed.** A click every couple of seconds, an amber eye the size of a pin, and a scanner that reads it as ore: a block of ore that moves. The pilot gets one line when one finds the pod.
+4. **The skim.** A Tally that trails its mark for 30 seconds clamps to the cargo hatch (a person's pack on foot), holds it for 3 seconds (2 on foot), takes the **cheapest** ore held as a "quality sample" and flies off. One sample per Tally.
+5. **Counters.** The cutter bites it on the hatch while the pod drills and breaks it in 1 second, so a pilot who reads the clamp line and drills into rock loses nothing. On foot one blow breaks it, however light. A lit pod draws none. It drops nothing.
+
+**The ladder.** By hand: the cutter and a blow teach it. Automated: a lights part keeps it off a pod. Mastery: none needed; it stays a tax. Outrunning it works too: a pod that leaves its sense for 5 seconds drops it.
+
+**Trade-offs.** A Tally costs the one thing the lights part does not otherwise protect, the haul. The cheapest-ore rule keeps a skim a pinch: it can cost at most the zone's cheapest ore, and hauling one cheap ore among dear ones draws it to the cheap one.
+
+**Knobs.** `TallyTuning`: the zone (48), the check interval (10 s), the chance per check (layer 1 3 per cent, layer 2 10 per cent), the trail (600 ticks), the holds (60 and 40 ticks), the Tally's health (6) and the cutter's bite (2 each 10 ticks).
+
+### Pacing
+
+Rows are **measured** (asserted by a test, `TallyTest`) or **modelled** (computed in `TallyEconomyTest` from assumed shares). `[tally]` and `[tally-economy]` lines log them.
+
+| Row | Kind | Value |
+|---|---|---|
+| Trail, then clamp (a pod that stays put, real flight) | measured | 637 to 683 ticks (32 to 34 s): the 30 s trail and an approach; the test asserts 600 to 700 |
+| Clamp to gone | measured | 100 ticks at the hatch (3 s hold, 2 s flight off); 80 ticks on foot |
+| The cutter, drill to broken | measured | 21 ticks, about 1 s; the test asserts 20 to 25 (health 6, 2 a bite, a bite every 10 ticks, the first at once) |
+| One blow of 1 on foot | measured | breaks it |
+| A Tally walled off from the pod | measured | never clamps and takes nothing |
+| Skims a run | modelled | layer 1 0.09, layer 2 0.29 |
+| Expected loss at the zone's mean ore | modelled | layer 1 $4.8 of a stock Mole's $115 net (4.2 per cent); layer 2 $24.8 of a tier 2 run's $413 (6.0 per cent) |
+| The worst skim | modelled | one ore of $30 in layer 1: 26 per cent of a layer 1 run's net |
+
+The modelled rows rest on three guesses, none measured: a 4-minute run, half of it in the casing zone; 60 per cent of Tallies keep the pod in sense for the whole trail; and 40 per cent of clamps find the pilot not answering inside the hold. The answering pilot is the 40 per cent: one who reads the clamp line and drills loses nothing, so a Tally is a tax on the inattentive and on the climb home, where the pod does not drill.
+
+**Rules worth stating.**
+
+- A Tally latches only from beside its mark (within `trailGapBlocks + 1`). One that cannot get there, walled off in a pocket, keeps trailing and never clamps, and it never passes through rock.
+- Once clamped it takes its sample even if the pilot leaves, a parked pod included; it lets go only when its pod or person is removed (a log-off) or it is broken. A light does not free it.
+- Layers 1 and 2 only. The Conduit beyond the Ramp is act 3.
+- Not in Peaceful: a Tally neither comes nor skims there.
+- A pod flown by a creative player draws none.
+
+**Does this make the default harder?** Yes, a little: 4 to 6 per cent of a run on average, where before nothing here touched the haul. A first run that loses a $30 ore is a quarter of its net.
+
+**Open.** Their act 3 job, calling the Recovery units, is [#930](https://github.com/pkeppeler/deepcharter/issues/930). The Tally has no call yet; it only needs a hook where a Tally sees an unauthorised pod.
+
 ## Early ore access: salvage (#245, A)
 
 **Problem.** SPEC section 3 no longer promises vanilla ores near the surface (the surface is regolith rock with no ore, [ADR 0036](../adr/0036-the-surface-is-generated-from-data-by-a-replaced-overworld-dimension.md)), and the ten terminal parts are crafted from iron, copper and redstone. A new player has no trees either. The bootstrap has to give wood, metal and stone with nothing in the ground.
@@ -1744,3 +1791,59 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Knobs.** None: the behaviour is the vanilla falling block's. `SurfaceBlocks.REGOLITH_DUST` is the dust colour.
 
 **Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
+
+## The first tank and the Company recovery (#963, A)
+
+**Problem.** The third playtest: the first pod "can only dig like 10 blocks before it runs out of fuel", then sits dark at the bottom of the shaft. The burn rates came from the original's per-second values (0.063, 0.19 and 0.32 L/s on a 10 L tank), but our drill takes 2.4 s a block in layer 1 (24 ticks of stone, slowed by depth, plus the pod's settling), so the same seconds bought far fewer blocks. Nobody had measured a tank in blocks. And a pilot who ran dry, broke and alone had no way out at all.
+
+**Measured** (`PodFuelTripTest`: the real stock pod, the real drill and a scripted pilot's inputs, in plain layer 1 stone; the pad is the top of layer 1, so a trip starts with the braked fall to the stone).
+
+| One full tank | Before (10 L, 0.32 L/s drilling) | After (10 L, 0.046 L/s drilling) |
+|---|---|---|
+| Straight bore down layer 1 | 13 blocks, 31 s of drilling, then stranded | 93 blocks, 230 s, then stranded |
+| First trip: 40 blocks down, a 6-block side tunnel at 20 and at 40, home on the rotor | 42.0 L, 152 s: four tanks, and a stranding at 38 s | 6.0 L, 152 s, home with 40% of the tank |
+| What a tank of that mix lasts | 0.6 min | 4.2 min |
+| Climb home from 40 blocks down | 3.4 L in 18 s | 0.48 L in 18 s |
+| Low-fuel tone (21%) | 2.1 L: 0.6 of the climb home | 2.1 L: 4.3 times the climb home |
+| Tank tiers 1 to 6, minutes of that mix | 0.9, 1.5, 2.4, 3.6, 6.0, 9.0 | 6.3, 10.5, 16.8, 25.2, 42.1, 63.1 |
+| Reserve tank (+25 L) | 2.1 min | 14.7 min |
+
+**The retune.** The three burn rates fall to 0.009 idle, 0.027 moving and 0.046 drilling (a seventh of the original's), and nothing else moves: not the tank (10 L), the litre price ($1), what a fuel item gives, the reserve tank's 25 L or the tank ladder's ratios, so every one of those keeps its meaning and each tier still multiplies the minutes (1.5x, 1.7x, 1.6x ...). The rate was the wrong number, not the tank. Pins in `PodFuelTripTest`: 60 to 98 blocks and 180 to 360 s of drilling from a tank (so it still runs dry); the first trip home with 30% left and 3.5 to 6 minutes of its mix in the tank; the tone leaves twice the climb home; each tier and the reserve at least 1.4x. The issue asks the first trip to carry "3 to 4 minutes of mixed play": the scripted pilot is quick (the trip is 2.5 minutes), so the target is read as a tank of 3.5 or more minutes of that mix, because a human is slower than the script and spends the slack.
+
+**What it moves in the economy.**
+- The Company rock cutter (tier 3 drill) burned three times the drilling rate. That multiplier is now 21, so the cutter burns what it did and a bitten slab still costs about a blasting charge (`PodRockBiteTuning`).
+- The economy is counted in runs, and a run was a whole tank. With a seventh of the burn a tank is seven runs of fuel, but the bay (7 slots on a stock pod) and the drill's minutes still make a run, so `EarlyRunModel` keeps a run at the trip a seventh of a tank pays for (`PRICING_RUN_TANK_SHARE`): its slabs are as they were (48 and 31) and "runs to afford" means what it did, so no part price moves for pacing. A run nets 10% more (fuel is cheaper: $455 against $413 from the outpost, $370 against $348 from the surface), so the matter transmitter, the one price at the top of its band, went from $1,500 to $1,650 to stay at 3.6 layer 2 runs.
+- Fuel is cheaper to burn and as dear to buy: a tank is $10 and lasts four minutes, where it was $10 for 31 s of drilling. Fuel is still the clock; it just no longer ends a first trip at the 10th block.
+
+**Harder or easier.** Easier on the first hour (a first tank carries a real trip), and about 10% easier on money per run. Nothing is harder.
+
+**The Company recovery.** A pod stranded with a pilot aboard starts a clock (one versioned attachment, `company_recovery`, holding the game time it began; the HUD reads the time left from it). The HUD shows `WINCH IN 58s  FEE $30  REFUEL TO CANCEL` (the fee is for the layer the pod is in), and the pilot gets one short overlay line when the pod strands ("Stranded: winch in 60s, $30. Refuel to cancel"), another when the crew has come ("Winched home. Fee $30", or the short form with what was paid), and the lines are width-checked against the narrowest GUI (`PodRecoveryHudClientTest`). A minute later, if the pod is still dry, the crew hauls pod and pilot to the colony (`Teleports`, the machinery of the emergency teleporters) and leaves a litre of fuel to drive to the pump. The rule is [ADR 0073](../adr/0073-the-company-winches-a-stranded-pod-home-for-a-fee-that-the-hull-pays-when-the-account-cannot.md). The fee is settled before the pod moves (spent first, refunded if the landing is blocked), the landing is within 6 blocks of the pad with the world spawn as the fallback, and an unreadable clock is read as no wait and rewritten, so the net never switches off. It costs, every time:
+- The minute in the dark, with a fuel item, a reserve tank or a friend's fuel ending it early. The clock stops when the pod has fuel again.
+- $30 a layer deep (layer 1 $30, layer 2 $60), taken from the pod's owner charter (the pilot's, for an unowned pod) up to what the account holds. The account never goes negative ([ADR 0007](../adr/0007-charters-are-one-versioned-saved-data.md)), so there is no debt: what the account cannot pay is taken from the hull at the repair station's $1 a point, so money and hull cost the same, and never below 10 hull so the rescue cannot wreck the pod. A dry, broke, solo pilot comes home with 70 hull from layer 1, 40 from layer 2 and 10 from layer 3 on (`CompanyRecoveryTest`).
+- The ore in the bay, which stays where the pod stopped as spilled ore (nothing mined teleports, SPEC section 11) that lies about 32 minutes (vanilla's `setExtendedLifetime`), so a full bay is a trip back down to fetch it within half an hour. A seated pilot cannot move ore out of the bay (the cargo screen is read-only), so there is nothing to carry out.
+
+**Trade-offs.** Cheaper than a tow (no second pod) and dearer than a refuel ($30 to $60 and a minute against $10), so carrying fuel is still right and the beep is still an order. The ore loss is the real cost for a pilot with a full bay, the hull for a broke one. The reserve tank's 25 L is now 2.5 tanks, and 14.7 minutes of the first trip's mix: a reserve is a whole second trip, which is what it is for, and its $100 price is under a stock layer 1 run.
+
+**Knobs.** `RecoveryTuning` (`delayTicks` 1200, `feePerLayer` 30, `minHull` 10, `splashLitres` 1, `scatter` 6, `spill` extended), `PodTuning.Fuel` (the three rates), `PodRockBiteTuning.fuelMultiplier`, `EarlyRunModel.PRICING_RUN_TANK_SHARE`.
+
+**Pins.** `PodFuelTripTest` (the tank in the pilot's units, the beep, the ladder), `CompanyRecoveryTest` (the fee, the hull share, the clock's clearing paths, the real minute, an unreadable clock, a refused landing), `PodRecoveryHudClientTest` (the countdown line).
+
+**Open questions.** Whether a hauled pod should also owe a "parking" fee at the pad; whether a second pod in reach should be able to answer the call before the crew (the tow line already does). Neither is built. The ownership rule: the crew moves a pod only for the pilot aboard it and charges only the pod's owner charter, so it never moves or charges anyone else's.
+
+## Pod hazard cues (#854, A)
+
+**Problem.** A gas blast and a hard landing cost hull, and an overloaded pod's jump did nothing, each with no cue of its own. A player could not tell what had happened, or that the cargo was the reason the rotor would not lift.
+
+**Cue.** Every hazard that hurts or blocks the pod names its cause the first time and while it lasts: an action-bar line, a sound at the pod and, where it is cheap, particles.
+
+| Hazard | Line | Sound | Particles |
+|---|---|---|---|
+| Gas blast, per pod hurt | `Gas blast: the hull took N` | `pod.explosion` | green gas cloud |
+| Hard landing, per landing that costs hull | `Hard landing: the hull took N. Brake with the rotor` | `pod.crash` | dust |
+| Overloaded lift, when the pilot presses jump with no lift | `Pod overloaded: the rotor can't lift this cargo. Dump some` (or `...can't lift this load` when cargo is not the reason: towing takes the lift) | `cargo.full` | none |
+
+**Who is told.** The line goes to every player seated in the pod, because all of them are in the hull that was hit; the lift line goes to the pilot alone, the only one who presses jump. The sound is played at the pod, so everyone in earshot hears it.
+
+**Rate.** A blast and a landing cue each event, and say nothing when the hull took under half a point (gas above sea level, a soft landing, a blast out of reach). A hit that empties the hull still reaches the riders it ejects. The overloaded line cues on each new press of jump, and repeats every `PodCuesTuning.overloadRepeatTicks` (40) while it stays held, a little under the 60 ticks the line stays on the bar.
+
+**Open.** A tiered sensor could name a hazard before it hurts (the ladder's second stage); this is only the by-hand stage, the cue after the fact.

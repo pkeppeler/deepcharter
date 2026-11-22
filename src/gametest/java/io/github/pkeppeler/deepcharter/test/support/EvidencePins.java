@@ -17,8 +17,6 @@ public final class EvidencePins {
     public static volatile boolean handsHidden;
     /** Block light does not flicker: vanilla random-walks every lit surface on each client tick. */
     public static volatile boolean lightFlickerOff;
-    /** The breach fade shows this alpha (0 clear to 1 black), HUD jitter off; negative lets it run. */
-    public static volatile float breachFadeAlpha = -1f;
     /** Entities other than pods are drawn at rest: no arm sway, no walk cycle, whatever their age. */
     public static volatile boolean entitiesPosed;
     /** Block faces are shaded as {@code cardinal_light: nether} shades them, whatever the dimension type says; set before the world opens, since sections are meshed with it. */
@@ -41,7 +39,6 @@ public final class EvidencePins {
         lightFlickerOff = false;
         handsHidden = false;
         itemNameHidden = false;
-        breachFadeAlpha = -1f;
         entitiesPosed = false;
         figureSpawningOff = false;
         cardinalLightNether = false;
