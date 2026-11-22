@@ -158,33 +158,42 @@ def nameplate(height, text, ink):
     return img
 
 
-def glass_sprite(size, border, vignette, shadow=(0, 0), depth=(0, 0)):
+VIGNETTE_REACH = 10
+
+
+def glass_sprite(radius, vignette, shadow=(0, 0), depth=(0, 0)):
     """The CRT glass over the content: a soft dark edge, the bezel's shadow cast on the top and left of the glass (`shadow` alphas, `depth` pixels), a thin
-    light line where the glass catches the light along the bottom and right, and a pale reflection in the top-left corner cell."""
+    light line where the glass catches the light along the bottom and right, and a pale reflection along the top-left arc.
+
+    The glass is a rounded rectangle of corner `radius`, cut in nine with a border of `radius` (a corner cell holds the whole arc), and it is clear outside
+    the arc: the pixels the porthole of `hatch_frame` leaves open are exactly the pixels this fills, because both ask `hole_distance` of the pixel centre.
+    Every ring (the vignette, the shadow, the light lines) is a distance from that edge, so a ring `k` pixels in has the corner radius `radius - k` and
+    its arc runs beside the bezel's. The vignette goes `VIGNETTE_REACH` pixels in.
+    """
+    size = 2 * radius + 4
     img = Img(size, size)
-    left, top, right, bottom = border
     for y in range(size):
         for x in range(size):
-            d = min(x / max(1, left) if x < left else 1, y / max(1, top) if y < top else 1,
-                    (size - 1 - x) / max(1, right) if x >= size - right else 1, (size - 1 - y) / max(1, bottom) if y >= size - bottom else 1)
-            alpha = vignette * (1 - d) ** 1.6 if d < 1 else 0
-            if depth[0] and y < depth[0]:
-                alpha += shadow[0] * (1 - y / depth[0]) ** 1.4
-            if depth[1] and x < depth[1]:
-                alpha += shadow[1] * (1 - x / depth[1]) ** 1.4
+            signed, (nx, ny) = hole_distance(x, y, 0, 0, size, size, radius)
+            if signed >= 0:
+                continue
+            t = -signed - 0.5  # 0 on the outermost row of pixels, along a straight edge as along an arc
+            alpha = vignette * (1 - t / VIGNETTE_REACH) ** 1.6 if t < VIGNETTE_REACH else 0
+            if depth[0] and t < depth[0]:
+                alpha += shadow[0] * max(0.0, -ny) * (1 - t / depth[0]) ** 1.4
+            if depth[1] and t < depth[1]:
+                alpha += shadow[1] * max(0.0, -nx) * (1 - t / depth[1]) ** 1.4
             if alpha:
                 img.set(x, y, (4, 8, 6, min(235, round(alpha))))
-    for k in range(size):  # the glass's own edge, catching light along the bottom and the right (clear of the nine-slice's corner cells)
-        if left <= k < size - right:
-            img.over(k, size - 2, (190, 230, 215, 34))
-        if top <= k < size - bottom:
-            img.over(size - 2, k, (190, 230, 215, 26))
-    reach = max(2, min(left, top) - 3)
-    for k in range(reach):  # inside the top-left corner cell, so the nine-slice does not tile it
-        img.over(2 + k, 2, (255, 255, 255, 24 - 24 * k // reach))
-        img.over(2, 2 + k, (255, 255, 255, 24 - 24 * k // reach))
-    for k in range(reach - 1):
-        img.over(3 + k, 3 + k, (255, 255, 255, 14))
+            if 0.5 <= t < 1.5:  # the glass's own edge, catching light along the bottom and the right
+                light = 34 * max(0.0, ny) + 26 * max(0.0, nx)
+                if light >= 1:
+                    img.over(x, y, (190, 230, 215, round(light)))
+            if 1.5 <= t < 2.5:  # the reflection, fading out along the arc from the corner
+                lit = min(1.0, max(0.0, -nx - ny))
+                fade = max(0.0, 1 - (x + y) / (radius + 2))
+                if lit * fade * 24 >= 1:
+                    img.over(x, y, (255, 255, 255, round(24 * lit * fade)))
     return img
 
 
@@ -453,7 +462,7 @@ def hatch() -> Option:
     return Option({
         "enabled": 1, "wallColor": "#0a0e0d",
         "insetLeft": gl + margin, "insetTop": gt + margin, "insetRight": gr + margin, "insetBottom": 28,
-        "glassLeft": gl, "glassTop": gt, "glassRight": gr, "glassBottom": gb,
+        "glassLeft": gl, "glassTop": gt, "glassRight": gr, "glassBottom": gb, "glassRadius": radius,
         "nameplateW": plate.w, "nameplateH": plate.h, "nameplateAnchorX": 0, "nameplateAnchorY": 2, "nameplateX": 152, "nameplateY": 1,
         "dressAW": 22, "dressAH": 22, "dressAAnchorX": 0, "dressAAnchorY": 0, "dressAX": 9, "dressAY": 5,
         "dressBW": 34, "dressBH": 34, "dressBAnchorX": 0, "dressBAnchorY": 2, "dressBX": 4, "dressBY": 2,
@@ -464,7 +473,7 @@ def hatch() -> Option:
         "buttonAlign": 1, "buttonPad": 4, "pipSize": 12, "pipX": 3, "pipY": 0,
     }, {
         "frame": Sprite(frame, (gl + radius, gt + radius, gr + radius, gb + radius)),
-        "glass": Sprite(glass_sprite(32, (10, 10, 10, 10), 170, (110, 80), (6, 5)), (10, 10, 10, 10)),
+        "glass": Sprite(glass_sprite(radius, 170, (110, 80), (6, 5)), (radius,) * 4),
         "nameplate": Sprite(plate), "dress_a": Sprite(hatch_gauge()), "dress_b": Sprite(hatch_wheel()),
         "dress_c": Sprite(hatch_stencil("H-04  DECK 3", 72)), "dress_d": Sprite(hatch_warning()),
         "button": Sprite(hatch_button(H[3], H[6], H[0]), (3, 3, 3, 3)),

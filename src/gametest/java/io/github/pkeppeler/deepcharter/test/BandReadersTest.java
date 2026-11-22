@@ -1,9 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -75,20 +75,6 @@ public class BandReadersTest {
     private static final Band ONE = CampaignBands.LAYER_1;
     private static final Band TWO = CampaignBands.LAYER_2;
 
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        if (!condition) {
-            throw failure(helper, format, args);
-        }
-    }
-
     // ---- PodDrill.crustLeadsOn ----
 
     /** A mock pilot in a new pod at {@code feet}, over a column of crust: the rows {@code crustRows} high from {@code floor}, then air above. */
@@ -105,7 +91,7 @@ public class BandReadersTest {
             RoomCarver.carve(level, x - 2, x + 2, floor, floor + crustRows - 1, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
             RoomCarver.carve(level, x - 2, x + 2, floor + crustRows, floor + crustRows + 7, Z - 2, Z + 2, Blocks.AIR);
             Vec3 at = new Vec3(x, floor + feetAbove, Z);
-            pilot = MockPlayers.join(helper, "band-bore-" + x);
+            pilot = MockPlayers.join(helper, "band-bore-" + Math.abs(floor));
             pilot.teleportTo(level, at, 0f, 0f);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
                 PodEntity made = TestEntities.create(PodRegistry.POD, level);
@@ -163,7 +149,8 @@ public class BandReadersTest {
     /** Layer 2's floor crust leads nowhere (unbuilt depth lies below it), so the pod stands on it and does not drill. */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theCrustAtLayer2sFloorIsRefused(GameTestHelper helper) {
-        int x = 23064;
+        // Layer 1's bore is in this column too: the layers share a level, so one set of chunks serves both.
+        int x = 23000;
         int floor = TWO.minY();
         ServerLevel level = helper.getLevel();
         Bore bore = new Bore(helper, x, floor, 3, 3);

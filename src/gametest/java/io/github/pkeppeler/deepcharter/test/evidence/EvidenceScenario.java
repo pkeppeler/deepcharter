@@ -5,12 +5,15 @@ import io.github.pkeppeler.deepcharter.pod.SignalDecayTuning;
 import io.github.pkeppeler.deepcharter.test.ClientTestLog;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -34,11 +37,17 @@ import net.minecraft.world.phys.Vec3;
  */
 public abstract class EvidenceScenario implements FabricClientGameTest {
     /** Above the layer 1 signal decay (#502), so the gauges are live: the decay starts {@code onset} slabs above the floor, and a stock console shrinks that. */
-    protected static final int LIVE_GAUGES_FLOOR_Y =
+    protected static final int LIVE_GAUGES_LOCAL_Y =
             SignalDecayTuning.DEFAULT.band(1).onset() + 4;
 
-    /** Where a scenario carves a room in a layer: 60 slabs above the live-gauges floor, so the gauges stay live. */
-    protected static final int LAYER_ROOM_Y = LIVE_GAUGES_FLOOR_Y + 60;
+    /** {@link #LIVE_GAUGES_LOCAL_Y} as a world Y in layer 1: a layer is a band of the campaign level. */
+    protected static final int LIVE_GAUGES_FLOOR_Y = TestLayers.worldY(1, LIVE_GAUGES_LOCAL_Y);
+
+    /** Where a scenario carves a room in a layer, counted from the layer's floor: 60 slabs above the live-gauges floor, so the gauges stay live. */
+    protected static final int LAYER_ROOM_LOCAL_Y = LIVE_GAUGES_LOCAL_Y + 60;
+
+    /** {@link #LAYER_ROOM_LOCAL_Y} as a world Y in layer 1. */
+    protected static final int LAYER_ROOM_Y = TestLayers.worldY(1, LAYER_ROOM_LOCAL_Y);
 
     /** Where a scenario builds a slab or hall in the overworld's sky, clear of the terrain. */
     // fixed-pos: the overworld has no anchor to derive a sky slab from; 200 sits 120 under its 320 build limit
@@ -51,6 +60,9 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     private static final float FLOAT_YAW_EAST = -90f;
     private static final float FLOAT_PITCH_DOWN = 85f;
     private static final int MINE_LIMIT_TICKS = 160;
+
+    /** How many times {@link #zoomStill} scales a crop up. */
+    private static final int ZOOM = 8;
 
     private int frame;
 
@@ -119,6 +131,21 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
         });
     }
 
+    /**
+     * Puts the first player's feet at {@code feet} in the overworld, turned to look from {@code eye} at {@code target}.
+     */
+    protected static void teleportLooking(TestSingleplayerContext singleplayer, Vec3 feet, Vec3 eye, Vec3 target) {
+        Vec3 d = target.subtract(eye);
+        float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
+        float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
+        singleplayer
+                .getServer()
+                .runOnServer(server -> server.getPlayerList()
+                        .getPlayers()
+                        .getFirst()
+                        .teleportTo(server.overworld(), feet.x, feet.y, feet.z, Set.of(), yaw, pitch, true));
+    }
+
     /** Waits for the client to have joined the world: a player and a level. */
     protected static void awaitWorld(ClientGameTestContext context) {
         ClientWait.until(
@@ -169,6 +196,37 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     /** Take a named still screenshot. */
     protected final void screenshot(ClientGameTestContext context, String screenshotName) {
         shoot(context, screenshotName, screenshotsDir());
+    }
+
+    /**
+     * Saves {@code zoomName}: the rectangle at ({@code x}, {@code y}), {@code width} by {@code height} GUI pixels, of the still {@code screenshotName}
+     * already taken, scaled up {@link #ZOOM} times with nearest-neighbour so each GUI pixel stays a sharp block.
+     */
+    protected final void zoomStill(
+            ClientGameTestContext context,
+            String screenshotName,
+            String zoomName,
+            int x,
+            int y,
+            int width,
+            int height) {
+        int guiScale = context.computeOnClient(client -> client.getWindow().getGuiScale());
+        try {
+            BufferedImage full = ImageIO.read(
+                    screenshotsDir().resolve(screenshotName + ".png").toFile());
+            BufferedImage crop = full.getSubimage(x * guiScale, y * guiScale, width * guiScale, height * guiScale);
+            BufferedImage out =
+                    new BufferedImage(crop.getWidth() * ZOOM, crop.getHeight() * ZOOM, BufferedImage.TYPE_INT_ARGB);
+            for (int py = 0; py < out.getHeight(); py++) {
+                for (int px = 0; px < out.getWidth(); px++) {
+                    out.setRGB(px, py, crop.getRGB(px / ZOOM, py / ZOOM));
+                }
+            }
+            ImageIO.write(
+                    out, "png", screenshotsDir().resolve(zoomName + ".png").toFile());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static void shoot(ClientGameTestContext context, String fileName, Path dir) {

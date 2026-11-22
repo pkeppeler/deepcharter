@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerAtmosphere;
@@ -112,12 +112,13 @@ public class CampaignAtmosphereTest {
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)
     public void aLayerReadsItsOwnBiomeAtEverySkyTimeGameplayTimeAndWeather(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        for (Zone zone : zones(level)) {
+        for (Zone zone : zones(helper, level)) {
             Biome biome = biome(level, zone);
             for (Moment moment : MOMENTS) {
                 at(level, moment, () -> {
                     for (EnvironmentAttribute<?> attribute : LAYER_VALUES) {
                         expectEqual(
+                                helper,
                                 "layer %s zone %s, %s, %s"
                                         .formatted(zone.layer(), zone.biome(), moment, name(attribute)),
                                 wanted(biome, attribute),
@@ -145,12 +146,13 @@ public class CampaignAtmosphereTest {
                                 continue;
                             }
                             expectEqual(
+                                    helper,
                                     "the surface band, %s, %s".formatted(moment, name(attribute)),
                                     flat.environmentAttributes().getValue(attribute, inSurface),
                                     campaign.environmentAttributes().getValue(attribute, inSurface));
                             compared++;
                         }
-                        expect(compared > 10, "only %s visual attributes were compared", compared);
+                        expect(helper, compared > 10, "only %s visual attributes were compared", compared);
                     }));
         }
         // The comparison would pass if the clocks and the weather moved nothing: they move the fog.
@@ -164,7 +166,11 @@ public class CampaignAtmosphereTest {
                     () -> fog[index] = campaign.environmentAttributes()
                             .getValue(EnvironmentAttributes.FOG_START_DISTANCE, inSurface));
         }
-        expect(fog[0] != fog[1], "the surface fog start should move with the sky clock, was %s at both ends", fog[0]);
+        expect(
+                helper,
+                fog[0] != fog[1],
+                "the surface fog start should move with the sky clock, was %s at both ends",
+                fog[0]);
         helper.succeed();
     }
 
@@ -172,14 +178,15 @@ public class CampaignAtmosphereTest {
     public void noSurfaceBiomeSetsWhatATimelineSets(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<EnvironmentAttribute<?>> driven = timelineAttributes(level);
-        expect(!driven.isEmpty(), "the type runs no timeline that sets an attribute");
+        expect(helper, !driven.isEmpty(), "the type runs no timeline that sets an attribute");
         List<Holder<Biome>> surface =
                 new ArrayList<>(source(level).possibleBiomes().stream().toList());
         surface.removeAll(layerBiomes(level));
-        expect(surface.size() >= 4, "the surface has %s biomes, wanted at least 4", surface.size());
+        expect(helper, surface.size() >= 4, "the surface has %s biomes, wanted at least 4", surface.size());
         for (Holder<Biome> biome : surface) {
             for (EnvironmentAttribute<?> attribute : driven) {
                 expect(
+                        helper,
                         !biome.value().getAttributes().contains(attribute),
                         "surface biome %s sets %s, which a timeline of the type sets: the biome layer would put it over the timeline in the"
                                 + " surface band",
@@ -196,15 +203,17 @@ public class CampaignAtmosphereTest {
         Set<EnvironmentAttribute<?>> driven = timelineAttributes(level);
         for (EnvironmentAttribute<?> attribute : UNDERGROUND) {
             expect(
+                    helper,
                     driven.contains(attribute),
                     "no timeline of the type sets %s: take it off UNDERGROUND",
                     name(attribute));
         }
         List<Holder<Biome>> layerBiomes = layerBiomes(level);
-        expect(layerBiomes.size() == 6, "the layers have %s zone biomes, wanted 6", layerBiomes.size());
+        expect(helper, layerBiomes.size() == 6, "the layers have %s zone biomes, wanted 6", layerBiomes.size());
         for (Holder<Biome> biome : layerBiomes) {
             for (EnvironmentAttribute<?> attribute : UNDERGROUND) {
                 expect(
+                        helper,
                         biome.value().getAttributes().contains(attribute),
                         "layer biome %s does not set %s, so the surface's timeline shows through underground",
                         id(biome),
@@ -212,6 +221,7 @@ public class CampaignAtmosphereTest {
                 // The biome entry is applied twice (ADR 0062), which only an override survives.
                 var entry = biome.value().getAttributes().get(attribute);
                 expect(
+                        helper,
                         entry != null && entry.modifier().equals(AttributeModifier.override()),
                         "layer biome %s sets %s with a modifier other than override",
                         id(biome),
@@ -226,6 +236,7 @@ public class CampaignAtmosphereTest {
         for (EnvironmentAttribute<?> attribute : timelineAttributes(helper.getLevel())) {
             if (LayerAtmosphere.isVisualOrAudio(attribute)) {
                 expect(
+                        helper,
                         UNDERGROUND.contains(attribute) || NOT_UNDERGROUND.containsKey(attribute),
                         "a timeline of the type sets %s: decide whether a player sees or hears it underground, and list it in UNDERGROUND"
                                 + " (and in the zone biomes) or in NOT_UNDERGROUND",
@@ -250,7 +261,7 @@ public class CampaignAtmosphereTest {
         Map<Integer, Float> ratio = new TreeMap<>();
         at(level, MOMENTS.getFirst(), () -> {
             float surface = probe(level, new Vec3(0.5, CampaignBands.SURFACE.minY() + 100, 0.5));
-            expectNear("the surface's sky light factor at sky time 0", 0.62f, surface, 0.001f);
+            expectNear(helper, "the surface's sky light factor at sky time 0", 0.62f, surface, 0.001f);
             for (int below : measured.keySet()) {
                 ratio.put(below, probe(level, new Vec3(0.5, edge - below + EYE_HEIGHT, 0.5)) / surface);
             }
@@ -259,8 +270,12 @@ public class CampaignAtmosphereTest {
                 "[campaign-atmosphere] edge blend, fraction of the surface's sky light factor by feet below the edge: "
                         + ratio);
         measured.forEach((below, wanted) -> expectNear(
-                "%s blocks below the edge".formatted(below), wanted, Objects.requireNonNull(ratio.get(below)), 0.06f));
-        expectNear("12 blocks below the edge", 0f, Objects.requireNonNull(ratio.get(12)), 0.0005f);
+                helper,
+                "%s blocks below the edge".formatted(below),
+                wanted,
+                Objects.requireNonNull(ratio.get(below)),
+                0.06f));
+        expectNear(helper, "12 blocks below the edge", 0f, Objects.requireNonNull(ratio.get(12)), 0.0005f);
         helper.succeed();
     }
 
@@ -280,6 +295,7 @@ public class CampaignAtmosphereTest {
         } catch (IllegalStateException e) {
             String message = Objects.requireNonNullElse(e.getMessage(), "");
             expect(
+                    helper,
                     message.contains("deepcharter:multiplied") && message.contains("minecraft:visual/fog_color"),
                     "the failure should name the biome and the attribute, said: %s",
                     message);
@@ -326,7 +342,7 @@ public class CampaignAtmosphereTest {
     }
 
     /** The zones of both layers, each with the middle of its rows; the biome is the one the zone table names, which the level must hold. */
-    private static List<Zone> zones(ServerLevel level) {
+    private static List<Zone> zones(GameTestHelper helper, ServerLevel level) {
         List<Zone> zones = new ArrayList<>();
         for (int layer = 1; layer <= CampaignBands.LAYERS.size(); layer++) {
             CampaignBands.Band band = CampaignBands.layer(layer);
@@ -336,6 +352,7 @@ public class CampaignAtmosphereTest {
                 BlockPos middle = new BlockPos(0, (span.low() + span.high()) / 2, 0);
                 Identifier wanted = id(named.get(index));
                 expect(
+                        helper,
                         id(level.getBiome(middle)).equals(wanted),
                         "the middle of layer %s zone %s should be in %s",
                         layer,
@@ -392,24 +409,18 @@ public class CampaignAtmosphereTest {
         return String.valueOf(BuiltInRegistries.ENVIRONMENT_ATTRIBUTE.getKey(attribute));
     }
 
-    private static void expectEqual(String what, Object expected, Object actual) {
-        expect(Objects.equals(expected, actual), "%s should read %s, read %s", what, expected, actual);
+    private static void expectEqual(GameTestHelper helper, String what, Object expected, Object actual) {
+        expect(helper, Objects.equals(expected, actual), "%s should read %s, read %s", what, expected, actual);
     }
 
-    private static void expectNear(String what, float expected, float actual, float tolerance) {
+    private static void expectNear(GameTestHelper helper, String what, float expected, float actual, float tolerance) {
         expect(
+                helper,
                 Math.abs(expected - actual) <= tolerance,
                 "%s: wanted %s within %s, was %s",
                 what,
                 expected,
                 tolerance,
                 actual);
-    }
-
-    @FormatMethod
-    private static void expect(boolean condition, @FormatString String format, Object... args) {
-        if (!condition) {
-            throw new AssertionError(String.format(format, args));
-        }
     }
 }

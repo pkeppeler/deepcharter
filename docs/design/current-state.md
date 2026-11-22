@@ -31,7 +31,7 @@ or `...-as-played` show what a player sees; the other layer stills use night vis
 | Block textures | 55, all 16 x 16 frames, generated from recipes (`tools/textures/`); 7 animated; 77 block-state variants |
 | Items | 68 (44 with a 16 x 16 sprite, 24 block items) |
 | Entities | 3 types (Mole, Prospector, lampless figure); looks: 2 pods, 1 wreck look, 1 derelict, 1 figure (the Reacher, GeckoLib) |
-| Structures | 14 colony structure files (the square with the Host, the terminal plinths, the streets, the Works, the headframe, the hoist house, the hangar, the Continuity Office, the chapel, the bunkhouse, the two offices, the Lamp and Pick, and the Host's hands) placed from one layout file, the Conduit, and 7 layer structure kinds; the colony kit (`tools/colony/kit.py`) and 12 signs they are built from |
+| Structures | 14 colony structure files (the square with the Host, the terminal row's pipe, the streets, the Works, the headframe, the hoist house, the hangar, the Continuity Office, the chapel, the bunkhouse, the two offices, the Lamp and Pick, and the Host's hands) placed from one layout file, the Conduit, and 7 layer structure kinds; the colony kit (`tools/colony/kit.py`) and 12 signs they are built from |
 | Screens | 10 shot (handbook, offline terminal, fuel pump, ore processor, upgrade, repair station, hangar console, contract, pod cargo, vanilla inventory), 1 not reachable (CRT demo) |
 | HUDs | 6 (pod status, scanner, altimeter, account, transmission overlay, breach fade) |
 | Particles | 1 (`deepcharter:dust_mote`; the tow line is a rendered chain since #508) |
@@ -312,7 +312,7 @@ Built from the user's pick, C, the Reacher, of [figure-concepts.md](figure-conce
 
 ### Other entities
 
-The mod registers exactly three entity types: `pod`, `prospector`, `lampless_figure`. The Notes are blocks, not entities. The tow cable is drawn as a chain
+The mod registers exactly four entity types: `pod`, `prospector`, `lampless_figure`, `tally`. The Notes are blocks, not entities. The tow cable is drawn as a chain
 of links ([Other](#7-other)).
 
 ---
@@ -339,7 +339,7 @@ A player's walk through it, from the Continuity Office to the hangar (GIF; [MP4]
 | Pad and ground | `ColonyBuilder.java` (`flatten`, `roughGround`) | Gravel, coarse dirt and packed mud in a noise pattern under the town | A flat plate cut out of the terrain; the streets and the buildings' floors are paved over it |
 | Square | `square` | 21 x 21 of riveted plate edged with hazard bands, brass studs, four pipe lamp posts | A dark plate with a yellow and black border |
 | Streets | `streets` | Concrete footing, 3 wide along the south row, 5 wide on the west side, and the ways to the office and the Works' bay; seven caged sodium lamps (`company_lamp`) | Grey paving between the buildings |
-| Terminal plinths | `terminals` | 5 plinths of concrete footing (3 x 3 x 1) with a hazard kerb, a terminal on each, facing south; a brass pipe from the Conduit to the ore processor's plinth | A row of dark blocks with small green screens |
+| Terminal row | `terminals` | Only a brass pipe from the Conduit into the back of the ore processor's monitor; the five terminals themselves stand on the ground at z -8, each two blocks high (cabinet and CRT monitor), facing south | A row of Company cabinets with green CRT monitors |
 | The Host | `square`, `hands`, `main/colony/FounderStatue.java` | A bronze Founder, 10 blocks tall to his raised hand, on a red plinth 5 blocks high with a brass cornice, floodlights and the plaque OUR FOUNDER. His body is a block display; his hands are another, a piece that the first work order places | A bronze man in a frock coat, one hand lowered and empty, the other raised in welcome once restored, with a slot in his chest |
 | Works | `works` | A two-storey Works hall 14 x 11, bay 4 x 4 and a door on the square, a crusher house on its roof, a trussed conveyor from the headframe's bin, two ore bins on legs, a stack, mine track and two ore cars | A red and black ore house with a lit upper floor |
 | Headframe and Conduit | `headframe`, `main/colony/Conduit.java` | A black lattice tower 30 blocks tall round the Conduit's casing, a sheave deck with two wheels and a beacon, two skips on ropes, a tipple bin, back legs to the hoist house | A black iron tower over the square's north side |
@@ -367,7 +367,7 @@ Close-ups, in the order of the table:
 
 ### The terminals in the colony
 
-The five terminals stand on the plinths; each is a mod block ([section 2](#2-custom-blocks)). Their screens are in [section 6](#6-screens-and-huds).
+The five terminals stand on the ground, each two blocks high; each is a mod block ([section 2](#2-custom-blocks)). Their screens are in [section 6](#6-screens-and-huds).
 
 ![terminal-fuel-pump](https://github.com/pkeppeler/deepcharter/blob/pr-media/371/terminal-fuel-pump.png?raw=true) ![terminal-ore-processor](https://github.com/pkeppeler/deepcharter/blob/pr-media/371/terminal-ore-processor.png?raw=true)
 ![terminal-upgrade-terminal](https://github.com/pkeppeler/deepcharter/blob/pr-media/371/terminal-upgrade-terminal.png?raw=true) ![terminal-repair-station](https://github.com/pkeppeler/deepcharter/blob/pr-media/371/terminal-repair-station.png?raw=true)
@@ -684,7 +684,7 @@ Every look that is fixed in Java and cannot be replaced by swapping a resource-p
 | Layer structures | The size, blocks and layout of the 7 structures, and where Notes and candles sit | `main/layer/StructureKind.java:21-150` |
 | Pod lights | A vanilla light block at the pod's position; the level comes from the part's tier value; no lamp is drawn | `main/pod/PodLights.java:25-90`, `main/upgrade/UpgradeTuning.java` |
 | ~~Tow cable~~ | Done in #508: a rendered chain of links (`client/pod/TowChainRenderer.java`, `TowChain.java`) between the two pods, from the attachment | `client/pod/TowChainRenderer.java` |
-| Colony terminals' facing and place | All face south on a plinth row at z -8 | `main/colony/ColonyBuilder.java` (`terminals`), the plinths in `tools/colony/town.py` (`terminals`) |
+| Colony terminals' facing and place | All face south in a row at z -8, both halves placed by `TerminalBlock.place` | `main/colony/ColonyBuilder.java` (`terminals`), the anchors in `tools/colony/town.py` |
 
 ---
 

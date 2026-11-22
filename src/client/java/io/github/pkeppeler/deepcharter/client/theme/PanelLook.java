@@ -18,6 +18,7 @@ import org.jspecify.annotations.Nullable;
  * @param wallColor what shows behind the frame where it is see-through
  * @param content where a screen puts its text and widgets: the screen's rectangle less these insets
  * @param glass the CRT glass: the screen's rectangle less these insets gets the phosphor backdrop, the glass sprite and the scanlines
+ * @param glassRadius the corner radius of the frame's porthole, which the scanlines are cut to: at most the border of the glass sprite, and a pack that redraws the frame's corner sets it to match
  * @param nameplate the Company nameplate
  * @param dressA a decal of dressing: toggles, keys, labels, vents, serial plates
  * @param dressB another decal
@@ -39,6 +40,7 @@ public record PanelLook(
         int wallColor,
         Insets content,
         Insets glass,
+        int glassRadius,
         Decal nameplate,
         Decal dressA,
         Decal dressB,
@@ -76,6 +78,24 @@ public record PanelLook(
     public static final Identifier PIP = sprite("panel/pip");
     public static final Identifier PIP_HOT = sprite("panel/pip_hot");
     public static final Identifier PIP_OFF = sprite("panel/pip_off");
+
+    /**
+     * How far in from the edge the first pixel of {@code row} (0 is the outermost row) of a rounded corner of {@code radius} is inside: a pixel is inside
+     * when its centre is within {@code radius} of the arc's centre, the test {@code tools/terminal_concepts.py} makes when it cuts the porthole and the glass.
+     */
+    public static int cornerInset(int radius, int row) {
+        if (row >= radius) {
+            return 0;
+        }
+        double across = radius - row - 0.5;
+        return (int) Math.floor(radius - 0.5 - Math.sqrt(radius * (double) radius - across * across)) + 1;
+    }
+
+    /** Where a scanline on {@code row} of a {@code width} by {@code height} glass starts, from its left edge, and ends, from its right: the larger of the top and bottom corners' insets, the radius cut to what the glass holds. */
+    public static int scanlineInset(int radius, int row, int width, int height) {
+        int corner = Math.min(radius, Math.min(width, height) / 2);
+        return Math.max(cornerInset(corner, row), cornerInset(corner, height - 1 - row));
+    }
 
     /** Distances from the four edges of the screen to a rectangle inside it. */
     public record Insets(int left, int top, int right, int bottom) {
@@ -193,6 +213,7 @@ public record PanelLook(
                 d.color("wallColor"),
                 Insets.of(d, "inset"),
                 Insets.of(d, "glass"),
+                d.integer("glassRadius", 0, 64),
                 Decal.of(d, "nameplate"),
                 Decal.of(d, "dressA"),
                 Decal.of(d, "dressB"),
