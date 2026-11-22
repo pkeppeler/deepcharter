@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 public class PodEngineSoundClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(PodEngineSoundClientTest.class);
 
-    private static final int JITTER_PERIOD = 3;
     private static final int DRIVE_TICKS = 70;
     /** After the keys are let go: the pod's moving hold, and a fade out, and a fade in of the idle loop, with margin. */
     private static final int COAST_TICKS = 60;
@@ -138,7 +137,7 @@ public class PodEngineSoundClientTest implements FabricClientGameTest {
                     "the client riding a pod with the mock's pod in view",
                     client -> ClientSession.player(client).getVehicle() instanceof PodEntity
                             && ClientLight.clientLevel(client).getEntity(mockPodId) instanceof PodEntity);
-            PacketJitter.start(JITTER_PERIOD);
+            PacketJitter.start();
             try {
                 drive(context, heard, mockPodId);
             } finally {

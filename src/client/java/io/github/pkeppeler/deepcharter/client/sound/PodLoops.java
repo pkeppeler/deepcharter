@@ -104,8 +104,7 @@ public final class PodLoops {
     }
 
     private static void tick(Minecraft client) {
-        // A loop the engine declined to start (a pod out of range) never ticks, so it would hold its key for ever: end
-        // it.
+        // A loop the engine declined to start (a pod out of range) never ticks and would hold its key for ever.
         LOOPS.values().forEach(loop -> loop.endIfNeverStarted(client.getSoundManager()));
         LOOPS.values().removeIf(Loop::isStopped);
         ClientLevel level = client.level;

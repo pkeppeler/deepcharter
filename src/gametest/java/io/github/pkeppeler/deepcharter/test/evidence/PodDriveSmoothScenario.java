@@ -18,9 +18,6 @@ import net.minecraft.world.level.block.Blocks;
  * lunges the next shows as a stutter between frames; a smooth one does not.
  */
 public class PodDriveSmoothScenario extends EvidenceScenario {
-    /** Every third client tick holds the pod's moves. */
-    private static final int JITTER_PERIOD = 3;
-
     private static final int DRIVE_FRAMES = 60;
     private static final int CLIMB_FRAMES = 40;
 
@@ -56,7 +53,7 @@ public class PodDriveSmoothScenario extends EvidenceScenario {
             context.waitTicks(20);
             frame(context);
 
-            PacketJitter.start(JITTER_PERIOD);
+            PacketJitter.start();
             try {
                 context.getInput().holdKey(options -> options.keyUp);
                 record(context, DRIVE_FRAMES);

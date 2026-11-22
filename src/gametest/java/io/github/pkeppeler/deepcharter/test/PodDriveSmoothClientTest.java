@@ -43,9 +43,6 @@ import org.slf4j.LoggerFactory;
 public class PodDriveSmoothClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(PodDriveSmoothClientTest.class);
 
-    /** Every third client tick the jitter holds the pod moves. */
-    private static final int JITTER_PERIOD = 3;
-
     /** Frames drawn per client tick: a renderer at 80 frames a second. */
     private static final float[] PARTIAL_TICKS = {0.25f, 0.5f, 0.75f, 1f};
 
@@ -116,7 +113,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             double flatSpeed = movement.horizontalSpeed();
             // Forward and up together: the pod's speed is the two at once.
             double climbSpeed = Math.hypot(flatSpeed, movement.maxClimbSpeed());
-            PacketJitter.start(JITTER_PERIOD);
+            PacketJitter.start();
             try {
                 drive(
                         context,
