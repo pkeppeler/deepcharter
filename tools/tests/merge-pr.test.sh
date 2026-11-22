@@ -49,6 +49,7 @@ for a in "$@"; do
   [[ $a == repos/* ]] && path=$a
   # The commit message the merge request sends, byte for byte, for the tests to judge.
   [[ $a == commit_message=* ]] && printf '%s' "${a#commit_message=}" >"$LOG.message"
+  [[ $a == commit_title=* ]] && printf '%s' "${a#commit_title=}" >"$LOG.title"
   prev=$a
 done
 case "$method $path" in
@@ -221,7 +222,7 @@ rc=0
 pass() { cases=$((cases + 1)); echo "ok   $1"; }
 fail() { cases=$((cases + 1)); failures=$((failures + 1)); echo "FAIL $1"; }
 
-reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push" "$LOG.body" "$LOG.message"; : >"$LOG"; }
+reset() { rm -f "$LOG" "$LOG.merged" "$LOG.push" "$LOG.body" "$LOG.message" "$LOG.title"; : >"$LOG"; }
 
 # run_script [VAR=value ...]: run $SCRIPT (default merge-pr.sh) on PR 7 with stub env overrides.
 run_script() {
@@ -705,6 +706,11 @@ sent_has_no_tripping_url() {
   tripping=$(tools/py tools/merge_message.py --list <"$LOG.message")
   if [[ -z $tripping ]]; then pass "$1"; else fail "$1 (sent: $(sent))"; fi
 }
+sent_title_has_no_tripping_url() {
+  local tripping
+  tripping=$(tools/py tools/merge_message.py --list <"$LOG.title")
+  if [[ -z $tripping ]]; then pass "$1"; else fail "$1 (sent: $(cat "$LOG.title"))"; fi
+}
 run_script "STUB_BODY=Closes #12${nl}ADR: [74]($adr_url) and $adr_url"
 exited "a 150-character ADR blob link: merged" 0
 sent_is "the ADR blob link is sent as its backticked path" "Closes #12${nl}ADR: 74 (\`$adr_path\`) and \`$adr_path\`"
@@ -715,7 +721,9 @@ sent_has_no_tripping_url "the sent message has no tripping URL (long run)"
 run_script "STUB_BODY=Closes #12${nl}[spec]($short_url) https://example.com/a?b=c"
 sent_is "short URLs are kept" "Closes #12${nl}[spec]($short_url) https://example.com/a?b=c"
 run_script "STUB_TITLE=Fix $adr_url"
-logged "a tripping URL in the title is rewritten" "gh api -X PUT repos/pkeppeler/deepcharter/pulls/7/merge -f merge_method=squash -f sha=abc123 -f commit_title=Fix \`$adr_path\` (#7) -f commit_message=Closes #12"
+if [[ $(cat "$LOG.title") == "Fix \`$adr_path\` (#7)" ]]; then pass "a tripping URL in the title is rewritten"; else fail "a tripping URL in the title is rewritten (sent: $(cat "$LOG.title"))"; fi
+run_script "STUB_TITLE=Fix https://example.com/m/$run80"
+sent_title_has_no_tripping_url "the sent title has no tripping URL"
 run_check "STUB_BODY=Closes #12${nl}ADR $adr_url"
 exited "--check with a long URL still passes" 0
 printed "--check warns about a long URL" "WARNING: the title or body holds 1 URL(s) the merge proxy refuses"

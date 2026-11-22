@@ -81,6 +81,58 @@ class MergeMessageTest(unittest.TestCase):
         self.assertEqual(m.rewrite(out)[1], [])
         self.assertNotIn("://", out)
 
+    def assertSafe(self, text):
+        out = self.rewritten(text)
+        self.assertEqual(m.rewrite(out)[1], [], out)
+        return out
+
+    def test_uppercase_scheme_and_other_schemes(self):
+        self.assertEqual(self.assertSafe(f"a HTTPS://x.io/{RUN80} b"), "a  b")
+        self.assertEqual(self.assertSafe(f"a ftp://x.io/{RUN80} b"), "a  b")
+        blob = ADR_URL.replace("https://", "HTTPS://")
+        self.assertEqual(self.assertSafe(blob), f"`{ADR}`")
+
+    def test_long_url_with_parentheses_is_judged_whole(self):
+        url = "https://e.com/" + "ab/" * 40 + "(y)" + "cd/" * 10
+        self.assertGreaterEqual(len(url.split("://", 1)[1]), 150)
+        self.assertEqual(self.assertSafe(f"see {url} end"), "see  end")
+        self.assertEqual(self.assertSafe(f"see ({url})."), "see ().")
+
+    def test_wikipedia_style_link(self):
+        url = f"https://en.wikipedia.org/wiki/{RUN80}_(a)"
+        self.assertEqual(self.assertSafe(f"[wiki]({url}) ok"), "wiki ok")
+        self.assertEqual(self.assertSafe(f"[wiki]({url})."), "wiki.")
+
+    def test_code_span_goes_with_the_url(self):
+        self.assertEqual(self.assertSafe(f"run `https://x.io/{RUN80}` now"), "run  now")
+        self.assertEqual(self.assertSafe(f"see `{ADR_URL}` now"), f"see `{ADR}` now")
+
+    def test_autolink_goes_with_the_url(self):
+        self.assertEqual(self.assertSafe(f"see <https://x.io/{RUN80}> now"), "see  now")
+        self.assertEqual(self.assertSafe(f"see <{ADR_URL}> now"), f"see `{ADR}` now")
+
+    def test_link_text_that_is_a_url_keeps_a_label(self):
+        self.assertEqual(self.assertSafe(f"[https://x.io/{RUN80}](https://x.io/{RUN80})"), "link")
+
+    def test_exact_150_boundary(self):
+        for n, tripped in ((149, False), (150, True)):
+            with self.subTest(n):
+                rest = ("e.com/" + "ab/" * 60)[:n]
+                url = "https://" + rest
+                self.assertEqual(m.trips(url), tripped)
+                self.assertEqual(self.rewritten(url) == url, not tripped)
+
+    def test_final_check_replaces_what_the_url_rules_missed(self):
+        long_token = "x" + "ab/" * 30 + "(" + "cd/" * 30 + ")"
+        text = f"scheme-less /{RUN80}\nweird ://{long_token}\nok"
+        out = self.assertSafe(text)
+        self.assertEqual(out.count(m.PLACEHOLDER), 2)
+        self.assertTrue(out.endswith("\nok"))
+        self.assertEqual(self.assertSafe(f"[a](b){'/' + RUN80}"), m.PLACEHOLDER)
+
+    def test_title_is_rewritten_too(self):
+        self.assertEqual(self.assertSafe(f"Fix {ADR_URL}"), f"Fix `{ADR}`")
+
     def test_cli_rewrites_and_lists(self):
         text = f"a {ADR_URL} b\n"
         run = lambda *args: subprocess.run(  # noqa: E731

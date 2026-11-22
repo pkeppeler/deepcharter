@@ -7,11 +7,15 @@ characters after its `://`, or a URL carrying 80 or more letters, digits, `+`, `
 
 - `https://github.com/<owner>/<repo>/blob/<ref>/<path>` becomes the backticked `<path>`.
 - In a markdown link `[text](url)` the text stays; a blob URL adds the backticked path after it.
-- Any other URL is removed, keeping the link text where there is one.
+- Any other URL is removed, keeping the link text where there is one. A backtick span or `<autolink>` around a
+  rewritten URL goes with it.
+- Any scheme counts (`ftp://`, `HTTPS://`). The proxy's idea of where a URL ends is unknown, so a final pass
+  replaces every whitespace-delimited token that could still trip the rule with `(link removed)`: the output
+  never trips.
 
 Usage: tools/py tools/merge_message.py [--list] < text
   default  the rewritten text on stdout
-  --list   one line per URL that would be rewritten, nothing else
+  --list   one line per URL or token that would be rewritten, nothing else
 """
 
 from __future__ import annotations
@@ -21,12 +25,16 @@ import sys
 
 MAX_AFTER_SCHEME = 150
 MAX_RUN = 80
+PLACEHOLDER = "(link removed)"
 
-BLOB = re.compile(r"https://github\.com/[\w.-]+/[\w.-]+/blob/[^/\s?#]+/(?P<path>[^\s?#]+)(?:[?#]\S*)?")
+BLOB = re.compile(r"https://github\.com/[\w.-]+/[\w.-]+/blob/[^/\s?#]+/(?P<path>[^\s?#]+)(?:[?#]\S*)?", re.I)
 LONG_RUN = re.compile(rf"[?/=#][A-Za-z0-9+_-]{{{MAX_RUN},}}")
-LINK = re.compile(r"!?\[(?P<text>[^\]]*)\]\((?P<url>https?://[^\s)]+)\)")
-BARE = re.compile(r"https?://[^\s<>\[\]()]+")
+# An optional markdown link opener, backtick or `<` right before a URL, then the URL's whole whitespace-free token.
+CANDIDATE = re.compile(
+    r"(?P<pre>(?P<image>!?)\[(?P<text>[^\]]*)\]\(|`|<)?(?P<token>[A-Za-z][A-Za-z0-9+.-]*://\S*)"
+)
 TRAILING = ".,;:!'\"*"
+TOKEN = re.compile(r"\S+")
 
 
 def trips(url: str) -> bool:
@@ -40,40 +48,68 @@ def blob_path(url: str) -> str | None:
 
 
 def short_form(url: str) -> str:
-    """What replaces a bare tripping URL: the backticked repo path of a blob URL, else nothing."""
+    """What replaces a tripping URL: the backticked repo path of a blob URL, else nothing."""
     path = blob_path(url)
     return f"`{path}`" if path else ""
 
 
-def split_trailing(raw: str) -> tuple[str, str]:
-    url = raw.rstrip(TRAILING)
-    return url, raw[len(url) :]
+def split_target(token: str, pre: str | None) -> tuple[str, str, bool]:
+    """Split a URL token into the URL, what follows it, and whether a closer of the opener went with the URL."""
+    if pre == "`" or pre == "<":
+        closer = "`" if pre == "`" else ">"
+        end = token.find(closer)
+        if end >= 0:
+            return token[:end], token[end + 1 :], True
+        return token, "", False
+    if pre:  # a markdown link: the target ends at the first unbalanced `)`
+        depth = 0
+        for i, ch in enumerate(token):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                if depth == 0:
+                    return token[:i], token[i + 1 :], True
+                depth -= 1
+        return token, "", False
+    url = token.rstrip(TRAILING)
+    while url.endswith((")", "]", ">")) and url.count(url[-1]) > url.count({")": "(", "]": "[", ">": "<"}[url[-1]]):
+        url = url[:-1].rstrip(TRAILING)
+    return url, token[len(url) :], False
 
 
 def rewrite(text: str) -> tuple[str, list[str]]:
     """The text with every tripping URL rewritten, and those URLs in order of appearance."""
     found: list[str] = []
 
-    def link(match: re.Match[str]) -> str:
-        url = match.group("url")
+    def candidate(match: re.Match[str]) -> str:
+        pre = match.group("pre")
+        url, rest, closed = split_target(match.group("token"), pre)
         if not trips(url):
             return match.group(0)
         found.append(url)
-        label = match.group("text").strip()
         short = short_form(url)
-        if "://" in label:  # the link text is itself a URL: it would trip the proxy too
-            return short
-        return " ".join(part for part in (label, f"({short})" if short and label else short) if part)
+        opener = pre if pre and not closed else ""  # an unclosed opener stays: nothing was swallowed with it
+        if pre and pre.endswith("("):
+            label = match.group("text").strip()
+            if "://" in label:  # the link text is itself a URL: it would trip the proxy too
+                label = ""
+            if label and short:
+                body = f"{label} ({short})"
+            else:
+                body = label or short or "link"
+            return body + rest if closed else match.group(0)[: -len(match.group("token"))] + short + rest
+        return opener + short + rest
 
-    def bare(match: re.Match[str]) -> str:
-        url, tail = split_trailing(match.group(0))
-        if not trips(url):
-            return match.group(0)
-        found.append(url)
-        return short_form(url) + tail
+    out = CANDIDATE.sub(candidate, text)
 
-    # Only links outside a rewritten one are seen by `bare`, because `link` ran first and left no URL in them.
-    return BARE.sub(bare, LINK.sub(link, text)), found
+    def token(match: re.Match[str]) -> str:
+        tok = match.group(0)
+        if (("://" in tok and len(tok) - tok.index("://") - 3 >= MAX_AFTER_SCHEME) or LONG_RUN.search(tok)):
+            found.append(tok)
+            return PLACEHOLDER
+        return tok
+
+    return TOKEN.sub(token, out), found
 
 
 def main(argv: list[str]) -> int:
