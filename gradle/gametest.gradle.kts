@@ -120,6 +120,9 @@ object GametestScan {
 		if (campaign.isEmpty()) {
 			return emptyList()
 		}
+		if (environments.isEmpty()) {
+			return listOf("$className names the campaign world but test/support/CampaignEnvironments.java is missing or defines no String constant of \"deepcharter-test:campaign_...\"; the gate cannot tell which environments exist")
+		}
 		val named = Regex("""\benvironment\s*=\s*CampaignEnvironments\.(?:${environments.joinToString("|")})\b""")
 		val problems = mutableListOf<String>()
 		for (call in gameTestCall.findAll(text)) {

@@ -111,8 +111,19 @@ def fixture(extra: dict[str, str]) -> dict[str, str]:
     return {"FixtureTest.java": SERVER_TEST, "FixtureScenario.java": CLIENT_SCENARIO, **CLEAN, **extra}
 
 
+def without_environments(extra: dict[str, str]) -> dict[str, str]:
+    files = fixture(extra)
+    del files["CampaignEnvironments.java"]
+    return files
+
+
 CASES = {
     "clean": Case(fixture({}), None),
+    "environments file missing": Case(without_environments({"CampaignTest.java": violating("@GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)")}), None),
+    "environments file without constants": Case(
+        fixture({"CampaignEnvironments.java": "public final class CampaignEnvironments {}", "CampaignTest.java": violating("@GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE)")}),
+        None,
+    ),
     **{label: Case(fixture({"CampaignTest.java": violating(annotation)}), None) for label, (annotation, _) in BAD.items()},
 }
 
@@ -131,3 +142,10 @@ class CampaignEnvironmentGateTest(unittest.TestCase):
                 self.assertIn("CampaignEnvironments.<one of A, B, C, D>", result.message)
                 for clean in ("CampaignEnvironments.java", "NamedTest", "SurfaceTest", "NoDimensionTest", "MentionsTest"):
                     self.assertNotIn(clean, result.message)
+
+    def test_a_missing_or_empty_environments_file_fails_closed(self):
+        for label in ("environments file missing", "environments file without constants"):
+            with self.subTest(label):
+                result = gate_batch.result(f"{__name__}/{label}")
+                self.assertFalse(result.ok, f"the gate should fail the build for {label}")
+                self.assertIn("CampaignTest names the campaign world but test/support/CampaignEnvironments.java is missing or defines no String constant", result.message)
