@@ -105,10 +105,6 @@ public final class Overgrowth {
         return level.getNoiseBiome(pos.getX() >> 2, pos.getY() >> 2, pos.getZ() >> 2);
     }
 
-    private static OvergrowthTuning tuning() {
-        return OvergrowthTuning.DEFAULT;
-    }
-
     public static void init() {
         ServerChunkEvents.CHUNK_LOAD.register((level, chunk, newlyGenerated) -> {
             if (chunk.hasAttached(BORES)) {
@@ -117,8 +113,7 @@ public final class Overgrowth {
         });
         ServerChunkEvents.CHUNK_UNLOAD.register((level, chunk) -> untrack(level, chunk.getPos()));
         // A player who is not in the level is no visit and no entity: growth may close round the place they logged out,
-        // so a
-        // leave counts as a visit and a join frees the cells they stand in.
+        // so a leave counts as a visit and a join frees the cells they stand in.
         ServerPlayerEvents.LEAVE.register(Overgrowth::leave);
         ServerPlayerEvents.JOIN.register(Overgrowth::freePlayer);
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> TRACKED.clear());
@@ -217,7 +212,7 @@ public final class Overgrowth {
             return;
         }
         long now = level.getGameTime();
-        int pass = tuning().passTicks();
+        int pass = OvergrowthTuning.DEFAULT.passTicks();
         for (ChunkPos at : List.copyOf(chunks)) {
             // Each chunk has its own tick in the pass, so a level of bores does not do all its work on one tick.
             if (Math.floorMod(now - at.hashCode(), pass) != 0) {
@@ -240,7 +235,7 @@ public final class Overgrowth {
     /** Writes {@code now} as the chunk's last visit when a player is within reach of one of its bore cells; writes at most every {@link OvergrowthTuning#visitStampTicks}. */
     public static void stampVisit(ServerLevel level, LevelChunk chunk, long now) {
         Optional<Bores> read = Versioned.readable(chunk, BORES);
-        if (read.isEmpty() || now - read.get().lastVisit() < tuning().visitStampTicks()) {
+        if (read.isEmpty() || now - read.get().lastVisit() < OvergrowthTuning.DEFAULT.visitStampTicks()) {
             return;
         }
         if (visited(level, read.get())) {
@@ -259,7 +254,7 @@ public final class Overgrowth {
     }
 
     private static boolean near(ServerPlayer player, Bores bores) {
-        double reach = tuning().visitRadius();
+        double reach = OvergrowthTuning.DEFAULT.visitRadius();
         for (long cell : bores.cells()) {
             if (BlockPos.of(cell).distToCenterSqr(player.position()) <= reach * reach) {
                 return true;
@@ -276,11 +271,11 @@ public final class Overgrowth {
      */
     public static void grow(ServerLevel level, LevelChunk chunk, long now) {
         Optional<Bores> read = Versioned.readable(chunk, BORES);
-        if (read.isEmpty() || now - read.get().lastVisit() < tuning().delayTicks()) {
+        if (read.isEmpty() || now - read.get().lastVisit() < OvergrowthTuning.DEFAULT.delayTicks()) {
             return;
         }
         Bores bores = read.get();
-        long pass = now / tuning().passTicks();
+        long pass = now / OvergrowthTuning.DEFAULT.passTicks();
         LoadedBlocks blocks = new LoadedBlocks(level);
         Set<Long> done = new HashSet<>();
         int grown = 0;
@@ -288,14 +283,13 @@ public final class Overgrowth {
             BlockPos pos = BlockPos.of(cell);
             BlockState state = blocks.getBlockState(pos);
             if (state.isAir()) {
-                if (grown < tuning().cellsPerPass() && freeToGrow(level, blocks, pos)) {
+                if (grown < OvergrowthTuning.DEFAULT.cellsPerPass() && freeToGrow(level, blocks, pos)) {
                     level.setBlock(pos, LayerBlocks.OVERGROWTH.defaultBlockState(), Block.UPDATE_ALL);
                     grown++;
                     done.add(cell);
                 }
-            } else if (state.is(LayerBlocks.OVERGROWTH)) {
-                done.add(cell);
-            } else if (!isWall(state) && state.getFluidState().isEmpty()) {
+            } else if (state.is(LayerBlocks.OVERGROWTH)
+                    || (!isWall(state) && state.getFluidState().isEmpty())) {
                 done.add(cell);
             }
         }
@@ -312,7 +306,7 @@ public final class Overgrowth {
                 Comparator.comparingLong((long[] pair) -> pair[0]).reversed());
         for (long cell : cells) {
             long key = scramble(cell, pass);
-            if (largest.size() < tuning().maxLooks()) {
+            if (largest.size() < OvergrowthTuning.DEFAULT.maxLooks()) {
                 largest.add(new long[] {key, cell});
             } else if (key < largest.peek()[0]) {
                 largest.poll();
@@ -351,7 +345,7 @@ public final class Overgrowth {
 
     /** An unloaded neighbouring chunk reads as air here, so a lining block across a chunk border that is not loaded does not hold; {@code canChange} has already refused a cell on a loaded border's unloaded side. */
     private static boolean heldOpen(LoadedBlocks blocks, BlockPos pos) {
-        int reach = tuning().holdReach();
+        int reach = OvergrowthTuning.DEFAULT.holdReach();
         for (BlockPos near :
                 BlockPos.betweenClosed(pos.offset(-reach, -reach, -reach), pos.offset(reach, reach, reach))) {
             if (blocks.getBlockState(near).is(LINING)) {
