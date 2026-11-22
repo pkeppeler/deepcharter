@@ -27,8 +27,12 @@ import org.slf4j.LoggerFactory;
  * server's, and the client must see the mock pilot's pod move.
  */
 public class PodMovementClientTest implements FabricClientGameTest {
-    /** How far the client's pod may trail the server's while driving (SPEC section 7 risk: input lag). */
-    static final double MAX_LAG_BLOCKS = 0.5;
+    /**
+     * How far the client's pod may trail the server's while driving (SPEC section 7 risk: input lag): the two ticks the harness
+     * lags a pod by, and the one more tick that the client's slide between the server's moves adds (#961), at 0.2 blocks a tick, with
+     * a tenth of margin.
+     */
+    static final double MAX_LAG_BLOCKS = 0.7;
 
     static final int DRIVE_TICKS = 40;
     private static final Logger LOGGER = LoggerFactory.getLogger(PodMovementClientTest.class);
