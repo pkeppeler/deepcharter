@@ -359,7 +359,7 @@ public class ThemeLooksTest {
     public void theGlassCornerHasTheBezelsRadius(GameTestHelper helper) {
         PanelLook look = PanelLook.of(area("panel", null));
         if (look.glassRadius() != 18) {
-            throw fail(helper, "the mod's glass corner is the porthole's 18 pixels, got " + look.glassRadius());
+            throw failure(helper, "the mod's glass corner is the porthole's 18 pixels, got %s", look.glassRadius());
         }
         List<Integer> insets = new ArrayList<>();
         for (int row = 0; row < 20; row++) {
@@ -367,13 +367,13 @@ public class ThemeLooksTest {
         }
         List<Integer> porthole = List.of(14, 11, 9, 7, 6, 5, 4, 3, 3, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0);
         if (!insets.equals(porthole)) {
-            throw fail(helper, "the corner insets of radius 18 are " + porthole + ", got " + insets);
+            throw failure(helper, "the corner insets of radius 18 are %s, got %s", porthole, insets);
         }
         if (PanelLook.cornerInset(0, 0) != 0) {
-            throw fail(helper, "a radius of 0 is a square corner");
+            throw failure(helper, "a radius of 0 is a square corner");
         }
         if (PanelLook.of(area("panel", "{ \"glassRadius\": 24 }")).glassRadius() != 24) {
-            throw fail(helper, "a pack names its own glass radius");
+            throw failure(helper, "a pack names its own glass radius");
         }
         rejected(helper, () -> PanelLook.of(area("panel", "{ \"glassRadius\": 65 }")), "glassRadius");
         rejected(helper, () -> PanelLook.of(area("panel", "{ \"glassRadius\": -1 }")), "glassRadius");
@@ -399,7 +399,7 @@ public class ThemeLooksTest {
         for (int[] c : cases) {
             int inset = PanelLook.scanlineInset(c[0], c[1], c[2], c[3]);
             if (inset != c[4]) {
-                throw fail(helper, "scanlineInset" + Arrays.toString(c) + " should be " + c[4] + ", got " + inset);
+                throw failure(helper, "scanlineInset%s should be %s, got %s", Arrays.toString(c), c[4], inset);
             }
         }
         helper.succeed();
@@ -424,9 +424,8 @@ public class ThemeLooksTest {
         }
         for (String side : List.of("left", "top", "right", "bottom")) {
             if (look.glassRadius() > border.get(side).getAsInt()) {
-                throw fail(
-                        helper,
-                        "glassRadius " + look.glassRadius() + " is over the glass border " + side + " " + border);
+                throw failure(
+                        helper, "glassRadius %s is over the glass border %s %s", look.glassRadius(), side, border);
             }
         }
         BufferedImage frame;
@@ -447,10 +446,14 @@ public class ThemeLooksTest {
                 bottomRight++;
             }
             if (topLeft != expected || bottomRight != expected) {
-                throw fail(
+                throw failure(
                         helper,
-                        "the porthole's row " + row + " is " + topLeft + " in at the top left and " + bottomRight
-                                + " at the bottom right, but glassRadius " + look.glassRadius() + " says " + expected);
+                        "the porthole's row %s is %s in at the top left and %s at the bottom right, but glassRadius %s says %s",
+                        row,
+                        topLeft,
+                        bottomRight,
+                        look.glassRadius(),
+                        expected);
             }
         }
         helper.succeed();
