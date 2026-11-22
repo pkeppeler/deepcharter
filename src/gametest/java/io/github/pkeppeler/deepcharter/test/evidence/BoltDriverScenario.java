@@ -46,6 +46,8 @@ public class BoltDriverScenario extends EvidenceScenario {
     private static final float WEST = 90f;
     /** A little up from level, so that the roof and what hangs from it are in the frame. */
     private static final float LOOK_UP = -8f;
+    /** Level, to fire along the tunnel at a Retained that stands at the height of a person. */
+    private static final float LEVEL = 0f;
     /** The Retained's place, 6 blocks from the person who fires; the driver's rest between shots is 12 ticks, with one to spare. */
     private static final int RETAINED_ALONG = 10;
 
@@ -118,7 +120,7 @@ public class BoltDriverScenario extends EvidenceScenario {
                                 player.getInventory().getSelectedSlot(),
                                 new ItemStack(RepairRegistry.item(Consumable.BOLT_DRIVER)));
                 player.getInventory().setItem(1, new ItemStack(RepairRegistry.item(Consumable.BOLT), 16));
-                stand(one, player, FIRING_ALONG, EAST);
+                stand(one, player, FIRING_ALONG, EAST, LEVEL);
             });
             ClientWait.until(
                     context,
@@ -195,7 +197,11 @@ public class BoltDriverScenario extends EvidenceScenario {
     }
 
     private static void stand(ServerLevel level, ServerPlayer player, int along, float yaw) {
-        player.teleportTo(level, X + along + 0.5, FLOOR_Y, Z + 0.5, Set.of(), yaw, LOOK_UP, true);
+        stand(level, player, along, yaw, LOOK_UP);
+    }
+
+    private static void stand(ServerLevel level, ServerPlayer player, int along, float yaw, float pitch) {
+        player.teleportTo(level, X + along + 0.5, FLOOR_Y, Z + 0.5, Set.of(), yaw, pitch, true);
     }
 
     /** A right click with the driver: on the underside of {@code roof}, or in the air when it is null. */
