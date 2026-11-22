@@ -85,7 +85,6 @@ public class PodLavaWatchTest {
     private static void run(
             GameTestHelper helper, ServerLevel level, int x, boolean piloted, Consumer<Staged> stage, Watch watch) {
         MockPlayer pilot = MockPlayers.join(helper, "Watch pilot " + OWNERS.incrementAndGet());
-        pilot.player().setGameMode(GameType.SURVIVAL);
         Staged[] staged = {null};
         int[] ticks = {0};
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
@@ -93,6 +92,7 @@ public class PodLavaWatchTest {
             site(level, x);
             // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
             pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
+            pilot.player().setGameMode(GameType.SURVIVAL);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(x, FLOOR, Z);
             level.addFreshEntity(pod);

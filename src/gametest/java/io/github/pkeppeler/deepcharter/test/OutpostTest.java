@@ -805,6 +805,13 @@ public class OutpostTest {
                     .with(RepairState.TYPE, repaired)
                     .with(OutpostData.TYPE, new OutpostData())
                     .run(() -> {
+                        carveFloor(helper, stage.level(), stage.floor());
+                        stage.mock()
+                                .teleportTo(
+                                        stage.level(),
+                                        Vec3.atBottomCenterOf(stage.floor().above()),
+                                        0f,
+                                        0f);
                         if (!useKit(stage, stage.floor(), Direction.UP).consumesAction()) {
                             throw failure(helper, "the kit should build");
                         }

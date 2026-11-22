@@ -280,15 +280,15 @@ public final class MockPlayer {
             leave();
             return;
         }
+        if (loaded) {
+            confirmDimensionChange();
+        }
         // A player's tick reads its block (isInWall), which loads an unloaded chunk on the server thread and starves
         // every test beside
         // it (#1020). The mock holds a ticket on its chunk, which loads it on the worker threads, and does not tick
         // until it has loaded.
         if (!standsInLoadedChunk()) {
             return;
-        }
-        if (loaded) {
-            confirmDimensionChange();
         }
         connection.tick();
         Object outbound;

@@ -484,10 +484,12 @@ final class ChassisChecks {
         ServerLevel level = TestLayers.level(helper, 1);
         Vec3 start = new Vec3(x, FLOOR + 10, Z);
         PodEntity[] pod = {null};
-        FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(start), () -> pod[0] = spawn(level, start));
-        helper.succeedWhen(() -> {
+        FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(start), () -> {
             // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
             site(level, x);
+            pod[0] = spawn(level, start);
+        });
+        helper.succeedWhen(() -> {
             expect(helper, pod[0] != null && pod[0].onGround() && pod[0].tickCount >= 5, "the pod has not landed");
             // The same fall of 10 blocks costs the Mole 28 to 34 hull (PodHardLandingTest): the cost reads sink speed
             // and stats, not the hitbox.
@@ -513,9 +515,10 @@ final class ChassisChecks {
         List<BlockPos> chunks = List.of(new BlockPos(x - RADIUS, FLOOR, Z), new BlockPos(x + RADIUS, FLOOR, Z));
         int[] ready = {0};
         FarChunks.awaitEntityTicking(helper, level, chunks, index -> {
-            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
-            site(level, x);
             if (++ready[0] == chunks.size()) {
+                // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server
+                // thread.
+                site(level, x);
                 pods[0] = spawn(level, start);
                 pods[1] = spawn(level, start.add(-3, 0, 0));
                 PodTowing.attach(pods[0], pods[1]);

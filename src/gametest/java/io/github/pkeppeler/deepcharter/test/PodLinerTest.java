@@ -565,14 +565,14 @@ public class PodLinerTest {
      */
     private void packSplit(GameTestHelper helper, int x, int tier, int rack, int pack, int blocked, Left expected) {
         ServerLevel level = TestLayers.level(helper, 1);
-        for (BlockPos cell : ringCells(x).subList(0, blocked)) {
-            level.setBlock(cell, OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
-        }
         MockPlayer pilot = owner(helper);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
             // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
             shaft(level, x, 8, false);
+            for (BlockPos cell : ringCells(x).subList(0, blocked)) {
+                level.setBlock(cell, OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
+            }
             // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
             pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
