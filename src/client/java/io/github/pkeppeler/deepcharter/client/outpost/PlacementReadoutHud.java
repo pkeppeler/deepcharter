@@ -58,12 +58,8 @@ public final class PlacementReadoutHud {
     private static HudKeepClear.Rect box(Font font, Readout readout, int guiWidth, int guiHeight) {
         ReadoutLook look = ReadoutLook.current();
         int line = font.lineHeight + look.lineGap();
-        int widest = font.width(readout.verdict().label());
-        int height = font.lineHeight;
-        if (readout.reason().isPresent()) {
-            widest = Math.max(widest, font.width(readout.reason().get()));
-            height += line;
-        }
+        int widest = widest(font, readout);
+        int height = font.lineHeight + (readout.reason().isPresent() ? line : 0);
         int width = (int) Math.ceil(widest * look.scale());
         return new HudKeepClear.Rect(
                 "placement readout",
@@ -71,6 +67,14 @@ public final class PlacementReadoutHud {
                 guiHeight / 2 + look.offsetY() + (int) Math.ceil(LINES_BELOW * line * look.scale()),
                 width,
                 (int) Math.ceil(height * look.scale()));
+    }
+
+    /** The width, before the scale, of the wider of the two lines. */
+    private static int widest(Font font, Readout readout) {
+        int widest = font.width(readout.verdict().label());
+        return readout.reason()
+                .map(reason -> Math.max(widest, font.width(reason)))
+                .orElse(widest);
     }
 
     private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
@@ -127,22 +131,26 @@ public final class PlacementReadoutHud {
         Font font = client.font;
         HudKeepClear.Rect box = box(font, shown.get(), graphics.guiWidth(), graphics.guiHeight());
         graphics.pose().pushMatrix();
-        graphics.pose().translate(graphics.guiWidth() / 2f, box.y());
+        graphics.pose().translate(box.x(), box.y());
         graphics.pose().scale((float) look.scale(), (float) look.scale());
+        int widest = widest(font, shown.get());
         int verdictColor = shown.get().verdict() == Verdict.WILL_NOT_HOLD ? look.hintColor() : look.nameColor();
-        centred(graphics, font, shown.get().verdict().label(), 0, Colors.withAlpha(verdictColor, alpha));
+        centred(graphics, font, widest, shown.get().verdict().label(), 0, Colors.withAlpha(verdictColor, alpha));
         shown.get()
                 .reason()
                 .ifPresent(reason -> centred(
                         graphics,
                         font,
+                        widest,
                         reason,
                         font.lineHeight + look.lineGap(),
                         Colors.withAlpha(look.hintColor(), alpha)));
         graphics.pose().popMatrix();
     }
 
-    private static void centred(GuiGraphicsExtractor graphics, Font font, Component text, int y, int color) {
-        graphics.text(font, text, -font.width(text) / 2, y, color, true);
+    /** {@code text} centred in a line {@code widest} wide, from the box's integer origin, so what is drawn is inside the box that is kept clear. */
+    private static void centred(
+            GuiGraphicsExtractor graphics, Font font, int widest, Component text, int y, int color) {
+        graphics.text(font, text, (widest - font.width(text)) / 2, y, color, true);
     }
 }
