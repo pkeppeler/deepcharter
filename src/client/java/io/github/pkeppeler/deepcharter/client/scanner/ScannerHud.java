@@ -5,8 +5,8 @@ import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
-import io.github.pkeppeler.deepcharter.creature.Tallies;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.scanner.EchoedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanArea;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
@@ -91,7 +91,7 @@ public final class ScannerHud {
             ticksUntilScan--;
             return;
         }
-        slice = ScanSlice.scan(Tallies.echoed(client.level, pod), pod).orElse(null);
+        slice = ScanSlice.scan(EchoedBlocks.ofTallies(client.level, pod), pod).orElse(null);
         ticksUntilScan = TUNING.rescanTicks() - 1;
     }
 

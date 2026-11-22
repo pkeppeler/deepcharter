@@ -34,6 +34,7 @@ public final class CreatureRegistry {
             TALLY_KEY,
             EntityType.Builder.<Tally>of(Tally::new, MobCategory.MONSTER)
                     .sized(0.5f, 0.4f)
+                    .notInPeaceful()
                     .noSave()
                     .fireImmune()
                     .clientTrackingRange(8)

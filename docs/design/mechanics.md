@@ -1245,21 +1245,30 @@ The helmet lamp is a 2 by 2 pixel lens in the hard hat's bracket, dull amber, no
 
 **Knobs.** `TallyTuning`: the zone (48), the check interval (10 s), the chance per check (layer 1 3 per cent, layer 2 10 per cent), the trail (600 ticks), the holds (60 and 40 ticks), the Tally's health (6) and the cutter's bite (2 each 10 ticks).
 
-### Measured
+### Pacing
 
-`TallyTest` and `TallyEconomyTest` log `[tally]` and `[tally-economy]` lines.
+Rows are **measured** (asserted by a test, `TallyTest`) or **modelled** (computed in `TallyEconomyTest` from assumed shares). `[tally]` and `[tally-economy]` lines log them.
 
-| Measure | Value |
-|---|---|
-| Trail, then clamp (a pod that stays put, real flight) | 32 s: the 30 s trail and a 2 s approach |
-| The skim, clamp to gone | 5 s at the hatch (3 s hold, 2 s flight off); 4 s on foot |
-| The cutter, drill to broken | 21 ticks, about 1 s (health 6, 2 a bite, a bite every 10 ticks, the first at once) |
-| One blow of 1 on foot | broken |
-| Skims a run (4 minutes, half of it in the zone, 60 per cent keep the pod, 40 per cent do not answer) | layer 1 0.09, layer 2 0.29 |
-| Expected loss, at the zone's mean ore | layer 1 $4.8 of a stock Mole's $115 net (4.2 per cent); layer 2 $24.8 of a tier 2 run's $413 (6.0 per cent) |
-| The worst skim | one ore of $30 in layer 1: 26 per cent of a layer 1 run's net |
+| Row | Kind | Value |
+|---|---|---|
+| Trail, then clamp (a pod that stays put, real flight) | measured | 637 to 683 ticks (32 to 34 s): the 30 s trail and an approach; the test asserts 600 to 700 |
+| Clamp to gone | measured | 100 ticks at the hatch (3 s hold, 2 s flight off); 80 ticks on foot |
+| The cutter, drill to broken | measured | 21 ticks, about 1 s; the test asserts 20 to 25 (health 6, 2 a bite, a bite every 10 ticks, the first at once) |
+| One blow of 1 on foot | measured | breaks it |
+| A Tally walled off from the pod | measured | never clamps and takes nothing |
+| Skims a run | modelled | layer 1 0.09, layer 2 0.29 |
+| Expected loss at the zone's mean ore | modelled | layer 1 $4.8 of a stock Mole's $115 net (4.2 per cent); layer 2 $24.8 of a tier 2 run's $413 (6.0 per cent) |
+| The worst skim | modelled | one ore of $30 in layer 1: 26 per cent of a layer 1 run's net |
 
-The answering pilot is the model's 40 per cent: a pilot who answers loses nothing, so a Tally is a tax on the inattentive and on the climb home, where the pod does not drill.
+The modelled rows rest on three guesses, none measured: a 4-minute run, half of it in the casing zone; 60 per cent of Tallies keep the pod in sense for the whole trail; and 40 per cent of clamps find the pilot not answering inside the hold. The answering pilot is the 40 per cent: one who reads the clamp line and drills loses nothing, so a Tally is a tax on the inattentive and on the climb home, where the pod does not drill.
+
+**Rules worth stating.**
+
+- A Tally latches only from beside its mark (within `trailGapBlocks + 1`). One that cannot get there, walled off in a pocket, keeps trailing and never clamps, and it never passes through rock.
+- Once clamped it takes its sample even if the pilot leaves, a parked pod included; it lets go only when its pod or person is removed (a log-off) or it is broken. A light does not free it.
+- Layers 1 and 2 only. The Conduit beyond the Ramp is act 3.
+- Not in Peaceful: a Tally neither comes nor skims there.
+- A pod flown by a creative player draws none.
 
 **Does this make the default harder?** Yes, a little: 4 to 6 per cent of a run on average, where before nothing here touched the haul. A first run that loses a $30 ore is a quarter of its net.
 

@@ -119,11 +119,13 @@ public final class Tally extends PathfinderMob {
     }
 
     /**
-     * Whether a pod draws a Tally: a person aboard, power, no lights, and ore in the bay. A parked pod is left alone, and so is a wreck, a lit
-     * pod and a pod whose bay holds nothing to sample.
+     * Whether a pod draws a Tally: a survival pilot aboard, power, no lights, and ore in the bay. A parked pod is left alone, and so is a wreck, a lit
+     * pod, a pod flown by a creative player and a pod whose bay holds nothing to sample.
      */
     public static boolean draws(PodEntity pod) {
-        return pod.getFirstPassenger() instanceof Player
+        return pod.getFirstPassenger() instanceof Player pilot
+                && !pilot.isCreative()
+                && !pilot.isSpectator()
                 && PodEvents.isPowered(pod)
                 && !PodLights.isLit(pod)
                 && pod.cargo().isReadable()
@@ -226,7 +228,9 @@ public final class Tally extends PathfinderMob {
             getNavigation().stop();
         }
         face(followed);
-        if (trailed >= tuning.trailTicks()) {
+        // It latches only from beside the mark: a Tally that cannot get there (walled off, or held back by rock) goes
+        // on trailing and never clamps.
+        if (trailed >= tuning.trailTicks() && distance <= tuning.trailGapBlocks() + 1) {
             latch(followed);
         }
     }
@@ -290,10 +294,9 @@ public final class Tally extends PathfinderMob {
                         (ServerLevel) level(),
                         new DamageSource(level().damageSources().generic().typeHolder(), pod),
                         tuning.biteDamage())
-                && !bitten
-                && pod.getControllingPassenger() instanceof ServerPlayer pilot) {
+                && !bitten) {
             bitten = true;
-            pilot.sendOverlayMessage(Component.translatable("creature.deepcharter.tally_bitten"));
+            tell(pod, Component.translatable("creature.deepcharter.tally_bitten"));
         }
     }
 
@@ -403,12 +406,16 @@ public final class Tally extends PathfinderMob {
         discard();
     }
 
+    /** Tells everyone aboard the pod, or the person on foot. */
     private void tell(Entity owner, Component line) {
-        ServerPlayer who = owner instanceof PodEntity pod
-                ? pod.getControllingPassenger() instanceof ServerPlayer pilot ? pilot : null
-                : owner instanceof ServerPlayer person ? person : null;
-        if (who != null) {
-            who.sendOverlayMessage(line);
+        if (owner instanceof PodEntity pod) {
+            for (Entity rider : pod.getPassengers()) {
+                if (rider instanceof ServerPlayer player) {
+                    player.sendOverlayMessage(line);
+                }
+            }
+        } else if (owner instanceof ServerPlayer person) {
+            person.sendOverlayMessage(line);
         }
     }
 

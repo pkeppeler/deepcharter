@@ -4,25 +4,20 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
-import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
-import io.github.pkeppeler.deepcharter.scanner.EchoedBlocks;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
@@ -41,11 +36,6 @@ public final class Tallies {
     private static final int PLACE_TRIES = 16;
     /** Cells of free air a Tally needs round its place: its own and the one above. */
     private static final int ROOM_BLOCKS = 2;
-
-    /** How far from the pod a Tally still echoes: past the widest scan area. */
-    private static final double ECHO_REACH_BLOCKS = 48;
-    /** The ore a Tally echoes as: brass reads as the nearest metal. */
-    private static final OreType ECHO_ORE = OreType.BRONZIUM;
 
     private static final Set<String> LOGGED_FAILURES = new HashSet<>();
 
@@ -71,6 +61,7 @@ public final class Tallies {
 
     private static void tick(ServerLevel level) {
         if (level.getGameTime() % TallyTuning.DEFAULT.checkIntervalTicks() != 0
+                || level.getDifficulty() == Difficulty.PEACEFUL
                 || !level.getGameRules().get(GameRules.SPAWN_MOBS)) {
             return;
         }
@@ -191,29 +182,5 @@ public final class Tallies {
             }
         }
         return best;
-    }
-
-    /**
-     * What a pod's scanner reads of {@code level}: the level, with each Tally within {@link #ECHO_REACH_BLOCKS} of the pod read as an ore (a
-     * Company machine echoes as ore, CREATURES.md section 2), so that the map shows a block of ore that moves. The client's level holds the
-     * Tallies it tracks, which is all a scanner could hear.
-     */
-    public static BlockGetter echoed(Level level, PodEntity pod) {
-        // entity-query: the client's level holds only what it tracks, which is what a scanner's echo shows; a Tally out
-        // of view has no echo
-        Set<BlockPos> cells = level
-                .getEntities(
-                        CreatureRegistry.TALLY,
-                        pod.getBoundingBox().inflate(ECHO_REACH_BLOCKS),
-                        tally -> tally.isAlive() && !tally.isRemoved())
-                .stream()
-                .map(Tally::blockPosition)
-                .collect(Collectors.toSet());
-        return cells.isEmpty()
-                ? level
-                : new EchoedBlocks(
-                        level,
-                        cells,
-                        BuiltInRegistries.BLOCK.getValue(ECHO_ORE.blockId()).defaultBlockState());
     }
 }

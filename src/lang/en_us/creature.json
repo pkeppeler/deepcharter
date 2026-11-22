@@ -1,4 +1,5 @@
 {
+  "entity.deepcharter.tally": "Tally",
   "creature.deepcharter.tally_approach": "Clicking behind you, counting. A Tally has found your ore.",
   "creature.deepcharter.tally_clamp_pod": "A Tally has clamped to the cargo hatch. Drill into rock to cut it off.",
   "creature.deepcharter.tally_clamp_foot": "A Tally has clamped to your pack. Strike it.",
