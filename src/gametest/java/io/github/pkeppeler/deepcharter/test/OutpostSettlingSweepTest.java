@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Ledger;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Pending;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Report;
 import io.github.pkeppeler.deepcharter.outpost.SettlingTuning;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -51,7 +52,7 @@ public class OutpostSettlingSweepTest {
             new BlockPos(-4, 4, 0),
             new BlockPos(4, 4, 0));
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, maxTicks = MAX_TICKS)
     public void theServerTickSettlesAnOverdueDarkOutpostWithoutAnyoneCalling(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel one = TestLayers.level(helper, 1);

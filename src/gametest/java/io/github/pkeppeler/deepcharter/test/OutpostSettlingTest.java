@@ -29,6 +29,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -200,7 +201,7 @@ public class OutpostSettlingTest {
 
     // ----- fuel -----
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void aDarkHallLosesAShareOfItsFuelEveryVisitAndALitHallLosesNone(GameTestHelper helper) {
         Room dark = SettlingRooms.stage(helper, 1, SettlingRooms.nobody());
         Room lit = SettlingRooms.stage(helper, 2, SettlingRooms.nobody());
@@ -272,7 +273,7 @@ public class OutpostSettlingTest {
                 .thenSucceed();
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void aNearbyPlayerHoldsTheVisitsAndASpectatorOrAFarPlayerDoesNot(GameTestHelper helper) {
         Room room = SettlingRooms.stage(helper, 3, SettlingRooms.nobody());
         SettlingRooms.stock(room, Items.COAL, 64);
@@ -316,7 +317,7 @@ public class OutpostSettlingTest {
                 .thenSucceed();
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void onlineMembersAreToldOnceAndOthersAreNot(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer member = MockPlayers.join(helper, "settling-member");
@@ -365,7 +366,7 @@ public class OutpostSettlingTest {
 
     // ----- what a visit leaves alone -----
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void terminalsHeapsPodsAndWrecksAreNeverTouched(GameTestHelper helper) {
         Room room = SettlingRooms.stage(helper, 5, SettlingRooms.nobody());
         BlockPos heapAt = room.floor().offset(-3, 1, 3);
@@ -423,7 +424,7 @@ public class OutpostSettlingTest {
                 .thenSucceed();
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void oreIsTakenOnlyWhereTheTuningGivesARecoveryRateAndTheDearestGoesFirst(GameTestHelper helper) {
         Room room = SettlingRooms.stage(helper, 6, SettlingRooms.nobody());
         Item ironium = item(OreType.IRONIUM.itemId());
@@ -466,7 +467,7 @@ public class OutpostSettlingTest {
 
     // ----- the salvage heap -----
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void aBrokenStorageBlockSpillsIntoAHeapThatKeepsEverythingAndDropsNothing(GameTestHelper helper) {
         Room room = SettlingRooms.stage(helper, 7, SettlingRooms.nobody());
         SettlingRooms.stock(room, Items.COAL, 100);
@@ -517,7 +518,7 @@ public class OutpostSettlingTest {
                 .thenSucceed();
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void aSleepersVisitBreaksWhatTheDepthDoesNotHoldAndSpillsStorageIntoAHeap(GameTestHelper helper) {
         Room room = SettlingRooms.stage(helper, 8, SettlingRooms.nobody());
         SettlingRooms.stock(room, Items.COAL, 100);
@@ -598,7 +599,7 @@ public class OutpostSettlingTest {
                 .thenSucceed();
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void breakingAHeapDropsEveryItemItHoldsAndTheHeapItself(GameTestHelper helper) {
         Room room = SettlingRooms.stage(helper, 9, SettlingRooms.nobody());
         SettlingRooms.stock(room, Items.COAL, 100);
@@ -638,7 +639,7 @@ public class OutpostSettlingTest {
                 .thenSucceed();
     }
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void anyPlayerEvenOneOutsideTheCharterCanOpenAHeap(GameTestHelper helper) {
         Room room = SettlingRooms.stage(helper, 10, SettlingRooms.nobody());
         MockPlayer stranger = MockPlayers.join(helper, "heap-stranger");
@@ -682,7 +683,7 @@ public class OutpostSettlingTest {
 
     // ----- the incident report -----
 
-    @GameTest(maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.D, maxTicks = MAX_TICKS)
     public void theReportGoesOnceToTheFirstMemberWhoOpensAHallTerminalAndNotToAGuest(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel one = TestLayers.level(helper, 1);

@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 import io.github.pkeppeler.deepcharter.outpost.OutpostSettling;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Ledger;
 import io.github.pkeppeler.deepcharter.outpost.SettlingTuning;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.SettlingRooms;
 import io.github.pkeppeler.deepcharter.test.support.SettlingRooms.Room;
@@ -23,7 +24,7 @@ import net.minecraft.world.item.Items;
 public class OutpostSettlingReloadTest {
     private static final int CYCLE_TICKS = 2 * FarChunks.AWAIT_BUDGET_TICKS + 400;
 
-    @GameTest(maxTicks = CYCLE_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, maxTicks = CYCLE_TICKS)
     public void anUnloadedZoneKeepsItsVisitsPendingAndMeetsThemAfterItReloads(GameTestHelper helper) {
         Room room = SettlingRooms.stage(helper, 12, SettlingRooms.nobody());
         SettlingRooms.stock(room, Items.COAL, 64);
