@@ -2,7 +2,6 @@ package io.github.pkeppeler.deepcharter.test;
 
 import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -152,8 +151,10 @@ public class EmptySurfaceTest {
                             .getAsJsonObject("argument")
                             .getAsJsonObject("spawns_by_category")
                     : new JsonObject();
-            for (JsonElement monster :
-                    spawns.getAsJsonArray("monster") == null ? new JsonArray() : spawns.getAsJsonArray("monster")) {
+            if (!spawns.has("monster")) {
+                continue;
+            }
+            for (JsonElement monster : spawns.getAsJsonArray("monster")) {
                 String type = monster.getAsJsonObject().get("type").getAsString();
                 if (type.startsWith("minecraft:")) {
                     throw failure(helper, "%s lists the vanilla monster %s", name, type);

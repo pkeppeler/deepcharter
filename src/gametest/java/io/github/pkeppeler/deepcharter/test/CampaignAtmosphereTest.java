@@ -178,9 +178,7 @@ public class CampaignAtmosphereTest {
         expect(surface.size() >= 4, "the surface has %s biomes, wanted at least 4", surface.size());
         for (Holder<Biome> biome : surface) {
             for (EnvironmentAttribute<?> attribute : driven) {
-                // A gameplay attribute is not in the mixin's layer: the patrol one is `and`ed with its timeline, so a
-                // biome's false
-                // closes it (#915).
+                // Gameplay attributes are not in the mixin's layer: a biome's false patrol flag is `and`ed in (#915).
                 if (!LayerAtmosphere.isVisualOrAudio(attribute)) {
                     continue;
                 }
