@@ -4,14 +4,16 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.test.PodShellClientTest;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.OpenGround;
 import io.github.pkeppeler.deepcharter.test.support.PacketJitter;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
+import net.minecraft.world.level.block.Blocks;
 
 /**
- * Evidence scenario "pod-drive-smooth" (#961): the pod driving along the ground and climbing on its rotor, one frame for every client
+ * Evidence scenario "pod-drive-smooth" (#961): the pod driving along a checkered floor of open ground and climbing on its rotor, one frame for every client
  * tick, with the network made irregular ({@link PacketJitter}) the way a real connection is. A pod that stands still for a tick and
  * lunges the next shows as a stutter between frames; a smooth one does not.
  */
@@ -31,6 +33,14 @@ public class PodDriveSmoothScenario extends EvidenceScenario {
     protected void run(ClientGameTestContext context) {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
+            // A checkered floor of open ground, so the motion shows and nothing stops the drive.
+            OpenGround.prepare(
+                    context,
+                    singleplayer.getServer(),
+                    player -> true,
+                    (x, z) -> (Math.floorDiv(x, 2) + Math.floorDiv(z, 2)) % 2 == 0
+                            ? Blocks.CONCRETE.white()
+                            : Blocks.CONCRETE.black());
             PodShellClientTest.mountFirstPlayer(singleplayer.getServer());
             ClientWait.until(
                     context,
