@@ -31,7 +31,7 @@ public final class ClientPencil {
         return PencilPaths.drawnFrom(
                         ClientNotes.entries().stream().map(HandbookNote::id).toList())
                 .stream()
-                .map(path -> new HandbookPage.PencilEntry(path, completed.contains(path.id())))
+                .map(path -> new HandbookPage.PencilEntry(path, isDone(path)))
                 .toList();
     }
 }
