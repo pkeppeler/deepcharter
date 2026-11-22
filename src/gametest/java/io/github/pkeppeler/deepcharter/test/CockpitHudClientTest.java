@@ -900,6 +900,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         for (PodStatusHud.Line note : notes) {
             cases.add(rowsOf(head, List.of(note)));
         }
+        // The stranded pod's own pair, as the readout builds it: the warning, then the Company winch's countdown (a
+        // minute, the fee of layer 8).
+        cases.add(rowsOf(head, List.of(line("stranded"), line("recovery", 60, 240))));
 
         cases.add(rowsOf(
                 head,
