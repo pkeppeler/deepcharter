@@ -29,7 +29,7 @@ Pillars, ranked. The higher one wins a conflict.
 
 ### Surface and colony
 
-- **Surface:** our own regolith plains, craters and terraced mesas, under a slow dusk-to-night sky that never reaches full day (PR #234, [art direction](design/art-direction.md), [ADR 0030](adr/0030-art-direction-decisions.md)). It is dry and bare: no sea, no grass, no trees, no animals, within the tall-world limits of [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). The vanilla night monsters stay until the creatures session reskins them ([#13](https://github.com/pkeppeler/deepcharter/issues/13)); the colony's interiors are lit so none spawns inside a building. The surface has no ore and no vanilla ore is promised near it: early metal is salvage (see Bootstrap in section 4, [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)), and the first ores are the layers'. The only life on it is pale fungal stalks on crater floors. No villages or settlements besides the colony. No Nether or End; the depths replace them.
+- **Surface:** our own regolith plains, craters and terraced mesas, under a slow dusk-to-night sky that never reaches full day (PR #234, [art direction](design/art-direction.md), [ADR 0030](adr/0030-art-direction-decisions.md)). It is dry and bare: no sea, no grass, no trees, no animals, within the tall-world limits of [ADR 0029](adr/0029-the-campaign-is-one-tall-world-and-the-uncharted-chain-joins-through-seams.md). No monster lives on it, vanilla or ours: the colony's emptiness is the dread ([CREATURES.md](CREATURES.md#surface), decided in the creatures session on 2026-11-21, which replaced the plan to reskin the vanilla night monsters). The surface has no ore and no vanilla ore is promised near it: early metal is salvage (see Bootstrap in section 4, [ADR 0047](adr/0047-the-surface-has-no-ore-the-bootstraps-metal-is-salvage-and-the-yard-is-a-biome.md)), and the first ores are the layers'. The only life on it is pale fungal stalks on crater floors and in patches among the salvage crates (#855). No villages or settlements besides the colony. No Nether or End; the depths replace them.
 - **Never called Mars:** the world may look like Mars, but the game never calls it Mars (lore guardrail).
 - **Colony:** one derelict mining colony per world, at spawn, named Prosperity. Its terminals are repaired once per world: when any charter fixes one, every charter can use it. The contract terminal works from the start.
 - **Conduit:** an undiggable Company pipe runs from the colony's ore processor straight down through every layer, at the same coordinates in each, ending in the Furnace. It is a landmark and the story's first clue ([LORE.md](LORE.md#8-prosperity)).
@@ -99,7 +99,7 @@ A few hundred blocks at the top of the first uncharted world, below the seam at 
 
 ### Bootstrap
 
-- Start from the colony's salvage and fungal "wood". This replaces "start like normal Minecraft" on the user's art direction ([art direction](design/art-direction.md) section 11, decided with the user on 2026-10-08, issue #225, PR #234; built in [#245](https://github.com/pkeppeler/deepcharter/issues/245)). Salvage crates supply wood, cloth and scrap (scrap iron and scrap copper, melted in a furnace) and redstone. They are littered round the colony within a set block radius, not only at it (none stand on the pad or its margin): the radius is one number, `min_inclusive` and `max_exclusive` of `data/deepcharter/worldgen/density_function/surface/yard.json`: a ring from 100 to 160 blocks, which starts past the colony's pad and its graded margin. Hardy alien fungal stalks on crater floors, and in the caves of layer 1, are gatherable stand-ins for trees: a stalk presses into four planks, burns, and chars to charcoal. A new player reaches tools, a light and the first terminal repair with no tree and no ore.
+- Start from the colony's salvage and fungal "wood". This replaces "start like normal Minecraft" on the user's art direction ([art direction](design/art-direction.md) section 11, decided with the user on 2026-10-08, issue #225, PR #234; built in [#245](https://github.com/pkeppeler/deepcharter/issues/245)). Salvage crates supply wood, cloth and scrap (scrap iron and scrap copper, melted in a furnace) and redstone. They are littered round the colony within a set block radius, not only at it (none stand on the pad or its margin): the radius is one number, `min_inclusive` and `max_exclusive` of `data/deepcharter/worldgen/density_function/surface/yard.json`: a ring from 100 to 160 blocks, which starts past the colony's pad and its graded margin. Hardy alien fungal stalks on crater floors, in patches among the crates, and in the caves of layer 1, are gatherable stand-ins for trees: a stalk presses into four planks, burns, and chars to charcoal. A new player reaches tools, a light and the first terminal repair with no tree and no ore.
 - Craft the first scanner too: a **scanner unit** from 4 iron, 2 copper and 2 redstone, about four crates' worth of the yard ([mechanics.md](design/mechanics.md#the-crafted-scanner-483-a)). It is the tier 1 part of the first mining pod, made like the Mole's own parts (SPEC section 7, Scanner); the upgrade terminal does not sell it.
 - Repair the colony's terminals one by one (fuel pump, then ore processor, then upgrade terminal, and so on). Each is a crafting goal; the employer gets in touch as they come back online.
 - The first charter also repairs the founding pod (the Mole) in the colony hangar.
@@ -273,7 +273,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
 | Role | Job |
 |------|-----|
 | Pilot | The legs: movement, flight, fuel. |
-| Navigator | The eyes: active sonar. Pings cost power; echoes are ambiguous (ore, gas, empty cave, something that moved) and must be read. Marks targets on the pilot's HUD. Only the navigator sees past the headlights. |
+| Navigator | The eyes: active sonar. Pings cost power and are loud enough to draw creatures; echoes are ambiguous (ore, gas, empty cave, something that moved) and must be read. Marks targets on the pilot's HUD. Only the navigator sees past the headlights. |
 | Operator | The hands: manipulator arm (grabs artifacts and wall ore the drill would destroy) and charge launcher (clears cave-ins, used in boss fights). A turret comes later. |
 
 - **Seats follow the chassis ladder:** the Mole has 1 seat (pilot), the Prospector adds the navigator, the Badger adds the operator.
@@ -308,7 +308,7 @@ Passengers are allowed. Example: the Prospector's second seat, until the navigat
   3. Crewmates clearing from above.
   4. Emergency teleport items.
 - The original's dynamite and plastic explosives (3×3 and 5×5) return as consumables. Neither clears Company Rock. The blasting charge does: set from the seat under the pod, a fuse, a blast. So does its dearer cousin, the shaped charge, which clears the whole Company Rock column under the pod.
-- Hazards never delete player-built blocks.
+- Hazards never delete player-built blocks. Creatures have their own rule (section 13).
 
 ## 11. Getting back up
 
@@ -324,6 +324,7 @@ Staged.
 - Every depth has environment ratings: heat, pressure, flooding, quake bracing.
 - An outpost built from materials below its depth's rating is uninhabitable (heat leaks in, water seeps in, the suit timer keeps running inside) but never destroyed.
 - Rated materials come from that layer's own resources.
+- Rated materials also hold against creatures. A creature breaks only placed blocks it can reach that are not rated for the depth, and it does so while nobody is near, so a rated shell keeps everything inside it safe. The game says so on the outpost's spec sheet, its terminal and a placement readout ([ADR 0072](adr/0072-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)).
 
 ### Pads
 
@@ -340,12 +341,17 @@ The Behemoth's anchor mode is a temporary outpost.
 
 ## 13. Creatures and combat
 
-**Details deferred** to a dedicated creatures and combat session. Lore hooks: [LORE.md section 14](LORE.md#14-hooks-for-the-creatures-session).
+Settled 2026-11-21 in the creatures session ([#13](https://github.com/pkeppeler/deepcharter/issues/13)). The full design, with the bestiary, bosses and combat kit: [CREATURES.md](CREATURES.md). Lore hooks: [LORE.md section 14](LORE.md#14-hooks-for-the-creatures-session).
 
 - Rare, unsettling creatures in each layer, plus layer bosses. Dread wins over action.
-- Bosses mix pod fights and on-foot fights, by layer.
-- Pod combat uses mining gear first (drill, explosives, charge launcher), turrets later.
-- On foot: normal Minecraft combat plus suit gear.
+- **Three families, each with one draw.** Moloch's things come to the dark and take (fuel, cargo, hunger, lamp battery) but never damage a hull or a person. The Sleeper's defences come to the drill (noise, heat, resonance) and hurt; killing one raises the zone's alarm. Gnawers, post-game only, come to the haul and eat.
+- **Every mob costs you in the pod and on foot**, and gives you a reason to avoid it. Encounters are rare and costly, seldom lethal: an ordinary mob can cost you the run, a boss can leave a wreck.
+- **Encounters scale by pods, not people.** Solo play is tuned with robots in the empty seats.
+- **Layer bosses** in layers 3 to 7 guard a chassis wreck or catalyst. They gate the upgrade ladder, not the descent, and each charter fights each one once. Bosses mix pod fights and on-foot fights, by layer.
+- **The finale:** phase 1 on foot, where the Chairman can be hurt only in the light of the crew's own lamps; phase 2 in pods, where only the drill and explosives hurt Head Office, which is built from what the charter sold and eats the cargo it takes.
+- Pod combat uses mining gear first (drill, explosives, charge launcher), turrets later (from layer 6). On foot: normal Minecraft combat plus suit gear.
+- **Placed blocks:** creatures break only exposed blocks not rated for the depth, even while nobody is near (section 11, [ADR 0072](adr/0072-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)).
+- The surface has no monsters, and nothing of Moloch's lives below the Ramp.
 
 ## 14. Story and transmissions
 
@@ -407,7 +413,7 @@ Surface, repairing the colony, the Mole, the onboarding handbook (implied by the
 - Gore stays out by default ([LORE.md guardrail 7](LORE.md#guardrails)); lift it only on the user's say.
 - Finale numbers and rules: the dividend's size and cadence, and how the Chairman's dead suit lamp and the Unnumbered Lamp sit with the suit lamp's battery track.
 - Records board extras proposed by the lore: a Continuity Events column, and a lamp or mask mark for each charter after the finale.
-- Creatures and combat session.
+- Creature numbers: encounter cadence per zone, alarm, boss health per pod, and the rate of loss at an outpost while nobody is near ([CREATURES.md](CREATURES.md#11-open-questions)).
 - What happens to dropped items and mobs that fall to a seam.
 - Numbers tuning: layer thicknesses, drill speeds, and the prices past layer 2. The early prices (parts, scanner, lights, the Mole and Prospector, repairs) were scaled to a run's income in [PR 206](https://github.com/pkeppeler/deepcharter/pull/206).
 - Duration and size of earthquake and cave-in blockages, per layer.

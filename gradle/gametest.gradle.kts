@@ -67,6 +67,81 @@ object GametestScan {
 	// the run ends, so the suite's live heap grew to 4.4 GB (#548). TestTicks.each keeps one. No suppression: there is no case for the queue.
 	private val onEachTickCall = Regex("""\bonEachTick\b""")
 
+	// GameTestHelper.succeedWhen (and a sequence's thenWaitUntil) catches whatever its body throws, helper.fail included, and polls again; only
+	// the last exception, at the deadline, fails the test. So a check that runs on one poll only, behind a flag the poll sets itself, cannot
+	// fail the test: its exception is swallowed, the next poll skips the check and passes (#875: PodLightsTest and HandbookCoreTest passed
+	// on a bug). The scan finds a flag set (`name[0] = true;`, `this.name = true;`, `name.set(true)`) in a block nested in the poll's body, and flags any
+	// `throw`, `fail(`, `assert...(` or `expect...(helper` that follows it in that block. A check before the flag is a precondition the next
+	// poll repeats, and a check outside the flag's block runs on every poll, so both pass. A one-shot check becomes a step of
+	// startSequence().thenExecute(...), or records its problem in a Findings (test/support) that every poll ensure()s. A throw that only
+	// forces one more poll, or that re-raises a recorded failure, carries the marker below, with a reason, on its statement or the comment line above it.
+	// Heuristic: a plain local flag, a counter and a tick-number condition are not seen.
+	private const val ONE_SHOT_MARKER = "// one-shot-ok:"
+	private val pollCall = Regex("""\b(?:succeedWhen|thenWaitUntil)\s*\(""")
+	private val flagSet = Regex("""\]\s*=\s*true\s*;|\bthis\s*\.\s*\w+\s*=\s*true\s*;|\.\s*set\s*\(\s*true\s*\)""")
+	private val oneShotCheck = Regex("""\bthrow\b|\bfail\s*\(|\bassert\w*\s*\(|\bexpect\w*\s*\(\s*helper\b""")
+
+	// The index of the bracket that closes the one at [open], in text whose comments and literals are blanked; -1 when it never closes.
+	private fun closing(text: String, open: Int): Int {
+		var depth = 0
+		for (index in open until text.length) {
+			when (text[index]) {
+				'(', '{' -> depth++
+				')', '}' -> if (--depth == 0) return index
+			}
+		}
+		return -1
+	}
+
+	// The index of the `{` of the innermost block around [position], not before [floor]; -1 if there is none.
+	private fun enclosingBlock(text: String, position: Int, floor: Int): Int {
+		var depth = 0
+		for (index in position - 1 downTo floor) {
+			when (text[index]) {
+				'}' -> depth++
+				'{' -> if (depth-- == 0) return index
+			}
+		}
+		return -1
+	}
+
+	private fun oneShotProblems(
+		className: String,
+		text: String,
+		rawLines: List<String>,
+		markedNear: (List<String>, Int, (String) -> Boolean) -> Boolean,
+	): List<String> {
+		val problems = mutableListOf<String>()
+		val reported = mutableSetOf<Int>()
+		for (call in pollCall.findAll(text)) {
+			val argsOpen = call.range.last
+			val argsClose = closing(text, argsOpen)
+			val bodyOpen = text.indexOf('{', argsOpen)
+			if (argsClose < 0 || bodyOpen < 0 || bodyOpen > argsClose || !text.substring(argsOpen + 1, bodyOpen).contains("->")) {
+				continue
+			}
+			val bodyClose = closing(text, bodyOpen)
+			if (bodyClose < 0) {
+				continue
+			}
+			for (flag in flagSet.findAll(text.substring(bodyOpen, bodyClose))) {
+				val flagAt = bodyOpen + flag.range.last
+				val block = enclosingBlock(text, flagAt, bodyOpen)
+				if (block <= bodyOpen) {
+					continue
+				}
+				val blockClose = closing(text, block)
+				for (check in oneShotCheck.findAll(text.substring(flagAt, blockClose))) {
+					val line = lineOf(text, flagAt + check.range.first)
+					if (!marked(markedNear, rawLines, line, ONE_SHOT_MARKER) && reported.add(line)) {
+						problems.add("$className:${line + 1} checks after a flag the poll set (line ${lineOf(text, flagAt) + 1}) inside succeedWhen, which catches this check's exception and polls again, so the next poll skips the check and the test passes; a one-shot check never goes inside succeedWhen: move it to startSequence().thenExecute(...), or note its problem in a Findings (test/support) and ensure() it on every poll, or mark a throw that only forces one more poll with '$ONE_SHOT_MARKER <reason>'")
+					}
+				}
+			}
+		}
+		return problems
+	}
+
 	private val literalsAndComments = Regex("(?s)\"\"\"(?:\\\\.|.)*?\"\"\"|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*'|/\\*.*?\\*/|//[^\\n]*")
 	private val notNewline = Regex("[^\\n]")
 	private val clientImplements = Regex("""\bimplements\s+[^{]*\bFabricClientGameTest\b""")
@@ -165,6 +240,7 @@ object GametestScan {
 					}
 				}
 			}
+			problems.addAll(oneShotProblems(className, text, rawLines, markedNear))
 			if (abstractClass.containsMatchIn(text)) {
 				continue
 			}

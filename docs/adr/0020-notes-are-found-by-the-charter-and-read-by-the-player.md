@@ -16,8 +16,8 @@ Builds on [ADR 0013](0013-handbook-chapters-are-data-and-directives-are-advancem
 ## Decisions
 
 - **New crew inherit the charter's Notes.** They see them, unread unless they already read them (read marks belong to the player, and a Note read on another charter stays read).
-- **A leaver sees none of them.** The list follows the player's current charter, as directive progress does.
-- **A player on no charter files nothing.** The block says so. The Note is not remembered for a charter the player founds later.
+- **A leaver sees none of the charter's Notes** (only the Notes they found themselves, per ADR 0065). The list follows the player's current charter, as directive progress does.
+- **A player on no charter files the Note for themselves.** Superseded by [ADR 0065](0065-the-handbooks-directives-are-a-quest-map-and-earlier-miners-pencil-paths-continue-it-past-layer-2.md) (#843): the Note is remembered and goes into a charter the player founds or joins, unread for the other members.
 - **The number-to-Note mapping never changes.** A world stores only the number in the block state. `NotesTest.theNoteMappingIsPinned` pins it with literal values.
 - **The texts N01 to N11 are copied from `docs/lore/notes.md` on the lore branch (PR #34).** When #34 merges, diff `handbook.json` N01 to N11 against `docs/lore/notes.md`.
 

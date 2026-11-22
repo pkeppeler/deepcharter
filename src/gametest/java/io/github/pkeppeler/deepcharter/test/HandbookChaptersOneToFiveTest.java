@@ -120,6 +120,7 @@ public class HandbookChaptersOneToFiveTest {
                             "deepcharter:handbook/fuel_is_life/return_to_colony"),
             "deepcharter:every_sale_counts",
                     List.of(
+                            "deepcharter:handbook/every_sale_counts/haul_ore",
                             "deepcharter:handbook/every_sale_counts/sell_ore",
                             "deepcharter:handbook/every_sale_counts/buy_component",
                             "deepcharter:handbook/every_sale_counts/install_component"));
@@ -593,7 +594,19 @@ public class HandbookChaptersOneToFiveTest {
                         expectCompleted(helper, server, "chapter 4", both, through(4));
                         expectRoadAt(helper, server, second, 4);
 
-                        // Chapter 5: sell ore, then buy a part, which installs at once.
+                        // Chapter 5: haul ore in the bay (#853), sell it, then buy a part, which installs at once.
+                        pod.tickCount = 0;
+                        PodEvents.AFTER_TICK.invoker().afterTick(pod);
+                        expectCompleted(helper, server, "an empty bay", both, through(4));
+                        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+                        pod.tickCount = 0;
+                        PodEvents.AFTER_TICK.invoker().afterTick(pod);
+                        expectCompleted(
+                                helper,
+                                server,
+                                "ore in the bay",
+                                both,
+                                with(through(4), directive("every_sale_counts", "haul_ore")));
                         first.stopRiding();
                         pod.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
                         stand(helper, director, terminal);
@@ -612,7 +625,10 @@ public class HandbookChaptersOneToFiveTest {
                                 server,
                                 "selling",
                                 both,
-                                with(through(4), directive("every_sale_counts", "sell_ore")));
+                                with(
+                                        through(4),
+                                        directive("every_sale_counts", "haul_ore"),
+                                        directive("every_sale_counts", "sell_ore")));
                         helper.getLevel()
                                 .setBlock(
                                         terminal,
@@ -726,9 +742,9 @@ public class HandbookChaptersOneToFiveTest {
         }
     }
 
-    /** A pilot and a terminal user on no charter complete nothing for anyone, and nothing throws. */
+    /** A pilot and a terminal user on no charter earn only their own credit, nothing for the charter (#843), and nothing throws. */
     @GameTest
-    public void aPilotAndATerminalUserOnNoCharterCompleteNothing(GameTestHelper helper) {
+    public void aPilotAndATerminalUserOnNoCharterCompleteNothingForTheCharter(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer member = MockPlayers.join(helper, "Member");
         MockPlayer drifter = MockPlayers.join(helper, "Drifter");
@@ -761,11 +777,22 @@ public class HandbookChaptersOneToFiveTest {
             }
             pod.tickCount = 0;
             PodEvents.AFTER_TICK.invoker().afterTick(pod);
-            if (!completed(server, drifter.player()).isEmpty()
-                    || !memberBefore.equals(completed(server, member.player()))) {
+            Set<Identifier> drifterOwn = Set.of(
+                    id(directive("back_online", "repair_upgrade_terminal")),
+                    id(directive("back_online", "repair_fuel_pump")),
+                    id(directive("back_online", "repair_ore_processor")),
+                    id(directive("fuel_is_life", "refuel_mole")),
+                    id(directive("every_sale_counts", "install_component")),
+                    id(directive("every_sale_counts", "sell_ore")),
+                    id(directive("every_sale_counts", "buy_component")),
+                    id(directive("meet_the_mole", "board_mole")),
+                    id(directive("meet_the_mole", "repair_mole")));
+            Set<Identifier> memberNew = new java.util.HashSet<>(completed(server, member.player()));
+            memberNew.removeAll(memberBefore);
+            if (!drifterOwn.equals(completed(server, drifter.player())) || !memberNew.isEmpty()) {
                 throw helper.assertionException(
-                        "nothing should complete: the drifter has %s, the member %s from %s",
-                        completed(server, drifter.player()), completed(server, member.player()), memberBefore);
+                        "the drifter earns only their own credit %s, has %s; the member has %s new",
+                        drifterOwn, completed(server, drifter.player()), memberNew);
             }
             helper.succeed();
         } finally {
