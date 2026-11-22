@@ -15,9 +15,10 @@ from typing import Callable
 import pngio
 from canvas import BAYER, CLEAR, Canvas, Colour, Rng, value_noise
 
-# A texture is SIZE x SIZE pixels unless its recipe names another of SIZES ("size": 32, a 32x texture in a 16-unit model).
+# A texture is SIZE x SIZE pixels unless its recipe names another of SIZES ("size": 32, a 32x texture in a 16-unit model; 18, a
+# mob effect icon, which the inventory and the HUD draw at 18 x 18 GUI pixels).
 SIZE = 16
-SIZES = (16, 32)
+SIZES = (16, 18, 32)
 KINDS = ("opaque", "cutout", "translucent")
 # The directory beside each recipes directory that the source op reads hand-drawn PNGs from.
 SOURCES = "sources"
