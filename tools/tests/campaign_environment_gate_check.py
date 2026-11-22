@@ -1,4 +1,4 @@
-"""Tests the campaign-environment gate in gradle/gametest.gradle.kts: an @GameTest in the campaign world without environment = CampaignEnvironments.<A to D> fails the build.
+"""Tests the campaign-environment gate in gradle/gametest.gradle.kts: an @GameTest in the campaign world without environment = CampaignEnvironments.<one of the constants of CampaignEnvironments> fails the build.
 
 Needs the repo's Gradle wrapper on JDK 25, so the name misses the test_*.py glob (see gate_checks.py).
 Usage: tools/py tools/tests/gate_checks.py campaign_environment
@@ -19,8 +19,19 @@ CLIENT_SCENARIO = """
 public class FixtureScenario extends EvidenceScenario {
 }
 """
+# The gate takes the allowed names from this file, so the fixture names four and the bad cases name a fifth.
+ENVIRONMENTS = """
+public final class CampaignEnvironments {
+    public static final String A = "deepcharter-test:campaign_a";
+    public static final String B = "deepcharter-test:campaign_b";
+    public static final String C = "deepcharter-test:campaign_c";
+    public static final String D = "deepcharter-test:campaign_d";
+    private static final String UNRELATED = "deepcharter-test:alone";
+}
+"""
 # Clean files: each must be left alone by the gate.
 CLEAN = {
+    "CampaignEnvironments.java": ENVIRONMENTS,
     "NamedTest.java": """
 public class NamedTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
@@ -80,7 +91,7 @@ BAD = {
     "other attributes": ("@GameTest(dimension = SAMPLE, maxTicks = 100)", 5),
     "wrapped": ("@GameTest(\n            dimension = SAMPLE,\n            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)", 5),
     "another environment": ("@GameTest(environment = ALONE, dimension = SAMPLE)", 5),
-    "an environment out of the four": ("@GameTest(environment = CampaignEnvironments.E, dimension = SAMPLE)", 5),
+    "an environment CampaignEnvironments does not define": ("@GameTest(environment = CampaignEnvironments.E, dimension = SAMPLE)", 5),
 }
 
 
@@ -111,12 +122,12 @@ class CampaignEnvironmentGateTest(unittest.TestCase):
         result = gate_batch.result(f"{__name__}/clean")
         self.assertTrue(result.ok, result.message)
 
-    def test_a_campaign_test_without_one_of_the_four_environments_fails(self):
+    def test_a_campaign_test_without_a_defined_environment_fails(self):
         for label, (_, line) in BAD.items():
             with self.subTest(label):
                 result = gate_batch.result(f"{__name__}/{label}")
                 self.assertFalse(result.ok, f"the gate should fail the build for {label}")
                 self.assertIn(f"CampaignTest:{line} runs in the campaign world (SAMPLE) without an environment", result.message)
-                self.assertIn("CampaignEnvironments.A, B, C or D", result.message)
-                for clean in ("NamedTest", "SurfaceTest", "NoDimensionTest", "MentionsTest"):
+                self.assertIn("CampaignEnvironments.<one of A, B, C, D>", result.message)
+                for clean in ("CampaignEnvironments.java", "NamedTest", "SurfaceTest", "NoDimensionTest", "MentionsTest"):
                     self.assertNotIn(clean, result.message)

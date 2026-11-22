@@ -15,10 +15,10 @@ addVmArgToRuns(exitOnOom)
 // heap at 2x the measured peak or more, and re-measure when the suite grows by a tenth or a test adds a tall world to a campaign environment.
 // Method: -Xlog:gc plus a forced GC every 1.5 s. Mechanisms: ChunkMapUnloadMixin (chunks of a finished batch), ChunkMapSaveMixin (writes of
 // half-generated chunks), FarChunks.force (released when a test finishes), and CampaignEnvironments (the campaign tests' batches).
-// Measured 2026-11-22 (1386 tests, 4 vCPU): the campaign tests in one batch of 50 peaked at 1990 MB live; in four environments of 11 to 23
-// tests, 1324, 1341 and 1336 MB (3 runs; three environments gave 1365 to 1612 MB). Live at each campaign batch start 350 to 750 MB, between
-// batches 300 to 550 MB. 2x 1341 MB is under 3G: go to 3584m if CI shows an OutOfMemoryError or a peak of 1.5 GB or more.
-val gameTestHeap = "-Xmx3G"
+// Measured 2026-11-22 after #818 (1454 tests, 4 vCPU, 3 runs at 3G with the campaign tests in four environments of 13 to 23): the highest live
+// set was 1560, 1555 and 1748 MB, in default batches of 50 whose layer tests reach the campaign level through TestLayers; the four environments
+// peaked at 1034 to 1517 MB. Main's tree (4G) peaked at 1946 MB. 2x 1748 MB is 3496 MB, so 3584m; 3G fits only a peak under 1.5 GB.
+val gameTestHeap = "-Xmx3584m"
 addVmArgToRun("gameTest", gameTestHeap)
 
 // Proof the gate holds: every run carries the flag, and a JVM that catches its OutOfMemoryError exits non-zero with the flag and
