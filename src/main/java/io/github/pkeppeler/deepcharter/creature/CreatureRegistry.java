@@ -25,10 +25,26 @@ public final class CreatureRegistry {
                     .clientTrackingRange(8)
                     .build(LAMPLESS_FIGURE_KEY));
 
+    private static final ResourceKey<EntityType<?>> TALLY_KEY =
+            ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "tally"));
+
+    /** A Tally (#917). Made by {@link Tallies}, never by the game's spawner, and not saved, so there is nothing to version. */
+    public static final EntityType<Tally> TALLY = Registry.register(
+            BuiltInRegistries.ENTITY_TYPE,
+            TALLY_KEY,
+            EntityType.Builder.<Tally>of(Tally::new, MobCategory.MONSTER)
+                    .sized(0.5f, 0.4f)
+                    .noSave()
+                    .fireImmune()
+                    .clientTrackingRange(8)
+                    .build(TALLY_KEY));
+
     private CreatureRegistry() {}
 
     public static void register() {
         LamplessFigure.init();
         FabricDefaultAttributeRegistry.register(LAMPLESS_FIGURE, LamplessFigure.attributes());
+        Tally.init();
+        FabricDefaultAttributeRegistry.register(TALLY, Tally.attributes());
     }
 }
