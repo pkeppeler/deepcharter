@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceTuning;
 import io.github.pkeppeler.deepcharter.sound.ambience.QuietTracker;
 import io.github.pkeppeler.deepcharter.sound.ambience.RetainedSight;
@@ -13,11 +13,9 @@ import java.util.OptionalInt;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #861's warning in the dark: when the song drifts from a Retained. The decision is pure (no client), so each rule is
@@ -260,13 +258,5 @@ public class RetainedWarningTest {
         tracker.started("song.dark", 10);
         expect(helper, tracker.quiet(11), "the dark's song did not hold the ambience back");
         helper.succeed();
-    }
-
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        if (!condition) {
-            throw helper.assertionException(Component.literal(String.format(format, args)));
-        }
     }
 }

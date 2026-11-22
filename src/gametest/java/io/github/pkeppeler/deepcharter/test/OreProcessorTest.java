@@ -15,6 +15,7 @@ import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalAction;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
@@ -86,7 +87,11 @@ public class OreProcessorTest {
     /** The processor at a fixed place in the test, and the player standing two blocks from it. */
     private static BlockPos processorFor(GameTestHelper helper, MockPlayer mock) {
         BlockPos relative = new BlockPos(2, 1, 2);
-        helper.setBlock(relative, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState());
+        TerminalBlock.place(
+                helper.getLevel(),
+                helper.absolutePos(relative),
+                TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
+                3);
         BlockPos pos = helper.absolutePos(relative);
         Vec3 centre = Vec3.atCenterOf(pos);
         mock.teleportTo(
