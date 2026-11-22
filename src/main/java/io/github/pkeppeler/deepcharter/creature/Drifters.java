@@ -98,7 +98,12 @@ public final class Drifters {
             List<Source> sources = sources(level);
             for (Source source : sources) {
                 Optional<DrifterAlarm.Zone> zone = zoneOf(level, source);
-                if (zone.isPresent() && rolls(level, source.pos(), level.getRandom())) {
+                if (zone.isPresent()
+                        && rolls(
+                                zone.get().index(),
+                                DrifterAlarm.isRinging(
+                                        level, BlockPos.containing(source.pos()).getY()),
+                                level.getRandom())) {
                     int inZone = (int) sources.stream()
                             .filter(other -> zoneOf(level, other).equals(zone))
                             .count();
@@ -183,15 +188,9 @@ public final class Drifters {
         return sources;
     }
 
-    /** Whether one look at a source at {@code pos} places a drifter: the chance of the zone there, times the alarm's, if it rings. Never outside a zone. */
-    public static boolean rolls(ServerLevel level, Vec3 pos, RandomSource random) {
-        BlockPos at = BlockPos.containing(pos);
-        Optional<DrifterAlarm.Zone> zone = DrifterAlarm.Zone.at(level, at.getY());
-        if (zone.isEmpty()) {
-            return false;
-        }
-        double chance = chance(zone.get().index(), DrifterAlarm.isRinging(level, at.getY()));
-        return random.nextDouble() < chance;
+    /** Whether one look at a source in zone {@code zone} (0 is the top) places a drifter, with the alarm of the zone ringing or not. */
+    public static boolean rolls(int zone, boolean alarm, RandomSource random) {
+        return random.nextDouble() < chance(zone, alarm);
     }
 
     /** The chance that one look at a source in zone {@code zone} places a drifter, with the alarm ringing there or not. */

@@ -114,12 +114,14 @@ public class Drifter extends Mob {
             }
         }
         boolean drawn = memory != null && level.getGameTime() - lastHeard <= tuning.calmTicks();
-        drawnTicks = drawn ? drawnTicks + 1 : 0;
+        // The tell counts only the ticks a noise is heard: a drifter that has just lost its noise is on its way past,
+        // and bursts at nothing.
+        drawnTicks = heard.isPresent() ? drawnTicks + 1 : drawn ? drawnTicks : 0;
         if (drawn != isDrawn()) {
             entityData.set(DRAWN, drawn);
         }
         steer(drawn, tuning);
-        if (drawnTicks >= tuning.armTicks() && Drifters.touched(level, this)) {
+        if (heard.isPresent() && drawnTicks >= tuning.armTicks() && Drifters.touched(level, this)) {
             pop(level, false);
             return;
         }
