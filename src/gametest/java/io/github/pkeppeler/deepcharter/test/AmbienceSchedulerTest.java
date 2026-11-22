@@ -380,7 +380,7 @@ public class AmbienceSchedulerTest {
     /** The deep fragments (#946) are in the broken pool and in no shallower one. */
     @GameTest
     public void theDeepFragmentsAreOnlyInTheBrokenPool(GameTestHelper helper) {
-        for (String name : List.of("ear_a", "donders_ki", "morey_oo", "scale_crosstalk")) {
+        for (String name : List.of("ear_a", "donders_ki", "morey_oo", "scale_crosstalk", "choir_a", "choir_b")) {
             expect(
                     helper,
                     AmbienceFragments.pools()

@@ -281,7 +281,7 @@ class MoreCylindersTest(unittest.TestCase):
         self.assertEqual({*MORE_CYLINDERS, *COLONY_ONLY}, names)
 
     def test_no_new_recording_is_childrens_or_scripture_or_the_wrecks_song(self):
-        # LORE guardrails 4 and 6 and #861: the talking doll, the nursery rhyme, Handel's Israel in Egypt and every Au clair take are out.
+        # The found cylinders are never the colony-only doll or rhyme (LORE guardrail 6), Handel (a deep fragment) or an Au clair take (#861).
         for name in MORE_CYLINDERS:
             recording = next(r for r in first_sounds.RECORDINGS if r.name == name)
             text = " ".join((recording.name, recording.file, recording.title, recording.url)).lower()

@@ -121,6 +121,8 @@
 	"ambience.broken.donders_ki": { "sounds": [{ "name": "deepcharter:ambience/broken/donders_ki", "volume": 0.9, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },
 	"ambience.broken.morey_oo": { "sounds": [{ "name": "deepcharter:ambience/broken/morey_oo", "volume": 0.9, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },
 	"ambience.broken.scale_crosstalk": { "sounds": [{ "name": "deepcharter:ambience/broken/scale_crosstalk", "volume": 0.9, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },
+	"ambience.broken.choir_a": { "sounds": [{ "name": "deepcharter:ambience/broken/choir_a", "volume": 0.9, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },
+	"ambience.broken.choir_b": { "sounds": [{ "name": "deepcharter:ambience/broken/choir_b", "volume": 0.9, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },
 	"ambience.horn.diapason": { "sounds": [{ "name": "deepcharter:ambience/worn/diapason", "volume": 0.8, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.static" },
 	"ambience.horn.railway": { "sounds": [{ "name": "deepcharter:ambience/worn/railway", "volume": 0.8, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.static" },
 	"ambience.horn.test_voices": { "sounds": [{ "name": "deepcharter:ambience/worn/test_voices", "volume": 0.8, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },

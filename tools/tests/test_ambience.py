@@ -37,9 +37,10 @@ NEW_SOURCES = {
     "vocal_scale_crosstalk": ("https://www.firstsounds.org/sounds/1860-Vocal-Scale.mp3", "c13f5d490bf699cc5a4ec309c7619529ca68982c3df9c3825bd1a43267a83fce"),
     "diapason_scale": ("https://www.firstsounds.org/features/mp3/diapason-scale.mp3", "22f4641d0902a3e15fddb6b14c050e62adc80f3981855fdbfe7c433a4bc5d9f5"),
     "elevated_railroad": ("https://www.firstsounds.org/sounds/1878-Edison-MERR.mp3", "bb43ff95ac8a0287a14003cd9d5004c60c54bf536838dba9109820d76e838d4b"),
+    "handel_choir": ("https://www.nps.gov/edis/learn/photosmultimedia/upload/EDIS-SRP-0154-17.mp3", "d2e4a0f4648c53695654a3564b2072c3933bf44236ff70a1b701ce390cd01e3c"),
     "volta_barometer": ("https://www.firstsounds.org/sounds/volta/287686_Barometer.wav", "a78affeae998b32203a3e1e1e259f81372e44ddf0222c45b0adf86d9b40f1922"),
 }
-DEEP_FRAGMENTS = {"ear_a", "donders_ki", "morey_oo", "scale_crosstalk"}
+DEEP_FRAGMENTS = {"ear_a", "donders_ki", "morey_oo", "scale_crosstalk", "choir_a", "choir_b"}
 HORN_POOL = {"diapason", "railway", "test_voices", "barometer"}
 TOOLS = (shutil.which("ffmpeg"), shutil.which("ffprobe"))
 
@@ -213,6 +214,10 @@ class NewSourcesTest(unittest.TestCase):
     def test_a_credit_says_what_is_known_of_its_licence_and_nothing_more(self):
         for name in NEW_SOURCES:
             entry = self.manifest["sources"][name]
+            if "Courtesy of the U.S. National Park Service" in entry["credit"]:
+                self.assertEqual("none stated", entry["license"], name)  # the park's own words are the credit: no licence is claimed
+                self.assertNotIn("CC BY", entry["credit"], name)
+                continue
             if entry["license"] == "none stated":
                 self.assertIn("states no licence", entry["credit"], name)
                 self.assertNotIn("CC BY", entry["credit"], name)
@@ -238,6 +243,19 @@ class NewSourcesTest(unittest.TestCase):
             source = ambience.source_named(name)
             for text in (source.name, source.file, source.title, source.url):
                 self.assertNotRegex(text.lower(), r"clair|lune|no-?36|no-?44")
+
+    def test_the_choir_is_credited_to_the_park_and_says_only_what_its_tags_say(self):
+        entry = self.manifest["sources"]["handel_choir"]
+        self.assertEqual("none stated", entry["license"])
+        self.assertIn("Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park", entry["credit"])
+        self.assertIn("August Manns", entry["credit"])
+        self.assertIn("catalog E-2440-20", entry["credit"])
+        self.assertNotIn("Crystal Palace", entry["credit"])  # the tags do not say where
+        self.assertEqual({"choir_a", "choir_b"}, {f.name for f in ambience.FRAGMENTS if f.source == "handel_choir"})
+        for fragment in ambience.FRAGMENTS:
+            if fragment.source == "handel_choir":
+                self.assertEqual((ambience.BROKEN,), fragment.tiers)
+                self.assertTrue(2.0 <= fragment.end - fragment.start <= 4.0)
 
     def test_the_oldest_ear_is_the_one_that_is_credited_to_its_maker(self):
         entry = self.manifest["sources"]["listening_dead"]

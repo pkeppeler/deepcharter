@@ -105,6 +105,36 @@
       "tier": "broken",
       "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
     },
+    "broken/choir_a": {
+      "cut_sha256": "2d06ec94a4b1010087baf4132302fa4417d7908fb5103e2caae7fb823ef8663f",
+      "duration_seconds": 3.341,
+      "end": 28.8,
+      "fragment": "choir_a",
+      "kind": "voice",
+      "ogg_sha256": "be6d3cda74adbb9eb092293d18aeb8dde64393af721f57b1c42b673a1abd102a",
+      "pcm_frames": 73670,
+      "pcm_sha256": "f200afe5ac9a1d9793dd3ffcd874eb92ca318df5102c4203d7b85dac57411b15",
+      "source": "handel_choir",
+      "source_sha256": "d2e4a0f4648c53695654a3564b2072c3933bf44236ff70a1b701ce390cd01e3c",
+      "start": 26.4,
+      "tier": "broken",
+      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
+    },
+    "broken/choir_b": {
+      "cut_sha256": "a131f902f21f545caf5449e068d1b0d091c74e0cee65e46eeb61c7e7dcc5186e",
+      "duration_seconds": 3.33,
+      "end": 137.6,
+      "fragment": "choir_b",
+      "kind": "voice",
+      "ogg_sha256": "7c6bb8ea046b517570743b3e9d8129d9fc21a2d03433ab2be96a3dcd4db33dfe",
+      "pcm_frames": 73416,
+      "pcm_sha256": "447e5b8f185fae9b0702713051cbd55e252db70c76a02a5f2ae82a953fb4d4cc",
+      "source": "handel_choir",
+      "source_sha256": "d2e4a0f4648c53695654a3564b2072c3933bf44236ff70a1b701ce390cd01e3c",
+      "start": 135.2,
+      "tier": "broken",
+      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
+    },
     "broken/donders_ki": {
       "cut_sha256": "2da1255e2251c0d74463802b0a0a7df9c4b7c09cec0374cf8bf8723ca5903daa",
       "duration_seconds": 2.553,
@@ -646,6 +676,15 @@
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "source_url": "https://firstsounds.org/sounds/1860-Vocal-Scale-05-09.mp3",
       "title": "Gamme de la Voix, vocal scale"
+    },
+    "handel_choir": {
+      "artist": "Chorus conducted by August Manns",
+      "credit": "Chorus conducted by August Manns (1888); Edison yellow paraffine cylinder, catalog E-2440-20. Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park.",
+      "license": "none stated",
+      "recorded": "1888",
+      "source_sha256": "d2e4a0f4648c53695654a3564b2072c3933bf44236ff70a1b701ce390cd01e3c",
+      "source_url": "https://www.nps.gov/edis/learn/photosmultimedia/upload/EDIS-SRP-0154-17.mp3",
+      "title": "Handel Festival: \"Israel in Egypt\", excerpt"
     },
     "listening_dead": {
       "artist": "August Lucae (in Rudolph Koenig's workshop)",

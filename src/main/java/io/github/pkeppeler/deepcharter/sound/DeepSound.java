@@ -122,6 +122,8 @@ public enum DeepSound {
     AMBIENCE_BROKEN_DONDERS_KI("ambience.broken.donders_ki"),
     AMBIENCE_BROKEN_MOREY_OO("ambience.broken.morey_oo"),
     AMBIENCE_BROKEN_SCALE_CROSSTALK("ambience.broken.scale_crosstalk"),
+    AMBIENCE_BROKEN_CHOIR_A("ambience.broken.choir_a"),
+    AMBIENCE_BROKEN_CHOIR_B("ambience.broken.choir_b"),
     AMBIENCE_HORN_DIAPASON("ambience.horn.diapason"),
     AMBIENCE_HORN_RAILWAY("ambience.horn.railway"),
     AMBIENCE_HORN_TEST_VOICES("ambience.horn.test_voices"),

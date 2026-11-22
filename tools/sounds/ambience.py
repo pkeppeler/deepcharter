@@ -108,6 +108,17 @@ SOURCES = (
         credit_line="Phonautogram by Charles Batchelor for Thomas Edison (Sept. 19, 1878), from the Thomas Edison National Historical Park; playback by First Sounds (firstsounds.org); CC BY.",
     ),
     Recording(
+        "handel_choir",
+        "EDIS-SRP-0154-17.mp3",
+        'Handel Festival: "Israel in Egypt", excerpt',
+        "1888",
+        artist="Chorus conducted by August Manns",
+        host_url=first_sounds.NPS_URL + "EDIS-SRP-0154-17.mp3",
+        credit_line=f'Chorus conducted by August Manns (1888); Edison yellow paraffine cylinder, catalog E-2440-20. {first_sounds.NPS_CREDIT}.',
+        license=first_sounds.NONE_STATED,
+        tagged=False,
+    ),
+    Recording(
         "volta_barometer",
         "287686_Barometer.wav",
         "Barometer, repeated",
@@ -164,6 +175,9 @@ FRAGMENTS = (
     Fragment("donders_ki", "noematachogram", 0.2, 2.0, (BROKEN,), trim_db=((BROKEN, 9.0),)),
     Fragment("morey_oo", "morey_mood", 0.2, 1.4, (BROKEN,), trim_db=((BROKEN, 13.0),)),
     Fragment("scale_crosstalk", "vocal_scale_crosstalk", 1.2, 2.8, (BROKEN,)),
+    # A choir heard far below (the 1888 Handel Festival's chorus, on an Edison cylinder): the deepest layers only, in hiss.
+    Fragment("choir_a", "handel_choir", 26.4, 28.8, (BROKEN,)),
+    Fragment("choir_b", "handel_choir", 135.2, 137.6, (BROKEN,), trim_db=((BROKEN, 3.0),)),
     # The PA horn's own pool: what it plays after its warm-up, besides the layer's fragments, worn as the warm-up is.
     Fragment("diapason", "diapason_scale", 0.0, 2.7, (WORN,), TONE, trim_db=((WORN, 6.0),), pool=HORN),
     Fragment("railway", "elevated_railroad", 17.0, 19.8, (WORN,), TONE, trim_db=((WORN, 9.0),), pool=HORN),
