@@ -1354,12 +1354,12 @@ public final class TestOnlyGate {
     /** A method, constructor or field declared on {@code code}, or null: a type or modifiers before the name, never a statement. */
     private static Declaration memberDeclaration(
             List<String> codeLines, int index, String code, String classPath, String className) {
-        Matcher first = Pattern.compile("[(=;,]").matcher(code);
-        if (!first.find()) {
+        int stop = endOfHead(code);
+        if (stop < 0) {
             return null;
         }
-        boolean method = code.charAt(first.start()) == '(';
-        String head = code.substring(0, first.start())
+        boolean method = code.charAt(stop) == '(';
+        String head = code.substring(0, stop)
                 .replaceAll("@\\w+(?:\\.\\w+)*(?:\\([^)]*\\))?", " ")
                 .replaceAll("<[^<>]*(?:<[^<>]*>[^<>]*)*>", " ")
                 .strip();
@@ -1387,7 +1387,7 @@ public final class TestOnlyGate {
         if (!method) {
             return new Declaration(index + 1, classPath, name, true, List.of(), List.of());
         }
-        List<String> declared = rawParameters(codeLines, index, first.start());
+        List<String> declared = rawParameters(codeLines, index, stop);
         return new Declaration(
                 index + 1,
                 classPath,
@@ -1395,6 +1395,22 @@ public final class TestOnlyGate {
                 false,
                 declared.stream().map(TestOnlyGate::simpleType).toList(),
                 declared.stream().map(TestOnlyGate::parameterName).toList());
+    }
+
+    /** The index of the first {@code (}, {@code =}, {@code ;} or {@code ,} outside angle brackets: a comma in a generic type is not the end of the head. */
+    private static int endOfHead(String code) {
+        int angle = 0;
+        for (int i = 0; i < code.length(); i++) {
+            char c = code.charAt(i);
+            if (c == '<') {
+                angle++;
+            } else if (c == '>') {
+                angle--;
+            } else if (angle <= 0 && "(=;,".indexOf(c) >= 0) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /** Each parameter as written, annotations dropped: the text between the declaration's parentheses split at top-level commas. */
