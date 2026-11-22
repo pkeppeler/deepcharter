@@ -39,8 +39,8 @@ import org.slf4j.LoggerFactory;
  * makes it irregular the way a real connection is: every third client tick the client handles no pod move and the next tick
  * handles two. Without a slide between the server's moves the pod then stands still for a tick and lunges the next.
  */
-public class PodSmoothDriveClientTest implements FabricClientGameTest {
-    private static final Logger LOGGER = LoggerFactory.getLogger(PodSmoothDriveClientTest.class);
+public class PodDriveSmoothClientTest implements FabricClientGameTest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PodDriveSmoothClientTest.class);
 
     /** Every third client tick the jitter holds the pod moves. */
     private static final int JITTER_PERIOD = 3;
@@ -264,7 +264,7 @@ public class PodSmoothDriveClientTest implements FabricClientGameTest {
             }
         }
         LOGGER.info(
-                "PodSmoothDriveClientTest: {}: longest frame step {} (bound {}), shortest tick {} (floor {}), worst backward step {}",
+                "PodDriveSmoothClientTest: {}: longest frame step {} (bound {}), shortest tick {} (floor {}), worst backward step {}",
                 what,
                 longest,
                 stepBound,
