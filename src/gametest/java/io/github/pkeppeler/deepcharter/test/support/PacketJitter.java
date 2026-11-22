@@ -4,11 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket;
 
 /**
- * Makes the client's network irregular on purpose: on every {@code period}th client tick the client handles no relative entity move, and
+ * Makes the client's network irregular on purpose: on every {@code period}th client tick the client handles no entity move or teleport, and
  * on the next tick it handles those it held and that tick's own, so one tick shows nothing and the one after a double step. A real
  * connection does this whenever the client's tick and the server's packets drift against each other; the GameTest harness ticks the
  * server and the client in lockstep, so it never does by itself. Inert until {@link #start} and ended by {@link #stop}, which a test
@@ -36,10 +34,11 @@ public final class PacketJitter {
     }
 
     /**
-     * Whether {@code listener} is to skip {@code packet} now. A tick that is not skipped replays the held moves first, in order, so
-     * entities see their moves in the order the server sent them.
+     * Whether the client is to skip a position packet now, and handle it later by running {@code handle}. A tick that is not skipped
+     * replays the held packets first, in order, so entities see their moves and teleports in the order the server sent them: a
+     * relative move replayed after a teleport that came later would land the entity off its mark for good.
      */
-    public static boolean skips(ClientPacketListener listener, ClientboundMoveEntityPacket packet) {
+    public static boolean skips(Runnable handle) {
         Minecraft client = Minecraft.getInstance();
         ClientLevel level = client.level;
         // A packet arrives on the network thread first, and vanilla hands it to the client thread by calling the
@@ -48,7 +47,7 @@ public final class PacketJitter {
             return false;
         }
         if (level.getGameTime() % period == 1) {
-            HELD.add(() -> listener.handleMoveEntity(packet));
+            HELD.add(handle);
             return true;
         }
         if (!HELD.isEmpty()) {
