@@ -274,7 +274,7 @@ public final class PodTether {
         }
         person.removeAttached(STATE);
         STRAINS.remove(person);
-        DeepCharter.LOGGER.info("[tether] {} unclipped: {}", person.getName().getString(), cause);
+        DeepCharter.LOGGER.debug("[tether] {} unclipped: {}", person.getName().getString(), cause);
         if (cause.snaps) {
             person.getCooldowns()
                     .addCooldown(
