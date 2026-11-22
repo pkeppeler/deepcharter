@@ -98,19 +98,17 @@ public final class RepairStationScreen extends CrtScreen implements TerminalView
                 RepairStation.REPAIR_TOTAL,
                 new CompoundTag()));
         for (Consumable consumable : Consumable.values()) {
-            if (!consumable.sold()) {
-                continue;
-            }
             CompoundTag args = new CompoundTag();
             args.putString(RepairStation.ITEM_KEY, consumable.itemId().toString());
             String name = new ItemStack(RepairRegistry.item(consumable))
                     .getHoverName()
                     .getString()
                     .toUpperCase(Locale.ROOT);
-            rows.add(new Row(
-                    Component.translatable("screen.deepcharter.repair.buy", name, consumable.price()),
-                    RepairStation.BUY,
-                    args));
+            Component label = consumable.perPurchase() > 1
+                    ? Component.translatable(
+                            "screen.deepcharter.repair.buy_pack", name, consumable.perPurchase(), consumable.price())
+                    : Component.translatable("screen.deepcharter.repair.buy", name, consumable.price());
+            rows.add(new Row(label, RepairStation.BUY, args));
         }
         return rows;
     }

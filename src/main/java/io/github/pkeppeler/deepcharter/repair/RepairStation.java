@@ -97,10 +97,11 @@ public final class RepairStation {
             return Consumables.refusal("unknown_item");
         }
         ServerPlayer player = context.player();
-        ItemStack stack = new ItemStack(RepairRegistry.item(item.get()));
+        ItemStack stack =
+                new ItemStack(RepairRegistry.item(item.get()), item.get().perPurchase());
         Inventory inventory = player.getInventory();
-        // Checked first: a creative player's add() discards what does not fit, and the money is not given back.
-        if (inventory.getSlotWithRemainingSpace(stack) < 0 && inventory.getFreeSlot() < 0) {
+        // Checked first: add() keeps only what fits, and the money is not given back. A pack must fit whole.
+        if (roomFor(inventory, stack) < stack.getCount()) {
             return Consumables.refusal("no_room");
         }
         Optional<CharterRefusal> unpaid = Charters.spend(
@@ -112,6 +113,26 @@ public final class RepairStation {
         }
         inventory.add(stack);
         return Optional.empty();
+    }
+
+    /**
+     * How many of {@code stack}'s item {@code inventory.add} can take, as vanilla does: space in same-item stacks in the
+     * 36 main slots, the offhand only if it already holds that item, and empty main slots (never an empty offhand).
+     */
+    private static int roomFor(Inventory inventory, ItemStack stack) {
+        int room = 0;
+        for (ItemStack held : inventory.getNonEquipmentItems()) {
+            if (held.isEmpty()) {
+                room += stack.getMaxStackSize();
+            } else if (ItemStack.isSameItemSameComponents(held, stack)) {
+                room += Math.max(0, held.getMaxStackSize() - held.getCount());
+            }
+        }
+        ItemStack offhand = inventory.getItem(Inventory.SLOT_OFFHAND);
+        if (!offhand.isEmpty() && ItemStack.isSameItemSameComponents(offhand, stack)) {
+            room += Math.max(0, offhand.getMaxStackSize() - offhand.getCount());
+        }
+        return room;
     }
 
     /** The nearest pod parked at the station ({@link Terminals#parkedPods}) that the player's charter may use. */
