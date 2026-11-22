@@ -152,8 +152,8 @@ public class Drifter extends Mob {
     private void steer(ServerLevel level, boolean drawn, DrifterTuning tuning) {
         Vec3 want;
         if (drawn && memory != null) {
-            Vec3 to = DrawSources.noiseTarget(level, position(), memory)
-                    .subtract(position().add(0, getBbHeight() / 2, 0));
+            Vec3 centre = position().add(0, getBbHeight() / 2, 0);
+            Vec3 to = DrawSources.noiseTarget(level, centre, memory).subtract(centre);
             want = to.lengthSqr() < 1.0e-4 ? Vec3.ZERO : to.normalize().scale(tuning.driftSpeed());
         } else {
             if (wanderIn-- <= 0 || horizontalCollision || verticalCollision) {

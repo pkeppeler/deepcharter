@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.creature.SporeClouds;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.repair.ThrownKitTuning;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.DrifterArenas;
 import io.github.pkeppeler.deepcharter.test.support.DrifterArenas.Arena;
@@ -127,58 +128,106 @@ public class DrifterTest {
 
     /**
      * A decoy that sounds within its pull of a drifter drawn to a drilling pod turns it: the drifter heads for the decoy, 5 blocks to its
-     * side, and not for the pod 10 blocks the other way. The decoy is the one a landed thrown decoy registers ({@link ThrownKitTest} drives
-     * the throw); this pins what a drifter does with it.
+     * side, and not for the pod 10 blocks the other way. The decoy has the pull and the duration of a thrown one
+     * ({@link ThrownKitTuning.Decoy#DEFAULT}; {@link ThrownKitTest} drives the throw that registers it); this pins what a drifter does with it.
      */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + HEAR_TICKS + EASE_TICKS + MEASURE_TICKS + 60)
     public void aDecoyInReachTurnsADrifterAwayFromTheDrill(GameTestHelper helper) {
+        decoyCase(helper, 8, Decoys.IN_REACH);
+    }
+
+    /** A decoy beyond its pull does not turn it: the drifter still heads for the pod. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + HEAR_TICKS + EASE_TICKS + MEASURE_TICKS + 60)
+    public void aDecoyBeyondItsPullLeavesADrifterOnTheDrill(GameTestHelper helper) {
+        decoyCase(helper, 9, Decoys.BEYOND_PULL);
+    }
+
+    /** A decoy that goes silent mid-approach sends the drifter back to the drill. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + HEAR_TICKS + 2 * EASE_TICKS + MEASURE_TICKS + 60)
+    public void aDecoyThatGoesSilentSendsADrifterBackToTheDrill(GameTestHelper helper) {
+        decoyCase(helper, 10, Decoys.SILENCED);
+    }
+
+    private enum Decoys {
+        IN_REACH,
+        BEYOND_PULL,
+        SILENCED
+    }
+
+    private static void decoyCase(GameTestHelper helper, int slot, Decoys what) {
         ServerLevel level = helper.getLevel();
-        BlockPos origin = DrifterArenas.slot(8);
+        ThrownKitTuning.Decoy tuning = ThrownKitTuning.Decoy.DEFAULT;
+        BlockPos origin = DrifterArenas.slot(slot);
         Arena[] made = {null};
         Drifter[] drifter = {null};
         Vec3[] decoy = {null};
         long[] drawnAt = {-1};
         Vec3[] from = {null};
+        Runnable gone = () -> {
+            if (decoy[0] != null) {
+                DrawSources.removeDecoy(level, decoy[0]);
+            }
+        };
         TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
                 return;
             }
-            if (drawnAt[0] < 0) {
-                if (drifter[0].isDrawn()) {
-                    drawnAt[0] = helper.getTick();
-                } else if (helper.getTick() > FarChunks.AWAIT_BUDGET_TICKS + HEAR_TICKS) {
-                    throw failure(helper, "the drifter did not hear a pod drilling 10 blocks away");
+            try {
+                if (drawnAt[0] < 0) {
+                    if (drifter[0].isDrawn()) {
+                        drawnAt[0] = helper.getTick();
+                    } else if (helper.getTick() > FarChunks.AWAIT_BUDGET_TICKS + HEAR_TICKS) {
+                        throw failure(helper, "the drifter did not hear a pod drilling 10 blocks away");
+                    }
+                    return;
                 }
-                return;
-            }
-            long since = helper.getTick() - drawnAt[0];
-            if (since == EASE_TICKS) {
-                from[0] = drifter[0].position();
-            } else if (since == EASE_TICKS + MEASURE_TICKS) {
-                Vec3 moved = drifter[0].position().subtract(from[0]);
-                double cosineDecoy =
-                        moved.normalize().dot(decoy[0].subtract(from[0]).normalize());
-                double cosinePod = moved.normalize()
-                        .dot(arena.pod()
-                                .position()
-                                .add(0, 1, 0)
-                                .subtract(from[0])
-                                .normalize());
-                expect(helper, cosineDecoy > 0.8, "the drifter does not aim at the decoy: cosine %s", cosineDecoy);
-                expect(helper, cosinePod < 0.3, "the drifter still aims at the drill: cosine %s", cosinePod);
-                DrawSources.removeDecoy(level, decoy[0]);
-                drifter[0].discard();
-                arena.clear();
-                helper.succeed();
+                long since = helper.getTick() - drawnAt[0];
+                // A silenced decoy has turned it for one ease, and goes silent; the measure then starts one ease later.
+                long start = what == Decoys.SILENCED ? 2 * EASE_TICKS : EASE_TICKS;
+                if (what == Decoys.SILENCED && since == EASE_TICKS) {
+                    gone.run();
+                }
+                if (since == start) {
+                    from[0] = drifter[0].position();
+                } else if (since == start + MEASURE_TICKS) {
+                    Vec3 moved = drifter[0].position().subtract(from[0]).normalize();
+                    double cosinePod = moved.dot(arena.pod()
+                            .position()
+                            .add(0, 1, 0)
+                            .subtract(from[0])
+                            .normalize());
+                    double cosineDecoy = moved.dot(decoy[0].subtract(from[0]).normalize());
+                    if (what == Decoys.IN_REACH) {
+                        expect(
+                                helper,
+                                cosineDecoy > 0.8,
+                                "the drifter does not aim at the decoy: cosine %s",
+                                cosineDecoy);
+                        expect(helper, cosinePod < 0.3, "the drifter still aims at the drill: cosine %s", cosinePod);
+                    } else {
+                        expect(helper, cosinePod > 0.8, "the drifter does not aim at the drill: cosine %s", cosinePod);
+                    }
+                    gone.run();
+                    drifter[0].discard();
+                    arena.clear();
+                    helper.succeed();
+                }
+            } catch (RuntimeException | Error failed) {
+                gone.run();
+                throw failed;
             }
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
             made[0] = Arena.build(helper, level, origin);
             made[0].pilot().setInput(SPRINT);
             drifter[0] = made[0].drifter(made[0].at(-5, 2, 0));
-            decoy[0] = drifter[0].position().add(0, drifter[0].getBbHeight() / 2, -5);
-            DrawSources.addDecoy(level, decoy[0], 8, level.getGameTime() + 2_000);
+            Vec3 centre = drifter[0].position().add(0, drifter[0].getBbHeight() / 2, 0);
+            // Beyond its pull the decoy is due west, away from the pod and from every other room, which differ only in
+            // z.
+            decoy[0] =
+                    what == Decoys.BEYOND_PULL ? centre.add(-(tuning.pullBlocks() + 10), 0, 0) : centre.add(0, 0, -5);
+            DrawSources.addDecoy(level, decoy[0], tuning.pullBlocks(), level.getGameTime() + tuning.noiseTicks());
         });
     }
 
