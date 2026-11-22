@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.wreck.Wrecks;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -86,8 +87,7 @@ public final class PodCharge {
             if (refused.isPresent()) {
                 return refused;
             }
-        } else if (BlockPos.betweenClosedStream(low, high)
-                .noneMatch(cell -> blocks.getBlockState(cell).is(HazardBlocks.UNDIGGABLE))) {
+        } else if (!hasCompanyRock(level, low, high)) {
             return refusal("charge_no_company_rock");
         }
         Fuse fuse = new Fuse(
@@ -146,7 +146,7 @@ public final class PodCharge {
         ServerLevel level = (ServerLevel) pod.level();
         if (fuse.ticksLeft() <= 0) {
             pod.setFuse(null);
-            blast(level, fuse, true);
+            blast(level, fuse, true, any -> true);
             return;
         }
         if (fuse.ticksLeft() % TICKS_PER_SECOND == 0 && fuse.ticksLeft() < fuse.startTicks()) {
@@ -205,17 +205,17 @@ public final class PodCharge {
     }
 
     /**
-     * A blasting charge's blast that nothing set from a pod (a thrown charge, #985): the volume {@code low} to {@code high} (inclusive corners), hurting every pod within
-     * {@code reach} of it by {@code damage} less its distance share, and clearing the rock it may if {@code clearRock}. It is the pod's blast, not a copy of it. A caller
-     * asks {@link #hasCompanyRock} first, because the pod's charge clears nothing where there is no Company rock.
+     * A blasting charge's blast that nothing set from a pod (a thrown charge, #985): the volume {@code low} to {@code high} (inclusive corners), hurting
+     * each pod within {@code reach} of it that {@code hurts} accepts by {@code damage} less its distance share, and clearing rock by the pod's own rule:
+     * only where the volume holds Company rock ({@link #hasCompanyRock}), as a pod's charge is not set anywhere else.
      */
     public static void detonate(
-            ServerLevel level, BlockPos low, BlockPos high, float damage, double reach, boolean clearRock) {
-        blast(level, new Fuse(Kind.BLASTING, low, high, 0, 0, damage, reach), clearRock);
+            ServerLevel level, BlockPos low, BlockPos high, float damage, double reach, Predicate<PodEntity> hurts) {
+        blast(level, new Fuse(Kind.BLASTING, low, high, 0, 0, damage, reach), hasCompanyRock(level, low, high), hurts);
     }
 
-    /** Whether the volume {@code low} to {@code high} holds Company rock in a loaded chunk: the rule that lets the pod's charge be set at all. */
-    public static boolean hasCompanyRock(ServerLevel level, BlockPos low, BlockPos high) {
+    /** Whether the volume {@code low} to {@code high} holds Company rock in a loaded chunk: the rule that lets a blasting charge be set, or clear anything. */
+    private static boolean hasCompanyRock(ServerLevel level, BlockPos low, BlockPos high) {
         LoadedBlocks blocks = new LoadedBlocks(level);
         return BlockPos.betweenClosedStream(low, high)
                 .anyMatch(cell -> blocks.getBlockState(cell).is(HazardBlocks.UNDIGGABLE));
@@ -226,13 +226,13 @@ public final class PodCharge {
         return 1 - Math.sqrt(distanceSqr(volume, box)) / reach;
     }
 
-    private static void blast(ServerLevel level, Fuse fuse, boolean clearRock) {
+    private static void blast(ServerLevel level, Fuse fuse, boolean clearRock, Predicate<PodEntity> hurts) {
         AABB volume = fuse.volume();
         Vec3 middle = volume.getCenter();
         // entity-query: the blast reaches chargeReach round a charge that a ticking pod set, so its chunks are
         // entity-ticking
         for (PodEntity pod : level.getEntitiesOfClass(PodEntity.class, volume.inflate(fuse.reach()))) {
-            if (Wrecks.isWreck(pod)) {
+            if (Wrecks.isWreck(pod) || !hurts.test(pod)) {
                 continue;
             }
             double share = reachShare(volume, pod.getBoundingBox(), fuse.reach());

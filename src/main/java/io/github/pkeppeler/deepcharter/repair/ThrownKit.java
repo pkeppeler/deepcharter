@@ -12,7 +12,7 @@ import net.minecraft.world.item.ItemStack;
 /**
  * The thrown kit (#985, CREATURES section 8): the operator's flares, decoys and charges, by hand, on foot. A person who is not seated throws the item in
  * their hand along the way they look; what it does when it lands is {@link ThrownKitEntity}'s. The three are bought at the repair station like the other
- * consumables, so a fight costs money (pillar 1). A throw from the pilot's seat or any seat is refused and keeps the item: the pod's charge is
+ * consumables (the decoy once a creature feels its pull, {@link Consumable#sold}), so a fight costs money (pillar 1). A throw from the pilot's seat or any seat is refused and keeps the item: the pod's charge is
  * {@link Consumable#BLASTING_CHARGE}.
  */
 public final class ThrownKit {
@@ -20,9 +20,6 @@ public final class ThrownKit {
 
     /** Server only: throws {@code item} for {@code player}. Empty when it was thrown (the caller uses it up), or the reason it was not. */
     public static Optional<Component> throwFrom(ServerPlayer player, Consumable item, ThrownKitTuning tuning) {
-        if (!item.thrown()) {
-            throw new IllegalArgumentException(item + " is not thrown by hand");
-        }
         if (player.isPassenger()) {
             return Consumables.refusal("throw_from_seat");
         }

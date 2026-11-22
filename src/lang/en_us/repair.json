@@ -28,6 +28,7 @@
   "message.deepcharter.repair.tank_full": "The fuel tank is already full",
   "message.deepcharter.repair.teleport_blocked": "The teleport failed",
   "message.deepcharter.repair.throw_from_seat": "Climb out to throw this: it is thrown by hand, on foot",
+  "message.deepcharter.repair.thrown_flare_drowned": "The flare finds no footing and goes out: it is back in your pack",
   "message.deepcharter.repair.thrown_charge_down": "Charge down: GET CLEAR, blast in %s",
   "message.deepcharter.repair.unknown_item": "The station does not sell that",
   "message.deepcharter.repair.wreck": "A wreck cannot be repaired here: only the hangar can restore it",

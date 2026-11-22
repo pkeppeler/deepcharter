@@ -33,24 +33,44 @@ public enum Consumable {
     // SPEC section 11: a layer-3 item measured as about 4 layer-2 runs (3.6 from the outpost, #320); the cargo drop is
     // the rest of the cost.
     MATTER_TRANSMITTER("matter_transmitter", 1_500),
-    // Thrown by hand on foot (#985, CREATURES section 8): the operator's rounds without the launcher. Each is a
-    // fraction of
-    // a layer 1 run, so a fight costs money without ending the run. ThrownKitPacingTest holds the three to their bands.
-    THROWN_FLARE("thrown_flare", 12),
-    THROWN_DECOY("thrown_decoy", 25),
-    THROWN_CHARGE("thrown_charge", 55);
+    // Thrown by hand on foot (#985, CREATURES section 8): the operator's rounds without the launcher. Each costs a
+    // fraction of a layer 1 run, so a fight costs money without ending the run. ThrownKitPacingTest holds the three to
+    // their bands.
+    THROWN_FLARE("thrown_flare", 12, true),
+    // Not sold yet: nothing on main is drawn to the drill, so no creature feels its pull. On sale with the first
+    // drill-drawn creature (Drifters, #918, PR #975): whichever lands second flips this and adds the steer call.
+    THROWN_DECOY("thrown_decoy", 25, false),
+    THROWN_CHARGE("thrown_charge", 55, true);
 
     private final Identifier itemId;
     private final long price;
+    private final boolean thrown;
+    private final boolean sold;
 
     Consumable(String path, long price) {
+        this(path, price, false, true);
+    }
+
+    /** A thrown item: {@code sold} is whether the repair station offers it. */
+    Consumable(String path, long price, boolean sold) {
+        this(path, price, true, sold);
+    }
+
+    private Consumable(String path, long price, boolean thrown, boolean sold) {
         this.itemId = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
         this.price = price;
+        this.thrown = thrown;
+        this.sold = sold;
     }
 
     /** Whether the item is thrown by hand on foot ({@link ThrownKit}), not used from the pilot's seat. */
     public boolean thrown() {
-        return this == THROWN_FLARE || this == THROWN_DECOY || this == THROWN_CHARGE;
+        return thrown;
+    }
+
+    /** Whether the repair station lists the item and sells it. An item that is not sold is still registered, priced and works when held. */
+    public boolean sold() {
+        return sold;
     }
 
     public Identifier itemId() {

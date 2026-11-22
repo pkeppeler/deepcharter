@@ -408,7 +408,7 @@ public class RepairStationTest {
     }
 
     @GameTest
-    public void theShopSellsEveryItemAtItsTunedPrice(GameTestHelper helper) {
+    public void theShopSellsEveryItemThatIsOnSaleAtItsTunedPrice(GameTestHelper helper) {
         withStation(helper, station -> {
             if (SHOP_PRICES.size() != Consumable.values().length) {
                 throw helper.assertionException(
@@ -423,6 +423,16 @@ public class RepairStationTest {
                 if (consumable.price() != price) {
                     throw helper.assertionException(
                             "%s costs $%d, the shop charges $%d", consumable, consumable.price(), price);
+                }
+                if (!consumable.sold()) {
+                    // Priced and registered, but not on sale (the decoy waits for a creature that it can pull).
+                    expectRefused(
+                            helper,
+                            Terminals.act(player, station.pos(), RepairStation.BUY, item(consumable)),
+                            "buying " + consumable + ", which is not sold");
+                    expectAccount(helper, station, balance, "after the refused purchase of " + consumable);
+                    expectSpent(helper, player, consumable, 0, "after the refused purchase of " + consumable);
+                    continue;
                 }
                 expectDone(
                         helper,

@@ -297,7 +297,7 @@ public class LamplessFigure extends PathfinderMob {
         return pod.getFirstPassenger() instanceof Player
                 && PodEvents.isPowered(pod)
                 && !PodLights.isLit(pod)
-                && !DrawSources.litByFlare(pod.level(), pod.position())
+                && !(pod.level() instanceof ServerLevel level && DrawSources.litByFlare(level, pod.position()))
                 && pod.fuel() > CreatureTuning.DEFAULT.cling().floorPercent();
     }
 

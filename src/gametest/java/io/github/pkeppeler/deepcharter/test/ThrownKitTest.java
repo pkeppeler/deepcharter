@@ -3,12 +3,15 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
 import io.github.pkeppeler.deepcharter.creature.DrawSources;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
@@ -25,16 +28,19 @@ import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.ThrowRoom;
 import java.util.List;
+import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -74,6 +80,13 @@ public class ThrownKitTest {
     private static final int NO_ROCK_X = 7584;
     private static final int PERSON_X = 7648;
     private static final int POD_X = 7712;
+    private static final int BROKEN_X = 7904;
+    private static final int DROWNS_X = 7968;
+    private static final int PLACED_X = 8032;
+    private static final int CREW_X = 8096;
+    private static final int PODS_X = 8160;
+    /** A batch of its own with the PvP rule off: the rule is the server's, so a test that turns it off cannot share a batch with one that needs it on. */
+    private static final String PVP_OFF = "deepcharter-test:pvp_off";
 
     private static ThrownKitTuning withFlare(int burnTicks) {
         ThrownKitTuning.Flare flare = DEFAULT.flare();
@@ -604,6 +617,7 @@ public class ThrownKitTest {
         });
     }
 
+    /** A stranger with no charter is hurt when the server allows PvP (its default), and never killed. */
     @GameTest(maxTicks = MAX_TICKS)
     public void aPersonAtTheBlastIsHurtButNeverKilled(GameTestHelper helper) {
         MockPlayer bystander = MockPlayers.join(helper, "bystander");
@@ -617,7 +631,7 @@ public class ThrownKitTest {
                     set(room, 0, -1, 0, HazardBlocks.COMPANY_ROCK);
                     dropCharge(helper, room, true);
                     ServerPlayer other = bystander.player();
-                    other.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+                    other.setGameMode(GameType.SURVIVAL);
                     bystander.teleportTo(room.level(), Vec3.atBottomCenterOf(room.cell(1, 0, 0)), 0f, 0f);
                     // Less health than the blast takes: a blast that could kill would.
                     other.setHealth(DEFAULT.charge().personDamage() / 2);
@@ -687,6 +701,206 @@ public class ThrownKitTest {
                                 hull[0] - far[0].hull());
                         near[0].discard();
                         far[0].discard();
+                        helper.succeed();
+                    }
+                });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aFlareThatIsBrokenKeepsNothingOff(GameTestHelper helper) {
+        ThrowRoom.start(helper, BROKEN_X, room -> throwIt(helper, room, Consumable.THROWN_FLARE, DEFAULT), room -> {
+            BlockPos flare = room.flare();
+            if (flare == null) {
+                expect(helper, room.ticks() <= LAND_BUDGET_TICKS, "the flare never landed");
+                return;
+            }
+            Vec3 centre = Vec3.atCenterOf(flare);
+            expect(helper, DrawSources.litByFlare(room.level(), centre), "a burning flare keeps the dark off");
+            room.level().removeBlock(flare, false);
+            expect(
+                    helper,
+                    !DrawSources.litByFlare(room.level(), centre),
+                    "a flare whose block is broken still keeps the dark off, though its 90 seconds have not run out");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aFlareThatFindsNoRoomDrownsAndIsGivenBack(GameTestHelper helper) {
+        ThrowRoom.start(
+                helper,
+                DROWNS_X,
+                room -> {
+                    // Water fills the cell the flare lands in and the one above it.
+                    set(room, 0, 0, -3, Blocks.WATER);
+                    set(room, 0, 1, -3, Blocks.WATER);
+                    room.thrower().teleportTo(room.level(), Vec3.atBottomCenterOf(room.cell(0, 0, -3)), 0f, 90f);
+                    throwIt(helper, room, Consumable.THROWN_FLARE, DEFAULT);
+                },
+                room -> {
+                    ServerPlayer player = room.thrower().player();
+                    String expected = Component.translatable("message.deepcharter.repair.thrown_flare_drowned")
+                            .getString();
+                    if (room.kits().isEmpty()
+                            && room.thrower().actionBarMessages().stream()
+                                    .anyMatch(m -> m.getString().equals(expected))) {
+                        expect(
+                                helper,
+                                !room.level().getBlockState(room.cell(0, 0, -3)).is(RepairRegistry.FLARE_LIGHT)
+                                        && !room.level()
+                                                .getBlockState(room.cell(0, 1, -3))
+                                                .is(RepairRegistry.FLARE_LIGHT),
+                                "a flare stood in the water");
+                        int back = player.getInventory().countItem(RepairRegistry.item(Consumable.THROWN_FLARE));
+                        expect(helper, back == 1, "the drowned flare should be given back once, %d were", back);
+                        helper.succeed();
+                    } else if (room.ticks() > LAND_BUDGET_TICKS) {
+                        throw failure(
+                                helper,
+                                "a flare thrown into water should drown and say so, the bar said %s",
+                                room.thrower().actionBarMessages());
+                    }
+                });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aFlareStandsOnAPlacedBlockAndNeverReplacesIt(GameTestHelper helper) {
+        ThrowRoom.start(
+                helper,
+                PLACED_X,
+                room -> {
+                    set(room, 0, 0, -3, Blocks.STONE);
+                    room.thrower().teleportTo(room.level(), Vec3.atBottomCenterOf(room.cell(0, 1, -3)), 0f, 90f);
+                    throwIt(helper, room, Consumable.THROWN_FLARE, DEFAULT);
+                },
+                room -> {
+                    BlockPos stood = room.cell(0, 1, -3);
+                    if (room.level().getBlockState(stood).is(RepairRegistry.FLARE_LIGHT)) {
+                        ChargeUse.expectBlock(
+                                helper,
+                                room.level(),
+                                room.cell(0, 0, -3),
+                                Blocks.STONE,
+                                "the placed block under the flare");
+                        helper.succeed();
+                    } else {
+                        expect(helper, room.ticks() <= LAND_BUDGET_TICKS, "the flare never stood on the placed block");
+                    }
+                });
+    }
+
+    private static CharterId found(GameTestHelper helper, MinecraftServer server, UUID founder, String name) {
+        var refusal = Charters.found(server, founder, name + founder.toString().substring(0, 8));
+        expect(helper, refusal.isEmpty(), "founding the charter %s was refused: %s", name, refusal);
+        return Charters.charterOfOrThrow(server, founder).orElseThrow().id();
+    }
+
+    /**
+     * The design call on friendly fire: a charge hurts the thrower and their own crew whatever the PvP setting, and hurts anyone else only where PvP is
+     * on. With PvP off, a stranger from another charter at the blast is unhurt.
+     */
+    @GameTest(maxTicks = MAX_TICKS, environment = PVP_OFF)
+    public void aChargeHurtsTheThrowerAndTheirCrewButNotAStrangerWhenPvpIsOff(GameTestHelper helper) {
+        MockPlayer crewmate = MockPlayers.join(helper, "crewmate");
+        MockPlayer stranger = MockPlayers.join(helper, "stranger");
+        int[] landedAt = {-1};
+        int fuse = DEFAULT.charge().fuseTicks();
+        ThrowRoom.start(
+                helper,
+                CREW_X,
+                room -> {
+                    MinecraftServer server = room.level().getServer();
+                    CharterId crew =
+                            found(helper, server, room.thrower().player().getUUID(), "Crew");
+                    var applied = Charters.apply(server, crewmate.player().getUUID(), crew);
+                    expect(helper, applied.isEmpty(), "the crewmate could not apply: %s", applied);
+                    var approved = Charters.approve(
+                            server,
+                            room.thrower().player().getUUID(),
+                            crewmate.player().getUUID());
+                    expect(helper, approved.isEmpty(), "the crewmate was not approved: %s", approved);
+                    found(helper, server, stranger.player().getUUID(), "Stranger");
+                    set(room, 0, -1, 0, HazardBlocks.COMPANY_ROCK);
+                    for (MockPlayer person : List.of(room.thrower(), crewmate, stranger)) {
+                        person.player().setGameMode(GameType.SURVIVAL);
+                        person.player().setHealth(20f);
+                    }
+                    crewmate.teleportTo(room.level(), Vec3.atBottomCenterOf(room.cell(1, 0, 0)), 0f, 0f);
+                    stranger.teleportTo(room.level(), Vec3.atBottomCenterOf(room.cell(-1, 0, 0)), 0f, 0f);
+                    expect(helper, !room.level().isPvpAllowed(), "the pvp_off environment should turn PvP off");
+                    // The thrower stays at the charge.
+                    dropCharge(helper, room, false);
+                },
+                room -> {
+                    if (landedAt[0] < 0) {
+                        if (!room.kits().isEmpty() && room.kits().getFirst().landed()) {
+                            landedAt[0] = room.ticks();
+                        }
+                        return;
+                    }
+                    if (room.ticks() - landedAt[0] > fuse + SLACK_TICKS) {
+                        expect(
+                                helper,
+                                room.thrower().player().getHealth() < 20f,
+                                "the thrower should be hurt by their own charge");
+                        expect(
+                                helper,
+                                crewmate.player().getHealth() < 20f,
+                                "a crewmate at the blast should be hurt, PvP or not");
+                        expect(
+                                helper,
+                                stranger.player().getHealth() >= 20f,
+                                "a stranger from another charter should be unhurt with PvP off, has %s",
+                                stranger.player().getHealth());
+                        crewmate.leave();
+                        stranger.leave();
+                        helper.succeed();
+                    } else if (room.ticks() > LAND_BUDGET_TICKS + fuse + 100) {
+                        throw failure(helper, "the charge never blew");
+                    }
+                });
+    }
+
+    /** A pod another charter owns is never hurt by a thrown charge, and one of the thrower's own charter is. */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aChargeNeverHurtsAPodOfAnotherCharterButHurtsOneOfTheThrowersOwn(GameTestHelper helper) {
+        PodEntity[] own = {null};
+        PodEntity[] other = {null};
+        float[] hull = {0};
+        int[] landedAt = {-1};
+        int fuse = DEFAULT.charge().fuseTicks();
+        ThrowRoom.start(
+                helper,
+                PODS_X,
+                room -> {
+                    MinecraftServer server = room.level().getServer();
+                    CharterId mine =
+                            found(helper, server, room.thrower().player().getUUID(), "Mine");
+                    CharterId theirs = found(helper, server, UUID.randomUUID(), "Theirs");
+                    set(room, 0, -1, 0, HazardBlocks.COMPANY_ROCK);
+                    own[0] = podAt(room, room.cell(0, 0, 0).getX() + 4.45);
+                    other[0] = podAt(room, room.cell(0, 0, 0).getX() - 4.45);
+                    PodComponents.register(own[0], mine);
+                    PodComponents.register(other[0], theirs);
+                    hull[0] = own[0].hull();
+                    dropCharge(helper, room, true);
+                },
+                room -> {
+                    if (landedAt[0] < 0) {
+                        if (!room.kits().isEmpty() && room.kits().getFirst().landed()) {
+                            landedAt[0] = room.ticks();
+                        }
+                        return;
+                    }
+                    if (room.ticks() - landedAt[0] > fuse + SLACK_TICKS) {
+                        expect(helper, own[0].hull() < hull[0], "a pod of the thrower's own charter should be hurt");
+                        expect(
+                                helper,
+                                other[0].hull() == hull[0],
+                                "a pod of another charter lost %s hull",
+                                hull[0] - other[0].hull());
+                        own[0].discard();
+                        other[0].discard();
                         helper.succeed();
                     }
                 });

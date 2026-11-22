@@ -1,9 +1,13 @@
 package io.github.pkeppeler.deepcharter.repair;
 
+import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.creature.DrawSources;
 import io.github.pkeppeler.deepcharter.pod.PodCharge;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
@@ -13,7 +17,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -33,11 +36,13 @@ import net.minecraft.world.phys.Vec3;
  * of a block; any other face or a creature turns it back, and it drops to the floor. What it does then depends on what it is:
  *
  * <ul>
- *   <li>a <b>flare</b> stands a {@link FlareLightBlock} where it landed, schedules the block's burn-out and registers with {@link DrawSources}, then is gone;
+ *   <li>a <b>flare</b> stands a {@link FlareLightBlock} where it landed, schedules the block's burn-out and registers with {@link DrawSources}, then is
+ *       gone; one that finds no room to stand (water, a solid block, an unloaded neighbour) drowns and is given back to the thrower;
  *   <li>a <b>decoy</b> lies there and sounds every {@code pulseTicks} for {@code noiseTicks}, a source in {@link DrawSources}, then is gone;
  *   <li>a <b>charge</b> lies there with a fuse, sparking, and blasts as the pod's blasting charge does ({@link PodCharge}): the 3 x 3 column under it,
  *       {@code chargeDepth} rows deep, clears Company rock and natural rock (only where the volume holds Company rock, the pod's own rule), and hurts
- *       a pod in reach by distance. A person in reach is hurt too, the thrower's own risk, but never killed.
+ *       a pod in reach by distance. A person in reach is hurt too, but never killed. Friendly fire is deliberate: the thrower and their own charter's
+ *       crew are hurt (the fuse and the GET CLEAR bar warn them), anyone else only where the server allows PvP; a pod of another charter is never hurt.
  * </ul>
  *
  * <p>Not saved: a throw that its chunk unloads on is spent, as the pod's fuse is. A flare's block is saved and burns out on its own.
@@ -76,7 +81,7 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
         return RepairRegistry.item(Consumable.THROWN_FLARE);
     }
 
-    /** Whether it has come to rest. A flare never shows as landed: it becomes a block and is gone. */
+    /** Whether it has come to rest. */
     public boolean landed() {
         return landed;
     }
@@ -94,6 +99,15 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
             default -> discard();
         }
         ticksLanded++;
+    }
+
+    /** A decoy that is gone before its time (its chunk unloaded, it was killed) falls silent with it. */
+    @Override
+    public void onRemoval(RemovalReason reason) {
+        if (kind == Consumable.THROWN_DECOY && landed && level() instanceof ServerLevel level) {
+            DrawSources.removeDecoy(level, position());
+        }
+        super.onRemoval(reason);
     }
 
     @Override
@@ -150,9 +164,13 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
         }
     }
 
-    /** Stands the flare in the floor where it landed, or a cell above if the first is taken. A flare that finds no room is spent. */
+    /**
+     * Stands the flare in the floor where it landed, or a cell above if the first is taken. A flare that finds no room drowns: the thrower is told and
+     * gets it back, so a throw into a flooded bore is a lesson, not a loss.
+     */
     private void lightFlare(ServerLevel level) {
         LoadedBlocks blocks = new LoadedBlocks(level);
+        boolean stood = false;
         for (BlockPos spot : new BlockPos[] {cell, cell.above()}) {
             BlockState there = blocks.getBlockState(spot);
             if (blocks.canChange(spot)
@@ -164,11 +182,18 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
                 DrawSources.addFlare(
                         level,
                         spot,
+                        RepairRegistry.FLARE_LIGHT,
                         tuning.flare().keepOffBlocks(),
                         level.getGameTime() + tuning.flare().burnTicks());
                 level.playSound(null, spot, SoundEvents.FLINTANDSTEEL_USE, SoundSource.BLOCKS, 1f, 0.8f);
+                stood = true;
                 break;
             }
+        }
+        if (!stood && getOwner() instanceof ServerPlayer thrower) {
+            level.playSound(null, cell, SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.4f, 1.4f);
+            thrower.sendOverlayMessage(Component.translatable("message.deepcharter.repair.thrown_flare_drowned"));
+            thrower.addItem(new ItemStack(RepairRegistry.item(Consumable.THROWN_FLARE)));
         }
         discard();
     }
@@ -208,39 +233,60 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
         }
     }
 
-    /** The pod's blast, round where it lies, and the same share of a person's health as of a pod's hull. */
+    /**
+     * The pod's blast, round where it lies, and the same share of a person's health as of a pod's hull. Friendly fire is by design: the thrower and their
+     * charter's crew are hurt, anyone else only where the server allows PvP, and a pod that another charter owns never is.
+     */
     private void blast(ServerLevel level) {
         RepairTuning repair = RepairTuning.DEFAULT;
         int radius = tuning.charge().blastRadius();
         BlockPos low = cell.offset(-radius, -repair.chargeDepth(), -radius);
         BlockPos high = cell.offset(radius, -1, radius);
+        Optional<Charter> charter = throwerCharter(level);
         PodCharge.detonate(
                 level,
                 low,
                 high,
                 repair.chargeDamage(),
                 repair.chargeReach(),
-                PodCharge.hasCompanyRock(level, low, high));
+                pod -> PodComponents.mayAccess(pod, charter));
         AABB volume = new AABB(low.getX(), low.getY(), low.getZ(), high.getX() + 1, high.getY() + 1, high.getZ() + 1);
         // entity-query: round a charge that a ticking projectile landed, so its chunks are entity-ticking; a person
         // in an unloaded chunk is out of the blast's reach anyway
-        List<LivingEntity> hurt =
-                level.getEntitiesOfClass(LivingEntity.class, volume.inflate(repair.chargeReach()), this::isPerson);
-        for (LivingEntity person : hurt) {
+        List<Player> hurt = level.getEntitiesOfClass(
+                Player.class, volume.inflate(repair.chargeReach()), person -> isHurt(level, person, charter));
+        for (Player person : hurt) {
             double share = PodCharge.reachShare(volume, person.getBoundingBox(), repair.chargeReach());
             if (share > 0) {
                 float damage = (float) (tuning.charge().personDamage() * share);
                 // Never lethal: it leaves half a heart at worst (the pod's blast wrecks nobody's run, and a thrown one
-                // kills nobody).
+                // kills nobody). No attacker is named: the vanilla PvP rule would spare the thrower from their own
+                // charge, and isHurt has already decided who is hurt.
                 person.hurtServer(
                         level,
-                        level.damageSources().explosion(this, getOwner()),
+                        level.damageSources().explosion(this, null),
                         Math.min(damage, Math.max(0f, person.getHealth() - 1f)));
             }
         }
     }
 
-    private boolean isPerson(Entity entity) {
-        return entity instanceof Player player && !player.isSpectator();
+    private Optional<Charter> throwerCharter(ServerLevel level) {
+        return getOwner() instanceof Player thrower
+                ? Charters.readableCharterOf(level.getServer(), thrower.getUUID())
+                : Optional.empty();
+    }
+
+    /** Whether the blast hurts {@code person}: the thrower, a crewmate, or anyone at all when the server allows PvP. Not a spectator. */
+    private boolean isHurt(ServerLevel level, Player person, Optional<Charter> thrower) {
+        if (person.isSpectator()) {
+            return false;
+        }
+        boolean crew = person == getOwner()
+                || (thrower.isPresent()
+                        && Charters.readableCharterOf(level.getServer(), person.getUUID())
+                                .map(charter ->
+                                        charter.id().equals(thrower.get().id()))
+                                .orElse(false));
+        return crew || level.isPvpAllowed();
     }
 }
