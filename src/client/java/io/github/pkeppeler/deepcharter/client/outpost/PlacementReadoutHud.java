@@ -60,13 +60,13 @@ public final class PlacementReadoutHud {
         int line = font.lineHeight + look.lineGap();
         int widest = widest(font, readout);
         int height = font.lineHeight + (readout.reason().isPresent() ? line : 0);
-        int width = (int) Math.ceil(widest * look.scale());
+        int width = (int) Math.ceil(widest * (float) look.scale());
         return new HudKeepClear.Rect(
                 "placement readout",
                 (guiWidth - width) / 2,
-                guiHeight / 2 + look.offsetY() + (int) Math.ceil(LINES_BELOW * line * look.scale()),
+                guiHeight / 2 + look.offsetY() + (int) Math.ceil(LINES_BELOW * line * (float) look.scale()),
                 width,
-                (int) Math.ceil(height * look.scale()));
+                (int) Math.ceil(height * (float) look.scale()));
     }
 
     /** The width, before the scale, of the wider of the two lines. */
@@ -151,6 +151,9 @@ public final class PlacementReadoutHud {
     /** {@code text} centred in a line {@code widest} wide, from the box's integer origin, so what is drawn is inside the box that is kept clear. */
     private static void centred(
             GuiGraphicsExtractor graphics, Font font, int widest, Component text, int y, int color) {
-        graphics.text(font, text, (widest - font.width(text)) / 2, y, color, true);
+        graphics.pose().pushMatrix();
+        graphics.pose().translate((widest - font.width(text)) / 2f, y);
+        graphics.text(font, text, 0, 0, color, true);
+        graphics.pose().popMatrix();
     }
 }

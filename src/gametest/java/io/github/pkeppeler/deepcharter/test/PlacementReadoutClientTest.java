@@ -130,13 +130,13 @@ public class PlacementReadoutClientTest implements FabricClientGameTest {
             int widest = Math.max(
                     client.font.width(readout.verdict().label()),
                     client.font.width(readout.reason().orElseThrow()));
-            int expectedWidth = (int) Math.ceil(widest * look.scale());
+            int expectedWidth = (int) Math.ceil(widest * (float) look.scale());
             require(
                     kept.x() == (width - expectedWidth) / 2 && kept.width() == expectedWidth,
                     "the kept box " + kept + " is centred and as wide as the wider line, " + expectedWidth);
             require(
-                    kept.y() == height / 2 + look.offsetY() + (int) Math.ceil(2 * line * look.scale())
-                            && kept.height() == (int) Math.ceil((client.font.lineHeight + line) * look.scale()),
+                    kept.y() == height / 2 + look.offsetY() + (int) Math.ceil(2 * line * (float) look.scale())
+                            && kept.height() == (int) Math.ceil((client.font.lineHeight + line) * (float) look.scale()),
                     "the kept box " + kept + " is two lines under the block readout and holds both lines");
             Box box = new Box(kept.x(), kept.y(), kept.width(), kept.height());
             for (Drawn text : drawn(client)) {
