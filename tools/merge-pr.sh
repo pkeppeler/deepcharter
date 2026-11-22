@@ -23,7 +23,9 @@
 # each recorded exactly the current origin/main as the main they merged (see the check below; #979), or main differs
 # from it only by docs/ROADMAP.md or .papercuts.jsonl.
 # Refuses a base other than main. Retargets open PRs stacked on its branch to main, then squash-merges pinned to that head sha
-# and regenerates docs/ROADMAP.md. GitHub is read through REST only (tools/lib/gh-rest.sh).
+# and regenerates docs/ROADMAP.md. The commit title and message go through tools/merge_message.py first: the merge proxy
+# refuses a long URL there, so it is shortened in the commit only, never in the PR body (#1007); --check warns when it will.
+# On a failed merge request the API's error text is printed. GitHub is read through REST only (tools/lib/gh-rest.sh).
 set -euo pipefail
 
 repo=pkeppeler/deepcharter
@@ -236,6 +238,12 @@ closing_set
   || refuse "closing set changed during the gate (was ${checked_closes:-empty}, now ${closes:-empty}); re-run"
 
 if [[ $gate_only -eq 1 ]]; then
+  # Not a refusal: the merge rewrites these URLs in the commit message, so the author can see it (#1007).
+  long_urls=$(tools/py tools/merge_message.py --list <<<"$(pr_field .title)
+$body") || refuse "could not check the title and body for long URLs"
+  if [[ -n $long_urls ]]; then
+    echo "WARNING: the title or body holds $(wc -l <<<"$long_urls" | tr -d ' ') URL(s) the merge proxy refuses (150+ characters, or an 80-character run); the merge rewrites them in the commit message and leaves the PR body as it is: $(head -1 <<<"$long_urls" | cut -c1-100)"
+  fi
   pending=
   [[ $is_draft == false ]] || pending="draft"
   [[ -z $review_pass_refusal ]] || pending="${pending:+$pending, }no review pass"
@@ -263,14 +271,18 @@ done
 # (a timeout), so a nonzero exit is judged by the PR's real state.
 title=$(pr_field .title) || refuse "has no readable title"
 message=$(pr_field '.body // ""') || refuse "has no readable body"
-if ! gh api -X PUT "repos/$repo/pulls/$pr/merge" -f merge_method=squash -f sha="$sha" \
-  -f commit_title="$title (#$pr)" -f commit_message="$message" >/dev/null; then
+# The proxy refuses a title or message holding a long URL (#1007): send the text with those URLs shortened. The PR
+# body is not changed.
+title=$(tools/py tools/merge_message.py <<<"$title") || refuse "could not rewrite the title's long URLs"
+message=$(tools/py tools/merge_message.py <<<"$message") || refuse "could not rewrite the body's long URLs"
+if ! merge_out=$(gh api -X PUT "repos/$repo/pulls/$pr/merge" -f merge_method=squash -f sha="$sha" \
+  -f commit_title="$title (#$pr)" -f commit_message="$message" 2>&1); then
   state=$(pr_state_of "$pr") || state=unknown
   if [[ $state != MERGED ]]; then
-    echo "ERROR: the merge request failed and PR #$pr is not merged (state: $state)" >&2
+    echo "ERROR: the merge request failed and PR #$pr is not merged (state: $state): $merge_out" >&2
     exit 1
   fi
-  echo "WARNING: the merge request failed but PR #$pr is MERGED; continuing" >&2
+  echo "WARNING: the merge request failed but PR #$pr is MERGED; continuing: $merge_out" >&2
 fi
 echo "Merged PR #$pr at $sha"
 

@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.repair;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.pod.TetherItem;
 import java.util.EnumMap;
 import java.util.Map;
@@ -7,10 +8,16 @@ import java.util.Objects;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 
-/** Registers the consumables and the repair station's actions. */
+/** Registers the consumables, the thrown kit's projectile and flare block, and the repair station's actions. */
 public final class RepairRegistry {
     private static final Map<Consumable, Item> ITEMS = new EnumMap<>(Consumable.class);
 
@@ -24,6 +31,30 @@ public final class RepairRegistry {
             ITEMS.put(consumable, Registry.register(BuiltInRegistries.ITEM, key, item));
         }
     }
+
+    private static final ResourceKey<EntityType<?>> THROWN_KIT_KEY = ResourceKey.create(
+            Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "thrown_kit"));
+
+    /** What a flare, decoy or charge is while it flies and lies. Not saved: one lost to an unloaded chunk is spent, as the pod's fuse is. */
+    public static final EntityType<ThrownKitEntity> THROWN_KIT = Registry.register(
+            BuiltInRegistries.ENTITY_TYPE,
+            THROWN_KIT_KEY,
+            EntityType.Builder.<ThrownKitEntity>of(ThrownKitEntity::new, MobCategory.MISC)
+                    .sized(0.25f, 0.25f)
+                    .noSave()
+                    .clientTrackingRange(8)
+                    .updateInterval(10)
+                    .build(THROWN_KIT_KEY));
+
+    private static final ResourceKey<Block> FLARE_LIGHT_KEY =
+            ResourceKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "flare_light"));
+
+    /** A burning flare: light, and no item, since nothing places it by hand. It puts itself out ({@link FlareLightBlock}). */
+    public static final Block FLARE_LIGHT = Registry.register(
+            BuiltInRegistries.BLOCK,
+            FLARE_LIGHT_KEY,
+            new FlareLightBlock(
+                    BlockBehaviour.Properties.of().setId(FLARE_LIGHT_KEY).sound(SoundType.WOOD)));
 
     private RepairRegistry() {}
 
