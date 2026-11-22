@@ -13,5 +13,6 @@ public final class HandbookInit {
         HandbookTriggers.init();
         NoteReadout.init();
         ProgressCarry.register();
+        KnownRecipes.register();
     }
 }
