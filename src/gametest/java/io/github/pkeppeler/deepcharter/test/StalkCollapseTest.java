@@ -5,6 +5,7 @@ import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.surface.GreatStalk;
 import io.github.pkeppeler.deepcharter.surface.SurfaceTuning;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
@@ -53,10 +54,11 @@ public class StalkCollapseTest {
     private static final int FAR_Z = 20;
 
     /**
-     * Items are counted this far from the test's origin on each side and above and below it, past where drops come to rest. The two
-     * tests that count them run in a test environment of their own, so no other test's drops are in that area.
+     * Items are counted this far from the test's origin on each side and above and below it, past where drops come to rest. An item in
+     * an entity section that is not yet accessible is invisible to the count and to {@link #clearArea}, and shows up when the section
+     * loads (#952), so the two tests that count items await every chunk of this box before they clear it ({@link #whenCountable}).
      */
-    private static final int ITEM_REACH = 40;
+    private static final int ITEM_REACH = 16;
 
     private static final int ITEM_DEPTH = 20;
     private static final int ITEM_HEIGHT = 60;
@@ -68,6 +70,8 @@ public class StalkCollapseTest {
     private static final int COLUMN_HEIGHT = 6;
     private static final int BROKEN_SEGMENT = 2;
     private static final int TEST_MAX_TICKS = COLLAPSE_WAIT + 100;
+    /** A test that awaits its item box first. */
+    private static final int COUNT_MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + TEST_MAX_TICKS;
     /** The rim of a great stalk's cap reaches this far from the 2x2 trunk, and its top dome is one layer above the rim. */
     private static final int CAP_REACH = 1;
     /** Seeds for the placer's shape test and the generation rate test. */
@@ -109,6 +113,24 @@ public class StalkCollapseTest {
         for (ItemEntity item : items(helper)) {
             item.discard();
         }
+    }
+
+    /** Runs {@code body} once every chunk of the item box is entity-ticking, so the first {@link #clearArea} sees every item in it. */
+    private static void whenCountable(GameTestHelper helper, Runnable body) {
+        BlockPos low = helper.absolutePos(new BlockPos(-ITEM_REACH, 0, -ITEM_REACH));
+        BlockPos high = helper.absolutePos(new BlockPos(ITEM_REACH, 0, ITEM_REACH));
+        List<BlockPos> chunks = new ArrayList<>();
+        for (int chunkX = low.getX() >> 4; chunkX <= high.getX() >> 4; chunkX++) {
+            for (int chunkZ = low.getZ() >> 4; chunkZ <= high.getZ() >> 4; chunkZ++) {
+                chunks.add(new BlockPos(chunkX << 4, low.getY(), chunkZ << 4));
+            }
+        }
+        int[] waiting = {chunks.size()};
+        FarChunks.awaitEntityTicking(helper, helper.getLevel(), chunks, index -> {
+            if (--waiting[0] == 0) {
+                body.run();
+            }
+        });
     }
 
     private static List<ItemEntity> items(GameTestHelper helper) {
@@ -196,8 +218,12 @@ public class StalkCollapseTest {
     }
 
     /** Breaking a segment drops everything above it after a sag; the segments below stay, and the drops are the by-hand drops. */
-    @GameTest(maxTicks = TEST_MAX_TICKS, environment = SINGLE_ALONE)
+    @GameTest(maxTicks = COUNT_MAX_TICKS, environment = SINGLE_ALONE)
     public void breakingASegmentCollapsesEverythingAboveIt(GameTestHelper helper) {
+        whenCountable(helper, () -> breakingASegment(helper));
+    }
+
+    private static void breakingASegment(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         clearArea(helper, COLUMN_HEIGHT);
         MockPlayer player = farPlayer(helper, "stalk-collapse");
@@ -314,8 +340,12 @@ public class StalkCollapseTest {
     }
 
     /** The great stalk: a break above the base brings down all four columns above it and the cap, and the drops are the by-hand drops. */
-    @GameTest(maxTicks = TEST_MAX_TICKS, environment = GREAT_ALONE)
+    @GameTest(maxTicks = COUNT_MAX_TICKS, environment = GREAT_ALONE)
     public void breakingAGreatStalkBringsTheWholeTrunkAboveItDown(GameTestHelper helper) {
+        whenCountable(helper, () -> breakingAGreatStalk(helper));
+    }
+
+    private static void breakingAGreatStalk(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int reach = SurfaceTuning.DEFAULT.greatMaxHeight();
         clearArea(helper, reach + 4);
