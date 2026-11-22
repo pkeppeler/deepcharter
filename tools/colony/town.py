@@ -46,6 +46,16 @@ HANGAR_BAY = (5, 8)
 CONSOLE_OFFSET = (5, 0, -3)
 
 
+# The buildings whose lamps are lit behind their windows (the Works' ore house at work, the office the world spawn is in, Joy's desk).
+# Every other building is dark inside, a dim glow in place of lamps (parts.dim_glow): a town of lit rooms and nobody in them reads as
+# eerie, a few left on reads as lived in. A piece is named by its structure path.
+LIT_PIECES = ("works", "office", "personnel_office")
+
+
+def dark(piece: str) -> bool:
+    return piece not in LIT_PIECES
+
+
 @dataclass(frozen=True)
 class Door:
     """A way in: the cell a player stands in just outside it (for an opening wider than one, its first cell, the lowest along its
@@ -236,7 +246,7 @@ def hoist_house(doors: list[Door]) -> Piece:
     """The winding engine house the ropes run to, in the Works' language: riveted plate in red pilasters, glowing hatches, the rope
     ports in its south wall, a door on the west street, a ladder to its railed roof, and a riveted stack."""
     p = Piece("hoist_house")
-    walls = parts.works_hall(p, -10, -36, 2, -30, 6, {"south": (-6, -2), "north": (-6, -2)})
+    walls = parts.works_hall(p, -10, -36, 2, -30, 6, {"south": (-6, -2), "north": (-6, -2)}, dark("hoist_house"))
     south = walls["south"]
     for x in range(-5, -1):
         p.set(x, 6, -30, state("hazard_band"))
@@ -254,7 +264,8 @@ def works(doors: list[Door]) -> Piece:
     bin's conveyor dropping into a crusher house on its roof, two ore bins on legs behind it and a stack."""
     p = Piece("works")
     x0, z0, x1, z1 = 3, -21, 16, -11
-    walls = parts.works_hall(p, x0, z0, x1, z1, 8, {"south": (7, 9, 14), "north": (7, 12), "west": (-16,), "east": (-16,)})
+    walls = parts.works_hall(p, x0, z0, x1, z1, 8, {"south": (7, 9, 14), "north": (7, 12), "west": (-16,), "east": (-16,)},
+                            dark("works"))
     front = walls["south"]
     parts.bay(p, front, 10, 13)
     doors.append(Door("works", parts.door(p, front, 6), "south"))
@@ -290,7 +301,7 @@ def hangar(doors: list[Door]) -> Piece:
     on its floor and the console beside the bay (Hangar.java stands it from the anchor)."""
     p = Piece("hangar")
     x0, z0, x1, z1 = HANGAR_BOX[0], HANGAR_BOX[1], HANGAR_BOX[2], HANGAR_BOX[3]
-    walls = parts.works_hall(p, x0, z0, x1, z1, 8, {"east": (2, 12), "west": (4, 10), "north": (-26, -20), "south": (-26, -20)})
+    walls = parts.works_hall(p, x0, z0, x1, z1, 8, {"east": (2, 12), "west": (4, 10), "north": (-26, -20), "south": (-26, -20)}, dark("hangar"))
     front = walls["east"]
     parts.bay(p, front, *HANGAR_BAY)
     doors.append(Door("hangar bay", front.outside(HANGAR_BAY[0], 1), "east", 4, 4))
@@ -304,7 +315,7 @@ def office(doors: list[Door]) -> Piece:
     """The Continuity Office in the east of the square: an open house whose floor has the blue pad the world spawn is on, the
     lectern and a low shelf, with the Continuity Plan leaflet (N04) on it, where a player's eyes look down on it."""
     p = Piece("office")
-    walls = parts.cabin(p, 14, -4, 22, 4, 5, {"west": (-2, 2), "east": (-2, 2), "north": (18,), "south": (18,)})
+    walls = parts.cabin(p, 14, -4, 22, 4, 5, {"west": (-2, 2), "east": (-2, 2), "north": (18,), "south": (18,)}, dark("office"))
     west = walls["west"]
     doors.append(Door("continuity office", parts.door(p, west, 0), "west"))
     p.fill(17, 0, -1, 19, 0, 1, state("minecraft:light_blue_concrete"))
@@ -319,7 +330,7 @@ def chapel(doors: list[Door]) -> Piece:
     """A small chapel on the west street, one candle on its altar. It burns, and nobody says why. The visitors' book (N03) lies on
     the altar's second block, and the pews are spruce slabs."""
     p = Piece("chapel")
-    walls = parts.cabin(p, -24, -22, -16, -13, 6, {"east": (-20,), "west": (-17,), "north": (-20,), "south": (-20,)})
+    walls = parts.cabin(p, -24, -22, -16, -13, 6, {"east": (-20,), "west": (-17,), "north": (-20,), "south": (-20,)}, dark("chapel"))
     east = walls["east"]
     doors.append(Door("chapel", parts.door(p, east, -17), "east"))
     p.fill(-22, 1, -18, -22, 1, -17, state("brass_trim"))
@@ -336,7 +347,7 @@ def chapel(doors: list[Door]) -> Piece:
 def bunkhouse(doors: list[Door]) -> Piece:
     """Rows of bunks, all made up: eight beds in two rows along the long walls, an aisle between them."""
     p = Piece("bunkhouse")
-    walls = parts.cabin(p, 23, 14, 36, 21, 5, {"north": (25, 33), "south": (25, 29, 33), "west": (17,), "east": (17,)})
+    walls = parts.cabin(p, 23, 14, 36, 21, 5, {"north": (25, 33), "south": (25, 29, 33), "west": (17,), "east": (17,)}, dark("bunkhouse"))
     north = walls["north"]
     doors.append(Door("bunkhouse", parts.door(p, north, 29), "north"))
     for z in (15, 20):
@@ -354,7 +365,7 @@ def bed(part: str):
 def pay_office(doors: list[Door]) -> Piece:
     """A counter with a grille and a gate, and barrels of pay stubs that nobody came for; one stub (N02) lies on a barrel."""
     p = Piece("pay_office")
-    walls = parts.cabin(p, -14, 14, -6, 22, 5, {"north": (-8,), "south": (-10,), "west": (18,), "east": (18,)})
+    walls = parts.cabin(p, -14, 14, -6, 22, 5, {"north": (-8,), "south": (-10,), "west": (18,), "east": (18,)}, dark("pay_office"))
     north = walls["north"]
     doors.append(Door("pay office", parts.door(p, north, -12), "north"))
     p.fill(-13, 1, 17, -8, 1, 17, state("riveted_plate"))
@@ -369,7 +380,7 @@ def pay_office(doors: list[Door]) -> Piece:
 def personnel_office(doors: list[Door]) -> Piece:
     """Joy's desk, with her calendar (N01) on it: she recorded the templates."""
     p = Piece("personnel_office")
-    walls = parts.cabin(p, 12, 14, 20, 22, 5, {"north": (13, 19), "south": (16,), "west": (18,), "east": (18,)})
+    walls = parts.cabin(p, 12, 14, 20, 22, 5, {"north": (13, 19), "south": (16,), "west": (18,), "east": (18,)}, dark("personnel_office"))
     north = walls["north"]
     doors.append(Door("personnel office", parts.door(p, north, 16), "north"))
     p.fill(15, 1, 20, 17, 1, 20, state("minecraft:spruce_planks"))
@@ -382,7 +393,7 @@ def lamp_and_pick(doors: list[Door]) -> Piece:
     """The miners' bar, burned out: no lamps lit inside, only a dim glow (parts.dim_glow), a scorch of coal on its floor, a counter with stools and barrels, the canteen dispenser, and its lit
     sign over a door that faces the square across the south street."""
     p = Piece("lamp_and_pick")
-    walls = parts.cabin(p, -3, 14, 9, 24, 5, {"north": (0, 6), "south": (3,), "west": (19,), "east": (19,)}, dark=True)
+    walls = parts.cabin(p, -3, 14, 9, 24, 5, {"north": (0, 6), "south": (3,), "west": (19,), "east": (19,)}, dark("lamp_and_pick"))
     north = walls["north"]
     doors.append(Door("the Lamp and Pick", parts.door(p, north, 3), "north"))
     p.fill(1, 0, 16, 5, 0, 18, state("minecraft:coal_block"))
