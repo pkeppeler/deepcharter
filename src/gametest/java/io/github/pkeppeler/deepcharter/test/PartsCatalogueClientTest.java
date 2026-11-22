@@ -789,7 +789,14 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 "the name strip lies inside the screen");
         // The top right cell, against the screen's right edge: the strip is kept inside the screen.
         CatalogueScene.hover(
-                context, CatalogueScene.gridCell(layout, layout.shelf().columns() - 1));
+                context,
+                CatalogueScene.gridCell(
+                        layout,
+                        Math.min(
+                                        layout.shelf().columns(),
+                                        context.computeOnClient(
+                                                client -> panel.shownItems().size()))
+                                - 1));
         for (Drawn text : context.computeOnClient(client -> drawn(client, screen))) {
             require(
                     inside(
@@ -803,7 +810,12 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         }
         // The strip belongs to the glass of its panel: the rightmost column, and the longest name on the page.
         int columns = layout.shelf().columns();
-        CatalogueScene.hover(context, CatalogueScene.gridCell(layout, columns - 1));
+        // The fixtures list six items, fewer than the monitor's columns.
+        int rightmost = Math.min(
+                        columns,
+                        context.computeOnClient(client -> panel.shownItems().size()))
+                - 1;
+        CatalogueScene.hover(context, CatalogueScene.gridCell(layout, rightmost));
         theNameStripIsInsideTheCatalogueGlass(context, screen, panel, layout);
         List<Item> page = context.computeOnClient(client -> panel.shownItems());
         Item longest = page.subList(0, Math.min(page.size(), layout.shelf().perPage())).stream()
