@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.client.ui.CrtText;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
@@ -58,7 +59,8 @@ public class ContractTerminalClientTest implements FabricClientGameTest {
                         .findFirst()
                         .orElseThrow();
                 BlockPos at = real.blockPosition().relative(Direction.EAST, 2);
-                real.level().setBlock(at, ContractTerminal.TYPE.block().defaultBlockState(), 3);
+                TerminalBlock.place(
+                        real.level(), at, ContractTerminal.TYPE.block().defaultBlockState(), 3);
                 return at;
             });
             UUID real = two.server()
