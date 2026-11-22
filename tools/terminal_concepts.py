@@ -157,6 +157,7 @@ def nameplate(height, text, ink):
     img.text(x, ty, text, ink)
     return img
 
+
 VIGNETTE_REACH = 10
 
 
