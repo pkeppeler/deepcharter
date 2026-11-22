@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.SonarLook;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodSonar;
-import io.github.pkeppeler.deepcharter.pod.SonarKind;
 import io.github.pkeppeler.deepcharter.pod.SonarMark;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
@@ -49,7 +48,7 @@ public final class SonarMarksHud {
                     graphics.guiWidth(),
                     graphics.guiHeight(),
                     look.markMargin());
-            int colour = colour(look, mark.kind());
+            int colour = look.colour(mark.kind());
             diamond(graphics, look, spot.x(), spot.y(), colour);
             Component label = Component.translatable(
                     "deepcharter.pod.sonar.mark",
@@ -67,15 +66,6 @@ public final class SonarMarksHud {
                             graphics.guiHeight() - client.font.lineHeight),
                     colour);
         }
-    }
-
-    private static int colour(SonarLook look, SonarKind kind) {
-        return switch (kind) {
-            case ORE -> look.oreColor();
-            case GAS -> look.gasColor();
-            case CAVE -> look.caveColor();
-            case MOVED -> look.movedColor();
-        };
     }
 
     /** A diamond {@code markPixels} across: rows of growing then shrinking width, in a frame. */

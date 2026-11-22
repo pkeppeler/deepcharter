@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.theme;
 
+import io.github.pkeppeler.deepcharter.pod.SonarKind;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
 
 /**
@@ -44,6 +45,16 @@ public record SonarLook(
         int markColor,
         int markPixels,
         int markMargin) {
+    /** The colour of an echo of {@code kind}. */
+    public int colour(SonarKind kind) {
+        return switch (kind) {
+            case ORE -> oreColor;
+            case GAS -> gasColor;
+            case CAVE -> caveColor;
+            case MOVED -> movedColor;
+        };
+    }
+
     public static SonarLook current() {
         return UiTheme.current().sonar();
     }

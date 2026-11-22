@@ -152,10 +152,7 @@ public final class PodSonar {
      * seat is ignored with a word, never trusted: the pilot cannot ping.
      */
     public static Result pingBy(ServerPlayer player) {
-        Result result = player.getVehicle() instanceof PodEntity pod
-                        && PodSeat.find(pod, player)
-                                .filter(seat -> seat == PodSeat.NAVIGATOR)
-                                .isPresent()
+        Result result = player.getVehicle() instanceof PodEntity pod && PodSeat.isNavigator(pod, player)
                 ? ping(pod)
                 : Result.NOT_NAVIGATOR;
         result.message().ifPresent(player::sendOverlayMessage);
@@ -272,10 +269,7 @@ public final class PodSonar {
      * holds {@link SonarTuning#maxMarks()}; one more drops the oldest. A player who is not in the navigator seat is told so and nothing changes.
      */
     public static MarkResult markBy(ServerPlayer player, BlockPos pos) {
-        MarkResult result = player.getVehicle() instanceof PodEntity pod
-                        && PodSeat.find(pod, player)
-                                .filter(seat -> seat == PodSeat.NAVIGATOR)
-                                .isPresent()
+        MarkResult result = player.getVehicle() instanceof PodEntity pod && PodSeat.isNavigator(pod, player)
                 ? mark(pod, pos)
                 : MarkResult.NOT_NAVIGATOR;
         result.message().ifPresent(player::sendOverlayMessage);

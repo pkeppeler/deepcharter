@@ -57,7 +57,7 @@ public final class SonarKeys {
         if (player == null || client.gui.screen() != null || !(player.getVehicle() instanceof PodEntity pod)) {
             return;
         }
-        if (PodSeat.find(pod, player).filter(seat -> seat == PodSeat.NAVIGATOR).isPresent()) {
+        if (PodSeat.isNavigator(pod, player)) {
             navigatorAction.run();
         } else {
             player.sendOverlayMessage(Component.translatable("deepcharter.pod.sonar.not_navigator"));

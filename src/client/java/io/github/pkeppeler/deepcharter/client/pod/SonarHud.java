@@ -21,6 +21,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
@@ -60,27 +61,17 @@ public final class SonarHud {
         }
     }
 
-    /** The pod whose sonar the local player works: the pod they ride, when they sit in its navigator seat. */
-    static Optional<PodEntity> navigatedPod(Minecraft client) {
-        if (client.player != null
-                && client.player.getVehicle() instanceof PodEntity pod
-                && PodSeat.find(pod, client.player)
-                        .filter(seat -> seat == PodSeat.NAVIGATOR)
-                        .isPresent()) {
-            return Optional.of(pod);
-        }
-        return Optional.empty();
-    }
-
     /** The local player's sonar this frame, or empty when they are not working one; see {@link Frame}. */
     public static Optional<Frame> frame(Minecraft client) {
         LocalPlayer player = client.player;
         ClientLevel level = client.level;
-        if (level == null || player == null) {
+        if (level == null
+                || player == null
+                || !(player.getVehicle() instanceof PodEntity pod)
+                || !PodSeat.isNavigator(pod, player)) {
             return Optional.empty();
         }
-        return navigatedPod(client)
-                .flatMap(pod -> PodSonar.reading(pod).map(state -> new Frame(pod, state, level.getGameTime(), player)));
+        return PodSonar.reading(pod).map(state -> new Frame(pod, state, level.getGameTime(), player));
     }
 
     private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
@@ -112,19 +103,16 @@ public final class SonarHud {
 
         int alpha = look.minAlpha() + Math.round((255 - look.minAlpha()) * state.strength(now));
         for (SonarEcho echo : state.shown(now)) {
-            SonarScope.project(
-                            pod.position(), pod.getDirection(), echo.pos(), SonarTuning.DEFAULT.rangeBlocks(), radius)
+            project(pod, echo.pos(), radius)
                     .ifPresent(dot -> echo(graphics, look, echo.kind(), cx + dot.x(), cy + dot.y(), dot.rise(), alpha));
         }
         for (SonarMark mark : state.activeMarks(now)) {
-            SonarScope.project(
-                            pod.position(), pod.getDirection(), mark.pos(), SonarTuning.DEFAULT.rangeBlocks(), radius)
+            project(pod, mark.pos(), radius)
                     .ifPresent(dot -> bracket(graphics, look.markColor(), cx + dot.x(), cy + dot.y(), false));
         }
         frame.get()
                 .aimed()
-                .flatMap(echo -> SonarScope.project(
-                        pod.position(), pod.getDirection(), echo.pos(), SonarTuning.DEFAULT.rangeBlocks(), radius))
+                .flatMap(echo -> project(pod, echo.pos(), radius))
                 .ifPresent(dot -> bracket(graphics, look.markColor(), cx + dot.x(), cy + dot.y(), true));
         // The pod: a square at the middle, and its nose pointing up the scope.
         graphics.fill(cx - 1, cy - 1, cx + 2, cy + 2, look.podColor());
@@ -140,6 +128,10 @@ public final class SonarHud {
                 left,
                 barTop + BAR_HEIGHT + LINE_GAP,
                 look.hintColor());
+    }
+
+    private static Optional<SonarScope.Dot> project(PodEntity pod, BlockPos pos, int radius) {
+        return SonarScope.project(pod.position(), pod.getDirection(), pos, SonarTuning.DEFAULT.rangeBlocks(), radius);
     }
 
     /** A frame of 7 x 7 round an echo: whole for a marked one, corners only for the one the navigator is aiming at. */
@@ -190,14 +182,7 @@ public final class SonarHud {
     /** One echo at ({@code x}, {@code y}): its shape for the kind, in the kind's colour at {@code alpha}, with a tick over it when it is above and under it when below. */
     private static void echo(
             GuiGraphicsExtractor graphics, SonarLook look, SonarKind kind, int x, int y, int rise, int alpha) {
-        int colour = Colors.withAlpha(
-                switch (kind) {
-                    case ORE -> look.oreColor();
-                    case GAS -> look.gasColor();
-                    case CAVE -> look.caveColor();
-                    case MOVED -> look.movedColor();
-                },
-                alpha);
+        int colour = Colors.withAlpha(look.colour(kind), alpha);
         switch (kind) {
             case ORE -> graphics.fill(x - 1, y - 1, x + 2, y + 2, colour);
             case GAS -> {
