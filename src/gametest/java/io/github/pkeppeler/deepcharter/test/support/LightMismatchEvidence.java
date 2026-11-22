@@ -207,11 +207,6 @@ final class LightMismatchEvidence {
         return out.toString();
     }
 
-    /** What the server and the client did with the light of the box's chunks, in order ({@link LightTrace}). */
-    static String timeline(Box box) {
-        return LightTrace.around(box);
-    }
-
     /** Per chunk of the box and its ring, whether the client holds it. */
     static String clientChunks(ClientLevel level, Box box) {
         StringBuilder out = new StringBuilder("\n    client chunks (box and ring), present:");

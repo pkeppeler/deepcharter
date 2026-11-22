@@ -1,6 +1,5 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
-import io.github.pkeppeler.deepcharter.test.mixin.ThreadedLightEngineAccess;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -130,7 +129,7 @@ public final class ClientLight {
                     + serverSide + LightMismatchEvidence.client(level, emitters)
                     + LightMismatchEvidence.blockDifferences(
                             box, serverBlocks[0], LightMismatchEvidence.surroundings(level, box))
-                    + LightMismatchEvidence.clientChunks(level, box) + LightMismatchEvidence.timeline(box);
+                    + LightMismatchEvidence.clientChunks(level, box);
         }));
     }
 
@@ -227,17 +226,11 @@ public final class ClientLight {
         });
     }
 
-    /**
-     * True when no level of the server has light work pending: nothing inside the light engines, no block-change task still queued for
-     * them and no batch of those running ({@link ThreadedLightEngineAccess}).
-     */
+    /** True when no level of the server has light work pending. */
     public static boolean serverLightIdle(ClientGameTestContext context, TestServerContext server) {
         return server.computeOnServer(minecraftServer -> {
             for (ServerLevel level : minecraftServer.getAllLevels()) {
-                ThreadedLightEngineAccess engine = (ThreadedLightEngineAccess) level.getLightEngine();
-                if (level.getLightEngine().hasLightWork()
-                        || !engine.deepcharter$lightTasks().isEmpty()
-                        || engine.deepcharter$scheduled().get()) {
+                if (level.getLightEngine().hasLightWork()) {
                     return false;
                 }
             }
