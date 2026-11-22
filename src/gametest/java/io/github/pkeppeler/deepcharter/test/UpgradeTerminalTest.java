@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -965,9 +967,5 @@ public class UpgradeTerminalTest {
         if (!expected.equals(actual)) {
             throw failure(helper, "%s: expected %s, got %s", what, expected, actual);
         }
-    }
-
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
-        return helper.assertionException(format, args);
     }
 }

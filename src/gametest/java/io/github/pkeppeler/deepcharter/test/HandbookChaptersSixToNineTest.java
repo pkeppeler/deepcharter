@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import com.google.gson.JsonObject;
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.charter.CharterData;
@@ -167,12 +169,6 @@ public class HandbookChaptersSixToNineTest {
         }
         directives.addAll(List.of(extra));
         return directives;
-    }
-
-    private static void expect(GameTestHelper helper, boolean condition, String format, Object... args) {
-        if (!condition) {
-            throw helper.assertionException(format, args);
-        }
     }
 
     /** A Y inside zone {@code index} of the layer (0 is the top third, 2 the bottom). */

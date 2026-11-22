@@ -54,7 +54,7 @@ public class ThemeTest {
     @GameTest
     public void aMissingKeyNamesTheAreaAndTheKey(GameTestHelper helper) {
         ThemeData data = area(layer("base", "{ \"a\": 1 }"));
-        String message = failure(helper, () -> data.color("phosphor"));
+        String message = messageOf(helper, () -> data.color("phosphor"));
         requireContains(helper, message, "crt");
         requireContains(helper, message, "phosphor");
         helper.succeed();
@@ -63,7 +63,7 @@ public class ThemeTest {
     @GameTest
     public void aBadColorFailsAtParseAndNamesThePack(GameTestHelper helper) {
         for (String bad : List.of("\"7CFC9A\"", "\"#7CFC9\"", "\"#GGGGGG\"", "\"#7CFC9A00FF\"", "\"green\"")) {
-            String message = failure(helper, () -> area(layer("broken pack", "{ \"phosphor\": " + bad + " }")));
+            String message = messageOf(helper, () -> area(layer("broken pack", "{ \"phosphor\": " + bad + " }")));
             requireContains(helper, message, "broken pack");
             requireContains(helper, message, "phosphor");
         }
@@ -73,27 +73,27 @@ public class ThemeTest {
     @GameTest
     public void aValueOfAnotherTypeFailsAtParse(GameTestHelper helper) {
         for (String bad : List.of("true", "null", "[1]", "{ \"x\": 1 }")) {
-            String message = failure(helper, () -> area(layer("broken pack", "{ \"padding\": " + bad + " }")));
+            String message = messageOf(helper, () -> area(layer("broken pack", "{ \"padding\": " + bad + " }")));
             requireContains(helper, message, "padding");
         }
-        failure(helper, () -> area(layer("broken pack", "[1, 2]")));
-        failure(helper, () -> area(layer("broken pack", "{ not json")));
+        messageOf(helper, () -> area(layer("broken pack", "[1, 2]")));
+        messageOf(helper, () -> area(layer("broken pack", "{ not json")));
         helper.succeed();
     }
 
     @GameTest
     public void aNumberIsNotAColorAndAColorIsNotANumber(GameTestHelper helper) {
         ThemeData data = area(layer("base", "{ \"padding\": 6, \"phosphor\": \"#7CFC9A\" }"));
-        failure(helper, () -> data.color("padding"));
-        failure(helper, () -> data.integer("phosphor"));
-        failure(helper, () -> data.decimal("phosphor"));
+        messageOf(helper, () -> data.color("padding"));
+        messageOf(helper, () -> data.integer("phosphor"));
+        messageOf(helper, () -> data.decimal("phosphor"));
         helper.succeed();
     }
 
     @GameTest
     public void aFractionIsNotAnInteger(GameTestHelper helper) {
         ThemeData data = area(layer("base", "{ \"padding\": 6.5 }"));
-        String message = failure(helper, () -> data.integer("padding"));
+        String message = messageOf(helper, () -> data.integer("padding"));
         requireContains(helper, message, "padding");
         helper.succeed();
     }
@@ -102,7 +102,7 @@ public class ThemeTest {
     public void anIntegerBelowItsMinimumFails(GameTestHelper helper) {
         ThemeData data = area(layer("base", "{ \"flip\": 0, \"ok\": 1 }"));
         expect(helper, "at the minimum", 1, data.integer("ok", 1));
-        String message = failure(helper, () -> data.integer("flip", 1));
+        String message = messageOf(helper, () -> data.integer("flip", 1));
         requireContains(helper, message, "flip");
         helper.succeed();
     }
@@ -120,7 +120,7 @@ public class ThemeTest {
     public void noLayersIsAnEmptyAreaNotAnError(GameTestHelper helper) {
         ThemeData data = ThemeData.parse("crt", List.of());
         expect(helper, "no keys", Set.of(), data.unread());
-        failure(helper, () -> data.color("phosphor"));
+        messageOf(helper, () -> data.color("phosphor"));
         helper.succeed();
     }
 
@@ -132,7 +132,7 @@ public class ThemeTest {
     }
 
     /** Runs {@code action}, which must throw, and returns the message of what it threw. */
-    private static String failure(GameTestHelper helper, Supplier<?> action) {
+    private static String messageOf(GameTestHelper helper, Supplier<?> action) {
         try {
             Object _ = action.get();
         } catch (IllegalArgumentException | IllegalStateException e) {
