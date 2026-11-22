@@ -51,6 +51,8 @@ public class RetainedFootScenario extends EvidenceScenario {
     private static final int BLOW_SPACING_FRAMES = 6;
 
     private static final float SWORD_DAMAGE = 6f;
+    /** Far over the two blows of a sword that kill a figure of 12. */
+    private static final int MAX_BLOWS = 10;
 
     private int framesTaken;
     private int figureId;
@@ -137,6 +139,10 @@ public class RetainedFootScenario extends EvidenceScenario {
                             && !figure.isAlive());
         }
 
+        private boolean deadOrGone() {
+            return gone() || dying();
+        }
+
         private boolean gone() {
             return chamber.serverGet(server -> RetainedChamber.layer(server).getEntity(figureId) == null);
         }
@@ -202,15 +208,22 @@ public class RetainedFootScenario extends EvidenceScenario {
                     server -> person(server).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_SWORD)));
             record(4);
             int blows = 0;
-            while (!dying()) {
+            // One frame at a time between blows, and a death that is already gone ends the loop too: a figure dissolves
+            // in
+            // 20 ticks, and a slow frame in CI can span that, after which it is no longer there to be found dying.
+            while (!deadOrGone()) {
                 strike();
                 blows++;
-                record(BLOW_SPACING_FRAMES);
-                if (blows > FREED_FRAMES_LIMIT) {
+                for (int waited = 0; waited < BLOW_SPACING_FRAMES && !deadOrGone(); waited++) {
+                    record(1);
+                }
+                if (blows > MAX_BLOWS) {
                     throw new AssertionError("the figure still lived after " + blows + " blows");
                 }
             }
-            screenshot(ctx, "retained-foot-dissolving");
+            if (!gone()) {
+                screenshot(ctx, "retained-foot-dissolving");
+            }
             int dissolving = 0;
             while (!gone()) {
                 record(1);
