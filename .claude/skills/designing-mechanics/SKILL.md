@@ -24,7 +24,9 @@ The user grants creative liberty over dig mechanics, hazards, pod upgrades and c
   3. mastery: a later chassis or hull that makes the old counterplay unnecessary. The old tool keeps a niche, such as a cheaper spare pod.
 - **Trade-offs.** Every upgrade costs something the player also wants: cargo slots, drill speed, fuel, money, or a component slot.
 - **Say when a default gets harder.** A tuning change that makes the default build harder than main says so in Decisions, with the unpacked and early-game columns, even when it restores an earlier design.
+- **A pacing table labels each row measured or modelled.** Measured is asserted by a test; modelled is computed from assumed shares, and a modelled row names its assumptions.
 - **A hiding hazard must cost.** A hazard that hides information is tuned so a bot that uses that information measurably loses by it (several extra deaths per 100 on the default build). A table that shows no cost means the knob is too weak.
+- **Measure pacing in the player's units.** A tunable that sets pacing (fuel, drill speed, hull, anything that decides how long a trip lasts) ships with a GameTest that drives the real pod and measures it in blocks, seconds and trips, and asserts the target. Never copy it unmeasured from the original's numbers: its fuel rates left a first tank 13 blocks and 31 s of drilling (#963). `PodFuelTripTest` is the example.
 - **Co-op value.** Prefer mechanics whose results persist and help the whole charter, such as lined shafts, beacons, mapped hazards and supply caches.
 - **Uses what exists.** Waste rock, ores the economy undervalues, and existing systems (scanner, lights, radiator, cargo, towing, wrecks) are better hooks than new parallel systems.
 
