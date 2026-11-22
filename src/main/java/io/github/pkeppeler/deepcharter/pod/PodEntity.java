@@ -26,13 +26,7 @@ public class PodEntity extends Entity {
     private static final String HULL_KEY = "hull";
     private static final String FUEL_KEY = "fuel";
     private static final String STRANDED_KEY = "stranded";
-    /**
-     * Ticks over which a client slides its copy of the pod to each position the server sends. The server sends one move a tick, but the
-     * client's tick and the arrival of the packets drift against each other, so some client ticks get none and some two; without a slide
-     * the pod stood still for one tick and lunged the next (#961). Two ticks absorb a missed or doubled update and show the pod one
-     * tick further behind the server's than a client with no slide does, a tick closer than a boat's three; {@code PodMovementClientTest}
-     * bounds the lag.
-     */
+    /** Ticks the client slides its copy over to each server move; 2 absorbs a missed or doubled update (ADR 0074). */
     private static final int INTERPOLATION_STEPS = 2;
 
     // Not synced: the entity type says which chassis a pod is, and its hitbox comes from the type too (ADR 0027).

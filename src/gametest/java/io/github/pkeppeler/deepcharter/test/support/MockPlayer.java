@@ -204,10 +204,10 @@ public final class MockPlayer {
     /**
      * Answers every teleport the server is waiting on, as a real client does: until then the server drops the player's position and
      * vehicle packets. Mounting a vehicle teleports the rider. The server numbers its teleports from 1 and keeps no list, so this
-     * answers each of the first {@link #TELEPORT_IDS} numbers; an answer to a number it is not waiting for is ignored.
+     * answers each number from 1 to {@link #TELEPORT_IDS}; an answer to a number it is not waiting for is ignored.
      */
     public void acknowledgeTeleports() {
-        for (int id = 0; id < TELEPORT_IDS; id++) {
+        for (int id = 1; id <= TELEPORT_IDS; id++) {
             player.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(
                     id, player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
         }

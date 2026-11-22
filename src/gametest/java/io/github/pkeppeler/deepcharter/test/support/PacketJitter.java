@@ -26,6 +26,7 @@ public final class PacketJitter {
         if (everyTicks < 2) {
             throw new IllegalArgumentException("packet jitter needs a period of at least 2 ticks, got " + everyTicks);
         }
+        HELD.clear();
         period = everyTicks;
         if (!registered) {
             registered = true;

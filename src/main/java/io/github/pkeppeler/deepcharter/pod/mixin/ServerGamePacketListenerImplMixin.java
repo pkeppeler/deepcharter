@@ -10,17 +10,22 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Drops a pilot's report of where its pod is. Vanilla takes it for any vehicle the pilot controls, within ten blocks a tick, which
- * would let a modified client drive a pod several times faster than its engine. The server moves a pod from the pilot's input
- * ({@code PodMovement}) and a vanilla client never sends the report for one, so nothing legitimate is lost.
- */
+/** Drops a pilot's report of where its pod is (ADR 0075). */
 @Mixin(ServerGamePacketListenerImpl.class)
 public abstract class ServerGamePacketListenerImplMixin {
     @Shadow
     public ServerPlayer player;
 
-    @Inject(method = "handleMoveVehicle", at = @At("HEAD"), cancellable = true)
+    /** After {@code ensureRunningOnSameThread}: the first call, on the network thread, throws there, so the decision is made on the server thread only. */
+    @Inject(
+            method = "handleMoveVehicle",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            target =
+                                    "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/server/level/ServerLevel;)V",
+                            shift = At.Shift.AFTER),
+            cancellable = true)
     private void deepcharter$podMovesOnTheServer(ServerboundMoveVehiclePacket packet, CallbackInfo ci) {
         if (player.getRootVehicle() instanceof PodEntity) {
             ci.cancel();

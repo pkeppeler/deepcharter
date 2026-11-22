@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.sound.SoundTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -53,8 +54,8 @@ public class PodEngineSoundClientTest implements FabricClientGameTest {
     private static final String ENGINE_DRIVE = "pod.engine_drive";
     private static final String ENGINE_IDLE = "pod.engine_idle";
 
-    /** The most a loop's volume or pitch may step in one client tick: a tenth, which is a half-second fade, and a half again for rounding. */
-    private static final float STEP_BOUND = 0.15f;
+    /** The most a loop's volume or pitch may step in one client tick: one fade tick's share and 5% for rounding, so a shorter fade fails. */
+    private static final float STEP_BOUND = 1f / SoundTuning.DEFAULT.engineFadeTicks() * 1.05f;
     /** A loop that starts or stops is silent to within one step. */
     private static final float SILENT = STEP_BOUND;
 
@@ -139,7 +140,7 @@ public class PodEngineSoundClientTest implements FabricClientGameTest {
                             && ClientLight.clientLevel(client).getEntity(mockPodId) instanceof PodEntity);
             PacketJitter.start(JITTER_PERIOD);
             try {
-                drive(context, heard);
+                drive(context, heard, mockPodId);
             } finally {
                 PacketJitter.stop();
                 context.getInput().releaseKey(options -> options.keyUp);
@@ -149,7 +150,7 @@ public class PodEngineSoundClientTest implements FabricClientGameTest {
         }
     }
 
-    private static void drive(ClientGameTestContext context, Heard heard) {
+    private static void drive(ClientGameTestContext context, Heard heard, int mockPodId) {
         int[] tick = {0};
         Vec3[] last = {null};
         List<String> moves = new ArrayList<>();
@@ -222,6 +223,29 @@ public class PodEngineSoundClientTest implements FabricClientGameTest {
                         "The loop " + trace.path() + " stepped in pitch at its sample " + i + ", over " + STEP_BOUND
                                 + ". " + trace.describe());
             }
+        }
+        // Nothing leaks: a loop is stopped, or still audible. The one still playing after the coast is the idle loop.
+        List<Trace> playing = new ArrayList<>();
+        for (Trace trace : cab) {
+            if (context.computeOnClient(c -> c.getSoundManager().isActive(trace.sound))) {
+                playing.add(trace);
+            }
+        }
+        require(
+                playing.size() == 1 && playing.getFirst().path().equals(ENGINE_IDLE),
+                "After the coast only the idle loop should still play, a faded loop is stopped and removed: "
+                        + playing.stream().map(Trace::describe).toList());
+        // The other pod's loops are placed at that pod, not heard from the cab.
+        List<Trace> others = heard.order.stream().filter(trace -> !trace.own).toList();
+        Vec3 mockPod = context.computeOnClient(
+                c -> TestEntities.require(ClientLight.clientLevel(c), mockPodId).position());
+        require(!others.isEmpty(), "The pilot's client started no loop for the other pod");
+        for (Trace trace : others) {
+            require(
+                    !trace.sound.isRelative()
+                            && trace.sound.getAttenuation() != SoundInstance.Attenuation.NONE
+                            && mockPod.distanceToSqr(trace.sound.getX(), trace.sound.getY(), trace.sound.getZ()) < 4,
+                    "The other pod's loop is not placed at that pod " + mockPod + ": " + trace.describe());
         }
         require(
                 driving.size() == 1 && driving.getFirst().path().equals(ENGINE_DRIVE),

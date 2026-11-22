@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Inputs.FORWARD;
 
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -27,12 +28,8 @@ import org.slf4j.LoggerFactory;
  * server's, and the client must see the mock pilot's pod move.
  */
 public class PodMovementClientTest implements FabricClientGameTest {
-    /**
-     * How far the client's pod may trail the server's while driving (SPEC section 7 risk: input lag): the two ticks the harness
-     * lags a pod by, and the one more tick that the client's slide between the server's moves adds (#961), at 0.2 blocks a tick, with
-     * a tenth of margin.
-     */
-    static final double MAX_LAG_BLOCKS = 0.7;
+    /** Input lag (SPEC section 7): 2 ticks the harness lags a pod, 1 for the client's slide (#961), at the pod's speed, plus 0.05 of margin. */
+    static final double MAX_LAG_BLOCKS = (2 + 1) * PodTuning.DEFAULT.movement().horizontalSpeed() + 0.05;
 
     static final int DRIVE_TICKS = 40;
     private static final Logger LOGGER = LoggerFactory.getLogger(PodMovementClientTest.class);
