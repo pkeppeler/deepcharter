@@ -178,6 +178,12 @@ public class CampaignAtmosphereTest {
         expect(surface.size() >= 4, "the surface has %s biomes, wanted at least 4", surface.size());
         for (Holder<Biome> biome : surface) {
             for (EnvironmentAttribute<?> attribute : driven) {
+                // A gameplay attribute is not in the mixin's layer: the patrol one is `and`ed with its timeline, so a
+                // biome's false
+                // closes it (#915).
+                if (!LayerAtmosphere.isVisualOrAudio(attribute)) {
+                    continue;
+                }
                 expect(
                         !biome.value().getAttributes().contains(attribute),
                         "surface biome %s sets %s, which a timeline of the type sets: the biome layer would put it over the timeline in the"

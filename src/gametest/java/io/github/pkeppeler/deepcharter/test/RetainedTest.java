@@ -1151,11 +1151,15 @@ public class RetainedTest {
                 "basalt_field",
                 "mesa_country");
         for (String biome : all) {
-            JsonObject spawns = json("/data/deepcharter/worldgen/biome/" + biome + ".json")
-                    .getAsJsonObject("attributes")
-                    .getAsJsonObject("minecraft:gameplay/natural_mob_spawns")
-                    .getAsJsonObject("argument")
-                    .getAsJsonObject("spawns_by_category");
+            // The surface biomes list nothing, so they carry no spawn attribute at all (#915).
+            JsonObject attributes =
+                    json("/data/deepcharter/worldgen/biome/" + biome + ".json").getAsJsonObject("attributes");
+            JsonObject spawns = attributes.has("minecraft:gameplay/natural_mob_spawns")
+                    ? attributes
+                            .getAsJsonObject("minecraft:gameplay/natural_mob_spawns")
+                            .getAsJsonObject("argument")
+                            .getAsJsonObject("spawns_by_category")
+                    : new JsonObject();
             boolean lists = spawns.has("monster")
                     && spawns.getAsJsonArray("monster").asList().stream()
                             .anyMatch(entry -> entry.getAsJsonObject()
