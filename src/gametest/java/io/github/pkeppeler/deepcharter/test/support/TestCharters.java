@@ -18,7 +18,7 @@ public final class TestCharters {
                         director.getUUID(),
                         "Test " + UUID.randomUUID().toString().substring(0, 8))
                 .ifPresent(refusal -> {
-                    throw helper.assertionException("founding should succeed, was refused: %s", refusal);
+                    throw Failures.failure(helper, "founding should succeed, was refused: %s", refusal);
                 });
         return Charters.charterOfOrThrow(server, director.getUUID())
                 .orElseThrow()
@@ -29,10 +29,10 @@ public final class TestCharters {
     public static void join(
             GameTestHelper helper, MinecraftServer server, CharterId id, ServerPlayer director, ServerPlayer member) {
         Charters.apply(server, member.getUUID(), id).ifPresent(refusal -> {
-            throw helper.assertionException("applying should succeed, was refused: %s", refusal);
+            throw Failures.failure(helper, "applying should succeed, was refused: %s", refusal);
         });
         Charters.approve(server, director.getUUID(), member.getUUID()).ifPresent(refusal -> {
-            throw helper.assertionException("approving should succeed, was refused: %s", refusal);
+            throw Failures.failure(helper, "approving should succeed, was refused: %s", refusal);
         });
     }
 }

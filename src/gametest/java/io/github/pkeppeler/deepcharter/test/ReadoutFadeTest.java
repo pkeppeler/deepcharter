@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import io.github.pkeppeler.deepcharter.client.layer.ReadoutFade;
 import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
 import io.github.pkeppeler.deepcharter.layer.BlockReadouts.Readout;
@@ -30,14 +32,15 @@ public class ReadoutFadeTest {
     public void aReadoutFadesInOverTheLooksTicks(GameTestHelper helper) {
         ReadoutFade fade = new ReadoutFade();
         tick(fade, STONE, 1);
-        require(helper, fade.alpha(1f) == 0f, "nothing shows before the crosshair has settled, got " + fade.alpha(1f));
+        expect(helper, fade.alpha(1f) == 0f, "nothing shows before the crosshair has settled, got %s", fade.alpha(1f));
         tick(fade, STONE, 2);
-        require(helper, fade.shown().equals(STONE), "stone shows once settled, got " + fade.shown());
+        expect(helper, fade.shown().equals(STONE), "stone shows once settled, got %s", fade.shown());
         tick(fade, STONE, 4);
-        require(
+        expect(
                 helper,
                 Math.abs(fade.alpha(1f) - 1f) < EPSILON,
-                "fully opaque after the fade-in, got " + fade.alpha(1f));
+                "fully opaque after the fade-in, got %s",
+                fade.alpha(1f));
         helper.succeed();
     }
 
@@ -47,10 +50,10 @@ public class ReadoutFadeTest {
         tick(fade, STONE, 10);
         tick(fade, NOTHING, 3);
         float half = fade.alpha(1f);
-        require(helper, half > 0f && half < 1f, "half faded after 3 of 6 ticks, got " + half);
-        require(helper, fade.shown().equals(STONE), "the readout stays while it fades");
+        expect(helper, half > 0f && half < 1f, "half faded after 3 of 6 ticks, got %s", half);
+        expect(helper, fade.shown().equals(STONE), "the readout stays while it fades");
         tick(fade, NOTHING, 3);
-        require(helper, fade.alpha(1f) == 0f && fade.shown().isEmpty(), "gone after the fade-out");
+        expect(helper, fade.alpha(1f) == 0f && fade.shown().isEmpty(), "gone after the fade-out");
         helper.succeed();
     }
 
@@ -60,7 +63,7 @@ public class ReadoutFadeTest {
         tick(fade, STONE, 10);
         for (int i = 0; i < 6; i++) {
             tick(fade, i % 2 == 0 ? DIRT : STONE, 1);
-            require(helper, !fade.shown().equals(DIRT), "dirt flashed after " + (i + 1) + " ticks of a sweep");
+            expect(helper, !fade.shown().equals(DIRT), "dirt flashed after %s ticks of a sweep", i + 1);
         }
         helper.succeed();
     }
@@ -70,9 +73,9 @@ public class ReadoutFadeTest {
         ReadoutFade fade = new ReadoutFade();
         tick(fade, STONE, 10);
         tick(fade, DIRT, 12);
-        require(helper, fade.shown().equals(DIRT), "dirt replaced stone, got " + fade.shown());
+        expect(helper, fade.shown().equals(DIRT), "dirt replaced stone, got %s", fade.shown());
         tick(fade, DIRT, 6);
-        require(helper, Math.abs(fade.alpha(1f) - 1f) < EPSILON, "dirt is opaque, got " + fade.alpha(1f));
+        expect(helper, Math.abs(fade.alpha(1f) - 1f) < EPSILON, "dirt is opaque, got %s", fade.alpha(1f));
         helper.succeed();
     }
 
@@ -82,7 +85,7 @@ public class ReadoutFadeTest {
         tick(fade, STONE, 10);
         tick(fade, NOTHING, 1);
         float dipped = fade.alpha(1f);
-        require(helper, dipped < 1f && dipped > 0.5f, "one tick of a miss dims a little, got " + dipped);
+        expect(helper, dipped < 1f && dipped > 0.5f, "one tick of a miss dims a little, got %s", dipped);
         helper.succeed();
     }
 
@@ -96,15 +99,17 @@ public class ReadoutFadeTest {
         for (int i = 0; i < 4; i++) {
             fade.tick(DIRT, slow);
         }
-        require(
+        expect(
                 helper,
                 fade.shown().equals(STONE),
-                "four of five settle ticks must not replace stone, got " + fade.shown());
+                "four of five settle ticks must not replace stone, got %s",
+                fade.shown());
         fade.tick(DIRT, slow);
-        require(
+        expect(
                 helper,
                 fade.shown().equals(DIRT),
-                "the fifth settle tick replaces stone with dirt, got " + fade.shown());
+                "the fifth settle tick replaces stone with dirt, got %s",
+                fade.shown());
         helper.succeed();
     }
 
@@ -117,17 +122,14 @@ public class ReadoutFadeTest {
             if (step > 0) {
                 tick(fade, STONE, 1);
             }
-            require(
+            expect(
                     helper,
                     Math.abs(fade.alpha(1f) - expected[step]) < EPSILON,
-                    "fade-in step " + (step + 1) + ": expected " + expected[step] + ", got " + fade.alpha(1f));
+                    "fade-in step %s: expected %s, got %s",
+                    step + 1,
+                    expected[step],
+                    fade.alpha(1f));
         }
         helper.succeed();
-    }
-
-    private static void require(GameTestHelper helper, boolean ok, String message) {
-        if (!ok) {
-            throw helper.assertionException("%s", message);
-        }
     }
 }
