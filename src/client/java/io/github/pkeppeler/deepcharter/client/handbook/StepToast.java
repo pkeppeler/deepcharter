@@ -27,8 +27,7 @@ import org.jspecify.annotations.Nullable;
  * on screen; nothing stays pinned.
  *
  * <p>It never covers the HUD (#1030). It sits in the left column, at the highest place where it is clear of every rectangle that
- * {@link HudKeepClear} lists (the ribbon with its gauges and lamps, the scanner, the readout plate, the altimeter, a transmission) and
- * of the slips above it, whether the pilot is in a pod or on foot; it moves down when a part of the HUD grows under it. On a GUI with no
+ * {@link HudKeepClear} lists and of the slips above it; it moves down when a part of the HUD grows under it. On a GUI with no
  * such place it draws nothing and its time does not run, until there is one or {@link QuestMapTuning#toastWaitMillis} are up. The
  * toast manager still queues it, times it and clears it.
  */

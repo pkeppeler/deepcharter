@@ -5,10 +5,9 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 
 /**
- * The parts of the HUD that a popup must never cover: the cockpit's ribbon with its gauges and lamps, its scanner and readout plate,
- * the plain pod readout, the scanner panel, the altimeter, the account line and a transmission. Each HUD part registers a
- * {@link Source} from its own init, next to the code that draws it, so a part drawn somewhere new moves its rectangle with it and a
- * popup that places itself with {@link #rects} stays clear of it in and out of a pod.
+ * The parts of the HUD that a popup must never cover. Each HUD part registers a {@link Source} from its own init, next to the code
+ * that draws it, so a part drawn somewhere new moves its rectangle with it and a popup that places itself with {@link #rects} stays
+ * clear of it.
  */
 public final class HudKeepClear {
     private static final List<Source> SOURCES = new ArrayList<>();
