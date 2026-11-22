@@ -87,10 +87,10 @@ runs:
           exit 1
         }
         deadline=$((SECONDS + 180))
-        # A passing run took about 14 minutes until the overworld became the 2352-tall campaign world (#803): each world a
-        # test makes then costs about 5-8 s more (its spawn chunks and the colony's pad), and the whole suite about twice as
-        # long. $SECONDS starts after setup, and both callers set timeout-minutes: 60, so 50 minutes keeps at least 5
-        # minutes of job-limit margin for setup, the post steps and the stop. Raise only together with both job limits.
+        # A passing run takes about 28 minutes (twice the short overworld's 14): each world costs 5-8 s more on the 2352-tall
+        # campaign world (spawn chunks, the colony's pad). $SECONDS starts after setup, and both callers set
+        # timeout-minutes: 60, so 50 minutes keeps at least 5 minutes of job-limit margin for setup, the post steps and the
+        # stop. Raise only together with both job limits.
         max_seconds=3000
         while kill -0 "$gradle_pid" 2>/dev/null; do
           if grep -q 'Failed to create backend' "$log"; then

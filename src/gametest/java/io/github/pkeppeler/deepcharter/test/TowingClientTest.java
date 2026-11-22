@@ -61,9 +61,8 @@ public class TowingClientTest implements FabricClientGameTest {
 
             two.server().runOnServer(server -> two.mock().setInput(FORWARD));
             // Until the client sees the follow, not for a count of client ticks: the client ticks unthrottled, and a
-            // server
-            // still generating the tall world's chunks has run few of them (CI: 90 ticks behind, the pod 3.7 blocks
-            // along).
+            // server still generating the tall world's chunks has run few of them (CI: 90 ticks behind, the pod 3.7
+            // blocks along).
             ClientWait.until(
                     context,
                     "the client sees the towed pod follow its tower " + MIN_FOLLOWED_BLOCKS + " blocks",

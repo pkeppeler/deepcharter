@@ -608,9 +608,8 @@ public class GrainedCrustTest {
         MockPlayer bystander = MockPlayers.join(helper, "grain-bystander");
         bystander.player().setGameMode(GameType.SURVIVAL);
         // The walker goes in once the far chunk ticks, not at the start: the grain squeezes a player in a loaded chunk,
-        // and in the tall
-        // world the chunk takes longer than a pulse to tick, so a walker put in at the start was dead before the test
-        // watched.
+        // and in the tall world the chunk takes longer than a pulse to tick, so a walker put in at the start was dead
+        // before the test watched.
         Arrival<Boolean> ready = new Arrival<>("the room", "the far chunk ticks");
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
             walker.teleportTo(level, new Vec3(x + 0.5, FLOOR, Z + 0.5), 0f, 0f);
@@ -673,10 +672,8 @@ public class GrainedCrustTest {
             int tick = (int) helper.getTick();
             if (step[0] == 0) {
                 // The chest is set again once the chunk ticks: the far chunk of the tall world finishes generating
-                // after the room is
-                // carved at the test's start, and what it writes there can replace the chest (a cobblestone in a gone
-                // chest's place, CI and
-                // locally), so the click would place a block and not open a chest.
+                // after the room is carved at the test's start, and what it writes there can replace the chest (a
+                // cobblestone in a gone chest's place), so the click would place a block and not open a chest.
                 level.setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
                 level.setBlock(chest.above(), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
                 ItemStack stack = new ItemStack(Items.COBBLESTONE);

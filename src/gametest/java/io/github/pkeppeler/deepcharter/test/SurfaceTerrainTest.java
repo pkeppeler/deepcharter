@@ -115,8 +115,8 @@ public class SurfaceTerrainTest {
                     chunkZ <= SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS;
                     chunkZ++) {
                 // As far as the features, not to a full chunk: a tall world's full chunks cost seconds each, and a 13 x
-                // 13 square of them
-                // held the server tick (and the deadlines of the tests that run beside this one) for a minute.
+                // 13
+                // square of them held the server tick (and the deadlines of the tests beside this one) for a minute.
                 ChunkAccess chunk = level.getChunk(chunkX, chunkZ, ChunkStatus.FEATURES);
                 LevelChunkSection[] sections = chunk.getSections();
                 for (int index = 0; index < sections.length; index++) {
@@ -127,8 +127,7 @@ public class SurfaceTerrainTest {
                         continue;
                     }
                     // Counted from the blocks, not from the palette: a palette keeps the states a section once held,
-                    // such as the
-                    // campaign's default rock that the surface rule then replaced.
+                    // such as the campaign's default rock that the surface rule then replaced.
                     sections[index]
                             .getStates()
                             .count((state, count) -> found.add(BuiltInRegistries.BLOCK
@@ -381,9 +380,8 @@ public class SurfaceTerrainTest {
         ServerLevel level = helper.getLevel();
         ChunkGenerator generator = level.getChunkSource().getGenerator();
         RandomState random = level.getChunkSource().randomState();
-        // Each column is asked once (a column is the neighbour of two others): a height query in the tall world costs a
-        // quarter of a
-        // millisecond, and this test holds the server tick while it runs.
+        // Each column is asked once (a column is the neighbour of two others): a height query in the tall world costs
+        // a quarter of a millisecond, and this test holds the server tick while it runs.
         int side = 2 * CLIFF_CHECK_RADIUS + 2;
         int[][] heights = new int[side][side];
         for (int i = 0; i < side; i++) {
@@ -453,8 +451,7 @@ public class SurfaceTerrainTest {
     }
 
     // The GameTest server bakes its overworld from the flat preset, so the surface is tried in the test pack's copy of
-    // the shipped
-    // overworld: this keeps the copy, in the pack and in the preset, equal to it.
+    // the shipped overworld: this keeps the copy, in the pack and in the preset, equal to it.
     @GameTest
     public void theSampleDimensionMatchesTheShippedOverworld(GameTestHelper helper) throws IOException {
         JsonElement shipped = read(helper, "/data/minecraft/dimension/overworld.json");
@@ -559,8 +556,7 @@ public class SurfaceTerrainTest {
 
     private static int height(ChunkGenerator generator, ServerLevel level, RandomState random, int x, int z) {
         // One world, one seed: a column's height is the same in every test of this class, and the tests ask for the
-        // same columns
-        // (the survey grid, the crater search, the pad), at a quarter of a millisecond each in the tall world.
+        // same columns (the survey grid, the crater search, the pad), at a quarter of a millisecond each.
         return HEIGHTS.computeIfAbsent(
                 (long) x << 32 | (z & 0xffffffffL),
                 column -> generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random));

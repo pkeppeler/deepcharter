@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -100,14 +101,12 @@ public class M2SliceTest {
             BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, campaign, 1, 2);
             AssertionError inPlace = endStateFailure(server, pod);
             if (inPlace instanceof M2SliceEndState.PlayerMoved) {
-                throw helper.assertionException(net.minecraft.network.chat.Component.literal(
-                        "a crossing in place counted as a move: " + inPlace.getMessage()));
+                throw failure(helper, "a crossing in place counted as a move: %s", inPlace.getMessage());
             }
             BreachEvents.CROSSED.invoker().onCrossed(mock.player(), campaign, server.overworld(), 1, 2);
             AssertionError moved = endStateFailure(server, pod);
             if (!(moved instanceof M2SliceEndState.PlayerMoved)) {
-                throw helper.assertionException(net.minecraft.network.chat.Component.literal(
-                        "a crossing that moved a player passed: " + moved));
+                throw failure(helper, "a crossing that moved a player passed: %s", moved);
             }
         } finally {
             M2SliceEndState.forgetCrossings(mock.player().getUUID());
