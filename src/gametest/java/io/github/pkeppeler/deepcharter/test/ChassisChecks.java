@@ -65,7 +65,7 @@ final class ChassisChecks {
     static final int TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1500;
     private static final AtomicInteger OWNERS = new AtomicInteger();
     private static final int Z = 9000;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int RADIUS = 7;
     private static final int ROOM_HEIGHT = 16;
     private static final float EAST = -90f;
@@ -446,6 +446,8 @@ final class ChassisChecks {
             int[] offsets = {reach, -reach, reach + 1, -(reach + 1)};
             Cell[] expected = {Cell.LAVA_NEAR, Cell.LAVA_NEAR, Cell.ROCK, Cell.ROCK};
             for (int i = 0; i < offsets.length; i++) {
+                // The plane's own cell is rock whatever the band's cave noise holds here.
+                level.setBlock(new BlockPos(x, FLOOR - 1, Z + 3 + 2 * i), Blocks.STONE.defaultBlockState(), 3);
                 level.setBlock(
                         new BlockPos(x + offsets[i], FLOOR - 1, Z + 3 + 2 * i), Blocks.LAVA.defaultBlockState(), 3);
             }

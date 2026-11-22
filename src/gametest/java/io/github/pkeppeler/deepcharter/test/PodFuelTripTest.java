@@ -38,7 +38,7 @@ public class PodFuelTripTest {
 
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 20_000;
     private static final int Z = 7400;
-    private static final int FLOOR = 103;
+    private static final int FLOOR = TestLayers.worldY(1, 103);
     /** The turnaround of a first trip, in blocks below the first stone. */
     private static final int TURNAROUND = 40;
     /** What a first tank must buy (#963): the playtest got 13 blocks and 31 s of drilling and then a stranding. */
