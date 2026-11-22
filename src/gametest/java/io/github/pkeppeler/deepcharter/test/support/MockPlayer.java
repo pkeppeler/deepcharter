@@ -8,10 +8,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
+import net.fabricmc.fabric.impl.networking.RegistrationPayload;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
+import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
@@ -39,6 +43,8 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
+    private final List<Long> soundTicks = new ArrayList<>();
+    private final List<CustomPacketPayload> payloads = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
     private boolean loaded;
 
@@ -70,6 +76,11 @@ public final class MockPlayer {
         return List.copyOf(sounds);
     }
 
+    /** The level game time at which the mock read each sound of {@link #soundsHeard()}, in order: the play tick or the next. */
+    public List<Long> soundTicks() {
+        return List.copyOf(soundTicks);
+    }
+
     /**
      * Every chunk the server has sent this player so far. The mock acknowledges each chunk batch, so sending is not throttled.
      * Read on the mock's tick, so it lags by one.
@@ -81,6 +92,24 @@ public final class MockPlayer {
     /** How many times the server has sent this player the chunk; a chunk it already has is not sent again. */
     public int timesSent(ChunkPos chunk) {
         return chunksSent.getOrDefault(chunk, 0);
+    }
+
+    /**
+     * Every custom payload of {@code type} the server has sent this player so far, oldest first. Read on the mock's tick, so it lags by
+     * one. The server sends a payload only to a client that announced its channel: call {@link #announceChannel} first.
+     */
+    public <T extends CustomPacketPayload> List<T> payloadsOf(Class<T> type) {
+        return payloads.stream().filter(type::isInstance).map(type::cast).toList();
+    }
+
+    /**
+     * Tell the server this client can receive {@code type}, as a real client does with Fabric's channel registration, so that
+     * {@code ServerPlayNetworking.canSend} is true for the mock. It uses Fabric's impl {@code RegistrationPayload}, because no public
+     * API makes {@code canSend} true for a mock: a Fabric bump that breaks it is fixed here.
+     */
+    public void announceChannel(CustomPacketPayload.Type<?> type) {
+        player.connection.handleCustomPayload(new ServerboundCustomPayloadPacket(
+                new RegistrationPayload(RegistrationPayload.REGISTER, List.of(type.id()))));
     }
 
     public ServerPlayer player() {
@@ -166,8 +195,12 @@ public final class MockPlayer {
                 if (outbound instanceof ClientboundSystemChatPacket packet) {
                     (packet.overlay() ? actionBar : chat).add(packet.content());
                 }
+                if (outbound instanceof ClientboundCustomPayloadPacket packet) {
+                    payloads.add(packet.payload());
+                }
                 if (outbound instanceof ClientboundSoundEntityPacket packet) {
                     sounds.add(packet.getSound().value().location());
+                    soundTicks.add(player.level().getGameTime());
                 }
                 if (outbound instanceof ClientboundLevelChunkWithLightPacket packet) {
                     chunksSent.merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);

@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.theme;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
+import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
 import java.util.Map;
@@ -15,6 +16,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @param crt the terminal screens, their widgets and the CRT drawing helpers
  * @param handbook the handbook paper
+ * @param questMap the flowchart of a chapter, drawn on the handbook paper
  * @param scanner the scanner minimap
  * @param hud the pod readout, the altimeter and the account line
  * @param transmission the transmission panel
@@ -30,6 +32,7 @@ import org.jspecify.annotations.Nullable;
 public record UiTheme(
         CrtTuning crt,
         HandbookScreenTuning handbook,
+        QuestMapTuning questMap,
         ScannerLook scanner,
         HudLook hud,
         TransmissionLook transmission,
@@ -89,6 +92,7 @@ public record UiTheme(
         UiTheme theme = new UiTheme(
                 CrtTuning.of(area(areas, "crt")),
                 HandbookScreenTuning.of(area(areas, "handbook")),
+                QuestMapTuning.of(area(areas, "handbook")),
                 ScannerLook.of(area(areas, "scanner")),
                 HudLook.of(area(areas, "hud")),
                 TransmissionLook.of(area(areas, "transmission")),

@@ -35,7 +35,7 @@ Paths are under `src/main/resources/` in the repo and under `assets/deepcharter/
 | Layer terrain and structures | `data/deepcharter/worldgen/` today; the layer structures are Java | world reopen |
 | The colony: which building stands where, and where each anchor is | `data/deepcharter/colony/layout.json` (written by `tools/colony/build.py` from `tools/colony/town.py`) | a new world: the colony is built once |
 | The colony's buildings, the square with the Host, the paving and the signs on them | `data/deepcharter/structure/colony/*.nbt` (same generator) | a new world; the kit blocks they use are `blockstates/`, `models/block/colony/` and `textures/block/colony/` and reload with F3+T |
-| Handbook text and chapters | `data/deepcharter/deepcharter/handbook_chapter/` and `lang` | world reopen |
+| Handbook text and chapters (a directive may list `needs`, items and counts shown on its step card) | `data/deepcharter/deepcharter/handbook_chapter/` and `lang` | world reopen |
 
 `ThemeTest` and `AssetCompletenessTest` guard the first rows: the theme parses, and every registered block, item and entity has the asset files above, with a blockstate variant for each block state and a `.png.mcmeta` for each animated texture. `tools/tests/test_texgen.py` fails when a committed texture differs from what its recipe makes.
 
