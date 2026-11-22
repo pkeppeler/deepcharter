@@ -3,6 +3,7 @@ mandrel, crank and horn model of their own, the loaded states add the cylinder, 
 Company textures. The models are data, so these checks are the gate: every blockstate resolves, every texture exists and comes from
 a recipe, and the selection shapes in Java still cover what the models draw."""
 import json
+import math
 import re
 import sys
 import unittest
@@ -32,15 +33,40 @@ def names(m):
 
 def shape_boxes(java_file):
     source = (JAVA / java_file).read_text()
-    return [list(map(float, args.split(","))) for args in re.findall(r"Block\.box\(([^)]*)\)", source)]
+    boxes = [list(map(float, args.split(","))) for args in re.findall(r"Block\.box\(([^)]*)\)", source)]
+    assert len(boxes) >= 2, f"{java_file} has {len(boxes)} Block.box literals: the shape moved, so teach shape_boxes where it went"
+    return boxes
 
 
-def hull(boxes):
-    return [min(b[i] for b in boxes) for i in range(3)] + [max(b[i] for b in boxes) for i in range(3, 6)]
+ANGLES = {-45, -22.5, 0, 22.5, 45}
 
 
-def inside(element, boxes):
-    return any(all(b[i] <= element["from"][i] and element["to"][i] <= b[i + 3] for i in range(3)) for b in boxes)
+def corners(element):
+    """The 8 corners of the element, turned about its rotation's origin on its axis, as the game does."""
+    rotation = element.get("rotation")
+    points = [(x, y, z) for x in (element["from"][0], element["to"][0]) for y in (element["from"][1], element["to"][1])
+              for z in (element["from"][2], element["to"][2])]
+    if not rotation:
+        return points
+    cos, sin = math.cos(math.radians(rotation["angle"])), math.sin(math.radians(rotation["angle"]))
+    ox, oy, oz = rotation["origin"]
+    turned = []
+    for x, y, z in points:
+        x, y, z = x - ox, y - oy, z - oz
+        if rotation["axis"] == "x":
+            y, z = y * cos - z * sin, y * sin + z * cos
+        elif rotation["axis"] == "y":
+            x, z = x * cos + z * sin, -x * sin + z * cos
+        else:
+            x, y = x * cos - y * sin, x * sin + y * cos
+        turned.append((x + ox, y + oy, z + oz))
+    return turned
+
+
+def covered(element, boxes):
+    """Every corner of the element, turned, lies in some box: the union of the boxes holds the element."""
+    eps = 1e-6
+    return all(any(all(b[i] - eps <= p[i] <= b[i + 3] + eps for i in range(3)) for b in boxes) for p in corners(element))
 
 
 class PhonographModelTests(unittest.TestCase):
@@ -76,7 +102,10 @@ class PhonographModelTests(unittest.TestCase):
         for name in ("phonograph", "phonograph_loaded", "colony_phonograph", "colony_phonograph_loaded", "wreck_phonograph", "company_horn"):
             for element in model(name)["elements"]:
                 self.assertTrue(all(-16 <= v <= 32 for v in element["from"] + element["to"]), element["name"])
-                self.assertEqual(0, element.get("rotation", {}).get("angle", 0) % 22.5, element["name"])
+                rotation = element.get("rotation", {"angle": 0})
+                self.assertIn(rotation["angle"], ANGLES, element["name"])
+                self.assertEqual({"angle", "origin", "axis"} if "origin" in rotation else {"angle"}, set(rotation), element["name"])
+                self.assertIn(rotation.get("axis", "x"), {"x", "y", "z"}, element["name"])
 
     def test_a_loaded_model_is_the_empty_one_plus_the_cylinder(self):
         for empty, loaded in (("phonograph", "phonograph_loaded"), ("colony_phonograph", "colony_phonograph_loaded")):
@@ -113,12 +142,12 @@ class PhonographModelTests(unittest.TestCase):
         boxes = shape_boxes("phonograph/PhonographBlock.java")
         for name in ("phonograph_loaded", "colony_phonograph_loaded", "wreck_phonograph"):
             for element in model(name)["elements"]:
-                if "rotation" in element or element["name"].startswith(("crank", "rack")):
+                if element["name"].startswith(("crank", "rack")):
                     continue
-                self.assertTrue(inside(element, boxes), f"{name} {element['name']}")
+                self.assertTrue(covered(element, boxes), f"{name} {element['name']}")
         horn_boxes = shape_boxes("ambience/CompanyHornBlock.java")
         for element in model("company_horn")["elements"]:
-            self.assertTrue(inside(element, [hull(horn_boxes)]), element["name"])
+            self.assertTrue(covered(element, horn_boxes), element["name"])
         self.assertEqual(16, max(b[4] for b in horn_boxes), "the plate stays at the roof")
 
 
