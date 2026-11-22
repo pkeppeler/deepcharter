@@ -9,7 +9,8 @@
     "ChunkMapUnloadMixin",
     "GameTestInfoMixin",
     "GameTestTickerMixin",
-    "LightSyncSendMixin"
+    "LightSyncSendMixin",
+    "ServerLevelForcedMixin"
   ],
   "client": [
     "CardinalLightingMixin",
