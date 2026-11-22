@@ -471,7 +471,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 card.needTop() + card.needRows() * look.needRow()
                         <= layout.recipeGlass().bottom(),
                 "the have/need rows leave the glass" + at);
-        int resultRight = card.gridX() + look.resultX() + look.slotSize();
+        int resultRight = card.left() + look.resultX() + look.slotSize();
         require(resultRight <= card.right(), "the result cell leaves the recipe panel's text area" + at);
     }
 
@@ -844,7 +844,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.runOnClient(client -> panel.state().look(panel.catalogue(), DRILL, CatalogueState.Mode.RECIPES));
         context.waitTicks(1);
         CatalogueLayout.Card card = layout.card();
-        Rect firstCell = new Rect(card.gridX(), card.gridY(), 18, 18);
+        Rect firstCell = new Rect(card.left(), card.gridY(), 18, 18);
         CatalogueScene.hover(context, firstCell);
         require(
                 context.computeOnClient(client -> panel.hoveredItem()) == Items.IRON_INGOT,

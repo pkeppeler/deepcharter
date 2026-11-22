@@ -87,11 +87,10 @@ public record CatalogueLayout(
     /**
      * The recipe console's content.
      *
-     * @param left where text and cells start
+     * @param left where text and cells start, the left of the recipe grid
      * @param right where text ends
      * @param titleY the title's top
      * @param stationY the station name's top
-     * @param gridX the left of the recipe grid
      * @param gridY the top of the recipe grid
      * @param needTop the top of the first have/need row
      * @param needRows how many have/need rows fit
@@ -103,7 +102,6 @@ public record CatalogueLayout(
             int right,
             int titleY,
             int stationY,
-            int gridX,
             int gridY,
             int needTop,
             int needRows,
@@ -224,6 +222,6 @@ public record CatalogueLayout(
                 lower + (c.deckRow() - slotsHeight) / 2,
                 glass.width() - 2 * (c.knobSize() + c.deckGap()),
                 slotsHeight);
-        return new Card(left, right, titleY, stationY, left, gridY, needTop, needRows, spec, List.of(vents));
+        return new Card(left, right, titleY, stationY, gridY, needTop, needRows, spec, List.of(vents));
     }
 }

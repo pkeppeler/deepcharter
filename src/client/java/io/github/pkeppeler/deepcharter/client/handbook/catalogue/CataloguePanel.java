@@ -210,14 +210,14 @@ public final class CataloguePanel {
 
     private static Rect recipeCell(CatalogueLayout.Card card, CatalogueLook look, KnownRecipe recipe, int index) {
         return new Rect(
-                card.gridX() + (index % recipe.columns()) * look.recipeCell(),
+                card.left() + (index % recipe.columns()) * look.recipeCell(),
                 card.gridY() + (index / recipe.columns()) * look.recipeCell(),
                 look.slotSize(),
                 look.slotSize());
     }
 
     private static Rect resultCell(CatalogueLayout.Card card, CatalogueLook look) {
-        return new Rect(card.gridX() + look.resultX(), card.gridY() + look.resultY(), look.slotSize(), look.slotSize());
+        return new Rect(card.left() + look.resultX(), card.gridY() + look.resultY(), look.slotSize(), look.slotSize());
     }
 
     /** The item of a cell that takes several (a tag) which is shown now: each in turn, so the player sees what a tag allows. */
@@ -703,7 +703,7 @@ public final class CataloguePanel {
                 graphics.item(stack, cell.x() + look.iconInset(), cell.y() + look.iconInset());
             }
         }
-        glow(graphics, "->", card.gridX() + look.arrowX(), card.gridY() + look.arrowY(), crt);
+        glow(graphics, "->", card.left() + look.arrowX(), card.gridY() + look.arrowY(), crt);
         Rect result = resultCell(card, look);
         slot(graphics, result, true, crt);
         ItemStack made = recipe.results().getFirst();
