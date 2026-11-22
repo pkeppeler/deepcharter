@@ -24,6 +24,12 @@ import net.minecraft.world.phys.AABB;
 public final class FarChunks {
     /** Wall-clock seconds that a wait for a chunk may take. The GameTest server ticks unthrottled, so a tick budget alone is only seconds of real time. */
     public static final int WAIT_SECONDS = 120;
+    /**
+     * Server ticks a waiter must have waited through before its wall-clock limit fails it (#1002). A batch whose co-running tests block
+     * the server thread in synchronous chunk loads (as {@code -PgametestOrder=reverse} batches them) ticks a few times a minute, so the
+     * wall clock can run out before a wait has had a single second of game time; 1200 ticks is a minute at the game's speed.
+     */
+    public static final int MIN_WAITED_TICKS = 1_200;
     /** Milliseconds slept per waiting tick, so the chunk generation threads get CPU. */
     public static final int POLL_MILLIS = 2;
     /**
@@ -120,6 +126,8 @@ public final class FarChunks {
     /** A wall-clock limit for one wait. */
     public static final class Deadline {
         private final long endNanos;
+        /** The server tick of the first {@link #await}, or -1. Server thread only. */
+        private int firstAwaitTick = -1;
 
         private Deadline(int seconds) {
             endNanos = System.nanoTime() + seconds * 1_000_000_000L;
@@ -153,12 +161,15 @@ public final class FarChunks {
             if (settled) {
                 return;
             }
-            if (expired()) {
+            int tick = level.getServer().getTickCount();
+            if (firstAwaitTick < 0) {
+                firstAwaitTick = tick;
+            }
+            if (expired() && tick - firstAwaitTick >= MIN_WAITED_TICKS) {
                 throw helper.assertionException(
                         Component.literal(failure.get() + "; held chunks: " + LightSync.heldChunks()));
             }
             // One sleep per server tick across all waiters, so N waiters do not stretch a tick N times.
-            int tick = level.getServer().getTickCount();
             if (tick == lastSleptTick) {
                 return;
             }
