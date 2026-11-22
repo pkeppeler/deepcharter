@@ -19,6 +19,7 @@ import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
+import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundRecipeBookAddPacket;
 import net.minecraft.network.protocol.game.ClientboundRecipeBookRemovePacket;
 import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
@@ -30,6 +31,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
@@ -50,9 +52,11 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
+    private final Map<Integer, List<Identifier>> soundsByEntity = new HashMap<>();
     private final List<Long> soundTicks = new ArrayList<>();
     private final List<CustomPacketPayload> payloads = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
+    private final MockClientLight clientLight = new MockClientLight();
     private final Set<RecipeDisplayId> recipeDisplays = new HashSet<>();
     private final Set<RecipeDisplayId> recipeDisplaysEverSent = new HashSet<>();
     private int recipeToasts;
@@ -86,6 +90,11 @@ public final class MockPlayer {
         return List.copyOf(sounds);
     }
 
+    /** As {@link #soundsHeard}, only sounds played at {@code source}, so nearby tests do not hear each other. */
+    public List<Identifier> soundsHeardFrom(Entity source) {
+        return List.copyOf(soundsByEntity.getOrDefault(source.getId(), List.of()));
+    }
+
     /** The level game time at which the mock read each sound of {@link #soundsHeard()}, in order: the play tick or the next. */
     public List<Long> soundTicks() {
         return List.copyOf(soundTicks);
@@ -97,6 +106,11 @@ public final class MockPlayer {
      */
     public Set<ChunkPos> chunksSent() {
         return Set.copyOf(chunksSent.keySet());
+    }
+
+    /** The light this player's client holds, from the chunk and light packets it was sent. Read on the mock's tick, so it lags by one. */
+    public MockClientLight clientLight() {
+        return clientLight;
     }
 
     /** How many times the server has sent this player the chunk; a chunk it already has is not sent again. */
@@ -251,6 +265,9 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundSoundEntityPacket packet) {
                     sounds.add(packet.getSound().value().location());
+                    soundsByEntity
+                            .computeIfAbsent(packet.getId(), id -> new ArrayList<>())
+                            .add(packet.getSound().value().location());
                     soundTicks.add(player.level().getGameTime());
                 }
                 if (outbound instanceof ClientboundRecipeBookAddPacket packet) {
@@ -268,6 +285,12 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundLevelChunkWithLightPacket packet) {
                     chunksSent.merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);
+                    clientLight.apply(
+                            server.getTickCount(), "chunk", new ChunkPos(packet.x(), packet.z()), packet.lightData());
+                }
+                if (outbound instanceof ClientboundLightUpdatePacket packet) {
+                    clientLight.apply(
+                            server.getTickCount(), "light", new ChunkPos(packet.x(), packet.z()), packet.lightData());
                 }
                 // connection.tick() above may have disconnected the player, which nulls its listener
                 if (outbound instanceof ClientboundChunkBatchFinishedPacket && player.connection != null) {
