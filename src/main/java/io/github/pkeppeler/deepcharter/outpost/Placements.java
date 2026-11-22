@@ -12,9 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
  * Whether a block would hold where it is placed (#989, ADR 0076, ADR 0072): the words of the placement readout, decided from the block and the depth
  * so a server GameTest can check them. The client draws them ({@code PlacementReadoutHud}).
  *
- * <p>A block holds when it reaches the depth's rating on every axis. The readout says so only where a depth asks for something;
- * where nothing is asked (the surface, and for now layers 1 and 2) there is nothing to say. SHELTERED, a block that does not hold inside a closed rated shell,
- * is the creature rule's (#926): it needs the shell's exposure, and arrives with it.
+ * <p>The readout speaks only where a depth asks for something: not on the surface, and for now not in layers 1 and 2.
  */
 public final class Placements {
     /** What the readout says about a block in hand at the aimed spot. */
@@ -37,11 +35,7 @@ public final class Placements {
 
     private Placements() {}
 
-    /**
-     * The readout for {@code state} placed at {@code pos} in {@code level}: empty where the depth asks nothing, so there is nothing to warn about
-     * and nothing to confirm. Whether a block is rated for a depth is {@code BlockRatings.of(state).meets(required)}, with {@code required} from
-     * {@link DepthRatings#requiredAt}.
-     */
+    /** The readout for {@code state} placed at {@code pos} in {@code level}: empty where the depth asks nothing. */
     public static Optional<Readout> readout(Level level, BlockPos pos, BlockState state) {
         return readout(DepthRatings.requiredAt(level, pos.getY()), state);
     }
