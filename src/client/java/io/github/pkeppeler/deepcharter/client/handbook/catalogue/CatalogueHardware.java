@@ -12,11 +12,12 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * What the catalogue's units are made of: the casing with its groove and rivets, the shadowed lip round the glass, the bulge of the glass
- * (a dark ring at its edge, a curved highlight and cut corners), vents, knobs and toggle switches (#846). Every size and colour is
+ * (a dark ring at its edge and a curved highlight), vents, knobs and toggle switches (#846). Every size and colour is
  * {@link CatalogueLook.Casing}'s; the glass is lit as the colony terminals' is, by {@link CrtDraw}.
  *
  * <p>A unit is drawn in this order: {@link #body} (casing, lip, phosphor), its content, {@link #glassFront} (the glass over the
- * content), then the controls on the deck. The glass's corners are cut in one place, {@link #cutCorners}, over everything drawn on the glass.
+ * content), then the controls on the deck. The glass's rounded corners are the shared glass sprite's ({@link PanelLook#GLASS}) and the
+ * scanlines are the shared {@link CrtDraw} ones, so the shared CRT frame's corner fix reaches the catalogue with no change here.
  */
 final class CatalogueHardware {
     private CatalogueHardware() {}
@@ -65,7 +66,7 @@ final class CatalogueHardware {
         CrtDraw.backdrop(graphics, glass.x(), glass.y(), glass.right(), glass.bottom());
     }
 
-    /** What is over a unit's content: the glass sprite, the scanlines, the bulge, and the cut corners, inside the glass only. */
+    /** What is over a unit's content: the shared glass sprite, the scanlines and the bulge, inside the glass only. */
     static void glassFront(GuiGraphicsExtractor graphics, CatalogueLook look, Rect glass) {
         CatalogueLook.Casing c = look.casing();
         CrtDraw.sprite(graphics, PanelLook.GLASS, glass.x(), glass.y(), glass.width(), glass.height());
@@ -78,39 +79,14 @@ final class CatalogueHardware {
             graphics.fill(glass.x() + i, glass.y(), glass.x() + i + 1, glass.bottom(), shade);
             graphics.fill(glass.right() - 1 - i, glass.y(), glass.right() - i, glass.bottom(), shade);
         }
-        // The curved highlight, hugging the top left corner: the glass bulges toward the room's light.
+        // The highlight hugs the top left corner, from where the glass sprite's curve ends: the glass bulges toward the
+        // room's light.
         int x = glass.x();
         int y = glass.y();
+        int inset = c.highlightInset();
         int length = c.highlightLength();
-        graphics.fill(x + c.glassCorner() + 2, y + 1, x + c.glassCorner() + 2 + length, y + 2, c.highlightColor());
-        graphics.fill(x + c.glassCorner() / 2 + 1, y + 2, x + c.glassCorner() + 2, y + 3, c.highlightColor());
-        graphics.fill(x + 2, y + c.glassCorner() / 2 + 1, x + 3, y + c.glassCorner() + 2, c.highlightColor());
-        graphics.fill(x + 1, y + c.glassCorner() + 2, x + 2, y + c.glassCorner() + 2 + length, c.highlightColor());
-        cutCorners(graphics, c, glass);
-    }
-
-    /**
-     * The glass's four corners cut round, in the lip's colour: the one place the inner corner is drawn, so it follows the casing's curve and
-     * the next change to the shared CRT frame's corners replaces this one method.
-     */
-    static void cutCorners(GuiGraphicsExtractor graphics, CatalogueLook.Casing c, Rect glass) {
-        int radius = c.glassCorner();
-        for (int row = 0; row < radius; row++) {
-            double reach = radius - Math.sqrt((double) radius * radius - Math.pow(radius - row - 0.5, 2));
-            int cut = (int) Math.ceil(reach - 0.3);
-            if (cut <= 0) {
-                continue;
-            }
-            graphics.fill(glass.x(), glass.y() + row, glass.x() + cut, glass.y() + row + 1, c.lipDarkColor());
-            graphics.fill(glass.right() - cut, glass.y() + row, glass.right(), glass.y() + row + 1, c.lipDarkColor());
-            graphics.fill(glass.x(), glass.bottom() - 1 - row, glass.x() + cut, glass.bottom() - row, c.lipDarkColor());
-            graphics.fill(
-                    glass.right() - cut,
-                    glass.bottom() - 1 - row,
-                    glass.right(),
-                    glass.bottom() - row,
-                    c.lipDarkColor());
-        }
+        graphics.fill(x + inset, y + 1, x + inset + length, y + 2, c.highlightColor());
+        graphics.fill(x + 1, y + inset, x + 2, y + inset + length, c.highlightColor());
     }
 
     /** A rectangle with its corners cut by {@code chamfer} pixels. */
