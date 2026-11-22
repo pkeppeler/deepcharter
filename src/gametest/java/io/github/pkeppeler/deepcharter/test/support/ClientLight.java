@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -29,6 +30,8 @@ import net.minecraft.world.level.block.state.BlockState;
 public final class ClientLight {
     /** Ticks the client gets, after the server's light engine is idle, to receive the light packets that follow. */
     private static final int PACKET_TICKS = 10;
+    /** Comparisons, each after a flush of the client's light queue, before a mismatch stands. */
+    private static final int ROUNDS = 3;
 
     private ClientLight() {}
 
@@ -239,8 +242,29 @@ public final class ClientLight {
     }
 
     /**
-     * Waits, on the wall clock, until the server's light engine is idle and the client has had {@link #PACKET_TICKS} ticks for the light
-     * packets after it, then returns what a comparison of the box finds. Sends nothing: a mismatch is a light the client will keep.
+     * Waits until the client has applied every light update it was sent. A client queues the light of each chunk packet and light packet
+     * and applies ten a frame, in order ({@code ClientLevel.pollLightUpdates}), so a chunk can be present while its light is still
+     * queued, and reads full sky light until then (#998): a marker queued behind them runs once they have, and the client's own light
+     * engine is idle after it.
+     */
+    private static void awaitClientLightApplied(ClientGameTestContext context) {
+        AtomicBoolean applied = new AtomicBoolean();
+        context.runOnClient(client -> clientLevel(client).queueLightUpdate(() -> applied.set(true)));
+        ClientWait.until(
+                context, "the client to apply the light it was sent", applied::get, () -> "the client's light queue");
+        ClientWait.until(
+                context,
+                "the client's light engine to be idle",
+                () -> context.computeOnClient(
+                        client -> !clientLevel(client).getLightEngine().hasLightWork()),
+                () -> "client light work pending");
+    }
+
+    /**
+     * Waits until the server's light engine is idle and the client has applied the light it was sent, then returns what a comparison of
+     * the box finds. A packet still in flight lands behind the client's marker, so a mismatch is compared again after another
+     * {@link #PACKET_TICKS} and a flush, up to {@link #ROUNDS} times: a light that stays different through them is one the client will
+     * keep. Sends nothing.
      */
     public static Optional<String> settledMismatch(
             ClientGameTestContext context, TestServerContext server, ResourceKey<Level> dimension, Box box) {
@@ -249,9 +273,17 @@ public final class ClientLight {
                 "the server's light engine to be idle",
                 () -> serverLightIdle(context, server),
                 () -> "light work pending");
-        // tick-wait: the packets that follow the last light job arrive within a few ticks; the comparison after is the
-        // check
-        context.waitTicks(PACKET_TICKS);
-        return describeMismatch(context, server, dimension, box);
+        Optional<String> mismatch = Optional.empty();
+        for (int round = 1; round <= ROUNDS; round++) {
+            // tick-wait: a packet sent after the light job arrives within a few ticks; the comparison is the check
+            context.waitTicks(PACKET_TICKS);
+            awaitClientLightApplied(context);
+            mismatch = describeMismatch(context, server, dimension, box);
+            if (mismatch.isEmpty()) {
+                return mismatch;
+            }
+        }
+        int serverPrint = server.computeOnServer(s -> fingerprint(serverLevel(s, dimension), box));
+        return mismatch.map(m -> m + " after " + ROUNDS + " rounds, server light print " + serverPrint);
     }
 }

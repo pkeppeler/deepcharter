@@ -20,6 +20,7 @@ import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.test.support.Arrival;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -103,7 +104,7 @@ public class OrePlacementTest {
     private static final String CAMPAIGN = "deepcharter:campaign_sample";
 
     /** The tables in the campaign world (#743): the zone fill runs in each layer's band, so each of its six zones holds the ore of the same rows. */
-    @GameTest(dimension = CAMPAIGN, maxTicks = 6000)
+    @GameTest(environment = CampaignEnvironments.C, dimension = CAMPAIGN, maxTicks = 6000)
     public void oreAndHazardFrequenciesMatchTheTablesPerZone(GameTestHelper helper) {
         expectTables(helper, sample(helper));
         helper.succeed();
@@ -199,7 +200,7 @@ public class OrePlacementTest {
         helper.succeed();
     }
 
-    @GameTest(dimension = CAMPAIGN, maxTicks = 6000)
+    @GameTest(environment = CampaignEnvironments.C, dimension = CAMPAIGN, maxTicks = 6000)
     public void hazardsStartWhereTheIssueSaysAndCicatriumIsDeep(GameTestHelper helper) {
         Census[] sample = sample(helper);
         for (int zone = 0; zone < ZONE_NAMES.length; zone++) {

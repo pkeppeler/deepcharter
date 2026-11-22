@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.layer.HandBreak;
 import io.github.pkeppeler.deepcharter.layer.HandBreakCost;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -561,7 +562,7 @@ public class HandBreakTest {
     }
 
     /** Layer 3 and deeper cost a whole pick: the campaign world's unbuilt depth is the first of them. */
-    @GameTest(dimension = "deepcharter:campaign_sample")
+    @GameTest(environment = CampaignEnvironments.B, dimension = "deepcharter:campaign_sample")
     public void deeperThanLayerTwoACrustCostsAWholeNetheritePick(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int y = CampaignBands.layer(CampaignBands.lastLayer()).minY() - 100;

@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigures;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.CampaignBands.Band;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -84,7 +85,7 @@ public class BandFiguresTest {
      * band: in the dark room of layer 2 when the only player is in layer 1, in the surface band's room at all, and under a player on the
      * surface.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aFigureAppearsOnlyInTheBandOfAPlayerWhoIsInIt(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int x = 24000;
@@ -154,7 +155,7 @@ public class BandFiguresTest {
     }
 
     /** Each band holds its own cap of natural figures, and the rail's figure of Prospector's Run is held back by neither. */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void eachBandHasItsOwnCapOfFigures(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int x = 24128;
@@ -195,7 +196,7 @@ public class BandFiguresTest {
      * The server keeps sky light 15 down an open shaft from the surface, and a figure at its bottom, in layer 1's dark, still appears: it reads
      * block light only. A light of 15 at the bottom stops it.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aFigureAppearsAtTheBottomOfAnOpenShaftByBlockLight(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int x = 24256;
