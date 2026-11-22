@@ -304,7 +304,10 @@ public class OutpostSettlingTest {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer member = MockPlayers.join(helper, "settling-member");
         MockPlayer other = MockPlayers.join(helper, "settling-other");
-        Charters.found(server, member.player().getUUID(), "Alerts " + java.util.UUID.randomUUID().toString().substring(0, 8))
+        Charters.found(
+                        server,
+                        member.player().getUUID(),
+                        "Alerts " + java.util.UUID.randomUUID().toString().substring(0, 8))
                 .ifPresent(refusal -> {
                     throw failure(helper, "could not found a charter: %s", refusal);
                 });

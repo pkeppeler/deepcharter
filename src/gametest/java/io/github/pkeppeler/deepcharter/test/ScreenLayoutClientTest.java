@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.client.charter.terminal.ContractScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.ClientNotes;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookNote;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
+import io.github.pkeppeler.deepcharter.client.outpost.IncidentReportScreen;
 import io.github.pkeppeler.deepcharter.client.terminal.TerminalScreens;
 import io.github.pkeppeler.deepcharter.client.ui.CrtButton;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
@@ -26,6 +27,7 @@ import io.github.pkeppeler.deepcharter.market.WorkOrdersView;
 import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.outpost.IncidentReportPayload;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
@@ -658,10 +660,27 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
         }
     }
 
+    /** The incident report with the most lines the server sends, each the longest it can be: dear items, a count of five digits. */
+    private static IncidentReportPayload longestIncidentReport() {
+        List<IncidentReportPayload.Line> lines = new ArrayList<>();
+        Identifier[] items = {
+            Identifier.parse("minecraft:enchanted_golden_apple"),
+            Identifier.parse("minecraft:netherite_upgrade_smithing_template")
+        };
+        for (int i = 0; i < IncidentReportPayload.MAX_LINES; i++) {
+            lines.add(new IncidentReportPayload.Line(
+                    items[i % items.length],
+                    99999,
+                    IncidentReportPayload.Kind.values()[i % IncidentReportPayload.Kind.values().length]));
+        }
+        return new IncidentReportPayload(1, 99999, lines, 99);
+    }
+
     /** The screens nothing registers: the handbook, opened from a key, and the UI kit's demo. */
     private static List<Case> standalone() {
         List<Case> cases = new ArrayList<>();
         cases.add(new Case("ui demo", CrtDemoScreen::new));
+        cases.add(new Case("incident report", () -> new IncidentReportScreen(longestIncidentReport(), null)));
         // The notes the game ships, all found: the longest real one is what the page must hold.
         List<HandbookNote> notes =
                 ShippedNotes.ids().stream().map(ClientNotes::entry).toList();
