@@ -120,6 +120,7 @@ public class HandbookChaptersOneToFiveTest {
                             "deepcharter:handbook/fuel_is_life/return_to_colony"),
             "deepcharter:every_sale_counts",
                     List.of(
+                            "deepcharter:handbook/every_sale_counts/haul_ore",
                             "deepcharter:handbook/every_sale_counts/sell_ore",
                             "deepcharter:handbook/every_sale_counts/buy_component",
                             "deepcharter:handbook/every_sale_counts/install_component"));
@@ -593,7 +594,19 @@ public class HandbookChaptersOneToFiveTest {
                         expectCompleted(helper, server, "chapter 4", both, through(4));
                         expectRoadAt(helper, server, second, 4);
 
-                        // Chapter 5: sell ore, then buy a part, which installs at once.
+                        // Chapter 5: haul ore in the bay (#853), sell it, then buy a part, which installs at once.
+                        pod.tickCount = 0;
+                        PodEvents.AFTER_TICK.invoker().afterTick(pod);
+                        expectCompleted(helper, server, "an empty bay", both, through(4));
+                        pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM));
+                        pod.tickCount = 0;
+                        PodEvents.AFTER_TICK.invoker().afterTick(pod);
+                        expectCompleted(
+                                helper,
+                                server,
+                                "ore in the bay",
+                                both,
+                                with(through(4), directive("every_sale_counts", "haul_ore")));
                         first.stopRiding();
                         pod.setPos(Vec3.atBottomCenterOf(terminal).add(2, 0, 2));
                         stand(helper, director, terminal);
@@ -612,7 +625,10 @@ public class HandbookChaptersOneToFiveTest {
                                 server,
                                 "selling",
                                 both,
-                                with(through(4), directive("every_sale_counts", "sell_ore")));
+                                with(
+                                        through(4),
+                                        directive("every_sale_counts", "haul_ore"),
+                                        directive("every_sale_counts", "sell_ore")));
                         helper.getLevel()
                                 .setBlock(
                                         terminal,
