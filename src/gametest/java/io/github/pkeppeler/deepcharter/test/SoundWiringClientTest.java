@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -422,9 +423,13 @@ public class SoundWiringClientTest implements FabricClientGameTest {
         }
         BlockPos pump = player.blockPosition().relative(Direction.EAST, 2);
         BlockPos processor = player.blockPosition().relative(Direction.SOUTH, 2);
-        server.overworld().setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
-        server.overworld()
-                .setBlock(processor, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(), pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(),
+                processor,
+                TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
+                3);
         player.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
         PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
         pod.setPos(player.position().relative(Direction.WEST, 3));
