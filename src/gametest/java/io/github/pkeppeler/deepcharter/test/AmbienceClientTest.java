@@ -14,6 +14,7 @@ import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceTier;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceTuning;
+import io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.Holds;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -94,81 +95,87 @@ public class AmbienceClientTest implements FabricClientGameTest {
             ClientWait.until(
                     context, "the player in the world", client -> client.player != null && client.level != null);
             TestServerContext server = singleplayer.getServer();
-            BlockPos floor = new BlockPos(SITE, CampaignBands.layer(2).minY() + LAYER_1_SCENE_HEIGHT, SITE);
-            BlockPos horn = floor.offset(HORN_DX, HORN_DY, 0);
-            buildRoom(server, CAMPAIGN, floor, Optional.empty(), false);
-            server.runOnServer(s -> {
-                s.getPlayerList().getPlayers().getFirst().setGameMode(GameType.SPECTATOR);
-                ServerLevel level = ClientLight.serverLevel(s, CAMPAIGN);
-                level.setBlock(horn, AmbienceRegistry.COMPANY_HORN.defaultBlockState(), 3);
-                s.getPlayerList()
-                        .getPlayers()
-                        .getFirst()
-                        .teleportTo(level, floor.getX() + 0.5, floor.getY(), floor.getZ() + 0.5, Set.of(), 0, 0, true);
-            });
-            Box around = Box.around(floor, 4, 1, 4);
-            ClientWait.until(
-                    context,
-                    "the client in layer 2 holding the room and its horn",
-                    client -> ClientLight.clientLevel(client).dimension().equals(CAMPAIGN)
-                            && client.player != null
-                            && client.player.blockPosition().equals(floor)
-                            && ClientLight.chunksPresent(ClientLight.clientLevel(client), around)
-                            && ClientLight.clientLevel(client)
-                                    .getBlockState(horn)
-                                    .is(AmbienceRegistry.COMPANY_HORN),
-                    client -> "no room or horn at " + floor.toShortString());
-            int layer =
-                    context.computeOnClient(client -> LayerChain.bandAt(ClientLight.clientLevel(client), floor.getY())
-                            .orElseThrow()
-                            .layer());
-            require(layer == 2, "the room is in layer " + layer + ", not 2");
+            try (Holds holds = Holds.of(server)) {
+                BlockPos floor = new BlockPos(SITE, CampaignBands.layer(2).minY() + LAYER_1_SCENE_HEIGHT, SITE);
+                BlockPos horn = floor.offset(HORN_DX, HORN_DY, 0);
+                buildRoom(server, holds, CAMPAIGN, floor, Optional.empty(), false);
+                server.runOnServer(s -> {
+                    s.getPlayerList().getPlayers().getFirst().setGameMode(GameType.SPECTATOR);
+                    ServerLevel level = ClientLight.serverLevel(s, CAMPAIGN);
+                    level.setBlock(horn, AmbienceRegistry.COMPANY_HORN.defaultBlockState(), 3);
+                    s.getPlayerList()
+                            .getPlayers()
+                            .getFirst()
+                            .teleportTo(
+                                    level, floor.getX() + 0.5, floor.getY(), floor.getZ() + 0.5, Set.of(), 0, 0, true);
+                });
+                Box around = Box.around(floor, 4, 1, 4);
+                ClientWait.until(
+                        context,
+                        "the client in layer 2 holding the room and its horn",
+                        client -> ClientLight.clientLevel(client).dimension().equals(CAMPAIGN)
+                                && client.player != null
+                                && client.player.blockPosition().equals(floor)
+                                && ClientLight.chunksPresent(ClientLight.clientLevel(client), around)
+                                && ClientLight.clientLevel(client)
+                                        .getBlockState(horn)
+                                        .is(AmbienceRegistry.COMPANY_HORN),
+                        client -> "no room or horn at " + floor.toShortString());
+                int layer = context.computeOnClient(
+                        client -> LayerChain.bandAt(ClientLight.clientLevel(client), floor.getY())
+                                .orElseThrow()
+                                .layer());
+                require(layer == 2, "the room is in layer " + layer + ", not 2");
 
-            context.runOnClient(client -> AmbienceTicker.restart(QUICK));
-            // tick-wait: the ticker builds its sound tracker on its first tick after the restart, and nothing reports
-            // it
-            context.waitTicks(5);
-            SoundInstance[] hymn = new SoundInstance[1];
-            context.runOnClient(client -> {
-                hymn[0] = SimpleSoundInstance.forUI(DeepSound.HYMN_LAYER_2.event(), 1f);
-                client.getSoundManager().play(hymn[0]);
-            });
-            ClientWait.until(
-                    context,
-                    "the hymn to play and end",
-                    client -> client.getSoundManager().isActive(hymn[0])
-                            || !heard.ambience().isEmpty(),
-                    client -> "the hymn never played");
-            ClientWait.until(
-                    context,
-                    "the hymn to end",
-                    client -> !client.getSoundManager().isActive(hymn[0])
-                            || !heard.ambience().isEmpty());
-            require(heard.ambience().isEmpty(), "a fragment played while the hymn was playing: " + heard.ambience());
-
-            ClientWait.until(
-                    context,
-                    "the horn's warm-up and a worn fragment, after the hymn",
-                    client -> heard.ambience().size() >= 2,
-                    client -> "heard "
-                            + heard.ambience().stream()
-                                    .map(SoundInstance::getIdentifier)
-                                    .toList());
-            List<SoundInstance> ambience = heard.ambience();
-            require(
-                    ambience.getFirst().getIdentifier().getPath().equals("ambience.horn_warmup"),
-                    "the first was " + ambience.getFirst().getIdentifier() + ", not the horn's warm-up");
-            SoundInstance fragment = ambience.get(1);
-            require(
-                    fragment.getIdentifier().getPath().startsWith("ambience.worn."),
-                    "the second was " + fragment.getIdentifier() + ", not a worn fragment");
-            Vec3 at = Vec3.atCenterOf(horn);
-            for (SoundInstance sound : ambience.subList(0, 2)) {
+                context.runOnClient(client -> AmbienceTicker.restart(QUICK));
+                // tick-wait: the ticker builds its sound tracker on its first tick after the restart, and nothing
+                // reports
+                // it
+                context.waitTicks(5);
+                SoundInstance[] hymn = new SoundInstance[1];
+                context.runOnClient(client -> {
+                    hymn[0] = SimpleSoundInstance.forUI(DeepSound.HYMN_LAYER_2.event(), 1f);
+                    client.getSoundManager().play(hymn[0]);
+                });
+                ClientWait.until(
+                        context,
+                        "the hymn to play and end",
+                        client -> client.getSoundManager().isActive(hymn[0])
+                                || !heard.ambience().isEmpty(),
+                        client -> "the hymn never played");
+                ClientWait.until(
+                        context,
+                        "the hymn to end",
+                        client -> !client.getSoundManager().isActive(hymn[0])
+                                || !heard.ambience().isEmpty());
                 require(
-                        Math.abs(sound.getX() - at.x) < 0.01
-                                && Math.abs(sound.getY() - at.y) < 0.01
-                                && Math.abs(sound.getZ() - at.z) < 0.01,
-                        sound.getIdentifier() + " did not come from the horn at " + horn.toShortString());
+                        heard.ambience().isEmpty(),
+                        "a fragment played while the hymn was playing: " + heard.ambience());
+
+                ClientWait.until(
+                        context,
+                        "the horn's warm-up and a worn fragment, after the hymn",
+                        client -> heard.ambience().size() >= 2,
+                        client -> "heard "
+                                + heard.ambience().stream()
+                                        .map(SoundInstance::getIdentifier)
+                                        .toList());
+                List<SoundInstance> ambience = heard.ambience();
+                require(
+                        ambience.getFirst().getIdentifier().getPath().equals("ambience.horn_warmup"),
+                        "the first was " + ambience.getFirst().getIdentifier() + ", not the horn's warm-up");
+                SoundInstance fragment = ambience.get(1);
+                require(
+                        fragment.getIdentifier().getPath().startsWith("ambience.worn."),
+                        "the second was " + fragment.getIdentifier() + ", not a worn fragment");
+                Vec3 at = Vec3.atCenterOf(horn);
+                for (SoundInstance sound : ambience.subList(0, 2)) {
+                    require(
+                            Math.abs(sound.getX() - at.x) < 0.01
+                                    && Math.abs(sound.getY() - at.y) < 0.01
+                                    && Math.abs(sound.getZ() - at.z) < 0.01,
+                            sound.getIdentifier() + " did not come from the horn at " + horn.toShortString());
+                }
             }
         } finally {
             context.runOnClient(client -> {
