@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -71,8 +72,7 @@ public class PhonographModelsScenario extends EvidenceScenario {
     /** The colony's, on the counter: close, playing (a cylinder on the mandrel), and from the door in the bar. */
     private void colonyPhonograph(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         BlockPos counter = singleplayer.getServer().computeOnServer(server -> {
-            ColonySite.Placed colony = Colony.placed(server)
-                    .orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
+            ColonySite.Placed colony = colony(server);
             ServerLevel overworld = server.overworld();
             BlockPos at = TestColony.anchor(colony, ColonyAnchor.LAMP_AND_PICK);
             for (BlockPos pos : BlockPos.betweenClosed(
@@ -88,30 +88,23 @@ public class PhonographModelsScenario extends EvidenceScenario {
         Vec3 target = Vec3.atCenterOf(counter).add(0, 0.1, 0);
         Vec3 sideways = Vec3.atLowerCornerOf(front.getClockWise().getUnitVec3i());
         look(singleplayer, Level.OVERWORLD, front, target, 1.6, 0.5, sideways.scale(0.5));
-        context.waitTicks(SETTLE_TICKS);
-        screenshot(context, "colony-phonograph-close");
-        frame(context);
+        capture(context, "colony-phonograph-close", SETTLE_TICKS);
 
         singleplayer.getServer().runOnServer(server -> {
             ServerLevel overworld = server.overworld();
             overworld.setBlock(counter, overworld.getBlockState(counter).setValue(PhonographBlock.LOADED, true), 3);
         });
         look(singleplayer, Level.OVERWORLD, front, target, 1.6, 0.5, sideways.scale(0.5));
-        context.waitTicks(SETTLE_TICKS / 2);
-        screenshot(context, "colony-phonograph-playing");
-        frame(context);
+        capture(context, "colony-phonograph-playing", SETTLE_TICKS / 2);
 
         look(singleplayer, Level.OVERWORLD, front, target, 5.0, 1.3, sideways.scale(2.0));
-        context.waitTicks(SETTLE_TICKS / 2);
-        screenshot(context, "colony-phonograph-in-the-bar");
-        frame(context);
+        capture(context, "colony-phonograph-in-the-bar", SETTLE_TICKS / 2);
     }
 
     /** Two craftable phonographs on a slab in the overworld's sky, above the colony's centre: empty, and with a cylinder in. */
     private void craftablePhonographs(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
         BlockPos[] pair = singleplayer.getServer().computeOnServer(server -> {
-            ColonySite.Placed colony = Colony.placed(server)
-                    .orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
+            ColonySite.Placed colony = colony(server);
             ServerLevel overworld = server.overworld();
             BlockPos centre = colony.center().atY(SKY_SLAB_Y);
             BlockPos corner = centre.offset(-SLAB_LENGTH / 2, 0, -SLAB_DEPTH / 2);
@@ -135,9 +128,7 @@ public class PhonographModelsScenario extends EvidenceScenario {
         for (int i = 0; i < pair.length; i++) {
             Vec3 target = Vec3.atCenterOf(pair[i]).add(0, 0.1, 0);
             look(singleplayer, Level.OVERWORLD, Direction.NORTH, target, 1.7, 0.6, new Vec3(0.5, 0, 0));
-            context.waitTicks(SETTLE_TICKS);
-            screenshot(context, i == 0 ? "phonograph-empty-close" : "phonograph-loaded-close");
-            frame(context);
+            capture(context, i == 0 ? "phonograph-empty-close" : "phonograph-loaded-close", SETTLE_TICKS);
         }
     }
 
@@ -147,13 +138,9 @@ public class PhonographModelsScenario extends EvidenceScenario {
         ResourceKey<Level> layer = TestLayers.dimension(StructureKind.PUNCH_CLOCK.layer());
         Vec3 horn = at(site, 0, 4.5, 0);
         LayerStructuresScenario.fly(singleplayer, layer, at(site, -2.4, 3.3, -2.4), horn);
-        context.waitTicks(SETTLE_TICKS);
-        screenshot(context, "company-horn-close");
-        frame(context);
+        capture(context, "company-horn-close", SETTLE_TICKS);
         LayerStructuresScenario.fly(singleplayer, layer, at(site, -6.5, 1.2, -3), horn);
-        context.waitTicks(SETTLE_TICKS / 2);
-        screenshot(context, "company-horn-in-the-punch-clock-hall");
-        frame(context);
+        capture(context, "company-horn-in-the-punch-clock-hall", SETTLE_TICKS / 2);
     }
 
     /** The wreck's phonograph stands in the corner of PROSPECTOR-0002's bay, 5 along and 5 across the site's own axes. */
@@ -170,9 +157,7 @@ public class PhonographModelsScenario extends EvidenceScenario {
         });
         Vec3 target = Vec3.atCenterOf(stand).add(0, 0.1, 0);
         look(singleplayer, layer, front, target, 1.6, 0.5, Vec3.ZERO);
-        context.waitTicks(SETTLE_TICKS);
-        screenshot(context, "wreck-phonograph-close");
-        frame(context);
+        capture(context, "wreck-phonograph-close", SETTLE_TICKS);
         look(
                 singleplayer,
                 layer,
@@ -181,9 +166,18 @@ public class PhonographModelsScenario extends EvidenceScenario {
                 4.5,
                 1.4,
                 Vec3.atLowerCornerOf(front.getClockWise().getUnitVec3i()).scale(1.5));
-        context.waitTicks(SETTLE_TICKS / 2);
-        screenshot(context, "wreck-phonograph-in-the-bay");
+        capture(context, "wreck-phonograph-in-the-bay", SETTLE_TICKS / 2);
+    }
+
+    private void capture(ClientGameTestContext context, String still, int settleTicks) {
+        context.waitTicks(settleTicks);
+        screenshot(context, still);
         frame(context);
+    }
+
+    private static ColonySite.Placed colony(MinecraftServer server) {
+        return Colony.placed(server)
+                .orElseThrow(() -> new AssertionError("the colony was not built when the world started"));
     }
 
     private static Direction facing(TestSingleplayerContext singleplayer, BlockPos pos) {

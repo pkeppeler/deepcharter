@@ -38,6 +38,7 @@ def shape_boxes(java_file):
     return boxes
 
 
+MODELS = ("phonograph", "phonograph_loaded", "colony_phonograph", "colony_phonograph_loaded", "wreck_phonograph", "company_horn")
 ANGLES = {-45, -22.5, 0, 22.5, 45}
 
 
@@ -85,11 +86,11 @@ class PhonographModelTests(unittest.TestCase):
     def test_the_item_shows_the_craftable_model_and_the_models_inherit_the_block_display(self):
         item = read(ASSETS / "items/phonograph.json")["model"]["model"]
         self.assertEqual("deepcharter:block/phonograph", item)
-        for name in ("phonograph", "phonograph_loaded", "colony_phonograph", "colony_phonograph_loaded", "wreck_phonograph", "company_horn"):
+        for name in MODELS:
             self.assertEqual("minecraft:block/block", model(name)["parent"], name)
 
     def test_every_model_texture_exists_and_every_face_texture_is_defined(self):
-        for name in ("phonograph", "phonograph_loaded", "colony_phonograph", "colony_phonograph_loaded", "wreck_phonograph", "company_horn"):
+        for name in MODELS:
             m = model(name)
             for ref in m["textures"].values():
                 if not ref.startswith("#"):
@@ -99,7 +100,7 @@ class PhonographModelTests(unittest.TestCase):
                     self.assertIn(face["texture"].removeprefix("#"), m["textures"], f"{name} {element['name']}")
 
     def test_elements_stay_in_vanilla_limits_and_turn_in_steps_the_renderer_accepts(self):
-        for name in ("phonograph", "phonograph_loaded", "colony_phonograph", "colony_phonograph_loaded", "wreck_phonograph", "company_horn"):
+        for name in MODELS:
             for element in model(name)["elements"]:
                 self.assertTrue(all(-16 <= v <= 32 for v in element["from"] + element["to"]), element["name"])
                 rotation = element.get("rotation", {"angle": 0})
@@ -140,7 +141,7 @@ class PhonographModelTests(unittest.TestCase):
 
     def test_the_selection_shapes_cover_what_the_models_draw(self):
         boxes = shape_boxes("phonograph/PhonographBlock.java")
-        for name in ("phonograph_loaded", "colony_phonograph_loaded", "wreck_phonograph"):
+        for name in ("phonograph", "phonograph_loaded", "colony_phonograph_loaded", "wreck_phonograph"):
             for element in model(name)["elements"]:
                 if element["name"].startswith(("crank", "rack")):
                     continue
