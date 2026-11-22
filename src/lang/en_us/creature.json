@@ -1,4 +1,11 @@
 {
+  "entity.deepcharter.tally": "Tally",
+  "creature.deepcharter.tally_approach": "Clicking behind you, counting. A Tally has found your ore.",
+  "creature.deepcharter.tally_clamp_pod": "A Tally has clamped to the cargo hatch. Drill into rock to cut it off.",
+  "creature.deepcharter.tally_clamp_foot": "A Tally has clamped to your pack. Strike it.",
+  "creature.deepcharter.tally_bitten": "The cutter bites it.",
+  "creature.deepcharter.tally_broken": "The Tally comes apart. It drops nothing.",
+  "creature.deepcharter.tally_sample": "The Tally took one %s as a quality sample, and is gone.",
   "creature.deepcharter.approach": "Something walks toward the pod. Light the pod, or be ready to drill.",
   "creature.deepcharter.grab": "Something has hold of the hull. Drill into rock to cut it off, or get out and strike it.",
   "creature.deepcharter.bitten": "The cutter bites it.",

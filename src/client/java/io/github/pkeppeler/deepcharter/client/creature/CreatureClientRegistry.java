@@ -11,5 +11,6 @@ public final class CreatureClientRegistry {
     public static void register() {
         EntityRendererRegistry.register(CreatureRegistry.LAMPLESS_FIGURE, LamplessFigureRenderer::new);
         EntityRendererRegistry.register(CreatureRegistry.DRIFTER, DrifterRenderer::new);
+        EntityRendererRegistry.register(CreatureRegistry.TALLY, TallyRenderer::new);
     }
 }
