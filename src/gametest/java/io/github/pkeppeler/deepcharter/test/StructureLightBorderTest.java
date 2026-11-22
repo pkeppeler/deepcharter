@@ -64,6 +64,9 @@ public class StructureLightBorderTest {
     /** Block light spreads this far, so a lamp this near a border (counted to the far block of its side) lights the neighbour. */
     private static final int NEAR_BORDER = 3;
 
+    /** A batch of its own: this case loads its chunks on the server thread (see phase 0 of {@link #run}), which would starve a test beside it. */
+    private static final String SYNC_CHUNK_LOAD = "deepcharter-test:sync_chunk_load";
+
     private static final int REACH = 15;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 600;
     /** Distance east of the wreck site to put a faked Conduit, clear of the site's shell and the casing. */
@@ -262,7 +265,7 @@ public class StructureLightBorderTest {
         player.player().setGameMode(GameType.SPECTATOR);
         UUID id = player.player().getUUID();
         LightSyncSends.watch(id);
-        FarChunks.Deadline deadline = FarChunks.deadline(60);
+        FarChunks.Deadline deadline = FarChunks.deadline();
         int[] phase = {0};
         int[] waited = {0};
         int[][][] before = {null};
@@ -274,17 +277,32 @@ public class StructureLightBorderTest {
             try {
                 switch (phase[0]) {
                     case 0 -> {
-                        // Loading the chunks draws the structure, with the test's own Conduit where the case needs it.
-                        inContext(
-                                placement,
-                                server,
-                                () -> placement.withRing().forEach(chunk -> {
-                                    FarChunks.force(helper, level, chunk.x(), chunk.z());
-                                    level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
-                                }));
+                        // Loading the chunks draws the structure. With the test's own Conduit (the famous wreck's case)
+                        // it must happen
+                        // inside WorldData.with, which ends on this tick, so that case loads on the server thread and
+                        // runs in an
+                        // environment of its own (SYNC_CHUNK_LOAD). The others load on the worker threads, and phase 1
+                        // waits.
+                        if (placement.fakeConduit().isPresent()) {
+                            inContext(
+                                    placement,
+                                    server,
+                                    () -> placement.withRing().forEach(chunk -> {
+                                        FarChunks.force(helper, level, chunk.x(), chunk.z());
+                                        level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                                    }));
+                        } else {
+                            placement.withRing().forEach(chunk -> FarChunks.force(helper, level, chunk.x(), chunk.z()));
+                        }
                         phase[0] = 1;
                     }
                     case 1 -> {
+                        boolean loaded = placement.withRing().stream()
+                                .allMatch(chunk -> level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null);
+                        deadline.await(helper, level, loaded, () -> "the chunks round " + pair + " did not load");
+                        if (!loaded) {
+                            return;
+                        }
                         // Chunks are sent once they tick: a player who comes into view of them now is sent both.
                         BlockPos at = new BlockPos(
                                 placement.lampChunk().getMiddleBlockX(),
@@ -478,7 +496,7 @@ public class StructureLightBorderTest {
         run(helper, Lamp.CANDLE);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = SYNC_CHUNK_LOAD, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theFamousWrecksLanternAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.FAMOUS_LANTERN);
     }
