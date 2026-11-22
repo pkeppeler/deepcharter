@@ -79,15 +79,15 @@ public final class UnreadableChecks {
                 try {
                     path.getValue().run();
                 } catch (RuntimeException | Error e) {
-                    RuntimeException failure = failure(
+                    RuntimeException error = failure(
                             helper,
                             "%s: the %s path threw on unreadable data (visit %s): %s",
                             feature,
                             path.getKey(),
                             visit,
                             e);
-                    failure.initCause(e);
-                    throw failure;
+                    error.initCause(e);
+                    throw error;
                 }
             }
         }
