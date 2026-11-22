@@ -46,4 +46,4 @@ The runs are noisy: the spread within each row, 0.07x to 0.16x, is as large as t
 
 - A watch stays open while its chunk is held or cannot be sent, and its window of 100 ticks runs from the tick the chunk can be sent. A chunk packet sent to a player also keeps it open for 100 ticks.
 - When the window runs out, the watch ends only once the light tasks queued for the chunk by then have run (`waitForPendingTasks`), with one last comparison that sees the light they published, and at most 600 ticks later. A watch with no recorded player ends at the window.
-- A chunk that stays loaded and never becomes sendable keeps its watch until it unloads: one map entry and one `getChunkToSend` lookup per tick.
+- A chunk that stays loaded and never becomes sendable keeps its watch until it unloads: one map entry and one `getChunkToSend` lookup per tick. It is logged once as an error after 600 ticks unsendable, and a watch the 600-tick cap ends before the light tasks ran is logged as a warning. `waitForPendingTasks` queues a `POST_UPDATE` task, which runs after the batch's light updates are published, as vanilla's own send hold relies on.

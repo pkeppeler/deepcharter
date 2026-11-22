@@ -26,7 +26,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.level.ThreadedLevelLightEngine;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
@@ -247,7 +246,7 @@ public class LightSyncSafetyNetTest {
      * request (#954): the ticks of a server and the light engine's thread run at different speeds under load, so how many ticks a
      * neighbour waits to be sent is not bounded.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS + LATE_SEND_TICKS)
     public void aNeighbourSentLongAfterTheHoldWasRequestedIsWatched(GameTestHelper helper) {
         neighbourSentLater(helper, "net-late", 120, LATE_SEND_TICKS);
     }
@@ -457,7 +456,7 @@ public class LightSyncSafetyNetTest {
         // Every light task queued for the chunk so far has run: a marker the light engine completes behind them.
         CompletableFuture<?> waiting = marker.get();
         if (waiting == null) {
-            waiting = ((ThreadedLevelLightEngine) level.getLightEngine()).waitForPendingTasks(marked.x(), marked.z());
+            waiting = level.getChunkSource().getLightEngine().waitForPendingTasks(marked.x(), marked.z());
             marker.set(waiting);
         }
         if (!waiting.isDone()) {

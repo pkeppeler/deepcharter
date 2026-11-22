@@ -20,7 +20,6 @@ import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.level.ThreadedLevelLightEngine;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.chunk.DataLayer;
@@ -39,7 +38,7 @@ import org.jspecify.annotations.Nullable;
  * the player's client keeps the old light.
  *
  * <p>The safety net (#863, ADR 0068): {@code LightSync} records the light each player was sent of a chunk in a hold's 3x3, and for
- * a window after the hold ends sends a player whose chunk's published light differs from it.
+ * a window that starts when the chunk can be sent sends a player whose chunk's published light differs from it.
  */
 public final class LightSync {
     /** Server ticks a hold may last before it is reported as stuck (30 s). */
@@ -66,7 +65,7 @@ public final class LightSync {
 
     private static final Map<Key, Hold> HOLDS = new ConcurrentHashMap<>();
 
-    /** Server ticks a chunk's published light is compared after its hold ended (5 s). */
+    /** Server ticks a chunk's published light is compared after the chunk can be sent (5 s). */
     private static final int NET_WINDOW_TICKS = 100;
     /** Server ticks between two comparisons. */
     private static final int NET_INTERVAL_TICKS = 10;
@@ -77,25 +76,29 @@ public final class LightSync {
 
         int nextCheck;
         int until;
-        /** The light tasks queued for the chunk when the window ended, or null while the window runs. */
+        /** Set when the window runs out; null while it runs. */
         @Nullable
-        CompletableFuture<?> settling;
-        /** The tick the watch ends at even if the light has not settled; set with {@code settling}. */
-        int cap;
+        Settling settling;
+        /** The tick the chunk was first seen held or unsendable, or -1. */
+        int unsentSince = -1;
+
+        boolean reported;
 
         NetWatch(int nextCheck, int until) {
             this.nextCheck = nextCheck;
             this.until = until;
         }
 
-        /** Keeps the watch open until {@value #NET_WINDOW_TICKS} ticks after {@code now}. */
         void keepOpen(int now) {
             until = Math.max(until, now + NET_WINDOW_TICKS);
             settling = null;
         }
     }
 
-    /** The chunks in the 3x3 of a hold, from its request to the end of its window. Server thread only. */
+    /** The light tasks queued for a chunk when its window ran out, and the tick the watch ends at if they have not run. */
+    private record Settling(CompletableFuture<?> tasks, int cap) {}
+
+    /** The chunks in the 3x3 of a hold, until the window after they can be sent runs out and the light settles. Server thread only. */
     private static final Map<Key, NetWatch> NET = new HashMap<>();
 
     private LightSync() {}
@@ -274,7 +277,7 @@ public final class LightSync {
     }
 
     /**
-     * For {@value #NET_WINDOW_TICKS} ticks after a hold ended, every {@value #NET_INTERVAL_TICKS} ticks, sends each player whose
+     * For {@value #NET_WINDOW_TICKS} ticks after a watched chunk can be sent, every {@value #NET_INTERVAL_TICKS} ticks, sends each player whose
      * recorded light of the chunk differs from its published light one light packet. A player vanilla also served gets a duplicate.
      */
     private static void compareLight(MinecraftServer server) {
@@ -295,6 +298,19 @@ public final class LightSync {
             if (held || key.level.getChunkSource().chunkMap.getChunkToSend(key.chunk.pack()) == null) {
                 // Not sent yet, so nothing it was sent can be stale: the window starts when it can be sent (#954).
                 watch.keepOpen(now);
+                if (watch.unsentSince < 0) {
+                    watch.unsentSince = now;
+                } else if (!watch.reported && timedOut(now - watch.unsentSince)) {
+                    watch.reported = true;
+                    DeepCharter.LOGGER.error(
+                            "A light watch has waited {} ticks for chunk {} in {} to be sendable",
+                            now - watch.unsentSince,
+                            key.chunk,
+                            key.level.dimension().identifier());
+                }
+            } else {
+                watch.unsentSince = -1;
+                watch.reported = false;
             }
             boolean over = !held && windowOver(key, watch, now);
             if (!over && (now < watch.nextCheck || held)) {
@@ -326,25 +342,34 @@ public final class LightSync {
     }
 
     /**
-     * Whether the watch is over: its window has run out and the light tasks queued for the chunk by then have run, so the last
-     * comparison sees the light they published. A light engine that is behind does not publish within a fixed number of ticks, so
-     * the end follows it, up to {@value #TIMEOUT_TICKS} ticks more.
+     * Whether the watch is over: its window has run out and the light tasks queued for the chunk by then have run (a light engine
+     * that is behind publishes in wall time, not in ticks), or {@value #TIMEOUT_TICKS} ticks have passed since.
      */
     private static boolean windowOver(Key key, NetWatch watch, int now) {
         if (now <= watch.until) {
             return false;
         }
         if (watch.held.isEmpty()) {
-            return true; // no player to send to; a chunk packet records one again
+            return true; // no player to send to
         }
-        CompletableFuture<?> settling = watch.settling;
+        Settling settling = watch.settling;
         if (settling == null) {
-            settling = ((ThreadedLevelLightEngine) key.level.getLightEngine())
-                    .waitForPendingTasks(key.chunk.x(), key.chunk.z());
+            settling = new Settling(
+                    key.level.getChunkSource().getLightEngine().waitForPendingTasks(key.chunk.x(), key.chunk.z()),
+                    now + TIMEOUT_TICKS);
             watch.settling = settling;
-            watch.cap = now + TIMEOUT_TICKS;
         }
-        return settling.isDone() || now > watch.cap;
+        if (settling.tasks.isDone()) {
+            return true;
+        }
+        if (now > settling.cap) {
+            DeepCharter.LOGGER.warn(
+                    "A light watch of chunk {} in {} ended before the light engine had run its tasks",
+                    key.chunk,
+                    key.level.dimension().identifier());
+            return true;
+        }
+        return false;
     }
 
     private static void sendLight(ServerPlayer player, ClientboundLightUpdatePacket light) {
