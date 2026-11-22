@@ -40,6 +40,23 @@
     "treatment": "cylinder",
     "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
   },
+  "edison_doll": {
+    "artist": "Thomas A. Edison",
+    "bed_frames": 287424,
+    "bed_sha256": "0525961a135e599abca8019db6e65240b3fb6e37d264888c4643e277011721b3",
+    "credit": "Talking-doll prototype, \"Twinkle, twinkle, little star\" (1888); restored with Lawrence Berkeley National Laboratory (LBNL). Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park.",
+    "duration_seconds": 13.035,
+    "folder": "phonograph",
+    "gain_db": -4.5,
+    "license": "none stated",
+    "ogg_sha256": "e64320aeb294cc4232d17bda4bff48dc00ecbbe516a81e8c03f6ff0921ef2f1d",
+    "recorded": "1888",
+    "source_sha256": "0e771040681dd7068781c544d1b83b3010ca6f0bba9975bc37b728fbed203037",
+    "source_url": "https://www.nps.gov/nps-audiovideo/legacy/mp3/ner/avElement/edis-tenhp-lbnl-edison-c-E-821-8-edis-1279-20110523-80rpm-restored.mp3",
+    "title": "Edison talking-doll prototype, \"Twinkle, twinkle, little star\"",
+    "treatment": "cylinder",
+    "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
+  },
   "gamme_de_la_voix": {
     "artist": "Édouard-Léon Scott de Martinville",
     "bed_frames": 350784,
@@ -161,6 +178,27 @@
     "source_sha256": "64fc9eda2aa65bf6ca38c96e2ee5fed549352483a096ded5ff57fee04b1a9a32",
     "source_url": "https://www.firstsounds.org/sounds/volta/Example1-Green-p93.wav",
     "title": "The Hamlet soliloquy",
+    "treatment": "cylinder",
+    "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
+  },
+  "volta_nursery_rhyme": {
+    "artist": "Tainter and Rogers",
+    "bed_frames": 529200,
+    "bed_sha256": "af7f5dea698e7e728ea09d1c5bb4a4e65091fbd21cecf4ad1c9a0aecded51dee",
+    "credit": "Recorded by Tainter and Rogers at the Volta Laboratory (1885); playback by First Sounds (firstsounds.org). The file states no licence.",
+    "cut": [
+      0.0,
+      24.0
+    ],
+    "duration_seconds": 24.0,
+    "folder": "phonograph",
+    "gain_db": -5.0,
+    "license": "none stated",
+    "ogg_sha256": "d7a68f8653dfb09e0eb241d3208d148c8459dbcda515bff9af2ffde25db0627b",
+    "recorded": "1885",
+    "source_sha256": "1bd02d2f685049fe7a318d475f580ab102fc59b283a64ca8b4099f3e96b4c30c",
+    "source_url": "https://www.firstsounds.org/sounds/volta/Example2-PD1-p93-44100.wav",
+    "title": "Nursery rhyme as the machine winds down",
     "treatment": "cylinder",
     "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
   },

@@ -84,6 +84,8 @@ public enum DeepSound {
     PHONOGRAPH_SULLIVAN_TOAST("phonograph.sullivan_toast"),
     PHONOGRAPH_EDISON_AROUND_THE_WORLD("phonograph.edison_around_the_world"),
     PHONOGRAPH_LOST_CHORD("phonograph.lost_chord"),
+    PHONOGRAPH_EDISON_DOLL("phonograph.edison_doll"),
+    PHONOGRAPH_VOLTA_NURSERY_RHYME("phonograph.volta_nursery_rhyme"),
     AMBIENCE_FAINT_BREATH_A("ambience.faint.breath_a"),
     AMBIENCE_WORN_BREATH_A("ambience.worn.breath_a"),
     AMBIENCE_BROKEN_BREATH_A("ambience.broken.breath_a"),

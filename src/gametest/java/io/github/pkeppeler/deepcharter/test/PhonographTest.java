@@ -348,7 +348,9 @@ public class PhonographTest {
                                 "volta_hamlet",
                                 "sullivan_toast",
                                 "edison_around_the_world",
-                                "lost_chord")),
+                                "lost_chord",
+                                "edison_doll",
+                                "volta_nursery_rhyme")),
                 "the recordings are named %s",
                 List.of(Recording.values()));
         expect(
@@ -359,7 +361,9 @@ public class PhonographTest {
                         && Recording.VOLTA_HAMLET.year() == 1884
                         && Recording.SULLIVAN_TOAST.year() == 1888
                         && Recording.EDISON_AROUND_THE_WORLD.year() == 1888
-                        && Recording.LOST_CHORD.year() == 1888,
+                        && Recording.LOST_CHORD.year() == 1888
+                        && Recording.EDISON_DOLL.year() == 1888
+                        && Recording.VOLTA_NURSERY_RHYME.year() == 1885,
                 "the years moved");
         helper.succeed();
     }
@@ -451,9 +455,13 @@ public class PhonographTest {
         expect(helper, sounds.stream().distinct().count() == sounds.size(), "each recording has its own sound");
         expect(
                 helper,
-                Recording.COLONY_RACK.equals(
-                        List.of(Recording.GAMME_DE_LA_VOIX, Recording.JEUNE_JOUVENCELLE, Recording.OTHELLO)),
-                "the colony's rack holds its three recordings, in order, and none of the later ones: %s",
+                Recording.COLONY_RACK.equals(List.of(
+                        Recording.GAMME_DE_LA_VOIX,
+                        Recording.JEUNE_JOUVENCELLE,
+                        Recording.OTHELLO,
+                        Recording.EDISON_DOLL,
+                        Recording.VOLTA_NURSERY_RHYME)),
+                "the colony's rack holds its three recordings and then the doll and the rhyme, in order, and none of the found ones: %s",
                 Recording.COLONY_RACK);
         helper.succeed();
     }

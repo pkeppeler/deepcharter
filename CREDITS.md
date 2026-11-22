@@ -31,13 +31,15 @@ Later and rarer recordings than the phonautograms. [tools/sounds/first_sounds.py
 
 ### Wax cylinders
 
-Five more recordings a player can find on a wax cylinder in a wreck's locker or a salvage crate, each trimmed to its strongest stretch and given the phonograph's treatment. The Volta Laboratory recordings are First Sounds' playbacks; the Edison paraffine cylinders come from the Thomas Edison National Historical Park.
+Five more recordings a player can find on a wax cylinder in a wreck's locker or a salvage crate, each trimmed to its strongest stretch and given the phonograph's treatment, and two more that are only on the colony's own phonograph, in the Lamp and Pick. The Volta Laboratory recordings are First Sounds' playbacks; the Edison paraffine cylinders and the talking doll come from the Thomas Edison National Historical Park.
 
 - **Counting one to six, with trilled Rs.** Recorded at the Volta Laboratory (about 1881); playback by First Sounds (firstsounds.org). The file states no licence. Source: https://www.firstsounds.org/sounds/volta/312119_Lateral_Electroplated_Disc-120.wav
 - **The Hamlet soliloquy.** Recorded at the Volta Laboratory (about 1884, perhaps by Chichester Bell); playback by First Sounds (firstsounds.org). The file states no licence. Source: https://www.firstsounds.org/sounds/volta/Example1-Green-p93.wav
 - **After dinner toast at Little Menlo.** Arthur Sullivan (Oct. 5, 1888); Edison yellow paraffine cylinder, catalog E-2439-7. Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park. Source: https://www.nps.gov/edis/learn/photosmultimedia/upload/EDIS-SRP-0155-14.mp3
 - **Around the world on the phonograph.** Thomas A. Edison (1888); Edison yellow paraffine cylinder, catalog EDIS 566. Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park. Source: https://www.nps.gov/edis/learn/photosmultimedia/upload/EDIS-SRP-0155-06.mp3
 - **The Lost Chord, cornet and piano.** Cornet and piano (performers unknown), London (about Aug. 1888); Edison yellow paraffine cylinder, catalog E-2440-3. Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park. Source: https://www.nps.gov/edis/learn/photosmultimedia/upload/EDIS-SRP-0154-02.mp3
+- **Edison talking-doll prototype, "Twinkle, twinkle, little star".** Talking-doll prototype, "Twinkle, twinkle, little star" (1888); restored with Lawrence Berkeley National Laboratory (LBNL). Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park. Source: https://www.nps.gov/nps-audiovideo/legacy/mp3/ner/avElement/edis-tenhp-lbnl-edison-c-E-821-8-edis-1279-20110523-80rpm-restored.mp3
+- **Nursery rhyme as the machine winds down.** Recorded by Tainter and Rogers at the Volta Laboratory (1885); playback by First Sounds (firstsounds.org). The file states no licence. Source: https://www.firstsounds.org/sounds/volta/Example2-PD1-p93-44100.wav
 
 ### Deep fragments and the horn
 

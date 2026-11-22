@@ -51,6 +51,7 @@ SOURCE_URL = "https://firstsounds.org/sounds/"
 FEATURES_URL = "https://www.firstsounds.org/features/mp3/"
 VOLTA_URL = "https://www.firstsounds.org/sounds/volta/"
 NPS_URL = "https://www.nps.gov/edis/learn/photosmultimedia/upload/"
+DOLL_FILE = "edis-tenhp-lbnl-edison-c-E-821-8-edis-1279-20110523-80rpm-restored.mp3"
 VOLTA = "the Volta Laboratory"
 NONE_STATED = "none stated"
 NO_LICENCE = "The file states no licence"
@@ -137,6 +138,7 @@ class Recording:
     credit_line: str = ""
     license: str = "CC BY"
     tagged: bool = True
+    colony_only: bool = False  # in the colony phonograph's rack and nowhere else: no loot table, no ambience pool (LORE guardrail 6, #946)
     gain_db: float = 0.0  # a per-recording level change after the treatment, in dB (negative turns a loud source down): 0 leaves it alone
 
     @property
@@ -220,6 +222,35 @@ RECORDINGS = (
         tagged=False,
         cut=(93.5, 122.5),
         gain_db=-2.8,
+    ),
+    # Added at the user's direction (#946), and only for the colony's rack: a child's rhyme is a thing for the bar, never for the deep
+    # (LORE guardrail 6), so neither is in a wreck locker, a salvage crate or the ambience.
+    Recording(
+        "edison_doll",
+        DOLL_FILE,
+        'Edison talking-doll prototype, "Twinkle, twinkle, little star"',
+        "1888",
+        artist="Thomas A. Edison",
+        host_url="https://www.nps.gov/nps-audiovideo/legacy/mp3/ner/avElement/" + DOLL_FILE,
+        credit_line=f'Talking-doll prototype, "Twinkle, twinkle, little star" (1888); restored with Lawrence Berkeley National Laboratory (LBNL). {NPS_CREDIT}.',
+        license=NONE_STATED,
+        tagged=False,
+        colony_only=True,
+        gain_db=-4.5,
+    ),
+    Recording(
+        "volta_nursery_rhyme",
+        "Example2-PD1-p93-44100.wav",
+        "Nursery rhyme as the machine winds down",
+        "1885",
+        artist="Tainter and Rogers",
+        host_url=VOLTA_URL + "Example2-PD1-p93-44100.wav",
+        credit_line=f"Recorded by Tainter and Rogers at the Volta Laboratory (1885); playback by First Sounds (firstsounds.org). {NO_LICENCE}.",
+        license=NONE_STATED,
+        tagged=False,
+        cut=(0.0, 24.0),
+        colony_only=True,
+        gain_db=-5.0,
     ),
 )
 

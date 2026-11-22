@@ -138,7 +138,8 @@ class CommittedRecordingsTest(unittest.TestCase):
         self.assertEqual([r.name for r in first_sounds.RECORDINGS], [name for name, _, _ in members])
         for name, _, ticks in members:
             self.assertEqual(math.ceil(self.manifest[name]["duration_seconds"] * 20), int(ticks), name)
-        self.assertIn("COLONY_RACK = List.of(GAMME_DE_LA_VOIX, JEUNE_JOUVENCELLE, OTHELLO);", java)
+        rack = re.search(r"COLONY_RACK =\s+List\.of\(([A-Z_, ]+)\);", java).group(1).replace(" ", "").split(",")
+        self.assertEqual(["GAMME_DE_LA_VOIX", "JEUNE_JOUVENCELLE", "OTHELLO", "EDISON_DOLL", "VOLTA_NURSERY_RHYME"], rack)
 
     def test_each_has_a_title_in_the_lang_and_a_sound_event_that_streams(self):
         lang = json.loads((ROOT / "src/lang/en_us/sound.json").read_text())
@@ -162,9 +163,40 @@ class CommittedRecordingsTest(unittest.TestCase):
             condition = pools[0]["condition"]
             self.assertIn(chance, [term.get("chance") for term in [condition, *condition.get("terms", [])]], table)
             held = [e["modifier"][0]["components"]["deepcharter:recording"] for e in pools[0]["entries"]]
-            self.assertEqual([r.name for r in first_sounds.RECORDINGS], held, table)
+            self.assertEqual([r.name for r in first_sounds.RECORDINGS if r.name not in COLONY_ONLY], held, table)
             self.assertEqual(1, pools[0]["rolls"], table)
             self.assertFalse(any("weight" in e for e in pools[0]["entries"]), table)  # each as likely as the next
+
+    def test_the_doll_and_the_rhyme_are_the_colonys_alone_and_in_no_loot_table_and_no_ambience_pool(self):
+        colony = [r for r in first_sounds.RECORDINGS if r.colony_only]
+        self.assertEqual(list(COLONY_ONLY), [r.name for r in colony])
+        self.assertEqual({r.name for r in first_sounds.RECORDINGS if r.name in COLONY_ONLY}, {r.name for r in colony})
+        for loot in (ROOT / "src/main/resources/data/deepcharter/loot_table").rglob("*.json"):
+            text = loot.read_text()
+            for name in COLONY_ONLY:
+                self.assertNotIn(name, text, loot.name)
+        ambience_text = (ROOT / "tools/sounds/ambience.json").read_text() + (ROOT / "tools/sounds/ambience.py").read_text()
+        sounds = json.loads((ROOT / "src/main/resources/assets/deepcharter/sounds.json").read_text())
+        for recording in colony:
+            self.assertNotIn(recording.name, ambience_text)
+            self.assertNotIn(recording.file, ambience_text)
+            self.assertFalse([event for event in sounds if event.startswith("ambience.") and recording.name in event])
+            self.assertTrue(recording.colony_only)
+        # Nothing else is colony-only: every other recording is found.
+        self.assertTrue(all(not r.colony_only for r in first_sounds.RECORDINGS if r.name not in COLONY_ONLY))
+
+    def test_the_colony_only_pair_has_its_canonical_url_hash_credit_and_a_level_in_the_cylinders_band(self):
+        for name, (url, digest) in COLONY_ONLY.items():
+            entry = self.manifest[name]
+            self.assertEqual((url, digest, "none stated"), (entry["source_url"], entry["source_sha256"], entry["license"]), name)
+            self.assertNotIn("CC BY", entry["credit"], name)
+            self.assertEqual(1, first_sounds.ogg_channels(first_sounds.OUT / "phonograph" / f"{name}.ogg"), name)
+            self.assertIn("gain_db", entry, name)
+        self.assertEqual([0.0, 24.0], self.manifest["volta_nursery_rhyme"]["cut"])
+        self.assertNotIn("cut", self.manifest["edison_doll"])  # the doll is whole: 13 s
+        self.assertIn("Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park", self.manifest["edison_doll"]["credit"])
+        self.assertIn("restored with Lawrence Berkeley National Laboratory", self.manifest["edison_doll"]["credit"])
+        self.assertIn("Tainter and Rogers", self.manifest["volta_nursery_rhyme"]["credit"])
 
     def test_au_clair_de_la_lune_is_not_among_them(self):
         # The wreck's song (#861) is never a cylinder: it keeps its meaning.
@@ -184,6 +216,19 @@ MORE_CYLINDERS = {
 }
 
 
+# Added at the user's direction (#946): the colony phonograph's rack only (LORE guardrail 6), so in no loot table and no ambience pool.
+COLONY_ONLY = {
+    "edison_doll": (
+        "https://www.nps.gov/nps-audiovideo/legacy/mp3/ner/avElement/edis-tenhp-lbnl-edison-c-E-821-8-edis-1279-20110523-80rpm-restored.mp3",
+        "0e771040681dd7068781c544d1b83b3010ca6f0bba9975bc37b728fbed203037",
+    ),
+    "volta_nursery_rhyme": (
+        "https://www.firstsounds.org/sounds/volta/Example2-PD1-p93-44100.wav",
+        "1bd02d2f685049fe7a318d475f580ab102fc59b283a64ca8b4099f3e96b4c30c",
+    ),
+}
+
+
 class MoreCylindersTest(unittest.TestCase):
     """#946: five more whole recordings through the cylinder treatment, trimmed to their strongest 15 to 30 seconds."""
 
@@ -191,7 +236,7 @@ class MoreCylindersTest(unittest.TestCase):
 
     def test_the_cylinder_set_is_the_original_three_and_the_five_new_ones_in_order(self):
         self.assertEqual(
-            ["gamme_de_la_voix", "jeune_jouvencelle", "othello", *MORE_CYLINDERS],
+            ["gamme_de_la_voix", "jeune_jouvencelle", "othello", *MORE_CYLINDERS, *COLONY_ONLY],
             [recording.name for recording in first_sounds.RECORDINGS],
         )
 
@@ -233,7 +278,7 @@ class MoreCylindersTest(unittest.TestCase):
     def test_the_untagged_recordings_are_exactly_the_new_cylinders(self):
         # A pin of which entries skip the tag check; the refusal itself is CutRebuildTest.
         names = {recording.name for recording in first_sounds.ALL_RECORDINGS if not recording.tagged}
-        self.assertEqual(set(MORE_CYLINDERS), names)
+        self.assertEqual({*MORE_CYLINDERS, *COLONY_ONLY}, names)
 
     def test_no_new_recording_is_childrens_or_scripture_or_the_wrecks_song(self):
         # LORE guardrails 4 and 6 and #861: the talking doll, the nursery rhyme, Handel's Israel in Egypt and every Au clair take are out.

@@ -83,6 +83,8 @@
 	"phonograph.sullivan_toast": { "sounds": [{ "name": "deepcharter:phonograph/sullivan_toast", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },
 	"phonograph.edison_around_the_world": { "sounds": [{ "name": "deepcharter:phonograph/edison_around_the_world", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },
 	"phonograph.lost_chord": { "sounds": [{ "name": "deepcharter:phonograph/lost_chord", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },
+	"phonograph.edison_doll": { "sounds": [{ "name": "deepcharter:phonograph/edison_doll", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },
+	"phonograph.volta_nursery_rhyme": { "sounds": [{ "name": "deepcharter:phonograph/volta_nursery_rhyme", "stream": true, "attenuation_distance": 24 }], "subtitle": "subtitles.deepcharter.phonograph" },
 	"ambience.faint.breath_a": { "sounds": [{ "name": "deepcharter:ambience/faint/breath_a", "volume": 0.6, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },
 	"ambience.worn.breath_a": { "sounds": [{ "name": "deepcharter:ambience/worn/breath_a", "volume": 0.8, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },
 	"ambience.broken.breath_a": { "sounds": [{ "name": "deepcharter:ambience/broken/breath_a", "volume": 0.9, "attenuation_distance": 32 }], "subtitle": "subtitles.deepcharter.ambience.voice" },

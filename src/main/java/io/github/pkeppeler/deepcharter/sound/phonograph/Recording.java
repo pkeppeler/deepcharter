@@ -31,7 +31,9 @@ public enum Recording implements StringRepresentable, TooltipProvider {
     VOLTA_HAMLET("volta_hamlet", 1884, DeepSound.PHONOGRAPH_VOLTA_HAMLET, 343),
     SULLIVAN_TOAST("sullivan_toast", 1888, DeepSound.PHONOGRAPH_SULLIVAN_TOAST, 487),
     EDISON_AROUND_THE_WORLD("edison_around_the_world", 1888, DeepSound.PHONOGRAPH_EDISON_AROUND_THE_WORLD, 491),
-    LOST_CHORD("lost_chord", 1888, DeepSound.PHONOGRAPH_LOST_CHORD, 580);
+    LOST_CHORD("lost_chord", 1888, DeepSound.PHONOGRAPH_LOST_CHORD, 580),
+    EDISON_DOLL("edison_doll", 1888, DeepSound.PHONOGRAPH_EDISON_DOLL, 261),
+    VOLTA_NURSERY_RHYME("volta_nursery_rhyme", 1885, DeepSound.PHONOGRAPH_VOLTA_NURSERY_RHYME, 480);
 
     public static final StringRepresentable.EnumCodec<Recording> CODEC =
             StringRepresentable.fromEnum(Recording::values);
@@ -40,10 +42,12 @@ public enum Recording implements StringRepresentable, TooltipProvider {
             Recording::getSerializedName);
 
     /**
-     * What the colony phonograph holds, in the order it plays them, wrapping round: the first three recordings, which stay its own. The
-     * later ones (#946) are only found, in wreck lockers and salvage crates.
+     * What the colony phonograph holds, in the order it plays them, wrapping round: the first three recordings, then the talking doll and
+     * the nursery rhyme, which are the colony's alone (LORE guardrail 6: a child's rhyme is for the bar, never the deep, so they are in no
+     * loot table and no ambience pool). The other later ones (#946) are only found, in wreck lockers and salvage crates.
      */
-    public static final List<Recording> COLONY_RACK = List.of(GAMME_DE_LA_VOIX, JEUNE_JOUVENCELLE, OTHELLO);
+    public static final List<Recording> COLONY_RACK =
+            List.of(GAMME_DE_LA_VOIX, JEUNE_JOUVENCELLE, OTHELLO, EDISON_DOLL, VOLTA_NURSERY_RHYME);
 
     private final String id;
     private final int year;
