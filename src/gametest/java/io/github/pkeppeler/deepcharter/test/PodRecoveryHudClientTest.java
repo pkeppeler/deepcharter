@@ -1,5 +1,9 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
+import io.github.pkeppeler.deepcharter.client.pod.PodStatusHud;
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
+import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.repair.RecoveryTuning;
@@ -9,6 +13,7 @@ import io.github.pkeppeler.deepcharter.test.support.PodReadout;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -70,6 +75,8 @@ public class PodRecoveryHudClientTest implements FabricClientGameTest {
                         "the line names the fee of " + RecoveryTuning.DEFAULT.feeAt(1) + ", shows " + shown.get(1));
             }
 
+            expectEveryLineFitsWhereItIsShown(context);
+
             singleplayer.getServer().runOnServer(server -> {
                 PodEntity pod =
                         TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
@@ -83,6 +90,48 @@ public class PodRecoveryHudClientTest implements FabricClientGameTest {
                             && !pod.stranded()
                             && !keys(client, pod).contains(STRANDED)
                             && !keys(client, pod).contains(RECOVERY));
+        }
+    }
+
+    /**
+     * The widest numbers each line can carry (a minute, a $9,999 fee, a $9,999,999 account), measured with the client's font against the narrowest GUI that draws the
+     * cockpit ({@code minGuiWidth}). Two bounds, by where a line is shown:
+     * <ul>
+     *   <li>The pilot's messages ({@code recovery_called}, {@code recovery_done}, {@code recovery_short}, {@code teleport_blocked}) are overlay lines: centred on the screen,
+     *       never wrapped, so they must fit the GUI's width less a margin each side.
+     *   <li>The HUD line is a row of the cockpit's plate, which sizes itself to its widest row and is anchored to the GUI: the plate holding that row alone must lie inside
+     *       the GUI at the narrowest width, which also leaves it clear of its border.
+     * </ul>
+     */
+    private static void expectEveryLineFitsWhereItIsShown(ClientGameTestContext context) {
+        List<String> problems = context.computeOnClient(client -> {
+            CockpitLook look = CockpitLook.current();
+            int guiWidth = look.minGuiWidth();
+            int clip = guiWidth - 2 * HudLook.current().podStatusMargin();
+            List<String> found = new ArrayList<>();
+            for (Component message : List.of(
+                    Component.translatable("message.deepcharter.repair.recovery_called", 60, 9_999L),
+                    Component.translatable("message.deepcharter.repair.recovery_done", 9_999_999L),
+                    Component.translatable("message.deepcharter.repair.recovery_short", 9_999_999L, 9_999_999L),
+                    Component.translatable("message.deepcharter.repair.teleport_blocked"))) {
+                int width = client.font.width(message);
+                if (width > clip) {
+                    found.add("\"" + message.getString() + "\" is " + width + " px wide, the overlay has " + clip);
+                }
+            }
+            PodStatusHud.Line hud = new PodStatusHud.Line(
+                    Component.translatable("hud.deepcharter.pod.recovery", 60, 9_999L),
+                    HudLook.current().podStatusColor());
+            CockpitHud.Box plate = CockpitHud.plateBox(
+                    client.font, look.ribbon(), look, List.of(CockpitHud.Row.of(hud)), guiWidth, 240);
+            if (plate.left() < 0 || plate.left() + plate.width() > guiWidth) {
+                found.add("the plate holding \"" + hud.text().getString() + "\" spans " + plate.left() + " to "
+                        + (plate.left() + plate.width()) + " of a " + guiWidth + " px GUI");
+            }
+            return found;
+        });
+        if (!problems.isEmpty()) {
+            throw new AssertionError("Recovery lines that do not fit the narrowest GUI: " + problems);
         }
     }
 
