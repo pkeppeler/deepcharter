@@ -11,16 +11,16 @@ import net.minecraft.world.item.Item;
 /** Registers the outpost kit. The outpost's pump and sell terminal are the colony's own terminals ({@code TerminalTypes}). */
 public final class OutpostRegistry {
     /** Used on the floor of layer 1, it builds the charter's outpost there ({@link OutpostBuilder}). */
-    public static final Item KIT = kit("outpost_kit");
+    public static final Item KIT = kit();
 
     private OutpostRegistry() {}
 
     /** Loads the class, which registers the item. */
     public static void register() {}
 
-    private static Item kit(String path) {
+    private static Item kit() {
         ResourceKey<Item> key =
-                ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
+                ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "outpost_kit"));
         return Registry.register(
                 BuiltInRegistries.ITEM,
                 key,

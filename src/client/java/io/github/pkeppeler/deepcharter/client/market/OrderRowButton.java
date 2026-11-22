@@ -21,6 +21,8 @@ import net.minecraft.network.chat.Component;
 public final class OrderRowButton extends Button implements PanelButton {
     /** The two lines fit in a button of the standard height. */
     static final int HEIGHT = 20;
+    /** As wide as the processor screen's other buttons, which take this width. */
+    static final int WIDTH = 200;
 
     private static final int PADDING = 4;
     /** How much of the label's colour the progress line keeps on the machine panel (0 to 255). */
@@ -29,9 +31,8 @@ public final class OrderRowButton extends Button implements PanelButton {
     private final String title;
     private final String progress;
 
-    OrderRowButton(
-            int x, int y, int width, Component message, String title, String progress, boolean open, OnPress onPress) {
-        super(x, y, width, HEIGHT, message, onPress, DEFAULT_NARRATION);
+    OrderRowButton(int x, int y, Component message, String title, String progress, boolean open, OnPress onPress) {
+        super(x, y, WIDTH, HEIGHT, message, onPress, DEFAULT_NARRATION);
         this.title = title;
         this.progress = progress;
         this.active = open;

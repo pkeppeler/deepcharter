@@ -5,7 +5,6 @@ import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalInt;
-import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CandleBlock;
 import net.minecraft.world.level.block.LadderBlock;
@@ -372,7 +371,7 @@ public enum StructureKind {
             }
         }
         for (int y = 0; y < height; y++) {
-            p.set(-1, y, -1, Blocks.LADDER.defaultBlockState().setValue(LadderBlock.FACING, p.facing(Direction.EAST)));
+            p.set(-1, y, -1, Blocks.LADDER.defaultBlockState().setValue(LadderBlock.FACING, p.east()));
         }
         int niche = height / 2;
         p.air(2, niche, 0, 2, niche + 1, 1);

@@ -33,6 +33,8 @@ public final class Colony {
      * and never move. Empty before the pad is chosen or when the colony's data is unreadable. For what must know the colony while the
      * build loads the pad's chunks ({@code LayerStructures}); anything that needs the colony built reads {@link #anchor}.
      */
+    // const-param: mirrors anchor(), which takes any ColonyAnchor; layer structures need only the conduit before the
+    // build today
     public static Optional<BlockPos> plannedAnchor(MinecraftServer server, ColonyAnchor anchor) {
         return readable(server).flatMap(ColonySite::started).map(started -> anchor.in(started.anchors()));
     }

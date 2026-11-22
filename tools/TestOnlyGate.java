@@ -126,6 +126,7 @@ public final class TestOnlyGate {
             "future use",
             "for later",
             "might need");
+
     private static final Set<String> BOXES = Set.of(
             "java/lang/Boolean",
             "java/lang/Byte",
@@ -137,6 +138,7 @@ public final class TestOnlyGate {
             "java/lang/Double");
     /** What an argument or parameter holds when it is not one literal: an expression, or literals that differ. */
     private static final String VARIES = "\0";
+
     private static final Set<String> NOT_SIGNIFICANT_ANNOTATIONS = Set.of(
             "Nullable",
             "NotNull",
@@ -217,8 +219,9 @@ public final class TestOnlyGate {
             }
         }
         boolean constantParams = options.containsKey("--constant-params");
-        for (String required :
-                constantParams ? List.of("--production", "--sources") : List.of("--production", "--tests", "--sources")) {
+        for (String required : constantParams
+                ? List.of("--production", "--sources")
+                : List.of("--production", "--tests", "--sources")) {
             if (options.getOrDefault(required, List.of()).isEmpty()) {
                 throw new IllegalArgumentException("TestOnlyGate: " + required + " is required");
             }
@@ -244,10 +247,11 @@ public final class TestOnlyGate {
         }
         List<String> fresh = List.copyOf(findings.values());
         if (!fresh.isEmpty() && constantParams) {
-            System.err.println("Parameters every production caller passes the same literal (" + fresh.size() + ")."
-                    + " Fix the method: inline the literal and drop the parameter, or make the callers vary."
-                    + " A deliberate seam ends its declaration line, or sits on the comment line above, with"
-                    + " '// const-param: <why callers must be able to vary it>' (two or more words, not a stock phrase).");
+            System.err.println(
+                    "Parameters every production caller passes the same literal (" + fresh.size() + ")."
+                            + " Fix the method: inline the literal and drop the parameter, or make the callers vary."
+                            + " A deliberate seam ends its declaration line, or sits on the comment line above, with"
+                            + " '// const-param: <why callers must be able to vary it>' (two or more words, not a stock phrase).");
             fresh.forEach(message -> System.err.println("  " + message));
             System.exit(1);
         }
@@ -363,7 +367,10 @@ public final class TestOnlyGate {
             }
             List<Val> out = new ArrayList<>();
             for (int i = 0; i < a.size(); i++) {
-                out.add(a.get(i).equals(b.get(i)) ? a.get(i) : Val.unknown(a.get(i).wide()));
+                out.add(
+                        a.get(i).equals(b.get(i))
+                                ? a.get(i)
+                                : Val.unknown(a.get(i).wide()));
             }
             return out;
         }
@@ -410,13 +417,15 @@ public final class TestOnlyGate {
                         creditUnknown(handle);
                         frame.push(Val.UNKNOWN);
                     } else {
-                        String literal = constant.opcode() == Opcode.ACONST_NULL ? "null" : literal(constant.constantValue());
+                        String literal =
+                                constant.opcode() == Opcode.ACONST_NULL ? "null" : literal(constant.constantValue());
                         frame.push(new Val(literal, constant.typeKind().slotSize() == 2));
                     }
                 }
                 case InvokeInstruction call -> simulateCall(frame, call);
                 case InvokeDynamicInstruction dynamic -> {
-                    MethodTypeDesc type = MethodTypeDesc.ofDescriptor(dynamic.type().stringValue());
+                    MethodTypeDesc type =
+                            MethodTypeDesc.ofDescriptor(dynamic.type().stringValue());
                     for (int i = 0; i < type.parameterCount(); i++) {
                         frame.pop();
                     }
@@ -433,8 +442,13 @@ public final class TestOnlyGate {
                     switch (access.opcode()) {
                         case GETSTATIC ->
                             frame.push(
-                                    isEnumConstant(access.owner().asInternalName(), access.name().stringValue())
-                                            ? new Val(simpleName(access.owner().asInternalName()) + "." + access.name().stringValue(), false)
+                                    isEnumConstant(
+                                                    access.owner().asInternalName(),
+                                                    access.name().stringValue())
+                                            ? new Val(
+                                                    simpleName(access.owner().asInternalName()) + "."
+                                                            + access.name().stringValue(),
+                                                    false)
                                             : Val.unknown(wide));
                         case GETFIELD -> {
                             frame.pop();
@@ -447,7 +461,8 @@ public final class TestOnlyGate {
                         }
                     }
                 }
-                case LoadInstruction load -> frame.push(Val.unknown(load.typeKind().slotSize() == 2));
+                case LoadInstruction load ->
+                    frame.push(Val.unknown(load.typeKind().slotSize() == 2));
                 case StoreInstruction ignored -> frame.pop();
                 case ArrayLoadInstruction load -> {
                     frame.pop();
@@ -546,7 +561,11 @@ public final class TestOnlyGate {
         String owner = call.owner().asInternalName();
         String name = call.name().stringValue();
         record(owner, name, call.type().stringValue(), Arrays.asList(args));
-        if (isStatic && BOXES.contains(owner) && name.equals("valueOf") && args.length == 1 && !args[0].equals(VARIES)
+        if (isStatic
+                && BOXES.contains(owner)
+                && name.equals("valueOf")
+                && args.length == 1
+                && !args[0].equals(VARIES)
                 && type.parameterType(0).isPrimitive()) {
             frame.push(new Val(args[0], false));
         } else {
@@ -820,7 +839,11 @@ public final class TestOnlyGate {
         }
         String where = root.relativize(source.toAbsolutePath().normalize()).toString();
         Declaration declaration = declarationOf(
-                source, classPath, constructor ? classPath.substring(classPath.lastIndexOf('.') + 1) : name, member, skip);
+                source,
+                classPath,
+                constructor ? classPath.substring(classPath.lastIndexOf('.') + 1) : name,
+                member,
+                skip);
         if (declaration == null || declaration.names().size() != count - skip) {
             if (constructor) {
                 return Map.of();

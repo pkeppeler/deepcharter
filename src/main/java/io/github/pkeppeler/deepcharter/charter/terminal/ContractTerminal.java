@@ -36,8 +36,8 @@ import net.minecraft.server.players.NameAndId;
  * nothing, and the player is sent the reason in their {@link ContractState}.
  */
 public final class ContractTerminal {
-    public static final TerminalType TYPE =
-            TerminalTypes.registerAlwaysOnline(id("contract_terminal"), TerminalType.Access.ANYONE);
+    public static final TerminalType TYPE = TerminalTypes.registerAlwaysOnline(
+            Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "contract_terminal"), TerminalType.Access.ANYONE);
 
     /**
      * The server worked out a {@link ContractState} for {@code player} and is sending it. Fires whether or not the player's client
@@ -106,10 +106,6 @@ public final class ContractTerminal {
 
     /** Loads the class, which registers the terminal and its actions. */
     static void register() {}
-
-    private static Identifier id(String path) {
-        return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
-    }
 
     private static Optional<String> nameArg(TerminalAction.Context context) {
         return context.args().getString(ContractActions.NAME_KEY);

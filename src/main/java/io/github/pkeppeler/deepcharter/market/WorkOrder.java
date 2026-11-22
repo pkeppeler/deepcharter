@@ -38,6 +38,7 @@ public enum WorkOrder implements StringRepresentable {
     private final boolean repeatable;
     private final int unlockLayer;
 
+    // const-param: quantity is each order's own design value in this table; both orders ask for 10 as placeholders
     WorkOrder(OreType ore, int quantity, long reward, boolean repeatable, int unlockLayer) {
         this.ore = ore;
         this.quantity = quantity;

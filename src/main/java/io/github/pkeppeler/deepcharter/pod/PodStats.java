@@ -183,7 +183,7 @@ public record PodStats(
                 drillingLitresPerSecond);
     }
 
-    public PodStats withThrustAcceleration(float thrustAcceleration) {
+    public PodStats withoutThrustAcceleration() {
         return new PodStats(
                 maxHull,
                 horizontalSpeed,

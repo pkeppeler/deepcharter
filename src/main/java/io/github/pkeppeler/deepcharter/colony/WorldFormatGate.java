@@ -52,6 +52,7 @@ public final class WorldFormatGate {
     }
 
     // test-seam: the tests run the gate at format 2, the number #803 makes real, while CURRENT is still 1
+    // const-param: the tests pass the format the gate runs at (RAISED and LEGACY); production passes CURRENT
     public static Optional<Refusal> refusal(MinecraftServer server, int current) {
         return refusal(server.getDataStorage(), current);
     }

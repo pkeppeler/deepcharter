@@ -47,7 +47,7 @@ public final class OutpostBuilder {
     /** The ceiling stays as it was this many blocks out from the middle (5 by 5), so any shaft up to 3 wide that the click lies in stays open. */
     private static final int HATCH = 2;
     /** The layer where the kit works: the floor of the first layer is the start of the second. */
-    private static final int LAYER = 1;
+    static final int LAYER = 1;
     /** Blocks set tell the clients and wake nothing, as a layer carve does. */
     private static final int FLAGS = Block.UPDATE_CLIENTS;
 
@@ -79,7 +79,7 @@ public final class OutpostBuilder {
         if (data.of(charter.get().id(), LAYER).isPresent()) {
             return refusal("has_one");
         }
-        if (data.overlapping(LAYER, clicked).isPresent()) {
+        if (data.overlapping(clicked).isPresent()) {
             return refusal("overlaps");
         }
         BlockPos shellMin = clicked.offset(-EDGE, 0, -EDGE);

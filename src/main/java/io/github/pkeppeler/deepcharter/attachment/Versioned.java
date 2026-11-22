@@ -79,6 +79,7 @@ public sealed interface Versioned<T> {
      * {@link Unreadable}, so a pod with bad saved data does not break its trackers. A value of a
      * version other than ours throws, which disconnects the client: the two sides run different builds.
      */
+    // const-param: each attachment states its own VERSION constant per the M2 versioning rule; they coincide at 1 today
     static <T> StreamCodec<ByteBuf, Versioned<T>> streamCodec(int currentVersion, StreamCodec<ByteBuf, T> body) {
         requireValidVersion(currentVersion);
         return new StreamCodec<>() {
