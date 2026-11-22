@@ -491,29 +491,31 @@ public class CampaignContentTest {
     @GameTest(environment = CampaignEnvironments.B, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void caveStalksGrowInLayer1sFirstZoneOnly(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        Band layer = CampaignBands.LAYER_1;
-        Zones.Span zone = Zones.span(layer.minY(), layer.height(), 0);
-        TreeSet<Integer> rows = new TreeSet<>();
-        for (BlockPos stalk : BlockSurvey.find(level, STALK_CHUNKS, ours("fungal_stalk"))) {
-            // The surface has stalks of its own (the surface band's features).
-            if (stalk.getY() < CampaignBands.SURFACE.minY()) {
-                rows.add(stalk.getY());
+        FarChunks.whenLoaded(helper, BlockSurvey.area(level, STALK_CHUNKS), () -> {
+            Band layer = CampaignBands.LAYER_1;
+            Zones.Span zone = Zones.span(layer.minY(), layer.height(), 0);
+            TreeSet<Integer> rows = new TreeSet<>();
+            for (BlockPos stalk : BlockSurvey.find(level, STALK_CHUNKS, ours("fungal_stalk"))) {
+                // The surface has stalks of its own (the surface band's features).
+                if (stalk.getY() < CampaignBands.SURFACE.minY()) {
+                    rows.add(stalk.getY());
+                }
             }
-        }
-        expect(
-                helper,
-                !rows.isEmpty(),
-                "no cave stalk grew in %d chunks of layer 1",
-                (2 * STALK_CHUNKS + 1) * (2 * STALK_CHUNKS + 1));
-        expect(
-                helper,
-                rows.first() >= zone.low() - 1 && rows.last() <= zone.high() + 1,
-                "cave stalks stand at %d..%d, outside Topsoil Claims %d..%d",
-                rows.first(),
-                rows.last(),
-                zone.low(),
-                zone.high());
-        helper.succeed();
+            expect(
+                    helper,
+                    !rows.isEmpty(),
+                    "no cave stalk grew in %d chunks of layer 1",
+                    (2 * STALK_CHUNKS + 1) * (2 * STALK_CHUNKS + 1));
+            expect(
+                    helper,
+                    rows.first() >= zone.low() - 1 && rows.last() <= zone.high() + 1,
+                    "cave stalks stand at %d..%d, outside Topsoil Claims %d..%d",
+                    rows.first(),
+                    rows.last(),
+                    zone.low(),
+                    zone.high());
+            helper.succeed();
+        });
     }
 
     private static Block ours(String path) {

@@ -54,7 +54,12 @@ public final class DrawnText {
 
     /** Renders {@code screen} into a recorder and returns the strings it drew outside any widget. Client thread. */
     public static List<Drawn> of(Screen screen) {
-        return of(recorder -> screen.extractRenderStateWithTooltipAndSubtitles(recorder, -1, -1, 0f));
+        return of(screen, -1, -1);
+    }
+
+    /** Like {@link #of(Screen)} with the mouse at ({@code mouseX}, {@code mouseY}), for what only a hovered thing draws. */
+    public static List<Drawn> of(Screen screen, int mouseX, int mouseY) {
+        return of(recorder -> screen.extractRenderStateWithTooltipAndSubtitles(recorder, mouseX, mouseY, 0f));
     }
 
     /** Runs {@code draw} on a recorder and returns the strings it drew, for something that is not a screen, such as a toast. Client thread. */
