@@ -15,6 +15,7 @@
     "BreachEffectsMixin",
     "CardinalLightingMixin",
     "ClientGameTestImplMixin",
+    "ClientPacketListenerMixin",
     "EntityRenderStateMixin",
     "GameRendererHandsMixin",
     "HudMixin",
