@@ -4,10 +4,10 @@ import com.google.errorprone.annotations.FormatMethod;
 import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.surface.GreatStalk;
+import io.github.pkeppeler.deepcharter.surface.GreatStalkBraid;
 import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout;
 import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout.Cell;
 import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout.Part;
-import io.github.pkeppeler.deepcharter.surface.GreatStalkShape;
 import io.github.pkeppeler.deepcharter.surface.SurfaceTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -74,23 +74,14 @@ public class StalkCollapseTest {
     private static final int ITEM_DEPTH = 20;
     private static final int ITEM_HEIGHT = 60;
     private static final String SINGLE_ALONE = "deepcharter-test:stalk_count_single";
-    private static final String GREAT_ALONE = "deepcharter-test:stalk_count_great";
     /** How far above the test a build in the air stands, off every neighbour. */
     private static final int SKY = 40;
 
     private static final int COLUMN_HEIGHT = 6;
     private static final int BROKEN_SEGMENT = 2;
     private static final int TEST_MAX_TICKS = COLLAPSE_WAIT + 100;
-    /** The rim of a great stalk's cap reaches this far from the 2x2 trunk, and its top dome is one layer above the rim. */
-    private static final int CAP_REACH = 1;
-    /** Seeds for the placer's shape test and the generation rate test. */
-    private static final int SHAPE_SEEDS = 24;
-
-    private static final long SHAPE_SEED = 18;
-
     private static final int RATE_ATTEMPTS = 600;
     private static final long RATE_SEED = 855;
-    private static final long GREAT_SEED = 7;
 
     private static Block ours(String path) {
         return BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path));
@@ -160,14 +151,6 @@ public class StalkCollapseTest {
         }
     }
 
-    /** Places the great stalk of {@link #GREAT_SEED} with its trunk's low corner at the given block of the test area. */
-    private static void greatStalk(GameTestHelper helper, int x, int z) {
-        if (!GreatStalk.place(
-                helper.getLevel(), RandomSource.create(GREAT_SEED), helper.absolutePos(new BlockPos(x, BASE_ROW, z)))) {
-            throw failure(helper, "the placer would not grow a great stalk on a flat stone floor");
-        }
-    }
-
     private static boolean isStalkBlock(BlockState state) {
         return state.is(ours("fungal_stalk")) || state.is(ours("great_stalk")) || state.is(ours("great_stalk_cap"));
     }
@@ -186,19 +169,6 @@ public class StalkCollapseTest {
             }
         }
         return found;
-    }
-
-    /** How many great stalk blocks stand in the column of a block of the test area. */
-    private static int trunkHeight(GameTestHelper helper, int x, int z) {
-        int height = 0;
-        for (int y = BASE_ROW; y <= BASE_ROW + 40; y++) {
-            if (helper.getLevel()
-                    .getBlockState(helper.absolutePos(new BlockPos(x, y, z)))
-                    .is(ours("great_stalk"))) {
-                height++;
-            }
-        }
-        return height;
     }
 
     private static void breakByHand(GameTestHelper helper, MockPlayer player, BlockPos pos) {
@@ -326,256 +296,69 @@ public class StalkCollapseTest {
         });
     }
 
-    /** The great stalk: a break above the base brings down all four columns above it and the cap, and the drops are the by-hand drops. */
-    @GameTest(maxTicks = TEST_MAX_TICKS, environment = GREAT_ALONE)
-    public void breakingAGreatStalkBringsTheWholeTrunkAboveItDown(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel();
-        int reach = SurfaceTuning.DEFAULT.greatMaxHeight();
-        clearArea(helper, reach + 4);
-        MockPlayer player = farPlayer(helper, "great-collapse");
-        greatStalk(helper, 3, 3);
-        int height = trunkHeight(helper, 3, 3);
-        int breakIndex = Math.max(2, height / 2);
-        BlockPos broken = helper.absolutePos(new BlockPos(3, BASE_ROW + breakIndex, 3));
-        Set<BlockPos> before = stalkBlocks(helper);
-        Set<BlockPos> falls = new HashSet<>();
-        for (BlockPos pos : before) {
-            if (pos.getY() > broken.getY() || pos.equals(broken)) {
-                falls.add(pos);
-            }
-        }
-        // The reference: the same blocks, broken by hand from the top down.
-        List<BlockPos> order = new ArrayList<>(falls);
-        order.sort(Comparator.<BlockPos>comparingInt(BlockPos::getY).reversed());
-        for (BlockPos pos : order) {
-            breakByHand(helper, player, pos);
-        }
-        Map<String, Integer> byHand = dropped(helper);
-        if (byHand.getOrDefault("deepcharter:fungal_stalk", 0) != falls.size()) {
-            throw failure(helper, "breaking %s great stalk blocks by hand dropped %s", falls.size(), byHand);
-        }
-        clearArea(helper, reach + 4);
-        greatStalk(helper, 3, 3);
-        breakByHand(helper, player, broken);
-        helper.runAfterDelay(COLLAPSE_WAIT, () -> {
-            Set<BlockPos> after = stalkBlocks(helper);
-            Set<BlockPos> expected = new HashSet<>(before);
-            expected.removeAll(falls);
-            if (!after.equals(expected)) {
-                Set<BlockPos> missing = new HashSet<>(expected);
-                missing.removeAll(after);
-                Set<BlockPos> extra = new HashSet<>(after);
-                extra.removeAll(expected);
-                throw failure(
-                        helper,
-                        "after the collapse %s blocks should stand, %s do; %s are gone that should stand, %s stand that should be gone",
-                        expected.size(),
-                        after.size(),
-                        missing.size(),
-                        extra.size());
-            }
-            for (BlockPos pos : after) {
-                if (pos.getY() > broken.getY()) {
-                    throw failure(helper, "a block above the break stands at %s", pos.toShortString());
-                }
-            }
-            Map<String, Integer> collapsed = dropped(helper);
-            if (!collapsed.equals(byHand)) {
-                throw failure(
-                        helper,
-                        "the collapse dropped %s, breaking the same blocks by hand dropped %s",
-                        collapsed,
-                        byHand);
-            }
-            if (level.getBlockState(broken).isAir() && after.size() != before.size() - falls.size()) {
-                throw failure(helper, "the count of standing blocks is off");
-            }
-            helper.succeed();
-        });
-    }
+    /** The tallest a great stalk grows, with air above it, for the tests that clear an area for one. */
+    private static final int GREAT_CLEAR_HEIGHT = 22;
 
     /**
-     * The cap's rim overhangs the trunk by a block and slides down beside it as the stalk sags: a player standing at the foot must never
-     * have a block land in their cells (that would smother them, a hidden effect). A block whose way down is occupied bursts instead.
-     */
-    @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void aSagGreatStalkNeverLandsOnAPlayerAtItsFoot(GameTestHelper helper) {
-        ServerLevel level = helper.getLevel();
-        clearArea(helper, SurfaceTuning.DEFAULT.greatMaxHeight() + 4);
-        greatStalk(helper, 3, 3);
-        BlockPos origin = helper.absolutePos(new BlockPos(3, BASE_ROW, 3));
-        MockPlayer player = MockPlayers.join(helper, "great-foot");
-        player.player().setGameMode(GameType.SURVIVAL);
-        player.teleportTo(level, Vec3.atBottomCenterOf(origin.offset(-1, 0, 0)), 0, 0);
-        BlockPos feet = player.player().blockPosition();
-        float health = player.player().getHealth();
-        TestTicks.each(helper, () -> {
-            for (BlockPos cell : List.of(feet, feet.above())) {
-                if (!level.getBlockState(cell).isAir()) {
-                    throw failure(
-                            helper,
-                            "a block %s landed in the player's cell %s",
-                            level.getBlockState(cell),
-                            cell.toShortString());
-                }
-            }
-        });
-        breakByHand(helper, player, origin);
-        helper.runAfterDelay(COLLAPSE_WAIT, () -> {
-            if (stalkBlocks(helper).stream().anyMatch(pos -> pos.getY() > origin.getY())) {
-                throw failure(helper, "the great stalk did not finish collapsing");
-            }
-            if (player.player().getHealth() != health) {
-                throw failure(
-                        helper,
-                        "the player lost health: %s of %s",
-                        player.player().getHealth(),
-                        health);
-            }
-            helper.succeed();
-        });
-    }
-
-    /** A great stalk is a 2x2 trunk, the height the tuning gives, and a cap: the rim of 12 and the dome of 4 above it. */
-    @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void aGreatStalkGrowsATwoByTwoTrunkWithACap(GameTestHelper helper) {
-        SurfaceTuning tuning = SurfaceTuning.DEFAULT;
-        Set<Integer> heights = new HashSet<>();
-        RandomSource shapes = RandomSource.create(SHAPE_SEED);
-        for (long seed = 1; seed <= SHAPE_SEEDS; seed++) {
-            clearArea(helper, tuning.greatMaxHeight() + 4);
-            if (!GreatStalk.place(helper.getLevel(), shapes, helper.absolutePos(new BlockPos(3, BASE_ROW, 3)))) {
-                throw failure(helper, "seed %s: the placer would not grow a great stalk on a flat stone floor", seed);
-            }
-            int height = trunkHeight(helper, 3, 3);
-            heights.add(height);
-            if (height < tuning.greatMinHeight() || height > tuning.greatMaxHeight()) {
-                throw failure(
-                        helper,
-                        "seed %s: the trunk is %s tall, outside %s to %s",
-                        seed,
-                        height,
-                        tuning.greatMinHeight(),
-                        tuning.greatMaxHeight());
-            }
-            BlockPos origin = helper.absolutePos(new BlockPos(3, BASE_ROW, 3));
-            Set<BlockPos> trunk = new HashSet<>();
-            Set<BlockPos> rim = new HashSet<>();
-            Set<BlockPos> dome = new HashSet<>();
-            for (BlockPos pos : stalkBlocks(helper)) {
-                BlockPos rel = pos.subtract(origin);
-                BlockState state = helper.getLevel().getBlockState(pos);
-                if (state.is(ours("great_stalk"))) {
-                    trunk.add(rel);
-                } else if (state.is(ours("great_stalk_cap")) && rel.getY() == height) {
-                    rim.add(rel);
-                } else if (state.is(ours("great_stalk_cap")) && rel.getY() == height + 1) {
-                    dome.add(rel);
-                } else {
-                    throw failure(helper, "seed %s: a stray %s at %s", seed, state, rel.toShortString());
-                }
-            }
-            if (trunk.size() != 4 * height) {
-                throw failure(
-                        helper,
-                        "seed %s: %s trunk blocks, expected %s (2x2 by %s)",
-                        seed,
-                        trunk.size(),
-                        4 * height,
-                        height);
-            }
-            for (BlockPos pos : trunk) {
-                if (pos.getX() < 0 || pos.getX() > 1 || pos.getZ() < 0 || pos.getZ() > 1) {
-                    throw failure(helper, "seed %s: the trunk leaves its 2x2 at %s", seed, pos.toShortString());
-                }
-            }
-            int rimCells = (2 + 2 * CAP_REACH) * (2 + 2 * CAP_REACH) - 4;
-            if (rim.size() != rimCells || dome.size() != 4) {
-                throw failure(
-                        helper,
-                        "seed %s: a cap of %s rim and %s dome blocks, expected %s and 4",
-                        seed,
-                        rim.size(),
-                        dome.size(),
-                        rimCells);
-            }
-        }
-        if (heights.size() < 2) {
-            throw failure(helper, "every seed grew a trunk of the same height %s", heights);
-        }
-        helper.succeed();
-    }
-
-    /**
-     * The placer writes by block position through its level, never by chunk, so a great stalk whose trunk straddles a chunk border (its
-     * west column in one chunk and its east column in the next) is as whole as any. Built in the air above the test, off any neighbour.
+     * The placer writes by block position through its level, never by chunk, so a great stalk whose trunks straddle a chunk border is
+     * as whole as any. Built in the air above the test, off any neighbour.
      */
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void aGreatStalkOnAChunkBorderIsWhole(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos here = helper.absolutePos(new BlockPos(0, BASE_ROW, 0)).above(SKY);
         BlockPos origin = new BlockPos(((here.getX() >> 4) << 4) + 15, here.getY(), here.getZ());
-        int height = SurfaceTuning.DEFAULT.greatMaxHeight();
-        for (int x = -3; x <= 4; x++) {
-            for (int z = -3; z <= 4; z++) {
+        GreatStalkLayout layout = layoutOf(BRAID_SEED);
+        for (int x = -OPTION_MAX_REACH; x <= OPTION_MAX_REACH; x++) {
+            for (int z = -OPTION_MAX_REACH; z <= OPTION_MAX_REACH; z++) {
                 level.setBlock(origin.offset(x, -1, z), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-                for (int y = 0; y <= height + 3; y++) {
+                for (int y = 0; y <= GREAT_CLEAR_HEIGHT; y++) {
                     level.setBlock(origin.offset(x, y, z), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
                 }
             }
         }
-        if (!GreatStalk.place(level, RandomSource.create(GREAT_SEED), origin)) {
+        if (!GreatStalk.place(level, RandomSource.create(BRAID_SEED), origin)) {
             throw failure(helper, "the placer would not grow a great stalk on a chunk border");
         }
-        int trunk = 0;
-        int cap = 0;
-        for (int x = -3; x <= 4; x++) {
-            for (int z = -3; z <= 4; z++) {
-                for (int y = 0; y <= height + 3; y++) {
-                    BlockState state = level.getBlockState(origin.offset(x, y, z));
-                    trunk += state.is(ours("great_stalk")) ? 1 : 0;
-                    cap += state.is(ours("great_stalk_cap")) ? 1 : 0;
+        Map<Cell, Part> grown = new HashMap<>();
+        for (int x = -OPTION_MAX_REACH; x <= OPTION_MAX_REACH; x++) {
+            for (int z = -OPTION_MAX_REACH; z <= OPTION_MAX_REACH; z++) {
+                for (int y = 0; y <= GREAT_CLEAR_HEIGHT; y++) {
+                    Part part = partOf(level.getBlockState(origin.offset(x, y, z)));
+                    if (part != null) {
+                        grown.put(new Cell(x, y, z), part);
+                    }
                 }
             }
         }
-        int tall = 0;
-        while (level.getBlockState(origin.above(tall)).is(ours("great_stalk"))) {
-            tall++;
-        }
-        boolean straddles = (origin.getX() >> 4) != (origin.east().getX() >> 4);
-        if (!straddles || trunk != 4 * tall || cap != 16 || tall < SurfaceTuning.DEFAULT.greatMinHeight()) {
+        boolean straddles = layout.parts().keySet().stream()
+                .anyMatch(cell -> ((origin.getX() + cell.x()) >> 4) != (origin.getX() >> 4));
+        if (!straddles || !grown.equals(layout.parts())) {
             throw failure(
                     helper,
-                    "a great stalk on a chunk border: straddles %s, %s trunk blocks of %s tall, %s cap blocks",
+                    "a great stalk on a chunk border: straddles %s, %s blocks grew of the %s laid out",
                     straddles,
-                    trunk,
-                    tall,
-                    cap);
+                    grown.size(),
+                    layout.parts().size());
         }
         helper.succeed();
     }
 
-    /** No room, no great stalk: a stone block in the way of the footprint, or too little headroom, makes the placer give up and place nothing. */
+    /** No room above the ground for a trunk, and no great stalk: a block of stone where one of its trunks would stand. */
     @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void aGreatStalkNeedsFlatGroundAndHeadroom(GameTestHelper helper) {
+    public void aGreatStalkNeedsHeadroomForItsTrunks(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        clearArea(helper, SurfaceTuning.DEFAULT.greatMaxHeight() + 4);
-        level.setBlock(
-                helper.absolutePos(new BlockPos(4, BASE_ROW, 4)),
-                Blocks.STONE.defaultBlockState(),
-                Block.UPDATE_CLIENTS);
-        if (GreatStalk.place(level, RandomSource.create(1), helper.absolutePos(new BlockPos(3, BASE_ROW, 3)))
-                || !stalkBlocks(helper).isEmpty()) {
-            throw failure(helper, "a great stalk grew over a block in its footprint");
-        }
-        clearArea(helper, SurfaceTuning.DEFAULT.greatMaxHeight() + 4);
-        level.setBlock(
-                helper.absolutePos(new BlockPos(3, BASE_ROW + SurfaceTuning.DEFAULT.greatMinHeight() / 2, 3)),
-                Blocks.STONE.defaultBlockState(),
-                Block.UPDATE_CLIENTS);
-        if (GreatStalk.place(level, RandomSource.create(1), helper.absolutePos(new BlockPos(3, BASE_ROW, 3)))
-                || !stalkBlocks(helper).isEmpty()) {
-            throw failure(helper, "a great stalk grew under a roof lower than its shortest trunk");
+        GreatStalkLayout layout = layoutOf(1);
+        Cell high = layout.parts().keySet().stream()
+                .filter(cell -> cell.y() == GreatStalkBraid.LEAST_HEIGHT - 1
+                        && layout.parts().get(cell) == Part.TRUNK)
+                .findFirst()
+                .orElseThrow();
+        clearOptionArea(helper);
+        level.setBlock(at(optionOrigin(helper), high), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+        if (GreatStalk.place(level, RandomSource.create(1), optionOrigin(helper))
+                || !standing(helper).isEmpty()) {
+            throw failure(helper, "a great stalk grew under a roof lower than its trunks");
         }
         helper.succeed();
     }
@@ -593,7 +376,7 @@ public class StalkCollapseTest {
         int great = 0;
         RandomSource random = RandomSource.create(RATE_SEED);
         for (int attempt = 0; attempt < RATE_ATTEMPTS; attempt++) {
-            clearArea(helper, SurfaceTuning.DEFAULT.greatMaxHeight() + 4);
+            clearArea(helper, GREAT_CLEAR_HEIGHT);
             if (!feature.place(
                     level,
                     level.getChunkSource().getGenerator(),
@@ -624,7 +407,7 @@ public class StalkCollapseTest {
         helper.succeed();
     }
 
-    // ---- The silhouette options of #910: braid, crook and fork. ----
+    // ---- The braid, the great stalk's shape (#910). ----
 
     /** Where an option's origin stands in the test area: far enough from every edge that its widest reach (8 blocks) is cleared. */
     private static final int OPTION_AT = 9;
@@ -641,15 +424,10 @@ public class StalkCollapseTest {
     private static final int YIELD_LEAST = 50;
     private static final int YIELD_MOST = 90;
     private static final long BRAID_SEED = 3;
-    private static final long CROOK_SEED = 5;
-    private static final long FORK_SEED = 11;
     private static final String BRAID_TRUNK_ALONE = "deepcharter-test:stalk_count_braid_trunk";
-    private static final String FORK_BRANCH_ALONE = "deepcharter-test:stalk_count_fork_branch";
-    private static final String FORK_STEM_ALONE = "deepcharter-test:stalk_count_fork_stem";
-    private static final String CROOK_TRUNK_ALONE = "deepcharter-test:stalk_count_crook_trunk";
 
-    private static GreatStalkLayout layoutOf(GreatStalkShape shape, long seed) {
-        return shape.layout(RandomSource.create(seed)::nextInt);
+    private static GreatStalkLayout layoutOf(long seed) {
+        return GreatStalkBraid.layout(RandomSource.create(seed)::nextInt);
     }
 
     private static BlockPos optionOrigin(GameTestHelper helper) {
@@ -684,7 +462,7 @@ public class StalkCollapseTest {
         if (state.is(ours("great_stalk_cap"))) {
             return Part.CAP;
         }
-        return state.is(ours("fungal_stalk")) ? Part.STRAND : null;
+        return null;
     }
 
     /** The stalk blocks standing in the option area, by their cell relative to the option's origin. */
@@ -717,9 +495,9 @@ public class StalkCollapseTest {
         }
     }
 
-    private static boolean growOption(GameTestHelper helper, GreatStalkShape shape, long seed) {
+    private static boolean growOption(GameTestHelper helper, long seed) {
         clearOptionArea(helper);
-        return GreatStalk.place(helper.getLevel(), RandomSource.create(seed), optionOrigin(helper), shape);
+        return GreatStalk.place(helper.getLevel(), RandomSource.create(seed), optionOrigin(helper));
     }
 
     private static boolean rotationallySymmetric(Set<Cell> cells) {
@@ -759,10 +537,12 @@ public class StalkCollapseTest {
      * origin, the whole is in the yield of a great stalk, the stalk is not rotationally symmetric, and two independent trunks never
      * touch. It grows in the world as the generator says.
      */
-    private void shapeKeepsItsPromises(GameTestHelper helper, GreatStalkShape shape) {
+    @GameTest(maxTicks = TEST_MAX_TICKS)
+    public void aBraidKeepsItsPromises(GameTestHelper helper) {
+        String shape = "the braid";
         Set<Integer> yields = new HashSet<>();
         for (long seed = 1; seed <= OPTION_SEEDS; seed++) {
-            GreatStalkLayout layout = layoutOf(shape, seed);
+            GreatStalkLayout layout = layoutOf(seed);
             Set<Cell> cells = layout.parts().keySet();
             yields.add(cells.size());
             if (cells.size() < YIELD_LEAST || cells.size() > YIELD_MOST) {
@@ -814,8 +594,8 @@ public class StalkCollapseTest {
             throw failure(helper, "%s: every seed grew the same few shapes, block counts %s", shape, yields);
         }
         for (long seed = 1; seed <= OPTION_PLACED_SEEDS; seed++) {
-            GreatStalkLayout layout = layoutOf(shape, seed);
-            if (!growOption(helper, shape, seed)) {
+            GreatStalkLayout layout = layoutOf(seed);
+            if (!growOption(helper, seed)) {
                 throw failure(helper, "%s seed %s: the placer would not grow it on a flat stone floor", shape, seed);
             }
             if (!standing(helper).equals(layout.parts())) {
@@ -825,30 +605,16 @@ public class StalkCollapseTest {
         helper.succeed();
     }
 
-    @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void aBraidKeepsItsPromises(GameTestHelper helper) {
-        shapeKeepsItsPromises(helper, GreatStalkShape.BRAID);
-    }
-
-    @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void aCrookKeepsItsPromises(GameTestHelper helper) {
-        shapeKeepsItsPromises(helper, GreatStalkShape.CROOK);
-    }
-
-    @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void aForkKeepsItsPromises(GameTestHelper helper) {
-        shapeKeepsItsPromises(helper, GreatStalkShape.FORK);
-    }
-
     /**
-     * No ground under a trunk, or no room for one, and nothing grows; a cap or a strand with no room is left out, with what then hangs
+     * No ground under a trunk, or no room for one, and nothing grows; a cap or a root with no room is left out, with what then hangs
      * from nothing.
      */
     @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void everyOptionNeedsGroundAndRoomForItsTrunks(GameTestHelper helper) {
+    public void aBraidNeedsGroundAndRoomForItsTrunks(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        for (GreatStalkShape shape : GreatStalkShape.values()) {
-            GreatStalkLayout layout = layoutOf(shape, 1);
+        String shape = "the braid";
+        {
+            GreatStalkLayout layout = layoutOf(1);
             Cell trunk = layout.parts().keySet().stream()
                     .filter(cell -> cell.y() == 1 && layout.parts().get(cell) == Part.TRUNK)
                     .findFirst()
@@ -856,7 +622,7 @@ public class StalkCollapseTest {
             Cell base = new Cell(trunk.x(), 0, trunk.z());
             clearOptionArea(helper);
             level.setBlock(at(optionOrigin(helper), trunk), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-            if (GreatStalk.place(level, RandomSource.create(1), optionOrigin(helper), shape)
+            if (GreatStalk.place(level, RandomSource.create(1), optionOrigin(helper))
                     || !standing(helper).isEmpty()) {
                 throw failure(helper, "%s grew over a block in its trunk", shape);
             }
@@ -865,7 +631,7 @@ public class StalkCollapseTest {
                     at(optionOrigin(helper), base).below(), Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
             if (layout.parts().containsKey(base)
                     && !layout.optional().contains(base)
-                    && (GreatStalk.place(level, RandomSource.create(1), optionOrigin(helper), shape)
+                    && (GreatStalk.place(level, RandomSource.create(1), optionOrigin(helper))
                             || !standing(helper).isEmpty())) {
                 throw failure(helper, "%s grew a trunk over a hole in the ground", shape);
             }
@@ -876,7 +642,7 @@ public class StalkCollapseTest {
                     .orElseThrow();
             clearOptionArea(helper);
             level.setBlock(at(optionOrigin(helper), cap), Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
-            if (!GreatStalk.place(level, RandomSource.create(1), optionOrigin(helper), shape)) {
+            if (!GreatStalk.place(level, RandomSource.create(1), optionOrigin(helper))) {
                 throw failure(helper, "%s would not grow with a block in the way of one cap", shape);
             }
             Set<Cell> expected =
@@ -950,17 +716,14 @@ public class StalkCollapseTest {
      * test runs alone in its environment, so that the items lying about are its own.
      */
     private void optionCollapse(
-            GameTestHelper helper,
-            GreatStalkShape shape,
-            long seed,
-            Function<GreatStalkLayout, Cell> pick,
-            boolean countDrops) {
-        GreatStalkLayout layout = layoutOf(shape, seed);
+            GameTestHelper helper, long seed, Function<GreatStalkLayout, Cell> pick, boolean countDrops) {
+        String shape = "the braid";
+        GreatStalkLayout layout = layoutOf(seed);
         Cell broken = pick.apply(layout);
         Set<Cell> fallen = fallenBy(layout, broken);
         holdOptionArea(helper);
         MockPlayer player = farPlayer(helper, "option-collapse");
-        if (!growOption(helper, shape, seed)) {
+        if (!growOption(helper, seed)) {
             throw failure(helper, "%s would not grow on a flat stone floor", shape);
         }
         Set<Cell> everything = new HashSet<>(fallen);
@@ -1013,51 +776,7 @@ public class StalkCollapseTest {
     @GameTest(maxTicks = TEST_MAX_TICKS, environment = BRAID_TRUNK_ALONE)
     public void breakingOneTrunkOfABraidLeavesTheOthersStanding(GameTestHelper helper) {
         optionCollapse(
-                helper,
-                GreatStalkShape.BRAID,
-                BRAID_SEED,
-                layout -> trunkCellsWithAbove(layout, 2, 7).getFirst(),
-                true);
-    }
-
-    /** A crook's thick trunk breaks: everything above, in all four columns, the shelves above it and the crown, falls. */
-    @GameTest(maxTicks = TEST_MAX_TICKS, environment = CROOK_TRUNK_ALONE)
-    public void breakingTheTrunkOfACrookBringsTheCrownDown(GameTestHelper helper) {
-        optionCollapse(
-                helper,
-                GreatStalkShape.CROOK,
-                CROOK_SEED,
-                layout -> trunkCellsWithAbove(layout, 0, 4).getFirst(),
-                true);
-    }
-
-    /** A fork's branch breaks above the fork: it and its cap fall; the stem and the other two branches stand. */
-    @GameTest(maxTicks = TEST_MAX_TICKS, environment = FORK_BRANCH_ALONE)
-    public void breakingOneBranchOfAForkLeavesTheRestStanding(GameTestHelper helper) {
-        optionCollapse(
-                helper,
-                GreatStalkShape.FORK,
-                FORK_SEED,
-                layout -> {
-                    int fork = layout.parts().keySet().stream()
-                            .filter(cell -> layout.owners().getOrDefault(cell, -1) == 1)
-                            .mapToInt(Cell::y)
-                            .min()
-                            .orElseThrow();
-                    return trunkCellsWithAbove(layout, 1, fork + 1).getFirst();
-                },
-                true);
-    }
-
-    /** A fork's stem breaks below the fork: all three branches, their caps and their strands fall with it. */
-    @GameTest(maxTicks = TEST_MAX_TICKS, environment = FORK_STEM_ALONE)
-    public void breakingTheStemOfAForkBringsAllTheBranchesDown(GameTestHelper helper) {
-        optionCollapse(
-                helper,
-                GreatStalkShape.FORK,
-                FORK_SEED,
-                layout -> trunkCellsWithAbove(layout, 0, 3).getFirst(),
-                true);
+                helper, BRAID_SEED, layout -> trunkCellsWithAbove(layout, 2, 7).getFirst(), true);
     }
 
     /**
@@ -1090,12 +809,7 @@ public class StalkCollapseTest {
 
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void breakingTheKinkOfABraidTrunkLeavesNothingFloating(GameTestHelper helper) {
-        optionCollapse(helper, GreatStalkShape.BRAID, BRAID_SEED, kinkOf(1), false);
-    }
-
-    @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void breakingTheKinkOfAForkBranchLeavesNothingFloating(GameTestHelper helper) {
-        optionCollapse(helper, GreatStalkShape.FORK, FORK_SEED, kinkOf(2), false);
+        optionCollapse(helper, BRAID_SEED, kinkOf(1), false);
     }
 
     /** A shelf breaks off its trunk's side: its outer half, no longer joined to anything, falls, and the strand hanging from a cap with it. */
@@ -1103,7 +817,6 @@ public class StalkCollapseTest {
     public void breakingAShelfBringsDownWhatOnlyHungFromIt(GameTestHelper helper) {
         optionCollapse(
                 helper,
-                GreatStalkShape.BRAID,
                 BRAID_SEED,
                 layout -> layout.parts().keySet().stream()
                         .filter(cell -> layout.parts().get(cell) == Part.CAP && cell.y() == 7)
@@ -1112,29 +825,14 @@ public class StalkCollapseTest {
                 false);
     }
 
-    @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void breakingTheCapOfAForkBranchBringsItsStrandsDown(GameTestHelper helper) {
-        optionCollapse(
-                helper,
-                GreatStalkShape.FORK,
-                FORK_SEED,
-                layout -> layout.parts().keySet().stream()
-                        .filter(cell -> layout.parts().get(cell) == Part.CAP
-                                && layout.parts().get(new Cell(cell.x(), cell.y() - 1, cell.z())) == Part.STRAND)
-                        .min(Comparator.comparingInt(Cell::y)
-                                .thenComparingInt(Cell::x)
-                                .thenComparingInt(Cell::z))
-                        .orElseThrow(),
-                false);
-    }
-
     /**
      * A player in the shade of a shelf or a cap, at the foot of the trunk it hangs from, takes nothing when that trunk comes down: a
      * block that would land in the player's cells bursts instead.
      */
-    private void optionNeverLandsOnAPlayer(GameTestHelper helper, GreatStalkShape shape, long seed) {
+    private void optionNeverLandsOnAPlayer(GameTestHelper helper, long seed) {
+        String shape = "the braid";
         ServerLevel level = helper.getLevel();
-        GreatStalkLayout layout = layoutOf(shape, seed);
+        GreatStalkLayout layout = layoutOf(seed);
         // The cap block that hangs lowest over free ground, and the trunk base it hangs from.
         Cell shade = layout.parts().keySet().stream()
                 .filter(cell -> layout.parts().get(cell) == Part.CAP
@@ -1156,7 +854,7 @@ public class StalkCollapseTest {
                 .min(Comparator.comparingInt(Cell::x).thenComparingInt(Cell::z))
                 .orElseThrow();
         holdOptionArea(helper);
-        if (!growOption(helper, shape, seed)) {
+        if (!growOption(helper, seed)) {
             throw failure(helper, "%s would not grow on a flat stone floor", shape);
         }
         BlockPos origin = optionOrigin(helper);
@@ -1210,17 +908,7 @@ public class StalkCollapseTest {
 
     @GameTest(maxTicks = TEST_MAX_TICKS)
     public void aSagBraidNeverLandsOnAPlayerAtItsFoot(GameTestHelper helper) {
-        optionNeverLandsOnAPlayer(helper, GreatStalkShape.BRAID, BRAID_SEED);
-    }
-
-    @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void aSagCrookNeverLandsOnAPlayerAtItsFoot(GameTestHelper helper) {
-        optionNeverLandsOnAPlayer(helper, GreatStalkShape.CROOK, CROOK_SEED);
-    }
-
-    @GameTest(maxTicks = TEST_MAX_TICKS)
-    public void aSagForkNeverLandsOnAPlayerAtItsFoot(GameTestHelper helper) {
-        optionNeverLandsOnAPlayer(helper, GreatStalkShape.FORK, FORK_SEED);
+        optionNeverLandsOnAPlayer(helper, BRAID_SEED);
     }
 
     /** The great block's {@code falling} state, found by name: the property is the collapse's own. */

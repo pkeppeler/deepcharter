@@ -30,14 +30,12 @@ import net.minecraft.world.phys.AABB;
  * gives a player nothing and takes nothing from one.
  *
  * <p>What falls is what hangs from the break. An ordinary stalk is a column of upright stalk blocks: everything above the break. A great
- * stalk ({@link GreatStalkBlock}) is every great block above the break that touches it face to face through great blocks at or above
- * the break's level, so a thick trunk (the great stalk's 2x2, a stem) falls whole above the break, in every column, with the shelves and
- * the cap on it. A cap block hangs from what it joins, so a cap that droops, and the strands (upright fungal stalks) that hang from a
- * cap, fall with the cap they hang from, however low they hang. Independent trunks (a braid's, a fork's branches) never touch below
- * their caps, so the rule reaches no further than the trunk that broke and what is attached to it: another trunk stands, whatever
- * touches it only through a cap above the break does not. A block that was only joined through the broken cell, sideways (the kink of a
- * leaning trunk, the outer half of a shelf), is no longer joined to the ground and falls too. A strand never holds anything up: breaking
- * one brings nothing down.
+ * stalk ({@link GreatStalkBlock}, a braid of three thin trunks with shelves, {@link GreatStalkBraid}) is every great block above the break
+ * that touches it face to face through great blocks at or above the break's level: the trunk that broke, above the break, with the
+ * shelves on it. A cap block hangs from what it joins, so a lip hanging under a shelf falls with the shelf, however low it hangs. The
+ * trunks never touch each other, so the rule reaches no further than the trunk that broke and what is attached to it: the other trunks
+ * stand, and so does a shelf held by one. A block that was only joined through the broken cell, sideways (the dog-leg where a trunk
+ * steps round the ring, the outer half of a shelf), is no longer joined to the ground and falls too.
  *
  * <p>The collapse is a sag: after {@link SurfaceTuning#collapseDelayTicks()} each step lowers all of it by one block, and its lowest
  * layer bursts instead of moving. The next step is a scheduled tick on the lowest block of what is left that is standing on nothing,
@@ -51,7 +49,7 @@ import net.minecraft.world.phys.AABB;
 final class StalkCollapse {
     /** The most blocks one collapse lowers, so that no chain of touching great stalks makes a step cost a lot. */
     private static final int MOST_BLOCKS = 1024;
-    // A great stalk is at most 90 blocks (every shape's yield, tested), far under this, so a walk never reaches it for
+    // A great stalk is at most 90 blocks (its yield, tested), far under this, so a walk never reaches it for
     // one.
 
     private static final Direction[] JOINS = {
@@ -95,9 +93,9 @@ final class StalkCollapse {
                 && state.getValue(RotatedPillarBlock.AXIS) == Direction.Axis.Y;
     }
 
-    /** A block that hangs from what it joins instead of standing: a cap block, or an upright stalk. */
+    /** A block that hangs from what it joins instead of standing: a cap block. */
     private static boolean hangs(BlockState state) {
-        return (state.getBlock() instanceof GreatStalkBlock block && block.isCap()) || ordinary(state);
+        return state.getBlock() instanceof GreatStalkBlock block && block.isCap();
     }
 
     /** Whether the chunk of {@code pos} is loaded: a collapse never loads one, so what is in an unloaded chunk is not joined to anything. */
@@ -307,7 +305,7 @@ final class StalkCollapse {
     }
 
     /**
-     * Whether the cap blocks and strands joined to {@code start} hang only from what is falling: none of them touches a trunk block that
+     * Whether the cap blocks joined to {@code start} hang only from what is falling: none of them touches a trunk block that
      * stands, or a cap block of another trunk's, outside {@code falling}. A cap tucked under the trunk that falls but joined to a trunk
      * that stands does not fall with it.
      */
@@ -339,18 +337,17 @@ final class StalkCollapse {
         return pendant.size() < MOST_BLOCKS;
     }
 
-    /** Whether {@code next} is joined to the falling mass: a great block that a collapse has taken, or what hangs from or sits on it. */
-    private static boolean takenJoin(ServerLevel level, Direction direction, BlockPos next, BlockState nextState) {
+    /** Whether {@code next} is joined to the falling mass: a great block that a collapse has taken, or an upright stalk standing on it. */
+    private static boolean takenJoin(Direction direction, BlockState nextState) {
         if (great(nextState)) {
             return falling(nextState);
         }
-        return ordinary(nextState)
-                && (direction == Direction.UP || (direction == Direction.DOWN && hangsFree(level, next)));
+        return ordinary(nextState) && direction == Direction.UP;
     }
 
     /**
      * The blocks that fall with {@code start}, lowest first: up the columns, across between great stalk blocks, and down the cap blocks
-     * and strands that hang free under them. With {@code taken}, the great blocks are those a collapse has marked {@link #FALLING}; without,
+     * that hang free under them. With {@code taken}, the great blocks are those a collapse has marked {@link #FALLING}; without,
      * all those that touch, which is how a collapse is decided in the first place.
      */
     private static List<BlockPos> connected(ServerLevel level, BlockPos start, boolean taken) {
@@ -369,7 +366,7 @@ final class StalkCollapse {
                 }
                 BlockState nextState = level.getBlockState(next);
                 boolean joined = taken
-                        ? takenJoin(level, direction, next, nextState)
+                        ? takenJoin(direction, nextState)
                         : staticJoin(level, found, direction, state, next, nextState);
                 if (joined && found.add(next)) {
                     queue.add(next);

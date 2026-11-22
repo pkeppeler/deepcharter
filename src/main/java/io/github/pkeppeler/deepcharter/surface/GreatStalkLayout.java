@@ -16,7 +16,7 @@ import java.util.Set;
  * @param owners   which trunk a cell belongs to: {@value #SHARED} for a cell that belongs to the whole stalk (a stem, a thick trunk, a
  *                 crown), 1 and up for the independent trunks and branches. Two cells of different independent owners never touch, so
  *                 breaking one trunk never brings another down
- * @param optional the cells a placer may leave out where the ground or the air forbids them (a root flare, a hanging strand)
+ * @param optional the cells a placer may leave out where the ground or the air forbids them (a root flare)
  */
 public record GreatStalkLayout(Map<Cell, Part> parts, Map<Cell, Integer> owners, Set<Cell> optional) {
     /** The owner of the cells that belong to no one trunk in particular. */
@@ -34,9 +34,7 @@ public record GreatStalkLayout(Map<Cell, Part> parts, Map<Cell, Integer> owners,
         /** A {@code great_stalk} block. */
         TRUNK,
         /** A {@code great_stalk_cap} block. */
-        CAP,
-        /** An upright {@code fungal_stalk} that hangs from a cap. */
-        STRAND
+        CAP
     }
 
     /** The six faces of a cell. */
