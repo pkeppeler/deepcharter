@@ -87,8 +87,7 @@ runs:
           exit 1
         }
         deadline=$((SECONDS + 180))
-        # A passing run takes about 28 minutes (twice the short overworld's 14): each world costs 5-8 s more on the 2352-tall
-        # campaign world (spawn chunks, the colony's pad). $SECONDS starts after setup, and both callers set
+        # A passing run took 27.5 minutes (run 45062159956). $SECONDS starts after setup, and both callers set
         # timeout-minutes: 60, so 50 minutes keeps at least 5 minutes of job-limit margin for setup, the post steps and the
         # stop. Raise only together with both job limits.
         max_seconds=3000
@@ -115,8 +114,9 @@ runs:
           echo "::error::The client did not use the OpenGL backend that options.txt asks for"
           exit 1
         fi
-    # The heap the client JVM used, from its GC log (gradle/run-jvm.gradle.kts): the largest occupancy before a collection is the
-    # peak, the largest after one is the live set. Size -Xmx for the client run from these.
+    # The heap the client JVM used, from its GC log (gradle/run-jvm.gradle.kts): the largest occupancy before any collection is the
+    # peak; the live set is the largest occupancy after a Pause Full only, because a young pause leaves garbage in the heap. The
+    # per-class histograms force full collections, so the log has them. Size -Xmx for the client run from these.
     - name: Client heap peak
       if: always()
       shell: bash
@@ -126,13 +126,17 @@ runs:
           echo "No $gclog: the client JVM never started."
           exit 0
         fi
-        summary=$(grep -oE '[0-9]+[MG]->[0-9]+[MG]\([0-9]+[MG]\)' "$gclog" | awk -F'[>(]' '
+        peak=$(grep -oE '[0-9]+[MG]->[0-9]+[MG]\([0-9]+[MG]\)' "$gclog" | awk -F'[>(]' '
           function mb(v) { n = v + 0; return v ~ /G$/ ? n * 1024 : n }
-          { sub(/-$/, "", $1); before = mb($1); after = mb($2); if (before > peak) peak = before; if (after > live) live = after; collections++ }
-          END { printf "peak before a collection %d MB, largest live set %d MB, %d collections", peak, live, collections }')
+          { sub(/-$/, "", $1); before = mb($1); if (before > peak) peak = before }
+          END { printf "%d", peak }')
+        live=$(grep 'Pause Full' "$gclog" | grep -oE '[0-9]+[MG]->[0-9]+[MG]\([0-9]+[MG]\)' | awk -F'[>(]' '
+          function mb(v) { n = v + 0; return v ~ /G$/ ? n * 1024 : n }
+          { after = mb($2); if (after > live) live = after; fulls++ }
+          END { if (fulls) printf "largest live set after a full collection %d MB, %d full collections", live, fulls; else printf "no full collection logged" }')
+        summary="peak before a collection $peak MB, $live"
         echo "::notice title=Client heap::$summary"
         echo "Client heap: $summary" >> "$GITHUB_STEP_SUMMARY"
-        grep -c 'Pause Full' "$gclog" | sed 's/^/Full GCs: /' >> "$GITHUB_STEP_SUMMARY" || true
     - name: Upload the client GC log
       if: always()
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
