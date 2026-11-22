@@ -34,9 +34,9 @@ public enum Consumable {
     // which made fuel cheaper and a run's net $455); the cargo drop is
     // the rest of the cost.
     MATTER_TRANSMITTER("matter_transmitter", 1_650),
-    // On foot (#987): the bolt driver is a tool and is kept, and the bolts it fires and sets are bought in packs
-    // (BoltDriverTuning.packSize). The driver costs about half a layer 2 run, the pack a fifteenth of one; the bands
-    // are EconomyAffordabilityTest's, and BoltDriverPacingTest holds what a fight and a stretch of tunnel cost.
+    // On foot (#987): a tool, kept; its bolts are bought in packs (BoltDriverTuning.packSize). The driver costs two
+    // fifths of a layer 2 run and a pack a twentieth. EconomyAffordabilityTest holds the bands and BoltDriverPacingTest
+    // what a fight and a stretch of tunnel cost.
     BOLT_DRIVER("bolt_driver", 175),
     BOLT("bolt", 24);
 
