@@ -61,10 +61,7 @@ public final class SettlingRooms {
 
         /** The barrel's items, which a test reads and fills. */
         public Container storage() {
-            if (!(level.getBlockEntity(barrel) instanceof Container container)) {
-                throw new IllegalStateException("no container at " + barrel);
-            }
-            return container;
+            return containerAt(level, barrel);
         }
 
         public BoundingBox zone() {

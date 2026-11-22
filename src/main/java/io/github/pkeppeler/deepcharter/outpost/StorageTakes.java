@@ -13,7 +13,6 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 /**
@@ -31,24 +30,12 @@ final class StorageTakes {
 
     /** The storage block entities in {@code zone} whose chunk is loaded, in position order. */
     static List<Container> storage(ServerLevel level, BoundingBox zone) {
-        List<BlockEntity> found = new ArrayList<>();
-        for (int chunkX = zone.minX() >> 4; chunkX <= zone.maxX() >> 4; chunkX++) {
-            for (int chunkZ = zone.minZ() >> 4; chunkZ <= zone.maxZ() >> 4; chunkZ++) {
-                LevelChunk chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
-                if (chunk == null) {
-                    continue;
-                }
-                for (BlockEntity entity : chunk.getBlockEntities().values()) {
-                    if (entity instanceof Container
-                            && zone.isInside(entity.getBlockPos())
-                            && !entity.getBlockState().is(OutpostSettling.NEVER_SETTLED)) {
-                        found.add(entity);
-                    }
-                }
-            }
-        }
-        found.sort(Comparator.comparing(BlockEntity::getBlockPos, BY_POSITION));
-        return found.stream().map(entity -> (Container) entity).toList();
+        return OutpostSettling.blockEntities(level, zone).stream()
+                .filter(entity ->
+                        entity instanceof Container && !entity.getBlockState().is(OutpostSettling.NEVER_SETTLED))
+                .sorted(Comparator.comparing(BlockEntity::getBlockPos, BY_POSITION))
+                .map(entity -> (Container) entity)
+                .toList();
     }
 
     /** How many items of {@code wanted} the zone's storage holds. */

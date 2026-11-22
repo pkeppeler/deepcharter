@@ -13,8 +13,10 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Survey;
 import io.github.pkeppeler.deepcharter.outpost.VisitBreaks.Broken;
 import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
 import io.github.pkeppeler.deepcharter.terminal.TerminalBlockEntity;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -230,7 +232,14 @@ public final class OutpostSettling {
 
     /** The terminals in the zone, a placeholder for how loud the outpost is until the Sleeper's draws are built (#1005). */
     private static int terminals(ServerLevel level, BoundingBox zone) {
-        int count = 0;
+        return (int) blockEntities(level, zone).stream()
+                .filter(entity -> entity instanceof TerminalBlockEntity)
+                .count();
+    }
+
+    /** The block entities inside {@code zone} whose chunk is loaded. */
+    static List<BlockEntity> blockEntities(ServerLevel level, BoundingBox zone) {
+        List<BlockEntity> found = new ArrayList<>();
         for (int chunkX = zone.minX() >> 4; chunkX <= zone.maxX() >> 4; chunkX++) {
             for (int chunkZ = zone.minZ() >> 4; chunkZ <= zone.maxZ() >> 4; chunkZ++) {
                 LevelChunk chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
@@ -238,13 +247,13 @@ public final class OutpostSettling {
                     continue;
                 }
                 for (BlockEntity entity : chunk.getBlockEntities().values()) {
-                    if (entity instanceof TerminalBlockEntity && zone.isInside(entity.getBlockPos())) {
-                        count++;
+                    if (zone.isInside(entity.getBlockPos())) {
+                        found.add(entity);
                     }
                 }
             }
         }
-        return count;
+        return found;
     }
 
     /** Meets every pending visit in the world, adds what they did to the unread report, and takes a fresh survey. */

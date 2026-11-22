@@ -99,7 +99,7 @@ public final class OutpostVisits extends SavedData {
             Map<Identifier, Integer> broken,
             int heaps,
             Set<VisitCause> causes) {
-        public static final Report NONE = new Report(0, Map.of(), Map.of(), 0);
+        public static final Report NONE = new Report(0, Map.of(), Map.of(), 0, Set.of());
         private static final Codec<Map<Identifier, Integer>> COUNTS = Codec.unboundedMap(Identifier.CODEC, Codec.INT);
         private static final Codec<Report> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                         Codec.INT.fieldOf("visits").forGetter(Report::visits),
@@ -117,11 +117,6 @@ public final class OutpostVisits extends SavedData {
             taken = Map.copyOf(taken);
             broken = Map.copyOf(broken);
             causes = Set.copyOf(causes);
-        }
-
-        /** A report with no cause to name. */
-        public Report(int visits, Map<Identifier, Integer> taken, Map<Identifier, Integer> broken, int heaps) {
-            this(visits, taken, broken, heaps, Set.of());
         }
 
         /** The causes in the order of the enum, so a report reads and saves the same every time. */
