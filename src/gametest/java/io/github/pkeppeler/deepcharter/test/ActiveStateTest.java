@@ -268,8 +268,8 @@ public class ActiveStateTest {
     }
 
     /**
-     * In the world: a lit lamp lights its block to 15, and the same lamp turned dark leaves it unlit. The light engine works off
-     * the server tick, so the waits run on {@link FarChunks.Deadline}, not on the test's tick budget (#1042).
+     * In the world: a lit lamp lights its block to 15, and the same lamp turned dark leaves it unlit. The light runs on
+     * {@code Util.backgroundExecutor()}, so the waits run on {@link FarChunks.Deadline}, not on the test's tick budget (#1042).
      */
     @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aLitLampGivesFullLightAndADarkOneNone(GameTestHelper helper) {
