@@ -70,7 +70,7 @@ final class CatalogueHardware {
     static void glassFront(GuiGraphicsExtractor graphics, CatalogueLook look, Rect glass) {
         CatalogueLook.Casing c = look.casing();
         CrtDraw.sprite(graphics, PanelLook.GLASS, glass.x(), glass.y(), glass.width(), glass.height());
-        CrtDraw.scanlines(graphics, glass.x(), glass.y(), glass.right(), glass.bottom());
+        CrtDraw.roundedScanlines(graphics, glass.x(), glass.y(), glass.right(), glass.bottom(), 0);
         int width = c.vignetteWidth();
         for (int i = 0; i < width; i++) {
             int shade = Colors.withAlpha(c.vignetteColor(), (c.vignetteColor() >>> 24) * (width - i) / width);
