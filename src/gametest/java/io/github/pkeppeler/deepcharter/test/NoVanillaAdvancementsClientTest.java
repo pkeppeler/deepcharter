@@ -6,6 +6,8 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.handbook.HandbookItems;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import java.util.HashSet;
+import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -19,12 +21,13 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.level.gamerules.GameRules;
 
 /**
  * Client GameTest for #835: in the real game, getting an oak log shows no advancement or recipe toast, the client holds no vanilla
- * advancement, the locator bar rule is off, and both the advancements key (L) and the pause menu's Advancements button open the
- * handbook, never vanilla's advancements screen.
+ * advancement, its recipe book holds only what the server book holds, the locator bar rule is off, and both the advancements
+ * key (L) and the pause menu's Advancements button open the handbook, never vanilla's advancements screen.
  */
 public class NoVanillaAdvancementsClientTest implements FabricClientGameTest {
     /** Ticks to let a toast reach the screen if one were coming: a toast is queued the tick its packet arrives. */
@@ -47,6 +50,7 @@ public class NoVanillaAdvancementsClientTest implements FabricClientGameTest {
             });
             context.waitTicks(
                     TOAST_WAIT_TICKS); // tick-wait: an absence has nothing to await, so it is given time to fail
+            Set<RecipeDisplayId> clientBook = new HashSet<>();
             context.runOnClient(client -> {
                 require(
                         client.gui.toastManager().getToast(AdvancementToast.class, Toast.NO_TOKEN) == null,
@@ -59,11 +63,27 @@ public class NoVanillaAdvancementsClientTest implements FabricClientGameTest {
                         .filter(id -> id.getNamespace().equals(Identifier.DEFAULT_NAMESPACE))
                         .toList();
                 require(vanilla.isEmpty(), "the client was sent vanilla advancements: " + vanilla);
-                // The oak log is an ingredient, so the charter's known recipes (ADR 0070) put its recipes in the book,
-                // quietly:
-                // what the book may hold is KnownRecipes' to test, and the absent toast above is what vanilla's unlock
-                // would show.
+                ClientSession.player(client).getRecipeBook().getCollections().stream()
+                        .flatMap(collection -> collection.getRecipes().stream())
+                        .forEach(entry -> clientBook.add(entry.id()));
             });
+            // ADR 0070: the log teaches recipes, so the book may fill, but only with the server book's
+            // (KnownRecipesTest).
+            Set<RecipeDisplayId> known = singleplayer.getServer().computeOnServer(server -> {
+                Set<RecipeDisplayId> ids = new HashSet<>();
+                server.getPlayerList()
+                        .getPlayers()
+                        .getFirst()
+                        .getRecipeBook()
+                        .pack()
+                        .known()
+                        .forEach(key ->
+                                server.getRecipeManager().listDisplaysForRecipe(key, entry -> ids.add(entry.id())));
+                return ids;
+            });
+            require(
+                    known.containsAll(clientBook),
+                    "the client's recipe book holds recipes the server book does not: " + clientBook);
             require(
                     !singleplayer
                             .getServer()
