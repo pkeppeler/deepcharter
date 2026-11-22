@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
 import io.github.pkeppeler.deepcharter.handbook.HandbookSyncPayload;
 import io.github.pkeppeler.deepcharter.handbook.NotesSyncPayload;
 import io.github.pkeppeler.deepcharter.handbook.OpenNotePayload;
@@ -29,5 +30,6 @@ public final class HandbookClientRegistry {
             ClientNotes.set(List.of());
         });
         HandbookKeys.register();
+        CatalogueScreens.register();
     }
 }

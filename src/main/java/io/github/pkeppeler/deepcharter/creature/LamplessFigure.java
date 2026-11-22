@@ -396,12 +396,14 @@ public class LamplessFigure extends PathfinderMob {
 
     /**
      * Whether a pod draws a figure: a person aboard, power, no lights, and fuel above the floor. A parked pod is left alone, and so is a
-     * wreck (no power) and a lit pod.
+     * wreck (no power) and a lit pod. A pod within the reach of a burning flare ({@link DrawSources}) counts as lit, though it frees no one a
+     * figure already holds.
      */
     public static boolean draws(PodEntity pod) {
         return pod.getFirstPassenger() instanceof Player
                 && PodEvents.isPowered(pod)
                 && !PodLights.isLit(pod)
+                && !(pod.level() instanceof ServerLevel level && DrawSources.litByFlare(level, pod.position()))
                 && pod.fuel() > CreatureTuning.DEFAULT.cling().floorPercent();
     }
 
