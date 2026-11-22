@@ -698,6 +698,43 @@ public class TetherTest {
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+    public void twoPeopleOnOnePodKeepItLoudUntilTheLastWinchStops(GameTestHelper helper) {
+        Room room = room(helper, 14);
+        MockPlayer first = onFoot(helper);
+        MockPlayer second = onFoot(helper);
+        room.when(helper, () -> {
+            PodEntity pod = room.pod();
+            ServerPlayer one = first.player();
+            ServerPlayer two = second.player();
+            one.setNoGravity(true);
+            two.setNoGravity(true);
+            clipAt(room, first, pod, TUNING.length() - 2, 0);
+            clipAt(room, second, pod, TUNING.length() - 2, 2);
+            Vec3 inside = PodTether.anchor(pod).add(TUNING.noiseRadius() - 1, 0, 0);
+            PodTether.setWinching(one, true);
+            PodTether.setWinching(two, true);
+            return () -> {
+                clientStep(one);
+                clientStep(two);
+                if (room.age == 20) {
+                    expect(helper, heardNear(room, inside), "two winches on one pod are a noise");
+                    PodTether.unclip(one, PodTether.Unclipped.UNHOOKED);
+                    expect(
+                            helper,
+                            heardNear(room, inside),
+                            "the pod is still heard while the other person hauls on it");
+                }
+                if (room.age == 25) {
+                    expect(helper, heardNear(room, inside), "and the other winch keeps it loud");
+                    PodTether.setWinching(two, false);
+                    expect(helper, !heardNear(room, inside), "the pod is quiet once the last winch stops");
+                    room.finish(helper);
+                }
+            };
+        });
+    }
+
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
     public void thePilotCanReelInAClippedPersonFromTheSeat(GameTestHelper helper) {
         Room room = room(helper, 6);
         MockPlayer person = onFoot(helper);
@@ -920,6 +957,10 @@ public class TetherTest {
                         && person.actionBarMessages()
                                 .contains(Component.translatable("message.deepcharter.tether.snagged"))) {
                     snaggedAt[0] = room.age;
+                    expect(
+                            helper,
+                            heardNear(room, PodTether.anchor(room.pod())),
+                            "the winch is heard when the snag is first seen, so the lapse below is a change");
                     expect(
                             helper,
                             Math.abs(room.age - TUNING.stallTicks()) <= 5,
