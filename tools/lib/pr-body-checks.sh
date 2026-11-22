@@ -39,7 +39,7 @@ check_closing_reference() {
   closing_set
   [[ -n $closes ]] || refuse "has no closing reference (put 'Closes #$issue' in the body)"
   [[ $closes == "#$issue" ]] \
-    || refuse "body closes $closes but branch $branch is for issue #$issue only (the closing set must be exactly {#$issue})"
+    || refuse "body closes $closes but branch $branch is for issue #$issue only (the closing set must be exactly {#$issue}): mention any other issue in prose, not after a closing keyword, and close it by hand after the merge"
 }
 
 # Sets $labels; has_label <name> tests it.
