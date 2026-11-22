@@ -19,7 +19,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class ThrowRoom {
     public static final int Z = 5400;
-    public static final int FLOOR = 60;
+    public static final int FLOOR = TestLayers.worldY(1, 60);
     /** Half the room's width and length: a flat throw (about 12 blocks) and a lob both land inside it. */
     public static final int HALF = 24;
     /** How far south of {@code (x, Z)} the thrower stands. */
