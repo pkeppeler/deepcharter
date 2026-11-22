@@ -249,6 +249,56 @@ _Avoid_: annotation, comment
 A story-driven change to the Employee Handbook's tone or clauses. It never changes a rule.
 _Avoid_: update, patch, version
 
+### Creatures
+
+**Creature**:
+Anything in the deep that moves of its own accord and is not a player or a pod. Every creature is a mob or a presence.
+_Avoid_: monster, enemy (in player-facing text)
+
+**Mob**:
+A creature that costs a player something, in the pod and on foot, and gives a reason to avoid it.
+_Avoid_: enemy, hostile
+
+**Presence**:
+A creature that never acts, such as THE EYES or the checkpoint wardens. It costs nothing but attention.
+_Avoid_: ambient mob, NPC
+
+**Family**:
+One of the three kinds of creature: Moloch's, the Sleeper's defences, or the gnawers. A creature's family sets its draw and what it does to you.
+_Avoid_: faction, type, class (means chassis)
+
+**Draw**:
+The one thing that brings a creature's family to you: the dark (Moloch's), the drill (the Sleeper's) or the haul (gnawers). In act 3 Moloch's machines are also drawn to the unauthorised.
+_Avoid_: aggro, trigger
+
+**Unauthorised**:
+In act 3, a pod or person below the depth the Chairman allows the charter. It draws the Company's Recovery units.
+_Avoid_: trespassing, out of bounds
+
+**Alarm**:
+A zone's rising response, for a few minutes, after one of the Sleeper's creatures is killed: more of them come to the drill, sooner.
+_Avoid_: aggro, heat, wanted level
+
+**Gnawer**:
+A creature of the uncharted layers that comes to the haul and eats ore, in the rock, in a bay or in storage. Post-game only.
+_Avoid_: eater, worm
+
+**Layer boss**:
+A fight in one of layers 3 to 7 that guards the layer's chassis wreck or catalyst. A charter can drill past it but fights it once to climb the upgrade ladder.
+_Avoid_: miniboss, gatekeeper
+
+**Shell**:
+The outer layer of a building's placed blocks: the ones a creature can reach from outside. A closed shell rated for the depth keeps everything inside it safe.
+_Avoid_: wall, envelope, hull (a pod component)
+
+**Exposed block**:
+A placed block that touches open space a creature can reach from outside.
+_Avoid_: unprotected block, outer block
+
+**Damping block**:
+A placed block that muffles the noise of what it encloses, so the Sleeper's defences are not drawn to it.
+_Avoid_: soundproofing, insulation
+
 ### Story
 
 **Night Shift**:
@@ -256,7 +306,7 @@ The night in Colony Year 23 when the Employer called every worker down and Prosp
 _Avoid_: the incident, the evacuation
 
 **Retained**:
-A miner rebuilt after death so many times that they went hollow and lampless, and still work in the deep. The word comes from the Employer's own records. In the game they are a normal mob of layers 1 and 2: they never attack, they come to a dark pod, cling to it and drain its fuel, and some carry a lamp (a lamp-carrier).
+A miner rebuilt after death so many times that they went hollow and lampless, and still work in the deep. The word comes from the Employer's own records. In the game they are a normal mob of layers 1 and 2: they never attack, they come to a dark pod or a person in the dark, cling and drain (fuel, or hunger), and some carry a lamp (a lamp-carrier).
 _Avoid_: zombie, undead, Long-Term Staff (the Employer's older euphemism)
 
 **Dark pod**:
