@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalActionPayload;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -202,6 +203,14 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 
     /** Bursts of movement with rests between them keep one drive loop: every burst is a real move, a rest is a few ticks. */
     private static void movingHold(ClientGameTestContext context, Heard heard, TwoPlayerServer two, int podId) {
+        // The loop of the last drive falls to silence before it stops (#961), and a drive that starts while it falls
+        // rises again
+        // instead of starting a new one: count the bursts' loops from a pod with none.
+        await(
+                context,
+                heard,
+                "the loop of the last drive faded out",
+                client -> !heard.isPlaying(client.getSoundManager(), "pod.engine_drive"));
         long driveBefore = heard.count("pod.engine_drive");
         long idleBefore = heard.count("pod.engine_idle");
         for (int burst = 0; burst < BURSTS; burst++) {
@@ -230,7 +239,12 @@ public class SoundWiringClientTest implements FabricClientGameTest {
                 "pod.engine_idle playing before leaving the overworld",
                 client -> heard.isPlaying(client.getSoundManager(), "pod.engine_idle"));
         long idleBefore = heard.count("pod.engine_idle");
-        teleportReal(two, TestLayers.dimension(1), 0.5, TestLayers.worldY(1, 100), 0.5);
+        teleportReal(
+                two,
+                two.server().computeOnServer(s -> TestLayers.dimension(s, 1)),
+                0.5,
+                TestLayers.worldY(1, 100),
+                0.5);
         await(context, heard, "the client in layer 1", client -> TestLayers.clientIsIn(client, 1));
         teleportReal(two, Level.OVERWORLD, X + 3.5, FLOOR_Y, Z - 3.5);
         await(
@@ -414,9 +428,13 @@ public class SoundWiringClientTest implements FabricClientGameTest {
         }
         BlockPos pump = player.blockPosition().relative(Direction.EAST, 2);
         BlockPos processor = player.blockPosition().relative(Direction.SOUTH, 2);
-        server.overworld().setBlock(pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
-        server.overworld()
-                .setBlock(processor, TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(), pump, TerminalTypes.FUEL_PUMP.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(),
+                processor,
+                TerminalTypes.ORE_PROCESSOR.block().defaultBlockState(),
+                3);
         player.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
         PodEntity pod = TestEntities.create(PodRegistry.POD, player.level());
         pod.setPos(player.position().relative(Direction.WEST, 3));

@@ -18,7 +18,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
-/** Client GameTest: the real client and the mock player both cross a breach. */
+/** Client GameTest: the real client and the mock player both cross a breach, in place in the campaign level. */
 public class BreachCrossingClientTest implements FabricClientGameTest {
     private static final double X = 2000.5;
     private static final double Z = 2000.5;
@@ -33,7 +33,7 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
             UUID clientId = two.server()
                     .computeOnServer(server -> realPlayer(server, mock).getUUID());
 
-            // Both start in layer_1 above a shaft through the crust and stone, a block apart.
+            // Both start in layer 1 above a shaft through the crust and stone, over a pocket in layer 2, a block apart.
             two.server().runOnServer(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 openShaft(one, X);
@@ -55,7 +55,7 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
 
             require(
                     crossed(context, two, mockId, clientId),
-                    "Not both players crossed into layer_2 within " + CROSSING_TICKS + " ticks");
+                    "Not both players crossed into layer 2 within " + CROSSING_TICKS + " ticks");
             context.takeScreenshot("breach-crossing-layer-2");
         }
     }
@@ -66,7 +66,7 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
         return TestLayers.isIn(player, 2);
     }
 
-    /** The client is in layer_2 and sees player 2 there; the server agrees about both. */
+    /** The client is in layer 2 and sees player 2 there; the server agrees about both. */
     private static boolean crossed(ClientGameTestContext context, TwoPlayerServer two, UUID mockId, UUID clientId) {
         boolean clientSees = context.computeOnClient(client -> client.level != null
                 && TestLayers.clientIsIn(client, 2)
@@ -85,6 +85,7 @@ public class BreachCrossingClientTest implements FabricClientGameTest {
 
     private static void openShaft(ServerLevel level, double x) {
         BlockPos column = BlockPos.containing(x, 0, Z);
+        RoomCarver.carvePocketBelow(level, 1, column.getX(), column.getX(), column.getZ(), column.getZ());
         RoomCarver.carve(
                 level,
                 column.atY(TestLayers.band(level, 1).minY()),

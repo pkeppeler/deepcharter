@@ -14,6 +14,7 @@ public final class LayerClientRegistry {
         ClientTickEvents.END_CLIENT_TICK.register(client -> BreachEffects.tick());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> BreachEffects.reset());
         BreachHud.init();
+        BlockReadoutHud.init();
         BreachVoidCover.init();
     }
 }

@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.fuel.FuelTuning;
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.outpost.OutpostTuning;
@@ -47,6 +48,14 @@ public final class EarlyRunModel {
 
     /** (A) Blocks per tick that a pilot braking down a shaft holds the pod at: under the 0.7 landing speed, with room for the pilot's overshoot. */
     public static final double DRIVE_DOWN_SINK = 0.6;
+
+    /**
+     * (A) The share of a tank that one pricing run burns. The prices are counted in runs, and a run was a whole tank at the original's burn rates.
+     * Issue 963 slowed the burn to a seventh so that a first tank lasts minutes of play, and left the drill and the ore alone, so what a run earns
+     * for the minute it takes is as it was: a run stays the trip a seventh of the tank pays for, and "runs to afford" keeps its meaning. A pilot
+     * who burns the whole tank makes seven runs of ore, but the bay is full long before, so the model keeps the old run.
+     */
+    public static final double PRICING_RUN_TANK_SHARE = 1.0 / 7.0;
 
     private static final int TICKS_PER_SECOND = 20;
 
@@ -175,11 +184,7 @@ public final class EarlyRunModel {
 
     /** Blocks of layer 1, which a run in layer 2 climbs through twice (the shaft is already bored). */
     public static int layerOneBlocks() {
-        return json("/data/deepcharter/dimension/layer_1.json")
-                .getAsJsonObject("generator")
-                .getAsJsonObject("biome_source")
-                .get("height")
-                .getAsInt();
+        return CampaignBands.layer(1).height();
     }
 
     /** The stats of a Mole with the given part tiers (0 for stock), as PodComponents would scale them. */
@@ -256,7 +261,7 @@ public final class EarlyRunModel {
                     + drillSeconds * next * stats.drillingLitresPerSecond()
                     + climbSeconds * stats.movingLitresPerSecond()
                     + (drillSeconds * next + climbSeconds) * stats.idleLitresPerSecond();
-            if (used > stats.tankLitres()) {
+            if (used > stats.tankLitres() * PRICING_RUN_TANK_SHARE) {
                 break;
             }
             slabs = next;

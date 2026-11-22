@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -24,7 +24,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -41,7 +40,6 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the surface (#240): the generator makes regolith plains, craters, terraced mesas and basalt outcrops, with
@@ -120,12 +118,12 @@ public class SurfaceTerrainTest {
         Set<String> unexpected = new TreeSet<>(found);
         unexpected.removeAll(allowed);
         if (!unexpected.isEmpty()) {
-            throw fail(helper, "the surface holds blocks it should not: %s", unexpected);
+            throw failure(helper, "the surface holds blocks it should not: %s", unexpected);
         }
         Set<String> missing = new TreeSet<>(GROUND_BLOCKS);
         missing.removeAll(found);
         if (!missing.isEmpty()) {
-            throw fail(helper, "the surface lacks %s; it holds %s", missing, found);
+            throw failure(helper, "the surface lacks %s; it holds %s", missing, found);
         }
         helper.succeed();
     }
@@ -152,7 +150,7 @@ public class SurfaceTerrainTest {
             int blocking = level.getHeight(Heightmap.Types.MOTION_BLOCKING, at.getX(), at.getZ());
             int blockingNoLeaves = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, at.getX(), at.getZ());
             if (blocking != surface || blockingNoLeaves != surface) {
-                throw fail(
+                throw failure(
                         helper,
                         "%s at %d %d: WORLD_SURFACE %d, MOTION_BLOCKING %d, MOTION_BLOCKING_NO_LEAVES %d, expected all equal",
                         column.getKey(),
@@ -182,7 +180,7 @@ public class SurfaceTerrainTest {
             }
         }
         if (!missing.isEmpty()) {
-            throw fail(
+            throw failure(
                     helper,
                     "these blocks have collision but the heightmaps skip them; add them to src/main/resources/data/minecraft/tags/block/blocks_motion_no_leaves.json: %s",
                     missing);
@@ -217,7 +215,7 @@ public class SurfaceTerrainTest {
                         .unwrap()
                         .size();
                 if (listed != 0) {
-                    throw fail(
+                    throw failure(
                             helper,
                             "%s at %s: category %s lists %d creatures",
                             biome,
@@ -234,7 +232,7 @@ public class SurfaceTerrainTest {
     public void aFreshWorldHasNoWanderingTraders(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         if (server.getGameRules().get(GameRules.SPAWN_WANDERING_TRADERS)) {
-            throw fail(
+            throw failure(
                     helper,
                     "the wandering trader spawns in a fresh world: its spawner ignores the biomes, so the rule must be off");
         }
@@ -248,10 +246,10 @@ public class SurfaceTerrainTest {
         if (rules.get(GameRules.SPAWN_PATROLS)
                 || rules.get(GameRules.SPAWN_PHANTOMS)
                 || rules.get(GameRules.SPAWN_WARDENS)) {
-            throw fail(helper, "a fresh world spawns patrols, phantoms or wardens: no biome list reaches them");
+            throw failure(helper, "a fresh world spawns patrols, phantoms or wardens: no biome list reaches them");
         }
         if (!rules.get(GameRules.SPAWN_MONSTERS)) {
-            throw fail(helper, "spawn_monsters is off in a fresh world, and the Retained would not spawn either");
+            throw failure(helper, "spawn_monsters is off in a fresh world, and the Retained would not spawn either");
         }
         helper.succeed();
     }
@@ -262,7 +260,7 @@ public class SurfaceTerrainTest {
         server.getGameRules().set(GameRules.SPAWN_WANDERING_TRADERS, true, server);
         try {
             if (ColonyBuilder.buildIfNeeded(server) || !server.getGameRules().get(GameRules.SPAWN_WANDERING_TRADERS)) {
-                throw fail(
+                throw failure(
                         helper,
                         "a start of a world that has its colony changed the wandering trader rule the player set");
             }
@@ -290,7 +288,7 @@ public class SurfaceTerrainTest {
         double craterShare = (double) craters / heights.length;
         double mesaShare = (double) mesas / heights.length;
         if (craterShare < CRATER_SHARE * 0.5 || craterShare > CRATER_SHARE * 1.5) {
-            throw fail(
+            throw failure(
                     helper,
                     "craters are %.1f%% of the columns, expected %.1f%% to %.1f%%",
                     craterShare * 100,
@@ -298,7 +296,7 @@ public class SurfaceTerrainTest {
                     CRATER_SHARE * 150);
         }
         if (mesaShare < MESA_SHARE * 0.5 || mesaShare > MESA_SHARE * 1.5) {
-            throw fail(
+            throw failure(
                     helper,
                     "mesas are %.1f%% of the columns, expected %.1f%% to %.1f%%",
                     mesaShare * 100,
@@ -306,7 +304,7 @@ public class SurfaceTerrainTest {
                     MESA_SHARE * 150);
         }
         if (lowest > -5 || highest < 9) {
-            throw fail(
+            throw failure(
                     helper,
                     "the land runs from %d to %d blocks about the pad: expected a crater at least 5 deep and a mesa at least 9 high",
                     lowest,
@@ -328,7 +326,7 @@ public class SurfaceTerrainTest {
                             PIT_Z + (int) Math.round(PIT_RIM_RADIUS * Math.sin(angle))));
         }
         if (rim - floor < PIT_DEPTH) {
-            throw fail(
+            throw failure(
                     helper,
                     "the great pit at %d %d has its floor at %d and its rim at %d, expected the rim %d higher",
                     PIT_X,
@@ -349,7 +347,7 @@ public class SurfaceTerrainTest {
             for (int z = -CLIFF_CHECK_RADIUS; z <= CLIFF_CHECK_RADIUS; z++) {
                 int height = height(generator, level, random, x, z);
                 if (Math.hypot(x, z) <= PAD_CHECK_RADIUS && height != PAD_GROUND) {
-                    throw fail(
+                    throw failure(
                             helper,
                             "the pad is not flat: ground at %d %d is %d, expected %d",
                             x,
@@ -364,7 +362,7 @@ public class SurfaceTerrainTest {
                             Math.abs(height - height(generator, level, random, x, z + 1)));
                     int allowed = distance <= GENTLE_RADIUS ? GENTLE_STEP : BIGGEST_STEP;
                     if (step > allowed) {
-                        throw fail(
+                        throw failure(
                                 helper,
                                 "a cliff of %d blocks at %d %d, %d out from the pad's middle, the biggest step allowed there is %d",
                                 step,
@@ -391,11 +389,11 @@ public class SurfaceTerrainTest {
             for (JsonElement variant : variants) {
                 models.add(variant.getAsJsonObject().get("model").getAsString());
                 if (variant.getAsJsonObject().get("weight").getAsInt() < 1) {
-                    throw fail(helper, "%s has a variant with no weight", id);
+                    throw failure(helper, "%s has a variant with no weight", id);
                 }
             }
             if (variants.size() < 2 || variants.size() > 4 || models.size() != variants.size()) {
-                throw fail(
+                throw failure(
                         helper,
                         "%s has %d variants over %d models, expected 2 to 4 distinct ones",
                         id,
@@ -414,7 +412,7 @@ public class SurfaceTerrainTest {
         JsonObject preset = read(helper, "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json")
                 .getAsJsonObject();
         if (!shipped.equals(preset.getAsJsonObject("dimensions").get(SAMPLE))) {
-            throw fail(helper, "flat_all_dimensions preset entry %s differs from the shipped overworld", SAMPLE);
+            throw failure(helper, "flat_all_dimensions preset entry %s differs from the shipped overworld", SAMPLE);
         }
         helper.succeed();
     }
@@ -431,7 +429,7 @@ public class SurfaceTerrainTest {
         BlockState state = chunk.getBlockState(pos);
         String actual = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
         if (!actual.equals(expected)) {
-            throw fail(
+            throw failure(
                     helper,
                     "the top block at %d %d in %s is %s, expected %s",
                     column.getX(),
@@ -466,7 +464,7 @@ public class SurfaceTerrainTest {
                 }
             }
         }
-        throw fail(helper, "no stretch of %s in the %d blocks around the origin", biome, SURVEY_SPAN);
+        throw failure(helper, "no stretch of %s in the %d blocks around the origin", biome, SURVEY_SPAN);
     }
 
     /** A column in a crater: its ground is at least 2 blocks below the pad. */
@@ -479,7 +477,7 @@ public class SurfaceTerrainTest {
                 }
             }
         }
-        throw fail(helper, "no crater in the %d blocks around the origin", SURVEY_SPAN);
+        throw failure(helper, "no crater in the %d blocks around the origin", SURVEY_SPAN);
     }
 
     private static String biomeAt(BiomeResolver resolver, int x, int z) {
@@ -511,15 +509,10 @@ public class SurfaceTerrainTest {
         return generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random);
     }
 
-    @FormatMethod
-    private static RuntimeException fail(GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
-
     private static JsonElement read(GameTestHelper helper, String resource) throws IOException {
         var stream = SurfaceTerrainTest.class.getResourceAsStream(resource);
         if (stream == null) {
-            throw fail(helper, "missing resource %s", resource);
+            throw failure(helper, "missing resource %s", resource);
         }
         try (Reader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
             return JsonParser.parseReader(reader);
