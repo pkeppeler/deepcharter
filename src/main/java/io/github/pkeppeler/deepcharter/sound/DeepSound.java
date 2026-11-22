@@ -120,7 +120,6 @@ public enum DeepSound {
     AMBIENCE_CLOCK_HOUR_7("ambience.clock.hour_7"),
     AMBIENCE_CLOCK_HOUR_8("ambience.clock.hour_8"),
     AMBIENCE_CLOCK_HOUR_9("ambience.clock.hour_9"),
-    AMBIENCE_CLOCK_HOUR_10("ambience.clock.hour_10"),
     AMBIENCE_CLOCK_HOUR_11("ambience.clock.hour_11"),
     AMBIENCE_CLOCK_HOUR_12("ambience.clock.hour_12"),
     AMBIENCE_CLOCK_FRAGMENT("ambience.clock.fragment"),

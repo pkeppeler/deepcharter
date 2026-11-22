@@ -297,21 +297,23 @@ public class SoundEventsTest {
     }
 
     /**
-     * The punch clock's stand-in chimes (#938) are recipes of tools/sounds/recipes.py: one event per hour 1 to 12 and the deep fragments'
-     * pool, each file mono and in the recipes' manifest, and the private audio pack's map leaves them alone (a locally built Lambert
-     * overlay, tools/sounds/lambert_clock.py, replaces them by id).
+     * The punch clock's words (#938) are cuts of Lambert's talking clock made by tools/sounds/lambert_clock.py: one event per hour but ten
+     * (the recording skips it) and the deep fragments' pool, each file mono and in that script's manifest, which credits the source.
      */
     @GameTest
-    public void theClockChimesAreMonoRecipesAndNotInThePackMap(GameTestHelper helper) throws IOException {
+    public void theClockWordsAreMonoCutsOfTheRecordingInItsManifest(GameTestHelper helper) throws IOException {
         Path root = repoRoot(helper);
-        JsonObject recipes;
-        try (Reader reader = Files.newBufferedReader(root.resolve("tools/sounds/manifest.json"))) {
-            recipes = JsonParser.parseReader(reader).getAsJsonObject();
+        JsonObject manifest;
+        try (Reader reader = Files.newBufferedReader(root.resolve("tools/sounds/lambert_clock.json"))) {
+            manifest = JsonParser.parseReader(reader).getAsJsonObject();
         }
+        JsonObject files = manifest.getAsJsonObject("files");
         JsonObject slots = soundsJson(helper);
         Set<String> ids = new TreeSet<>();
         for (int hour = 1; hour <= 12; hour++) {
-            ids.add("ambience.clock.hour_" + hour);
+            if (hour != 10) {
+                ids.add("ambience.clock.hour_" + hour);
+            }
         }
         ids.add("ambience.clock.fragment");
         Set<String> declared = new TreeSet<>();
@@ -323,15 +325,17 @@ public class SoundEventsTest {
             throw failure(helper, "DeepSound has the clock events %s, expected %s", declared, ids);
         }
         Set<String> mapped = mappedIds(helper);
+        Set<String> used = new TreeSet<>();
         for (String id : ids) {
             if (mapped.contains(id)) {
                 throw failure(helper, "%s is in the pack map, which needs an original file", id);
             }
             for (JsonElement entry : slots.getAsJsonObject(id).getAsJsonArray("sounds")) {
                 String name = entry.getAsJsonObject().get("name").getAsString().substring("deepcharter:".length());
-                if (!name.startsWith("clock/") || !recipes.has(name)) {
-                    throw failure(helper, "%s plays %s, which is not a clock recipe", id, name);
+                if (!files.has(name)) {
+                    throw failure(helper, "%s plays %s, which tools/sounds/lambert_clock.json does not hold", id, name);
                 }
+                used.add(name);
                 Path file = root.resolve("src/main/resources/assets/deepcharter/sounds/" + name + ".ogg");
                 byte[] head = Arrays.copyOf(Files.readAllBytes(file), 256);
                 int identification = indexOf(head, new byte[] {1, 'v', 'o', 'r', 'b', 'i', 's'});
@@ -339,6 +343,9 @@ public class SoundEventsTest {
                     throw failure(helper, "%s is not a mono Vorbis file", file);
                 }
             }
+        }
+        if (!used.equals(files.keySet())) {
+            throw failure(helper, "the manifest holds %s and the events play %s", files.keySet(), used);
         }
         helper.succeed();
     }

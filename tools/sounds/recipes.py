@@ -426,65 +426,6 @@ def rest():
     return Clip([0.0] * count, [0.0] * count)
 
 
-# The punch clock's chime (#938): a struck bell of a mechanical clock, a little cracked, that strikes N times for hour N. `ambience.clock.hour_N`
-# is the stand-in the public jar ships; a locally built private pack may replace it by id (tools/sounds/lambert_clock.py). Mono, because the
-# game places it at the clock, and quiet: about -30 LUFS, like the ambience's tiers.
-CLOCK_LEVEL = 0.11  # of full scale: about -30 LUFS, measured on the OGG (ebur128), for a strike every 0.9 seconds
-STRIKE_GAP = 0.9  # seconds from one strike to the next
-BELL = ((1.0, 1.0, 0.7), (2.76, 0.6, 0.4), (5.4, 0.35, 0.22), (8.93, 0.18, 0.12))  # (ratio to the fundamental, gain, decay in seconds)
-MONO = frozenset({f"clock/hour_{hour}" for hour in range(1, 13)} | {"clock/fragment_a", "clock/fragment_b"})
-
-
-def _bell(rng, count, base, tau_scale, crack):
-    """One strike of a cracked bell: partials that are not in tune, each with a twin a hair off (the crack, which beats), a click of the
-    hammer and a rattle in the metal that dies before the ring does."""
-    tone = [0.0] * count
-    for ratio, gain, tau in BELL:
-        ring = dsp.decay(count, tau * tau_scale)
-        for twin, weight in ((1.0, 1.0), (1.0 + crack, 0.6)):
-            part = dsp.sine(count, base * ratio * twin, rng.random() * dsp.TAU)
-            tone = dsp.plus(tone, dsp.scale(dsp.times(part, ring), gain * weight))
-    click = dsp.times(dsp.filt(dsp.noise(rng, count), "bp", 2400, 2), dsp.decay(count, 0.008))
-    gate = [max(0.0, v) for v in dsp.sine(count, 47.0)]
-    rattle = dsp.times(dsp.times(dsp.filt(dsp.noise(rng, count), "bp", 1500, 6), gate), dsp.decay(count, 0.2 * tau_scale))
-    return dsp.plus(tone, dsp.scale(click, 0.8), dsp.scale(rattle, 1.2 * crack * 40))
-
-
-def _strikes(seed, times, base, tau_scale, crack, lowpass, level, tail):
-    """A programme of bell strikes at `times` (seconds, each with its strength), in a dark room, as a mono Clip."""
-    rng = random.Random(seed)
-    count = dsp.seconds(times[-1][0] + 1.2 * tau_scale + 0.6)
-    out = [0.0] * count
-    for at, strength in times:
-        start = dsp.seconds(at)
-        pitch = base * (1 + 0.012 * (rng.random() - 0.5))
-        for i, v in enumerate(_bell(rng, count - start, pitch, tau_scale, crack)):
-            out[start + i] += v * strength
-    voiced = dsp.reverb(dsp.filt(out, "lp", lowpass, 0.7), tail, 0.25)
-    clip = dsp.normalize(Clip(voiced, voiced), level)
-    return Clip(clip.left, clip.left)
-
-
-def _hour(hour):
-    """The clock strikes `hour` times, the gaps a hair uneven, each strike a little weaker than the one before."""
-    rng = random.Random(2600 + hour)
-    times = [(i * STRIKE_GAP + 0.05 * rng.random(), 1.0 - 0.025 * i) for i in range(hour)]
-    return _strikes(2650 + hour, times, 392.0, 1.0, 0.006, 4800, CLOCK_LEVEL, 1.2)
-
-
-def _fragment(seed, times):
-    """What is left of a call in the deep: slower, lower, a long ring and a loose crack, strikes out of count."""
-    return _strikes(seed, times, 196.0, 2.4, 0.011, 1500, CLOCK_LEVEL, 2.0)
-
-
-def fragment_a():
-    return _fragment(2670, ((0.0, 1.0), (2.1, 0.8)))
-
-
-def fragment_b():
-    return _fragment(2671, ((0.0, 0.9), (1.7, 1.0), (4.4, 0.6)))
-
-
 RECIPES = {
     "ambient/surface_loop": surface_loop,
     "ambient/surface_groan": surface_groan,
@@ -518,9 +459,6 @@ RECIPES = {
     "ui/error": ui_error,
     "ui/refused": ui_refused,
     "music/rest": rest,
-    **{f"clock/hour_{hour}": (lambda hour=hour: _hour(hour)) for hour in range(1, 13)},
-    "clock/fragment_a": fragment_a,
-    "clock/fragment_b": fragment_b,
 }
 
 

@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.sound.ambience.ClockCaller.Call;
 import io.github.pkeppeler.deepcharter.sound.ambience.ClockCaller.Kind;
 import io.github.pkeppeler.deepcharter.sound.ambience.ClockTuning;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -142,10 +143,33 @@ public class ClockCallerTest {
             expect(helper, first.delayTicks() == 0, "the first strike is late");
             expect(
                     helper,
-                    second.delayTicks() >= first.hour() * ClockTuning.DEFAULT.strikeTicks(),
-                    "the second hour starts at %s over the first's strikes",
+                    second.delayTicks() >= ClockTuning.DEFAULT.wordTicks(),
+                    "the second hour starts at %s over the first's word",
                     second.delayTicks());
         }
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theUnspokenTenIsNeverCalledAndAtTenTheClockSkipsAsLambertDoes(GameTestHelper helper) {
+        for (int world = 1; world <= 12; world++) {
+            List<Call> calls = run(20L + world, false, world, TICKS);
+            expect(helper, !calls.isEmpty(), "no calls at world hour %s", world);
+            for (Call call : calls) {
+                expect(helper, !call.hours().contains(10), "world hour %s: a call struck ten: %s", world, call.hours());
+                if (world == 10) {
+                    expect(helper, call.kind() != Kind.RIGHT, "at ten the clock called ten");
+                    expect(
+                            helper,
+                            call.kind() == Kind.WRONG || call.hours().equals(List.of(9, 11)),
+                            "at ten a call was %s %s",
+                            call.kind(),
+                            call.hours());
+                }
+            }
+        }
+        List<Call> atTen = run(40, false, 10, TICKS);
+        expect(helper, atTen.stream().anyMatch(call -> call.kind() == Kind.SKIPPED), "ten never skipped");
         helper.succeed();
     }
 
@@ -189,14 +213,21 @@ public class ClockCallerTest {
     }
 
     @GameTest
-    public void everyHourHasAChimeAndTheDeepFragmentsAreInTheBrokenPoolOnly(GameTestHelper helper) {
+    public void everyHourButTenHasAWordAndTheDeepFragmentsAreInTheBrokenPoolOnly(GameTestHelper helper) {
         for (int hour = 1; hour <= 12; hour++) {
+            if (hour == 10) {
+                continue;
+            }
             expect(
                     helper,
                     AmbienceFragments.clockHour(hour).location().getPath().equals("ambience.clock.hour_" + hour),
-                    "hour %s has the wrong chime",
+                    "hour %s has the wrong word",
                     hour);
         }
+        expect(
+                helper,
+                Arrays.stream(DeepSound.values()).noneMatch(sound -> sound.event().location().getPath().endsWith("hour_10")),
+                "there is a word for ten");
         expect(
                 helper,
                 AmbienceFragments.pools()

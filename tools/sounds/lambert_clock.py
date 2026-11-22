@@ -1,48 +1,51 @@
 #!/usr/bin/env python3
-"""Cuts Frank Lambert's 1878 talking clock into the private audio pack's overlay for the punch clock (#938). Nothing it makes is committed.
+"""Cuts Frank Lambert's 1878 talking clock into the punch clock's hours and deep fragments (#938).
 
 Usage:
-  tools/py tools/sounds/lambert_clock.py MP3                   cut the hours and the deep fragments, write the overlay
-  tools/py tools/sounds/lambert_clock.py --analyze MP3         print the words it finds in the clear section, and write nothing
-  tools/py tools/sounds/lambert_clock.py --cuts FILE MP3       use the cuts in FILE (JSON: {"hours": {"1": [start, end], ...}, "fragments": [[start, end], ...]})
-  tools/build-audio-pack.sh                                    then build the pack, which merges the overlay
-Options: --out DIR (default <repo>/private/audio; inside private/ and git-ignored, as for build-audio-pack.sh).
+  tools/py tools/sounds/lambert_clock.py MP3             cut the hours and fragments, write their OGGs and the manifest
+  tools/py tools/sounds/lambert_clock.py --analyze MP3   print the words found in the clear section, and write nothing
+  tools/py tools/sounds/lambert_clock.py --check         verify the committed OGGs against the manifest (no source, no ffmpeg)
+Options: --out DIR (default src/main/resources/assets/deepcharter/sounds), --manifest FILE (default tools/sounds/lambert_clock.json).
 
-Why it is not in git: the recording's ID3 notice says "(C)(P) Glenn Sage (Tinfoil.com). Do not copy, modify or distribute without permission",
-so neither the file nor anything cut from it may be committed. The public jar plays the synthesized chime of tools/sounds/recipes.py
-(`clock/hour_N`). This script writes `ambience.clock.hour_N` and `ambience.clock.fragment` for a locally built pack, which replaces those
-slots by id. Get the mp3 from https://www.tinfoil.com/lam-clock~.mp3 (notes: https://tinfoil.com/cm-0101.htm).
+A sibling of tools/sounds/first_sounds.py. MP3 is a local copy of https://www.tinfoil.com/lam-clock~.mp3 (notes: https://tinfoil.com/cm-0101.htm);
+the mp3 is never committed, only its sha256 and its tags, verbatim, in the manifest. Treat it as untrusted data: nothing in it is run, only
+decoded by ffmpeg. Standard library, ffmpeg (libvorbis) and ffprobe only.
 
 The recording, by tinfoil.com's notes: 0:00 to 0:21 indistinct speech; 0:22 to 0:33 Lambert calls out the hours and skips ten; 0:34 to 1:10
-near silence; 1:11 to 1:40 indistinct speech, possibly in reverse. Hours 1 to 9, 11 and 12 are therefore the eleven words of the clear
-section, in order, and hour 10 has no cut: the stand-in chime plays there, as Lambert skipped it. HOURS_CUTS is where those words start and
-end, found by looking at the envelope (`--analyze`) and NOT checked by ear: listen to the pack, and give `--cuts` a corrected file, or edit
-HOURS_CUTS. The fragments (FRAGMENT_CUTS) are cut from the indistinct sections, slowed, pitched down and broken, for the deep layers.
+near silence; 1:11 to 1:40 indistinct speech, possibly in reverse. Hours 1 to 9, 11 and 12 are the words of the clear section, in order,
+`clock/hour_N.ogg`; there is no hour 10, and the game never strikes it (ClockCaller). HOURS_CUTS says where each word starts and ends, found by
+looking at the loudness envelope (`--analyze`) and NOT checked by ear. The fragments (FRAGMENT_CUTS) are cut from the indistinct sections,
+slowed and pitched down, with a gate that breaks them up: `clock/fragment_N.ogg`, the sound event `ambience.clock.fragment`.
 
-Treat the mp3 as untrusted data: nothing in it is run, only decoded by ffmpeg. Standard library, ffmpeg (libvorbis) and git only.
-
-The overlay is `<out>/lambert-clock/`: `sounds/ambience_clock_*.ogg` and `entries.txt`, one sounds.json slot per line, which
-tools/build-audio-pack.sh copies into the pack. The files are the pack's own names: `ambience.clock.hour_3` is `ambience_clock_hour_3_1.ogg`.
+Each cut is made level, not loud: the loudness of the cut (EBU R128 integrated, from ffmpeg) is brought to TARGET_LUFS, as the ambience's tiers
+are (-26 to -32), with its sample peak under PEAK_CEILING_DB so the true peak stays under -1 dBTP. The manifest holds the hash of the PCM
+and of the OGG, the cut and the measured level of each file. `check` asks for no ffmpeg; tools/sounds/soundgen.py --check runs it.
 """
 import argparse
+import hashlib
 import json
-import math
+import re
 import shutil
-import struct
 import subprocess
 import sys
+from array import array
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent.parent
-PRIVATE = ROOT / "private"
+sys.path.insert(0, str(HERE))
+
+import first_sounds  # noqa: E402
+
+OUT = first_sounds.OUT
+MANIFEST = HERE / "lambert_clock.json"
+FOLDER = "clock"
 RATE = 22050
-OVERLAY = "lambert-clock"
-NAMESPACE = "deepcharter"
+SOURCE_URL = "https://www.tinfoil.com/lam-clock~.mp3"
+NOTES_URL = "https://tinfoil.com/cm-0101.htm"
 
 # The hours Lambert calls, in the order he calls them: he skips ten.
 HOURS = (1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12)
-# (start, end) in seconds of each word of the clear section, by hour. From `--analyze` at a threshold of 0.2: not checked by ear.
+# (start, end) in seconds of each word of the clear section, by hour. From `--analyze` at FRACTION: not checked by ear.
 HOURS_CUTS = {
     1: (23.09, 23.57),
     2: (23.74, 24.20),
@@ -66,13 +69,18 @@ SHORTEST = 0.15  # seconds: a burst shorter than this is a blip
 NOISE_FLOOR = 200  # RMS of 16-bit samples below which a window holds no speech, only hiss
 PAD_BEFORE = 0.06
 PAD_AFTER = 0.25
-ATTENUATION = 32
+TARGET_LUFS = -30.0
+PEAK_CEILING_DB = -3.0
+VORBIS_QUALITY = "4"
+DECODE_SECONDS = 120
 
 
 def envelope(samples):
     """The smoothed loudness of the samples, one value per FRAME seconds (RMS over the frame, then a five-frame mean)."""
     size = int(RATE * FRAME)
-    raw = [math.sqrt(sum(v * v for v in samples[i : i + size]) / size) for i in range(0, len(samples) - size + 1, size)]
+    raw = []
+    for i in range(0, len(samples) - size + 1, size):
+        raw.append((sum(v * v for v in samples[i : i + size]) / size) ** 0.5)
     return [sum(raw[max(0, i - 2) : i + 3]) / len(raw[max(0, i - 2) : i + 3]) for i in range(len(raw))]
 
 
@@ -106,146 +114,171 @@ def find_words(samples, window):
     return [((first + a) * FRAME, (first + b) * FRAME) for a, b in merged if (b - a) * FRAME >= SHORTEST]
 
 
-def decode(mp3):
-    """The mp3 as 16-bit mono samples at RATE."""
-    raw = subprocess.run(
-        ["ffmpeg", "-nostdin", "-v", "error", "-t", "120", "-i", str(mp3.resolve()), "-ac", "1", "-ar", str(RATE), "-f", "s16le", "-"],
-        check=True,
-        capture_output=True,
-    ).stdout
-    return struct.unpack(f"<{len(raw) // 2}h", raw)
-
-
 def treatment(kind, length):
     """The ffmpeg filter chain for a cut that lasts `length` seconds. An hour is the word as it is, band-limited and put back in a room; a
     fragment is slowed and pitched down by a third, filtered dark, with a gate that breaks it up about once a second."""
     fade = f"afade=t=in:d=0.03,afade=t=out:st={max(length - 0.2, 0):.3f}:d=0.2"
     if kind == "hour":
-        return f"highpass=f=150,lowpass=f=4500,aecho=0.5:0.4:70:0.25,{fade},loudnorm=I=-28:TP=-3:LRA=7"
-    return (
-        f"asetrate={RATE * 7 // 10},aresample={RATE},lowpass=f=1800,volume='if(lt(mod(t,0.9),0.14),0,1)':eval=frame,{fade},"
-        "loudnorm=I=-30:TP=-3:LRA=7"
+        return f"highpass=f=150,lowpass=f=4500,aecho=0.5:0.4:70:0.25,{fade}"
+    return f"asetrate={RATE * 7 // 10},aresample={RATE},lowpass=f=1800,volume='if(lt(mod(t,0.9),0.14),0,1)':eval=frame,{fade}"
+
+
+def plan():
+    """Every file by its name under the sounds folder, without `.ogg`: (kind, start, end)."""
+    files = {f"{FOLDER}/hour_{hour}": ("hour", *HOURS_CUTS[hour]) for hour in HOURS}
+    for number, (start, end) in enumerate(FRAGMENT_CUTS, 1):
+        files[f"{FOLDER}/fragment_{number}"] = ("fragment", start, end)
+    return files
+
+
+def treatment_sha256():
+    """A hash of every number and filter that shapes a cut, so a changed treatment shows in `check`."""
+    parts = [treatment("hour", 1.0), treatment("fragment", 1.0), TARGET_LUFS, PEAK_CEILING_DB, VORBIS_QUALITY, RATE, PAD_BEFORE, PAD_AFTER]
+    return hashlib.sha256(repr(parts).encode()).hexdigest()
+
+
+def cut_sha256(kind, start, end):
+    return hashlib.sha256(repr([kind, start, end]).encode()).hexdigest()
+
+
+def _ffmpeg(args, data=None):
+    return subprocess.run(["ffmpeg", "-v", "info", "-nostdin", *args], check=True, input=data, capture_output=True)
+
+
+def decode(mp3):
+    """The first DECODE_SECONDS of the mp3 as 16-bit mono samples at RATE."""
+    raw = _ffmpeg(["-t", str(DECODE_SECONDS), "-i", str(mp3.resolve()), "-ac", "1", "-ar", str(RATE), "-f", "s16le", "-"]).stdout
+    return array("h", raw[: len(raw) // 2 * 2])
+
+
+def measure(pcm):
+    """(integrated LUFS, sample peak dBFS) of mono 16-bit samples at RATE, by ffmpeg's ebur128."""
+    report = _ffmpeg(["-f", "s16le", "-ar", str(RATE), "-ac", "1", "-i", "pipe:0", "-af", "ebur128=peak=sample", "-f", "null", "-"], pcm.tobytes())
+    text = report.stderr.decode(errors="replace")
+    loudness = re.findall(r"I:\s+(-?[\d.]+) LUFS", text)
+    peak = re.findall(r"Peak:\s+(-?[\d.]+) dBFS", text)
+    if not loudness or not peak:
+        raise SystemExit("lambert_clock: ffmpeg's ebur128 gave no loudness; is the cut shorter than 0.4 s?")
+    return float(loudness[-1]), float(peak[-1])
+
+
+def render(mp3, kind, start, end):
+    """The cut as 16-bit mono samples at RATE, made level: (samples, loudness, peak) of the result."""
+    begin = max(start - PAD_BEFORE, 0)
+    length = end + PAD_AFTER - begin
+    raw = _ffmpeg(
+        ["-ss", f"{begin:.3f}", "-t", f"{length:.3f}", "-i", str(mp3.resolve()), "-af", treatment(kind, length),
+         "-ac", "1", "-ar", str(RATE), "-f", "s16le", "-"]
+    ).stdout
+    pcm = array("h", raw[: len(raw) // 2 * 2])
+    loudness, peak = measure(pcm)
+    gain = min(TARGET_LUFS - loudness, PEAK_CEILING_DB - peak)
+    factor = 10 ** (gain / 20)
+    leveled = array("h", (max(-32768, min(32767, round(v * factor))) for v in pcm))
+    return (leveled, *measure(leveled))
+
+
+def encode(pcm, target):
+    target.parent.mkdir(parents=True, exist_ok=True)
+    _ffmpeg(
+        ["-y", "-f", "s16le", "-ar", str(RATE), "-ac", "1", "-i", "pipe:0", "-map_metadata", "-1", "-ac", "1", "-c:a", "libvorbis",
+         "-q:a", VORBIS_QUALITY, str(target)],
+        pcm.tobytes(),
     )
 
 
-def plan(hours, fragments):
-    """The overlay's files and slots from the cuts: ({file name: (kind, start, end)}, {sound id: [file names]}). No hour 10 unless it is cut."""
-    files, slots = {}, {}
-    for hour in sorted(hours):
-        name = f"ambience_clock_hour_{hour}_1"
-        files[name] = ("hour", *hours[hour])
-        slots[f"ambience.clock.hour_{hour}"] = [name]
-    names = []
-    for number, (start, end) in enumerate(fragments, 1):
-        name = f"ambience_clock_fragment_{number}"
-        files[name] = ("fragment", start, end)
-        names.append(name)
-    if names:
-        slots["ambience.clock.fragment"] = names
-    return files, slots
+def owned(manifest):
+    """The names (paths under the sounds folder, without `.ogg`) of the OGGs the manifest owns."""
+    return set(first_sounds._load(manifest).get("files", {}))
 
 
-def entry(sound_id, names):
-    """One line of the pack's sounds.json for a sound id: replaces the mod's own sound of that id, with the mod's own subtitle."""
-    subtitle = "clock_slow" if sound_id.endswith(".fragment") else "clock"
-    sounds = ", ".join(
-        f'{{ "name": "{NAMESPACE}:{name}", "attenuation_distance": {ATTENUATION} }}' for name in names
-    )
-    return f'"{sound_id}": {{ "replace": true, "subtitle": "subtitles.deepcharter.ambience.{subtitle}", "sounds": [{sounds}] }}'
+def build(mp3, out, manifest):
+    """Cuts every file from the mp3 and writes the manifest. A source that is not the one the manifest credits is refused."""
+    if not shutil.which("ffmpeg") or " libvorbis " not in subprocess.run(
+        ["ffmpeg", "-hide_banner", "-encoders"], check=True, capture_output=True, text=True
+    ).stdout:
+        raise SystemExit("lambert_clock: an ffmpeg with libvorbis is needed, to write mono Vorbis")
+    digest = first_sounds.sha256(mp3)
+    before = first_sounds._load(manifest).get("source")
+    if before and before["sha256"] != digest:
+        raise SystemExit(f"lambert_clock: {mp3} is not the file {manifest.name} credits (sha256 differs); delete the manifest to accept a new one")
+    source = {"url": SOURCE_URL, "notes_url": NOTES_URL, "sha256": digest, "tags": first_sounds.read_tags(mp3)}
+    files = {}
+    for name, (kind, start, end) in plan().items():
+        pcm, loudness, peak = render(mp3, kind, start, end)
+        target = out / f"{name}.ogg"
+        encode(pcm, target)
+        files[name] = {
+            "kind": kind,
+            "start": start,
+            "end": end,
+            "cut_sha256": cut_sha256(kind, start, end),
+            "treatment_sha256": treatment_sha256(),
+            "pcm_sha256": hashlib.sha256(pcm.tobytes()).hexdigest(),
+            "ogg_sha256": first_sounds.sha256(target),
+            "duration_seconds": round(len(pcm) / RATE, 3),
+            "lufs": loudness,
+            "peak_dbfs": peak,
+        }
+        print(f"built {name}")
+    manifest.write_text(json.dumps({"source": source, "files": files}, indent=2, sort_keys=True) + "\n")
+    return 0
 
 
-def _cut(label, cut):
-    """A cut as (start, end), which must be two numbers with 0 <= start < end; `label` names it in the error."""
-    ok = (
-        isinstance(cut, (list, tuple))
-        and len(cut) == 2
-        and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in cut)
-        and 0 <= cut[0] < cut[1]
-    )
-    if not ok:
-        raise SystemExit(f"lambert_clock: the cut for {label} is {cut!r}, not [start, end] in seconds with 0 <= start < end")
-    return (cut[0], cut[1])
-
-
-def load_cuts(path):
-    """The hours and fragments of a --cuts file, or the defaults."""
-    if path is None:
-        return dict(HOURS_CUTS), list(FRAGMENT_CUTS)
-    data = json.loads(Path(path).read_text())
-    hours = {}
-    for hour, cut in data.get("hours", {}).items():
-        if not hour.isdigit() or not 1 <= int(hour) <= 12:
-            raise SystemExit(f"lambert_clock: hour {hour!r} is not on the dial (1 to 12)")
-        hours[int(hour)] = _cut(f"hour {hour}", cut)
-    fragments = [_cut(f"fragment {number}", cut) for number, cut in enumerate(data.get("fragments", []), 1)]
-    return hours, fragments
-
-
-def check_output(out):
-    """The overlay may only go where build-audio-pack.sh may build: inside private/ and git-ignored. Returns the resolved path."""
-    out = Path(out).resolve()
-    if out != PRIVATE and PRIVATE.resolve() not in out.parents:
-        raise SystemExit(f"lambert_clock: the output {out} must be inside {PRIVATE}")
-    if subprocess.run(["git", "-C", str(ROOT), "check-ignore", "-q", "--", str(out)]).returncode != 0:
-        raise SystemExit(f"lambert_clock: refusing to write to {out}: git check-ignore does not confirm it is git-ignored")
-    return out
-
-
-def write(mp3, out, hours, fragments):
-    """Cuts every file into a temporary folder in `out`, then swaps it in as `<out>/lambert-clock/`, so a failure leaves the old overlay as it
-    was and never a half-built one. Returns the overlay and its slots."""
-    files, slots = plan(hours, fragments)
-    overlay = out / OVERLAY
-    building = out / f".{OVERLAY}-building"
-    shutil.rmtree(building, ignore_errors=True)
-    (building / "sounds").mkdir(parents=True)
-    try:
-        for name, (kind, start, end) in files.items():
-            begin = max(start - PAD_BEFORE, 0)
-            length = end + PAD_AFTER - begin
-            subprocess.run(
-                [
-                    "ffmpeg", "-v", "error", "-nostdin", "-y", "-ss", f"{begin:.3f}", "-t", f"{length:.3f}", "-i", str(mp3.resolve()),
-                    "-af", treatment(kind, length), "-map_metadata", "-1", "-ac", "1", "-ar", str(RATE),
-                    "-c:a", "libvorbis", "-q:a", "4", str(building / "sounds" / f"{name}.ogg"),
-                ],
-                check=True,
-            )
-        (building / "entries.txt").write_text("".join(entry(sound_id, names) + "\n" for sound_id, names in sorted(slots.items())))
-        old = out / f".{OVERLAY}-old"
-        shutil.rmtree(old, ignore_errors=True)
-        if overlay.exists():
-            overlay.rename(old)
-        building.rename(overlay)
-        shutil.rmtree(old, ignore_errors=True)
-    finally:
-        shutil.rmtree(building, ignore_errors=True)
-    return overlay, slots
+def check(out, manifest):
+    """The problems of the committed files: none for a manifest and OGGs that agree. Needs neither the source nor ffmpeg."""
+    known = first_sounds._load(manifest)
+    problems = []
+    source = known.get("source", {})
+    if source.get("url") != SOURCE_URL or not re.fullmatch(r"[0-9a-f]{64}", source.get("sha256", "")) or not source.get("tags", {}).get("copyright"):
+        problems.append(f"{manifest.name}: the source's URL, sha256 or tags are not recorded as {SOURCE_URL}; run tools/sounds/lambert_clock.py")
+    files = known.get("files", {})
+    for name, (kind, start, end) in plan().items():
+        entry = files.get(name)
+        target = out / f"{name}.ogg"
+        if entry is None:
+            problems.append(f"{name}: {manifest.name} has no entry; run tools/sounds/lambert_clock.py")
+        elif not target.is_file():
+            problems.append(f"{name}: {target} is missing; run tools/sounds/lambert_clock.py")
+        elif first_sounds.sha256(target) != entry["ogg_sha256"]:
+            problems.append(f"{name}: {target.name} is not the file the manifest was written for; do not edit an OGG, change its cut")
+        elif first_sounds.ogg_channels(target) != 1:
+            problems.append(f"{name}: {target.name} is not mono Vorbis; Minecraft positions mono sounds only")
+        if entry is not None and (
+            (entry["start"], entry["end"]) != (start, end)
+            or entry["cut_sha256"] != cut_sha256(kind, start, end)
+            or entry["treatment_sha256"] != treatment_sha256()
+        ):
+            problems.append(f"{name}: the manifest's cut or treatment is not the one this script makes; run tools/sounds/lambert_clock.py")
+    for name in sorted(set(files) - set(plan())):
+        problems.append(f"{name}: the manifest lists a file this script does not make")
+    return problems
 
 
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("mp3", type=Path)
+    parser.add_argument("mp3", type=Path, nargs="?")
     parser.add_argument("--analyze", action="store_true", help="print the words found in the clear section and write nothing")
-    parser.add_argument("--cuts", type=Path, help="a JSON file of cuts, instead of HOURS_CUTS and FRAGMENT_CUTS")
-    parser.add_argument("--out", type=Path, default=PRIVATE / "audio")
+    parser.add_argument("--check", action="store_true", help="verify the committed OGGs against the manifest")
+    parser.add_argument("--out", type=Path, default=OUT)
+    parser.add_argument("--manifest", type=Path, default=MANIFEST)
     args = parser.parse_args(argv)
-    if not shutil.which("ffmpeg"):
-        parser.error("ffmpeg is required")
-    if not args.mp3.is_file():
-        parser.error(f"{args.mp3} is not a file")
+    if args.check:
+        problems = check(args.out, args.manifest)
+        if problems:
+            print("\n".join(problems), file=sys.stderr)
+            return 1
+        print(f"{len(plan())} clock files match {args.manifest.name}")
+        return 0
+    if args.mp3 is None or not args.mp3.is_file():
+        parser.error("MP3 is a local copy of the recording")
     if args.analyze:
         words = find_words(decode(args.mp3), (22.0, 34.0))
         print(f"{len(words)} words in 0:22 to 0:34 (the hours are {len(HOURS)}, skipping ten):")
         for start, end in words:
             print(f"  {start:.2f} {end:.2f}")
         return 0
-    out = check_output(args.out)
-    hours, fragments = load_cuts(args.cuts)
-    overlay, slots = write(args.mp3, out, hours, fragments)
-    print(f"wrote {len(slots)} sound events to {overlay}")
-    print("now run tools/build-audio-pack.sh, which merges them into the pack")
-    return 0
+    return build(args.mp3, args.out, args.manifest)
 
 
 if __name__ == "__main__":

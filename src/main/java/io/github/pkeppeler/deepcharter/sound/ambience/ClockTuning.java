@@ -12,8 +12,8 @@ package io.github.pkeppeler.deepcharter.sound.ambience;
  * @param retryMaxTicks   and this late at the latest
  * @param rightPercent    the share of calls that are the world's own hour
  * @param skippedPercent  the share that skip the world's hour (the hour before it, then the hour after); the rest call a wrong hour
- * @param strikeTicks     one strike of the chime lasts this long ({@code tools/sounds/recipes.py} {@code STRIKE_GAP})
- * @param pauseTicks      the pause between the two hours of a skipping call, after the first has struck
+ * @param wordTicks       the longest cut of an hour lasts this long ({@code tools/sounds/lambert_clock.py})
+ * @param pauseTicks      the pause between the two hours of a skipping call, after the first has been said
  */
 public record ClockTuning(
         int range,
@@ -24,8 +24,8 @@ public record ClockTuning(
         int retryMaxTicks,
         int rightPercent,
         int skippedPercent,
-        int strikeTicks,
+        int wordTicks,
         int pauseTicks) {
     /** A call about once an hour near the clock: every 30 to 90 minutes, the first not before five. */
-    public static final ClockTuning DEFAULT = new ClockTuning(24, 6_000, 36_000, 108_000, 400, 1_800, 40, 20, 18, 60);
+    public static final ClockTuning DEFAULT = new ClockTuning(24, 6_000, 36_000, 108_000, 400, 1_800, 40, 20, 32, 40);
 }

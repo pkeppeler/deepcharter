@@ -31,62 +31,6 @@
     "ogg_sha256": "d990d0a403c128fc6219aa3b71d4aa50b76c5a180d8be0c2c99d1417f449a4f0",
     "pcm_sha256": "50828ccfcb42f8738b36da6e0b80d6904eb35b00294bbe588e6b4a7eba92b44e"
   },
-  "clock/fragment_a": {
-    "ogg_sha256": "99ad3d7a2769949d548089762406fa5c52f3595416f2a0532972e0a731a93602",
-    "pcm_sha256": "32c3e57a840301e77fd373e4dec3aab78c7f4b14107e523333d2a0b9b2b2fa07"
-  },
-  "clock/fragment_b": {
-    "ogg_sha256": "0f8c8e1a8e01a27ae0c3403e23b236521c7ea7a7d4aaf2cc12a1840bd454c4a8",
-    "pcm_sha256": "164671aa0dbe78292cef04abef3ea34dc74ff9635ed4b9aa4d2d70307e1355fb"
-  },
-  "clock/hour_1": {
-    "ogg_sha256": "6bed8a3565cae8f62ad26c5c4cc98d11082c7883d9e92ea1f8cc0ab8d7b1e5f1",
-    "pcm_sha256": "1c05877ee7a23b3722b3b131c5759db2b099ea96520473db7fd3f4f6eea1c1dd"
-  },
-  "clock/hour_10": {
-    "ogg_sha256": "b6ba7024183662541da8b08888b9270b32b7b2979f930d95c1b691e8cbe6db9b",
-    "pcm_sha256": "ef1b157ee4c150eb3ce3c0892645184d3f0a45e33504ef00db523c934b1548a9"
-  },
-  "clock/hour_11": {
-    "ogg_sha256": "7a83f327b3cd594bb16abb5745a1f674c2089382776031a1605ce7bc63d3ea25",
-    "pcm_sha256": "1f8051641953211f80d9a37a177f87fd29bf61b93f1ad96706772c62b6eeb247"
-  },
-  "clock/hour_12": {
-    "ogg_sha256": "d6d702bf891329d2389cd7e01063f689e0a81d1277ff5f8bb433af622c7a0b1f",
-    "pcm_sha256": "553e6f62ae49559402991fb7701cbfc76c8de2c1a24e186a721ee3ad93ef1a75"
-  },
-  "clock/hour_2": {
-    "ogg_sha256": "88e9d181fb5ec133019023a47d4cf36eafabcfb5331dfa5a39172dd26b0ad43d",
-    "pcm_sha256": "c162fd1382103c3df4c978439b9b7a65f3eee42ea10b2b7a626ca3416a8661d0"
-  },
-  "clock/hour_3": {
-    "ogg_sha256": "e76345f1815eaf12c9b1c7a3c8e0d0bc01249f5445fa79a757ec53944a08b54e",
-    "pcm_sha256": "fecc5963e62d99d0f274e587c08ffae20eee47ed6f3a4140b246089889001cb6"
-  },
-  "clock/hour_4": {
-    "ogg_sha256": "88f8ba03ef07b37fb8f6d9d22056542eedb329e86103f08532daf5364de8e16d",
-    "pcm_sha256": "2b9be2120a1c7c31d62f2d1d7e618cecb075cb00519db891739e6cce4d50ba49"
-  },
-  "clock/hour_5": {
-    "ogg_sha256": "9d086e86c7f3b982370577ae78dd045ffe14575594c1d01ac5020997c352ea20",
-    "pcm_sha256": "9ef293b494056776f49de0bdf7a467ff9b1b7cca68c937d745f13a7d591ea801"
-  },
-  "clock/hour_6": {
-    "ogg_sha256": "fd1397582d0a207c44c1ab994c903263eec057e5458d30639404e95344159f52",
-    "pcm_sha256": "0895e8760ca0b4a9e88d0cef68c647946456f7f465c2d82595be1da1851a52ab"
-  },
-  "clock/hour_7": {
-    "ogg_sha256": "f7b19c22d03dc83664df3cae6027143ce5b6d6f016744501a0b2c2633aad81f8",
-    "pcm_sha256": "2d30246f4f40ddf4b886048774c25a4b1fb4e875312e86035330121a469b4c69"
-  },
-  "clock/hour_8": {
-    "ogg_sha256": "6ad84f146706f75fa6056d5f6576fef0e94072d5fb4854a37a5b9a0a8460a31c",
-    "pcm_sha256": "d6c2196dc80f08501a2dd688e794cea6cc2c58949ae95a4380c88a24e34a0a60"
-  },
-  "clock/hour_9": {
-    "ogg_sha256": "7e4b28bab2c192b149679248c5a4af81ae93802d25a580b22687d44aaf04362d",
-    "pcm_sha256": "b019b7e3def49945a2611386a9679992d990dbbc2e995ceb64997ca9f20b4a55"
-  },
   "drill/blocked": {
     "ogg_sha256": "e5f7226dc08b5da5ed91695f7ecc0dbdf4914c97a4a34c3bf9d3b17aca764553",
     "pcm_sha256": "61a2da2ee2cb107a2936482fa55176c8f3117cd272871abe26a843bc509b2f5a"

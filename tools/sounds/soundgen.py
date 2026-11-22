@@ -18,9 +18,10 @@ so a recipe edited without a rebuild fails too.
 The wax cylinders' recordings (the phonograph folder) are not recipes: they are processed recordings, made by tools/sounds/first_sounds.py
 from downloaded sources and owned by tools/sounds/first_sounds.json, which has the hash of each committed OGG. `--check` accepts exactly
 those OGGs and asks `first_sounds.check` about them. The ambience's fragments (the ambience folder) are the same kind of thing, made by
-tools/sounds/ambience.py and owned by tools/sounds/ambience.json, and `--check` asks `ambience.check` about them.
+tools/sounds/ambience.py and owned by tools/sounds/ambience.json, and `--check` asks `ambience.check` about them. The punch clock's hours and
+fragments (the clock folder, #938) are cuts of one recording, made by tools/sounds/lambert_clock.py and owned by tools/sounds/lambert_clock.json.
 
-Standard library and ffmpeg only. A recipe in `recipes.MONO` is encoded mono and needs an ffmpeg with libvorbis; the native Vorbis encoder writes stereo.
+Standard library and ffmpeg only; this Mac's ffmpeg has the native Vorbis encoder alone, which writes stereo.
 """
 import argparse
 import hashlib
@@ -37,6 +38,7 @@ sys.path.insert(0, str(HERE))
 
 import ambience  # noqa: E402
 import first_sounds  # noqa: E402
+import lambert_clock  # noqa: E402
 import recipes  # noqa: E402
 
 ROOT = HERE.parent.parent
@@ -55,12 +57,8 @@ def _encoder_args():
     return ["-c:a", "vorbis", "-strict", "-2", "-q:a", "4"]
 
 
-def _encode(clip, target, mono=False):
-    """Encodes the clip as stereo Vorbis, or mono (which needs libvorbis) when `mono`."""
+def _encode(clip, target):
     target.parent.mkdir(parents=True, exist_ok=True)
-    encoder = _encoder_args()
-    if mono and encoder[1] != "libvorbis":
-        raise SystemExit("soundgen: ffmpeg has no libvorbis; its native Vorbis encoder writes stereo, and a mono sound is needed")
     with tempfile.TemporaryDirectory() as tmp:
         source = Path(tmp) / "clip.wav"
         with wave.open(str(source), "wb") as out:
@@ -69,7 +67,7 @@ def _encode(clip, target, mono=False):
             out.setframerate(recipes.RATE)
             out.writeframes(clip.interleaved().tobytes())
         subprocess.run(
-            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(source), "-map_metadata", "-1", "-ac", "1" if mono else "2", *encoder, str(target)],
+            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(source), "-map_metadata", "-1", "-ac", "2", *_encoder_args(), str(target)],
             check=True,
         )
 
@@ -90,7 +88,7 @@ def build(names, out, manifest):
         if old and old["pcm_sha256"] == pcm and target.is_file() and _sha256(target) == old["ogg_sha256"]:
             entries[name] = old
             continue
-        _encode(clip, target, mono=name in recipes.MONO)
+        _encode(clip, target)
         entries[name] = {"pcm_sha256": pcm, "ogg_sha256": _sha256(target)}
         print(f"built {name}")
     manifest.write_text(json.dumps(entries, indent=2, sort_keys=True) + "\n")
@@ -116,6 +114,8 @@ def check(names, out, manifest):
     recordings = first_sounds.owned(recordings_manifest)
     fragments_manifest = manifest.with_name(ambience.MANIFEST.name)
     recordings |= ambience.owned(fragments_manifest)
+    lambert_manifest = manifest.with_name(lambert_clock.MANIFEST.name)
+    recordings |= lambert_clock.owned(lambert_manifest)
     for stray in sorted(out.rglob("*.ogg")):
         name = stray.relative_to(out).with_suffix("").as_posix()
         if name not in recipes.RECIPES and name not in recordings:
@@ -126,6 +126,8 @@ def check(names, out, manifest):
         problems += first_sounds.check(out, recordings_manifest)
     if fragments_manifest.is_file():
         problems += ambience.check(out, fragments_manifest)
+    if lambert_manifest.is_file():
+        problems += lambert_clock.check(out, lambert_manifest)
     if problems:
         print("\n".join(problems), file=sys.stderr)
         return 1

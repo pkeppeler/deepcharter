@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
 JAVA = ROOT / "src/main/java/io/github/pkeppeler/deepcharter"
 SOUNDS_JSON = ROOT / "src/main/resources/assets/deepcharter/sounds.json"
 LANG = ROOT / "src/lang/en_us/sound.json"
-# The punch clock's chimes (#938) are recipes of tools/sounds/recipes.py, not fragments this pipeline makes.
+# The punch clock's words (#938) are cuts made by tools/sounds/lambert_clock.py, not fragments this pipeline makes.
 CLOCK = "ambience.clock."
 
 
@@ -325,7 +325,7 @@ class WiringTest(unittest.TestCase):
     def test_deep_sound_declares_every_event(self):
         declared = set(re.findall(r'\("(ambience\.[a-z0-9_.]+)"\)', (JAVA / "sound/DeepSound.java").read_text()))
         self.assertEqual({name for name in self.sounds if name.startswith("ambience.")}, declared)
-        self.assertEqual(13, len({name for name in declared if name.startswith(CLOCK)}))
+        self.assertEqual(12, len({name for name in declared if name.startswith(CLOCK)}))
 
     def test_every_fragment_is_a_positioned_sound_with_its_own_range(self):
         for name, entry in self.sounds.items():

@@ -28,7 +28,7 @@ public final class ClockCaller {
         SKIPPED
     }
 
-    /** One chime of a call: the hour it strikes, and how many ticks after the call starts. */
+    /** One chime of a call: the hour it calls, and how many ticks after the call starts. */
     public record Chime(int hour, int delayTicks) {}
 
     /** A call that is due now. */
@@ -40,6 +40,8 @@ public final class ClockCaller {
     }
 
     private static final int HOURS = 12;
+    /** Lambert skips ten, so the recording has no word for it: the clock never strikes it, and at ten it skips as he does. */
+    private static final int UNSPOKEN_HOUR = 10;
     private static final int UNSET = -1;
 
     private final ClockTuning tuning;
@@ -95,6 +97,9 @@ public final class ClockCaller {
         Kind kind = roll < tuning.rightPercent()
                 ? Kind.RIGHT
                 : roll < tuning.rightPercent() + tuning.skippedPercent() ? Kind.SKIPPED : Kind.WRONG;
+        if (kind == Kind.RIGHT && worldHour == UNSPOKEN_HOUR) {
+            kind = Kind.SKIPPED;
+        }
         List<List<Integer>> options = options(kind, worldHour);
         if (options.isEmpty()) {
             kind = Kind.WRONG;
@@ -105,12 +110,12 @@ public final class ClockCaller {
         int delay = 0;
         for (int hour : hours) {
             chimes.add(new Chime(hour, delay));
-            delay += hour * tuning.strikeTicks() + tuning.pauseTicks();
+            delay += tuning.wordTicks() + tuning.pauseTicks();
         }
         return new Call(kind, chimes);
     }
 
-    /** Every call of a kind that is not the last one. A wrong call is any other hour, so it is never empty. */
+    /** Every call of a kind that is not the last one and does not strike the unspoken hour. A wrong call has ten others, so it is never empty. */
     private List<List<Integer>> options(Kind kind, int worldHour) {
         List<List<Integer>> all = new ArrayList<>();
         switch (kind) {
@@ -124,7 +129,7 @@ public final class ClockCaller {
                 }
             }
         }
-        all.removeIf(hours -> hours.equals(last));
+        all.removeIf(hours -> hours.equals(last) || hours.contains(UNSPOKEN_HOUR));
         return all;
     }
 

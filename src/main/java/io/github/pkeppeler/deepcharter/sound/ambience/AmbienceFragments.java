@@ -46,7 +46,7 @@ public final class AmbienceFragments {
         return POOLS;
     }
 
-    /** The punch clock's chime for an hour, 1 to 12: it strikes that many times. */
+    /** The punch clock's word for an hour, 1 to 12 but ten, which the recording skips. */
     public static SoundEvent clockHour(int hour) {
         return DeepSound.valueOf("AMBIENCE_CLOCK_HOUR_" + hour).event();
     }
