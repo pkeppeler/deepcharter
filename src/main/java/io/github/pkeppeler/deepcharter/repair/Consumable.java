@@ -33,14 +33,36 @@ public enum Consumable {
     // SPEC section 11: a layer-3 item measured as about 4 layer-2 runs (3.6 from the outpost, #320; $1,650 since #963,
     // which made fuel cheaper and a run's net $455); the cargo drop is
     // the rest of the cost.
-    MATTER_TRANSMITTER("matter_transmitter", 1_650);
+    MATTER_TRANSMITTER("matter_transmitter", 1_650),
+    // On foot (#986): not used up. A person on foot clips it to a pod's winch, and it is theirs to keep. Priced at
+    // about
+    // three quarters of a stock layer 1 run, so the first descent pays for it once and no pod is ever without one.
+    TETHER("tether", 90, Kind.TOOL);
+
+    /** What using the item does to it. */
+    public enum Kind {
+        /** Used from the pilot's seat through {@code Consumables.use}, and used up. */
+        CONSUMED,
+        /** Kept: the item handles its own use on foot, and {@code Consumables.use} is never called for it. */
+        TOOL
+    }
 
     private final Identifier itemId;
     private final long price;
+    private final Kind kind;
 
     Consumable(String path, long price) {
+        this(path, price, Kind.CONSUMED);
+    }
+
+    Consumable(String path, long price, Kind kind) {
         this.itemId = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
         this.price = price;
+        this.kind = kind;
+    }
+
+    public Kind kind() {
+        return kind;
     }
 
     public Identifier itemId() {
