@@ -58,8 +58,7 @@ public final class BoltDriverItem extends Item {
             refusal = CaveIns.boltRefusal(level, roof, BoltDriverTuning.DEFAULT.boltSpacing());
         }
         if (refusal.isPresent()) {
-            player.sendOverlayMessage(Component.translatable("message.deepcharter.repair." + refusal.get()));
-            return InteractionResult.FAIL;
+            return refuse(player, refusal.get());
         }
         // The bolt is spent before the roof bolt hangs: nothing is placed that was not paid for.
         spend(player);
@@ -76,13 +75,17 @@ public final class BoltDriverItem extends Item {
         }
         Optional<String> refusal = ready(shooter);
         if (refusal.isPresent()) {
-            shooter.sendOverlayMessage(Component.translatable("message.deepcharter.repair." + refusal.get()));
-            return InteractionResult.FAIL;
+            return refuse(shooter, refusal.get());
         }
         spend(shooter);
         shoot(server, shooter);
         shooter.getCooldowns().addCooldown(shooter.getItemInHand(hand), BoltDriverTuning.DEFAULT.fireCooldownTicks());
         return InteractionResult.SUCCESS;
+    }
+
+    private static InteractionResult refuse(ServerPlayer player, String reason) {
+        player.sendOverlayMessage(Component.translatable("message.deepcharter.repair." + reason));
+        return InteractionResult.FAIL;
     }
 
     /** Whether the player may place a block in the cell under {@code roof}: the checks vanilla block placement makes. */

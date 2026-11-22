@@ -164,9 +164,15 @@ public final class CaveIns {
         CaveInTuning tuning = CaveInTuning.DEFAULT;
         int span = (int) Math.ceil(tuning.boltReach());
         int flat = tuning.stretchRadius() + span;
+        return boltsIn(
+                level,
+                BlockPos.betweenClosed(
+                        feet.offset(-flat, 2 - span, -flat), feet.offset(flat, tuning.ceilingReach() + span, flat)));
+    }
+
+    private static List<BlockPos> boltsIn(ServerLevel level, Iterable<BlockPos> cells) {
         List<BlockPos> bolts = new ArrayList<>();
-        for (BlockPos at : BlockPos.betweenClosed(
-                feet.offset(-flat, 2 - span, -flat), feet.offset(flat, tuning.ceilingReach() + span, flat))) {
+        for (BlockPos at : cells) {
             if (loaded(level, at) && level.getBlockState(at).is(LayerBlocks.ROOF_BOLT)) {
                 bolts.add(at.immutable());
             }
@@ -190,23 +196,14 @@ public final class CaveIns {
 
     /** Whether another roof bolt hangs within {@code spacing} blocks of the cell {@code at}. */
     public static boolean boltNear(ServerLevel level, BlockPos at, double spacing) {
-        for (BlockPos other : boltsNear(level, at, spacing)) {
+        int span = (int) Math.ceil(spacing);
+        for (BlockPos other :
+                boltsIn(level, BlockPos.betweenClosed(at.offset(-span, -span, -span), at.offset(span, span, span)))) {
             if (other.distSqr(at) <= spacing * spacing) {
                 return true;
             }
         }
         return false;
-    }
-
-    private static List<BlockPos> boltsNear(ServerLevel level, BlockPos at, double reach) {
-        int span = (int) Math.ceil(reach);
-        List<BlockPos> bolts = new ArrayList<>();
-        for (BlockPos other : BlockPos.betweenClosed(at.offset(-span, -span, -span), at.offset(span, span, span))) {
-            if (loaded(level, other) && level.getBlockState(other).is(LayerBlocks.ROOF_BOLT)) {
-                bolts.add(other.immutable());
-            }
-        }
-        return bolts;
     }
 
     /** One tick of every cave-in in {@code level}: a creak every {@link CaveInTuning#cueTicks()}, the fall (or the all-clear) at its time, and rock still falling. */
@@ -233,12 +230,16 @@ public final class CaveIns {
 
     /** Tells each person on foot within the stretch of {@code feet} the line under {@code key}. */
     private static void tellNear(ServerLevel level, BlockPos feet, String key) {
-        int radius = CaveInTuning.DEFAULT.stretchRadius();
-        for (ServerPlayer player : level.players()) {
-            if (onFoot(player) && player.blockPosition().distSqr(feet) <= radius * radius) {
-                player.sendOverlayMessage(Component.translatable(key));
-            }
+        for (ServerPlayer player : underRoof(level, feet)) {
+            player.sendOverlayMessage(Component.translatable(key));
         }
+    }
+
+    private static List<ServerPlayer> underRoof(ServerLevel level, BlockPos feet) {
+        int radius = CaveInTuning.DEFAULT.stretchRadius();
+        return level.players().stream()
+                .filter(player -> onFoot(player) && player.blockPosition().distSqr(feet) <= radius * radius)
+                .toList();
     }
 
     /** The roof creaks and sheds dust over the stretch. */
@@ -247,18 +248,13 @@ public final class CaveIns {
             level.sendParticles(
                     ParticleTypes.ASH, at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 3, 0.3, 0.05, 0.3, 0.01);
         }
-        // PLACEHOLDER sound until the sound pass: the crust's creak, since the roof speaks the way the grain does. It
-        // is
-        // played at each person under the roof, as the crust's is, and where it was started when no one is.
-        boolean heard = false;
-        int radius = CaveInTuning.DEFAULT.stretchRadius();
-        for (ServerPlayer player : level.players()) {
-            if (onFoot(player) && player.blockPosition().distSqr(feet) <= radius * radius) {
-                level.playSound(null, player, SoundEvents.CREAKING_TWITCH, SoundSource.BLOCKS, 1.0F, 0.6F);
-                heard = true;
-            }
+        // PLACEHOLDER sound until the sound pass: the crust's creak, played at each person under the roof, as the
+        // crust's is, and where it was started when no one is.
+        List<ServerPlayer> under = underRoof(level, feet);
+        for (ServerPlayer player : under) {
+            level.playSound(null, player, SoundEvents.CREAKING_TWITCH, SoundSource.BLOCKS, 1.0F, 0.6F);
         }
-        if (!heard) {
+        if (under.isEmpty()) {
             level.playSound(null, feet, SoundEvents.CREAKING_TWITCH, SoundSource.BLOCKS, 1.0F, 0.6F);
         }
     }
