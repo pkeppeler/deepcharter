@@ -230,7 +230,7 @@ public final class Drifters {
     public static Optional<Drifter> spawnFor(ServerLevel level, Source source, int sourcesInZone, RandomSource random) {
         DrifterTuning.Spawn tuning = DrifterTuning.DEFAULT.spawn();
         BlockPos from = BlockPos.containing(source.pos());
-        Optional<DrifterAlarm.Zone> zone = DrifterAlarm.Zone.at(level, from.getY());
+        Optional<DrifterAlarm.Zone> zone = zoneOf(level, source);
         if (zone.isEmpty() || !level.getBiome(from).is(FUNGAL_HOLLOWS)) {
             return Optional.empty();
         }
@@ -299,7 +299,7 @@ public final class Drifters {
         });
     }
 
-    /** The drifters whose box a person's or a pod's box touches, for the burst: a query round a drifter that ticks. */
+    /** Whether a person's or a pod's box touches the drifter's, for the burst: a query round a drifter that ticks. */
     static boolean touched(ServerLevel level, Drifter drifter) {
         DrifterTuning tuning = DrifterTuning.DEFAULT;
         AABB skin = drifter.getBoundingBox().inflate(tuning.touchBlocks());
