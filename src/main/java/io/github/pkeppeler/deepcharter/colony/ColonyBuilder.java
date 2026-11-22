@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.colony;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import java.util.Map;
@@ -209,11 +210,11 @@ public final class ColonyBuilder {
         forEachPadChunk(level, centre, chunk -> Conduit.place(level, chunk, started, LayerChain.SURFACE));
     }
 
-    /** Every registered terminal type that has a plinth anchor stands on its plinth, facing the square. The contract terminal's plinth is bare until #72 registers it. */
+    /** Every registered terminal type that has an anchor stands on the ground there, both halves, facing the square. */
     private void terminals(Map<ColonyAnchor, BlockPos> anchors) {
         for (TerminalType type : TerminalTypes.all()) {
             ColonyAnchor.forTerminal(type)
-                    .ifPresent(anchor -> set(
+                    .ifPresent(anchor -> setTerminal(
                             anchor.in(anchors),
                             type.block()
                                     .defaultBlockState()
@@ -458,6 +459,13 @@ public final class ColonyBuilder {
     /** The same small number for the same X and Z in every world, so ruins look worn at random but build the same every time. */
     private static int noise(int x, int z) {
         return ((x * 73856093) ^ (z * 19349663)) >>> 8 & 0xFFFF;
+    }
+
+    private void setTerminal(BlockPos pos, BlockState lower) {
+        if (!level.getBlockState(pos).equals(lower)
+                || !level.getBlockState(pos.above()).is(lower.getBlock())) {
+            TerminalBlock.place(level, pos, lower, FLAGS);
+        }
     }
 
     private void set(BlockPos pos, BlockState state) {
