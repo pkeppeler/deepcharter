@@ -337,6 +337,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
         context.waitTicks(5); // tick-wait: the pod and the view settle for a few frames
+        // A toast queued during the settle must not land in the frame (#1023).
+        context.runOnClient(client -> client.gui.toastManager().clear());
         Path file = context.takeScreenshot(name);
         try {
             return ImageIO.read(file.toFile());
@@ -510,7 +512,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 "the Deep Claim directive synced to the client",
                 client -> ClientHandbook.completed()
                         .contains(Identifier.fromNamespaceAndPath(
-                                DeepCharter.MOD_ID, "handbook/staying_safe/reach_deep_claim")));
+                                DeepCharter.MOD_ID, "handbook/staying_safe/reach_deep_claim")),
+                client -> "completed directives " + ClientHandbook.completed());
         context.runOnClient(client -> {
             CockpitDecay decay = CockpitDecay.of(
                     client, TestEntities.vehicle(ClientSession.player(client), PodEntity.class), CockpitLook.current());
