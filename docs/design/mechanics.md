@@ -1869,3 +1869,21 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 | First cell to a closed bore (72 cells at 3 every 100 ticks) | 2300 | 1:55 |
 
 **Open questions.** Whether the scanner should mark growth (it reads as rock to sonar at present); whether the liner part should ring a shaft with a brick even without lava, so the part that "keeps it open for good" does so with no pilot; the lore name and the Sleeper's reason (the lore session, #12).
+
+## Pod hazard cues (#854, A)
+
+**Problem.** A gas blast and a hard landing cost hull, and an overloaded pod's jump did nothing, each with no cue of its own. A player could not tell what had happened, or that the cargo was the reason the rotor would not lift.
+
+**Cue.** Every hazard that hurts or blocks the pod names its cause the first time and while it lasts: an action-bar line, a sound at the pod and, where it is cheap, particles.
+
+| Hazard | Line | Sound | Particles |
+|---|---|---|---|
+| Gas blast, per pod hurt | `Gas blast: the hull took N` | `pod.explosion` | green gas cloud |
+| Hard landing, per landing that costs hull | `Hard landing: the hull took N. Brake with the rotor` | `pod.crash` | dust |
+| Overloaded lift, when the pilot presses jump with no lift | `Pod overloaded: the rotor can't lift this cargo. Dump some` (or `...can't lift this load` when cargo is not the reason: towing takes the lift) | `cargo.full` | none |
+
+**Who is told.** The line goes to every player seated in the pod, because all of them are in the hull that was hit; the lift line goes to the pilot alone, the only one who presses jump. The sound is played at the pod, so everyone in earshot hears it.
+
+**Rate.** A blast and a landing cue each event, and say nothing when the hull took under half a point (gas above sea level, a soft landing, a blast out of reach). A hit that empties the hull still reaches the riders it ejects. The overloaded line cues on each new press of jump, and repeats every `PodCuesTuning.overloadRepeatTicks` (40) while it stays held, a little under the 60 ticks the line stays on the bar.
+
+**Open.** A tiered sensor could name a hazard before it hurts (the ladder's second stage); this is only the by-hand stage, the cue after the fact.

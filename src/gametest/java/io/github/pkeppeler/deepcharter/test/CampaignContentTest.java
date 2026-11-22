@@ -89,8 +89,8 @@ public class CampaignContentTest {
             "minecraft:block_predicate_filter");
 
     private static final String FIGURE = "deepcharter:lampless_figure";
-    /** The test preset, which holds the campaign sample dimension. */
-    private static final String PRESET = "/data/minecraft/worldgen/world_preset/flat_all_dimensions.json";
+    /** The test data pack's campaign sample dimension. */
+    private static final String DIMENSION = "/data/deepcharter/dimension/campaign_sample.json";
 
     private static final String UNBUILT_BIOME = "deepcharter:unbuilt_depth";
 
@@ -348,10 +348,8 @@ public class CampaignContentTest {
     public void everyPlacedFeaturesHeightRangeIsInsideItsBand(GameTestHelper helper) throws IOException {
         Map<String, Band> bandOfBiome = new TreeMap<>();
         Map<String, int[]> zoneOfBiome = new TreeMap<>();
-        JsonObject source = read(helper, PRESET)
+        JsonObject source = read(helper, DIMENSION)
                 .getAsJsonObject()
-                .getAsJsonObject("dimensions")
-                .getAsJsonObject(SAMPLE)
                 .getAsJsonObject("generator")
                 .getAsJsonObject("biome_source");
         source.getAsJsonObject("surface")
