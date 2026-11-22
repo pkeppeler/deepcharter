@@ -421,7 +421,7 @@ public class ThrownKitTest {
                         DrawSources.noiseTarget(level, near, drill).equals(drill),
                         "a creature goes back to the drill once the decoy stops");
                 expect(helper, room.kits().isEmpty(), "a decoy that has stopped is gone");
-                long chimes = room.thrower().soundsHeard().stream()
+                long chimes = room.thrower().soundsInTheWorld().stream()
                         .filter(id -> id.equals(SoundEvents.BELL_BLOCK.location()))
                         .count();
                 long expected = noise / tuning.decoy().pulseTicks();

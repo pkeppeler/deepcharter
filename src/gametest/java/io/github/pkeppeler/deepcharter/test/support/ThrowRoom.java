@@ -25,6 +25,10 @@ public final class ThrowRoom {
     /** How far south of {@code (x, Z)} the thrower stands. */
     public static final int THROWER_BACK = 11;
 
+    private static final int CHUNK = 16;
+    /** How far either side of the room's middle line {@link #flare()} looks. */
+    private static final int FLARE_REACH = 8;
+
     private final ServerLevel level;
     private final int x;
     private final MockPlayer thrower;
@@ -49,9 +53,17 @@ public final class ThrowRoom {
         ThrowRoom room = new ThrowRoom(level, x, thrower);
         thrower.teleportTo(level, room.throwingSpot(), 0f, 0f);
         boolean[] ready = {false};
-        FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(room.throwingSpot()), () -> {
-            first.accept(room);
-            ready[0] = true;
+        // A flying item stops in a chunk that does not tick, so every chunk of the room's column must.
+        List<BlockPos> column = new ArrayList<>();
+        for (int z = Z - HALF; z <= Z + HALF; z += CHUNK) {
+            column.add(new BlockPos(x, FLOOR, z));
+        }
+        int[] waiting = {column.size()};
+        FarChunks.awaitEntityTicking(helper, level, column, index -> {
+            if (--waiting[0] == 0) {
+                first.accept(room);
+                ready[0] = true;
+            }
         });
         TestTicks.each(helper, () -> {
             if (ready[0]) {
@@ -86,7 +98,7 @@ public final class ThrowRoom {
     /** The cell with a flare in the strip the throws land in, or null when none burns there. */
     public @Nullable BlockPos flare() {
         for (int z = -HALF; z <= HALF; z++) {
-            for (int dx = -3; dx <= 3; dx++) {
+            for (int dx = -FLARE_REACH; dx <= FLARE_REACH; dx++) {
                 BlockPos cell = cell(dx, 0, z);
                 if (level.getBlockState(cell).is(RepairRegistry.FLARE_LIGHT)) {
                     return cell;

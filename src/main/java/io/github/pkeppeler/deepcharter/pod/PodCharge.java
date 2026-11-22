@@ -146,7 +146,7 @@ public final class PodCharge {
         ServerLevel level = (ServerLevel) pod.level();
         if (fuse.ticksLeft() <= 0) {
             pod.setFuse(null);
-            blast(level, fuse);
+            blast(level, fuse, true);
             return;
         }
         if (fuse.ticksLeft() % TICKS_PER_SECOND == 0 && fuse.ticksLeft() < fuse.startTicks()) {
@@ -204,7 +204,29 @@ public final class PodCharge {
         }
     }
 
-    private static void blast(ServerLevel level, Fuse fuse) {
+    /**
+     * A blasting charge's blast that nothing set from a pod (a thrown charge, #985): the volume {@code low} to {@code high} (inclusive corners), hurting every pod within
+     * {@code reach} of it by {@code damage} less its distance share, and clearing the rock it may if {@code clearRock}. It is the pod's blast, not a copy of it. A caller
+     * asks {@link #hasCompanyRock} first, because the pod's charge clears nothing where there is no Company rock.
+     */
+    public static void detonate(
+            ServerLevel level, BlockPos low, BlockPos high, float damage, double reach, boolean clearRock) {
+        blast(level, new Fuse(Kind.BLASTING, low, high, 0, 0, damage, reach), clearRock);
+    }
+
+    /** Whether the volume {@code low} to {@code high} holds Company rock in a loaded chunk: the rule that lets the pod's charge be set at all. */
+    public static boolean hasCompanyRock(ServerLevel level, BlockPos low, BlockPos high) {
+        LoadedBlocks blocks = new LoadedBlocks(level);
+        return BlockPos.betweenClosedStream(low, high)
+                .anyMatch(cell -> blocks.getBlockState(cell).is(HazardBlocks.UNDIGGABLE));
+    }
+
+    /** The share of a blast's damage that reaches a box: 1 touching the blast's volume, falling in a straight line to 0 at {@code reach} blocks from it. */
+    public static double reachShare(AABB volume, AABB box, double reach) {
+        return 1 - Math.sqrt(distanceSqr(volume, box)) / reach;
+    }
+
+    private static void blast(ServerLevel level, Fuse fuse, boolean clearRock) {
         AABB volume = fuse.volume();
         Vec3 middle = volume.getCenter();
         // entity-query: the blast reaches chargeReach round a charge that a ticking pod set, so its chunks are
@@ -213,13 +235,15 @@ public final class PodCharge {
             if (Wrecks.isWreck(pod)) {
                 continue;
             }
-            double share = 1 - Math.sqrt(distanceSqr(volume, pod.getBoundingBox())) / fuse.reach();
+            double share = reachShare(volume, pod.getBoundingBox(), fuse.reach());
             if (share > 0) {
                 pod.damageHull((float) (fuse.damage() * share));
             }
         }
-        for (BlockPos cell : cleared(level, new LoadedBlocks(level), fuse)) {
-            level.destroyBlock(cell, false);
+        if (clearRock) {
+            for (BlockPos cell : cleared(level, new LoadedBlocks(level), fuse)) {
+                level.destroyBlock(cell, false);
+            }
         }
         level.sendParticles(ParticleTypes.EXPLOSION, middle.x, middle.y, middle.z, 6, 1.0, 0.5, 1.0, 0.0);
         level.playSound(null, middle.x, middle.y, middle.z, DeepSound.DRILL_PLASTIC.event(), SoundSource.PLAYERS);

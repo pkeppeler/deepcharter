@@ -15,8 +15,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 
 /**
- * What each item does (SPEC sections 10 and 11). All of them work on the pod the player is piloting, and
- * on no other: an item used on foot, or in a wreck, is refused and kept.
+ * What each item does (SPEC sections 10 and 11). All of them but the thrown kit work on the pod the player is piloting, and
+ * on no other: an item used on foot, or in a wreck, is refused and kept. The thrown kit (#985) is the other way round: it is
+ * thrown on foot and refused from a seat, and {@link ThrownKit} does it.
  */
 final class Consumables {
     private Consumables() {}
