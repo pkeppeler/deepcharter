@@ -85,15 +85,7 @@ final class StructurePlan {
     /** The world position of a place in the structure, or null where it lies in another chunk. */
     private @Nullable BlockPos inChunk(int u, int y, int v) {
         BlockPos pos = column(u, y, v);
-        int x = pos.getX();
-        int z = pos.getZ();
-        if (x < chunkPos.getMinBlockX()
-                || x > chunkPos.getMaxBlockX()
-                || z < chunkPos.getMinBlockZ()
-                || z > chunkPos.getMaxBlockZ()) {
-            return null;
-        }
-        return pos;
+        return chunkPos.equals(ChunkPos.containing(pos)) ? pos : null;
     }
 
     /** A barrel that fills from {@code table} when it is first opened, the same for the same site every time. */
@@ -146,16 +138,10 @@ final class StructurePlan {
                 set(u, cy, v, Blocks.IRON_CHAIN.defaultBlockState());
             }
         } else {
+            BlockState iron = Blocks.IRON_BLOCK.defaultBlockState();
             int[] step = postStep(u, v);
-            box(
-                    u + step[0],
-                    floorY,
-                    v + step[1],
-                    u + step[0],
-                    y + 1,
-                    v + step[1],
-                    Blocks.IRON_BLOCK.defaultBlockState());
-            set(u, y + 1, v, Blocks.IRON_BLOCK.defaultBlockState());
+            box(u + step[0], floorY, v + step[1], u + step[0], y + 1, v + step[1], iron);
+            set(u, y + 1, v, iron);
         }
         set(u, y, v, AmbienceRegistry.COMPANY_HORN.defaultBlockState());
     }
@@ -165,7 +151,7 @@ final class StructurePlan {
         BlockPos column = column(u, 0, v);
         for (int[] step : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
             BlockPos next = column(u + step[0], 0, v + step[1]);
-            if ((next.getX() >> 4) == (column.getX() >> 4) && (next.getZ() >> 4) == (column.getZ() >> 4)) {
+            if (ChunkPos.containing(next).equals(ChunkPos.containing(column))) {
                 return step;
             }
         }

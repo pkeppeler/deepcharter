@@ -80,11 +80,11 @@ public class LayerStructuresTest {
     private static final int HORN_CEILING_CELL = 31;
 
     private static final int HORN_OPEN_CELL = 32;
-    /** A height of open air over the surface's flat ground, with room for a post below it. */
-    private static final int OPEN_AIR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
-
     private static final int HORN_ADJACENT_CELL = 33;
     private static final int HORN_ONE_CHAIN_CELL = 34;
+
+    /** A height of open air over the surface's flat ground, with room for a post below it. */
+    private static final int OPEN_AIR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
 
     private static final int DISK_CELL = 6;
     private static final int CASING_CELL = 7;
