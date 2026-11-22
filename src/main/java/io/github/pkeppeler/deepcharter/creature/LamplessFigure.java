@@ -18,6 +18,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -204,10 +205,7 @@ public class LamplessFigure extends PathfinderMob {
     private void latchOnto(ServerPlayer person) {
         held = person;
         quarry = null;
-        side = Direction.getApproximateNearest(getX() - person.getX(), 0, getZ() - person.getZ());
-        if (side.getAxis().isVertical()) {
-            side = Direction.NORTH;
-        }
+        side = pickSide(person);
         getNavigation().stop();
         setNoGravity(true);
         noPhysics = true;
@@ -221,7 +219,8 @@ public class LamplessFigure extends PathfinderMob {
      * or creative or spectator). It never takes the food level below the floor, so it never starves anyone.
      */
     private void clingToPerson(ServerPlayer person, ServerLevel level, CreatureTuning tuning) {
-        if (person.isRemoved()
+        if (level.getDifficulty() == Difficulty.PEACEFUL
+                || person.isRemoved()
                 || !person.isAlive()
                 || person.level() != level
                 || person.isCreative()
@@ -239,6 +238,8 @@ public class LamplessFigure extends PathfinderMob {
 
     /** The nearest person on foot that this figure would take hold of, or null. */
     private @Nullable ServerPlayer nearestDarkPerson(ServerLevel level, CreatureTuning.Foot foot) {
+        // Players come from the level's own list (a player's chunk is always loaded), so this is no entity query. The
+        // distance test runs first: the light and hand checks in draws() cost more.
         double sense = foot.senseBlocks();
         return level.players().stream()
                 .filter(person -> person.distanceToSqr(this) <= sense * sense && FootGrips.draws(person))
@@ -284,15 +285,18 @@ public class LamplessFigure extends PathfinderMob {
         }
     }
 
+    /** The side of {@code target} the figure holds: the way it came from, never up or down. */
+    private Direction pickSide(Entity target) {
+        Direction found = Direction.getApproximateNearest(getX() - target.getX(), 0, getZ() - target.getZ());
+        return found.getAxis().isVertical() ? Direction.NORTH : found;
+    }
+
     private void latch(PodEntity pod) {
         grip = pod;
         target = null;
         biteIn = 0;
         bitten = false;
-        side = Direction.getApproximateNearest(getX() - pod.getX(), 0, getZ() - pod.getZ());
-        if (side.getAxis().isVertical()) {
-            side = Direction.NORTH;
-        }
+        side = pickSide(pod);
         getNavigation().stop();
         setNoGravity(true);
         noPhysics = true;
@@ -335,16 +339,17 @@ public class LamplessFigure extends PathfinderMob {
     }
 
     /** Closes on its place beside what it holds, a hull or a person, side by side, and faces it. */
-    private void holdTo(Entity pod, CreatureTuning.Cling cling) {
-        double reach = pod.getBbWidth() / 2 + HULL_GAP;
-        Vec3 place = new Vec3(pod.getX() + side.getStepX() * reach, pod.getY(), pod.getZ() + side.getStepZ() * reach);
+    private void holdTo(Entity target, CreatureTuning.Cling cling) {
+        double reach = target.getBbWidth() / 2 + HULL_GAP;
+        Vec3 place = new Vec3(
+                target.getX() + side.getStepX() * reach, target.getY(), target.getZ() + side.getStepZ() * reach);
         Vec3 gap = place.subtract(position());
         double distance = gap.length();
         setPos(distance <= cling.latchSpeed() ? place : position().add(gap.scale(cling.latchSpeed() / distance)));
         setDeltaMovement(Vec3.ZERO);
         // Yaw 0 looks toward +z and yaw 90 toward -x, so the direction to the pod (dx, dz) is atan2(-dx, dz): the
         // figure looks at the pod, not away from it (#506).
-        float yaw = (float) (Mth.atan2(getX() - pod.getX(), pod.getZ() - getZ()) * Mth.RAD_TO_DEG);
+        float yaw = (float) (Mth.atan2(getX() - target.getX(), target.getZ() - getZ()) * Mth.RAD_TO_DEG);
         setYRot(yaw);
         setYHeadRot(yaw);
         setYBodyRot(yaw);

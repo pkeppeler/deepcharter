@@ -7,12 +7,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.LightLayer;
 import org.jspecify.annotations.Nullable;
 
@@ -29,21 +32,31 @@ public final class FootGrips {
     /** The figure that holds each person, by UUID: a respawn is a new player entity. Server thread only. */
     private static final Map<UUID, LamplessFigure> HELD = new HashMap<>();
 
+    /** The items that keep a figure off when held: data, so a pack, and later the suit lamp and flares, add to it. */
+    public static final TagKey<Item> HAND_LIGHTS =
+            TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hand_lights"));
+
     private FootGrips() {}
 
     public static void init() {
         ServerLifecycleEvents.SERVER_STARTING.register(server -> HELD.clear());
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> HELD.clear());
+        // A person who quits is let go of: the figure notices the removed player and lets go, and the entry would only
+        // go stale.
+        ServerPlayConnectionEvents.DISCONNECT.register(
+                (handler, server) -> HELD.remove(handler.getPlayer().getUUID()));
         OreEncumbrance.EXTRA_MASS.register(player ->
                 holder(player) == null ? 0f : CreatureTuning.DEFAULT.foot().loadMass());
     }
 
     /**
-     * Whether a person draws a figure: on foot, alive, not a creative or spectator player, not held already, standing where the block
-     * light is under {@link CreatureTuning#litBlockLight}, and with no light in either hand. The suit lamp, when it exists, replaces the
+     * Whether a person draws a figure: not on Peaceful, on foot, alive, not a creative or spectator player, not held already, standing where the block
+     * light is under {@link CreatureTuning#litBlockLight}, and with no light in either hand (an item of {@link #HAND_LIGHTS}). The suit lamp, when it exists, replaces the
      * hand check.
      */
     public static boolean draws(ServerPlayer person) {
-        return !person.isPassenger()
+        return person.level().getDifficulty() != Difficulty.PEACEFUL
+                && !person.isPassenger()
                 && person.isAlive()
                 && !person.isCreative()
                 && !person.isSpectator()
@@ -53,13 +66,10 @@ public final class FootGrips {
                 && !lightInHand(person);
     }
 
-    /** A light in either hand: a block that gives {@code litBlockLight} or more, as a torch or a lantern does. */
+    /** A light in either hand: an item of {@link #HAND_LIGHTS}, as a torch or a lantern is. */
     private static boolean lightInHand(ServerPlayer person) {
         for (InteractionHand hand : InteractionHand.values()) {
-            ItemStack held = person.getItemInHand(hand);
-            if (held.getItem() instanceof BlockItem block
-                    && block.getBlock().defaultBlockState().getLightEmission()
-                            >= CreatureTuning.DEFAULT.litBlockLight()) {
+            if (person.getItemInHand(hand).is(HAND_LIGHTS)) {
                 return true;
             }
         }
