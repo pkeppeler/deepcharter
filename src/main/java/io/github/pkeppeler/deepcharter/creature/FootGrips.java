@@ -77,18 +77,13 @@ public final class FootGrips {
     }
 
     /** The live figure that holds {@code person}, or null. A figure that was removed or died without letting go is forgotten here. */
-    static @Nullable LamplessFigure holder(ServerPlayer person) {
+    public static @Nullable LamplessFigure holder(ServerPlayer person) {
         LamplessFigure figure = HELD.get(person.getUUID());
         if (figure != null && (figure.isRemoved() || !figure.isAlive())) {
             HELD.remove(person.getUUID());
             return null;
         }
         return figure;
-    }
-
-    /** Whether a figure holds this person: the Overburdened status of the grip and the pose both read the same fact. */
-    public static boolean isHeld(ServerPlayer person) {
-        return holder(person) != null;
     }
 
     static void take(ServerPlayer person, LamplessFigure figure) {

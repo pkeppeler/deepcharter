@@ -172,7 +172,7 @@ public class RetainedOnFootTest {
                                 "[retained-foot] the figure walked 10 blocks to a person in the dark and took hold in {} ticks ({} s)",
                                 waited,
                                 waited / 20f);
-                        if (!FootGrips.isHeld(player)) {
+                        if (FootGrips.holder(player) == null) {
                             throw failure(helper, "the figure clings but the person is not held");
                         }
                         phase[0] = 1;
@@ -266,14 +266,14 @@ public class RetainedOnFootTest {
     }
 
     private static void expectHeld(GameTestHelper helper, Room room, long ticks) {
-        if (!room.figure.isClinging() || !room.figure.isAlive() || !FootGrips.isHeld(room.player())) {
+        if (!room.figure.isClinging() || !room.figure.isAlive() || FootGrips.holder(room.player()) == null) {
             throw failure(
                     helper,
                     "the figure let go %s ticks after it took hold, with no one to strike it (clinging %s, alive %s, held %s)",
                     ticks,
                     room.figure.isClinging(),
                     room.figure.isAlive(),
-                    FootGrips.isHeld(room.player()));
+                    FootGrips.holder(room.player()) != null);
         }
         if (ticks > 10 && !room.player().getBoundingBox().inflate(0.25).intersects(room.figure.getBoundingBox())) {
             throw failure(
@@ -322,7 +322,7 @@ public class RetainedOnFootTest {
             if (room == null) {
                 return;
             }
-            if (room.figure.isClinging() || FootGrips.isHeld(room.player())) {
+            if (room.figure.isClinging() || FootGrips.holder(room.player()) != null) {
                 throw failure(helper, "a figure took hold of a person who holds a torch");
             }
             if (FootGrips.draws(room.player())) {
@@ -480,7 +480,7 @@ public class RetainedOnFootTest {
                 return;
             }
             expectHeld(helper, room, helper.getTick() - litAt[0]);
-            if (!FootGrips.isHeld(room.player())) {
+            if (FootGrips.holder(room.player()) == null) {
                 throw failure(helper, "a light freed a held person");
             }
             if (room.player().getFoodData().getFoodLevel() < foodAtLight[0]
@@ -577,7 +577,7 @@ public class RetainedOnFootTest {
                 }
                 return;
             }
-            if (FootGrips.isHeld(room.player()) || room.figure.isClinging()) {
+            if (FootGrips.holder(room.player()) != null || room.figure.isClinging()) {
                 throw failure(helper, "a dead figure still holds the person");
             }
             boolean weightGone = room.player().getEffect(OreRegistry.OVERBURDENED) == null;
@@ -628,7 +628,7 @@ public class RetainedOnFootTest {
                 }
                 return;
             }
-            if (room.player().getEffect(OreRegistry.OVERBURDENED) == null && !FootGrips.isHeld(room.player())) {
+            if (room.player().getEffect(OreRegistry.OVERBURDENED) == null && FootGrips.holder(room.player()) == null) {
                 room.clear();
                 helper.succeed();
             } else if (helper.getTick() - removedAt[0] > FREED_BUDGET_TICKS) {
@@ -662,7 +662,7 @@ public class RetainedOnFootTest {
             }
             if (!room.figure.isClinging()
                     && room.player().getEffect(OreRegistry.OVERBURDENED) == null
-                    && !FootGrips.isHeld(room.player())) {
+                    && FootGrips.holder(room.player()) == null) {
                 room.clear();
                 helper.succeed();
             } else if (helper.getTick() - changedAt[0] > FREED_BUDGET_TICKS) {
@@ -706,7 +706,7 @@ public class RetainedOnFootTest {
                 return;
             }
             long seated = helper.getTick() - boardedAt[0];
-            if (!FootGrips.isHeld(player) || !room.figure.isClinging() || !room.figure.isAlive()) {
+            if (FootGrips.holder(player) == null || !room.figure.isClinging() || !room.figure.isAlive()) {
                 throw failure(helper, "boarding a pod freed a held person, %s ticks after", seated);
             }
             if (seated == 10) {
@@ -784,7 +784,7 @@ public class RetainedOnFootTest {
             ServerPlayer back = again[0].player();
             boolean weightGone = back.getEffect(OreRegistry.OVERBURDENED) == null
                     && Math.abs(back.getAttributeValue(Attributes.MOVEMENT_SPEED) - 0.1) < EPSILON;
-            if (weightGone && !FootGrips.isHeld(back)) {
+            if (weightGone && FootGrips.holder(back) == null) {
                 again[0].leave();
                 helper.succeed();
             } else if (helper.getTick() - rejoinedAt[0] > FREED_BUDGET_TICKS) {
@@ -862,7 +862,7 @@ public class RetainedOnFootTest {
                 }
                 return;
             }
-            if (!room.figure.isClinging() && !FootGrips.isHeld(room.player())) {
+            if (!room.figure.isClinging() && FootGrips.holder(room.player()) == null) {
                 try {
                     expectDraws(helper, room.player(), false, "a free person in the dark on Peaceful");
                 } finally {
