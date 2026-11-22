@@ -17,6 +17,7 @@ import io.github.pkeppeler.deepcharter.outpost.RatingTuning;
 import io.github.pkeppeler.deepcharter.outpost.Ratings;
 import io.github.pkeppeler.deepcharter.outpost.SpecSheet;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -256,7 +257,7 @@ public class OutpostRatingsTest {
      * In the campaign world a layer is a band of one level: the surface and layers 1 and 2 ask nothing, and the unbuilt depth below the last layer has no
      * rated material, so nothing holds there, not even slag brick, and the readout says why.
      */
-    @GameTest(dimension = CAMPAIGN)
+    @GameTest(dimension = CAMPAIGN, environment = CampaignEnvironments.B)
     public void inTheCampaignWorldTheBuiltBandsAskNothingAndUnbuiltDepthHoldsNothing(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         for (CampaignBands.Band band : List.of(CampaignBands.SURFACE, CampaignBands.LAYER_1, CampaignBands.LAYER_2)) {
