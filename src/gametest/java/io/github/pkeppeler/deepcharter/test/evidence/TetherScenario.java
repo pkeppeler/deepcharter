@@ -185,27 +185,27 @@ public class TetherScenario extends EvidenceScenario {
         ServerLevel one = level(server);
         RoomCarver.carve(
                 one,
-                new BlockPos(X - 16, FLOOR_Y - 3, Z - 8),
-                new BlockPos(X + 22, FLOOR_Y + PIT_HEIGHT + 3, Z + 36),
+                new BlockPos(X - 16, FLOOR_Y - 3, Z - 38),
+                new BlockPos(X + 22, FLOOR_Y + PIT_HEIGHT + 3, Z + 38),
                 Blocks.STONE.defaultBlockState());
         RoomCarver.carve(
                 one,
-                new BlockPos(X - 15, FLOOR_Y, Z - 7),
-                new BlockPos(X + 21, FLOOR_Y + PIT_HEIGHT, Z + 35),
+                new BlockPos(X - 15, FLOOR_Y, Z - 37),
+                new BlockPos(X + 21, FLOOR_Y + PIT_HEIGHT, Z + 37),
                 Blocks.AIR.defaultBlockState());
         // The shelf: solid rock under the west side, up to its top at SHELF_TOP.
         RoomCarver.carve(
                 one,
-                new BlockPos(X - 15, FLOOR_Y, Z - 7),
-                new BlockPos(X + 2, SHELF_TOP - 1, Z + 35),
+                new BlockPos(X - 15, FLOOR_Y, Z - 37),
+                new BlockPos(X + 2, SHELF_TOP - 1, Z + 37),
                 Blocks.STONE.defaultBlockState());
         // Lamps on the far wall and along the shelf, so the pit and the line read on screen.
         for (int y = FLOOR_Y + 4; y < FLOOR_Y + PIT_HEIGHT; y += 6) {
-            for (int z = Z - 4; z <= Z + 32; z += 12) {
+            for (int z = Z - 34; z <= Z + 34; z += 12) {
                 one.setBlock(new BlockPos(X + 21, y, z), Blocks.GLOWSTONE.defaultBlockState(), 3);
             }
         }
-        for (int z = Z - 6; z <= Z + 34; z += 8) {
+        for (int z = Z - 36; z <= Z + 36; z += 8) {
             one.setBlock(new BlockPos(X - 15, SHELF_TOP + 3, z), Blocks.GLOWSTONE.defaultBlockState(), 3);
         }
         ServerPlayer player = player(server);
