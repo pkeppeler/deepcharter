@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -244,8 +245,11 @@ public class UpgradeTerminalClientTest implements FabricClientGameTest {
         }
         BlockPos here = player.blockPosition();
         BlockPos terminal = here.relative(Direction.EAST, 2);
-        server.overworld()
-                .setBlock(terminal, TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(), 3);
+        TerminalBlock.place(
+                server.overworld(),
+                terminal,
+                TerminalTypes.UPGRADE_TERMINAL.block().defaultBlockState(),
+                3);
         PodEntity pod = TestEntities.create(PodRegistry.POD, server.overworld());
         BlockPos parked = here.relative(Direction.WEST, 3);
         pod.setPos(parked.getX() + 0.5, parked.getY(), parked.getZ() + 0.5);
