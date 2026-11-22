@@ -5,6 +5,7 @@ import io.github.pkeppeler.deepcharter.colony.ColonySite;
 import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -54,6 +55,22 @@ public class FarChunksTest {
         }
         FORCED_BY_A_FINISHED_TEST.set(new Forced(level, chunk));
         helper.succeed();
+    }
+
+    /**
+     * Forcing a chunk only takes a ticket: {@code ServerLevel.setChunkForced} would load it on the server thread before returning, and
+     * that stalls every test in the batch while it generates (#1016). The chunk is not visible on the tick that forced it, and
+     * {@code awaitLoaded} then waits for it.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS)
+    public void forcingAChunkDoesNotLoadItOnTheServerThread(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ChunkPos chunk = new ChunkPos(4020, 4020);
+        FarChunks.force(helper, level, chunk.x(), chunk.z());
+        if (level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null) {
+            throw helper.assertionException("forcing the chunk loaded it on the server thread");
+        }
+        FarChunks.whenLoaded(helper, List.of(new FarChunks.At(level, chunk.x(), chunk.z())), helper::succeed);
     }
 
     /** A chunk a test forced is released when that test finishes, or the suite's heap grows with it (#569). */

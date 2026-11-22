@@ -264,6 +264,7 @@ public class StructureLightBorderTest {
         UUID id = player.player().getUUID();
         LightSyncSends.watch(id);
         FarChunks.Deadline deadline = FarChunks.deadline(60);
+        FarChunks.Deadline loadDeadline = FarChunks.deadline();
         int[] phase = {0};
         int[] waited = {0};
         int[][][] before = {null};
@@ -275,17 +276,27 @@ public class StructureLightBorderTest {
             try {
                 switch (phase[0]) {
                     case 0 -> {
-                        // Loading the chunks draws the structure, with the test's own Conduit where the case needs it.
-                        inContext(
-                                placement,
-                                server,
-                                () -> placement.withRing().forEach(chunk -> {
-                                    FarChunks.force(helper, level, chunk.x(), chunk.z());
-                                    level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
-                                }));
+                        // Only the conduit case loads here: its site swap lasts one tick.
+                        if (placement.fakeConduit().isPresent()) {
+                            inContext(
+                                    placement,
+                                    server,
+                                    () -> placement.withRing().forEach(chunk -> {
+                                        FarChunks.force(helper, level, chunk.x(), chunk.z());
+                                        level.getChunk(chunk.x(), chunk.z(), ChunkStatus.FULL);
+                                    }));
+                        } else {
+                            placement.withRing().forEach(chunk -> FarChunks.force(helper, level, chunk.x(), chunk.z()));
+                        }
                         phase[0] = 1;
                     }
                     case 1 -> {
+                        boolean loaded = placement.withRing().stream()
+                                .allMatch(chunk -> level.getChunkSource().getChunkNow(chunk.x(), chunk.z()) != null);
+                        loadDeadline.await(helper, level, loaded, () -> "the chunks round " + pair + " did not load");
+                        if (!loaded) {
+                            return;
+                        }
                         // Chunks are sent once they tick: a player who comes into view of them now is sent both.
                         BlockPos at = new BlockPos(
                                 placement.lampChunk().getMiddleBlockX(),
@@ -479,7 +490,7 @@ public class StructureLightBorderTest {
         run(helper, Lamp.CANDLE);
     }
 
-    @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.SYNC_CHUNK_LOAD, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theFamousWrecksLanternAtABorderIsSentToAPlayerWhoHasBothChunks(GameTestHelper helper) {
         run(helper, Lamp.FAMOUS_LANTERN);
     }
