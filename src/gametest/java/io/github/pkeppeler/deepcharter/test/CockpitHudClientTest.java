@@ -2,6 +2,8 @@ package io.github.pkeppeler.deepcharter.test;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitDecay;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
@@ -335,6 +337,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
         ClientWait.until(
                 context, "every section in view rendered", client -> client.levelRenderer.hasRenderedAllSections());
         context.waitTicks(5); // tick-wait: the pod and the view settle for a few frames
+        // A toast queued during the settle must not land in the frame (#1023).
+        context.runOnClient(client -> client.gui.toastManager().clear());
         Path file = context.takeScreenshot(name);
         try {
             return ImageIO.read(file.toFile());
@@ -500,6 +504,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         && shown.getBlockY() <= floorFeetY
                         && shown.stranded()
                         && SignalDecay.intensity(shown) >= 1);
+        // The Claim floor completes a directive whose toast the server queues some ticks after arrival, over the lamps.
+        // Await its sync so the shot's clear removes it (#1023).
+        ClientWait.until(
+                context,
+                "the Deep Claim directive synced to the client",
+                client -> ClientHandbook.completed()
+                        .contains(Identifier.fromNamespaceAndPath(
+                                DeepCharter.MOD_ID, "handbook/staying_safe/reach_deep_claim")),
+                client -> "completed directives " + ClientHandbook.completed());
         context.runOnClient(client -> {
             CockpitDecay decay = CockpitDecay.of(
                     client, TestEntities.vehicle(ClientSession.player(client), PodEntity.class), CockpitLook.current());
