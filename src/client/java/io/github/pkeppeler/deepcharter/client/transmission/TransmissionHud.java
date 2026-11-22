@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import java.util.List;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
@@ -28,9 +29,34 @@ public final class TransmissionHud {
     static void init() {
         ClientLifecycleEvents.CLIENT_STARTED.register(
                 client -> HudElementRegistry.addLast(ID, TransmissionHud::extract));
+        HudKeepClear.register(TransmissionHud::keepClear);
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    /** The panel while a transmission is on screen. */
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        if (!TransmissionOverlay.active()) {
+            return;
+        }
+        Panel panel = panel(client.font, guiWidth, guiHeight);
+        into.add(new HudKeepClear.Rect("transmission", panel.left(), panel.top(), panel.width(), panel.height()));
+    }
+
+    /** Where the panel is and the lines of the whole text in it, which is sized for all of it so the letters appear in a panel that does not grow. */
+    private record Panel(List<String> lines, int left, int top, int width, int height) {}
+
+    private static Panel panel(Font font, int guiWidth, int guiHeight) {
+        CrtTuning tuning = CrtTuning.current();
+        TransmissionLook look = TransmissionLook.current();
+        int padding = tuning.padding();
+        int width = Math.min(look.maxWidth(), guiWidth - 2 * look.screenMargin());
+        int step = font.lineHeight + tuning.lineSpacing();
+        List<String> lines = wrap(font, TransmissionOverlay.bodyFull(), width - 2 * padding);
+        int height = 2 * padding + step + look.headerGap() + lines.size() * step;
+        int top = Math.max(look.screenMargin(), Math.round(guiHeight * (float) look.centerY() - height / 2f));
+        return new Panel(lines, (guiWidth - width) / 2, top, width, height);
+    }
+
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         if (!TransmissionOverlay.active()) {
             return;
         }
@@ -38,17 +64,14 @@ public final class TransmissionHud {
         TransmissionLook look = TransmissionLook.current();
         Font font = Minecraft.getInstance().font;
         int padding = tuning.padding();
-        int width = Math.min(look.maxWidth(), graphics.guiWidth() - 2 * look.screenMargin());
-        int textWidth = width - 2 * padding;
         int step = font.lineHeight + tuning.lineSpacing();
 
-        List<String> lines = wrap(font, TransmissionOverlay.bodyFull(), textWidth);
-        int height = 2 * padding + step + look.headerGap() + lines.size() * step;
-        int left = (graphics.guiWidth() - width) / 2;
-        int top =
-                Math.max(look.screenMargin(), Math.round(graphics.guiHeight() * (float) look.centerY() - height / 2f));
-        int right = left + width;
-        int bottom = top + height;
+        Panel panel = panel(font, graphics.guiWidth(), graphics.guiHeight());
+        List<String> lines = panel.lines();
+        int left = panel.left();
+        int top = panel.top();
+        int right = left + panel.width();
+        int bottom = top + panel.height();
 
         graphics.fill(left, top, right, bottom, look.panelFillColor());
         CrtDraw.border(graphics, left, top, right, bottom, tuning.dimColor());
