@@ -16,6 +16,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.KnownRecipe;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.PartsCatalogue;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetHook;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetPopUps;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarParts;
@@ -896,7 +897,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             context.waitTicks(1);
             require(opened.equals(List.of(DRILL)), "SPEC SHEET calls its hook with the item looked up, got " + opened);
         } finally {
-            context.runOnClient(client -> SpecSheetHook.set(item -> {}));
+            context.runOnClient(client -> SpecSheetHook.set(SpecSheetPopUps::show));
         }
     }
 

@@ -45,6 +45,10 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param nameStripPad pixels between the border of the strip that names the hovered item and its text
  * @param nameStripGap pixels between the hovered cell and that strip
  * @param caretHeight the thickness of the search field's caret, the underline after the text; at least the scanline spacing, so a scanline never takes it
+ * @param sheetWidth the width of a spec sheet's console; a window narrower than it gets the window's width
+ * @param sheetHeight the height of a spec sheet's console; a window shorter than it gets the window's height
+ * @param sheetGap pixels between the blocks of a spec sheet: the item cell, what it is, and its ratings
+ * @param sheetLineGap pixels between two lines of a spec sheet's text
  */
 public record CatalogueLook(
         int maxPanelWidth,
@@ -84,7 +88,11 @@ public record CatalogueLook(
         int maxQueryLength,
         int nameStripPad,
         int nameStripGap,
-        int caretHeight) {
+        int caretHeight,
+        int sheetWidth,
+        int sheetHeight,
+        int sheetGap,
+        int sheetLineGap) {
     /**
      * The casing round a glass and the hardware on it, drawn in the pack's metal greens.
      *
@@ -265,7 +273,11 @@ public record CatalogueLook(
                 d.integer("maxQueryLength", 1, 256),
                 d.integer("nameStripPad", 0, 16),
                 d.integer("nameStripGap", 0, 16),
-                d.integer("caretHeight", 1, 8));
+                d.integer("caretHeight", 1, 8),
+                d.integer("sheetWidth", 40, 400),
+                d.integer("sheetHeight", 40, 400),
+                d.integer("sheetGap", 0, 32),
+                d.integer("sheetLineGap", 0, 8));
         if (look.minPanelWidth() > look.maxPanelWidth()) {
             throw d.conflict("minPanelWidth must not exceed maxPanelWidth", "minPanelWidth", "maxPanelWidth");
         }

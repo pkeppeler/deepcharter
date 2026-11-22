@@ -56,7 +56,7 @@ public final class CrtDraw {
     }
 
     /** The scanlines in a rectangle with rounded corners: each line stops where the glass does ({@link PanelLook#scanlineInset}). */
-    private static void roundedScanlines(
+    public static void roundedScanlines(
             GuiGraphicsExtractor graphics, int left, int top, int right, int bottom, int radius) {
         CrtTuning tuning = CrtTuning.current();
         for (int y = top; y < bottom; y += tuning.scanlineSpacing()) {
