@@ -21,17 +21,21 @@ import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.UseEntity;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -737,6 +741,338 @@ public class TetherTest {
                 }
             };
         });
+    }
+
+    /** An unpowered pod's winch cannot start, and the person is told so, not that a winch they never started has stopped. */
+    @GameTest
+    public void usingTheTetherInTheAirOnAnUnpoweredPodSaysTheWinchHasNoPower(GameTestHelper helper) {
+        PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(5.5, 2, 1.5));
+        MockPlayer person = onFoot(helper);
+        ServerPlayer player = person.player();
+        PodTether.clip(player, pod);
+        pod.setStranded(true);
+        InteractionResult result = player.getMainHandItem().use(helper.getLevel(), player, InteractionHand.MAIN_HAND);
+        expect(helper, result.consumesAction(), "using the tether in the air is handled");
+        expect(helper, !PodTether.isWinching(player), "a stranded pod's winch does not start");
+        helper.runAfterDelay(2, () -> {
+            expect(
+                    helper,
+                    person.actionBarMessages().contains(Component.translatable("message.deepcharter.tether.no_power")),
+                    "the person should read that the pod has no power, got %s",
+                    person.actionBarMessages());
+            expect(
+                    helper,
+                    !person.actionBarMessages()
+                            .contains(Component.translatable("message.deepcharter.tether.hauling_stopped")),
+                    "a winch that never ran has not stopped, got %s",
+                    person.actionBarMessages());
+            helper.succeed();
+        });
+    }
+
+    /** A pilot who cannot reel anyone in because the pod has no power is told so, not to clip a tether first. */
+    @GameTest
+    public void aPilotWhoCannotReelAClippedPersonInIsToldTheWinchHasNoPower(GameTestHelper helper) {
+        PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(5.5, 2, 1.5));
+        MockPlayer person = onFoot(helper);
+        MockPlayer pilot = onFoot(helper);
+        PodTether.clip(person.player(), pod);
+        pilot.teleportTo(helper.getLevel(), pod.position(), 0f, 0f);
+        expect(helper, pilot.player().startRiding(pod), "the pilot should board");
+        pod.setStranded(true);
+        pilot.player().getMainHandItem().use(helper.getLevel(), pilot.player(), InteractionHand.MAIN_HAND);
+        helper.runAfterDelay(2, () -> {
+            expect(
+                    helper,
+                    pilot.actionBarMessages().contains(Component.translatable("message.deepcharter.tether.no_power")),
+                    "the pilot should read that the pod has no power, got %s",
+                    pilot.actionBarMessages());
+            expect(
+                    helper,
+                    !pilot.actionBarMessages()
+                            .contains(Component.translatable("message.deepcharter.tether.not_clipped")),
+                    "a pilot with someone clipped is not told to clip, got %s",
+                    pilot.actionBarMessages());
+            helper.succeed();
+        });
+    }
+
+    /** A person who leaves the charter that owns the pod is off its line on the next tick. */
+    @GameTest
+    public void aClipEndsWhenThePersonLeavesTheCharterThatOwnsThePod(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(5.5, 2, 1.5));
+        MockPlayer director = onFoot(helper);
+        MockPlayer member = onFoot(helper);
+        CharterId id = charterOf(helper, director);
+        PodComponents.register(pod, id);
+        expect(
+                helper,
+                Charters.apply(server, member.player().getUUID(), id).isEmpty(),
+                "the member should be able to apply");
+        expect(
+                helper,
+                Charters.approve(
+                                server,
+                                director.player().getUUID(),
+                                member.player().getUUID())
+                        .isEmpty(),
+                "the director should approve");
+        PodTether.clip(member.player(), pod);
+        expect(helper, PodTether.isClipped(member.player()), "a member may clip to their charter's pod");
+        expect(
+                helper,
+                Charters.leave(server, member.player().getUUID()).isEmpty(),
+                "the member should be able to leave");
+        helper.runAfterDelay(3, () -> {
+            expect(
+                    helper,
+                    !PodTether.isClipped(member.player()),
+                    "a person the charter no longer holds is off its winch");
+            expect(
+                    helper,
+                    member.actionBarMessages().contains(PodTether.Unclipped.NOT_ALLOWED.message()),
+                    "and is told why, got %s",
+                    member.actionBarMessages());
+            helper.succeed();
+        });
+    }
+
+    /** Rule 23: an attachment that gates gameplay on a tick path: unreadable data reads as no clip, and nothing throws. */
+    @GameTest
+    public void aTetherStateOfAnotherVersionReadsAsNoClipAndNeverThrows(GameTestHelper helper) {
+        PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(5.5, 2, 1.5));
+        MockPlayer person = onFoot(helper);
+        ServerPlayer player = person.player();
+        UnreadableChecks.makeUnreadable(player, PodTether.STATE);
+        MinecraftServer server = helper.getLevel().getServer();
+        UnreadableChecks.assertNoThrow(
+                helper,
+                "tether",
+                Map.of(
+                        "the reads",
+                                () -> {
+                                    PodTether.isClipped(player);
+                                    PodTether.isWinching(player);
+                                    PodTether.podId(player);
+                                },
+                        "the tick",
+                                () -> ServerTickEvents.END_SERVER_TICK.invoker().onEndTick(server),
+                        "the winch", () -> PodTether.setWinching(player, true),
+                        "the use in the air",
+                                () -> player.getMainHandItem()
+                                        .use(helper.getLevel(), player, InteractionHand.MAIN_HAND),
+                        "the clip", () -> PodTether.clipRefusal(player, pod)));
+        expect(helper, !PodTether.isClipped(player), "unreadable clip data reads as no clip");
+        helper.succeed();
+    }
+
+    /** A winch that stalls against something the centre ray misses (a slot too low for the body) counts as snagged, goes quiet and snaps. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+    public void aWinchThatMakesNoProgressCountsAsSnaggedAndGoesQuiet(GameTestHelper helper) {
+        Room room = room(helper, 9);
+        MockPlayer person = onFoot(helper);
+        int[] quietFrom = {0};
+        int[] snaggedAt = {0};
+        room.when(helper, () -> {
+            PodEntity pod = room.pod();
+            ServerPlayer player = person.player();
+            player.setNoGravity(true);
+            int wallX = (int) Math.floor(room.pod().getX()) + 8;
+            RoomCarver.carve(
+                    room.level, wallX, wallX + 1, ROOM_FLOOR, ROOM_FLOOR + 55, ROOM_Z - 4, ROOM_Z + 14, Blocks.STONE);
+            // The person stands at the wall, so the first window already shows no progress.
+            // The person's middle is level with the winch, so the haul runs flat and the body slides along nothing.
+            clipAt(
+                    room,
+                    person,
+                    pod,
+                    10,
+                    0,
+                    PodTether.anchor(pod).y - pod.getY() - person.player().getBbHeight() / 2);
+            // A slot one block high at the line's own height: the ray passes, a body 1.8 high does not.
+            Vec3 anchor = PodTether.anchor(pod);
+            Vec3 middle = player.getBoundingBox().getCenter();
+            double alongWall = (wallX + 0.5 - anchor.x) / (middle.x - anchor.x);
+            int slot = (int) Math.floor(anchor.y + (middle.y - anchor.y) * alongWall);
+            RoomCarver.carve(room.level, wallX, wallX + 1, slot, slot, ROOM_Z - 4, ROOM_Z + 14, Blocks.AIR);
+            double rayY = anchor.y + (middle.y - anchor.y) * alongWall;
+            expect(
+                    helper,
+                    rayY > slot + EPSILON && rayY < slot + 1 - EPSILON,
+                    "the slot should hold the ray, at %s in %s",
+                    rayY,
+                    slot);
+            PodTether.setWinching(player, true);
+            return () -> {
+                clientStep(player);
+                expect(
+                        helper,
+                        player.getX() > wallX + 2 - EPSILON,
+                        "the person must never be in or past the wall, they are at %s",
+                        player.position());
+                if (room.age == 5) {
+                    expect(
+                            helper,
+                            !person.actionBarMessages()
+                                    .contains(Component.translatable("message.deepcharter.tether.snagged")),
+                            "the centre ray is clear, so the line is not snagged yet, got %s",
+                            person.actionBarMessages());
+                }
+                if (snaggedAt[0] == 0
+                        && person.actionBarMessages()
+                                .contains(Component.translatable("message.deepcharter.tether.snagged"))) {
+                    snaggedAt[0] = room.age;
+                    quietFrom[0] = clanksNear(room.pod().position());
+                    expect(
+                            helper,
+                            Math.abs(room.age - TUNING.stallTicks()) <= 5,
+                            "a haul with no progress counts as snagged after the stall window, it did at tick %s",
+                            room.age);
+                }
+                if (snaggedAt[0] == 0) {
+                    expect(helper, room.age < TUNING.stallTicks() + 10, "the stall should have been noticed by now");
+                    return;
+                }
+                int snagAge = room.age - snaggedAt[0];
+                if (snagAge == TUNING.snagTicks() - 5) {
+                    expect(helper, PodTether.isClipped(player), "the snag time is counted from the stall");
+                    expect(
+                            helper,
+                            clanksNear(room.pod().position()) == quietFrom[0],
+                            "a stalled winch reports no noise, it reported %s more",
+                            clanksNear(room.pod().position()) - quietFrom[0]);
+                }
+                if (snagAge > TUNING.snagTicks() + 5) {
+                    expect(helper, !PodTether.isClipped(player), "a haul that goes nowhere snaps");
+                    expect(
+                            helper,
+                            player.getCooldowns().isOnCooldown(player.getMainHandItem()),
+                            "and the tether has to be rigged again");
+                    room.finish(helper);
+                }
+            };
+        });
+    }
+
+    /** The winch refuses a lava path: lava across the line is a snag, as rock is, and the pilot's reel drags nobody into it. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+    public void theWinchNeverHaulsAPersonThroughLava(GameTestHelper helper) {
+        Room room = room(helper, 10);
+        MockPlayer person = onFoot(helper);
+        MockPlayer pilot = onFoot(helper);
+        room.when(helper, () -> {
+            PodEntity pod = room.pod();
+            ServerPlayer player = person.player();
+            int wallX = (int) Math.floor(room.pod().getX()) + 8;
+            RoomCarver.carve(
+                    room.level, wallX, wallX + 1, ROOM_FLOOR, ROOM_FLOOR + 55, ROOM_Z - 4, ROOM_Z + 14, Blocks.LAVA);
+            player.setNoGravity(true);
+            Vec3 start = room.pod().position().add(15, 0, 0);
+            clipAt(room, person, pod, 15, 0);
+            pilot.teleportTo(room.level, room.pod().position(), 0f, 0f);
+            expect(helper, pilot.player().startRiding(pod), "the pilot should board");
+            pilot.player().getMainHandItem().use(room.level, pilot.player(), InteractionHand.MAIN_HAND);
+            expect(helper, PodTether.isWinching(player), "the pilot's reel starts the winch");
+            return () -> {
+                clientStep(player);
+                expect(
+                        helper,
+                        player.position().distanceTo(start) < EPSILON,
+                        "a winch must not haul a person into lava, the person moved to %s",
+                        player.position());
+                if (room.age > TUNING.snagTicks() + 3) {
+                    expect(helper, !PodTether.isClipped(player), "a line stuck behind lava snaps");
+                    room.finish(helper);
+                }
+            };
+        });
+    }
+
+    /** Unhooking by hand costs nothing on a slack line, but not while the line is snagged: that is the price of jamming a winch, and unhooking is no way out of it. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+    public void unhookingASnaggedLineCostsTheSnapCooldown(GameTestHelper helper) {
+        Room room = room(helper, 11);
+        MockPlayer person = onFoot(helper);
+        room.when(helper, () -> {
+            PodEntity pod = room.pod();
+            ServerPlayer player = person.player();
+            snagBehindRock(room, person, pod);
+            return () -> {
+                if (room.age == 5) {
+                    expect(helper, PodTether.isClipped(player), "the line is snagged but not yet snapped");
+                    player.setShiftKeyDown(true);
+                    player.getMainHandItem().use(room.level, player, InteractionHand.MAIN_HAND);
+                    player.setShiftKeyDown(false);
+                    expect(helper, !PodTether.isClipped(player), "sneaking unhooks the line");
+                    expect(
+                            helper,
+                            player.getCooldowns().isOnCooldown(player.getMainHandItem()),
+                            "unhooking a snagged line costs the cooldown a snap does");
+                    room.finish(helper);
+                }
+            };
+        });
+    }
+
+    /** Stopping a snagged winch by hand is no way out either: a jammed winch cannot be stopped without cutting the line. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+    public void stoppingASnaggedWinchByHandSnapsTheLine(GameTestHelper helper) {
+        Room room = room(helper, 12);
+        MockPlayer person = onFoot(helper);
+        room.when(helper, () -> {
+            PodEntity pod = room.pod();
+            ServerPlayer player = person.player();
+            snagBehindRock(room, person, pod);
+            return () -> {
+                if (room.age == 5) {
+                    player.getMainHandItem().use(room.level, player, InteractionHand.MAIN_HAND);
+                    expect(helper, !PodTether.isClipped(player), "stopping a snagged winch cuts the line");
+                    expect(
+                            helper,
+                            player.getCooldowns().isOnCooldown(player.getMainHandItem()),
+                            "and costs the cooldown a snap does");
+                    room.finish(helper);
+                }
+            };
+        });
+    }
+
+    /** A line held taut past its length is unhooked at a price too: a person cannot cut it free to dodge a snap. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
+    public void unhookingATautLineCostsTheSnapCooldown(GameTestHelper helper) {
+        Room room = room(helper, 13);
+        MockPlayer person = onFoot(helper);
+        room.when(helper, () -> {
+            PodEntity pod = room.pod();
+            ServerPlayer player = person.player();
+            player.setNoGravity(true);
+            clipAt(room, person, pod, TUNING.length() + 1, 0);
+            return () -> {
+                if (room.age == 3) {
+                    expect(helper, PodTether.isClipped(player), "the taut line holds");
+                    player.setShiftKeyDown(true);
+                    player.getMainHandItem().use(room.level, player, InteractionHand.MAIN_HAND);
+                    player.setShiftKeyDown(false);
+                    expect(helper, !PodTether.isClipped(player), "sneaking unhooks the line");
+                    expect(
+                            helper,
+                            player.getCooldowns().isOnCooldown(player.getMainHandItem()),
+                            "unhooking a taut line costs the cooldown a snap does");
+                    room.finish(helper);
+                }
+            };
+        });
+    }
+
+    /** Clips the person 15 blocks from the pod behind a wall, with the winch running against it. */
+    private static void snagBehindRock(Room room, MockPlayer person, PodEntity pod) {
+        person.player().setNoGravity(true);
+        int wallX = (int) Math.floor(pod.getX()) + 8;
+        RoomCarver.carve(
+                room.level, wallX, wallX + 1, ROOM_FLOOR, ROOM_FLOOR + 55, ROOM_Z - 4, ROOM_Z + 14, Blocks.STONE);
+        clipAt(room, person, pod, 15, 0);
+        PodTether.setWinching(person.player(), true);
     }
 
     private static MockPlayer onFoot(GameTestHelper helper) {

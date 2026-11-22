@@ -35,7 +35,7 @@ public class TetherPacingTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(TetherPacingTest.class);
 
     @GameTest
-    public void aTetherCostsAboutHalfOfAStockFirstLayerRunAndLessThanTheNextTool(GameTestHelper helper) {
+    public void aTetherCostsWithinTheLayerOneToolBand(GameTestHelper helper) {
         Run layerOne = EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0);
         long price = Consumable.TETHER.price();
         double runs = price / layerOne.net();

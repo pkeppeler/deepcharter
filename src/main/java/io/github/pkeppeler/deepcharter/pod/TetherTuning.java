@@ -12,6 +12,8 @@ package io.github.pkeppeler.deepcharter.pod;
  * @param snapCooldownTicks ticks a snapped tether cannot be clipped on again
  * @param noiseInterval     ticks between two loud clanks of a winch that is hauling
  * @param noiseRadius       blocks the clank carries, to the noise hook ({@link PodTether#NOISE}) that creatures listen at
+ * @param stallTicks        ticks of hauling over which a person must close on the pod by {@link #stallProgress}, or the haul counts as snagged
+ * @param stallProgress     blocks of line a person must gain on the pod over {@link #stallTicks}: less means the person is stuck on something the line's ray missed
  */
 public record TetherTuning(
         double length,
@@ -22,8 +24,10 @@ public record TetherTuning(
         int snagTicks,
         int snapCooldownTicks,
         int noiseInterval,
-        double noiseRadius) {
-    public static final TetherTuning DEFAULT = new TetherTuning(24.0, 3.0, 6.0, 0.5, 1.0, 40, 200, 10, 40.0);
+        double noiseRadius,
+        int stallTicks,
+        double stallProgress) {
+    public static final TetherTuning DEFAULT = new TetherTuning(24.0, 3.0, 6.0, 0.5, 1.0, 40, 200, 10, 40.0, 20, 0.05);
 
     public TetherTuning {
         if (!(length > 0)) {
@@ -44,6 +48,11 @@ public record TetherTuning(
         if (snagTicks < 1 || snapCooldownTicks < 0 || noiseInterval < 1) {
             throw new IllegalArgumentException(
                     "the snag ticks and the noise interval must be at least 1, and the cooldown not negative");
+        }
+        if (stallTicks < 1 || !(stallProgress >= 0)) {
+            throw new IllegalArgumentException(
+                    "the stall window must be at least 1 tick and its progress not negative, got " + stallTicks
+                            + " and " + stallProgress);
         }
         if (!(noiseRadius >= 0)) {
             throw new IllegalArgumentException("the noise radius must not be negative, got " + noiseRadius);

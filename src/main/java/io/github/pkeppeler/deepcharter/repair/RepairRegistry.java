@@ -17,7 +17,7 @@ public final class RepairRegistry {
     static {
         for (Consumable consumable : Consumable.values()) {
             ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, consumable.itemId());
-            Item item = consumable == Consumable.TETHER
+            Item item = consumable.kind() == Consumable.Kind.TOOL
                     ? new TetherItem(new Item.Properties().setId(key).stacksTo(1))
                     : new ConsumableItem(
                             consumable, new Item.Properties().setId(key).stacksTo(16));
