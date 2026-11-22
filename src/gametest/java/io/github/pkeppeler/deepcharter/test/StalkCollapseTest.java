@@ -51,20 +51,18 @@ public class StalkCollapseTest {
     /** Longer than a collapse takes: the sag delay plus one step for each layer of the tallest great stalk and its cap. */
     private static final int COLLAPSE_WAIT = 200;
 
-    /**
-     * Where the far player stands, past the item box. A drop flies out at {@link SurfaceTuning#scatterSpeed()} and comes to rest within
-     * about 3 blocks of the block that burst it, so within about 9 blocks of a great stalk's trunk.
-     */
-    private static final int FAR_Z = 20;
+    /** Where the far player stands, past the item box, so no drop comes to rest within its pickup reach. */
+    private static final int FAR_Z = 30;
 
     /**
-     * Items are counted this far from the test's origin on each side and above and below it, past where drops come to rest (the great
-     * stalk's trunk stands at 3 to 4, its rim at 6, and the drops rest within about 3 blocks of that). An item in an entity section
+     * Items are counted this far from the test's origin on each side and above and below it, past where drops come to rest. A drop does
+     * not stay where it bursts: the layer above sags into the cell it lies in, which pushes it out of the block, and a push adds speed
+     * each tick, so a drop of a great stalk's trunk (at 3 to 4) was seen 13 blocks from the origin (#967). An item in an entity section
      * that is not yet accessible is invisible to the count and to {@link #clearArea}, and shows up when the section loads (#952), so
      * the two tests that count items wait for every chunk of this box ({@link #countable}) before they clear it, and count only
      * items {@link #MAX_ITEM_AGE} ticks old or less, which no leftover of an earlier test that never ticked here can be.
      */
-    private static final int ITEM_REACH = 12;
+    private static final int ITEM_REACH = 24;
 
     /** The oldest an item of this test can be when it is counted: it was dropped after the break, {@link #COLLAPSE_WAIT} ticks before. */
     private static final int MAX_ITEM_AGE = COLLAPSE_WAIT + 20;
