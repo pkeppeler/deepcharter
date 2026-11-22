@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.StepToast;
 import io.github.pkeppeler.deepcharter.client.layer.Altimeter;
 import io.github.pkeppeler.deepcharter.client.layer.BlockReadoutHud;
+import io.github.pkeppeler.deepcharter.client.layer.BreachHud;
 import io.github.pkeppeler.deepcharter.client.market.AccountHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
@@ -19,6 +20,7 @@ import io.github.pkeppeler.deepcharter.client.theme.PanelLook.Decal;
 import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
+import io.github.pkeppeler.deepcharter.client.transmission.TransmissionHud;
 import io.github.pkeppeler.deepcharter.client.transmission.TransmissionOverlay;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
@@ -38,16 +40,20 @@ import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.transmission.TransmissionPayload;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
@@ -211,9 +217,8 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                             .map(StepToastClearOfHudClientTest::box)
                             .equals(Optional.of(slip)),
                     "the popup is where StepToast.place puts it, not somewhere the toast manager moved it");
-            List<Drawn> hudText =
-                    DrawnText.of(graphics -> client.gui.hud.extractRenderState(graphics, client.getDeltaTracker()));
-            require(!hudText.isEmpty(), "the real HUD layers draw some text " + when);
+            List<Drawn> hudText = hudText(client);
+            require(!hudText.isEmpty(), "the mod's HUD parts draw some text " + when);
             for (Drawn text : hudText) {
                 require(
                         !ClientChecks.overlaps(slip, text.box()),
@@ -316,6 +321,27 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
     private static void requireClear(String what, Box slip, Map<String, Box> hud) {
         hud.forEach((part, box) -> require(
                 !ClientChecks.overlaps(slip, box), what + " at " + slip + " covers the " + part + " at " + box));
+    }
+
+    /**
+     * The text the mod's HUD parts draw now, each part's own draw method run into a recorder: what a player reads, wherever the part puts it.
+     * The block readout and the transmission draw only while they are up.
+     */
+    private static List<Drawn> hudText(Minecraft client) {
+        DeltaTracker tracker = client.getDeltaTracker();
+        List<Drawn> drawn = new ArrayList<>();
+        for (BiConsumer<GuiGraphicsExtractor, DeltaTracker> part :
+                List.<BiConsumer<GuiGraphicsExtractor, DeltaTracker>>of(
+                        CockpitHud::extract,
+                        PodStatusHud::extract,
+                        ScannerHud::extract,
+                        BreachHud::extractAltimeter,
+                        AccountHud::extract,
+                        BlockReadoutHud::extract,
+                        TransmissionHud::extract)) {
+            drawn.addAll(DrawnText.of(graphics -> part.accept(graphics, tracker)));
+        }
+        return drawn;
     }
 
     /**

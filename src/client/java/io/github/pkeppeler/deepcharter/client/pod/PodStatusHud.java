@@ -311,7 +311,7 @@ public final class PodStatusHud {
         block(client, guiWidth, guiHeight).ifPresent(block -> into.add(block.box()));
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         Optional<Block> block = block(client, graphics.guiWidth(), graphics.guiHeight());
         if (block.isEmpty()) {

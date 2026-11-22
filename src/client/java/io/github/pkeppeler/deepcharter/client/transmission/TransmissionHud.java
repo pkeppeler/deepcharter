@@ -56,7 +56,7 @@ public final class TransmissionHud {
         return new Panel(lines, (guiWidth - width) / 2, top, width, height);
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         if (!TransmissionOverlay.active()) {
             return;
         }

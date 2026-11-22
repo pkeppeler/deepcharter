@@ -57,7 +57,7 @@ public final class AccountHud {
                 .map(charter -> Component.translatable("hud.deepcharter.account", charter.name(), charter.balance()));
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         line(client, graphics.guiWidth(), graphics.guiHeight())
                 .ifPresent(line -> graphics.text(

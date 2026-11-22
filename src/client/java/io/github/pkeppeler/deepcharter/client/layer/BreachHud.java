@@ -77,7 +77,7 @@ public final class BreachHud {
                         into.add(reading.box().grow(BreachLook.current().jitterPixels())));
     }
 
-    private static void extractAltimeter(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extractAltimeter(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         reading(client, graphics.guiWidth(), graphics.guiHeight(), BreachEffects.jitter())
                 .ifPresent(reading -> graphics.text(

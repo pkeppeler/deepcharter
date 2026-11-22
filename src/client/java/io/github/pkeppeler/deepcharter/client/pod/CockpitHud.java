@@ -188,7 +188,7 @@ public final class CockpitHud {
                 : Math.max(0.0, heat - look.heatFallPerTick());
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         LocalPlayer player = client.player;
         PodEntity pod = seatedPod(client);

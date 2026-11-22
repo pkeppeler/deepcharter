@@ -118,7 +118,7 @@ public final class ScannerHud {
         ticksUntilScan = TUNING.rescanTicks() - 1;
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         ScanSlice scanned = slice;
         if (scanned == null || CockpitHud.seated(client).isPresent()) {

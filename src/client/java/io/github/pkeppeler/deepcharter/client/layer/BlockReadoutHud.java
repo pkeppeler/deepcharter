@@ -90,7 +90,7 @@ public final class BlockReadoutHud {
         FADE.tick(looked(client), ReadoutLook.current());
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         Optional<Readout> shown = shown();
         if (shown.isEmpty() || !visible(client)) {
