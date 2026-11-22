@@ -550,7 +550,7 @@ Every band holds after the change. The matter transmitter is the one price that 
 
 **Open questions.**
 - Beds, storage and a repair terminal belong to an outpost in SPEC section 11 and are not built here. The repair terminal waits for a repair price that is not the colony's.
-- Rated materials (SPEC section 11: an outpost built below its depth's rating is uninhabitable) matter from layer 3 on. The layer 1 floor has no rating, so the kit works only there; each deeper floor needs the rating rules first.
+- Rated materials (SPEC section 11: an outpost built below its depth's rating is uninhabitable) are built in [#989](#environment-ratings-989-a). The Company's hall holds layer 1, so the kit still works only at the layer 1 floor; each deeper floor needs its layer's rated material.
 
 ## Hard landings (#319, A)
 
@@ -1744,3 +1744,44 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Knobs.** None: the behaviour is the vanilla falling block's. `SurfaceBlocks.REGOLITH_DUST` is the dust colour.
 
 **Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
+
+## Environment ratings (#989, A)
+
+**Problem.** SPEC section 11 gives every depth ratings for heat, pressure, flooding and quake bracing and says an outpost built below them is uninhabitable. Nothing in the game said what a block holds, what a depth asks, or whether the block in your hand would hold where you aim it, and [#926](https://github.com/pkeppeler/deepcharter/issues/926) (creatures break exposed unrated blocks) needs those answers first. The model is [ADR 0076](../adr/0076-environment-ratings-are-block-tags-per-axis-and-a-per-layer-table-of-what-a-depth-asks.md).
+
+**What a depth asks.** `RatingTuning` has one row per built layer; the surface asks nothing.
+
+| Depth | Heat | Pressure | Flooding | Quake |
+|---|---|---|---|---|
+| Surface | 0 | 0 | 0 | 0 |
+| Layer 1 | 1 | 1 | 1 | 1 |
+| Layer 2 | 2 | 1 | 1 | 2 |
+| Below layer 2 | no rated material yet: nothing holds | | | |
+
+**What holds (measured: `OutpostRatingsTest` reads the tag data, the same the game reads).**
+
+| Block | Heat | Pressure | Flooding | Quake | Holds in |
+|---|---|---|---|---|---|
+| Packed shale, breach crust (layer 1's own rock) | 1 | 1 | 1 | 1 | layer 1 |
+| Green shale (layer 2's own rock) | 2 | 2 | 2 | 2 | layers 1, 2 |
+| Slag brick (fused from spoil) | 2 | 2 | 2 | 2 | layers 1, 2 |
+| Company kit (plate, concrete, beam, terminals, lamps) | 2 | 2 | 2 | 2 | layers 1, 2 |
+| Window glass | 2 | 0 | 2 | 0 | none |
+| Grating | 2 | 0 | 0 | 2 | none |
+| Vanilla blocks, regolith, stalks, ore, rubble | 0 | 0 | 0 | 0 | the surface only |
+
+**The readout and the sheet.** Holding a block and aiming at a block puts one of three words two lines under the crosshair (`PlacementReadoutHud`): HOLDS HERE, SHELTERED or WILL NOT HOLD UNATTENDED, and for the last the axes it misses ("Below this depth's rating: heat, quake bracing"). A block's tooltip, its spec sheet, states "Rated: heat 2, pressure 2, flooding 2, quake 2" and "Holds in layers 1, 2"; a block no tag lists has no such lines. SHELTERED is #926's: it needs the shell's exposure, so this change builds the hook (`Placements.addShelterCheck`) and registers nothing.
+
+**Habitability.** `OutpostHabitability.of` reads the hall's shell against its layer's requirement and reports habitable, how many shell blocks are unrated and on which axes. It never changes a block. The effects it exists for (heat leaking in, water seeping in, the suit timer running inside) need a suit timer and on-foot heat and water, which are not built; they are follow-ups that read this.
+
+**The cost of a rated shell (modelled, `OutpostRatingsPacingTest`).** A small outpost is a room 3 by 3 inside and 2 high with a shell one block thick: 82 blocks. Below layer 1 a hand cannot break rock, so the shell is slag brick, 2 spoil each: 164 spoil. A Mole with tier 2 parts and a full spoil bay brings 64 spoil, 32 bricks, a layer 2 run, and the hopper's mass does not slow its climb, so the run nets the same $413 as without it. The shell takes 3 layer 2 runs, about $1,240 of runs that were earning anyway, and no money. In layer 1 a stock Mole's hopper run brings 21 bricks and nets $115: 4 runs, though layer 1's own rock is mined by hand and holds layer 1.
+
+**Decisions (A).**
+- Layer 1 asks level 1 of everything (so the first rock a player places is a rated block, and a plank is not), and layer 2 asks level 2 of heat and quake and level 1 of pressure and flooding: the Old Workings are deeper and have collapsed before.
+- Slag brick is level 2: the one rated block below layer 1 that a player can make, and the reason the hopper and the processor matter past layer 1.
+- Glass and grating are rated unevenly on purpose, so the four axes mean different things and a window is a weakness in a shell.
+- A vanilla block is unrated: a pack may rate one by adding it to a tag.
+
+**Knobs.** `RatingTuning.DEFAULT` (the layer rows and the highest tag level), the tags in `data/deepcharter/tags/block/rating/`.
+
+**Open questions.** Whether layer 1 should ask less, so the first hours show no warning; the outpost's terminal risk line and the creature rule are #926.

@@ -1,0 +1,28 @@
+{
+  "values": [
+    "deepcharter:packed_shale_rubble",
+    "deepcharter:green_shale_rubble",
+    "deepcharter:regolith",
+    "deepcharter:regolith_packed",
+    "deepcharter:regolith_rock",
+    "deepcharter:ochre_regolith",
+    "deepcharter:basalt_outcrop",
+    "deepcharter:gas_pocket",
+    "deepcharter:company_rock",
+    "deepcharter:grained_crust",
+    "deepcharter:fungal_stalk",
+    "deepcharter:great_stalk",
+    "deepcharter:great_stalk_cap",
+    "deepcharter:stalk_planks",
+    "deepcharter:salvage_crate",
+    "deepcharter:note",
+    "deepcharter:colony_sculpture",
+    "deepcharter:ironium_ore",
+    "deepcharter:bronzium_ore",
+    "deepcharter:silverium_ore",
+    "deepcharter:goldium_ore",
+    "deepcharter:platinium_ore",
+    "deepcharter:einsteinium_ore",
+    "deepcharter:cicatrium_ore"
+  ]
+}

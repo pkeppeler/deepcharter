@@ -14,11 +14,15 @@ import io.github.pkeppeler.deepcharter.layer.LayerTuning;
 import io.github.pkeppeler.deepcharter.market.OreProcessor;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.outpost.OutpostAccess;
 import io.github.pkeppeler.deepcharter.outpost.OutpostBuilder;
 import io.github.pkeppeler.deepcharter.outpost.OutpostData;
+import io.github.pkeppeler.deepcharter.outpost.OutpostHabitability;
+import io.github.pkeppeler.deepcharter.outpost.OutpostHabitability.Status;
 import io.github.pkeppeler.deepcharter.outpost.OutpostRegistry;
 import io.github.pkeppeler.deepcharter.outpost.OutpostTuning;
+import io.github.pkeppeler.deepcharter.outpost.RatingAxis;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -38,9 +42,11 @@ import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -843,5 +849,99 @@ public class OutpostTest {
             }
             helper.succeed();
         });
+    }
+
+    /**
+     * #989, ADR 0076: an outpost whose shell has a block below its layer's rating is uninhabitable, and nothing is destroyed. The Company's plates, the
+     * crust and the layer's own rock hold layer 1; vanilla stone, a plank or a window pane does not; a gap and what stands inside are not judged.
+     */
+    @GameTest(maxTicks = MAX_TICKS)
+    public void anOutpostWithAnUnratedShellBlockIsUninhabitableAndNothingIsDestroyed(GameTestHelper helper) {
+        Stage stage = stage(helper, 9400, true);
+        whenReady(helper, stage, () -> {
+            useKit(stage, stage.floor(), Direction.UP);
+            OutpostData.Outpost outpost = OutpostData.get(helper.getLevel().getServer())
+                    .of(stage.charter(), 1)
+                    .orElseThrow();
+            // The stage's ceiling over the hatch is vanilla stone, which no tag rates: the shell is judged where the
+            // kit leaves the rock as it was.
+            Status stone = OutpostHabitability.of(stage.level(), outpost);
+            int hatchCells = 5 * 5 - 2 * 2;
+            if (stone.habitable() || stone.unrated() != hatchCells) {
+                throw failure(
+                        helper,
+                        "%d cells of unrated rock should make the shell uninhabitable, it said %s",
+                        hatchCells,
+                        stone);
+            }
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    BlockPos cell = stage.floor().offset(dx, 6, dz);
+                    if (stage.level().getBlockState(cell).is(Blocks.STONE)) {
+                        stage.level()
+                                .setBlock(cell, LayerBlocks.PACKED_SHALE.defaultBlockState(), Block.UPDATE_CLIENTS);
+                    }
+                }
+            }
+            expectStatus(helper, stage, outpost, "the Company's shell over the layer's own rock", true, 0, Set.of());
+            BlockPos wall = stage.floor().offset(5, 3, 0);
+            stage.level().setBlock(wall, Blocks.OAK_PLANKS.defaultBlockState(), Block.UPDATE_CLIENTS);
+            expectStatus(helper, stage, outpost, "a plank in the wall", false, 1, EnumSet.allOf(RatingAxis.class));
+            stage.level().setBlock(wall, ColonyKit.WINDOW_GLASS.defaultBlockState(), Block.UPDATE_CLIENTS);
+            expectStatus(
+                    helper,
+                    stage,
+                    outpost,
+                    "a window pane in the wall",
+                    false,
+                    1,
+                    EnumSet.of(RatingAxis.PRESSURE, RatingAxis.QUAKE));
+            stage.level().setBlock(wall, SlagBrick.BLOCK.defaultBlockState(), Block.UPDATE_CLIENTS);
+            expectStatus(helper, stage, outpost, "slag brick in the wall", true, 0, Set.of());
+            stage.level().setBlock(wall, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+            expectStatus(
+                    helper, stage, outpost, "a gap in the wall (the creature rule's, not a rating)", true, 0, Set.of());
+            stage.level()
+                    .setBlock(
+                            stage.floor().offset(0, 1, 3), Blocks.OAK_PLANKS.defaultBlockState(), Block.UPDATE_CLIENTS);
+            expectStatus(helper, stage, outpost, "a plank inside the hall", true, 0, Set.of());
+
+            stage.level().setBlock(wall, Blocks.OAK_PLANKS.defaultBlockState(), Block.UPDATE_CLIENTS);
+            if (!stage.level().getBlockState(wall).is(Blocks.OAK_PLANKS)
+                    || OutpostData.get(helper.getLevel().getServer())
+                            .of(stage.charter(), 1)
+                            .isEmpty()) {
+                throw failure(helper, "an unrated shell must not destroy the block or the outpost's record");
+            }
+            // A layer with no ratings has no rated material: every block of the shell is unrated there.
+            Status unbuilt = OutpostHabitability.of(
+                    stage.level(), new OutpostData.Outpost(stage.charter(), 3, outpost.centre()));
+            if (unbuilt.habitable() || unbuilt.unrated() != unbuilt.shellBlocks() || unbuilt.shellBlocks() == 0) {
+                throw failure(helper, "an outpost in a layer with no ratings should be uninhabitable: %s", unbuilt);
+            }
+        });
+    }
+
+    private static void expectStatus(
+            GameTestHelper helper,
+            Stage stage,
+            OutpostData.Outpost outpost,
+            String what,
+            boolean habitable,
+            int unrated,
+            Set<RatingAxis> shortOn) {
+        Status status = OutpostHabitability.of(stage.level(), outpost);
+        if (status.habitable() != habitable
+                || status.unrated() != unrated
+                || !status.shortOn().equals(shortOn)) {
+            throw failure(
+                    helper,
+                    "%s: expected habitable %s, %d unrated, short on %s; the shell reads %s",
+                    what,
+                    habitable,
+                    unrated,
+                    shortOn,
+                    status);
+        }
     }
 }
