@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -75,6 +76,20 @@ public final class ClientChecks {
         } finally {
             context.runOnClient(client -> client.options.particles().set(particlesWere));
         }
+    }
+
+    /**
+     * A screenshot of the surface sky, taken once the client has caught up: the particle option at minimal and the HUD hidden, both put back
+     * after. The sky's {@code dust_mote} ambient particle is dark and random, and a non-forced particle makes {@code ClientLevel.doAddParticle}
+     * return early on minimal, so none is in the shot (#1043). A test that reads pixels of the surface sky shoots it here.
+     */
+    public static Path skyShot(ClientGameTestContext context, String name) {
+        Path[] shot = new Path[1];
+        withHudHidden(context, ParticleStatus.MINIMAL, () -> {
+            context.waitTicks(40);
+            shot[0] = context.takeScreenshot(name);
+        });
+        return shot[0];
     }
 
     private static void withHud(ClientGameTestContext context, boolean hidden, Runnable body) {

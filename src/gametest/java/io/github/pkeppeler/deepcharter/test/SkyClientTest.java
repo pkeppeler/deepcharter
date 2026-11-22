@@ -11,7 +11,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.minecraft.server.level.ParticleStatus;
 
 /**
  * Client GameTest for #239: what the player sees. Looking straight up, the sky is dusk when the sky clock is at its brightest and
@@ -78,21 +77,13 @@ public class SkyClientTest implements FabricClientGameTest {
     /** The bright pixels of the sun view form one disc that is round, small and off the middle, and the glow dies out soon after it. */
     private static void theSunIsSmallAndRound(ClientGameTestContext context, TestServerContext server) {
         server.runCommand(LOOK_AT_SUN);
-        // The sky timeline's dust motes (#1043) are dark and random, and one drifting past the camera is a 60 pixel
-        // square across the glow's row. The minimal particle option drops them; the HUD is hidden so the sky is all
-        // that is in the shot.
-        BufferedImage[] shot = new BufferedImage[1];
-        ClientChecks.withHudHidden(context, ParticleStatus.MINIMAL, () -> {
-            context.waitTicks(40);
-            shot[0] = read(context.takeScreenshot("sky-sun"));
-        });
-        BufferedImage image = shot[0];
+        BufferedImage image = read(ClientChecks.skyShot(context, "sky-sun"));
         int minX = Integer.MAX_VALUE;
         int maxX = -1;
         int minY = Integer.MAX_VALUE;
         int maxY = -1;
         int bright = 0;
-        // Rows 100 to 380 skip the top of the screen and the hand.
+        // The rows start below the readout, and F1 hides the hand.
         for (int y = 100; y < 380; y++) {
             for (int x = 0; x < image.getWidth(); x++) {
                 if (isBright(image.getRGB(x, y))) {
@@ -152,8 +143,7 @@ public class SkyClientTest implements FabricClientGameTest {
 
     /** The average colour of a patch at the middle of the screen, looking straight up, once the client has caught up. */
     private static int[] skyAbove(ClientGameTestContext context, String shotName) {
-        context.waitTicks(40);
-        BufferedImage image = read(context.takeScreenshot(shotName));
+        BufferedImage image = read(ClientChecks.skyShot(context, shotName));
         int half = 20;
         long[] sum = new long[3];
         int count = 0;
