@@ -1744,3 +1744,65 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Knobs.** None: the behaviour is the vanilla falling block's. `SurfaceBlocks.REGOLITH_DUST` is the dust colour.
 
 **Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
+
+## Drifters and the alarm (#973, A)
+
+**Problem.** CREATURES.md gives the Sleeper's family its draw, the drill, and layer 3 its first creature: the Drifter, a spore bladder that drifts toward noise, and the alarm that a kill raises. This is the mechanics, built before layer 3 exists (#972 builds the worldgen). Nothing in shipped data lists the new biome tag `deepcharter:fungal_hollows`, so **nothing changes in layers 1 and 2 and the default build is no harder**; the numbers below bite only once #972 fills the tag.
+
+**The rule.**
+- **Where.** A drifter is placed (by the mod, never by the game's spawner) only where the source of the noise and the place itself are in a biome of the tag `deepcharter:fungal_hollows`. The shipped tag is empty; the gametest data pack names a test biome. In a zone with no tag biome nothing appears, whatever the noise.
+- **What draws it.** A drifter hears a **pod drilling** 28 blocks off, a person on foot **sprinting** 20 off and **walking** 10 off. A person who sneaks or stands still is silent (a look every 5 ticks must see them cover 0.1 blocks a tick). It drifts toward the nearest noise at 1.6 blocks a second (0.08 a tick, eased in over about 20 ticks; 1.53 measured). With no noise it wanders at 0.4 blocks a second.
+- **The tell.** Three senses come before any cost: the glow (the core and the veins are drawn at full bright, so it shows in the dark), the hiss (a sound each 2 to 4 seconds, louder while it is drawn) and a line to the person whose noise draws it (*"A pale glow drifts toward the drill, hissing. Stop drilling and it will pass."*). It cannot burst until it has heard a noise for **60 ticks (3 s) running**, and a drifter is placed at least 18 blocks from the source, which is 10 seconds of drifting.
+- **The burst.** On touch (a pod or a person within 0.2 blocks of its skin) or when a pod that is **drilling** has its hull within 2.5 blocks of it, and only while it hears the noise. Then it is a cloud of spore gas, 4.5 blocks round, hanging 8 seconds.
+- **In the pod.** The gas eats the hull of a pod **with a person aboard** at **3 hull a second for each cloud** it is in: 24 hull, 24 per cent of a Mole, for one cloud sat in from the burst to the end (23.85 measured). The pilot is shielded by the hull, as from lava. A wreck and an empty pod take nothing.
+- **On foot.** The gas poisons (poison I, renewed each half second) and blinds (renewed to 2 seconds past the gas) a person in it. Vanilla poison stops at half a heart: it cannot kill alone, but a person blind and poisoned in a cave is in the trouble CREATURES.md section 4 promises; the suit timer (a later issue) turns that into a clock.
+- **Popping it.** A drifter has 4 health: an arrow pops it, a fist takes four blows. A blow, a projectile or an explosion pops it where it floats; the fall, fire and the void's friends do not. **A pop at range is safe:** the gas is 4.5 blocks round, so a pilot or a person 6 or more blocks off loses nothing. A pop **raises the alarm**; a burst on touch does not (it was not killed).
+- **The alarm.** Killing a drifter rings the alarm of its **zone** (a third of a layer by height, the cut the layer's biomes use; no zone names needed) for **3 minutes** from the last kill (a second kill starts it again, it never stacks). While it rings: a source draws drifters **three times as often**, may have **one more alive**, and the zone's drifters hear **half again as far**. It shows plainly: a deep drone beats every 5 seconds for every person in the zone, and the pilot's readout carries *"ALARM: THE HOLLOWS ARE AWAKE 143 S"*.
+- **Cadence and caps.** A *source* is a drilling pod with a person aboard, **once however many sit in it**, plus one for the people on foot who make a noise, together, however many they are. Each source looks every 5 seconds and places a drifter at the chance of its zone: top 0.25 a minute, middle 0.33, bottom 0.5. One source may have 1 alive in its zone (2 under the alarm), so two pods hold two; the zone holds at most **2, 3 and 4** (top, middle, bottom), whatever the sources. No packs, no farming (a kill pays nothing and raises the alarm), no experience, no loot.
+- **Sonar.** Sonar does not exist yet. The entity type tag `deepcharter:sonar_echo/empty_cave` names the drifter as the thing sonar reads as empty cave; the sonar work (#924) reads the tag.
+
+**Counterplay, on the ladder.**
+1. **By hand: stop.** Stop drilling and the drifter loses the noise, drifts on, and bursts at nothing. A pilot who stops for a few seconds costs the run a few seconds. A person stands still or sneaks.
+2. **Pop it at range.** A charge, an arrow or the bolt driver (later issues, CREATURES.md section 8) from 6 blocks or more. It raises the alarm, so the price of a clean pop is more of them: a trade the player chooses.
+3. **Mastery: listening.** Passive listening (#924) hears the hiss; the damped drill head is layer 5's. Neither is built here.
+
+**Pacing, measured** (`DrifterTest` and `DrifterPacingTest` log the `[drifter]` lines; a run is 4 minutes of drilling, the figure the Retained's economy uses):
+
+| Measure | Value | How |
+|---|---|---|
+| Drift toward a drilling pod | 1.53 blocks a second (tuned 1.6), aimed 0.99 | `aDrifterDriftsTowardADrillingPod`, over 20 ticks after the ease |
+| A pod's own descent while it drills | about 0.8 blocks a second (24 ticks a stone slab) | drill tuning (`PodTuning.Drill`); so a drifter gains about 0.7 a second on a pod boring straight down |
+| First tell to contact, a drifter placed at the nearest (18 blocks) | about 10 s | 17 blocks at 1.6 a second |
+| First tell to contact, at the edge of hearing (28 blocks) | about 17 s; 26 s under the alarm (42 blocks) | 27 blocks at 1.6 a second |
+| First tell to burst, already beside the hull | 3.2 to 3.5 s (the tell, 60 ticks) | `aDrifterBurstsWhenAPodDrillsBesideItButNotBeforeTheTell`: 64 to 69 ticks |
+| Hull lost by a pilot who ignores one (sits in the one cloud) | 23.85 of 100 (24 %) | `theGasEatsTheHullOfAPodWithAPersonAboard...` |
+| Hull lost leaving at once (the pod drives 4 blocks a second, the cloud is 4.5 round) | about 0.3 to 3 | the first tick costs 0.15 hull; `the gas had cost the hull 0.30 1 ticks after the burst` |
+| Hull lost by a pilot who ignores a chain (alarm, 3 clouds over the same hull) | up to 72 (a wreck is 100) | 3 clouds at 24; the zone holds 2 to 4 |
+| Placements a run, top / middle / bottom zone | 1.00 / 1.33 / 1.99 (expected 1.00 / 1.33 / 2.00) | `DrifterPacingTest`, 20,000 runs each, through the spawner's own roll |
+| The same under the alarm | 3.00 / 4.00 / 5.99 | the same, alarm ringing |
+| Wait between two placements for one source, no alarm / alarm | top 240 s / 80 s, middle 180 s / 60 s, bottom 120 s / 40 s | `chancePerCheck` |
+| Drifters a zone holds, one source / two sources / alarm, one source | 1 / 2 / 2 (up to the cap 2, 3, 4) | `driftersKeyOnTheTagAndAreCountedByPodsAndCappedByZone` |
+| The alarm | 3600 ticks from the last kill, 180 s on the readout, ends | `theAlarmShowsDronesAndEnds` runs all 3,600 ticks |
+
+**Priced against the hazards that exist.** Lava is 10 hull a second, for as long as the pod touches it, times the radiator. A gas pocket's blast is 0.05 hull a foot of depth, once: 25 hull at 500 feet, 50 at 1,000. One cloud is 3 a second for at most 8 seconds: less than a gas pocket in the layers the Hollows sit at, a tenth of lava's rate, and a pilot who drives clear takes a few points. The pocket is a surprise; the cloud has 10 seconds of tell and answers to a verb. Chained, it can wreck a pod that ignores it (the CREATURES.md line "can wreck a pod that ignores them, but never in one hit and never without a tell"): one cloud is a quarter of a Mole, never a hit.
+
+**Decisions (A).**
+- **The alarm is session-only; no ADR 0077.** The alarm is held in memory, never saved, and the readout attachment is not persistent. A restart forgets up to 3 minutes of alarm. That is the same class as the hold and the fuse (session state), the player loses nothing they could keep (no item, no progress, no account), and the worst case is a calm minute after a reload. Saving it would need a versioned `SavedData` and a decode fallback for a state that cannot be worth a migration. If the alarm ever has to survive a restart (a persistent zone state, the "while nobody is near" visits of #927), ADR 0077 is reserved for that move.
+- **A zone is a third of a layer by height** (`Zones.index`), the cut the biomes and the lore's zone names already use, not a named biome: the alarm and the cadence work in layers that have no zone names yet, and in the campaign world's bands.
+- **Spawned by the mod, not the game's spawner.** The vanilla spawner would hand out drifters by weight and by area, not by source of noise, and could not count pods. `Drifters` rolls once per source, so the count is of pods (CREATURES.md section 4) and the tag is the only gate.
+- **Spore damage is a flat 3 a second, not scaled by the radiator.** It is gas, not heat, and the radiator is the heat track; a part that answers spores is a later rung (a hull seal, or listening).
+- **Only a pod with a person aboard is eaten.** CREATURES.md says "while you sit in it". An empty pod near a burst is the unattended-block territory of #926 and ADR 0072, and is not touched here.
+- **Poison does not kill.** Vanilla poison stops at half a heart. A drifter on foot cannot kill alone, only blind and wound; the suit timer and the Continuity Event rule of CREATURES.md section 4 make a drifter lethal on foot when they exist.
+- **A burst needs 3 s of noise heard, and bursts only while it hears one.** So a drifter that loses the noise bursts at nothing. A drifter placed beside a quiet pod is harmless (`aQuietWorldDrawsNothing`). It makes "stop drilling" the answer.
+- **A kill by anything that pops it raises the alarm**, the pilot's cutter does not apply (it is not on the hull). A blow, an arrow, a charge's blast and `/kill` all ring it.
+- **Sounds are vanilla.** A hiss (`block.fire.extinguish`, pitch up), a burst (`entity.puffer_fish.blow_out`, low) and the drone (`block.beacon.ambient`, low). Each has a line in `tools/audio-pack-map.txt` pointing at an original's file, as every sound does.
+- **The art is a translucent bladder in the deep's own cold light** (art-direction section 8): three boxes turned against each other, a bright core, veins and four tendrils, written by `tools/drifter.py`. The core and the veins are a glowmask drawn at full bright.
+- **Placed blocks (CREATURES.md section 9, ADR 0072) are not here.** A drifter breaks nothing; #926 owns it.
+
+**Knobs.** `DrifterTuning`: `maxHealth` (4), `driftSpeed` (0.08), `wanderSpeed` (0.02), `armTicks` (60), `calmTicks` (40), `touchBlocks` (0.2), `drilledBeside` (2.5), `hissTicks` (80). `Noise`: `drill` (28), `sprint` (20), `footstep` (10), `footstepMin` (0.1), `lookTicks` (5). `Cloud`: `radius` (4.5), `ticks` (160), `hullPerSecond` (3), `poisonTicks` (80), `blindTicks` (40), `lookTicks` (10). `Spawn`: `checkTicks` (100), `perMinute` (0.25, 0.33, 0.5), `zoneCap` (2, 3, 4), `perSource` (1), `minBlocks` (18), `maxBlocks` (36), `tries` (12). `Alarm`: `ticks` (3600), `chanceMult` (3), `extraEach` (1), `senseMult` (1.5), `droneTicks` (100).
+
+**Open questions.**
+- Whether the cloud should thin as it ages (it is flat for 8 seconds), and whether a hull part should answer spores.
+- Whether the crew on foot as one source is right for a big group spread over a layer (it places by the first footstep it hears).
+- Whether the alarm should also lengthen the cloud, and what a "sprinting only" crew should cost; the first demo shows if the numbers are right.
+- The sonar echo, the hiss on passive listening, and the on-foot kill need #924, #925 and the suit timer.

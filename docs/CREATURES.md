@@ -110,6 +110,8 @@ Act 2 opens. The navigator seat is new, and this is the first real on-foot explo
 
 The Sleeper's: pod-sized glowing spore bladders that drift toward drill noise and footsteps.
 
+The mechanics are built before the layer is ([#973](https://github.com/pkeppeler/deepcharter/issues/973), numbers and decisions in [mechanics.md](design/mechanics.md#drifters-and-the-alarm-973-a)); they key on the biome tag `deepcharter:fungal_hollows`, which #972 fills.
+
 - **Sensed:** a soft glow and a faint hiss. Mostly gas, so sonar reads one as **empty cave**: the classic ambiguous echo.
 - **Pod:** touch one or drill beside it and it bursts into spore gas that eats at the hull while you sit in it.
 - **On foot:** the gas poisons and blinds. They drift toward sprinting.

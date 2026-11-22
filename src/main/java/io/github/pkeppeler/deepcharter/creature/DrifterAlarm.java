@@ -17,8 +17,10 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.core.Holder;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -142,15 +144,13 @@ public final class DrifterAlarm {
         for (ServerPlayer player : level.players()) {
             long left = ticksLeft(level, player.getBlockY());
             if (left > 0 && beat) {
-                level.playSound(
-                        null,
-                        player.getX(),
-                        player.getY(),
-                        player.getZ(),
-                        DeepSound.CREATURE_ALARM_DRONE.event(),
+                player.connection.send(new ClientboundSoundEntityPacket(
+                        Holder.direct(DeepSound.CREATURE_ALARM_DRONE.event()),
                         SoundSource.HOSTILE,
+                        player,
                         1.0f,
-                        1.0f);
+                        1.0f,
+                        level.getRandom().nextLong()));
             }
             if (player.getVehicle() instanceof PodEntity pod) {
                 show(pod, new State((int) Math.ceilDiv(left, TICKS_PER_SECOND)));
