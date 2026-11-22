@@ -36,6 +36,7 @@ public class PodNearLethalLandingTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final int DROP_BLOCKS = 14;
     private static final int SETTLE_TICKS = 80;
+    private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 600;
     private static final float HULL_EPSILON = 0.01f;
 
     private static final Set<UUID> CROSSED = ConcurrentHashMap.newKeySet();
@@ -45,33 +46,33 @@ public class PodNearLethalLandingTest {
     }
 
     /** The hull is the landing's cost, to a hair short so that float rounding cannot leave a sliver of hull. */
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aCrewedPodWithExactlyTheHullTheLandingCostsIsWreckedOnTheFloor(GameTestHelper helper) {
         drop(helper, 22004, Hit.LANDING, -HULL_EPSILON / 2, true);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aCrewedPodOneHullShortOfTheLandingIsWreckedOnTheFloor(GameTestHelper helper) {
         drop(helper, 22068, Hit.LANDING, -1f, true);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aCrewedPodLeftWithOneHullByTheLandingStaysWorkingOnTheFloor(GameTestHelper helper) {
         drop(helper, 22132, Hit.LANDING, 1f, true);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void anEmptyPodWithExactlyTheHullTheLandingCostsIsWreckedOnTheFloor(GameTestHelper helper) {
         drop(helper, 22196, Hit.LANDING, -HULL_EPSILON / 2, false);
     }
 
     /** Every other way into 0 hull ends in the same wreck, so a pod emptied in the air is no different once it lands. */
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aCrewedPodEmptiedByAGasBlastInTheAirIsWreckedOnTheFloor(GameTestHelper helper) {
         drop(helper, 22260, Hit.GAS, 0f, true);
     }
 
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
+    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aCrewedPodWhoseHullIsSetToZeroInTheAirIsWreckedOnTheFloor(GameTestHelper helper) {
         drop(helper, 22324, Hit.ZERO, 0f, true);
     }
@@ -203,8 +204,6 @@ public class PodNearLethalLandingTest {
                             aboard,
                             dead)));
                 }
-            }
-            if (rider != null) {
                 rider.leave();
             }
             subject.discard();
