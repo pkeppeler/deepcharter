@@ -92,7 +92,8 @@ public class EconomyAffordabilityTest {
             Consumable.BLASTING_CHARGE, new Target(false, 0.25, 1),
             Consumable.SHAPED_CHARGE, new Target(false, 0.25, 1),
             Consumable.HULL_NANOBOTS, new Target(true, 0.25, 1),
-            Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4));
+            Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4),
+            Consumable.TETHER, new Target(false, 0.25, 1));
 
     private static Run stockRunInLayerOne() {
         return EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0);
