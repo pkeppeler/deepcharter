@@ -18,8 +18,7 @@ import org.jspecify.annotations.Nullable;
  * @param wallColor what shows behind the frame where it is see-through
  * @param content where a screen puts its text and widgets: the screen's rectangle less these insets
  * @param glass the CRT glass: the screen's rectangle less these insets gets the phosphor backdrop, the glass sprite and the scanlines
- * @param glassRadius the corner radius of the glass, which is the radius of the frame's porthole: the glass sprite and the scanlines are cut to it, so
- *     they follow the bezel's curve (a pack that changes the frame's corner changes this to match, and a glass sprite with a border of at least this)
+ * @param glassRadius the corner radius of the frame's porthole, which the scanlines are cut to: at most the border of the glass sprite, and a pack that redraws the frame's corner sets it to match
  * @param nameplate the Company nameplate
  * @param dressA a decal of dressing: toggles, keys, labels, vents, serial plates
  * @param dressB another decal
@@ -81,10 +80,8 @@ public record PanelLook(
     public static final Identifier PIP_OFF = sprite("panel/pip_off");
 
     /**
-     * How far in from the edge of a rounded rectangle of corner {@code radius} the first pixel of {@code row} is inside, for {@code row} counted from the
-     * edge (0 is the outermost row). A pixel is inside when its centre is within {@code radius} of the corner's centre, which is the test the generator
-     * ({@code tools/terminal_concepts.py}) makes when it cuts the frame's porthole and the glass sprite, so the scanlines end where the glass does.
-     * A row past the arc is 0.
+     * How far in from the edge the first pixel of {@code row} (0 is the outermost row) of a rounded corner of {@code radius} is inside: a pixel is inside
+     * when its centre is within {@code radius} of the arc's centre, the test {@code tools/terminal_concepts.py} makes when it cuts the porthole and the glass.
      */
     public static int cornerInset(int radius, int row) {
         if (row >= radius) {
@@ -92,6 +89,12 @@ public record PanelLook(
         }
         double across = radius - row - 0.5;
         return (int) Math.floor(radius - 0.5 - Math.sqrt(radius * (double) radius - across * across)) + 1;
+    }
+
+    /** Where a scanline on {@code row} of a {@code width} by {@code height} glass starts, from its left edge, and ends, from its right: the larger of the top and bottom corners' insets, the radius cut to what the glass holds. */
+    public static int scanlineInset(int radius, int row, int width, int height) {
+        int corner = Math.min(radius, Math.min(width, height) / 2);
+        return Math.max(cornerInset(corner, row), cornerInset(corner, height - 1 - row));
     }
 
     /** Distances from the four edges of the screen to a rectangle inside it. */

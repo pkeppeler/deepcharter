@@ -27,15 +27,7 @@ public final class CrtDraw {
 
     /** One dark line every {@link CrtTuning#scanlineSpacing()} pixels, drawn over everything. */
     public static void scanlines(GuiGraphicsExtractor graphics, int width, int height) {
-        scanlines(graphics, 0, 0, width, height);
-    }
-
-    /** The scanlines in a rectangle: the CRT glass of a panel. */
-    public static void scanlines(GuiGraphicsExtractor graphics, int left, int top, int right, int bottom) {
-        CrtTuning tuning = CrtTuning.current();
-        for (int y = top; y < bottom; y += tuning.scanlineSpacing()) {
-            graphics.fill(left, y, right, y + 1, tuning.scanlineColor());
-        }
+        roundedScanlines(graphics, 0, 0, width, height, 0);
     }
 
     /**
@@ -63,16 +55,12 @@ public final class CrtDraw {
         roundedScanlines(graphics, glass.left(), glass.top(), right, bottom, panel.glassRadius());
     }
 
-    /**
-     * The scanlines in a rectangle whose four corners are rounded by {@code radius}: each line in a corner starts and ends where the glass does
-     * ({@link PanelLook#cornerInset}), so no line runs out over the bezel.
-     */
+    /** The scanlines in a rectangle with rounded corners: each line stops where the glass does ({@link PanelLook#scanlineInset}). */
     public static void roundedScanlines(
             GuiGraphicsExtractor graphics, int left, int top, int right, int bottom, int radius) {
         CrtTuning tuning = CrtTuning.current();
-        int corner = Math.min(radius, Math.min(right - left, bottom - top) / 2);
         for (int y = top; y < bottom; y += tuning.scanlineSpacing()) {
-            int inset = Math.max(PanelLook.cornerInset(corner, y - top), PanelLook.cornerInset(corner, bottom - 1 - y));
+            int inset = PanelLook.scanlineInset(radius, y - top, right - left, bottom - top);
             graphics.fill(left + inset, y, right - inset, y + 1, tuning.scanlineColor());
         }
     }

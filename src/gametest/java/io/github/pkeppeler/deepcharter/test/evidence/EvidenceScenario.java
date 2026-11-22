@@ -54,6 +54,9 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     private static final float FLOAT_PITCH_DOWN = 85f;
     private static final int MINE_LIMIT_TICKS = 160;
 
+    /** How many times {@link #zoomStill} scales a crop up. */
+    private static final int ZOOM = 8;
+
     private int frame;
 
     /** Pass as {@code ticksPerFrame} to {@link #mineBlock} to mine without recording a frame. */
@@ -174,29 +177,31 @@ public abstract class EvidenceScenario implements FabricClientGameTest {
     }
 
     /**
-     * Takes a still named {@code screenshotName} and, beside it, {@code screenshotName-zoom}: the rectangle of it at ({@code x}, {@code y}) in GUI pixels,
-     * {@code width} by {@code height}, scaled up {@code scale} times with nearest-neighbour so each GUI pixel stays a sharp block.
+     * Saves {@code zoomName}: the rectangle at ({@code x}, {@code y}), {@code width} by {@code height} GUI pixels, of the still {@code screenshotName}
+     * already taken, scaled up {@link #ZOOM} times with nearest-neighbour so each GUI pixel stays a sharp block.
      */
-    protected final void screenshotZoom(
-            ClientGameTestContext context, String screenshotName, int x, int y, int width, int height, int scale) {
-        screenshot(context, screenshotName);
+    protected final void zoomStill(
+            ClientGameTestContext context,
+            String screenshotName,
+            String zoomName,
+            int x,
+            int y,
+            int width,
+            int height) {
         int guiScale = context.computeOnClient(client -> client.getWindow().getGuiScale());
         try {
             BufferedImage full = ImageIO.read(
                     screenshotsDir().resolve(screenshotName + ".png").toFile());
             BufferedImage crop = full.getSubimage(x * guiScale, y * guiScale, width * guiScale, height * guiScale);
-            int zoom = scale;
             BufferedImage out =
-                    new BufferedImage(crop.getWidth() * zoom, crop.getHeight() * zoom, BufferedImage.TYPE_INT_ARGB);
+                    new BufferedImage(crop.getWidth() * ZOOM, crop.getHeight() * ZOOM, BufferedImage.TYPE_INT_ARGB);
             for (int py = 0; py < out.getHeight(); py++) {
                 for (int px = 0; px < out.getWidth(); px++) {
-                    out.setRGB(px, py, crop.getRGB(px / zoom, py / zoom));
+                    out.setRGB(px, py, crop.getRGB(px / ZOOM, py / ZOOM));
                 }
             }
             ImageIO.write(
-                    out,
-                    "png",
-                    screenshotsDir().resolve(screenshotName + "-zoom.png").toFile());
+                    out, "png", screenshotsDir().resolve(zoomName + ".png").toFile());
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

@@ -122,6 +122,9 @@ class Panel(unittest.TestCase):
             hole.append(next(x for x in range(radius + 1) if self.alpha(frame, left + x, top + row) == 0))
             filled.append(next(x for x in range(radius + 1) if self.alpha(glass, x, row) != 0))
         self.assertEqual(self.CORNER_INSETS_R18, hole, "the frame's porthole corner")
+        right, bottom = frame.width - self.theme["glassRight"] - 1, frame.height - self.theme["glassBottom"] - 1
+        mirrored = [next(x for x in range(radius + 1) if self.alpha(frame, right - x, bottom - row) == 0) for row in range(radius)]
+        self.assertEqual(self.CORNER_INSETS_R18, mirrored, "the frame's bottom-right porthole corner")
         self.assertEqual(self.CORNER_INSETS_R18, filled, "the glass's corner")
         for row in range(radius):
             for x in range(radius):

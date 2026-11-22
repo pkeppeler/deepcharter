@@ -28,8 +28,6 @@ public class CrtCornerScenario extends EvidenceScenario {
     /** How far the crop reaches out past the glass edge, in GUI pixels. */
     private static final int REACH_OUT = 10;
 
-    private static final int ZOOM = 8;
-
     @Override
     protected String name() {
         return "crt-corner";
@@ -67,26 +65,27 @@ public class CrtCornerScenario extends EvidenceScenario {
             context.waitTicks(TICKS_PER_FRAME);
             frame(context);
         }
+        String still = "crt-corner-" + screen;
+        screenshot(context, still);
         if (corners) {
             PanelLook.Insets glass = PanelLook.current().glass();
-            screenshotZoom(
+            zoomStill(
                     context,
-                    "crt-corner-top-left",
+                    still,
+                    "crt-corner-top-left-zoom",
                     glass.left() - REACH_OUT,
                     glass.top() - REACH_OUT,
                     CROP,
-                    CROP,
-                    ZOOM);
-            screenshotZoom(
+                    CROP);
+            zoomStill(
                     context,
-                    "crt-corner-bottom-right",
+                    still,
+                    "crt-corner-bottom-right-zoom",
                     open.width - glass.right() + REACH_OUT - CROP,
                     open.height - glass.bottom() + REACH_OUT - CROP,
                     CROP,
-                    CROP,
-                    ZOOM);
+                    CROP);
         }
-        screenshot(context, "crt-corner-" + screen);
         TerminalPanelScreens.close(context);
     }
 }

@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -364,6 +365,82 @@ public class ThemeLooksTest {
         }
         rejected(helper, () -> PanelLook.of(area("panel", "{ \"glassRadius\": 65 }")), "glassRadius");
         rejected(helper, () -> PanelLook.of(area("panel", "{ \"glassRadius\": -1 }")), "glassRadius");
+        helper.succeed();
+    }
+
+    /** Scanlines stop where the glass does: at the top and the bottom, and on a glass too small for the radius (the radius is cut to half of it). */
+    @GameTest
+    public void scanlinesStopAtTheGlassCorner(GameTestHelper helper) {
+        int[][] cases = {
+            // radius, row, width, height, inset
+            {18, 0, 300, 200, 14},
+            {18, 199, 300, 200, 14},
+            {18, 198, 300, 200, 11},
+            {18, 100, 300, 200, 0},
+            {18, 0, 300, 20, 7},
+            {18, 19, 300, 20, 7},
+            {18, 5, 300, 20, 1},
+            {18, 5, 20, 300, 1},
+            {0, 0, 300, 200, 0},
+            {0, 199, 300, 200, 0},
+        };
+        for (int[] c : cases) {
+            int inset = PanelLook.scanlineInset(c[0], c[1], c[2], c[3]);
+            if (inset != c[4]) {
+                throw fail(helper, "scanlineInset" + Arrays.toString(c) + " should be " + c[4] + ", got " + inset);
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The mod's own three values agree (#907): {@code glassRadius} is at most the border of the glass sprite's nine-slice, which holds the whole arc, and
+     * it is the radius of the frame's porthole, read off the frame's pixels at the top-left and bottom-right corners. A pack's own mismatch is
+     * documented in skins.md.
+     */
+    @GameTest
+    public void theGlassRadiusMatchesTheShippedSprites(GameTestHelper helper) throws IOException {
+        PanelLook look = PanelLook.of(area("panel", null));
+        String sprites = "/assets/deepcharter/textures/gui/sprites/panel/";
+        JsonObject border;
+        try (InputStream stream = ThemeLooksTest.class.getResourceAsStream(sprites + "glass.png.mcmeta")) {
+            border = JsonParser.parseString(new String(stream.readAllBytes(), StandardCharsets.UTF_8))
+                    .getAsJsonObject()
+                    .getAsJsonObject("gui")
+                    .getAsJsonObject("scaling")
+                    .getAsJsonObject("border");
+        }
+        for (String side : List.of("left", "top", "right", "bottom")) {
+            if (look.glassRadius() > border.get(side).getAsInt()) {
+                throw fail(
+                        helper,
+                        "glassRadius " + look.glassRadius() + " is over the glass border " + side + " " + border);
+            }
+        }
+        BufferedImage frame;
+        try (InputStream stream = ThemeLooksTest.class.getResourceAsStream(sprites + "frame.png")) {
+            frame = ImageIO.read(stream);
+        }
+        PanelLook.Insets glass = look.glass();
+        int bottom = frame.getHeight() - glass.bottom() - 1;
+        int right = frame.getWidth() - glass.right() - 1;
+        for (int row = 0; row < look.glassRadius(); row++) {
+            int expected = PanelLook.cornerInset(look.glassRadius(), row);
+            int topLeft = 0;
+            while (frame.getRGB(glass.left() + topLeft, glass.top() + row) >>> 24 != 0) {
+                topLeft++;
+            }
+            int bottomRight = 0;
+            while (frame.getRGB(right - bottomRight, bottom - row) >>> 24 != 0) {
+                bottomRight++;
+            }
+            if (topLeft != expected || bottomRight != expected) {
+                throw fail(
+                        helper,
+                        "the porthole's row " + row + " is " + topLeft + " in at the top left and " + bottomRight
+                                + " at the bottom right, but glassRadius " + look.glassRadius() + " says " + expected);
+            }
+        }
         helper.succeed();
     }
 
