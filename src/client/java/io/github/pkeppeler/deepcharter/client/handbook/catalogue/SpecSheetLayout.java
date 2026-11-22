@@ -7,8 +7,8 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 /**
  * Where a spec sheet's console and its content sit on a screen of a given size, in GUI pixels: one console, centred, as large as
  * {@link CatalogueLook#sheetWidth()} wide, as tall as its content wants within {@link CatalogueLook#sheetMinHeight()} and
- * {@link CatalogueLook#sheetHeight()}, and never larger than the window less the screen edge. It is the recipe console's casing and glass (one row of controls under the glass, not two), so a sheet looks like the console
- * it was opened from.
+ * {@link CatalogueLook#sheetHeight()}, and never larger than the window less the screen edge. It is the recipe console's casing and
+ * glass with one row of controls under the glass, not two.
  *
  * @param casing the console's casing
  * @param glass the glass of the console

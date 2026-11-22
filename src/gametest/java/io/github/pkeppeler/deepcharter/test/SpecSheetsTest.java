@@ -45,6 +45,7 @@ import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -226,7 +227,7 @@ public class SpecSheetsTest {
      * a player of a funded charter standing beside it. Everything is inside the test's first tick, as a swapped record must be.
      */
     private static MockPlayer atTerminal(
-            GameTestHelper helper, TerminalType type, String name, java.util.function.Consumer<Terminal> body) {
+            GameTestHelper helper, TerminalType type, String name, Consumer<Terminal> body) {
         MinecraftServer server = helper.getLevel().getServer();
         MockPlayer[] buyer = new MockPlayer[1];
         RepairState fresh = new RepairState();

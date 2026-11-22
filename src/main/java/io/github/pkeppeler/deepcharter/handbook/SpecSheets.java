@@ -120,8 +120,8 @@ public final class SpecSheets {
     /**
      * The figure a track is rated for at {@code tier}, worked out the way gameplay works it out: the stock pod's own stat scaled by the
      * tier's ratio ({@code PodComponents}), the scanner's area from {@link ScannerTuning#area}, the lights' level as {@code PodLights}
-     * rounds it. The upgrade tuning's own values are only ratios against the stock part, and the stock pod's stats are not those numbers
-     * (a stock hull is 100, not the tuning's 10), so a figure read from the table alone would be wrong.
+     * rounds it. The upgrade tuning's values are ratios against the stock part (a stock hull is 100, not the tuning's 10), so the table
+     * alone gives a wrong figure.
      */
     private static Component tierFigure(ComponentTrack track, int tier) {
         UpgradeTuning tuning = UpgradeTuning.DEFAULT;
