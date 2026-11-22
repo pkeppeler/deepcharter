@@ -88,7 +88,7 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
 
     @Override
     public void tick() {
-        if (level().isClientSide() || !landed) {
+        if (level().isClientSide() || !landed()) {
             super.tick();
             return;
         }
