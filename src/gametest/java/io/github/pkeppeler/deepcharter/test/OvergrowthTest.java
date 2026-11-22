@@ -23,12 +23,17 @@ import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnloadedChunk;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -45,6 +50,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,13 +107,12 @@ public class OvergrowthTest {
                         TUNING.cellsPerPass(),
                         grown(level, x));
             }
-            for (int y = FLOOR + 1; y < FLOOR + BORE_LENGTH - 1; y++) {
-                if (level.getBlockState(new BlockPos(x, y, Z)).is(LayerBlocks.OVERGROWTH)) {
-                    throw failure(
-                            helper,
-                            "the middle of the bore grew at y %d before any wall cell beside it did (it grows inward)",
-                            y);
-                }
+            BlockPos floating = unanchored(level, x);
+            if (floating != null) {
+                throw failure(
+                        helper,
+                        "the cell at y %d grew with no chain of growth to a wall cell (it grows inward)",
+                        floating.getY());
             }
             int passes = 1;
             while (grown(level, x) < BORE_CELLS && passes < BORE_CELLS) {
@@ -115,6 +120,13 @@ public class OvergrowthTest {
                 now += TUNING.passTicks();
                 Overgrowth.grow(level, chunk, now);
                 passes++;
+                BlockPos loose = unanchored(level, x);
+                if (loose != null) {
+                    throw failure(
+                            helper,
+                            "the cell at y %d grew with no chain of growth to a wall cell (it grows inward)",
+                            loose.getY());
+                }
                 if (grown(level, x) - before > TUNING.cellsPerPass()) {
                     throw failure(
                             helper,
@@ -760,6 +772,36 @@ public class OvergrowthTest {
         return (int) boreCells(x).stream()
                 .filter(cell -> level.getBlockState(cell).is(LayerBlocks.OVERGROWTH))
                 .count();
+    }
+
+    /**
+     * A grown bore cell that no chain of grown cells joins to a wall cell (one that touches the rock round the bore), or null. A pass fills
+     * several cells in turn, so a middle cell may grow in the pass after a wall cell it touches did; it may not grow with no growth to hold to.
+     */
+    private static @Nullable BlockPos unanchored(ServerLevel level, int x) {
+        Set<BlockPos> bore = new HashSet<>(boreCells(x));
+        Set<BlockPos> anchored = new HashSet<>();
+        Deque<BlockPos> frontier = new ArrayDeque<>();
+        for (BlockPos cell : bore) {
+            if (level.getBlockState(cell).is(LayerBlocks.OVERGROWTH)
+                    && Arrays.stream(Direction.values()).anyMatch(side -> !bore.contains(cell.relative(side)))
+                    && anchored.add(cell)) {
+                frontier.add(cell);
+            }
+        }
+        while (!frontier.isEmpty()) {
+            BlockPos cell = frontier.poll();
+            for (Direction side : Direction.values()) {
+                BlockPos next = cell.relative(side);
+                if (bore.contains(next) && level.getBlockState(next).is(LayerBlocks.OVERGROWTH) && anchored.add(next)) {
+                    frontier.add(next);
+                }
+            }
+        }
+        return bore.stream()
+                .filter(cell -> level.getBlockState(cell).is(LayerBlocks.OVERGROWTH) && !anchored.contains(cell))
+                .findFirst()
+                .orElse(null);
     }
 
     private static LevelChunk chunkOf(ServerLevel level, int x) {
