@@ -52,8 +52,9 @@ import net.minecraft.world.phys.Vec3;
  * in the air starts the winch, which hauls the person home through open air at {@link TetherTuning#winchSpeed}; the pilot of the pod
  * can start it for everyone clipped to it too. A taut line holds a person at its length, which catches a fall.
  *
- * <p>The winch never pulls through rock. A line with rock across it is snagged: the winch does not haul, and a line that stays
- * snagged for {@link TetherTuning#snagTicks} snaps. A line snaps too when it is stretched past {@link TetherTuning#snapMargin}, and a
+ * <p>The winch never pulls through rock. A line that can run straight to the person, or over one corner (up from the person to the
+ * winch's height, then across: the lip of a drop), is clear, and a line's length counts the corner. A line with rock across both is
+ * snagged: the winch does not haul, and a line that stays snagged for {@link TetherTuning#snagTicks} snaps. A line snaps too when it is stretched past {@link TetherTuning#snapMargin}, and a
  * snapped tether cannot be clipped on again for {@link TetherTuning#snapCooldownTicks}. The pull is a velocity the client moves itself
  * by, with its own collision, so it is a push along clear air and never a teleport. A winch is loud: while it hauls it reports to
  * {@link #NOISE} every {@link TetherTuning#noiseInterval} ticks, which is where creatures that listen for a drawing noise attach.
@@ -323,6 +324,33 @@ public final class PodTether {
                 == HitResult.Type.MISS;
     }
 
+    /**
+     * How the line runs from the winch to the person: straight, over one corner, or not at all.
+     *
+     * @param aim    where a haul pushes toward: the winch for a straight line, the corner for a bent one, empty when blocked
+     * @param length blocks of line it takes; the straight distance when blocked
+     */
+    private record Route(Optional<Vec3> aim, double length) {
+        boolean clear() {
+            return aim.isPresent();
+        }
+    }
+
+    private static Route route(ServerLevel level, Vec3 from, Vec3 at, ServerPlayer person) {
+        double straight = from.distanceTo(at);
+        if (clearLine(level, from, at, person)) {
+            return new Route(Optional.of(from), straight);
+        }
+        // The lip of a drop: up the face from the person to the winch's own height, then across at that height.
+        Vec3 corner = new Vec3(at.x, from.y, at.z);
+        if (corner.distanceToSqr(at) > EPSILON
+                && clearLine(level, at, corner, person)
+                && clearLine(level, corner, from, person)) {
+            return new Route(Optional.of(corner), at.distanceTo(corner) + corner.distanceTo(from));
+        }
+        return new Route(Optional.empty(), straight);
+    }
+
     private static void tick(MinecraftServer server) {
         for (ServerPlayer person : server.getPlayerList().getPlayers()) {
             if (isClipped(person)) {
@@ -355,11 +383,13 @@ public final class PodTether {
         Vec3 from = anchor(pod);
         Vec3 at = person.getBoundingBox().getCenter();
         double distance = from.distanceTo(at);
-        if (distance > tuning.length() + tuning.snapMargin()) {
+        Route route = route(level, from, at, person);
+        double line = route.length();
+        if (line > tuning.length() + tuning.snapMargin()) {
             unclip(person, Unclipped.SNAPPED);
             return;
         }
-        boolean clear = clearLine(level, from, at, person);
+        boolean clear = route.clear();
         Strain strain = STRAINS.computeIfAbsent(person, key -> new Strain());
         boolean hauling = false;
         if (isWinching(person)) {
@@ -380,17 +410,24 @@ public final class PodTether {
                 }
             } else {
                 strain.snagged = 0;
-                double step = Math.min(tuning.winchSpeed(), distance - arriveDistance(pod, person));
-                push(person, from.subtract(at), step);
+                Vec3 aim = route.aim().orElseThrow();
+                boolean straight = aim.equals(from);
+                double step = straight
+                        ? Math.min(tuning.winchSpeed(), distance - arriveDistance(pod, person))
+                        : tuning.winchSpeed();
+                push(person, aim.subtract(at), step);
                 loud(level, pod, strain, tuning);
                 hauling = true;
             }
         } else {
             strain.snagged = 0;
         }
-        if (!hauling && distance > tuning.length() && clear) {
+        if (!hauling && line > tuning.length() && clear) {
             // Taut: the line holds the person at its length, which catches a fall too.
-            push(person, from.subtract(at), Math.min(tuning.winchSpeed(), distance - tuning.length() + HOLD_SLACK));
+            push(
+                    person,
+                    route.aim().orElseThrow().subtract(at),
+                    Math.min(tuning.winchSpeed(), line - tuning.length() + HOLD_SLACK));
         }
     }
 

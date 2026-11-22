@@ -596,6 +596,67 @@ public class TetherTest {
         });
     }
 
+    /** The pod stands on a pad, and a person who goes over its edge hangs on the line below the lip: the line bends over the corner, and the winch hauls them up the face and over. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 500)
+    public void aPersonHangingBelowALipIsCaughtAndHauledUpTheFaceAndOverIt(GameTestHelper helper) {
+        Room room = room(helper, 8);
+        MockPlayer person = onFoot(helper);
+        double[] lowest = {Double.MAX_VALUE};
+        int[] hauledFrom = {0};
+        room.when(helper, () -> {
+            PodEntity pod = room.pod();
+            ServerPlayer player = person.player();
+            int podX = (int) Math.floor(pod.getX());
+            int podY = (int) Math.floor(pod.getY());
+            int podZ = (int) Math.floor(pod.getZ());
+            RoomCarver.carve(room.level, podX - 3, podX + 3, podY - 4, podY - 1, podZ - 3, podZ + 3, Blocks.STONE);
+            clipAt(room, person, pod, 5, 0, -3);
+            player.setDeltaMovement(0, -0.5, 0);
+            double lipX = podX + 4;
+            return () -> {
+                clientStep(player);
+                expect(
+                        helper,
+                        PodTether.isClipped(player),
+                        "the line holds below the lip, tick %s, told %s",
+                        room.age,
+                        person.actionBarMessages());
+                if (room.age < 90) {
+                    lowest[0] = Math.min(lowest[0], player.getY());
+                    return;
+                }
+                if (room.age == 90) {
+                    double hang = pod.getY() + 1 - lowest[0];
+                    expect(
+                            helper,
+                            hang > 8 && hang <= TUNING.length() - 5 + TUNING.snapMargin() + 1,
+                            "the fall below the lip should be caught by the bent line, the person hung %s below the winch",
+                            hang);
+                    player.setNoGravity(true);
+                    expect(helper, PodTether.setWinching(player, true), "the winch starts below the lip");
+                    hauledFrom[0] = room.age;
+                }
+                if (player.getY() < pod.getY() - 0.5) {
+                    expect(
+                            helper,
+                            player.getX() > lipX,
+                            "below the lip the person is hauled up the face, never through the pad, they are at %s",
+                            player.position());
+                }
+                if (!PodTether.isWinching(player)) {
+                    expect(helper, room.age - hauledFrom[0] < 200, "the haul over the lip took too long");
+                    expect(
+                            helper,
+                            player.getBoundingBox().getCenter().distanceTo(PodTether.anchor(pod)) < pullDone(pod),
+                            "the winch should have the person at the pod, they are at %s",
+                            player.position());
+                    room.finish(helper);
+                }
+                expect(helper, room.age < 300, "the person should be over the lip by now, at %s", player.position());
+            };
+        });
+    }
+
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 300)
     public void theWinchIsLoudOnlyWhileItHauls(GameTestHelper helper) {
         Room room = room(helper, 5);
