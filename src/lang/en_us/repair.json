@@ -31,7 +31,7 @@
   "screen.deepcharter.repair.repair": "REPAIR %s HP ($%s)",
   "screen.deepcharter.repair.scroll": "%s-%s OF %s - SCROLL",
   "screen.deepcharter.repair.total": "REPAIR ALL",
-  "message.deepcharter.repair.recovery_called": "OUT OF FUEL: the Company winch crew is on its way, %s seconds, fee $%s. Refuel the pod to wave them off",
-  "message.deepcharter.repair.recovery_done": "The Company winched you home. Recovery fee: $%s",
-  "message.deepcharter.repair.recovery_short": "The Company winched you home and took $%s of its $%s fee. Some of the rest came out of the hull. Any ore aboard stayed behind"
+  "message.deepcharter.repair.recovery_called": "Stranded: winch in %ss, $%s. Refuel to cancel",
+  "message.deepcharter.repair.recovery_done": "Winched home. Fee $%s",
+  "message.deepcharter.repair.recovery_short": "Winched home. Paid $%s of $%s; hull took the rest"
 }
