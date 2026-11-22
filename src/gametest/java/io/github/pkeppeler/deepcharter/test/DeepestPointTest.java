@@ -35,7 +35,7 @@ public class DeepestPointTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1000;
     private static final int X = 9100;
     private static final int Z = 9100;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
 
     private static MockPlayer charterMember(GameTestHelper helper, String name) {
         MockPlayer mock = MockPlayers.join(helper, name);

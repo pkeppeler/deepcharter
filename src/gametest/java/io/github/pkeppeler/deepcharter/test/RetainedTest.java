@@ -125,7 +125,13 @@ public class RetainedTest {
     private static final CreatureTuning.Cling CLING = TUNING.cling();
 
     /** A closed arena with a pod at its east end and a pilot aboard, and a figure at its west end. */
-    private record Arena(ServerLevel level, BlockPos origin, PodEntity pod, MockPlayer pilot, LamplessFigure figure) {
+    private record Arena(
+            ServerLevel level, BlockPos origin, PodEntity pod, MockPlayer pilot, LamplessFigure figure, long builtAt) {
+        /** Ticks since the arena was built: the budgets count from there, not from the test's start, which the wait for the chunk takes a share of. */
+        long age(GameTestHelper helper) {
+            return helper.getTick() - builtAt;
+        }
+
         static Arena build(GameTestHelper helper, ServerLevel level, BlockPos origin, boolean lights) {
             return build(helper, level, origin, lights, origin.west(HALF - 1));
         }
@@ -163,7 +169,7 @@ public class RetainedTest {
             figure.setPos(Vec3.atBottomCenterOf(figureAt));
             figure.setHeading(Direction.NORTH);
             level.addFreshEntity(figure);
-            return new Arena(level, origin, pod, pilot, figure);
+            return new Arena(level, origin, pod, pilot, figure, helper.getTick());
         }
 
         /** Whether the figure's box touches the hull, give or take a hand's breadth. */
@@ -200,7 +206,7 @@ public class RetainedTest {
             if (arena == null) {
                 return;
             }
-            long waited = helper.getTick() - since[0];
+            long waited = arena.age(helper) - since[0];
             switch (phase[0]) {
                 case 0 -> {
                     if (arena.figure.isClinging()) {
@@ -209,7 +215,7 @@ public class RetainedTest {
                                 waited);
                         hullAtGrab[0] = arena.pod.hull();
                         phase[0] = 1;
-                        since[0] = helper.getTick();
+                        since[0] = arena.age(helper);
                     } else if (waited > APPROACH_BUDGET_TICKS) {
                         throw failure(
                                 helper,
@@ -224,7 +230,7 @@ public class RetainedTest {
                     if (arena.pod.fuel() <= CLING.floorPercent() + 0.01f) {
                         LOGGER.info("[retained] a grip left alone drained the tank to the floor in {} ticks", waited);
                         phase[0] = 2;
-                        since[0] = helper.getTick();
+                        since[0] = arena.age(helper);
                     } else if (waited > DRAIN_TO_FLOOR_BUDGET_TICKS) {
                         throw failure(
                                 helper,
@@ -247,7 +253,7 @@ public class RetainedTest {
         FarChunks.awaitEntityTicking(helper, level, origin, () -> {
             made[0] = Arena.build(helper, level, origin, false);
             made[0].pod.setFuel(LOW_TANK_PERCENT);
-            since[0] = helper.getTick();
+            since[0] = 0;
             if (!LamplessFigure.draws(made[0].pod)) {
                 throw failure(
                         helper,
@@ -282,13 +288,13 @@ public class RetainedTest {
             }
             if (clungAt[0] < 0) {
                 if (arena.figure.isClinging()) {
-                    clungAt[0] = helper.getTick();
-                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS) {
+                    clungAt[0] = arena.age(helper);
+                } else if (arena.age(helper) > APPROACH_BUDGET_TICKS + 20) {
                     throw failure(helper, "the figure from (%d, %d) had not grabbed the pod", u, v);
                 }
                 return;
             }
-            if (helper.getTick() - clungAt[0] >= FACING_SETTLE_TICKS) {
+            if (arena.age(helper) - clungAt[0] >= FACING_SETTLE_TICKS) {
                 expectFacesPod(helper, arena);
                 arena.clear();
                 helper.succeed();
@@ -466,14 +472,14 @@ public class RetainedTest {
             }
             if (grabbedAt[0] < 0) {
                 if (arena.figure.isClinging()) {
-                    grabbedAt[0] = helper.getTick();
+                    grabbedAt[0] = arena.age(helper);
                     arena.pilot.setInput(input);
-                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
+                } else if (arena.age(helper) > APPROACH_BUDGET_TICKS + 20) {
                     throw failure(helper, "the figure had not grabbed the dark pod");
                 }
                 return;
             }
-            long held = helper.getTick() - grabbedAt[0];
+            long held = arena.age(helper) - grabbedAt[0];
             if (!arena.figure.isClinging() || !arena.figure.isAlive()) {
                 throw failure(
                         helper,
@@ -515,19 +521,19 @@ public class RetainedTest {
             }
             if (grabbedAt[0] < 0) {
                 if (arena.figure.isClinging()) {
-                    grabbedAt[0] = helper.getTick();
+                    grabbedAt[0] = arena.age(helper);
                     fuelAtGrab[0] = arena.pod.fuel();
                     hullAtGrab[0] = arena.pod.hull();
                     arena.pilot.setInput(SPRINT);
-                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
+                } else if (arena.age(helper) > APPROACH_BUDGET_TICKS + 20) {
                     throw failure(helper, "the figure had not grabbed the dark pod");
                 }
                 return;
             }
-            long held = helper.getTick() - grabbedAt[0];
+            long held = arena.age(helper) - grabbedAt[0];
             if (diedAt[0] < 0) {
                 if (!arena.figure.isAlive()) {
-                    diedAt[0] = helper.getTick();
+                    diedAt[0] = arena.age(helper);
                     float lost = fuelAtGrab[0] - arena.pod.fuel();
                     LOGGER.info(
                             "[retained] a figure killed by the drill: {} ticks after the grab, the tank lost {} points",
@@ -550,7 +556,7 @@ public class RetainedTest {
                 }
                 return;
             }
-            long dead = helper.getTick() - diedAt[0];
+            long dead = arena.age(helper) - diedAt[0];
             if (arena.figure.isClinging()) {
                 throw failure(helper, "the dead figure clings to the hull again");
             }
@@ -603,18 +609,18 @@ public class RetainedTest {
                 return;
             }
             if (litAt[0] < 0) {
-                if (arena.figure.isClinging() && helper.getTick() > 0) {
-                    litAt[0] = helper.getTick();
+                if (arena.figure.isClinging() && arena.age(helper) > 0) {
+                    litAt[0] = arena.age(helper);
                     CharterId charter = charter(helper, arena.pilot.player().getUUID());
                     PodComponents.register(arena.pod, charter);
                     PodComponents.install(
                             arena.pod, ComponentItems.mint(level.getServer(), ComponentTrack.LIGHTS, 1, charter));
-                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
+                } else if (arena.age(helper) > APPROACH_BUDGET_TICKS + 20) {
                     throw failure(helper, "the figure had not grabbed the dark pod");
                 }
                 return;
             }
-            long since = helper.getTick() - litAt[0];
+            long since = arena.age(helper) - litAt[0];
             if (!arena.figure.isClinging() || arena.figure.fadeFraction() != 0f || arena.figure.isRemoved()) {
                 throw failure(
                         helper, "the figure let go or faded %d ticks after the pod's lights part was fitted", since);
@@ -651,21 +657,21 @@ public class RetainedTest {
                     arena.pilot.leave();
                     walker[0] = MockPlayers.join(helper, "retained-walker");
                     walker[0].teleportTo(level, arena.figure.position().add(0, 0, 1), 0f, 0f);
-                    blowAt[0] = helper.getTick();
+                    blowAt[0] = arena.age(helper);
                     strike(level, arena, walker[0], blows);
-                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
+                } else if (arena.age(helper) > APPROACH_BUDGET_TICKS + 20) {
                     throw failure(helper, "the figure had not grabbed the dark pod");
                 }
                 return;
             }
             if (diedAt[0] < 0) {
                 // A figure hurt is proof against the next blow for a short while; the second comes after it.
-                if (helper.getTick() - blowAt[0] >= BLOW_SPACING_TICKS) {
-                    blowAt[0] = helper.getTick();
+                if (arena.age(helper) - blowAt[0] >= BLOW_SPACING_TICKS) {
+                    blowAt[0] = arena.age(helper);
                     strike(level, arena, walker[0], blows);
                 }
                 if (!arena.figure.isAlive()) {
-                    diedAt[0] = helper.getTick();
+                    diedAt[0] = arena.age(helper);
                     fuelAtDeath[0] = arena.pod.fuel();
                     expect(
                             helper,
@@ -685,9 +691,11 @@ public class RetainedTest {
                 walker[0].leave();
                 arena.clear();
                 helper.succeed();
-            } else if (helper.getTick() - diedAt[0] > DISSOLVE_BUDGET_TICKS) {
+            } else if (arena.age(helper) - diedAt[0] > DISSOLVE_BUDGET_TICKS) {
                 throw failure(
-                        helper, "the dead figure was still there %d ticks after it died", helper.getTick() - diedAt[0]);
+                        helper,
+                        "the dead figure was still there %d ticks after it died",
+                        arena.age(helper) - diedAt[0]);
             }
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
@@ -730,7 +738,7 @@ public class RetainedTest {
             if (arena == null) {
                 return;
             }
-            long waited = helper.getTick() - since[0];
+            long waited = arena.age(helper) - since[0];
             if (waited == ticksApart) {
                 second[0] = placeNextToPod(level, arena, 1.0, secondGap);
             }
@@ -755,7 +763,7 @@ public class RetainedTest {
             // its next look.
             made[0].figure.discard();
             first[0] = placeNextToPod(level, made[0], -1.0, firstGap);
-            since[0] = helper.getTick();
+            since[0] = 0;
         });
     }
 
@@ -784,10 +792,10 @@ public class RetainedTest {
             }
             if (leftAt[0] < 0) {
                 if (arena.figure.isClinging()) {
-                    leftAt[0] = helper.getTick();
+                    leftAt[0] = arena.age(helper);
                     fuelAtLeaving[0] = arena.pod.fuel();
                     arena.pilot.player().stopRiding();
-                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
+                } else if (arena.age(helper) > APPROACH_BUDGET_TICKS + 20) {
                     throw failure(helper, "the figure had not grabbed the dark pod");
                 }
                 return;
@@ -796,13 +804,13 @@ public class RetainedTest {
                     helper,
                     arena.figure.isClinging() && arena.figure.isAlive(),
                     "the figure let go of a pod its pilot left, %d ticks after (clinging %s, alive %s, removed %s, pod removed %s, fuel %s)",
-                    helper.getTick() - leftAt[0],
+                    arena.age(helper) - leftAt[0],
                     arena.figure.isClinging(),
                     arena.figure.isAlive(),
                     arena.figure.isRemoved(),
                     arena.pod.isRemoved(),
                     arena.pod.fuel());
-            if (helper.getTick() - leftAt[0] >= NO_ANSWER_TICKS) {
+            if (arena.age(helper) - leftAt[0] >= NO_ANSWER_TICKS) {
                 expect(helper, arena.pod.fuel() < fuelAtLeaving[0], "the tank did not drain while the pod stood empty");
                 arena.clear();
                 helper.succeed();
@@ -825,22 +833,22 @@ public class RetainedTest {
             }
             if (goneAt[0] < 0) {
                 if (arena.figure.isClinging()) {
-                    goneAt[0] = helper.getTick();
+                    goneAt[0] = arena.age(helper);
                     arena.pilot.leave();
                     arena.pod.discard();
-                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + 20) {
+                } else if (arena.age(helper) > APPROACH_BUDGET_TICKS + 20) {
                     throw failure(helper, "the figure had not grabbed the dark pod");
                 }
                 return;
             }
-            if (!arena.figure.isClinging() && helper.getTick() - goneAt[0] > 40) {
+            if (!arena.figure.isClinging() && arena.age(helper) - goneAt[0] > 40) {
                 expect(
                         helper,
                         arena.figure.isAlive() && arena.figure.fadeFraction() == 0f,
                         "the figure died or faded with the pod");
                 arena.figure.discard();
                 helper.succeed();
-            } else if (arena.figure.isClinging() && helper.getTick() - goneAt[0] > 20) {
+            } else if (arena.figure.isClinging() && arena.age(helper) - goneAt[0] > 20) {
                 throw failure(helper, "the figure still clings to a pod that is gone");
             }
         });
@@ -933,6 +941,9 @@ public class RetainedTest {
         helper.succeed();
     }
 
+    /** A sealed dark room in {@code layer}'s band, with its column. */
+    private record DarkRoom(int layer, ServerLevel level, BlockPos column) {}
+
     /**
      * In a dark room of layer 1 and of layer 2 a figure may appear; beside a light, over air, and in a level that holds the cap it may not;
      * and in the overworld (where the colony and the hangar stand), the Nether and the End it may not appear at all. The light takes a few
@@ -941,14 +952,17 @@ public class RetainedTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void aFigureMayAppearInTheDarkOfLayersOneAndTwoAndNowhereElse(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
-        List<ServerLevel> layers =
-                List.of(server.getLevel(TestLayers.dimension(1)), server.getLevel(TestLayers.dimension(2)));
+        // The two layers are bands of one level: each has its own room, at the same height over its floor.
+        List<DarkRoom> rooms = List.of(
+                new DarkRoom(1, TestLayers.level(server, 1), TestLayers.pos(1, 7208, 128, 7208)),
+                new DarkRoom(2, TestLayers.level(server, 2), TestLayers.pos(2, 7208, 128, 7208)));
         ServerLevel overworld = ClientLight.serverLevel(server, Level.OVERWORLD);
-        BlockPos column = TestLayers.pos(2, 7208, 128, 7208);
+        BlockPos column = rooms.getLast().column();
         BlockPos overworldPos = slot(5).above(2);
         int[] ready = {0};
         int[] phase = {0};
         int[] since = {0};
+        FarChunks.Deadline[] lightDeadline = {FarChunks.deadline()};
         TestTicks.each(helper, () -> {
             if (ready[0] < 3) {
                 return;
@@ -957,67 +971,72 @@ public class RetainedTest {
             switch (phase[0]) {
                 case 0 -> {
                     LamplessFigures.clearRespawnDelays();
-                    for (ServerLevel layer : layers) {
+                    for (DarkRoom room : rooms) {
                         expect(
                                 helper,
-                                LamplessFigures.canAppearAt(layer, column),
-                                "a figure may not appear in the dark room of %s",
-                                layer.dimension().identifier());
-                        layer.setBlock(column.above(), light(15), 3);
+                                LamplessFigures.canAppearAt(room.level(), room.column()),
+                                "a figure may not appear in the dark room of layer %s",
+                                room.layer());
+                        room.level().setBlock(room.column().above(), light(15), 3);
                     }
                     expectNowhereElse(helper, server, overworld, overworldPos, column);
                     phase[0] = 1;
                     since[0] = 0;
+                    lightDeadline[0] = FarChunks.deadline();
                 }
                 case 1 -> {
-                    if (layers.stream()
-                            .allMatch(
-                                    layer -> layer.getBrightness(LightLayer.BLOCK, column) >= TUNING.litBlockLight())) {
-                        for (ServerLevel layer : layers) {
+                    if (rooms.stream()
+                            .allMatch(room -> room.level().getBrightness(LightLayer.BLOCK, room.column())
+                                    >= TUNING.litBlockLight())) {
+                        for (DarkRoom room : rooms) {
                             expect(
                                     helper,
-                                    !LamplessFigures.canAppearAt(layer, column),
-                                    "a figure may appear beside a light of level 15 in %s",
-                                    layer.dimension().identifier());
+                                    !LamplessFigures.canAppearAt(room.level(), room.column()),
+                                    "a figure may appear beside a light of level 15 in layer %s",
+                                    room.layer());
                             // room-carver: removes the light block this test placed itself in its own sealed room
-                            layer.setBlock(column.above(), Blocks.AIR.defaultBlockState(), 3);
+                            room.level().setBlock(room.column().above(), Blocks.AIR.defaultBlockState(), 3);
                         }
                         phase[0] = 2;
                         since[0] = 0;
+                        lightDeadline[0] = FarChunks.deadline();
                     } else {
-                        expect(
+                        // Wall-clock, not ticks: the light engine works off the server thread, and a loaded runner
+                        // ticks fast.
+                        lightDeadline[0].await(
                                 helper,
-                                since[0] < LIGHT_BUDGET_TICKS,
-                                "the light of level 15 did not reach the room in %s ticks",
-                                LIGHT_BUDGET_TICKS);
+                                rooms.getFirst().level(),
+                                false,
+                                () -> "the light of level 15 did not reach the room in " + FarChunks.WAIT_SECONDS
+                                        + " s");
                     }
                 }
                 default -> {
-                    if (layers.stream()
-                            .allMatch(
-                                    layer -> layer.getBrightness(LightLayer.BLOCK, column) < TUNING.litBlockLight())) {
-                        for (ServerLevel layer : layers) {
+                    if (rooms.stream()
+                            .allMatch(room -> room.level().getBrightness(LightLayer.BLOCK, room.column())
+                                    < TUNING.litBlockLight())) {
+                        for (DarkRoom room : rooms) {
                             expect(
                                     helper,
-                                    LamplessFigures.canAppearAt(layer, column),
-                                    "the room is dark again and a figure may not appear in %s",
-                                    layer.dimension().identifier());
-                            expectNotOverAir(helper, layer, column);
+                                    LamplessFigures.canAppearAt(room.level(), room.column()),
+                                    "the room is dark again and a figure may not appear in layer %s",
+                                    room.layer());
+                            expectNotOverAir(helper, room.level(), room.column());
                         }
                         helper.succeed();
                     } else {
-                        expect(
+                        lightDeadline[0].await(
                                 helper,
-                                since[0] < LIGHT_BUDGET_TICKS,
-                                "the light did not go out of the room in %s ticks",
-                                LIGHT_BUDGET_TICKS);
+                                rooms.getFirst().level(),
+                                false,
+                                () -> "the light did not go out of the room in " + FarChunks.WAIT_SECONDS + " s");
                     }
                 }
             }
         });
-        for (ServerLevel layer : layers) {
-            FarChunks.awaitEntityTicking(helper, layer, column, () -> {
-                buildDarkRoom(layer, column);
+        for (DarkRoom room : rooms) {
+            FarChunks.awaitEntityTicking(helper, room.level(), room.column(), () -> {
+                buildDarkRoom(room.level(), room.column());
                 ready[0]++;
             });
         }
