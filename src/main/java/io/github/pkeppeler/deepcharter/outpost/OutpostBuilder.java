@@ -99,7 +99,7 @@ public final class OutpostBuilder {
             }
         }
         cut(level, clicked);
-        data.add(new OutpostData.Outpost(charter.get().id(), LAYER, clicked.immutable()));
+        data.add(new OutpostData.Outpost(charter.get().id(), LAYER, level.dimension(), clicked.immutable()));
         return Optional.empty();
     }
 
