@@ -10,7 +10,7 @@ import net.minecraft.world.item.Item;
 
 /**
  * The one rule for a light in a person's hand: the Retained ({@link FootGrips}) and the Tallies ({@link Tally}) both keep off a person
- * on foot who holds one, so the two read to a player as one dark-and-unlit situation. A light taken up after a creature has latched
+ * on foot who holds one. A light taken up after a creature has latched
  * does not free the person; only the draw is gated, never the hold.
  */
 public final class HandLights {
