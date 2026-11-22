@@ -10,9 +10,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Does not write a chunk that has not finished generating: a forced chunk makes the server generate about 700 half-generated
- * neighbours that no test touches, and their writes outran the level's IO thread and filled the heap (#816). A full chunk is written
- * as before. A neighbour regenerated later lacks the spill of features that a full chunk next to it had placed in it, so the border
- * may differ from the one that was unloaded; no test forces the neighbour of an unloaded full chunk and reads the border.
+ * neighbours that no test touches, and their writes outran the level's IO thread and filled the heap (#816). A neighbour
+ * regenerated later may lack features a full chunk beside it had spilled into it; no test reads that border.
  */
 @Mixin(value = ChunkMap.class, remap = false)
 public abstract class ChunkMapSaveMixin {
