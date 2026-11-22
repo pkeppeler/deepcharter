@@ -117,7 +117,7 @@ public class LayerStructuresScenario extends EvidenceScenario {
     }
 
     /** Finds the kind's site, and generates its chunks, on the server. */
-    private static StructureSite prepare(TestSingleplayerContext singleplayer, StructureKind kind) {
+    static StructureSite prepare(TestSingleplayerContext singleplayer, StructureKind kind) {
         return singleplayer.getServer().computeOnServer(server -> {
             ServerLevel level = TestLayers.level(server, kind.layer());
             LayerChain.Band levelBand = TestLayers.band(level, kind.layer());
@@ -229,7 +229,7 @@ public class LayerStructuresScenario extends EvidenceScenario {
     }
 
     /** Puts the player at {@code at} in {@code dimension}, looking at {@code target}. */
-    private static void fly(TestSingleplayerContext singleplayer, ResourceKey<Level> dimension, Vec3 at, Vec3 target) {
+    static void fly(TestSingleplayerContext singleplayer, ResourceKey<Level> dimension, Vec3 at, Vec3 target) {
         Vec3 d = target.subtract(at);
         float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
         float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
