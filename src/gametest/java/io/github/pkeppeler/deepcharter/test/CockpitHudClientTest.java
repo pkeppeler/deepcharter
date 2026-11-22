@@ -106,7 +106,24 @@ public class CockpitHudClientTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext context) {
-        ClientTestLog.start(this);
+        ClientTestLog.startUntimed(this);
+        List<String> failures = new ArrayList<>();
+        for (int n = 1; n <= 10; n++) {
+            try {
+                runOnce(context);
+                System.out.println("REPEAT-1023 " + n + " PASS");
+            } catch (AssertionError | RuntimeException e) {
+                System.out.println("REPEAT-1023 " + n + " FAIL " + e.getMessage());
+                failures.add(n + ": " + e.getMessage());
+            }
+        }
+        System.out.println("REPEAT-1023 SUMMARY " + failures.size() + " of 10 failed");
+        if (!failures.isEmpty()) {
+            throw new AssertionError("REPEAT-1023 " + failures.size() + " of 10 failed: " + failures);
+        }
+    }
+
+    private void runOnce(ClientGameTestContext context) {
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             context.waitTicks(40);
             context.runOnClient(client -> client.options.guiScale().set(GUI_SCALE));
