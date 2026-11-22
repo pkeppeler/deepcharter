@@ -173,14 +173,13 @@ public final class PodTether {
         double mark;
         /** The last window closed on the pod by less than the tuned progress. */
         boolean stalled;
-        /** Where this winch's decoy sounds in {@link DrawSources}, until it is renewed or silenced. */
+        /** This winch's decoy in {@link DrawSources}, until it is renewed or silenced. */
         @Nullable
-        Vec3 decoyAt;
-
-        /** The level {@link #decoyAt} sounds in: the person may have changed level since. */
-        @Nullable
-        ServerLevel decoyLevel;
+        Decoy decoy;
     }
+
+    /** A decoy's place and the level it sounds in: the person may have changed level since. */
+    private record Decoy(ServerLevel level, Vec3 at) {}
 
     private PodTether() {}
 
@@ -509,10 +508,7 @@ public final class PodTether {
         person.resetFallDistance();
     }
 
-    /**
-     * Sounds the winch in {@link DrawSources} until the next clank is due, plus {@link #DECOY_MARGIN} ticks so it stays continuous between renewals.
-     * The pod may have moved since the last clank, so the old decoy goes first and a winch is never more than one entry.
-     */
+    /** Sounds the winch in {@link DrawSources} until the next clank is due. The pod may have moved, so the old decoy goes first: one entry per winch. */
     private static void loud(ServerLevel level, PodEntity pod, Strain strain, TetherTuning tuning) {
         if (strain.hauled++ % tuning.noiseInterval() == 0) {
             Vec3 at = anchor(pod);
@@ -521,40 +517,33 @@ public final class PodTether {
             removeOwnDecoy(strain);
             DrawSources.addDecoy(
                     level, at, tuning.noiseRadius(), level.getGameTime() + tuning.noiseInterval() + DECOY_MARGIN);
-            strain.decoyAt = at;
-            strain.decoyLevel = level;
+            strain.decoy = new Decoy(level, at);
         }
     }
 
     /**
-     * Ends the winch's decoy, if it has one: a winch that stopped or was unhooked is not heard for the rest of its last interval. People clipped to
-     * one pod share its anchor, and {@link DrawSources#removeDecoy} removes every decoy there, so the decoy stays while another winch still hauls
-     * at it. It goes in the level it sounded in, which the person may have left; a person who disconnects is not unclipped, and their decoy lapses
-     * within {@code noiseInterval + DECOY_MARGIN} ticks.
+     * Ends the winch's decoy, if it has one. People clipped to one pod share its anchor and {@link DrawSources#removeDecoy} removes every decoy
+     * there, so the decoy stays while another winch still hauls at it. A person who disconnects is not unclipped: their decoy lapses within
+     * {@code noiseInterval + DECOY_MARGIN} ticks.
      */
     private static void silence(@Nullable Strain strain) {
-        if (strain == null || strain.decoyAt == null) {
+        if (strain == null || strain.decoy == null) {
             return;
         }
-        Vec3 at = strain.decoyAt;
+        Decoy decoy = strain.decoy;
         boolean shared;
         synchronized (STRAINS) {
-            shared = STRAINS.values().stream()
-                    .anyMatch(other -> other != strain
-                            && other.decoyLevel == strain.decoyLevel
-                            && other.decoyAt != null
-                            && other.decoyAt.equals(at));
+            shared = STRAINS.values().stream().anyMatch(other -> other != strain && decoy.equals(other.decoy));
         }
         if (!shared) {
             removeOwnDecoy(strain);
         }
-        strain.decoyAt = null;
-        strain.decoyLevel = null;
+        strain.decoy = null;
     }
 
     private static void removeOwnDecoy(Strain strain) {
-        if (strain.decoyAt != null && strain.decoyLevel != null) {
-            DrawSources.removeDecoy(strain.decoyLevel, strain.decoyAt);
+        if (strain.decoy != null) {
+            DrawSources.removeDecoy(strain.decoy.level(), strain.decoy.at());
         }
     }
 
