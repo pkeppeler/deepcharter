@@ -139,10 +139,12 @@ class Panel(unittest.TestCase):
         for y in range(margin + 1, glass.height - margin - 1):
             for x in range(margin + 1, glass.width - margin - 1):
                 self.assertLessEqual(self.alpha(glass, x, y), 12, f"glass shade over the content at {x}, {y}")
-        # The catalogue consoles draw the same sprite with their title at (pad, titleTop) of the glass; its first stem is a column and a row in.
+        # The catalogue consoles draw the same sprite with their title box at (pad, titleTop) of the glass, and the font lights the box's top row, so the
+        # first stem starts a column in, on the box's top row.
         catalogue = load(MOD_ASSETS / "theme/catalogue.json")
-        x, y = catalogue["pad"] + 1, catalogue["titleTop"] + 1
-        self.assertLessEqual(self.alpha(glass, x, y), 12, f"glass shade over a catalogue console's title at {x}, {y}")
+        x = catalogue["pad"] + 1
+        for y in (catalogue["titleTop"], catalogue["titleTop"] + 1):
+            self.assertLessEqual(self.alpha(glass, x, y), 12, f"glass shade over a catalogue console's title at {x}, {y}")
         for row in range(self.theme["glassRadius"] // 2):
             first = next(x for x in range(glass.width) if self.alpha(glass, x, row) != 0)
             self.assertGreaterEqual(self.alpha(glass, first, row), 100, f"the glass's rim in row {row}")

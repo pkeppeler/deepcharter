@@ -160,8 +160,8 @@ def nameplate(height, text, ink):
 
 VIGNETTE_REACH = 10
 # Shading falls off as exp(-t / decay): dark on the rim, gone by the 6 px the content sits inside the glass edge, so a corner title keeps its brightness (#1012).
-VIGNETTE_DECAY = 0.6
-SHADOW_DECAY = 0.5
+VIGNETTE_DECAY = 0.35
+SHADOW_DECAY = 0.3
 
 
 def glass_sprite(radius, vignette, shadow=(0, 0), depth=(0, 0)):
