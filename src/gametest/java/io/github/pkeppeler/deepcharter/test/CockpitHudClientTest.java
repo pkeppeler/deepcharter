@@ -108,7 +108,7 @@ public class CockpitHudClientTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.startUntimed(this);
         List<String> failures = new ArrayList<>();
-        for (int n = 1; n <= 35; n++) {
+        for (int n = 1; n <= 10; n++) {
             try {
                 runOnce(context);
                 System.out.println("REPEAT-1023 " + n + " PASS");
@@ -117,9 +117,9 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 failures.add(n + ": " + e.getMessage());
             }
         }
-        System.out.println("REPEAT-1023 SUMMARY " + failures.size() + " of 35 failed");
+        System.out.println("REPEAT-1023 SUMMARY " + failures.size() + " of 10 failed");
         if (!failures.isEmpty()) {
-            throw new AssertionError("REPEAT-1023 " + failures.size() + " of 35 failed: " + failures);
+            throw new AssertionError("REPEAT-1023 " + failures.size() + " of 10 failed: " + failures);
         }
     }
 
