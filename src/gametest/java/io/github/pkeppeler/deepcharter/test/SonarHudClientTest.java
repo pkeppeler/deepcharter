@@ -13,9 +13,11 @@ import io.github.pkeppeler.deepcharter.pod.PodSonar;
 import io.github.pkeppeler.deepcharter.pod.SonarEcho;
 import io.github.pkeppeler.deepcharter.pod.SonarKind;
 import io.github.pkeppeler.deepcharter.pod.SonarTuning;
+import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TwoPlayerServer;
@@ -24,6 +26,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.Set;
 import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -31,6 +34,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -44,6 +48,8 @@ public class SonarHudClientTest implements FabricClientGameTest {
     private static final int Z = 1600;
     private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
     private static final int ORE_AHEAD = 8;
+    private static final int SITE_RADIUS = 12;
+    private static final int CELL = 4;
     /** How far a channel of the drawn pixel may be from the echo's colour: the echo is blended over the scope's face at its fading alpha. */
     private static final int CHANNEL_TOLERANCE = 80;
     /** A GUI pixel off the middle both ways: inside the mark's diamond, and off the crosshair's two lines. */
@@ -55,13 +61,16 @@ public class SonarHudClientTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
-            two.server().runOnServer(server -> {
-                ServerLevel level = server.overworld();
-                level.setBlock(
-                        new BlockPos(X, FLOOR_Y + 1, Z + ORE_AHEAD),
-                        OreBlocks.of(OreType.IRONIUM).defaultBlockState(),
-                        3);
-            });
+            two.server().runOnServer(server -> buildSite(server.overworld(), two));
+            // The client must have the stone before the players board, or the boarding reaches it before the pod does
+            // (the players
+            // stand in a chunk the client has not been sent, and the pod is never seen).
+            ClientWait.until(
+                    context,
+                    "the stone round the pod on the client",
+                    client -> ClientLight.clientLevel(client)
+                            .getBlockState(new BlockPos(X + SITE_RADIUS, FLOOR_Y, Z))
+                            .is(Blocks.STONE));
             int podId = two.server().computeOnServer(server -> board(server.overworld(), two));
             ClientWait.until(
                     context,
@@ -197,18 +206,45 @@ public class SonarHudClientTest implements FabricClientGameTest {
         }
     }
 
-    /** Seats the mock first and the real player second in a new Prospector at the corner of four sonar cells, facing south. Returns the pod's id. */
-    private static int board(ServerLevel level, TwoPlayerServer two) {
-        ServerPlayer real = level.getServer().getPlayerList().getPlayers().stream()
+    /**
+     * A cube of stone round the pod's corner with the cab's four cells opened, and one ore block {@link #ORE_AHEAD} blocks south of the pod. Both
+     * players stand at the pod before it is spawned, so the chunks are theirs.
+     */
+    private static void buildSite(ServerLevel level, TwoPlayerServer two) {
+        RoomCarver.carve(
+                level,
+                new BlockPos(X - SITE_RADIUS, FLOOR_Y - SITE_RADIUS, Z - SITE_RADIUS),
+                new BlockPos(X + SITE_RADIUS, FLOOR_Y + SITE_RADIUS, Z + SITE_RADIUS),
+                Blocks.STONE.defaultBlockState());
+        RoomCarver.carve(
+                level,
+                new BlockPos(X - CELL, FLOOR_Y, Z - CELL),
+                new BlockPos(X + CELL - 1, FLOOR_Y + CELL - 1, Z + CELL - 1),
+                Blocks.AIR.defaultBlockState());
+        level.setBlock(
+                new BlockPos(X, FLOOR_Y + 1, Z + ORE_AHEAD),
+                OreBlocks.of(OreType.IRONIUM).defaultBlockState(),
+                3);
+        ServerPlayer real = real(level, two);
+        real.teleportTo(level, X, FLOOR_Y, Z, Set.of(), 0f, 0f, true);
+        two.mock().teleportTo(level, new Vec3(X, FLOOR_Y, Z), 0f, 0f);
+    }
+
+    private static ServerPlayer real(ServerLevel level, TwoPlayerServer two) {
+        return level.getServer().getPlayerList().getPlayers().stream()
                 .filter(player -> player != two.mock().player())
                 .findFirst()
                 .orElseThrow();
+    }
+
+    /** Seats the mock first and the real player second in a new Prospector at the corner of the cab's cells, facing south. Returns the pod's id. */
+    private static int board(ServerLevel level, TwoPlayerServer two) {
+        ServerPlayer real = real(level, two);
         PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, level);
         pod.setPos(new Vec3(X, FLOOR_Y, Z));
         pod.setYRot(0f);
         pod.setFuel(100f);
         level.addFreshEntity(pod);
-        two.mock().teleportTo(level, pod.position(), 0f, 0f);
         require(
                 two.mock().player().startRiding(pod) && real.startRiding(pod),
                 "Both players should board the Prospector");

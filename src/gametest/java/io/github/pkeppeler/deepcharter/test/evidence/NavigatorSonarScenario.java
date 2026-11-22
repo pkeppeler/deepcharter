@@ -77,6 +77,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
                     client -> SonarHud.frame(client).isPresent());
             for (int i = 0; i < FRAMES_BEFORE; i++) {
                 context.waitTicks(TICKS_PER_FRAME);
+                clearNotices(context);
                 frame(context);
             }
             scopeStill(context, "sonar-before-the-ping");
@@ -108,6 +109,7 @@ public class NavigatorSonarScenario extends EvidenceScenario {
             scopeStill(context, "sonar-mark-on-the-hud");
             for (int i = 0; i < FRAMES_AFTER; i++) {
                 context.waitTicks(TICKS_PER_FRAME);
+                clearNotices(context);
                 frame(context);
             }
             scopeStill(context, "sonar-echoes-fading");
@@ -128,8 +130,17 @@ public class NavigatorSonarScenario extends EvidenceScenario {
         player.setXRot((float) -Math.toDegrees(Math.atan2(to.y, Math.hypot(to.x, to.z))));
     }
 
+    /** Clears the toasts (chat cannot be verified, social interactions) and the join line that a second player brings, which no frame should carry. */
+    private static void clearNotices(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            client.gui.toastManager().clear();
+            client.gui.hud.getChat().clearMessages(false);
+        });
+    }
+
     /** A still of the whole screen and its zoom on the scope, as the navigator reads it. */
     private void scopeStill(ClientGameTestContext context, String name) {
+        clearNotices(context);
         screenshot(context, name);
         frame(context);
         int[] scope = context.computeOnClient(client -> new int[] {
