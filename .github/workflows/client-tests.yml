@@ -97,5 +97,3 @@ jobs:
           fi
       - uses: ./.ci-main/.github/actions/merge-main
       - uses: ./.github/actions/client-gametest
-        with:
-          client-tests: CockpitHudClientTest
