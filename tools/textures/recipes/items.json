@@ -1000,6 +1000,66 @@
       ".bBBBBBBBBBBBb",
       "..bBBBBBBBBBb",
       "...dBBBBBBBd",
-      "....ddddddd"]}}
+      "....ddddddd"]}},
+    "item/thrown_flare": {"template": "sprite", "args": {"legend": {
+      "R": "signal.4", "r": "signal.3", "d": "signal.2", "e": "enamel.3", "k": "iron.1", "w": "warm.3", "y": "sodium.4", "o": "sodium.3"}, "rows": [
+      "",
+      "......y.y",
+      ".......wy",
+      "......yow",
+      ".......k",
+      "......kkk",
+      ".....eRRrd",
+      ".....eRRrd",
+      ".....eeeee",
+      ".....eRRrd",
+      ".....eRRrd",
+      ".....dddd",
+      "......kkk"]}},
+    "item/thrown_decoy": {"template": "sprite", "args": {"legend": {
+      "h": "sodium.5", "l": "sodium.4", "m": "sodium.3", "d": "sodium.2", "k": "iron.1", "y": "warm.3"}, "rows": [
+      "",
+      "..........y",
+      ".....kk....y",
+      "....khhk..y.y",
+      "...khllhk.y",
+      "...khllmdk..y",
+      "..khllllmdk.y",
+      "..khllllmmdk",
+      "..khlllmmmdk.y",
+      "..kmmmmmmddk.y",
+      "...kdddddddk.y",
+      "....kkkkkkkk",
+      ".....kk..kk"]}},
+    "item/thrown_charge": {"template": "sprite", "args": {"legend": {
+      "h": "steel.5", "l": "steel.4", "m": "steel.3", "k": "steel.1", "e": "hazard.2", "w": "warm.3", "y": "sodium.4", "c": "dust.2", "r": "signal.3"}, "rows": [
+      "",
+      "..........w",
+      ".........yc",
+      "........ck",
+      ".....kkkkkk",
+      "....khhhhhhk",
+      "...khllllllmk",
+      "...kleleleleemk",
+      "...kllllllllmk",
+      "...kmllllllmmk",
+      "....kmmmmmmmk",
+      ".....kkkkkkk"]}},
+    "block/flare_light": {"template": "sprite", "args": {"legend": {
+      "R": "signal.4", "r": "signal.3", "d": "signal.2", "e": "enamel.3", "k": "iron.1", "w": "warm.3", "y": "sodium.4", "o": "sodium.3", "f": "sodium.5"}, "rows": [
+      "",
+      ".......f",
+      "......fyf",
+      ".....fyoyf",
+      "......yww",
+      ".......yo",
+      "......kkk",
+      ".....eRRrd",
+      ".....eRRrd",
+      ".....eeeee",
+      ".....eRRrd",
+      ".....eRRrd",
+      ".....dddd",
+      "......kkk"]}}
   }
 }

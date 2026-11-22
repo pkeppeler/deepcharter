@@ -32,7 +32,13 @@ public enum Consumable {
     QUANTUM_TELEPORTER("quantum_teleporter", 690),
     // SPEC section 11: a layer-3 item measured as about 4 layer-2 runs (3.6 from the outpost, #320); the cargo drop is
     // the rest of the cost.
-    MATTER_TRANSMITTER("matter_transmitter", 1_500);
+    MATTER_TRANSMITTER("matter_transmitter", 1_500),
+    // Thrown by hand on foot (#985, CREATURES section 8): the operator's rounds without the launcher. Each is a
+    // fraction of
+    // a layer 1 run, so a fight costs money without ending the run. ThrownKitPacingTest holds the three to their bands.
+    THROWN_FLARE("thrown_flare", 12),
+    THROWN_DECOY("thrown_decoy", 25),
+    THROWN_CHARGE("thrown_charge", 55);
 
     private final Identifier itemId;
     private final long price;
@@ -40,6 +46,11 @@ public enum Consumable {
     Consumable(String path, long price) {
         this.itemId = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
         this.price = price;
+    }
+
+    /** Whether the item is thrown by hand on foot ({@link ThrownKit}), not used from the pilot's seat. */
+    public boolean thrown() {
+        return this == THROWN_FLARE || this == THROWN_DECOY || this == THROWN_CHARGE;
     }
 
     public Identifier itemId() {

@@ -23,6 +23,9 @@ final class Consumables {
 
     /** Server only: applies the item for {@code player}. Empty when it worked (the caller uses it up), or the reason it did not. */
     static Optional<Component> use(ServerPlayer player, Consumable consumable) {
+        if (consumable.thrown()) {
+            return ThrownKit.throwFrom(player, consumable, ThrownKitTuning.DEFAULT);
+        }
         if (!(player.getVehicle() instanceof PodEntity pod) || pod.getControllingPassenger() != player) {
             return refusal("not_piloting");
         }
@@ -39,6 +42,8 @@ final class Consumables {
             case SHAPED_CHARGE -> PodCharge.set(pod, tuning, PodCharge.Kind.SHAPED);
             case QUANTUM_TELEPORTER -> Teleports.send(pod, tuning.quantumScatter());
             case MATTER_TRANSMITTER -> Teleports.send(pod, 0.0);
+            case THROWN_FLARE, THROWN_DECOY, THROWN_CHARGE ->
+                throw new IllegalStateException(consumable + " is thrown on foot and handled above");
         };
     }
 
