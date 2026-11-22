@@ -185,9 +185,10 @@ public final class FarChunks {
                 firstAwaitTick = tick;
             }
             long elapsed = System.nanoTime() - startNanos;
-            if (failed(elapsed, budgetNanos, tick - firstAwaitTick)) {
+            int waited = tick - firstAwaitTick;
+            if (failed(elapsed, budgetNanos, waited)) {
                 throw helper.assertionException(Component.literal(failure.get() + " after " + elapsed / 1_000_000_000L
-                        + " s and " + (tick - firstAwaitTick) + " ticks; held chunks: " + LightSync.heldChunks()));
+                        + " s and " + waited + " ticks; held chunks: " + LightSync.heldChunks()));
             }
             // One sleep per server tick across all waiters, so N waiters do not stretch a tick N times.
             if (tick == lastSleptTick) {
