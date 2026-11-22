@@ -38,7 +38,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.UUID;
@@ -873,13 +872,25 @@ public class OrePlacementTest {
             return;
         }
         if (cache.pending) {
-            helper.startSequence()
-                    .thenWaitUntil(() -> {
-                        if (cache.value == null) {
-                            throw helper.assertionException("waiting for the census of the other test");
-                        }
-                    })
-                    .thenExecute(() -> then.accept(Objects.requireNonNull(cache.value)));
+            // A tick body, not a sequence step: a sequence swallows a failure and polls on, so a dead owner would hide
+            // for the whole maxTicks.
+            FarChunks.Deadline deadline = FarChunks.deadline();
+            boolean[] done = {false};
+            TestTicks.each(helper, () -> {
+                if (done[0]) {
+                    return;
+                }
+                Census[] value = cache.value;
+                deadline.await(
+                        helper,
+                        helper.getLevel(),
+                        value != null,
+                        () -> "the census owner never finished; see its failure");
+                if (value != null) {
+                    done[0] = true;
+                    then.accept(value);
+                }
+            });
             return;
         }
         cache.pending = true;
