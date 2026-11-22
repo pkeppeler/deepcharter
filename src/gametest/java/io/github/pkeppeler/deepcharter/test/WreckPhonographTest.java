@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.sound.SoundTuning;
@@ -36,20 +39,13 @@ public class WreckPhonographTest {
 
     private static final BlockPos PLACE = new BlockPos(3, 1, 3);
 
-    private static void expect(GameTestHelper helper, boolean ok, String what, Object... args) {
-        if (!ok) {
-            throw helper.assertionException(what, args);
-        }
-    }
-
     private static WreckPhonographBlockEntity place(GameTestHelper helper) {
         helper.setBlock(PLACE, PhonographRegistry.WRECK_PHONOGRAPH.defaultBlockState());
         BlockEntity found = helper.getLevel().getBlockEntity(helper.absolutePos(PLACE));
         if (found instanceof WreckPhonographBlockEntity phonograph) {
             return phonograph;
         }
-        throw helper.assertionException(
-                "there is no wreck phonograph block entity at %s, but %s", PLACE, String.valueOf(found));
+        throw failure(helper, "there is no wreck phonograph block entity at %s, but %s", PLACE, String.valueOf(found));
     }
 
     private static Vec3 at(GameTestHelper helper) {
@@ -228,7 +224,7 @@ public class WreckPhonographTest {
             CompoundTag saved = phonograph.saveWithFullMetadata(level.registryAccess());
             BlockEntity loaded = BlockEntity.loadStatic(pos, level.getBlockState(pos), saved, level.registryAccess());
             if (!(loaded instanceof WreckPhonographBlockEntity reloaded)) {
-                throw helper.assertionException("the save data loaded as %s", String.valueOf(loaded));
+                throw failure(helper, "the save data loaded as %s", String.valueOf(loaded));
             }
             level.setBlockEntity(reloaded);
             helper.runAfterDelay(listen * 3L, () -> {
@@ -241,7 +237,7 @@ public class WreckPhonographTest {
                 old.putLong("last_near_at", level.getGameTime() - SoundTuning.DEFAULT.wreckSongRearmTicks());
                 BlockEntity aged = BlockEntity.loadStatic(pos, level.getBlockState(pos), old, level.registryAccess());
                 if (!(aged instanceof WreckPhonographBlockEntity rearmed)) {
-                    throw helper.assertionException("the aged save data loaded as %s", String.valueOf(aged));
+                    throw failure(helper, "the aged save data loaded as %s", String.valueOf(aged));
                 }
                 level.setBlockEntity(rearmed);
                 helper.runAfterDelay(listen + DRAIN_TICKS, () -> {
