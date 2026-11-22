@@ -66,7 +66,11 @@ public class AmbiencePlacesTest {
                         .isEmpty(),
                 "the clock was found %s blocks away",
                 range + 1);
-        expect(helper, BlockSearch.nearest(level, clock, range, AmbienceRegistry.COMPANY_HORN).isEmpty(), "a clock was taken for a horn");
+        expect(
+                helper,
+                BlockSearch.nearest(level, clock, range, AmbienceRegistry.COMPANY_HORN)
+                        .isEmpty(),
+                "a clock was taken for a horn");
         level.setBlock(clock, AmbienceRegistry.COMPANY_HORN.defaultBlockState(), 3);
         expect(
                 helper,
@@ -85,17 +89,20 @@ public class AmbiencePlacesTest {
         level.setBlock(horn, AmbienceRegistry.COMPANY_HORN.defaultBlockState(), 3);
         expect(
                 helper,
-                BlockSearch.nearest(level, horn.offset(range, 0, 0), range, AmbienceRegistry.COMPANY_HORN).equals(Optional.of(horn)),
+                BlockSearch.nearest(level, horn.offset(range, 0, 0), range, AmbienceRegistry.COMPANY_HORN)
+                        .equals(Optional.of(horn)),
                 "the horn was not found %s blocks away",
                 range);
         expect(
                 helper,
-                BlockSearch.nearest(level, horn.offset(range + 1, 0, 0), range, AmbienceRegistry.COMPANY_HORN).isEmpty(),
+                BlockSearch.nearest(level, horn.offset(range + 1, 0, 0), range, AmbienceRegistry.COMPANY_HORN)
+                        .isEmpty(),
                 "the horn was found %s blocks away",
                 range + 1);
         expect(
                 helper,
-                BlockSearch.nearest(level, horn.offset(0, 0, -range), range, AmbienceRegistry.COMPANY_HORN).equals(Optional.of(horn)),
+                BlockSearch.nearest(level, horn.offset(0, 0, -range), range, AmbienceRegistry.COMPANY_HORN)
+                        .equals(Optional.of(horn)),
                 "the horn was not found %s blocks away along z",
                 range);
         // The nearer of two wins.
@@ -103,11 +110,16 @@ public class AmbiencePlacesTest {
         level.setBlock(nearer, AmbienceRegistry.COMPANY_HORN.defaultBlockState(), 3);
         expect(
                 helper,
-                BlockSearch.nearest(level, horn.offset(-14, 3, 2), range, AmbienceRegistry.COMPANY_HORN).equals(Optional.of(nearer)),
+                BlockSearch.nearest(level, horn.offset(-14, 3, 2), range, AmbienceRegistry.COMPANY_HORN)
+                        .equals(Optional.of(nearer)),
                 "the nearer horn was not the one found");
         level.setBlock(horn, Blocks.AIR.defaultBlockState(), 3);
         level.setBlock(nearer, Blocks.AIR.defaultBlockState(), 3);
-        expect(helper, BlockSearch.nearest(level, horn, range, AmbienceRegistry.COMPANY_HORN).isEmpty(), "a horn was found where none stands");
+        expect(
+                helper,
+                BlockSearch.nearest(level, horn, range, AmbienceRegistry.COMPANY_HORN)
+                        .isEmpty(),
+                "a horn was found where none stands");
         helper.succeed();
     }
 
@@ -120,7 +132,11 @@ public class AmbiencePlacesTest {
                 level.getChunk(nowhere.getX() >> 4, nowhere.getZ() >> 4, ChunkStatus.FULL, false) == null,
                 "the chunk at %s is loaded",
                 nowhere);
-        expect(helper, BlockSearch.nearest(level, nowhere, 24, AmbienceRegistry.COMPANY_HORN).isEmpty(), "a horn was found in an unloaded chunk");
+        expect(
+                helper,
+                BlockSearch.nearest(level, nowhere, 24, AmbienceRegistry.COMPANY_HORN)
+                        .isEmpty(),
+                "a horn was found in an unloaded chunk");
         expect(
                 helper,
                 SpotPicker.pick(level, Vec3.atCenterOf(nowhere), AmbienceTuning.DEFAULT, new SplittableRandom(1))

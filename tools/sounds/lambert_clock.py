@@ -59,24 +59,28 @@ HOURS_CUTS = {
 # Indistinct speech of the first and last sections, for the deep fragments: also not checked by ear.
 FRAGMENT_CUTS = ((2.0, 4.2), (8.5, 11.0), (74.0, 77.0), (88.0, 91.5))
 
+FRAME = 0.01  # seconds per envelope value
+FRACTION = 0.2  # of the window's loud level, above which the envelope is a word
+JOIN = 0.12  # seconds: bursts closer than this are one word
+SHORTEST = 0.15  # seconds: a burst shorter than this is a blip
 NOISE_FLOOR = 200  # RMS of 16-bit samples below which a window holds no speech, only hiss
 PAD_BEFORE = 0.06
 PAD_AFTER = 0.25
 ATTENUATION = 32
 
 
-def envelope(samples, rate=RATE, frame=0.01):
-    """The smoothed loudness of the samples, one value per `frame` seconds (RMS over the frame, then a five-frame mean)."""
-    size = int(rate * frame)
+def envelope(samples):
+    """The smoothed loudness of the samples, one value per FRAME seconds (RMS over the frame, then a five-frame mean)."""
+    size = int(RATE * FRAME)
     raw = [math.sqrt(sum(v * v for v in samples[i : i + size]) / size) for i in range(0, len(samples) - size + 1, size)]
     return [sum(raw[max(0, i - 2) : i + 3]) / len(raw[max(0, i - 2) : i + 3]) for i in range(len(raw))]
 
 
-def find_words(samples, window, fraction=0.2, rate=RATE, frame=0.01, join=0.12, shortest=0.15):
-    """The (start, end) in seconds of each burst of sound in `window` (start, end seconds): runs of the envelope above `fraction` of its
-    loud level (the 95th percentile of the window), runs closer than `join` seconds merged, and runs shorter than `shortest` dropped."""
-    levels = envelope(samples, rate, frame)
-    first, last = int(window[0] / frame), min(int(window[1] / frame), len(levels))
+def find_words(samples, window):
+    """The (start, end) in seconds of each burst of sound in `window` (start, end seconds): runs of the envelope above FRACTION of its
+    loud level (the 95th percentile of the window), runs closer than JOIN seconds merged, and runs shorter than SHORTEST dropped."""
+    levels = envelope(samples)
+    first, last = int(window[0] / FRAME), min(int(window[1] / FRAME), len(levels))
     inside = levels[first:last]
     if not inside:
         return []
@@ -86,20 +90,20 @@ def find_words(samples, window, fraction=0.2, rate=RATE, frame=0.01, join=0.12, 
     runs = []
     start = None
     for i, level in enumerate(inside):
-        if level >= loud * fraction and start is None:
+        if level >= loud * FRACTION and start is None:
             start = i
-        elif level < loud * fraction and start is not None:
+        elif level < loud * FRACTION and start is not None:
             runs.append([start, i])
             start = None
     if start is not None:
         runs.append([start, len(inside)])
     merged = []
     for run in runs:
-        if merged and (run[0] - merged[-1][1]) * frame < join:
+        if merged and (run[0] - merged[-1][1]) * FRAME < JOIN:
             merged[-1][1] = run[1]
         else:
             merged.append(run)
-    return [((first + a) * frame, (first + b) * frame) for a, b in merged if (b - a) * frame >= shortest]
+    return [((first + a) * FRAME, (first + b) * FRAME) for a, b in merged if (b - a) * FRAME >= SHORTEST]
 
 
 def decode(mp3):

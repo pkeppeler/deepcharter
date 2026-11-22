@@ -14,7 +14,9 @@ from pathlib import Path
 
 SOUNDS = Path(__file__).resolve().parent.parent / "sounds"
 sys.path.insert(0, str(SOUNDS))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import git_env  # noqa: E402
 import lambert_clock  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,8 +34,9 @@ def words(starts, length=0.4, total=40.0):
     return out
 
 
-def spoken(count, first=23.0, pitch=0.8):
-    return [first + i * pitch for i in range(count)]
+def spoken(count):
+    """`count` word starts from 23.0 s, 0.8 s apart."""
+    return [23.0 + i * 0.8 for i in range(count)]
 
 
 class FindWordsTest(unittest.TestCase):
@@ -147,7 +150,7 @@ class EndToEndTest(unittest.TestCase):
                 ).stdout.strip()
                 self.assertEqual("1", channels, name)
             # Nothing of the cut leaves the ignored directory.
-            tracked = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--", str(out)], capture_output=True, text=True).stdout
+            tracked = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--", str(out)], env=git_env.clean_env(ROOT), capture_output=True, text=True).stdout
             self.assertEqual("", tracked)
 
 

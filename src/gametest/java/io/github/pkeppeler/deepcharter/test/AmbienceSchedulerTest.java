@@ -390,13 +390,15 @@ public class AmbienceSchedulerTest {
             expect(helper, new HashSet<>(pool).size() == pool.size(), "the %s pool repeats a fragment: %s", tier, pool);
             for (String fragment : pool) {
                 String path = AmbienceFragments.sound(tier, fragment).location().getPath();
-                // The punch clock's deep fragments (#938) are the one voice of the broken tier that is named for no fragment of it.
+                // The punch clock's deep fragments (#938) are the one voice of the broken tier that is named for no
+                // fragment of it.
                 boolean clock = tier == AmbienceTier.BROKEN && fragment.equals("clock");
                 expect(
                         helper,
-                        path.equals(clock
-                                ? "ambience.clock.fragment"
-                                : "ambience." + tier.name().toLowerCase(Locale.ROOT) + "." + fragment),
+                        path.equals(
+                                clock
+                                        ? "ambience.clock.fragment"
+                                        : "ambience." + tier.name().toLowerCase(Locale.ROOT) + "." + fragment),
                         "%s %s is the sound %s",
                         tier,
                         fragment,
