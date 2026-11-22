@@ -35,7 +35,7 @@ public final class LayerBlocks {
                     .noLootTable()));
 
     /**
-     * The grained crust (#746, ADR 0060): crust with a vertical grain that flexes on a slow pulse. Its name and the
+     * The grained crust (#746, ADR 0060): crust with a vertical grain that flexes on a slow pulse. The id is permanent. Its name and the
      * messages that explain it are placeholders until the lore session (#12) names them.
      */
     public static final Block GRAINED_CRUST = registerBlock(

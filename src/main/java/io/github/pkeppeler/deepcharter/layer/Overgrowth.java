@@ -6,6 +6,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
+import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -14,9 +15,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.PriorityQueue;
 import java.util.Set;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -65,8 +68,9 @@ public final class Overgrowth {
     public static final TagKey<Block> LINING = TagKey.create(Registries.BLOCK, id("lining"));
 
     /**
-     * The bore cells of a chunk (packed block positions) and the game time of the last visit. Cells stay marked while growth fills them, so a
-     * bore that is cut open again grows over again; a mark is dropped when something that is neither natural rock nor growth fills its cell.
+     * The pending bore cells of a chunk (packed block positions: cut, and not yet grown over) and the game time of the last visit. A mark is
+     * dropped when growth fills its cell, or when something that is neither rock nor growth does; a cut of the growth marks it again, so a
+     * bore that is cut open grows over again. A chunk with no pending cell is not tracked.
      */
     public record Bores(long lastVisit, Set<Long> cells) {
         static final Bores EMPTY = new Bores(0L, Set.of());
@@ -106,6 +110,11 @@ public final class Overgrowth {
             }
         });
         ServerChunkEvents.CHUNK_UNLOAD.register((level, chunk) -> untrack(level, chunk.getPos()));
+        // A player who is not in the level is no visit and no entity: growth may close round the place they logged out,
+        // so a
+        // leave counts as a visit and a join frees the cells they stand in.
+        ServerPlayerEvents.LEAVE.register(Overgrowth::leave);
+        ServerPlayerEvents.JOIN.register(Overgrowth::freePlayer);
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> TRACKED.clear());
         ServerTickEvents.END_LEVEL_TICK.register(Overgrowth::tick);
         // A hand cut is a bore too (rock below layer 1 is out of reach of hands, so this is layer 1 and the growth
@@ -117,11 +126,50 @@ public final class Overgrowth {
         });
     }
 
-    /** True for what a bore is cut from: natural rock (Company rock too) and growth itself. */
+    /**
+     * True for what a bore is cut from: natural rock, the waste rock of the surface (dirt), Company rock (which is not in {@code natural_rock}:
+     * the drill bites it through {@code undiggable}) and growth itself. Breach crust is not cut by this path ({@code BreachService}).
+     */
     public static boolean cutsBore(BlockState state) {
+        return isWall(state) || state.is(LayerBlocks.OVERGROWTH);
+    }
+
+    private static boolean isWall(BlockState state) {
         return state.is(HazardBlocks.NATURAL_ROCK)
-                || state.is(HazardBlocks.UNDIGGABLE)
-                || state.is(LayerBlocks.OVERGROWTH);
+                || state.is(SlagBrick.WASTE_ROCK)
+                || state.is(HazardBlocks.UNDIGGABLE);
+    }
+
+    /** A player joins inside growth (it closed round the place they logged out): the cells of their feet and head are cleared and stay pending. */
+    public static void freePlayer(ServerPlayer player) {
+        ServerLevel level = player.level();
+        for (BlockPos cell :
+                List.of(player.blockPosition(), player.blockPosition().above())) {
+            if (level.getBlockState(cell).is(LayerBlocks.OVERGROWTH)) {
+                level.destroyBlock(cell, false);
+                markBore(level, cell);
+            }
+        }
+    }
+
+    /** A player leaves: the bores within reach of them count as visited now. */
+    public static void leave(ServerPlayer player) {
+        ServerLevel level = player.level();
+        Set<ChunkPos> chunks = TRACKED.get(level.dimension());
+        if (chunks == null) {
+            return;
+        }
+        long now = level.getGameTime();
+        for (ChunkPos at : List.copyOf(chunks)) {
+            LevelChunk chunk = level.getChunkSource().getChunkNow(at.getMinBlockX() >> 4, at.getMinBlockZ() >> 4);
+            if (chunk == null) {
+                continue;
+            }
+            Optional<Bores> read = Versioned.readable(chunk, BORES);
+            if (read.isPresent() && near(player, read.get())) {
+                chunk.setAttached(BORES, Versioned.of(new Bores(now, read.get().cells())));
+            }
+        }
     }
 
     /**
@@ -151,19 +199,31 @@ public final class Overgrowth {
         Set<ChunkPos> chunks = TRACKED.get(level.dimension());
         if (chunks != null) {
             chunks.remove(chunk);
+            if (chunks.isEmpty()) {
+                TRACKED.remove(level.dimension());
+            }
         }
     }
 
     private static void tick(ServerLevel level) {
-        long now = level.getGameTime();
         Set<ChunkPos> chunks = TRACKED.get(level.dimension());
-        if (chunks == null || chunks.isEmpty() || now % tuning().passTicks() != 0) {
+        if (chunks == null) {
             return;
         }
+        long now = level.getGameTime();
+        int pass = tuning().passTicks();
         for (ChunkPos at : List.copyOf(chunks)) {
+            // Each chunk has its own tick in the pass, so a level of bores does not do all its work on one tick.
+            if (Math.floorMod(now - at.hashCode(), pass) != 0) {
+                continue;
+            }
             LevelChunk chunk = level.getChunkSource().getChunkNow(at.getMinBlockX() >> 4, at.getMinBlockZ() >> 4);
             if (chunk == null) {
-                chunks.remove(at);
+                untrack(level, at);
+            } else if (Versioned.readable(chunk, BORES)
+                    .filter(bores -> bores.cells().isEmpty())
+                    .isPresent()) {
+                untrack(level, at);
             } else if (level.isPositionEntityTicking(at.getWorldPosition())) {
                 stampVisit(level, chunk, now);
                 grow(level, chunk, now);
@@ -182,25 +242,31 @@ public final class Overgrowth {
         }
     }
 
+    /** Creative players visit; spectators, who fly through rock, do not. */
     private static boolean visited(ServerLevel level, Bores bores) {
-        double reach = tuning().visitRadius();
         for (ServerPlayer player : level.players()) {
-            if (player.isSpectator()) {
-                continue;
+            if (!player.isSpectator() && near(player, bores)) {
+                return true;
             }
-            for (long cell : bores.cells()) {
-                if (BlockPos.of(cell).distToCenterSqr(player.position()) <= reach * reach) {
-                    return true;
-                }
+        }
+        return false;
+    }
+
+    private static boolean near(ServerPlayer player, Bores bores) {
+        double reach = tuning().visitRadius();
+        for (long cell : bores.cells()) {
+            if (BlockPos.of(cell).distToCenterSqr(player.position()) <= reach * reach) {
+                return true;
             }
         }
         return false;
     }
 
     /**
-     * One growth pass over a chunk at game time {@code now}: when the chunk has gone unvisited for the delay, fills up to the pass's share of
-     * its bore cells that are free to grow, in a scrambled order that changes each pass, so the film spreads unevenly. Marks that a
-     * placed block has taken over are dropped as they are met.
+     * One growth pass over a chunk at game time {@code now}: when the chunk has gone unvisited for the delay, weighs the
+     * {@link OvergrowthTuning#maxLooks} pending cells with the smallest scrambled key (the key changes each pass, so the film spreads
+     * unevenly and every cell is weighed in time) and fills up to the pass's share of those that are free to grow. A filled cell, and a
+     * cell that a placed block has taken over, stop being pending.
      */
     public static void grow(ServerLevel level, LevelChunk chunk, long now) {
         Optional<Bores> read = Versioned.readable(chunk, BORES);
@@ -209,35 +275,47 @@ public final class Overgrowth {
         }
         Bores bores = read.get();
         long pass = now / tuning().passTicks();
-        List<Long> order = new ArrayList<>(bores.cells());
-        order.sort(Comparator.comparingLong(cell -> scramble(cell, pass)));
         LoadedBlocks blocks = new LoadedBlocks(level);
-        Set<Long> placedOver = new HashSet<>();
+        Set<Long> done = new HashSet<>();
         int grown = 0;
-        int looks = 0;
-        for (long cell : order) {
-            if (grown >= tuning().cellsPerPass() || looks >= tuning().maxLooks()) {
-                break;
-            }
+        for (long cell : weighed(bores.cells(), pass)) {
             BlockPos pos = BlockPos.of(cell);
             BlockState state = blocks.getBlockState(pos);
             if (state.isAir()) {
-                looks++;
-                if (freeToGrow(level, blocks, pos)) {
+                if (grown < tuning().cellsPerPass() && freeToGrow(level, blocks, pos)) {
                     level.setBlock(pos, LayerBlocks.OVERGROWTH.defaultBlockState(), Block.UPDATE_ALL);
                     grown++;
+                    done.add(cell);
                 }
-            } else if (!state.is(LayerBlocks.OVERGROWTH)
-                    && !state.is(HazardBlocks.NATURAL_ROCK)
-                    && state.getFluidState().isEmpty()) {
-                placedOver.add(cell);
+            } else if (state.is(LayerBlocks.OVERGROWTH)) {
+                done.add(cell);
+            } else if (!isWall(state) && state.getFluidState().isEmpty()) {
+                done.add(cell);
             }
         }
-        if (!placedOver.isEmpty()) {
-            Set<Long> kept = new HashSet<>(bores.cells());
-            kept.removeAll(placedOver);
-            chunk.setAttached(BORES, Versioned.of(new Bores(bores.lastVisit(), Set.copyOf(kept))));
+        if (!done.isEmpty()) {
+            Set<Long> pending = new HashSet<>(bores.cells());
+            pending.removeAll(done);
+            chunk.setAttached(BORES, Versioned.of(new Bores(bores.lastVisit(), Set.copyOf(pending))));
         }
+    }
+
+    /** The {@link OvergrowthTuning#maxLooks} cells with the smallest key this pass, smallest first, in one scan with no sort of the whole set. */
+    private static List<Long> weighed(Set<Long> cells, long pass) {
+        PriorityQueue<long[]> largest = new PriorityQueue<>(
+                Comparator.comparingLong((long[] pair) -> pair[0]).reversed());
+        for (long cell : cells) {
+            long key = scramble(cell, pass);
+            if (largest.size() < tuning().maxLooks()) {
+                largest.add(new long[] {key, cell});
+            } else if (key < largest.peek()[0]) {
+                largest.poll();
+                largest.add(new long[] {key, cell});
+            }
+        }
+        List<long[]> picked = new ArrayList<>(largest);
+        picked.sort(Comparator.comparingLong(pair -> pair[0]));
+        return picked.stream().map(pair -> pair[1]).toList();
     }
 
     private static long scramble(long cell, long pass) {
@@ -258,13 +336,14 @@ public final class Overgrowth {
     private static boolean touchesRockOrGrowth(LoadedBlocks blocks, BlockPos pos) {
         for (Direction side : Direction.values()) {
             BlockState next = blocks.getBlockState(pos.relative(side));
-            if (next.is(HazardBlocks.NATURAL_ROCK) || next.is(LayerBlocks.OVERGROWTH)) {
+            if (isWall(next) || next.is(LayerBlocks.OVERGROWTH)) {
                 return true;
             }
         }
         return false;
     }
 
+    /** An unloaded neighbouring chunk reads as air here, so a lining block across a chunk border that is not loaded does not hold; {@code canChange} has already refused a cell on a loaded border's unloaded side. */
     private static boolean heldOpen(LoadedBlocks blocks, BlockPos pos) {
         int reach = tuning().holdReach();
         for (BlockPos near :

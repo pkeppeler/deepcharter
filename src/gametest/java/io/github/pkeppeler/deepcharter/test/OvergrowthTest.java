@@ -226,8 +226,11 @@ public class OvergrowthTest {
                     throw failure(helper, "the cell of the placed block at %s is still a bore", pos);
                 }
             }
-            if (marked.size() != BORE_CELLS - placed.size()) {
-                throw failure(helper, "the growth's cells must stay bores: %d marked", marked.size());
+            if (!marked.isEmpty()) {
+                throw failure(
+                        helper,
+                        "a bore that is all grown or built over has no pending cell, %d are marked",
+                        marked.size());
             }
         });
     }
@@ -475,6 +478,15 @@ public class OvergrowthTest {
                         throughGrowth,
                         throughGrowth / rate);
             }
+            // A slab of growth is softer than stone (hardness 1.0 against 1.5), so it takes fewer ticks at the dearer
+            // rate: about 2 slabs of stone.
+            double slabRatio = growthBurn[0] / stoneBurn[0];
+            if (slabRatio < 1.4 || slabRatio > 2.6) {
+                throw failure(
+                        helper,
+                        "a slab of growth should cost about twice a slab of stone in fuel, it cost %.2f times",
+                        slabRatio);
+            }
             Set<Long> bored = bores(level.getChunkAt(new BlockPos(x, FLOOR, Z))).cells();
             if (bored.stream()
                                     .filter(cell -> BlockPos.of(cell).getY() == FLOOR - 1)
@@ -531,10 +543,10 @@ public class OvergrowthTest {
                             cutBore(level, x);
                             LevelChunk chunk = chunkOf(level, x);
                             start[0] = lastVisit(chunk);
-                            cells.set(bores(chunk).cells());
                             Overgrowth.grow(level, chunk, start[0] + TUNING.delayTicks());
                             Overgrowth.grow(level, chunk, start[0] + TUNING.delayTicks() + TUNING.passTicks());
                             grownBefore[0] = grown(level, x);
+                            cells.set(bores(chunk).cells());
                         },
                         () -> {},
                         () -> level.isPositionEntityTicking(far),
@@ -565,9 +577,77 @@ public class OvergrowthTest {
                         }));
     }
 
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPlayerWhoJoinsInsideGrowthIsFreedAndALeaveCountsAsAVisit(GameTestHelper helper) {
+        MockPlayer player = MockPlayers.join(helper, "overgrowth-joiner");
+        onceReady(helper, column(11), (level, x) -> {
+            LevelChunk chunk = chunkOf(level, x);
+            cutBore(level, x);
+            BlockPos feet = new BlockPos(x, FLOOR + 2, Z);
+            player.teleportTo(level, Vec3.atBottomCenterOf(feet), 0f, 0f);
+            // The place a player logged out in has closed round them while they were away.
+            level.setBlock(feet, LayerBlocks.OVERGROWTH.defaultBlockState(), Block.UPDATE_ALL);
+            level.setBlock(feet.above(), LayerBlocks.OVERGROWTH.defaultBlockState(), Block.UPDATE_ALL);
+            Overgrowth.freePlayer(player.player());
+            if (!level.getBlockState(feet).isAir()
+                    || !level.getBlockState(feet.above()).isAir()) {
+                throw failure(
+                        helper,
+                        "a player who joins in growth must be freed: feet %s, head %s",
+                        level.getBlockState(feet),
+                        level.getBlockState(feet.above()));
+            }
+            Set<Long> pending = bores(chunk).cells();
+            if (!pending.contains(feet.asLong())
+                    || !pending.contains(feet.above().asLong())) {
+                throw failure(helper, "the freed cells must stay pending so they can grow over again");
+            }
+            chunk.setAttached(Overgrowth.BORES, Versioned.of(new Overgrowth.Bores(0L, pending)));
+            Overgrowth.leave(player.player());
+            if (lastVisit(chunk) != level.getGameTime()) {
+                throw failure(
+                        helper,
+                        "a player who leaves next to a bore counts as a visit: last visit %d, now %d",
+                        lastVisit(chunk),
+                        level.getGameTime());
+            }
+        });
+    }
+
+    @GameTest
+    public void theShippedHollowsTagIsEmpty(GameTestHelper helper) throws java.io.IOException {
+        // Every copy of the file on the class path: the mod's own, which must list nothing until the layer that has the
+        // hollows (#972) fills it, and the test data's.
+        var urls = Overgrowth.class
+                .getClassLoader()
+                .getResources("data/deepcharter/tags/worldgen/biome/fungal_hollows.json");
+        boolean shippedEmpty = false;
+        for (java.net.URL url : java.util.Collections.list(urls)) {
+            try (var in = url.openStream()) {
+                var values = com.google.gson.JsonParser.parseString(
+                                new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8))
+                        .getAsJsonObject()
+                        .getAsJsonArray("values");
+                shippedEmpty |= values.isEmpty();
+                values.forEach(value -> {
+                    if (!value.getAsString().equals(Hollows.BIOME.toString())) {
+                        throw failure(
+                                helper,
+                                "the tag lists %s: only the test biome belongs in it until #972 (delete this test there)",
+                                value);
+                    }
+                });
+            }
+        }
+        if (!shippedEmpty) {
+            throw failure(helper, "the mod's own fungal_hollows tag should be empty");
+        }
+        helper.succeed();
+    }
+
     /** Waits the real clock out on the real tick path: no player near, nothing passed in. Prints the line that mechanics.md quotes. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 12_000)
-    public void theBoreGrowsAtTheMeasuredPace(GameTestHelper helper) {
+    public void theBoreGrowsAtTheExpectedPace(GameTestHelper helper) {
         int x = column(10);
         ServerLevel level = room(helper, x);
         Arrival<Boolean> ready = ready(helper, level, x);
