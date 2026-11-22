@@ -25,6 +25,7 @@ The user grants creative liberty over dig mechanics, hazards, pod upgrades and c
 - **Trade-offs.** Every upgrade costs something the player also wants: cargo slots, drill speed, fuel, money, or a component slot.
 - **Say when a default gets harder.** A tuning change that makes the default build harder than main says so in Decisions, with the unpacked and early-game columns, even when it restores an earlier design.
 - **A hiding hazard must cost.** A hazard that hides information is tuned so a bot that uses that information measurably loses by it (several extra deaths per 100 on the default build). A table that shows no cost means the knob is too weak.
+- **A follow must say where it ends.** A grip or status that follows a person across seats, levels or logins states in its design doc what each of those does, and has a test for each.
 - **Co-op value.** Prefer mechanics whose results persist and help the whole charter, such as lined shafts, beacons, mapped hazards and supply caches.
 - **Uses what exists.** Waste rock, ores the economy undervalues, and existing systems (scanner, lights, radiator, cargo, towing, wrecks) are better hooks than new parallel systems.
 
