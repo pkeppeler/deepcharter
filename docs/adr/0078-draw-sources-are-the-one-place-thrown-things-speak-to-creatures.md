@@ -23,6 +23,5 @@ The thrown kit ([#985](https://github.com/pkeppeler/deepcharter/issues/985)) put
 
 ## Consequences
 
-- A creature drawn to the drill that forgets the call ignores decoys, and nothing fails loudly; the decoy stays off sale until a caller exists so no one pays for it before that.
-- `noiseTarget` carries a `// test-seam` marker because it has no caller on `main` until the first such creature lands; it is a permanent hook, not test-only code.
+- A creature drawn to the drill that forgets the call ignores decoys, and nothing fails loudly; the decoy went on sale only with the first caller (Drifters, #975), so no one paid for it before then.
 - Friendly fire is not a `DrawSources` matter: a thrown charge hurts the thrower and their own crew, other players only when the server allows PvP, and never a pod of another charter.

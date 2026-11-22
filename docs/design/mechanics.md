@@ -1978,7 +1978,7 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 | Item | Lands, then | Reads as | Costs |
 |---|---|---|---|
 | Flare | stands a burning light block for 90 s | real block light, so every rule that reads block light sees it (the natural spawn, the Retained on foot at block light under 3); and a pod within 10 blocks counts as lit while the block stands, so it draws no Retained. A flare that finds no footing (water, a solid cell) goes out and comes back to the thrower | $12 |
-| Decoy | rings a bell every second for 45 s | a noise source: `DrawSources.noiseTarget` hands a creature within 40 blocks the decoy instead of the drill. Not sold yet: its pull goes live, and it goes on sale, with the first creature drawn to the drill (Drifters, #918) | $25 |
+| Decoy | rings a bell every second for 45 s | a noise source: `DrawSources.noiseTarget` hands a creature within 40 blocks the decoy instead of the drill. Drifters (#918) steer at it, and it is on sale | $25 |
 | Charge | burns a 3 second fuse, then blasts | the pod's blasting charge, through `PodCharge.detonate`: the 3 x 3 column under it, 2 rows deep, clears Company rock and natural rock only where the column holds Company rock, spares what is built, bedrock and fluids, hurts a pod in reach by distance | $55 |
 
 **Ladder.** By hand: the kit is the hand stage of the operator's flare rounds, decoy rounds and charge launcher (layer 4 and the Badger), which fire the same three from a seat at range. A crew with the operator throws less; a solo player on foot throws more.
@@ -2002,7 +2002,7 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Decisions (A).**
 - The flare is a block, not an entity with a virtual light: the light engine and every light rule see it with no special case, and a scheduled tick puts it out through an unload. Its reach for pods is the one part a block cannot carry (a pod's lights are not block light), so `DrawSources` holds it, and only counts it while the block still stands ([ADR 0078](../adr/0078-draw-sources-are-the-one-place-thrown-things-speak-to-creatures.md)).
-- The decoy's hook is `DrawSources.noiseTarget(level, from, drillAt)`: no creature on main is drawn to the drill, so the decoy is registered, hooked and tested but not sold (`Consumable.sold()`) until the first one lands. Whichever of this and the Drifters (#975) merges second flips the switch and adds the call in `Drifter.steer`.
+- The decoy's hook is `DrawSources.noiseTarget(level, from, drillAt)`: `Drifter.steer` calls it, so the decoy is on sale (#975); the Listeners and the Hush add their own call when they land.
 - A flare that finds no footing goes out and is given back, with a message: a throw into a flooded bore is a lesson, not a loss.
 - Friendly fire is deliberate. A thrown charge hurts the thrower and their own charter's crew (the fuse and the GET CLEAR bar warn them), and other players only where the server allows PvP. It never hurts a pod that another charter owns; an unowned pod and one of the thrower's charter are hurt as the pod's own charge hurts them.
 - A thrown charge clears rock only where its column holds Company rock, the pod's own rule, kept in one place in `PodCharge`: otherwise a $55 throw would be dynamite that outranges the seat.

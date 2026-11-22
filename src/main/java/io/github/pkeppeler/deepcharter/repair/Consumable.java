@@ -38,9 +38,7 @@ public enum Consumable {
     // fraction of a layer 1 run, so a fight costs money without ending the run. ThrownKitPacingTest holds the three to
     // their bands.
     THROWN_FLARE("thrown_flare", 12, true),
-    // Not sold yet: nothing on main is drawn to the drill, so no creature feels its pull. On sale with the first
-    // drill-drawn creature (Drifters, #918, PR #975): whichever lands second flips this and adds the steer call.
-    THROWN_DECOY("thrown_decoy", 25, false),
+    THROWN_DECOY("thrown_decoy", 25, true),
     THROWN_CHARGE("thrown_charge", 55, true),
     // On foot (#986): not used up. A person on foot clips it to a pod's winch, and it is theirs to keep. Priced at
     // about

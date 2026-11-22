@@ -118,7 +118,7 @@ public class Drifter extends Mob {
         if (drawn != isDrawn()) {
             entityData.set(DRAWN, drawn);
         }
-        steer(drawn, tuning);
+        steer(level, drawn, tuning);
         if (heard.isPresent() && drawnTicks >= tuning.armTicks() && Drifters.touched(level, this)) {
             pop(level, false);
             return;
@@ -145,11 +145,15 @@ public class Drifter extends Mob {
         return true;
     }
 
-    /** Eases its drift toward the noise at the drift speed, or toward the way it wanders. */
-    private void steer(boolean drawn, DrifterTuning tuning) {
+    /**
+     * Eases its drift toward the noise at the drift speed, or toward the way it wanders. A decoy in reach of it is the noise it heads for,
+     * not the one it was drawn to ({@link DrawSources#noiseTarget}).
+     */
+    private void steer(ServerLevel level, boolean drawn, DrifterTuning tuning) {
         Vec3 want;
         if (drawn && memory != null) {
-            Vec3 to = memory.subtract(position().add(0, getBbHeight() / 2, 0));
+            Vec3 to = DrawSources.noiseTarget(level, position(), memory)
+                    .subtract(position().add(0, getBbHeight() / 2, 0));
             want = to.lengthSqr() < 1.0e-4 ? Vec3.ZERO : to.normalize().scale(tuning.driftSpeed());
         } else {
             if (wanderIn-- <= 0 || horizontalCollision || verticalCollision) {

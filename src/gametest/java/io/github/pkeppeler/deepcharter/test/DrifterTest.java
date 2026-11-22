@@ -5,6 +5,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
+import io.github.pkeppeler.deepcharter.creature.DrawSources;
 import io.github.pkeppeler.deepcharter.creature.Drifter;
 import io.github.pkeppeler.deepcharter.creature.DrifterTuning;
 import io.github.pkeppeler.deepcharter.creature.Drifters;
@@ -121,6 +122,63 @@ public class DrifterTest {
             made[0] = Arena.build(helper, level, origin);
             made[0].pilot().setInput(SPRINT);
             drifter[0] = made[0].drifter(made[0].at(-5, 2, 0));
+        });
+    }
+
+    /**
+     * A decoy that sounds within its pull of a drifter drawn to a drilling pod turns it: the drifter heads for the decoy, 5 blocks to its
+     * side, and not for the pod 10 blocks the other way. The decoy is the one a landed thrown decoy registers ({@link ThrownKitTest} drives
+     * the throw); this pins what a drifter does with it.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + HEAR_TICKS + EASE_TICKS + MEASURE_TICKS + 60)
+    public void aDecoyInReachTurnsADrifterAwayFromTheDrill(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = DrifterArenas.slot(8);
+        Arena[] made = {null};
+        Drifter[] drifter = {null};
+        Vec3[] decoy = {null};
+        long[] drawnAt = {-1};
+        Vec3[] from = {null};
+        TestTicks.each(helper, () -> {
+            Arena arena = made[0];
+            if (arena == null) {
+                return;
+            }
+            if (drawnAt[0] < 0) {
+                if (drifter[0].isDrawn()) {
+                    drawnAt[0] = helper.getTick();
+                } else if (helper.getTick() > FarChunks.AWAIT_BUDGET_TICKS + HEAR_TICKS) {
+                    throw failure(helper, "the drifter did not hear a pod drilling 10 blocks away");
+                }
+                return;
+            }
+            long since = helper.getTick() - drawnAt[0];
+            if (since == EASE_TICKS) {
+                from[0] = drifter[0].position();
+            } else if (since == EASE_TICKS + MEASURE_TICKS) {
+                Vec3 moved = drifter[0].position().subtract(from[0]);
+                double cosineDecoy =
+                        moved.normalize().dot(decoy[0].subtract(from[0]).normalize());
+                double cosinePod = moved.normalize()
+                        .dot(arena.pod()
+                                .position()
+                                .add(0, 1, 0)
+                                .subtract(from[0])
+                                .normalize());
+                expect(helper, cosineDecoy > 0.8, "the drifter does not aim at the decoy: cosine %s", cosineDecoy);
+                expect(helper, cosinePod < 0.3, "the drifter still aims at the drill: cosine %s", cosinePod);
+                DrawSources.removeDecoy(level, decoy[0]);
+                drifter[0].discard();
+                arena.clear();
+                helper.succeed();
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            made[0] = Arena.build(helper, level, origin);
+            made[0].pilot().setInput(SPRINT);
+            drifter[0] = made[0].drifter(made[0].at(-5, 2, 0));
+            decoy[0] = drifter[0].position().add(0, drifter[0].getBbHeight() / 2, -5);
+            DrawSources.addDecoy(level, decoy[0], 8, level.getGameTime() + 2_000);
         });
     }
 
