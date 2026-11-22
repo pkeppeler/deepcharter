@@ -43,13 +43,16 @@ public class TetherClientTest implements FabricClientGameTest {
         ClientTestLog.start(this);
         try (TwoPlayerServer two = TwoPlayerServer.start(context)) {
             UUID podId = two.server().computeOnServer(server -> setUp(server.overworld(), two));
-            // The pod first: a line to a pod whose chunk is not ticking yet would end at once, as it does for a pod
-            // that has unloaded.
+            // The pod first, and the person standing. A line to a pod in a chunk that is not ticking yet ends at once,
+            // like
+            // one to a pod that unloaded, and a person still falling through chunks the client has not got snaps it.
             ClientWait.until(
                     context,
-                    "the client sees the pod",
-                    client -> podIfPresent(client, podId) != null,
-                    client -> "pod seen " + (podIfPresent(client, podId) != null) + ", " + ClientWait.describe(client));
+                    "the client sees the pod and stands on the slab",
+                    client -> podIfPresent(client, podId) != null
+                            && ClientSession.player(client).onGround(),
+                    client -> "pod seen " + (podIfPresent(client, podId) != null) + ", on ground "
+                            + ClientSession.player(client).onGround() + ", " + ClientWait.describe(client));
             two.server().runOnServer(server -> clip(server.overworld(), two, podId));
             ClientWait.until(
                     context,
@@ -104,7 +107,9 @@ public class TetherClientTest implements FabricClientGameTest {
                 ServerPlayer real = real(server.overworld(), two);
                 require(
                         PodTether.unclip(real, PodTether.Unclipped.UNHOOKED),
-                        "the real player should have been clipped");
+                        "the real player should have been clipped, they are at " + real.position() + ", alive "
+                                + real.isAlive() + ", pod "
+                                + PodTether.pod(real).map(PodEntity::position));
             });
             ClientWait.until(
                     context,
