@@ -147,6 +147,15 @@ public class TetherClientTest implements FabricClientGameTest {
 
     /** A stone slab high above the terrain, the real player on it beside a pod. */
     private static UUID setUp(ServerLevel level, TwoPlayerServer two) {
+        // The chunks the slab and the pod stand in stay loaded while the real player is teleported in: a pod whose
+        // chunk unloads in
+        // between ends its line, as it should, and the test is about the drawn line.
+        for (int chunkX = (X - 6) >> 4; chunkX <= (X + 8) >> 4; chunkX++) {
+            for (int chunkZ = (Z - 6) >> 4; chunkZ <= (Z + 8) >> 4; chunkZ++) {
+                // force-ok: a client test has no GameTestHelper, and the dedicated server is closed with the test
+                level.setChunkForced(chunkX, chunkZ, true);
+            }
+        }
         for (int x = X - 6; x <= X + 8; x++) {
             for (int z = Z - 6; z <= Z + 8; z++) {
                 for (int y = FLOOR_Y - 8; y <= FLOOR_Y + 10; y++) {
