@@ -202,6 +202,14 @@ public class SoundWiringClientTest implements FabricClientGameTest {
 
     /** Bursts of movement with rests between them keep one drive loop: every burst is a real move, a rest is a few ticks. */
     private static void movingHold(ClientGameTestContext context, Heard heard, TwoPlayerServer two, int podId) {
+        // The loop of the last drive falls to silence before it stops (#961), and a drive that starts while it falls
+        // rises again
+        // instead of starting a new one: count the bursts' loops from a pod with none.
+        await(
+                context,
+                heard,
+                "the loop of the last drive faded out",
+                client -> !heard.isPlaying(client.getSoundManager(), "pod.engine_drive"));
         long driveBefore = heard.count("pod.engine_drive");
         long idleBefore = heard.count("pod.engine_idle");
         for (int burst = 0; burst < BURSTS; burst++) {
