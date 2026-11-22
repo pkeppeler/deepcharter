@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
 public class OutpostRatingsTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(OutpostRatingsTest.class);
     private static final int X = 100;
-    private static final int ABOVE_FLOOR = 20;
+    private static final int LOCAL_HEIGHT = 20;
     private static final String CAMPAIGN = "deepcharter:campaign_sample";
     private static final String SHORT_ON = "readout.deepcharter.placement.short_on";
     private static final String NOTHING_RATED = "readout.deepcharter.placement.nothing_rated";
@@ -230,12 +230,12 @@ public class OutpostRatingsTest {
                 reason);
     }
 
-    /** In a layer dimension and on the surface nothing is asked, so the readout is empty for a block that would hold nowhere else. */
+    /** In layers 1 and 2 and on the surface nothing is asked, so the readout is empty for a block that would hold nowhere else. */
     @GameTest
     public void whereNothingIsAskedTheReadoutSaysNothing(GameTestHelper helper) {
         for (int layer : new int[] {1, 2}) {
             ServerLevel level = TestLayers.level(helper, layer);
-            BlockPos at = new BlockPos(X, TestLayers.band(level, layer).minY() + ABOVE_FLOOR, X);
+            BlockPos at = TestLayers.pos(layer, X, LOCAL_HEIGHT, X);
             expect(
                     helper,
                     Placements.readout(level, at, Blocks.OAK_PLANKS.defaultBlockState())
@@ -262,20 +262,20 @@ public class OutpostRatingsTest {
         for (CampaignBands.Band band : List.of(CampaignBands.SURFACE, CampaignBands.LAYER_1, CampaignBands.LAYER_2)) {
             expect(
                     helper,
-                    DepthRatings.requiredAt(level, band.minY() + ABOVE_FLOOR).equals(Optional.of(Ratings.NONE)),
+                    DepthRatings.requiredAt(level, band.minY() + LOCAL_HEIGHT).equals(Optional.of(Ratings.NONE)),
                     "the %s asks nothing",
                     band.name());
             expect(
                     helper,
                     Placements.readout(
                                     level,
-                                    new BlockPos(X, band.minY() + ABOVE_FLOOR, X),
+                                    new BlockPos(X, band.minY() + LOCAL_HEIGHT, X),
                                     Blocks.OAK_PLANKS.defaultBlockState())
                             .isEmpty(),
                     "a plank in the %s should read nothing",
                     band.name());
         }
-        int unbuiltY = CampaignBands.UNBUILT.minY() + ABOVE_FLOOR;
+        int unbuiltY = CampaignBands.UNBUILT.minY() + LOCAL_HEIGHT;
         expect(helper, DepthRatings.requiredAt(level, unbuiltY).isEmpty(), "unbuilt depth has no rating to ask");
         Optional<Readout> slag =
                 Placements.readout(level, new BlockPos(X, unbuiltY, X), SlagBrick.BLOCK.defaultBlockState());
