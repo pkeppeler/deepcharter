@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceFragments;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceTier;
@@ -19,8 +19,6 @@ import java.util.Set;
 import java.util.SplittableRandom;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #938: when the punch clock calls an hour and which. The caller is pure (a seeded random in its seam), so each rule
@@ -245,13 +243,5 @@ public class ClockCallerTest {
                     tier);
         }
         helper.succeed();
-    }
-
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        if (!condition) {
-            throw helper.assertionException(Component.literal(String.format(format, args)));
-        }
     }
 }
