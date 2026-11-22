@@ -232,6 +232,30 @@ public class BandReadersTest {
 
     // ---- OutpostRates and OutpostBuilder ----
 
+    /** Carves the hall above {@code floor} and joins a survival player who has founded a charter. */
+    private static MockPlayer foundedBuilderBesideHall(
+            GameTestHelper helper, ServerLevel level, BlockPos floor, String name) {
+        RoomCarver.carve(
+                level,
+                floor.getX() - 8,
+                floor.getX() + 8,
+                floor.getY() + 1,
+                floor.getY() + 16,
+                Z - 8,
+                Z + 8,
+                Blocks.STONE);
+        MockPlayer mock = MockPlayers.join(helper, name);
+        mock.player().setGameMode(GameType.SURVIVAL);
+        if (Charters.found(
+                        level.getServer(),
+                        mock.player().getUUID(),
+                        name + " " + UUID.randomUUID().toString().substring(0, 8))
+                .isPresent()) {
+            throw failure(helper, "founding the charter should succeed");
+        }
+        return mock;
+    }
+
     /** An outpost is built at the crust top of layer 1's band, and its rates apply by the band of the terminal's Y. */
     @GameTest(environment = CampaignEnvironments.A, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void anOutpostIsBuiltInLayer1sBandAndPricesByBand(GameTestHelper helper) {
@@ -239,16 +263,7 @@ public class BandReadersTest {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
         BlockPos floor = new BlockPos(x, ONE.minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
-        RoomCarver.carve(level, x - 8, x + 8, floor.getY() + 1, floor.getY() + 16, Z - 8, Z + 8, Blocks.STONE);
-        MockPlayer mock = MockPlayers.join(helper, "band-outposter");
-        mock.player().setGameMode(GameType.SURVIVAL);
-        if (Charters.found(
-                        server,
-                        mock.player().getUUID(),
-                        "Band Outpost " + UUID.randomUUID().toString().substring(0, 8))
-                .isPresent()) {
-            throw failure(helper, "founding the charter should succeed");
-        }
+        MockPlayer mock = foundedBuilderBesideHall(helper, level, floor, "band-outposter");
         CharterId charter = Charters.charterOfOrThrow(server, mock.player().getUUID())
                 .orElseThrow()
                 .id();
@@ -315,16 +330,7 @@ public class BandReadersTest {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
         BlockPos floor = new BlockPos(x, ONE.minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
-        RoomCarver.carve(level, x - 8, x + 8, floor.getY() + 1, floor.getY() + 16, Z - 8, Z + 8, Blocks.STONE);
-        MockPlayer mock = MockPlayers.join(helper, "band-dying-outposter");
-        mock.player().setGameMode(GameType.SURVIVAL);
-        if (Charters.found(
-                        server,
-                        mock.player().getUUID(),
-                        "Band Dying " + UUID.randomUUID().toString().substring(0, 8))
-                .isPresent()) {
-            throw failure(helper, "founding the charter should succeed");
-        }
+        MockPlayer mock = foundedBuilderBesideHall(helper, level, floor, "band-dying-outposter");
         FarChunks.awaitEntityTicking(
                 helper,
                 level,
