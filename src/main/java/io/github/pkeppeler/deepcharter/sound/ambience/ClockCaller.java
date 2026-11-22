@@ -40,7 +40,7 @@ public final class ClockCaller {
     }
 
     private static final int HOURS = 12;
-    /** Lambert skips ten, so the recording has no word for it: the clock never strikes it, and at ten it skips as he does. */
+    // Lambert skips ten, so the recording has no word for it: the clock never says it, and at ten it skips as he does.
     private static final int UNSPOKEN_HOUR = 10;
     private static final int UNSET = -1;
 

@@ -226,7 +226,8 @@ public class ClockCallerTest {
         }
         expect(
                 helper,
-                Arrays.stream(DeepSound.values()).noneMatch(sound -> sound.event().location().getPath().endsWith("hour_10")),
+                Arrays.stream(DeepSound.values())
+                        .noneMatch(sound -> sound.event().location().getPath().endsWith("hour_10")),
                 "there is a word for ten");
         expect(
                 helper,
