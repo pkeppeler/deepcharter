@@ -5,7 +5,7 @@ import net.minecraft.world.entity.Entity;
 
 /**
  * Where a rider sits in a pod, which is the order they boarded: the first aboard is the pilot, who drives, and the second is the
- * navigator, who sees the scanner and nothing else (SPEC section 8; sonar comes in M3). When the pilot gets off, the navigator is
+ * navigator, who sees the scanner and works the sonar ({@link PodSonar}). When the pilot gets off, the navigator is
  * the first aboard, and is the pilot.
  */
 public enum PodSeat {
