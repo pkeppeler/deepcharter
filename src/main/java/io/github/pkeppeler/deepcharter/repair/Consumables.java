@@ -45,6 +45,10 @@ final class Consumables {
             case MATTER_TRANSMITTER -> Teleports.send(pod, 0.0);
             case THROWN_FLARE, THROWN_DECOY, THROWN_CHARGE ->
                 throw new IllegalStateException(consumable + " is thrown on foot and handled above");
+            // The switch must cover every constant; a TOOL never reaches here, because RepairRegistry gives it its own
+            // item.
+            case TETHER ->
+                throw new IllegalStateException("the tether is not used up here: TetherItem handles its own use");
         };
     }
 

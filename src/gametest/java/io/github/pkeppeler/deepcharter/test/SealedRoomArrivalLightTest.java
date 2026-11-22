@@ -3,6 +3,7 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.layer.LightSync;
+import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
@@ -35,7 +36,7 @@ public class SealedRoomArrivalLightTest {
     /** Ticks after the light engine is idle that the net may still send: its window of 100 ticks, with a margin (restates {@code LightSync}). */
     private static final int SETTLE_TICKS = 100 + 20;
 
-    @GameTest(dimension = SAMPLE, maxTicks = 3_000)
+    @GameTest(dimension = SAMPLE, environment = CampaignEnvironments.C, maxTicks = 3_000)
     public void aRoomSealedInTheTickThePlayerArrivesIsSentItsDarkness(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         MockPlayer mock = MockPlayers.join(helper, "sealed-arrival");

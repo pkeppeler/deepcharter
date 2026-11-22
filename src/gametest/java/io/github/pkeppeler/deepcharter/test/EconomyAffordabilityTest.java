@@ -97,7 +97,8 @@ public class EconomyAffordabilityTest {
             // under half.
             Map.entry(Consumable.THROWN_FLARE, new Target(false, 0.05, 0.15)),
             Map.entry(Consumable.THROWN_DECOY, new Target(false, 0.15, 0.30)),
-            Map.entry(Consumable.THROWN_CHARGE, new Target(false, 0.35, 0.55)));
+            Map.entry(Consumable.THROWN_CHARGE, new Target(false, 0.35, 0.55)),
+            Map.entry(Consumable.TETHER, new Target(false, 0.25, 1)));
 
     private static Run stockRunInLayerOne() {
         return EarlyRunModel.run(Zone.load("topsoil_claims"), PodStats.base(), 0);

@@ -41,27 +41,49 @@ public enum Consumable {
     // Not sold yet: nothing on main is drawn to the drill, so no creature feels its pull. On sale with the first
     // drill-drawn creature (Drifters, #918, PR #975): whichever lands second flips this and adds the steer call.
     THROWN_DECOY("thrown_decoy", 25, false),
-    THROWN_CHARGE("thrown_charge", 55, true);
+    THROWN_CHARGE("thrown_charge", 55, true),
+    // On foot (#986): not used up. A person on foot clips it to a pod's winch, and it is theirs to keep. Priced at
+    // about
+    // three quarters of a stock layer 1 run, so the first descent pays for it once and no pod is ever without one.
+    TETHER("tether", 90, Kind.TOOL);
+
+    /** What using the item does to it. */
+    public enum Kind {
+        /** Used from the pilot's seat through {@code Consumables.use}, and used up. */
+        CONSUMED,
+        /** Kept: the item handles its own use on foot, and {@code Consumables.use} is never called for it. */
+        TOOL
+    }
 
     private final Identifier itemId;
     private final long price;
+    private final Kind kind;
     private final boolean thrown;
     private final boolean sold;
 
     Consumable(String path, long price) {
-        this(path, price, false, true);
+        this(path, price, Kind.CONSUMED, false, true);
     }
 
     /** A thrown item: {@code sold} is whether the repair station offers it. */
     Consumable(String path, long price, boolean sold) {
-        this(path, price, true, sold);
+        this(path, price, Kind.CONSUMED, true, sold);
     }
 
-    private Consumable(String path, long price, boolean thrown, boolean sold) {
+    Consumable(String path, long price, Kind kind) {
+        this(path, price, kind, false, true);
+    }
+
+    private Consumable(String path, long price, Kind kind, boolean thrown, boolean sold) {
         this.itemId = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
         this.price = price;
+        this.kind = kind;
         this.thrown = thrown;
         this.sold = sold;
+    }
+
+    public Kind kind() {
+        return kind;
     }
 
     /** Whether the item is thrown by hand on foot ({@link ThrownKit}), not used from the pilot's seat. */
