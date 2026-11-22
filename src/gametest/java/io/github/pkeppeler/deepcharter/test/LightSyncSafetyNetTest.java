@@ -25,7 +25,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.level.ThreadedLevelLightEngine;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
@@ -62,7 +61,10 @@ public class LightSyncSafetyNetTest {
     private static final int ROWS = 8;
 
     private static final int SETTLE_TICKS = 20;
-    /** Ticks the net compares for after a hold ended, with a margin: restates its window. */
+    /** Ticks from the hold's request to the send of the neighbour in the late case: more than a window counted from the request. */
+    private static final int LATE_SEND_TICKS = 800;
+
+    /** Ticks the net compares for after the chunk can be sent, with a margin: restates its window. */
     private static final int NET_WAIT_TICKS = 100 + 40;
     /** Ticks the stored light must not change before the case takes it as settled. */
     private static final int STEADY_TICKS = 6;
@@ -235,13 +237,28 @@ public class LightSyncSafetyNetTest {
      */
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void aNeighbourThatCannotBeSentWhenTheHoldIsRequestedIsWatched(GameTestHelper helper) {
+        neighbourSentLater(helper, "net-neighbour", 80, 0);
+    }
+
+    /**
+     * As above, but the chunk is sent {@value #LATE_SEND_TICKS} ticks after the hold was requested, past any window counted from the
+     * request (#954): the ticks of a server and the light engine's thread run at different speeds under load, so how many ticks a
+     * neighbour waits to be sent is not bounded.
+     */
+    @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS + LATE_SEND_TICKS)
+    public void aNeighbourSentLongAfterTheHoldWasRequestedIsWatched(GameTestHelper helper) {
+        neighbourSentLater(helper, "net-late", 120, LATE_SEND_TICKS);
+    }
+
+    /** The case, at {@code homeOffset} chunks from the spawn: two cases that run together must not share a chunk. */
+    private static void neighbourSentLater(GameTestHelper helper, String name, int homeOffset, int sendDelayTicks) {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
         int simulationBefore = server.getPlayerList().getSimulationDistance();
         int viewBefore = server.getPlayerList().getViewDistance();
         server.getPlayerList().setSimulationDistance(1);
         server.getPlayerList().setViewDistance(3);
-        MockPlayer mock = MockPlayers.join(helper, "net-neighbour");
+        MockPlayer mock = MockPlayers.join(helper, name);
         UUID id = mock.player().getUUID();
         ClientInformation info = mock.player().clientInformation();
         mock.player()
@@ -256,13 +273,14 @@ public class LightSyncSafetyNetTest {
                         info.allowsListing(),
                         info.particleStatus()));
         mock.player().setGameMode(GameType.SPECTATOR);
-        ChunkPos home = new ChunkPos((PLAYER_X >> 4) + 80, PLAYER_Z >> 4);
+        ChunkPos home = new ChunkPos((PLAYER_X >> 4) + homeOffset, PLAYER_Z >> 4);
         ChunkPos lampChunk = new ChunkPos(home.x() + 1, home.z());
         ChunkPos beyond = new ChunkPos(home.x() + 2, home.z());
         LightSyncSends.watch(id);
         FarChunks.Deadline deadline = FarChunks.deadline(120);
         int[] phase = {0};
         int[] waited = {0};
+        int[] requested = {0};
         BlockPos[] lamp = {null};
         int[][] lit = {null};
         int[][] steady = {null};
@@ -318,6 +336,7 @@ public class LightSyncSafetyNetTest {
                         lamp[0] = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z) + 2, z);
                         level.setBlock(lamp[0], Blocks.SEA_LANTERN.defaultBlockState(), 3);
                         LightSync.holdSendUntilLit(level, lamp[0], lamp[0]);
+                        requested[0] = server.getTickCount();
                         phase[0] = 3;
                     }
                     case 3 -> {
@@ -327,6 +346,9 @@ public class LightSyncSafetyNetTest {
                             return;
                         }
                         lit[0] = steady[0];
+                        if (server.getTickCount() - requested[0] < sendDelayTicks) {
+                            return;
+                        }
                         // The chunk beyond ticks from now, and is sent to the player, which tracks it.
                         FarChunks.force(helper, level, beyond.x(), beyond.z());
                         phase[0] = 4;
@@ -433,7 +455,7 @@ public class LightSyncSafetyNetTest {
         // Every light task queued for the chunk so far has run: a marker the light engine completes behind them.
         CompletableFuture<?> waiting = marker.get();
         if (waiting == null) {
-            waiting = ((ThreadedLevelLightEngine) level.getLightEngine()).waitForPendingTasks(marked.x(), marked.z());
+            waiting = level.getChunkSource().getLightEngine().waitForPendingTasks(marked.x(), marked.z());
             marker.set(waiting);
         }
         if (!waiting.isDone()) {
@@ -467,6 +489,8 @@ public class LightSyncSafetyNetTest {
         FarChunks.Deadline deadline = FarChunks.deadline(120);
         int[] phase = {0};
         int[] waited = {0};
+        int[][] steady = {null};
+        AtomicReference<@Nullable CompletableFuture<?>> marker = new AtomicReference<>();
         BlockPos[] lamp = {null};
         int[][] before = {null};
         boolean[] ended = {false};
@@ -531,6 +555,15 @@ public class LightSyncSafetyNetTest {
                         }
                         waited[0] = 0;
                         phase[0] = 4;
+                    }
+                    case 4 -> {
+                        // The light engine runs in wall time, so a tick count after the change may end before it
+                        // publishes.
+                        if (!steady(level, home, lampChunk, lamp[0], steady, waited, marker)) {
+                            return;
+                        }
+                        waited[0] = 0;
+                        phase[0] = 5;
                     }
                     default -> {
                         if (waited[0]++ < NET_WAIT_TICKS) {
