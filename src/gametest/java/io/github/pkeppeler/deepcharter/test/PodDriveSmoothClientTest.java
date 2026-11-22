@@ -53,6 +53,9 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
     /** Client ticks after a drive starts before it is judged: the pod reaches speed and its slide fills. */
     private static final int SETTLE_TICKS = 15;
 
+    /** Client ticks for a released key to reach the server and act there, with margin. */
+    private static final int INPUT_LAG_TICKS = 5;
+
     private static final int FLAT_TICKS = 70;
     private static final int CLIMB_TICKS = 32;
     /** Long enough for three slabs of wall and the approach to it. */
@@ -205,6 +208,10 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         } finally {
             drive.keys().forEach(key -> context.getInput().releaseKey(key));
             two.server().runOnServer(server -> two.mock().releaseInput());
+            // The server still acts on the last input the real client sent, for the ticks it takes the release to reach
+            // it; a pod
+            // put on its start before that would drive on from the start.
+            context.waitTicks(INPUT_LAG_TICKS);
         }
         if (drive.wall()) {
             require(drilled[0], "The watched pod never drilled, so the drilling drive was not a drilling drive");
