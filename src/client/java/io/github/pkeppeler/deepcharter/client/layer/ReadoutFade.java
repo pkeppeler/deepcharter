@@ -1,29 +1,29 @@
 package io.github.pkeppeler.deepcharter.client.layer;
 
 import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
-import io.github.pkeppeler.deepcharter.layer.BlockReadouts.Readout;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /**
  * The block readout's on-screen state (#859): which readout is up and how opaque it is. The crosshair's block comes in each tick. A readout fades
  * in and, when the crosshair leaves it, out; a different block must hold the crosshair for the look's settle ticks before it replaces the one up,
- * which fades out meanwhile, so a sweep across many blocks never flickers and a run of blocks that read alike never blinks at all.
+ * which fades out meanwhile, so a sweep across many blocks never flickers and a run of blocks that read alike never blinks at all. It is the fade of
+ * any readout under the crosshair, so a readout is any value with {@code equals}.
  */
-public final class ReadoutFade {
+public final class ReadoutFade<T> {
     /** Alphas this close to either end snap to it, so a fade of n ticks ends exactly on the nth. */
     private static final float SNAP = 1e-3f;
 
-    private @Nullable Readout shown;
-    private @Nullable Readout candidate;
+    private @Nullable T shown;
+    private @Nullable T candidate;
     private int candidateTicks;
     private float previousAlpha;
     private float alpha;
 
     /** Advances one client tick: {@code looked} is what the crosshair rests on now. */
-    public void tick(Optional<Readout> looked, ReadoutLook look) {
+    public void tick(Optional<T> looked, ReadoutLook look) {
         previousAlpha = alpha;
-        Readout wanted = looked.orElse(null);
+        T wanted = looked.orElse(null);
         if (wanted == null) {
             candidate = null;
             fade(-1f / look.fadeOutTicks());
@@ -63,7 +63,7 @@ public final class ReadoutFade {
     }
 
     /** The readout on screen, if any. */
-    public Optional<Readout> shown() {
+    public Optional<T> shown() {
         return Optional.ofNullable(shown);
     }
 

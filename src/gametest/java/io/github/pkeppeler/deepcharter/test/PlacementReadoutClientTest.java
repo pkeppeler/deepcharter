@@ -3,32 +3,38 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.client.outpost.PlacementReadoutHud;
+import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
+import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
-import io.github.pkeppeler.deepcharter.outpost.Placements.Readout;
-import io.github.pkeppeler.deepcharter.outpost.Placements.Verdict;
-import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
+import io.github.pkeppeler.deepcharter.outpost.Placements;
+import io.github.pkeppeler.deepcharter.outpost.Ratings;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.PlacementStage;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.List;
+import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
-import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.HitResult;
 
 /**
- * Client GameTest for the placement readout and the spec sheet of #989: the block in hand and the real crosshair hit give HOLDS HERE or WILL NOT HOLD
- * UNATTENDED at the depth the player stands in, nothing shows for an empty hand, a tool, a hidden HUD or an open screen, and a block's tooltip states its
- * ratings. What the words are is {@code OutpostRatingsTest}'s; this checks the hit, the hand and the gates on the real client, from the HUD's state, not its pixels.
+ * Client GameTest for the placement readout and the spec sheet of #989. Layers 1 and 2 ask nothing, so with a block in hand and the crosshair on a
+ * block there, a rated one or not, the readout says nothing and never fades in; a block's tooltip states its ratings; and the longest line the
+ * readout can say fits the narrowest GUI the cockpit draws at. What the words are for a depth that asks something is {@code OutpostRatingsTest}'s,
+ * checked against an example row. It reads the HUD's state, not its pixels.
  */
 public class PlacementReadoutClientTest implements FabricClientGameTest {
+    /** Space the readout leaves each side of its widest line in the narrowest GUI, in GUI pixels. */
+    private static final int MARGIN = 8;
+
     @Override
     public void runTest(ClientGameTestContext context) {
         ClientTestLog.start(this);
@@ -38,73 +44,51 @@ public class PlacementReadoutClientTest implements FabricClientGameTest {
                     "the player and level of the world",
                     client -> client.player != null && client.level != null);
 
-            stage(context, singleplayer, 1);
-            expectVerdict(context, singleplayer, new ItemStack(Items.OAK_PLANKS), Verdict.WILL_NOT_HOLD);
-            expectVerdict(context, singleplayer, new ItemStack(LayerBlocks.PACKED_SHALE), Verdict.HOLDS_HERE);
-            stage(context, singleplayer, 2);
-            expectVerdict(context, singleplayer, new ItemStack(LayerBlocks.PACKED_SHALE), Verdict.WILL_NOT_HOLD);
-            expectVerdict(context, singleplayer, new ItemStack(SlagBrick.item()), Verdict.HOLDS_HERE);
-
-            ClientChecks.withHudHidden(
-                    context,
-                    () -> require(
+            for (int layer : new int[] {1, 2}) {
+                singleplayer.getServer().runOnServer(server -> PlacementStage.build(server, layer));
+                ClientWait.until(
+                        context, "the player in layer " + layer, client -> TestLayers.clientIsIn(client, layer));
+                for (Item held : List.of(Items.OAK_PLANKS, LayerBlocks.PACKED_SHALE.asItem(), SlagBrick.item())) {
+                    singleplayer.getServer().runOnServer(server -> PlacementStage.hold(server, new ItemStack(held)));
+                    ClientWait.until(
+                            context,
+                            held + " in hand in layer " + layer + " with the crosshair on the aimed block",
+                            client -> client.player != null
+                                    && client.player.getMainHandItem().is(held)
+                                    && client.hitResult != null
+                                    && client.hitResult.getType() == HitResult.Type.BLOCK);
+                    require(
                             context.computeOnClient(
                                     client -> PlacementReadoutHud.looked(client).isEmpty()),
-                            "a hidden HUD should read nothing"));
-            context.setScreen(() -> new PauseScreen(false));
-            try {
-                require(
-                        context.computeOnClient(
-                                client -> PlacementReadoutHud.looked(client).isEmpty()),
-                        "an open screen should read nothing");
-            } finally {
-                context.setScreen(() -> null);
+                            held + " in layer " + layer + " asks nothing, so the readout should say nothing");
+                    require(
+                            PlacementReadoutHud.shown().isEmpty(),
+                            held + " in layer " + layer + " should leave nothing on the HUD");
+                }
             }
-            singleplayer.getServer().runOnServer(server -> PlacementStage.hold(server, new ItemStack(Items.STICK)));
-            ClientWait.until(
-                    context,
-                    "no readout for a tool in hand",
-                    client -> client.player != null
-                            && client.player.getMainHandItem().is(Items.STICK)
-                            && PlacementReadoutHud.looked(client).isEmpty());
-            singleplayer.getServer().runOnServer(server -> PlacementStage.hold(server, ItemStack.EMPTY));
-            ClientWait.until(
-                    context,
-                    "no readout for an empty hand",
-                    client -> client.player != null
-                            && client.player.getMainHandItem().isEmpty()
-                            && PlacementReadoutHud.looked(client).isEmpty());
 
             List<String> slag = tooltip(context, new ItemStack(SlagBrick.item()));
             require(
                     slag.equals(List.of(
                             new ItemStack(SlagBrick.item()).getHoverName().getString(),
-                            "Rated: heat 2, pressure 2, flooding 2, quake 2",
-                            "Holds in layers 1, 2")),
+                            "Rated: heat 2, pressure 2, flooding 2, quake 2")),
                     "slag brick's tooltip should state its ratings, listed " + slag);
             List<String> stone = tooltip(context, new ItemStack(Blocks.STONE));
-            require(stone.size() == 1, "a block no tag lists keeps its plain tooltip, listed " + stone);
+            require(stone.size() == 1, "a block rated nothing keeps its plain tooltip, listed " + stone);
+
+            // The longest reason: a block rated nothing against a depth that asks level 1 of all four axes.
+            Component worst = Placements.readout(Optional.of(new Ratings(1, 1, 1, 1)), Blocks.STONE.defaultBlockState())
+                    .orElseThrow()
+                    .reason()
+                    .orElseThrow();
+            double width = context.computeOnClient(
+                    client -> client.font.width(worst) * ReadoutLook.current().scale());
+            int room = CockpitLook.current().minGuiWidth() - 2 * MARGIN;
+            require(
+                    width <= room,
+                    "the longest readout line, '" + worst.getString() + "', is " + width + " px wide, over the " + room
+                            + " px that fits the narrowest cockpit GUI");
         }
-    }
-
-    private static void stage(ClientGameTestContext context, TestSingleplayerContext singleplayer, int layer) {
-        singleplayer.getServer().runOnServer(server -> PlacementStage.build(server, layer));
-        ClientWait.until(context, "the player in layer " + layer, client -> TestLayers.clientIsIn(client, layer));
-    }
-
-    private static void expectVerdict(
-            ClientGameTestContext context, TestSingleplayerContext singleplayer, ItemStack stack, Verdict verdict) {
-        singleplayer.getServer().runOnServer(server -> PlacementStage.hold(server, stack.copy()));
-        ClientWait.until(
-                context,
-                "the readout " + verdict + " for " + stack.getItem(),
-                client -> client.player != null
-                        && client.player.getMainHandItem().is(stack.getItem())
-                        && PlacementReadoutHud.looked(client)
-                                .map(Readout::verdict)
-                                .filter(shown -> shown == verdict)
-                                .isPresent(),
-                client -> "the readout " + PlacementReadoutHud.looked(client));
     }
 
     private static List<String> tooltip(ClientGameTestContext context, ItemStack stack) {

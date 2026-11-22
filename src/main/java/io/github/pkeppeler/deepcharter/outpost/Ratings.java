@@ -16,11 +16,6 @@ public record Ratings(int heat, int pressure, int flooding, int quake) {
     /** Nothing rated; also what the surface asks. */
     public static final Ratings NONE = new Ratings(0, 0, 0, 0);
 
-    /** The same level on every axis. */
-    public static Ratings all(int level) {
-        return new Ratings(level, level, level, level);
-    }
-
     public int of(RatingAxis axis) {
         return switch (axis) {
             case HEAT -> heat;

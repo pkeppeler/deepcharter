@@ -15,14 +15,10 @@
   "rating.deepcharter.axis.flooding": "flooding",
   "rating.deepcharter.axis.heat": "heat",
   "rating.deepcharter.axis.pressure": "pressure",
-  "rating.deepcharter.axis.quake": "quake bracing",
-  "readout.deepcharter.placement.below_rating": "Below this depth's rating: %s",
+  "rating.deepcharter.axis.quake": "quake",
   "readout.deepcharter.placement.holds_here": "HOLDS HERE",
   "readout.deepcharter.placement.nothing_rated": "Nothing is rated this deep yet",
-  "readout.deepcharter.placement.sheltered": "SHELTERED",
+  "readout.deepcharter.placement.short_on": "Short on: %s",
   "readout.deepcharter.placement.will_not_hold": "WILL NOT HOLD UNATTENDED",
-  "spec.deepcharter.holds_in_layer": "Holds in layer %s",
-  "spec.deepcharter.holds_in_layers": "Holds in layers %s",
-  "spec.deepcharter.holds_nowhere": "Holds at no depth below the surface",
   "spec.deepcharter.ratings": "Rated: heat %s, pressure %s, flooding %s, quake %s"
 }

@@ -19,36 +19,50 @@ import io.github.pkeppeler.deepcharter.outpost.SpecSheet;
 import io.github.pkeppeler.deepcharter.surface.SurfaceBlocks;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.Level;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Server GameTests for #989 (ADR 0076): each depth rates heat, pressure, flooding and quake bracing, each block's ratings are block tags, and the
- * placement readout says whether the block in hand would hold at the aimed spot. The shell and habitability of an outpost are in {@link OutpostTest}.
+ * placement readout says whether the block in hand would hold at the aimed spot. Layers 1 and 2 ask nothing (ratings bite from layer 3), so the
+ * readout's verdicts are checked against an example row, {@link #EXAMPLE_LAYER}, that no layer asks yet.
  */
 public class OutpostRatingsTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(OutpostRatingsTest.class);
     private static final int X = 100;
     private static final int ABOVE_FLOOR = 20;
-    private static final String BELOW_RATING = "readout.deepcharter.placement.below_rating";
     private static final String CAMPAIGN = "deepcharter:campaign_sample";
+    private static final String SHORT_ON = "readout.deepcharter.placement.short_on";
     private static final String NOTHING_RATED = "readout.deepcharter.placement.nothing_rated";
+    /** An example of what a later layer might ask, not set for any layer: heat and quake at 2, pressure and flooding at 1. */
+    private static final Ratings EXAMPLE_LAYER = new Ratings(2, 1, 1, 2);
 
-    /** A spot {@value #ABOVE_FLOOR} blocks above the floor of {@code layer}'s band in {@code level}. */
-    private static BlockPos spot(Level level, int layer) {
-        return new BlockPos(X, TestLayers.band(level, layer).minY() + ABOVE_FLOOR, X);
+    /** The tag of blocks that were looked at and rated nothing, {@code deepcharter:rating/none}. */
+    private static final TagKey<Block> UNRATED =
+            TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "rating/none"));
+
+    private static final Pattern TAG_FILE = Pattern.compile("rating/([a-z]+)/(\\d+)\\.json");
+
+    private static Ratings all(int level) {
+        return new Ratings(level, level, level, level);
     }
 
     private static String key(Component component) {
@@ -63,13 +77,11 @@ public class OutpostRatingsTest {
         BuiltInRegistries.BLOCK.entrySet().stream()
                 .filter(entry -> entry.getKey().identifier().getNamespace().equals(DeepCharter.MOD_ID))
                 .forEach(entry -> {
-                    var state = entry.getValue().defaultBlockState();
+                    BlockState state = entry.getValue().defaultBlockState();
                     String id = entry.getKey().identifier().toString();
-                    if (!BlockRatings.isListed(state)) {
-                        undecided.add(id);
-                    } else if (state.is(BlockRatings.UNRATED)
-                            && !BlockRatings.of(state).equals(Ratings.NONE)) {
-                        both.add(id);
+                    boolean rated = !BlockRatings.of(state).equals(Ratings.NONE);
+                    if (state.is(UNRATED) == rated) {
+                        (rated ? both : undecided).add(id);
                     }
                 });
         expect(
@@ -81,44 +93,75 @@ public class OutpostRatingsTest {
         helper.succeed();
     }
 
+    /** Only levels 1 to {@code maxLevel} are read, so a tag file above it would rate nothing and say nothing: it fails here. */
+    @GameTest
+    public void noRatingTagIsAboveTheHighestLevelTheGameReads(GameTestHelper helper) {
+        List<String> tooHigh = new ArrayList<>();
+        int files = 0;
+        for (var id : helper.getLevel()
+                .getServer()
+                .getResourceManager()
+                .listResources("tags/block/rating", path -> true)
+                .keySet()) {
+            Matcher match = TAG_FILE.matcher(id.getPath().substring("tags/block/".length()));
+            if (!match.matches() && !id.getPath().endsWith("rating/none.json")) {
+                tooHigh.add(id + " is not rating/<axis>/<level>.json");
+            } else if (match.matches()) {
+                files++;
+                boolean axis = Arrays.stream(RatingAxis.values()).anyMatch(a -> a.id().equals(match.group(1)));
+                if (!axis
+                        || Integer.parseInt(match.group(2)) < 1
+                        || Integer.parseInt(match.group(2)) > RatingTuning.DEFAULT.maxLevel()) {
+                    tooHigh.add(id.toString());
+                }
+            }
+        }
+        expect(helper, files > 0, "no rating tag files were found: the listing is broken");
+        expect(helper, tooHigh.isEmpty(), "these rating tags name an axis or level the game never reads: %s", tooHigh);
+        helper.succeed();
+    }
+
     /** A block's rating on an axis is its tag's level, 0 when no tag lists it, and the data says what each material holds. */
     @GameTest
     public void aBlocksRatingsAreItsTagLevels(GameTestHelper helper) {
-        expectRatings(helper, LayerBlocks.PACKED_SHALE, Ratings.all(1));
-        expectRatings(helper, LayerBlocks.GREEN_SHALE, Ratings.all(2));
-        expectRatings(helper, SlagBrick.BLOCK, Ratings.all(2));
-        expectRatings(helper, ColonyKit.RIVETED_PLATE, Ratings.all(2));
+        expectRatings(helper, LayerBlocks.PACKED_SHALE, all(1));
+        expectRatings(helper, LayerBlocks.GREEN_SHALE, all(2));
+        expectRatings(helper, SlagBrick.BLOCK, all(2));
+        expectRatings(helper, ColonyKit.RIVETED_PLATE, all(2));
         // Glass and grating hold some axes and not others, so the axes are not one number.
         expectRatings(helper, ColonyKit.WINDOW_GLASS, new Ratings(2, 0, 2, 0));
         expectRatings(helper, ColonyKit.GRATING, new Ratings(2, 0, 0, 2));
         expectRatings(helper, Blocks.STONE, Ratings.NONE);
         expectRatings(helper, Blocks.OAK_PLANKS, Ratings.NONE);
-        expect(
-                helper,
-                !BlockRatings.isListed(Blocks.STONE.defaultBlockState()),
-                "a vanilla block no tag lists should read as unlisted");
         helper.succeed();
     }
 
     private static void expectRatings(GameTestHelper helper, Block block, Ratings expected) {
         Ratings actual = BlockRatings.of(block.defaultBlockState());
+        LOGGER.info("[ratings] {}: {}", BuiltInRegistries.BLOCK.getKey(block), actual);
         expect(helper, actual.equals(expected), "%s should be rated %s, was %s", block, expected, actual);
     }
 
-    /** The depth table has an entry for every layer the campaign world builds, so a new layer cannot ship unrated, and no layer asks less than the one above. */
+    /**
+     * Ratings bite from layer 3 (CREATURES section 9: "below layer 2"): layers 1 and 2 and the surface ask nothing. The table has a row for every built layer, so a
+     * layer cannot ship without stating its row, and a row from layer 3 on asks for something. Layer 3's row comes with its worldgen (#972).
+     */
     @GameTest
-    public void everyBuiltLayerAsksForRatingsAndDepthNeverAsksLess(GameTestHelper helper) {
+    public void layersOneAndTwoAskNothingAndEveryLaterLayerMustStateItsRow(GameTestHelper helper) {
         expect(
                 helper,
                 RatingTuning.DEFAULT.layers().size() == CampaignBands.lastLayer(),
-                "the depth table has %s layers but the campaign world builds %s: rate the new layer",
+                "the depth table has %s rows but the campaign world builds %s layers: state the new layer's row",
                 RatingTuning.DEFAULT.layers().size(),
                 CampaignBands.lastLayer());
-        expect(
-                helper,
-                DepthRatings.forLayer(0).orElseThrow().equals(Ratings.NONE),
-                "the surface should ask for nothing");
-        for (int layer = 1; layer <= CampaignBands.lastLayer(); layer++) {
+        for (int layer = 0; layer <= Math.min(2, CampaignBands.lastLayer()); layer++) {
+            expect(
+                    helper,
+                    DepthRatings.forLayer(layer).orElseThrow().equals(Ratings.NONE),
+                    "layer %s asks nothing",
+                    layer);
+        }
+        for (int layer = 3; layer <= CampaignBands.lastLayer(); layer++) {
             expect(
                     helper,
                     !DepthRatings.forLayer(layer).orElseThrow().equals(Ratings.NONE),
@@ -132,167 +175,141 @@ public class OutpostRatingsTest {
         helper.succeed();
     }
 
-    /** Which materials hold in layers 1 and 2 (the measured row of the PR) and the axes the others fall short on. */
     @GameTest
-    public void theBlocksThatHoldInLayersOneAndTwoAreThoseOfTheirOwnRock(GameTestHelper helper) {
-        for (Block block : List.of(
-                LayerBlocks.PACKED_SHALE,
-                LayerBlocks.GREEN_SHALE,
-                SlagBrick.BLOCK,
-                ColonyKit.RIVETED_PLATE,
-                ColonyKit.WINDOW_GLASS,
-                ColonyKit.GRATING,
-                Blocks.STONE)) {
-            LOGGER.info(
-                    "[ratings] {}: {}; layer 1 {}, layer 2 {}",
-                    BuiltInRegistries.BLOCK.getKey(block),
-                    BlockRatings.of(block.defaultBlockState()),
-                    holds(helper, block, 1),
-                    holds(helper, block, 2));
-        }
-        expect(helper, holds(helper, LayerBlocks.PACKED_SHALE, 1), "layer 1's own rock holds in layer 1");
-        expect(helper, !holds(helper, LayerBlocks.PACKED_SHALE, 2), "layer 1's rock is below layer 2's rating");
-        expect(helper, holds(helper, LayerBlocks.GREEN_SHALE, 2), "layer 2's own rock holds in layer 2");
-        expect(
-                helper,
-                holds(helper, SlagBrick.BLOCK, 1) && holds(helper, SlagBrick.BLOCK, 2),
-                "fused slag holds in both");
-        expect(
-                helper,
-                !holds(helper, ColonyKit.WINDOW_GLASS, 2),
-                "window glass has no pressure or quake rating for layer 2");
-        expect(helper, !holds(helper, Blocks.STONE, 1), "vanilla stone is unrated everywhere below the surface");
-        helper.succeed();
-    }
-
-    private static boolean holds(GameTestHelper helper, Block block, int layer) {
-        ServerLevel level = TestLayers.level(helper, layer);
-        return Placements.holds(level, spot(level, layer), block.defaultBlockState());
-    }
-
-    @GameTest
-    public void aBlockBelowTheRatingFallsShortOnExactlyTheAxesItMisses(GameTestHelper helper) {
-        Ratings layerTwo = DepthRatings.forLayer(2).orElseThrow();
+    public void aBlockFallsShortOnExactlyTheAxesItMisses(GameTestHelper helper) {
         List<RatingAxis> glass =
-                BlockRatings.of(ColonyKit.WINDOW_GLASS.defaultBlockState()).shortfalls(layerTwo);
+                BlockRatings.of(ColonyKit.WINDOW_GLASS.defaultBlockState()).shortfalls(EXAMPLE_LAYER);
         expect(helper, glass.equals(List.of(RatingAxis.PRESSURE, RatingAxis.QUAKE)), "glass misses %s", glass);
         List<RatingAxis> shale =
-                BlockRatings.of(LayerBlocks.PACKED_SHALE.defaultBlockState()).shortfalls(layerTwo);
+                BlockRatings.of(LayerBlocks.PACKED_SHALE.defaultBlockState()).shortfalls(EXAMPLE_LAYER);
         expect(helper, shale.equals(List.of(RatingAxis.HEAT, RatingAxis.QUAKE)), "layer 1 shale misses %s", shale);
+        expect(
+                helper,
+                BlockRatings.of(SlagBrick.BLOCK.defaultBlockState()).meets(EXAMPLE_LAYER),
+                "slag brick should meet the example row");
         helper.succeed();
     }
 
+    /** Where the depth asks something the readout says HOLDS HERE or WILL NOT HOLD UNATTENDED and why; where it asks nothing it says nothing. */
     @GameTest
-    public void theReadoutSaysHoldsHereOrWillNotHoldUnattendedAtTheAimedDepth(GameTestHelper helper) {
-        Placements readouts = new Placements();
-        expectReadout(helper, readouts, 0, Blocks.STONE, Verdict.HOLDS_HERE, "");
-        expectReadout(helper, readouts, 1, LayerBlocks.PACKED_SHALE, Verdict.HOLDS_HERE, "");
-        expectReadout(helper, readouts, 1, Blocks.OAK_PLANKS, Verdict.WILL_NOT_HOLD, BELOW_RATING);
-        expectReadout(helper, readouts, 2, LayerBlocks.PACKED_SHALE, Verdict.WILL_NOT_HOLD, BELOW_RATING);
-        expectReadout(helper, readouts, 2, SlagBrick.BLOCK, Verdict.HOLDS_HERE, "");
-        expectReadout(helper, readouts, 2, ColonyKit.WINDOW_GLASS, Verdict.WILL_NOT_HOLD, BELOW_RATING);
+    public void theReadoutSaysHoldsHereOrWillNotHoldUnattendedWhereTheDepthAsksSomething(GameTestHelper helper) {
+        expectReadout(helper, Optional.of(EXAMPLE_LAYER), SlagBrick.BLOCK, Optional.of(Verdict.HOLDS_HERE), "");
+        expectReadout(helper, Optional.of(EXAMPLE_LAYER), LayerBlocks.GREEN_SHALE, Optional.of(Verdict.HOLDS_HERE), "");
+        expectReadout(
+                helper,
+                Optional.of(EXAMPLE_LAYER),
+                LayerBlocks.PACKED_SHALE,
+                Optional.of(Verdict.WILL_NOT_HOLD),
+                SHORT_ON);
+        expectReadout(
+                helper, Optional.of(EXAMPLE_LAYER), Blocks.OAK_PLANKS, Optional.of(Verdict.WILL_NOT_HOLD), SHORT_ON);
+        expectReadout(helper, Optional.of(Ratings.NONE), Blocks.OAK_PLANKS, Optional.empty(), "");
+        expectReadout(helper, Optional.empty(), SlagBrick.BLOCK, Optional.of(Verdict.WILL_NOT_HOLD), NOTHING_RATED);
         helper.succeed();
     }
 
     private static void expectReadout(
-            GameTestHelper helper, Placements readouts, int layer, Block block, Verdict verdict, String reasonKey) {
-        ServerLevel level = layer == 0 ? helper.getLevel() : TestLayers.level(helper, layer);
-        BlockPos at = layer == 0 ? helper.absolutePos(BlockPos.ZERO) : spot(level, layer);
-        Readout readout = readouts.readout(level, at, block.defaultBlockState());
-        String reason = readout.reason().map(OutpostRatingsTest::key).orElse("");
+            GameTestHelper helper,
+            Optional<Ratings> required,
+            Block block,
+            Optional<Verdict> verdict,
+            String reasonKey) {
+        Optional<Readout> readout = Placements.readout(required, block.defaultBlockState());
+        Optional<Verdict> said = readout.map(Readout::verdict);
+        String reason =
+                readout.flatMap(Readout::reason).map(OutpostRatingsTest::key).orElse("");
         expect(
                 helper,
-                readout.verdict() == verdict && reason.equals(reasonKey),
-                "%s in layer %s should read %s with reason '%s', read %s with '%s'",
+                said.equals(verdict) && reason.equals(reasonKey),
+                "%s against %s should read %s with reason '%s', read %s with '%s'",
                 block,
-                layer,
+                required,
                 verdict,
                 reasonKey,
-                readout.verdict(),
+                said,
                 reason);
     }
 
-    /** The shelter hook is the creature rule's: with none registered nothing is sheltered, and a check that says so turns WILL NOT HOLD into SHELTERED, never a holding block. */
+    /** In a layer dimension and on the surface nothing is asked, so the readout is empty for a block that would hold nowhere else. */
     @GameTest
-    public void aShelterCheckTurnsWillNotHoldIntoShelteredAndNothingElse(GameTestHelper helper) {
-        Placements sheltering = new Placements();
-        sheltering.addShelterCheck((level, pos) -> true);
-        expectReadout(helper, sheltering, 1, Blocks.OAK_PLANKS, Verdict.SHELTERED, BELOW_RATING);
-        expectReadout(helper, sheltering, 1, LayerBlocks.PACKED_SHALE, Verdict.HOLDS_HERE, "");
-        Placements exposed = new Placements();
-        exposed.addShelterCheck((level, pos) -> false);
-        expectReadout(helper, exposed, 1, Blocks.OAK_PLANKS, Verdict.WILL_NOT_HOLD, BELOW_RATING);
+    public void whereNothingIsAskedTheReadoutSaysNothing(GameTestHelper helper) {
+        for (int layer : new int[] {1, 2}) {
+            ServerLevel level = TestLayers.level(helper, layer);
+            BlockPos at = new BlockPos(X, TestLayers.band(level, layer).minY() + ABOVE_FLOOR, X);
+            expect(
+                    helper,
+                    Placements.readout(level, at, Blocks.OAK_PLANKS.defaultBlockState())
+                            .isEmpty(),
+                    "a plank in layer %s should read nothing",
+                    layer);
+        }
+        expect(
+                helper,
+                Placements.readout(
+                                helper.getLevel(), helper.absolutePos(BlockPos.ZERO), Blocks.STONE.defaultBlockState())
+                        .isEmpty(),
+                "stone on the surface should read nothing");
         helper.succeed();
     }
 
     /**
-     * In the campaign world a layer is a band of one level: each band asks its own rating, the surface asks nothing, and the unbuilt depth
-     * below the last layer has no rated material, so nothing holds there, not even slag brick, and the readout says why.
+     * In the campaign world a layer is a band of one level: the surface and layers 1 and 2 ask nothing, and the unbuilt depth below the last layer has no
+     * rated material, so nothing holds there, not even slag brick, and the readout says why.
      */
     @GameTest(dimension = CAMPAIGN)
-    public void inTheCampaignWorldEachBandAsksItsOwnRatingAndUnbuiltDepthHoldsNothing(GameTestHelper helper) {
+    public void inTheCampaignWorldTheBuiltBandsAskNothingAndUnbuiltDepthHoldsNothing(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        int layerOneY = CampaignBands.LAYER_1.minY() + ABOVE_FLOOR;
-        int layerTwoY = CampaignBands.LAYER_2.minY() + ABOVE_FLOOR;
+        for (CampaignBands.Band band : List.of(CampaignBands.SURFACE, CampaignBands.LAYER_1, CampaignBands.LAYER_2)) {
+            expect(
+                    helper,
+                    DepthRatings.requiredAt(level, band.minY() + ABOVE_FLOOR).equals(Optional.of(Ratings.NONE)),
+                    "the %s asks nothing",
+                    band.name());
+            expect(
+                    helper,
+                    Placements.readout(
+                                    level,
+                                    new BlockPos(X, band.minY() + ABOVE_FLOOR, X),
+                                    Blocks.OAK_PLANKS.defaultBlockState())
+                            .isEmpty(),
+                    "a plank in the %s should read nothing",
+                    band.name());
+        }
         int unbuiltY = CampaignBands.UNBUILT.minY() + ABOVE_FLOOR;
-        int surfaceY = CampaignBands.SURFACE.minY() + ABOVE_FLOOR;
-        expect(
-                helper,
-                DepthRatings.requiredAt(level, surfaceY).equals(Optional.of(Ratings.NONE)),
-                "the surface asks nothing");
-        expect(
-                helper,
-                DepthRatings.requiredAt(level, layerOneY).equals(DepthRatings.forLayer(1)),
-                "layer 1's band asks layer 1's rating");
-        expect(
-                helper,
-                DepthRatings.requiredAt(level, layerTwoY).equals(DepthRatings.forLayer(2)),
-                "layer 2's band asks layer 2's rating");
         expect(helper, DepthRatings.requiredAt(level, unbuiltY).isEmpty(), "unbuilt depth has no rating to ask");
-        Placements readouts = new Placements();
-        Readout slag = readouts.readout(level, new BlockPos(X, unbuiltY, X), SlagBrick.BLOCK.defaultBlockState());
+        Optional<Readout> slag =
+                Placements.readout(level, new BlockPos(X, unbuiltY, X), SlagBrick.BLOCK.defaultBlockState());
         expect(
                 helper,
-                slag.verdict() == Verdict.WILL_NOT_HOLD
-                        && slag.reason().map(OutpostRatingsTest::key).orElse("").equals(NOTHING_RATED),
+                slag.map(Readout::verdict).equals(Optional.of(Verdict.WILL_NOT_HOLD))
+                        && slag.flatMap(Readout::reason)
+                                .map(OutpostRatingsTest::key)
+                                .orElse("")
+                                .equals(NOTHING_RATED),
                 "nothing holds in unbuilt depth, not even slag brick: %s",
                 slag);
-        expect(
-                helper,
-                readouts.readout(level, new BlockPos(X, layerTwoY, X), SlagBrick.BLOCK.defaultBlockState())
-                                .verdict()
-                        == Verdict.HOLDS_HERE,
-                "slag holds in layer 2's band");
         helper.succeed();
     }
 
+    /** The spec sheet states a rated block's ratings, and nothing for a block rated nothing, listed or not. */
     @GameTest
-    public void theSpecSheetStatesTheRatingsAndWhereTheyHold(GameTestHelper helper) {
-        List<Component> shale = SpecSheet.lines(LayerBlocks.PACKED_SHALE.defaultBlockState());
-        expect(
-                helper,
-                shale.size() == 2 && key(shale.get(0)).equals("spec.deepcharter.ratings"),
-                "layer 1 shale's sheet should be a ratings line and a holds line, was %s",
-                shale);
-        expect(
-                helper,
-                key(shale.get(1)).equals("spec.deepcharter.holds_in_layer"),
-                "shale holds in one layer: %s",
-                shale);
-        List<Component> slag = SpecSheet.lines(SlagBrick.BLOCK.defaultBlockState());
-        expect(
-                helper,
-                key(slag.get(1)).equals("spec.deepcharter.holds_in_layers"),
-                "slag holds in two layers: %s",
-                slag);
-        List<Component> stone = SpecSheet.lines(Blocks.STONE.defaultBlockState());
-        expect(helper, stone.isEmpty(), "a block no tag lists has no ratings on its sheet: %s", stone);
-        List<Component> regolith = SpecSheet.lines(SurfaceBlocks.REGOLITH.defaultBlockState());
-        expect(
-                helper,
-                key(regolith.get(1)).equals("spec.deepcharter.holds_nowhere"),
-                "unrated rock holds nowhere: %s",
-                regolith);
+    public void theSpecSheetStatesTheRatingsOfARatedBlockAndNothingElse(GameTestHelper helper) {
+        for (Block rated : List.of(LayerBlocks.PACKED_SHALE, SlagBrick.BLOCK, ColonyKit.WINDOW_GLASS)) {
+            List<Component> lines = SpecSheet.lines(rated.defaultBlockState());
+            expect(
+                    helper,
+                    lines.size() == 1 && key(lines.getFirst()).equals("spec.deepcharter.ratings"),
+                    "%s's sheet should be one ratings line, was %s",
+                    rated,
+                    lines);
+        }
+        for (Block unrated : List.of(Blocks.STONE, SurfaceBlocks.REGOLITH)) {
+            expect(
+                    helper,
+                    SpecSheet.lines(unrated.defaultBlockState()).isEmpty(),
+                    "%s is rated nothing and has no ratings line",
+                    unrated);
+        }
         helper.succeed();
     }
 }

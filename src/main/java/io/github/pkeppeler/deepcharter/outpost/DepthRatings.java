@@ -4,7 +4,6 @@ import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.IntStream;
 import net.minecraft.world.level.Level;
 
 /**
@@ -37,13 +36,5 @@ public final class DepthRatings {
             return LayerChain.isCampaign(level) ? Optional.empty() : Optional.of(Ratings.NONE);
         }
         return forLayer(band.get().layer());
-    }
-
-    /** The built layers whose rating {@code held} meets, in order: where a block with these ratings holds. */
-    public static List<Integer> layersHeldBy(Ratings held) {
-        return IntStream.rangeClosed(1, RatingTuning.DEFAULT.layers().size())
-                .filter(layer -> held.meets(forLayer(layer).orElseThrow()))
-                .boxed()
-                .toList();
     }
 }

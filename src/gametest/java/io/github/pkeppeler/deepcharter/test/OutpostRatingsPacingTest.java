@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The pacing of #989 (ADR 0076): what a rated shell for a small outpost costs against a run's net. Rows are modelled, from
- * {@link EarlyRunModel}, and labelled so in the log; no world is built. The shell is slag brick, which the processor fuses from a hopper pod's
+ * {@link EarlyRunModel}, and labelled so in the log, as an example for a future layer that asks level 2 (no layer does yet); no world is built. The shell is slag brick, which the processor fuses from a hopper pod's
  * spoil for no money, so its cost is runs of spoil, not dollars.
  */
 public class OutpostRatingsPacingTest {
@@ -45,7 +45,7 @@ public class OutpostRatingsPacingTest {
         int bricks = bricksPerRun(upper, hopper);
         int runs = (int) Math.ceil(SHELL_BLOCKS / (double) bricks);
         LOGGER.info(
-                "[ratings] modelled: a {}x{}x{} room's shell is {} blocks of slag brick = {} spoil; a layer 2 hopper run of a Mole (tier 2 parts) brings {} bricks and nets ${} against ${} without the hopper, so the shell takes {} runs",
+                "[ratings] modelled, an example for a future layer asking level 2 (no layer does): a {}x{}x{} room's shell is {} blocks of slag brick = {} spoil; a layer 2 hopper run of a Mole (tier 2 parts) brings {} bricks and nets ${} against ${} without the hopper, so the shell takes {} runs",
                 INSIDE_WIDTH,
                 INSIDE_WIDTH,
                 INSIDE_HEIGHT,
@@ -78,7 +78,7 @@ public class OutpostRatingsPacingTest {
         int bricks = bricksPerRun(topsoil, run);
         int runs = (int) Math.ceil(SHELL_BLOCKS / (double) bricks);
         LOGGER.info(
-                "[ratings] modelled: the same shell from layer 1 spoil: a stock Mole's hopper run brings {} bricks and nets ${}, so the shell takes {} runs; layer 1's own rock also holds layer 1 and is mined by hand",
+                "[ratings] modelled, the same example shell from layer 1 spoil: a stock Mole's hopper run brings {} bricks and nets ${}, so the shell takes {} runs; layer 1's own rock also holds layer 1 and is mined by hand",
                 bricks,
                 Math.round(run.net()),
                 runs);

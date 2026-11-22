@@ -12,10 +12,11 @@ import java.util.List;
  */
 public record RatingTuning(List<Ratings> layers, int maxLevel) {
     /**
-     * (A) Layer 1 asks level 1 of everything, and layer 2 asks level 2 of heat and quake and level 1 of pressure and flooding: the Old
-     * Workings are deeper and have collapsed before. Later layers follow their themes (SPEC "Story layers"), each when it is built.
+     * (A) Ratings bite from layer 3 (CREATURES section 9: "below layer 2"; the earlier note "rated materials matter from layer 3 on"), so
+     * layers 1 and 2 ask nothing. The tags still rate the blocks, because layer 3 and up will ask for them. Layer 3's row comes with its
+     * worldgen (#972); a test fails until it does.
      */
-    public static final RatingTuning DEFAULT = new RatingTuning(List.of(Ratings.all(1), new Ratings(2, 1, 1, 2)), 5);
+    public static final RatingTuning DEFAULT = new RatingTuning(List.of(Ratings.NONE, Ratings.NONE), 5);
 
     public RatingTuning {
         layers = List.copyOf(layers);
