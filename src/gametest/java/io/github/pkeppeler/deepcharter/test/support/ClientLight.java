@@ -161,15 +161,11 @@ public final class ClientLight {
         return describeMismatch(context, server, dimension, box);
     }
 
-    /**
-     * Logs, for the still {@code name} taken at {@code pos}, the light the client and the server read there, and what else sets the
-     * brightness of the picture (issue 832): a CI log tells whether two runs of one still differ in light or in the lightmap's inputs.
-     */
-    public static void logStill(
+    /** A tripwire (issue 832): shows whether client and server light agree at each evidence still. */
+    public static void logStillLight(
             ClientGameTestContext context,
             TestServerContext server,
             ResourceKey<Level> dimension,
-            String phase,
             String name,
             BlockPos pos) {
         String serverRead = server.computeOnServer(s -> {
@@ -191,8 +187,7 @@ public final class ClientLight {
         });
         ChunkPos chunk = ChunkPos.containing(pos);
         LOGGER.info(
-                "[lit-room] phase={} still={} pos={},{},{} chunk={},{} client: {} | server: {}",
-                phase,
+                "[still-light] still={} pos={},{},{} chunk={},{} client: {} | server: {}",
                 name,
                 pos.getX(),
                 pos.getY(),
