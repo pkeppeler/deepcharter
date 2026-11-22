@@ -132,12 +132,16 @@ public final class Tally extends PathfinderMob {
                 && !pod.cargo().entries().isEmpty();
     }
 
-    /** Whether a person on foot draws a Tally: carrying ore, in the dark (block light under the level at which a place counts as lit). */
+    /**
+     * Whether a person on foot draws a Tally: carrying ore, in the dark (block light under the level at which a place counts as lit), with no
+     * light in either hand ({@link HandLights#held}, the rule the Retained keep to). A Tally that has already clamped stays clamped.
+     */
     public static boolean draws(Player person) {
         return !person.isSpectator()
                 && !person.isCreative()
                 && person.getVehicle() == null
                 && firstOre(person) >= 0
+                && !HandLights.held(person)
                 && person.level().getBrightness(LightLayer.BLOCK, person.blockPosition())
                         < CreatureTuning.DEFAULT.litBlockLight();
     }

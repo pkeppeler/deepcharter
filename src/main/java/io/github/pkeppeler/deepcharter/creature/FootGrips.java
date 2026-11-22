@@ -8,14 +8,10 @@ import java.util.Map;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.Difficulty;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.level.LightLayer;
 import org.jspecify.annotations.Nullable;
 
@@ -32,10 +28,6 @@ public final class FootGrips {
     /** The figure that holds each person, by UUID: a respawn is a new player entity. Server thread only. */
     private static final Map<UUID, LamplessFigure> HELD = new HashMap<>();
 
-    /** The items that keep a figure off when held: data, so a pack, and later the suit lamp and flares, add to it. */
-    public static final TagKey<Item> HAND_LIGHTS =
-            TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "hand_lights"));
-
     private FootGrips() {}
 
     public static void init() {
@@ -51,7 +43,7 @@ public final class FootGrips {
 
     /**
      * Whether a person draws a figure: not on Peaceful, on foot, alive, not a creative or spectator player, not held already, standing where the block
-     * light is under {@link CreatureTuning#litBlockLight}, and with no light in either hand (an item of {@link #HAND_LIGHTS}). The suit lamp, when it exists, replaces the
+     * light is under {@link CreatureTuning#litBlockLight}, and with no light in either hand ({@link HandLights#held}). The suit lamp, when it exists, replaces the
      * hand check.
      */
     public static boolean draws(ServerPlayer person) {
@@ -63,17 +55,7 @@ public final class FootGrips {
                 && holder(person) == null
                 && person.level().getBrightness(LightLayer.BLOCK, person.blockPosition())
                         < CreatureTuning.DEFAULT.litBlockLight()
-                && !lightInHand(person);
-    }
-
-    /** A light in either hand: an item of {@link #HAND_LIGHTS}, as a torch or a lantern is. */
-    private static boolean lightInHand(ServerPlayer person) {
-        for (InteractionHand hand : InteractionHand.values()) {
-            if (person.getItemInHand(hand).is(HAND_LIGHTS)) {
-                return true;
-            }
-        }
-        return false;
+                && !HandLights.held(person);
     }
 
     /** The live figure that holds {@code person}, or null. A figure that was removed or died without letting go is forgotten here. */
