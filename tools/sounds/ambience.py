@@ -136,7 +136,7 @@ class Fragment:
     tiers: tuple
     kind: str = VOICE
     trim_db: tuple = ()  # (tier, dB) pairs: a fragment whose source is louder than its neighbours at the same peak, turned down in that tier; a positive number raises a quiet source
-    pool: str = ""  # HORN for a fragment only a Company horn plays (#946): worn like the `worn` tier, and its event is `ambience.horn.<name>`
+    pool: str = ""  # HORN for a fragment only a Company horn plays (#946); see the module docstring
 
 
 ALL = (FAINT, WORN, BROKEN)

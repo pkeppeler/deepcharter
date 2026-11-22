@@ -61,10 +61,6 @@ def measure(path):
     return float(re.findall(r"I:\s+(-?\d+\.\d) LUFS", done.stderr)[-1]), float(re.findall(r"Peak:\s+(-?\d+\.\d) dBFS", done.stderr)[-1])
 
 
-def lufs(path):
-    return measure(path)[0]
-
-
 class DeclaredFragmentsTest(unittest.TestCase):
     def test_there_are_roughly_ten_to_twenty_fragments_and_every_tier_has_a_pool_to_draw_from(self):
         # Fourteen from the first cut and four deep ones (#946): more variety, and the rates in AmbienceTuning did not change.
@@ -257,10 +253,9 @@ class LoudnessTest(unittest.TestCase):
         for fragment, tier in ambience.variants():
             if not (fragment.name in DEEP_FRAGMENTS or fragment.pool):
                 continue
-            loudness = lufs(ambience.OUT / "ambience" / tier / f"{fragment.name}.ogg")
+            loudness = measure(ambience.OUT / "ambience" / tier / f"{fragment.name}.ogg")[0]
             self.assertGreaterEqual(loudness, -34.0, ambience.key(fragment, tier))
             self.assertLessEqual(loudness, -24.0, ambience.key(fragment, tier))
-
 
     def test_every_new_cylinder_is_level_with_the_first_three_and_under_a_ceiling_of_minus_one_dbtp(self):
         # The first three are -13.1 to -19.3 LUFS (and overshoot, to +0.5 dBTP: left as they were). The new ones sit in that range, within 2 dB of

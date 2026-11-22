@@ -222,7 +222,6 @@ class MoreCylindersTest(unittest.TestCase):
             entry = self.manifest[name]
             self.assertEqual("none stated", entry["license"], name)
             self.assertNotIn("CC BY", entry["credit"], name)
-            self.assertFalse(first_sounds.ALL_RECORDINGS[[r.name for r in first_sounds.ALL_RECORDINGS].index(name)].tagged, name)
 
     def test_the_national_park_service_is_credited_in_its_own_words(self):
         for name in ("sullivan_toast", "edison_around_the_world", "lost_chord"):

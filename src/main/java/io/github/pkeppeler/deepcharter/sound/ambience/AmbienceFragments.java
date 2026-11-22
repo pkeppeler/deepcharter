@@ -9,8 +9,8 @@ import java.util.Map;
 import net.minecraft.sounds.SoundEvent;
 
 /**
- * The fragments, found by the names of their sound events: {@code ambience.<tier>.<fragment>} is one of a tier's pool, {@code ambience.horn.<fragment>} is one of the horn's own pool (#946), and
- * {@link DeepSound#AMBIENCE_HORN_WARMUP} is the horn's crackle, in no pool. A fragment is not an enum of its own: it is a line in
+ * The fragments, found by the names of their sound events: {@code ambience.<tier>.<fragment>} is one of a tier's pool,
+ * {@code ambience.horn.<fragment>} is one of the horn's own pool (#946), and {@link DeepSound#AMBIENCE_HORN_WARMUP} is the horn's crackle, in no pool. A fragment is not an enum of its own: it is a line in
  * {@code DeepSound}, {@code sounds.json} and {@code tools/sounds/ambience.py}, which tests keep in step. Nothing here is a cylinder or a
  * loot entry: the wax cylinders ({@code Recording}) and the ambience share a pipeline and nothing else.
  */
