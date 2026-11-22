@@ -38,7 +38,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p>The harness ticks the server and client in lockstep, so the network is as regular as it never is in play. {@link PacketJitter}
  * makes it irregular the way a real connection is: every third client tick the client handles no pod move and the next tick
- * handles two. Without a slide between the server's moves the pod then stands still for a tick and lunges the next.
+ * handles two. Without a slide between the server's moves the pod then stands still for a tick and lunges the next. The stall drives
+ * model a server that runs late (#1041): the client gets no move for a few ticks, then all of them in one tick. The pod must
+ * coast through a short stall and never lunge after a long one.
  */
 public class PodDriveSmoothClientTest implements FabricClientGameTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(PodDriveSmoothClientTest.class);
@@ -58,14 +60,27 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
     /** Long enough for three slabs of wall and the approach to it. */
     private static final int DRILL_TICKS = 190;
 
+    /** Long enough for a stall in the middle of it and the pod to recover after. */
+    private static final int STALL_DRIVE_TICKS = 90;
+
+    /** Client ticks into a drive when a stall begins: past the settle, with the pod at speed. */
+    private static final int STALL_AT_TICK = 40;
+
+    /** A server a few ticks late: the pod coasts through it. */
+    private static final int SHORT_STALL_TICKS = 3;
+
+    /** A server later than the pod coasts: the pod may stand a tick, but never lunges when the moves arrive. */
+    private static final int LONG_STALL_TICKS = 6;
+
     private static final int WALL_AHEAD = 8;
     private static final int WALL_SLABS = 3;
     private static final int WALL_HEIGHT = 4;
     private static final int WALL_WIDTH = 14;
 
     /**
-     * How far above the pod's own speed a drawn step may be: a frame drawn after a moment's stall catches up, but a smooth slide never
-     * draws more than the speed plus rounding. The jitter's lunge is twice the speed.
+     * How far above the pod's own speed a drawn step may be: a pod that fell behind catches up at {@code PodGlideTuning.catchUp()} times
+     * its speed, 1.25, and the margin leaves room for the packet rounding. An uncapped catch-up after a stall lunges 1.5 times its
+     * speed or more (#1041).
      */
     private static final double STEP_MARGIN = 1.4;
 
@@ -91,7 +106,8 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             double speed,
             boolean climbing,
             boolean steady,
-            boolean wall) {}
+            boolean wall,
+            int stallTicks) {}
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -126,7 +142,34 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 flatSpeed,
                                 false,
                                 true,
-                                false));
+                                false,
+                                0));
+                drive(
+                        context,
+                        rig,
+                        new Drive(
+                                "flat drive through a short server stall",
+                                List.of(options -> options.keyUp),
+                                FORWARD,
+                                STALL_DRIVE_TICKS,
+                                flatSpeed,
+                                false,
+                                true,
+                                false,
+                                SHORT_STALL_TICKS));
+                drive(
+                        context,
+                        rig,
+                        new Drive(
+                                "flat drive through a long server stall",
+                                List.of(options -> options.keyUp),
+                                FORWARD,
+                                STALL_DRIVE_TICKS,
+                                flatSpeed,
+                                false,
+                                false,
+                                false,
+                                LONG_STALL_TICKS));
                 drive(
                         context,
                         rig,
@@ -138,7 +181,8 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 climbSpeed,
                                 true,
                                 false,
-                                false));
+                                false,
+                                0));
                 drive(
                         context,
                         rig,
@@ -150,7 +194,8 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 flatSpeed,
                                 false,
                                 false,
-                                true));
+                                true,
+                                0));
             } finally {
                 PacketJitter.stop();
                 context.getInput().releaseKey(options -> options.keyUp);
@@ -192,6 +237,9 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             drive.keys().forEach(key -> context.getInput().holdKey(key));
             two.server().runOnServer(server -> two.mock().setInput(drive.mockInput()));
             for (int tick = 0; tick < drive.ticks(); tick++) {
+                if (tick == STALL_AT_TICK && drive.stallTicks() > 0) {
+                    context.runOnClient(client -> PacketJitter.stall(drive.stallTicks()));
+                }
                 context.waitTick();
                 context.runOnClient(client -> {
                     Entity watchedPod = TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId());
