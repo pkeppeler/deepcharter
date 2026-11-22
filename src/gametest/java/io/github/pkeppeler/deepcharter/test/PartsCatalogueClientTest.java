@@ -706,7 +706,6 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         context.runOnClient(client -> {
             CatalogueLayout layout = Objects.requireNonNull(panelOf(screen).layout(), "the panels are laid out");
             String at = " at " + width + " by " + height;
-            int radius = PanelLook.current().glassRadius();
             CatalogueLook look = CatalogueLook.current();
             int ring = look.casing().vignetteWidth();
             List<Rect> glasses = List.of(layout.catalogueGlass(), layout.recipeGlass());
@@ -718,7 +717,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                         text.box().height());
                 for (Rect glass : glasses) {
                     if (inside(box, glass)) {
-                        requireClearOfCorners(box, glass, radius, ring, "text '" + text.shortText() + "'" + at);
+                        requireClearOfCorners(box, glass, ring, "text '" + text.shortText() + "'" + at);
                     }
                 }
             }
@@ -754,18 +753,17 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             recipeCells.add(new Rect(
                     card.left() + look.resultX(), card.gridY() + look.resultY(), look.slotSize(), look.slotSize()));
             for (Rect cell : shelfCells) {
-                requireClearOfCorners(cell, layout.catalogueGlass(), radius, 0, "the cell outline " + cell + at);
-                requireClearOfCorners(
-                        icon(cell, look), layout.catalogueGlass(), radius, ring, "the item icon in " + cell + at);
+                requireClearOfCorners(cell, layout.catalogueGlass(), 0, "the cell outline " + cell + at);
+                requireClearOfCorners(icon(cell, look), layout.catalogueGlass(), ring, "the item icon in " + cell + at);
             }
             for (Rect cell : recipeCells) {
-                requireClearOfCorners(cell, layout.recipeGlass(), radius, 0, "the recipe cell outline " + cell + at);
+                requireClearOfCorners(cell, layout.recipeGlass(), 0, "the recipe cell outline " + cell + at);
                 requireClearOfCorners(
-                        icon(cell, look), layout.recipeGlass(), radius, ring, "the recipe item icon in " + cell + at);
+                        icon(cell, look), layout.recipeGlass(), ring, "the recipe item icon in " + cell + at);
             }
             for (int row = 0; row < card.needRows(); row++) {
                 Rect need = new Rect(card.left(), card.needTop() + row * look.needRow(), 16, 16);
-                requireClearOfCorners(need, layout.recipeGlass(), radius, ring, "the have/need icon " + need + at);
+                requireClearOfCorners(need, layout.recipeGlass(), ring, "the have/need icon " + need + at);
             }
         });
     }
@@ -780,7 +778,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
      * is the width of the dark ring that dims the glass's edge: inside a corner's rows the box must also keep that far from the sides, and
      * from the top and bottom edges.
      */
-    private static void requireClearOfCorners(Rect box, Rect glass, int radius, int ring, String what) {
+    private static void requireClearOfCorners(Rect box, Rect glass, int ring, String what) {
+        int radius = PanelLook.current().glassRadius();
         for (int y = box.y(); y < box.bottom(); y++) {
             int row = y - glass.y();
             int inset = Math.max(

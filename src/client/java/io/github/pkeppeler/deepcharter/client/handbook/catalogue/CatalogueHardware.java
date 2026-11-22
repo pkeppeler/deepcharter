@@ -79,9 +79,8 @@ final class CatalogueHardware {
             graphics.fill(glass.x() + i, glass.y(), glass.x() + i + 1, glass.bottom(), shade);
             graphics.fill(glass.right() - 1 - i, glass.y(), glass.right() - i, glass.bottom(), shade);
         }
-        // The highlight hugs the top left corner, from where the glass sprite's curve ends (its radius): the glass
-        // bulges
-        // toward the room's light.
+        // The highlight hugs the top left corner, from where the glass sprite's curve (its radius) ends: the glass
+        // bulges toward the room's light.
         int x = glass.x();
         int y = glass.y();
         int inset = panel.glassRadius();
