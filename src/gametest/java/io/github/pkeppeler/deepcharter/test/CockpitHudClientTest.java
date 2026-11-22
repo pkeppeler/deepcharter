@@ -885,7 +885,8 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                 line("lava_near", 6),
                 line("lava_above", 6),
                 line("glaze_holding", 12),
-                line("glaze_spent"));
+                line("glaze_spent"),
+                line("drifter_alarm", 30));
         List<PodStatusHud.Line> notes = List.of(
                 line("slag", 12, 8), line("slag_only", 12), line("liner", 3), line("lining", 5), line("brace_working"));
         PodStatusHud.Line tally = line("tally_hull", 100, 100);
