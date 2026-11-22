@@ -15,7 +15,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  */
 public final class CompanyHornBlock extends Block {
     /** The two-way trumpet, and the hanger and plate that carry it from the top of the block. */
-    private static final VoxelShape SHAPE = Shapes.or(Block.box(4, 4, 1, 12, 13, 15), Block.box(5, 13, 5, 11, 16, 11));
+    private static final VoxelShape SHAPE = Shapes.or(Block.box(4, 1, 0, 12, 13, 16), Block.box(4, 13, 5, 12, 16, 11));
 
     CompanyHornBlock(Properties properties) {
         super(properties);

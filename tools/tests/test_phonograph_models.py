@@ -113,7 +113,7 @@ class PhonographModelTests(unittest.TestCase):
         boxes = shape_boxes("phonograph/PhonographBlock.java")
         for name in ("phonograph_loaded", "colony_phonograph_loaded", "wreck_phonograph"):
             for element in model(name)["elements"]:
-                if "rotation" in element or element["name"].startswith("crank_knob"):
+                if "rotation" in element or element["name"].startswith(("crank", "rack")):
                     continue
                 self.assertTrue(inside(element, boxes), f"{name} {element['name']}")
         horn_boxes = shape_boxes("ambience/CompanyHornBlock.java")

@@ -10,12 +10,12 @@
     {
       "name": "roof_plate",
       "from": [
-        5,
+        4,
         15,
         5
       ],
       "to": [
-        11,
+        12,
         16,
         11
       ],
@@ -41,14 +41,47 @@
       }
     },
     {
-      "name": "hanger",
+      "name": "hanger_west",
       "from": [
-        7.25,
-        12,
+        5.5,
+        12.5,
         7.25
       ],
       "to": [
-        8.75,
+        6.75,
+        15,
+        8.75
+      ],
+      "faces": {
+        "down": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "name": "hanger_east",
+      "from": [
+        9.25,
+        12.5,
+        7.25
+      ],
+      "to": [
+        10.5,
         15,
         8.75
       ],
@@ -76,13 +109,13 @@
     {
       "name": "strap",
       "from": [
-        6.5,
-        11,
+        5,
+        11.5,
         6.5
       ],
       "to": [
-        9.5,
-        12,
+        11,
+        12.5,
         9.5
       ],
       "faces": {
@@ -115,7 +148,7 @@
       ],
       "to": [
         9.5,
-        11,
+        11.5,
         10.5
       ],
       "faces": {
@@ -173,116 +206,26 @@
       }
     },
     {
-      "name": "south_ring_0_a",
+      "name": "south_step_0",
       "from": [
-        6.5,
-        7.525,
-        10.5
-      ],
-      "to": [
-        9.5,
-        9.475,
-        11.7
-      ],
-      "faces": {
-        "down": {
-          "texture": "#steel"
-        },
-        "up": {
-          "texture": "#steel"
-        },
-        "north": {
-          "texture": "#steel"
-        },
-        "south": {
-          "texture": "#steel"
-        },
-        "west": {
-          "texture": "#steel"
-        },
-        "east": {
-          "texture": "#steel"
-        }
-      }
-    },
-    {
-      "name": "south_ring_0_b",
-      "from": [
-        7.025,
-        7.0,
-        10.5
-      ],
-      "to": [
-        8.975,
-        10.0,
-        11.7
-      ],
-      "faces": {
-        "down": {
-          "texture": "#steel"
-        },
-        "up": {
-          "texture": "#steel"
-        },
-        "north": {
-          "texture": "#steel"
-        },
-        "south": {
-          "texture": "#steel"
-        },
-        "west": {
-          "texture": "#steel"
-        },
-        "east": {
-          "texture": "#steel"
-        }
-      }
-    },
-    {
-      "name": "south_ring_1_a",
-      "from": [
-        6.0,
-        7.2,
-        11.7
-      ],
-      "to": [
-        10.0,
-        9.8,
-        12.9
-      ],
-      "faces": {
-        "down": {
-          "texture": "#steel"
-        },
-        "up": {
-          "texture": "#steel"
-        },
-        "north": {
-          "texture": "#steel"
-        },
-        "south": {
-          "texture": "#steel"
-        },
-        "west": {
-          "texture": "#steel"
-        },
-        "east": {
-          "texture": "#steel"
-        }
-      }
-    },
-    {
-      "name": "south_ring_1_b",
-      "from": [
+        6.2,
         6.7,
-        6.5,
-        11.7
+        10.0
       ],
       "to": [
-        9.3,
-        10.5,
-        12.9
+        9.8,
+        10.3,
+        11.3
       ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
       "faces": {
         "down": {
           "texture": "#steel"
@@ -305,83 +248,26 @@
       }
     },
     {
-      "name": "south_ring_2_a",
+      "name": "south_step_1",
       "from": [
-        5.3,
-        6.745,
-        12.9
+        5.6,
+        6.1,
+        11.3
       ],
       "to": [
-        10.7,
-        10.255,
-        13.9
+        10.4,
+        10.9,
+        12.6
       ],
-      "faces": {
-        "down": {
-          "texture": "#red"
-        },
-        "up": {
-          "texture": "#red"
-        },
-        "north": {
-          "texture": "#red"
-        },
-        "south": {
-          "texture": "#red"
-        },
-        "west": {
-          "texture": "#red"
-        },
-        "east": {
-          "texture": "#red"
-        }
-      }
-    },
-    {
-      "name": "south_ring_2_b",
-      "from": [
-        6.245,
-        5.8,
-        12.9
-      ],
-      "to": [
-        9.755,
-        11.2,
-        13.9
-      ],
-      "faces": {
-        "down": {
-          "texture": "#red"
-        },
-        "up": {
-          "texture": "#red"
-        },
-        "north": {
-          "texture": "#red"
-        },
-        "south": {
-          "texture": "#red"
-        },
-        "west": {
-          "texture": "#red"
-        },
-        "east": {
-          "texture": "#red"
-        }
-      }
-    },
-    {
-      "name": "south_ring_3_a",
-      "from": [
-        4.6,
-        6.29,
-        13.9
-      ],
-      "to": [
-        11.4,
-        10.71,
-        14.4
-      ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
       "faces": {
         "down": {
           "texture": "#steel"
@@ -393,7 +279,7 @@
           "texture": "#steel"
         },
         "south": {
-          "texture": "#bore"
+          "texture": "#steel"
         },
         "west": {
           "texture": "#steel"
@@ -404,17 +290,68 @@
       }
     },
     {
-      "name": "south_ring_3_b",
+      "name": "south_step_2",
       "from": [
-        5.79,
-        5.1,
+        4.9,
+        5.4,
+        12.6
+      ],
+      "to": [
+        11.1,
+        11.6,
+        13.9
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "name": "south_step_3",
+      "from": [
+        4.3,
+        4.8,
         13.9
       ],
       "to": [
-        10.21,
-        11.9,
-        14.4
+        11.7,
+        12.2,
+        14.9
       ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
       "faces": {
         "down": {
           "texture": "#steel"
@@ -439,15 +376,24 @@
     {
       "name": "south_lip_top",
       "from": [
-        4.2,
-        11.5,
-        14.4
+        4.1,
+        11.9,
+        14.5
       ],
       "to": [
-        11.8,
-        12.3,
-        15
+        11.9,
+        12.4,
+        15.3
       ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
       "faces": {
         "down": {
           "texture": "#red"
@@ -472,15 +418,24 @@
     {
       "name": "south_lip_bottom",
       "from": [
-        4.2,
-        4.7,
-        14.4
+        4.1,
+        4.6,
+        14.5
       ],
       "to": [
-        11.8,
-        5.5,
-        15
+        11.9,
+        5.1,
+        15.3
       ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
       "faces": {
         "down": {
           "texture": "#red"
@@ -505,15 +460,24 @@
     {
       "name": "south_lip_west",
       "from": [
-        4.2,
-        5.5,
-        14.4
+        4.1,
+        5.1,
+        14.5
       ],
       "to": [
-        5.0,
-        11.5,
-        15
+        4.6,
+        11.9,
+        15.3
       ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
       "faces": {
         "down": {
           "texture": "#red"
@@ -538,246 +502,66 @@
     {
       "name": "south_lip_east",
       "from": [
-        11.0,
-        5.5,
-        14.4
-      ],
-      "to": [
-        11.8,
-        11.5,
-        15
-      ],
-      "faces": {
-        "down": {
-          "texture": "#red"
-        },
-        "up": {
-          "texture": "#red"
-        },
-        "north": {
-          "texture": "#red"
-        },
-        "south": {
-          "texture": "#red"
-        },
-        "west": {
-          "texture": "#red"
-        },
-        "east": {
-          "texture": "#red"
-        }
-      }
-    },
-    {
-      "name": "north_ring_0_a",
-      "from": [
-        6.5,
-        7.525,
-        4.300000000000001
-      ],
-      "to": [
-        9.5,
-        9.475,
-        5.5
-      ],
-      "faces": {
-        "down": {
-          "texture": "#steel"
-        },
-        "up": {
-          "texture": "#steel"
-        },
-        "north": {
-          "texture": "#steel"
-        },
-        "south": {
-          "texture": "#steel"
-        },
-        "west": {
-          "texture": "#steel"
-        },
-        "east": {
-          "texture": "#steel"
-        }
-      }
-    },
-    {
-      "name": "north_ring_0_b",
-      "from": [
-        7.025,
-        7.0,
-        4.300000000000001
-      ],
-      "to": [
-        8.975,
-        10.0,
-        5.5
-      ],
-      "faces": {
-        "down": {
-          "texture": "#steel"
-        },
-        "up": {
-          "texture": "#steel"
-        },
-        "north": {
-          "texture": "#steel"
-        },
-        "south": {
-          "texture": "#steel"
-        },
-        "west": {
-          "texture": "#steel"
-        },
-        "east": {
-          "texture": "#steel"
-        }
-      }
-    },
-    {
-      "name": "north_ring_1_a",
-      "from": [
-        6.0,
-        7.2,
-        3.0999999999999996
-      ],
-      "to": [
-        10.0,
-        9.8,
-        4.300000000000001
-      ],
-      "faces": {
-        "down": {
-          "texture": "#steel"
-        },
-        "up": {
-          "texture": "#steel"
-        },
-        "north": {
-          "texture": "#steel"
-        },
-        "south": {
-          "texture": "#steel"
-        },
-        "west": {
-          "texture": "#steel"
-        },
-        "east": {
-          "texture": "#steel"
-        }
-      }
-    },
-    {
-      "name": "north_ring_1_b",
-      "from": [
-        6.7,
-        6.5,
-        3.0999999999999996
-      ],
-      "to": [
-        9.3,
-        10.5,
-        4.300000000000001
-      ],
-      "faces": {
-        "down": {
-          "texture": "#steel"
-        },
-        "up": {
-          "texture": "#steel"
-        },
-        "north": {
-          "texture": "#steel"
-        },
-        "south": {
-          "texture": "#steel"
-        },
-        "west": {
-          "texture": "#steel"
-        },
-        "east": {
-          "texture": "#steel"
-        }
-      }
-    },
-    {
-      "name": "north_ring_2_a",
-      "from": [
-        5.3,
-        6.745,
-        2.0999999999999996
-      ],
-      "to": [
-        10.7,
-        10.255,
-        3.0999999999999996
-      ],
-      "faces": {
-        "down": {
-          "texture": "#red"
-        },
-        "up": {
-          "texture": "#red"
-        },
-        "north": {
-          "texture": "#red"
-        },
-        "south": {
-          "texture": "#red"
-        },
-        "west": {
-          "texture": "#red"
-        },
-        "east": {
-          "texture": "#red"
-        }
-      }
-    },
-    {
-      "name": "north_ring_2_b",
-      "from": [
-        6.245,
-        5.8,
-        2.0999999999999996
-      ],
-      "to": [
-        9.755,
-        11.2,
-        3.0999999999999996
-      ],
-      "faces": {
-        "down": {
-          "texture": "#red"
-        },
-        "up": {
-          "texture": "#red"
-        },
-        "north": {
-          "texture": "#red"
-        },
-        "south": {
-          "texture": "#red"
-        },
-        "west": {
-          "texture": "#red"
-        },
-        "east": {
-          "texture": "#red"
-        }
-      }
-    },
-    {
-      "name": "north_ring_3_a",
-      "from": [
-        4.6,
-        6.29,
-        1.5999999999999996
-      ],
-      "to": [
         11.4,
-        10.71,
-        2.0999999999999996
+        5.1,
+        14.5
       ],
+      "to": [
+        11.9,
+        11.9,
+        15.3
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#red"
+        },
+        "up": {
+          "texture": "#red"
+        },
+        "north": {
+          "texture": "#red"
+        },
+        "south": {
+          "texture": "#red"
+        },
+        "west": {
+          "texture": "#red"
+        },
+        "east": {
+          "texture": "#red"
+        }
+      }
+    },
+    {
+      "name": "north_step_0",
+      "from": [
+        6.2,
+        6.7,
+        4.7
+      ],
+      "to": [
+        9.8,
+        10.3,
+        6.0
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": -22.5
+      },
       "faces": {
         "down": {
           "texture": "#steel"
@@ -786,7 +570,7 @@
           "texture": "#steel"
         },
         "north": {
-          "texture": "#bore"
+          "texture": "#steel"
         },
         "south": {
           "texture": "#steel"
@@ -800,17 +584,110 @@
       }
     },
     {
-      "name": "north_ring_3_b",
+      "name": "north_step_1",
       "from": [
-        5.79,
-        5.1,
-        1.5999999999999996
+        5.6,
+        6.1,
+        3.4000000000000004
       ],
       "to": [
-        10.21,
-        11.9,
+        10.4,
+        10.9,
+        4.7
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": -22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "name": "north_step_2",
+      "from": [
+        4.9,
+        5.4,
         2.0999999999999996
       ],
+      "to": [
+        11.1,
+        11.6,
+        3.4000000000000004
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": -22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#steel"
+        },
+        "up": {
+          "texture": "#steel"
+        },
+        "north": {
+          "texture": "#steel"
+        },
+        "south": {
+          "texture": "#steel"
+        },
+        "west": {
+          "texture": "#steel"
+        },
+        "east": {
+          "texture": "#steel"
+        }
+      }
+    },
+    {
+      "name": "north_step_3",
+      "from": [
+        4.3,
+        4.8,
+        1.0999999999999996
+      ],
+      "to": [
+        11.7,
+        12.2,
+        2.0999999999999996
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": -22.5
+      },
       "faces": {
         "down": {
           "texture": "#steel"
@@ -835,15 +712,24 @@
     {
       "name": "north_lip_top",
       "from": [
-        4.2,
-        11.5,
-        1
+        4.1,
+        11.9,
+        0.7000000000000002
       ],
       "to": [
-        11.8,
-        12.3,
-        1.6
+        11.9,
+        12.4,
+        1.5
       ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": -22.5
+      },
       "faces": {
         "down": {
           "texture": "#red"
@@ -868,15 +754,24 @@
     {
       "name": "north_lip_bottom",
       "from": [
-        4.2,
-        4.7,
-        1
+        4.1,
+        4.6,
+        0.7000000000000002
       ],
       "to": [
-        11.8,
-        5.5,
-        1.6
+        11.9,
+        5.1,
+        1.5
       ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": -22.5
+      },
       "faces": {
         "down": {
           "texture": "#red"
@@ -901,15 +796,24 @@
     {
       "name": "north_lip_west",
       "from": [
-        4.2,
-        5.5,
-        1
+        4.1,
+        5.1,
+        0.7000000000000002
       ],
       "to": [
-        5.0,
-        11.5,
-        1.6
+        4.6,
+        11.9,
+        1.5
       ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": -22.5
+      },
       "faces": {
         "down": {
           "texture": "#red"
@@ -934,15 +838,24 @@
     {
       "name": "north_lip_east",
       "from": [
-        11.0,
-        5.5,
-        1
+        11.4,
+        5.1,
+        0.7000000000000002
       ],
       "to": [
-        11.8,
-        11.5,
-        1.6
+        11.9,
+        11.9,
+        1.5
       ],
+      "rotation": {
+        "origin": [
+          8,
+          8.5,
+          8
+        ],
+        "axis": "x",
+        "angle": -22.5
+      },
       "faces": {
         "down": {
           "texture": "#red"

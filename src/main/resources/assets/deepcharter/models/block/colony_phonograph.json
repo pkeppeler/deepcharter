@@ -117,12 +117,12 @@
       "from": [
         3,
         8,
-        4
+        2.5
       ],
       "to": [
         4,
         12,
-        6
+        4.5
       ],
       "faces": {
         "down": {
@@ -150,12 +150,12 @@
       "from": [
         12,
         8,
-        4
+        2.5
       ],
       "to": [
         13,
         12,
-        6
+        4.5
       ],
       "faces": {
         "down": {
@@ -183,12 +183,12 @@
       "from": [
         4,
         10,
-        4.5
+        3
       ],
       "to": [
         12,
         11,
-        5.5
+        4
       ],
       "faces": {
         "down": {
@@ -216,12 +216,12 @@
       "from": [
         7,
         12,
-        4.5
+        2.5
       ],
       "to": [
         9,
         13.5,
-        6.5
+        4.5
       ],
       "faces": {
         "down": {
@@ -248,13 +248,13 @@
       "name": "arm",
       "from": [
         7.5,
-        12,
-        6.5
+        12.5,
+        4.5
       ],
       "to": [
         8.5,
-        13,
-        10.5
+        13.5,
+        6.8
       ],
       "faces": {
         "down": {
@@ -282,12 +282,12 @@
       "from": [
         13,
         10,
-        5
+        3
       ],
       "to": [
         14.5,
         11,
-        6
+        4
       ],
       "faces": {
         "down": {
@@ -315,12 +315,12 @@
       "from": [
         14,
         8.5,
-        5
+        3
       ],
       "to": [
         15,
         11,
-        6
+        4
       ],
       "faces": {
         "down": {
@@ -348,12 +348,12 @@
       "from": [
         15,
         8,
-        4.5
+        2.5
       ],
       "to": [
         16,
         9.5,
-        6.5
+        4.5
       ],
       "faces": {
         "down": {
@@ -377,26 +377,17 @@
       }
     },
     {
-      "name": "horn_ring_0",
+      "name": "horn_tube_bend",
       "from": [
         7.25,
-        7.25,
-        13.3
+        8,
+        12.75
       ],
       "to": [
         8.75,
-        8.75,
-        14.5
+        10.5,
+        14.25
       ],
-      "rotation": {
-        "origin": [
-          8,
-          8,
-          14.5
-        ],
-        "axis": "x",
-        "angle": 45
-      },
       "faces": {
         "down": {
           "texture": "#horn"
@@ -419,319 +410,25 @@
       }
     },
     {
-      "name": "horn_ring_1",
+      "name": "horn_throat",
       "from": [
-        7.0,
-        7.0,
-        12.1
+        7,
+        9,
+        12.5
       ],
       "to": [
-        9.0,
-        9.0,
-        13.3
+        9,
+        11,
+        13.5
       ],
       "rotation": {
         "origin": [
           8,
-          8,
-          14.5
+          10,
+          13.5
         ],
         "axis": "x",
-        "angle": 45
-      },
-      "faces": {
-        "down": {
-          "texture": "#horn"
-        },
-        "up": {
-          "texture": "#horn"
-        },
-        "north": {
-          "texture": "#horn"
-        },
-        "south": {
-          "texture": "#horn"
-        },
-        "west": {
-          "texture": "#horn"
-        },
-        "east": {
-          "texture": "#horn"
-        }
-      }
-    },
-    {
-      "name": "horn_ring_2_a",
-      "from": [
-        6.6,
-        7.09,
-        10.9
-      ],
-      "to": [
-        9.4,
-        8.91,
-        12.1
-      ],
-      "rotation": {
-        "origin": [
-          8,
-          8,
-          14.5
-        ],
-        "axis": "x",
-        "angle": 45
-      },
-      "faces": {
-        "down": {
-          "texture": "#horn"
-        },
-        "up": {
-          "texture": "#horn"
-        },
-        "north": {
-          "texture": "#horn"
-        },
-        "south": {
-          "texture": "#horn"
-        },
-        "west": {
-          "texture": "#horn"
-        },
-        "east": {
-          "texture": "#horn"
-        }
-      }
-    },
-    {
-      "name": "horn_ring_2_b",
-      "from": [
-        7.09,
-        6.6,
-        10.9
-      ],
-      "to": [
-        8.91,
-        9.4,
-        12.1
-      ],
-      "rotation": {
-        "origin": [
-          8,
-          8,
-          14.5
-        ],
-        "axis": "x",
-        "angle": 45
-      },
-      "faces": {
-        "down": {
-          "texture": "#horn"
-        },
-        "up": {
-          "texture": "#horn"
-        },
-        "north": {
-          "texture": "#horn"
-        },
-        "south": {
-          "texture": "#horn"
-        },
-        "west": {
-          "texture": "#horn"
-        },
-        "east": {
-          "texture": "#horn"
-        }
-      }
-    },
-    {
-      "name": "horn_ring_3_a",
-      "from": [
-        6.0,
-        6.7,
-        9.7
-      ],
-      "to": [
-        10.0,
-        9.3,
-        10.9
-      ],
-      "rotation": {
-        "origin": [
-          8,
-          8,
-          14.5
-        ],
-        "axis": "x",
-        "angle": 45
-      },
-      "faces": {
-        "down": {
-          "texture": "#horn"
-        },
-        "up": {
-          "texture": "#horn"
-        },
-        "north": {
-          "texture": "#horn"
-        },
-        "south": {
-          "texture": "#horn"
-        },
-        "west": {
-          "texture": "#horn"
-        },
-        "east": {
-          "texture": "#horn"
-        }
-      }
-    },
-    {
-      "name": "horn_ring_3_b",
-      "from": [
-        6.7,
-        6.0,
-        9.7
-      ],
-      "to": [
-        9.3,
-        10.0,
-        10.9
-      ],
-      "rotation": {
-        "origin": [
-          8,
-          8,
-          14.5
-        ],
-        "axis": "x",
-        "angle": 45
-      },
-      "faces": {
-        "down": {
-          "texture": "#horn"
-        },
-        "up": {
-          "texture": "#horn"
-        },
-        "north": {
-          "texture": "#horn"
-        },
-        "south": {
-          "texture": "#horn"
-        },
-        "west": {
-          "texture": "#horn"
-        },
-        "east": {
-          "texture": "#horn"
-        }
-      }
-    },
-    {
-      "name": "horn_ring_4_a",
-      "from": [
-        5.3,
-        6.245,
-        8.7
-      ],
-      "to": [
-        10.7,
-        9.755,
-        9.7
-      ],
-      "rotation": {
-        "origin": [
-          8,
-          8,
-          14.5
-        ],
-        "axis": "x",
-        "angle": 45
-      },
-      "faces": {
-        "down": {
-          "texture": "#horn"
-        },
-        "up": {
-          "texture": "#horn"
-        },
-        "north": {
-          "texture": "#horn"
-        },
-        "south": {
-          "texture": "#horn"
-        },
-        "west": {
-          "texture": "#horn"
-        },
-        "east": {
-          "texture": "#horn"
-        }
-      }
-    },
-    {
-      "name": "horn_ring_4_b",
-      "from": [
-        6.245,
-        5.3,
-        8.7
-      ],
-      "to": [
-        9.755,
-        10.7,
-        9.7
-      ],
-      "rotation": {
-        "origin": [
-          8,
-          8,
-          14.5
-        ],
-        "axis": "x",
-        "angle": 45
-      },
-      "faces": {
-        "down": {
-          "texture": "#horn"
-        },
-        "up": {
-          "texture": "#horn"
-        },
-        "north": {
-          "texture": "#horn"
-        },
-        "south": {
-          "texture": "#horn"
-        },
-        "west": {
-          "texture": "#horn"
-        },
-        "east": {
-          "texture": "#horn"
-        }
-      }
-    },
-    {
-      "name": "horn_ring_5_a",
-      "from": [
-        4.6,
-        5.79,
-        8.0
-      ],
-      "to": [
-        11.4,
-        10.21,
-        8.7
-      ],
-      "rotation": {
-        "origin": [
-          8,
-          8,
-          14.5
-        ],
-        "axis": "x",
-        "angle": 45
+        "angle": 22.5
       },
       "faces": {
         "down": {
@@ -755,67 +452,25 @@
       }
     },
     {
-      "name": "horn_ring_5_b",
+      "name": "horn_ring_0_top",
       "from": [
-        5.79,
-        4.6,
-        8.0
-      ],
-      "to": [
-        10.21,
-        11.4,
-        8.7
-      ],
-      "rotation": {
-        "origin": [
-          8,
-          8,
-          14.5
-        ],
-        "axis": "x",
-        "angle": 45
-      },
-      "faces": {
-        "down": {
-          "texture": "#horn"
-        },
-        "up": {
-          "texture": "#horn"
-        },
-        "north": {
-          "texture": "#bore"
-        },
-        "south": {
-          "texture": "#horn"
-        },
-        "west": {
-          "texture": "#horn"
-        },
-        "east": {
-          "texture": "#horn"
-        }
-      }
-    },
-    {
-      "name": "horn_lip_top",
-      "from": [
-        4.2,
+        6.3,
         11.0,
-        7.4
+        11.65
       ],
       "to": [
-        11.8,
-        11.8,
-        8.0
+        9.7,
+        11.7,
+        12.5
       ],
       "rotation": {
         "origin": [
           8,
-          8,
-          14.5
+          10,
+          13.5
         ],
         "axis": "x",
-        "angle": 45
+        "angle": 22.5
       },
       "faces": {
         "down": {
@@ -839,25 +494,25 @@
       }
     },
     {
-      "name": "horn_lip_bottom",
+      "name": "horn_ring_0_bottom",
       "from": [
-        4.2,
-        4.2,
-        7.4
+        6.3,
+        8.3,
+        11.65
       ],
       "to": [
-        11.8,
-        5.0,
-        8.0
+        9.7,
+        9.0,
+        12.5
       ],
       "rotation": {
         "origin": [
           8,
-          8,
-          14.5
+          10,
+          13.5
         ],
         "axis": "x",
-        "angle": 45
+        "angle": 22.5
       },
       "faces": {
         "down": {
@@ -881,25 +536,25 @@
       }
     },
     {
-      "name": "horn_lip_west",
+      "name": "horn_ring_0_west",
       "from": [
-        4.2,
-        5.0,
-        7.4
+        6.3,
+        9.0,
+        11.65
       ],
       "to": [
-        5.0,
+        7.0,
         11.0,
-        8.0
+        12.5
       ],
       "rotation": {
         "origin": [
           8,
-          8,
-          14.5
+          10,
+          13.5
         ],
         "axis": "x",
-        "angle": 45
+        "angle": 22.5
       },
       "faces": {
         "down": {
@@ -923,25 +578,697 @@
       }
     },
     {
-      "name": "horn_lip_east",
+      "name": "horn_ring_0_east",
       "from": [
-        11.0,
-        5.0,
-        7.4
+        9.0,
+        9.0,
+        11.65
       ],
       "to": [
-        11.8,
+        9.7,
         11.0,
-        8.0
+        12.5
       ],
       "rotation": {
         "origin": [
           8,
-          8,
-          14.5
+          10,
+          13.5
         ],
         "axis": "x",
-        "angle": 45
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_1_top",
+      "from": [
+        5.6,
+        11.6,
+        10.8
+      ],
+      "to": [
+        10.4,
+        12.4,
+        11.65
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_1_bottom",
+      "from": [
+        5.6,
+        7.6,
+        10.8
+      ],
+      "to": [
+        10.4,
+        8.4,
+        11.65
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_1_west",
+      "from": [
+        5.6,
+        8.4,
+        10.8
+      ],
+      "to": [
+        6.4,
+        11.6,
+        11.65
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_1_east",
+      "from": [
+        9.6,
+        8.4,
+        10.8
+      ],
+      "to": [
+        10.4,
+        11.6,
+        11.65
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_2_top",
+      "from": [
+        4.9,
+        12.3,
+        9.95
+      ],
+      "to": [
+        11.1,
+        13.1,
+        10.8
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_2_bottom",
+      "from": [
+        4.9,
+        6.9,
+        9.95
+      ],
+      "to": [
+        11.1,
+        7.7,
+        10.8
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_2_west",
+      "from": [
+        4.9,
+        7.7,
+        9.95
+      ],
+      "to": [
+        5.7,
+        12.3,
+        10.8
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_2_east",
+      "from": [
+        10.3,
+        7.7,
+        9.95
+      ],
+      "to": [
+        11.1,
+        12.3,
+        10.8
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_3_top",
+      "from": [
+        4.4,
+        12.8,
+        9.100000000000001
+      ],
+      "to": [
+        11.6,
+        13.6,
+        9.95
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_3_bottom",
+      "from": [
+        4.4,
+        6.4,
+        9.100000000000001
+      ],
+      "to": [
+        11.6,
+        7.2,
+        9.95
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_3_west",
+      "from": [
+        4.4,
+        7.2,
+        9.100000000000001
+      ],
+      "to": [
+        5.2,
+        12.8,
+        9.95
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_3_east",
+      "from": [
+        10.8,
+        7.2,
+        9.100000000000001
+      ],
+      "to": [
+        11.6,
+        12.8,
+        9.95
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_4_top",
+      "from": [
+        4.0,
+        13.2,
+        8.25
+      ],
+      "to": [
+        12.0,
+        14.0,
+        9.1
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_4_bottom",
+      "from": [
+        4.0,
+        6.0,
+        8.25
+      ],
+      "to": [
+        12.0,
+        6.8,
+        9.1
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_4_west",
+      "from": [
+        4.0,
+        6.8,
+        8.25
+      ],
+      "to": [
+        4.8,
+        13.2,
+        9.1
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
+      },
+      "faces": {
+        "down": {
+          "texture": "#horn"
+        },
+        "up": {
+          "texture": "#horn"
+        },
+        "north": {
+          "texture": "#horn"
+        },
+        "south": {
+          "texture": "#horn"
+        },
+        "west": {
+          "texture": "#horn"
+        },
+        "east": {
+          "texture": "#horn"
+        }
+      }
+    },
+    {
+      "name": "horn_ring_4_east",
+      "from": [
+        11.2,
+        6.8,
+        8.25
+      ],
+      "to": [
+        12.0,
+        13.2,
+        9.1
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          10,
+          13.5
+        ],
+        "axis": "x",
+        "angle": 22.5
       },
       "faces": {
         "down": {
