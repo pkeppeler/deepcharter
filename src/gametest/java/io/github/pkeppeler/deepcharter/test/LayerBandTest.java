@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import io.github.pkeppeler.deepcharter.layer.CampaignBands;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
@@ -10,12 +11,12 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 
-/** Server GameTests for {@link LayerChain#bandAt}: a band is a whole dimension for now, so any Y reads the same band. */
+/** Server GameTests for {@link LayerChain#bandAt}: in the campaign level a layer is a band of {@link CampaignBands}, and every Y of it reads that band. */
 public class LayerBandTest {
     @GameTest
-    public void aLayerIsOneBandWhateverTheY(GameTestHelper helper) {
-        expectBand(helper, 1, 0, 192);
-        expectBand(helper, 2, 0, 256);
+    public void aLayerIsOneBandWhateverTheYInIt(GameTestHelper helper) {
+        expectBand(helper, 1);
+        expectBand(helper, 2);
         helper.succeed();
     }
 
@@ -47,15 +48,19 @@ public class LayerBandTest {
         helper.succeed();
     }
 
-    private static void expectBand(GameTestHelper helper, int layer, int minY, int height) {
+    private static void expectBand(GameTestHelper helper, int layer) {
         ServerLevel level = TestLayers.level(helper, layer);
         LayerChain.Band levelBand = TestLayers.band(level, layer);
-        for (int y : new int[] {levelBand.minY(), levelBand.minY() + height / 2, levelBand.maxY()}) {
+        CampaignBands.Band table = CampaignBands.layer(layer);
+        for (int y : new int[] {levelBand.minY(), levelBand.minY() + levelBand.height() / 2, levelBand.maxY()}) {
             Band band = bandAt(helper, level, y);
-            if (!band.isLayer() || band.layer() != layer || band.minY() != minY || band.height() != height) {
+            if (!band.isLayer()
+                    || band.layer() != layer
+                    || band.minY() != table.minY()
+                    || band.height() != table.height()) {
                 throw helper.assertionException(
-                        "layer_%d at y=%d: expected layer %d, minY %d, height %d, got %s",
-                        layer, y, layer, minY, height, band);
+                        "layer %d at y=%d: expected layer %d, minY %d, height %d, got %s",
+                        layer, y, layer, table.minY(), table.height(), band);
             }
         }
     }

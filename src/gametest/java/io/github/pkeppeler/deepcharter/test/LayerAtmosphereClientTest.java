@@ -7,6 +7,7 @@ import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SKY_NIGHT;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.SPACING;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TEST_PRESET;
+import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.TODAY;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.ZONE;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.build;
 import static io.github.pkeppeler.deepcharter.test.support.AtmosphereScenes.buildRoom;
@@ -24,7 +25,6 @@ import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
-import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -275,11 +275,10 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
     private void whatTheCampaignWorldLoses(ClientGameTestContext context, TestServerContext server, Holds holds) {
         int x = SITE;
         BlockPos campaign = buildRoom(server, holds, CAMPAIGN, layer1Floor(x + 3 * SPACING), Optional.of(ZONE), true);
-        BlockPos today =
-                buildRoom(server, holds, TestLayers.dimension(1), todayFloor(x + 4 * SPACING), Optional.empty(), true);
+        BlockPos today = buildRoom(server, holds, TODAY, todayFloor(x + 4 * SPACING), Optional.empty(), true);
         requireZone(server, CAMPAIGN, campaign);
-        requireZone(server, TestLayers.dimension(1), today);
-        List<Reading> now = lookAround(context, server, TestLayers.dimension(1), today, "lit-room-today-");
+        requireZone(server, TODAY, today);
+        List<Reading> now = lookAround(context, server, TODAY, today, "lit-room-today-");
         List<Reading> campaignWorld = lookAround(context, server, CAMPAIGN, campaign, "lit-room-campaign-");
         for (int i = 0; i < VIEWS.size(); i++) {
             table.add("lit room, %s: today %s; campaign %s; campaign/today %.3f"
@@ -291,8 +290,8 @@ public class LayerAtmosphereClientTest implements FabricClientGameTest {
         }
         // An unlit room shows the ambient floor alone.
         putOutTheLight(server, CAMPAIGN, campaign);
-        putOutTheLight(server, TestLayers.dimension(1), today);
-        Reading dark = look(context, server, TestLayers.dimension(1), today, 180, 0, "dark-room-today-wall");
+        putOutTheLight(server, TODAY, today);
+        Reading dark = look(context, server, TODAY, today, 180, 0, "dark-room-today-wall");
         float entityToday = entityBrightnessAtLightZero(context);
         Reading darkCampaign = look(context, server, CAMPAIGN, campaign, 180, 0, "dark-room-campaign-wall");
         float entityCampaign = entityBrightnessAtLightZero(context);

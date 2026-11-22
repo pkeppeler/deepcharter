@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -10,10 +13,12 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * Compares the light a client reads with the light the server holds (issue 427). A client that is sent a chunk while the server's light
@@ -98,11 +103,77 @@ public final class ClientLight {
         int serverSky = server.computeOnServer(minecraftServer -> maxSky(serverLevel(minecraftServer, dimension), box));
         int serverBlock =
                 server.computeOnServer(minecraftServer -> maxBlock(serverLevel(minecraftServer, dimension), box));
+        int[] clientLights = context.computeOnClient(client -> clientLights(client, box));
+        String cells = server.computeOnServer(
+                minecraftServer -> differingCells(serverLevel(minecraftServer, dimension), box, clientLights));
+        List<BlockPos> first = server.computeOnServer(minecraftServer -> {
+            ServerLevel level = serverLevel(minecraftServer, dimension);
+            List<BlockPos> all = box.cells().map(BlockPos::immutable).toList();
+            int[] serverLights = serverLights(level, all);
+            return LightMismatchEvidence.firstDiffering(all, serverLights, clientLights);
+        });
+        // The failure path only: what makes the server or the client wrong (LightMismatchEvidence).
+        Map<BlockPos, BlockState> emitters = new LinkedHashMap<>();
+        BlockState[][] serverBlocks = new BlockState[1][];
+        String serverSide = server.computeOnServer(minecraftServer -> {
+            ServerLevel level = serverLevel(minecraftServer, dimension);
+            emitters.putAll(LightMismatchEvidence.emitters(level, first));
+            serverBlocks[0] = LightMismatchEvidence.surroundings(level, box);
+            return LightMismatchEvidence.server(level, box, first, clientLights)
+                    + LightMismatchEvidence.serverChunks(level, box);
+        });
         return Optional.of(context.computeOnClient(client -> {
             ClientLevel level = clientLevel(client);
-            return "client maxSky=" + maxSky(level, box) + " maxBlock=" + maxBlock(level, box) + " in "
-                    + level.dimension().identifier() + ", server maxSky=" + serverSky + " maxBlock=" + serverBlock;
+            return cells + " client maxSky=" + maxSky(level, box) + " maxBlock=" + maxBlock(level, box) + " in "
+                    + level.dimension().identifier() + ", server maxSky=" + serverSky + " maxBlock=" + serverBlock
+                    + serverSide + LightMismatchEvidence.client(level, emitters)
+                    + LightMismatchEvidence.blockDifferences(
+                            box, serverBlocks[0], LightMismatchEvidence.surroundings(level, box))
+                    + LightMismatchEvidence.clientChunks(level, box);
         }));
+    }
+
+    private static int[] serverLights(Level level, List<BlockPos> cells) {
+        return cells.stream()
+                .mapToInt(pos ->
+                        level.getBrightness(LightLayer.SKY, pos) * 16 + level.getBrightness(LightLayer.BLOCK, pos))
+                .toArray();
+    }
+
+    /** The client's sky and block light of every cell of the box, as {@code sky * 16 + block}, in {@link Box#cells} order. */
+    private static int[] clientLights(Minecraft client, Box box) {
+        Level level = clientLevel(client);
+        return box.cells()
+                .mapToInt(pos ->
+                        level.getBrightness(LightLayer.SKY, pos) * 16 + level.getBrightness(LightLayer.BLOCK, pos))
+                .toArray();
+    }
+
+    /** How many cells differ and the first few, for a failure message: which cells shows whether the light is late or wrong. */
+    private static String differingCells(Level server, Box box, int[] client) {
+        List<BlockPos> cells = box.cells().map(BlockPos::immutable).toList();
+        StringBuilder first = new StringBuilder();
+        int differing = 0;
+        for (int i = 0; i < client.length; i++) {
+            int serverLight = server.getBrightness(LightLayer.SKY, cells.get(i)) * 16
+                    + server.getBrightness(LightLayer.BLOCK, cells.get(i));
+            if (serverLight != client[i]) {
+                if (differing++ < 4) {
+                    first.append(" ")
+                            .append(cells.get(i).toShortString())
+                            .append(" client sky/block ")
+                            .append(client[i] / 16)
+                            .append("/")
+                            .append(client[i] % 16)
+                            .append(" server ")
+                            .append(serverLight / 16)
+                            .append("/")
+                            .append(serverLight % 16)
+                            .append(";");
+                }
+            }
+        }
+        return differing + " of " + client.length + " cells differ:" + first;
     }
 
     /** True when the client is in {@code dimension} and holds every chunk the box touches. */
@@ -125,6 +196,34 @@ public final class ClientLight {
     public static boolean chunksPresent(Level level, Box box) {
         return ChunkPos.rangeClosed(ChunkPos.containing(box.min()), ChunkPos.containing(box.max()))
                 .allMatch(chunk -> level.getChunkSource().hasChunk(chunk.x(), chunk.z()));
+    }
+
+    /**
+     * True when the server holds every chunk the box touches, and the ring of chunks round them, as one it can send: the chunk is full and
+     * its light is done, the state vanilla's {@code ChunkMap.waitForLightBeforeSending} and {@code LightSync} hold a chunk back until.
+     * Light spreads at most 15 blocks, so a neighbour still generating is the only other chunk whose light can still change the box.
+     * {@link #serverLightIdle} alone is true for a chunk still below the light stage, or whose light job is not yet queued. A ring chunk
+     * outside the player's view is never generated, so only a ring chunk a player is sent counts.
+     */
+    public static boolean serverChunksSendable(TestServerContext server, ResourceKey<Level> dimension, Box box) {
+        return server.computeOnServer(minecraftServer -> {
+            ServerLevel level = serverLevel(minecraftServer, dimension);
+            ChunkMap chunkMap = level.getChunkSource().chunkMap;
+            ChunkPos low = ChunkPos.containing(box.min());
+            ChunkPos high = ChunkPos.containing(box.max());
+            for (ChunkPos chunk : ChunkPos.rangeClosed(
+                            new ChunkPos(low.x() - 1, low.z() - 1), new ChunkPos(high.x() + 1, high.z() + 1))
+                    .toList()) {
+                boolean inBox =
+                        chunk.x() >= low.x() && chunk.x() <= high.x() && chunk.z() >= low.z() && chunk.z() <= high.z();
+                boolean sent = level.players().stream()
+                        .anyMatch(player -> player.getChunkTrackingView().contains(chunk));
+                if ((inBox || sent) && chunkMap.getChunkToSend(chunk.pack()) == null) {
+                    return false;
+                }
+            }
+            return true;
+        });
     }
 
     /** True when no level of the server has light work pending. */
