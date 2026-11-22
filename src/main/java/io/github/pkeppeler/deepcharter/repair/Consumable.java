@@ -15,37 +15,42 @@ import net.minecraft.resources.Identifier;
  */
 public enum Consumable {
     // Layer 1 tool: under one stock layer-1 run, the cheap way past a 10 L tank.
-    RESERVE_FUEL_TANK("reserve_fuel_tank", 100),
+    RESERVE_FUEL_TANK("reserve_fuel_tank", 100, Kind.CONSUMED, false, true),
     // Layer 2 tool: under one layer-2 run, and above the station's price for the same 30 HP.
-    HULL_NANOBOTS("hull_nanobots", 345),
+    HULL_NANOBOTS("hull_nanobots", 345, Kind.CONSUMED, false, true),
     // Layer 1 tool: under one stock layer-1 run.
-    DYNAMITE("dynamite", 100),
+    DYNAMITE("dynamite", 100, Kind.CONSUMED, false, true),
     // Layer 2 tool: under one layer-2 run, and above the dynamite it outdoes.
-    PLASTIC_EXPLOSIVES("plastic_explosives", 300),
+    PLASTIC_EXPLOSIVES("plastic_explosives", 300, Kind.CONSUMED, false, true),
     // Layer 1 tool (#509): the only thing that clears Company rock. A straight layer 1 bore needs several, so one costs
     // a fraction of a stock layer 1 run.
-    BLASTING_CHARGE("blasting_charge", 40),
+    BLASTING_CHARGE("blasting_charge", 40, Kind.CONSUMED, false, true),
     // Layer 2 and 3 tool (#526): the same set-up as the blasting charge, but it clears a whole Company rock column.
     // $100 is under three blasting charges ($120), the three it replaces in a thick stretch.
-    SHAPED_CHARGE("shaped_charge", 100),
+    SHAPED_CHARGE("shaped_charge", 100, Kind.CONSUMED, false, true),
     // SPEC section 11: an expensive escape, about 2 layer-2 runs; the cargo drop is the rest of the cost.
-    QUANTUM_TELEPORTER("quantum_teleporter", 690),
+    QUANTUM_TELEPORTER("quantum_teleporter", 690, Kind.CONSUMED, false, true),
     // SPEC section 11: a layer-3 item measured as about 4 layer-2 runs (3.6 from the outpost, #320; $1,650 since #963,
     // which made fuel cheaper and a run's net $455); the cargo drop is
     // the rest of the cost.
-    MATTER_TRANSMITTER("matter_transmitter", 1_650),
+    MATTER_TRANSMITTER("matter_transmitter", 1_650, Kind.CONSUMED, false, true),
     // Thrown by hand on foot (#985, CREATURES section 8): the operator's rounds without the launcher. Each costs a
     // fraction of a layer 1 run, so a fight costs money without ending the run. ThrownKitPacingTest holds the three to
     // their bands.
-    THROWN_FLARE("thrown_flare", 12, true),
+    THROWN_FLARE("thrown_flare", 12, Kind.CONSUMED, true, true),
     // Not sold yet: nothing on main is drawn to the drill, so no creature feels its pull. On sale with the first
     // drill-drawn creature (Drifters, #918, PR #975): whichever lands second flips this and adds the steer call.
-    THROWN_DECOY("thrown_decoy", 25, false),
-    THROWN_CHARGE("thrown_charge", 55, true),
+    THROWN_DECOY("thrown_decoy", 25, Kind.CONSUMED, true, false),
+    THROWN_CHARGE("thrown_charge", 55, Kind.CONSUMED, true, true),
     // On foot (#986): not used up. A person on foot clips it to a pod's winch, and it is theirs to keep. Priced at
-    // about
-    // three quarters of a stock layer 1 run, so the first descent pays for it once and no pod is ever without one.
-    TETHER("tether", 90, Kind.TOOL);
+    // about three quarters of a stock layer 1 run, so the first descent pays for it once and no pod is ever without
+    // one.
+    TETHER("tether", 90, Kind.TOOL, false, true),
+    // On foot (#987): a tool, kept. The driver costs two fifths of a layer 2 run. EconomyAffordabilityTest holds the
+    // bands and BoltDriverPacingTest what a fight and a stretch of tunnel cost.
+    BOLT_DRIVER("bolt_driver", 175, Kind.TOOL, false, true),
+    // The driver's ammunition, bought in packs of 8 for a twentieth of a layer 2 run; the driver spends them.
+    BOLT("bolt", 24, Kind.CONSUMED, false, true, 8);
 
     /** What using the item does to it. */
     public enum Kind {
@@ -60,26 +65,20 @@ public enum Consumable {
     private final Kind kind;
     private final boolean thrown;
     private final boolean sold;
+    private final int perPurchase;
 
-    Consumable(String path, long price) {
-        this(path, price, Kind.CONSUMED, false, true);
+    /** A single item: {@code thrown} is whether it is thrown by hand, {@code sold} whether the repair station offers it. */
+    Consumable(String path, long price, Kind kind, boolean thrown, boolean sold) {
+        this(path, price, kind, thrown, sold, 1);
     }
 
-    /** A thrown item: {@code sold} is whether the repair station offers it. */
-    Consumable(String path, long price, boolean sold) {
-        this(path, price, Kind.CONSUMED, true, sold);
-    }
-
-    Consumable(String path, long price, Kind kind) {
-        this(path, price, kind, false, true);
-    }
-
-    private Consumable(String path, long price, Kind kind, boolean thrown, boolean sold) {
+    Consumable(String path, long price, Kind kind, boolean thrown, boolean sold, int perPurchase) {
         this.itemId = Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
         this.price = price;
         this.kind = kind;
         this.thrown = thrown;
         this.sold = sold;
+        this.perPurchase = perPurchase;
     }
 
     public Kind kind() {
@@ -103,6 +102,11 @@ public enum Consumable {
     /** Dollars, taken from the charter's account. */
     public long price() {
         return price;
+    }
+
+    /** Items the station hands over for one purchase: a pack of bolts, otherwise one. */
+    public int perPurchase() {
+        return perPurchase;
     }
 
     public static Optional<Consumable> byItemId(Identifier id) {

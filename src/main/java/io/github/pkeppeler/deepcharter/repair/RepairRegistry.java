@@ -24,10 +24,15 @@ public final class RepairRegistry {
     static {
         for (Consumable consumable : Consumable.values()) {
             ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, consumable.itemId());
-            Item item = consumable.kind() == Consumable.Kind.TOOL
-                    ? new TetherItem(new Item.Properties().setId(key).stacksTo(1))
-                    : new ConsumableItem(
-                            consumable, new Item.Properties().setId(key).stacksTo(16));
+            Item item = switch (consumable.kind()) {
+                case TOOL -> tool(consumable, new Item.Properties().setId(key).stacksTo(1));
+                // The bolts are ammunition the driver spends: a plain item that stacks to a pack.
+                case CONSUMED ->
+                    consumable == Consumable.BOLT
+                            ? new Item(new Item.Properties().setId(key).stacksTo(64))
+                            : new ConsumableItem(
+                                    consumable, new Item.Properties().setId(key).stacksTo(16));
+            };
             ITEMS.put(consumable, Registry.register(BuiltInRegistries.ITEM, key, item));
         }
     }
@@ -57,6 +62,14 @@ public final class RepairRegistry {
                     BlockBehaviour.Properties.of().setId(FLARE_LIGHT_KEY).sound(SoundType.WOOD)));
 
     private RepairRegistry() {}
+
+    private static Item tool(Consumable consumable, Item.Properties properties) {
+        return switch (consumable) {
+            case TETHER -> new TetherItem(properties);
+            case BOLT_DRIVER -> new BoltDriverItem(properties);
+            default -> throw new IllegalStateException(consumable + " is not a tool");
+        };
+    }
 
     public static void register() {
         RepairStation.register();

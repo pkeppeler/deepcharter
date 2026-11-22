@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.repair;
 
+import io.github.pkeppeler.deepcharter.layer.CaveIns;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodCharge;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -46,9 +47,9 @@ final class Consumables {
             case THROWN_FLARE, THROWN_DECOY, THROWN_CHARGE ->
                 throw new IllegalStateException(consumable + " is thrown on foot and handled above");
             // The switch must cover every constant; a TOOL never reaches here, because RepairRegistry gives it its own
-            // item.
-            case TETHER ->
-                throw new IllegalStateException("the tether is not used up here: TetherItem handles its own use");
+            // item, and the bolts are the driver's ammunition, not a use of their own.
+            case TETHER, BOLT_DRIVER, BOLT ->
+                throw new IllegalStateException(consumable + " is not used from the pilot's seat");
         };
     }
 
@@ -88,6 +89,8 @@ final class Consumables {
             }
         }
         play(pod, sound);
+        // The blast shakes the roof over anyone on foot near it (#987).
+        CaveIns.blasted(level, pod.getBoundingBox().getCenter(), PodCharge.blasterOf(pod));
         return Optional.empty();
     }
 
