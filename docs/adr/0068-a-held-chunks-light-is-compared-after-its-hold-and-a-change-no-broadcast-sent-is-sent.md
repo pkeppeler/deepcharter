@@ -9,7 +9,7 @@ Issue #863. Amends [ADR 0063](0063-a-hold-sends-the-players-who-have-a-chunk-its
 ## Decision
 
 - **`LightSync` records the light each player was sent of a chunk, and sends a player whose chunk's published light differs.**
-  - A hold request starts a watch of every loaded chunk in its 3x3, whether or not the chunk can be sent yet. The watch lasts until 100 ticks after the hold of that chunk ends (700 ticks for a chunk with no hold).
+  - A hold request starts a watch of every loaded chunk in its 3x3, whether or not the chunk can be sent yet. The watch lasts until 100 ticks after the hold of that chunk ends (see the amendment: a chunk that cannot be sent yet is watched until 100 ticks after it can be).
   - A watched chunk has a record per player: a hash of the data of every light section, both layers, of the light the player was sent. It is set when the watch starts for a player who already holds the chunk, by a mixin on `PlayerChunkSender.sendChunk` when a chunk packet is built (no Fabric event reaches that point), and by each light packet `LightSync` sends.
   - After the hold, every 10 ticks, each tracking player whose record differs from the published light gets one `ClientboundLightUpdatePacket` for every section, and the record is updated.
 - **It compares with what the player was sent, not with an earlier sample.** A light that moves and comes back between two samples is still caught.
@@ -39,3 +39,11 @@ The runs are noisy: the spread within each row, 0.07x to 0.16x, is as large as t
 - A hold costs a hash per watched chunk when its watch starts, per chunk packet sent for a watched chunk, and per comparison of a chunk with a recorded player, and one light packet per player whose record differs.
 - `layer/mixin/PlayerChunkSenderMixin` fails the launch if `sendChunk` changes.
 - `LightSyncSafetyNetTest` pins the contract with a test-only mixin that switches off vanilla's light broadcast for a chunk: a change after the hold, a light that moved and came back after a send, a neighbour that could not be sent when the hold was requested, and no light packet when nothing changed.
+
+## Amended, 2026-11-22 (#954): the window starts when the chunk can be sent, and ends when the light has settled
+
+`LightSyncSafetyNetTest.aNeighbourThatCannotBeSentWhenTheHoldIsRequestedIsWatched` failed on #883's merge-queue run (job 137066219014): the watch of a neighbour that could not be sent ended 700 ticks after the hold was requested, counted from the request. A server's ticks and the light engine's thread run at different speeds under load, so a neighbour can be sent, and its light change, after any tick count. `aNeighbourSentLongAfterTheHoldWasRequestedIsWatched` sends it 800 ticks after the request and failed the same way before the fix.
+
+- A watch stays open while its chunk is held or cannot be sent, and its window of 100 ticks runs from the tick the chunk can be sent. A chunk packet sent to a player also keeps it open for 100 ticks.
+- When the window runs out, the watch ends only once the light tasks queued for the chunk by then have run (`waitForPendingTasks`), with one last comparison that sees the light they published, and at most 600 ticks later. A watch with no recorded player ends at the window.
+- A chunk that stays loaded and never becomes sendable keeps its watch until it unloads: one map entry and one `getChunkToSend` lookup per tick.
