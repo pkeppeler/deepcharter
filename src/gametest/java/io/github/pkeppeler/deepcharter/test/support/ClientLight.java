@@ -16,10 +16,13 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Compares the light a client reads with the light the server holds (issue 427). A client that is sent a chunk while the server's light
@@ -32,6 +35,8 @@ public final class ClientLight {
     private static final int PACKET_TICKS = 10;
     /** Comparisons, each after a flush of the client's light queue, before a mismatch stands. */
     private static final int ROUNDS = 3;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClientLight.class);
 
     private ClientLight() {}
 
@@ -285,5 +290,37 @@ public final class ClientLight {
         }
         int serverPrint = server.computeOnServer(s -> fingerprint(serverLevel(s, dimension), box));
         return mismatch.map(m -> m + " after " + ROUNDS + " rounds, server light print " + serverPrint);
+    }
+
+    /** A tripwire (issue 832): shows whether client and server light agree at each evidence still. */
+    public static void logStillLight(
+            ClientGameTestContext context,
+            TestServerContext server,
+            ResourceKey<Level> dimension,
+            String name,
+            BlockPos pos) {
+        String serverRead = server.computeOnServer(s -> {
+            ServerLevel level = serverLevel(s, dimension);
+            return "blockLight=" + level.getBrightness(LightLayer.BLOCK, pos) + " skyLight="
+                    + level.getBrightness(LightLayer.SKY, pos);
+        });
+        String clientRead = context.computeOnClient(client -> {
+            ClientLevel level = clientLevel(client);
+            var probe = client.gameRenderer.mainCamera().attributeProbe();
+            return "blockLight=" + level.getBrightness(LightLayer.BLOCK, pos) + " skyLight="
+                    + level.getBrightness(LightLayer.SKY, pos) + " dimension="
+                    + level.dimension().identifier() + " blockTint="
+                    + probe.getValue(EnvironmentAttributes.BLOCK_LIGHT_TINT, 1f) + " skyFactor="
+                    + probe.getValue(EnvironmentAttributes.SKY_LIGHT_FACTOR, 1f) + " ambient="
+                    + probe.getValue(EnvironmentAttributes.AMBIENT_LIGHT_COLOR, 1f) + " gamma="
+                    + client.options.gamma().get() + " darkness="
+                    + client.options.darknessEffectScale().get();
+        });
+        LOGGER.info(
+                "[still-light] still={} pos={} client: {} | server: {}",
+                name,
+                pos.toShortString(),
+                clientRead,
+                serverRead);
     }
 }

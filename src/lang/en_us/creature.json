@@ -13,5 +13,9 @@
   "creature.deepcharter.drifter_pod": "A pale glow drifts toward the drill, hissing. Stop drilling and it will pass.",
   "creature.deepcharter.drifter_foot": "A pale glow drifts toward the sound of you. Stand still and it will pass.",
   "creature.deepcharter.spores": "Spores are eating the hull. Drive clear.",
-  "creature.deepcharter.alarm_foot": "The hollows are awake. More will come to the sound of you."
+  "creature.deepcharter.alarm_foot": "The hollows are awake. More will come to the sound of you.",
+  "creature.deepcharter.foot_approach": "Something walks toward you in the dark. A light in your hand keeps it off.",
+  "creature.deepcharter.foot_grab": "Something has hold of you. It slows you and eats at your hunger. Strike it off.",
+  "creature.deepcharter.foot_dead": "It is gone. You are free of it.",
+  "creature.deepcharter.foot_first": "The Retained come to anyone in the dark with no light in hand. One that holds you slows you as if you carried ore and drains your hunger down to a floor, never to starving. It never hurts you. It lets go only when it is killed, by a blow from you or a crewmate. A light in hand keeps one off, but does not free you once it has hold."
 }

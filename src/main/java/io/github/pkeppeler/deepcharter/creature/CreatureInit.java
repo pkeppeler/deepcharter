@@ -13,6 +13,8 @@ public final class CreatureInit {
         Drifters.init();
         DrifterAlarm.init();
         SporeClouds.init();
+        DrawSources.init();
+        FootGrips.init();
         Tallies.init();
     }
 }
