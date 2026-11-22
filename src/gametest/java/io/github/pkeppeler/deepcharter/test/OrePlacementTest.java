@@ -103,14 +103,15 @@ public class OrePlacementTest {
         }
     }
 
-    private static Census @Nullable [] census;
+    /** A census counted once per batch: a second test that arrives while it is counting waits for it instead of counting too. */
+    private static final class CachedCensus {
+        Census @Nullable [] value;
+        boolean pending;
+    }
 
-    private static Census @Nullable [] campaignCensus;
+    private static final CachedCensus LAYERS_CENSUS = new CachedCensus();
 
-    /** Whether a test of this batch is counting the layers' census or the campaign's, so a second one waits for it instead of counting too. */
-    private static boolean censusPending;
-
-    private static boolean campaignCensusPending;
+    private static final CachedCensus CAMPAIGN_CENSUS = new CachedCensus();
 
     private static final String CAMPAIGN = "deepcharter:campaign_sample";
 
@@ -842,61 +843,50 @@ public class OrePlacementTest {
      * tests beside this one (#1016).
      */
     private static void sample(GameTestHelper helper, Consumer<Census[]> then) {
-        if (census != null) {
-            then.accept(census);
-            return;
-        }
-        if (censusPending) {
-            helper.startSequence()
-                    .thenWaitUntil(() -> {
-                        if (census == null) {
-                            throw helper.assertionException("waiting for the census of the other test");
-                        }
-                    })
-                    .thenExecute(() -> then.accept(Objects.requireNonNull(census)));
-            return;
-        }
-        censusPending = true;
-        count(
+        cached(
                 helper,
+                LAYERS_CENSUS,
                 layer -> {
                     ServerLevel level = TestLayers.level(helper, layer);
                     LayerChain.Band band = TestLayers.band(level, layer);
                     return new Rows(level, band.minY(), band.height());
                 },
-                result -> {
-                    census = result;
-                    then.accept(result);
-                });
+                then);
     }
 
     /** {@link #sample} for the campaign world, whose layers are bands of one level. */
     private static void campaignSample(GameTestHelper helper, Consumer<Census[]> then) {
-        if (campaignCensus != null) {
-            then.accept(campaignCensus);
-            return;
-        }
-        if (campaignCensusPending) {
-            helper.startSequence()
-                    .thenWaitUntil(() -> {
-                        if (campaignCensus == null) {
-                            throw helper.assertionException("waiting for the census of the other test");
-                        }
-                    })
-                    .thenExecute(() -> then.accept(Objects.requireNonNull(campaignCensus)));
-            return;
-        }
-        campaignCensusPending = true;
-        count(
+        cached(
                 helper,
+                CAMPAIGN_CENSUS,
                 layer -> {
                     CampaignBands.Band band = CampaignBands.layer(layer);
                     return new Rows(helper.getLevel(), band.minY(), band.height());
                 },
-                result -> {
-                    campaignCensus = result;
-                    then.accept(result);
-                });
+                then);
+    }
+
+    private static void cached(
+            GameTestHelper helper, CachedCensus cache, IntFunction<Rows> rowsOf, Consumer<Census[]> then) {
+        if (cache.value != null) {
+            then.accept(cache.value);
+            return;
+        }
+        if (cache.pending) {
+            helper.startSequence()
+                    .thenWaitUntil(() -> {
+                        if (cache.value == null) {
+                            throw helper.assertionException("waiting for the census of the other test");
+                        }
+                    })
+                    .thenExecute(() -> then.accept(Objects.requireNonNull(cache.value)));
+            return;
+        }
+        cache.pending = true;
+        count(helper, rowsOf, result -> {
+            cache.value = result;
+            then.accept(result);
+        });
     }
 
     /** The rows of one layer: the level that holds it and the Ys it spans in that level. */

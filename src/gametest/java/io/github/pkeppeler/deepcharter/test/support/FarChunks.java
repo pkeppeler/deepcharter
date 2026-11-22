@@ -16,8 +16,7 @@ import net.minecraft.world.phys.AABB;
 
 /**
  * Awaits entity ticking in a far chunk of a fresh world. The test method must call this, never a tick
- * callback. It forces the chunk without loading it on the server thread, so the server keeps ticking while the chunk generates
- * ({@link #force}; #1016). It forces the chunk, because a mock player teleported within its own dimension never loads
+ * callback. It forces the chunk, without loading it on the server thread (#1016), because a mock player teleported within its own dimension never loads
  * chunks around itself. A chunk it forces is released when the test finishes ({@link #release}): a forced chunk pins the
  * generation neighbourhood around it (up to 17 x 17 chunks of proto chunks and their sections), so one left forced for the rest
  * of the run grows the heap with the suite (#569).
@@ -61,10 +60,7 @@ public final class FarChunks {
         if (mine.contains(chunk)) {
             return;
         }
-        // ServerLevel.setChunkForced would also load the chunk on the server thread (getChunk), so a batch of tests
-        // stalls behind its
-        // generation. The ticket alone loads it on the worker threads; a caller that needs the chunk awaits it
-        // (awaitLoaded).
+        // setChunkForced would also load the chunk on the server thread; the ticket alone loads it on the workers.
         boolean forcedNow = level.getChunkSource().updateChunkForced(new ChunkPos(chunkX, chunkZ), true);
         if (forcedNow || HOLDS.containsKey(chunk)) {
             HOLDS.merge(chunk, 1, Integer::sum);
