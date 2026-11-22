@@ -25,12 +25,9 @@ addVmArgToRuns(exitOnOom)
 // no ticket left). Fix: ChunkMapUnloadMixin (gametest mod; its Javadoc has the mechanism).
 // Highest sample, always at the batch after the campaign batch: 1039, 1189, 1382 MB before (3 runs), 1022 MB after (1 run); next-batch
 // carry-over 816 to 899 MB -> 510 to 594 MB. `./gradlew build` at 3G: 1 Full GC, live 930 MB (the #805 run: 2, 1093 MB).
-// Re-traced 2026-11-22 (#816; 1353 tests, -Xlog:gc and a forced GC every 1.5 s): CI died at 3G right after the campaign batch. Holder:
-// IO-Worker thread -> IOWorker -> pendingWrites of campaign_sample, 6,259 chunk writes = 1.07 GB of NBT live at the next batch start (2.07 GB
-// total). Unloading queued them faster than the level's one IO thread writes; 12,000 of the level's 12,600 chunks were half-generated
-// neighbours of the forced ones. Fix: ChunkMapSaveMixin writes no half-generated chunk. A cap on saves in flight instead made it worse (3.6 GB).
-// After (1 run): live at the batch after the campaign batch 1.3 GB (before 1.7 to 2.1 GB), baseline 450 to 560 MB, peak 1.9 GB (before
-// 2.1 GB) while the campaign tests run together, so 4G is twice the peak. That peak is the campaign working set, not a leak.
+// Chunk writes of half-generated chunks filled it after the campaign batch: ChunkMapSaveMixin skips them (#816). Measured 2026-11-22 (1353
+// tests, forced GC every 1.5 s): peak 1.9 GB while the campaign tests run together, 1.3 GB live at the batch after it, baseline 450 to
+// 560 MB (1 run, at 3G). 4G is twice that peak (1 run, at 3G): 4G until #957 splits the campaign batch.
 // Re-measure when the suite grows by a tenth or when a test adds a tall world to the campaign batch; below 2x the peak is where CI died.
 val gameTestHeap = "-Xmx4G"
 addVmArgToRun("gameTest", gameTestHeap)

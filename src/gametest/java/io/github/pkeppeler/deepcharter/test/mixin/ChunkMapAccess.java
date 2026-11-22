@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-/** The tests of {@link ChunkMapUnloadMixin} and {@link ChunkMapSaveMixin} reach the unload queue, the step that runs it and the save of one chunk. */
+/** For {@link ChunkMapUnloadMixin} and {@link ChunkMapSaveMixin}: the unload queue, its runner, and one chunk save. */
 @Mixin(value = ChunkMap.class, remap = false)
 public interface ChunkMapAccess {
     @Accessor("unloadQueue")

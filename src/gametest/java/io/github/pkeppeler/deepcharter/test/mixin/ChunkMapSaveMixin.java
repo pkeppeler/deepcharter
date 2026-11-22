@@ -9,12 +9,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Does not write a chunk that has not finished generating. A forced chunk makes the server generate the chunks around it, up to the
- * 17 x 17 that its own generation needs, and only the forced one ever becomes a full chunk that a test can touch. In a 2352-row
- * campaign world that is 12,000 half-generated chunks of 90 KB for 546 full ones, and unloading them queued 6,259 writes (1.07 GB of
- * NBT) on the level's one IO thread, which was still writing them in the next batch (#816). A half-generated chunk holds only what
- * the world seed makes again, so the next force generates it again, as vanilla does for a chunk its crash lost. A full chunk is
- * written as before: the tests that unload a chunk and force it back (such as {@code UnloadedChunk}) rely on that.
+ * Does not write a chunk that has not finished generating: a forced chunk makes the server generate about 700 half-generated
+ * neighbours that no test touches, and their writes outran the level's IO thread and filled the heap (#816). A full chunk is written
+ * as before. A neighbour regenerated later lacks the spill of features that a full chunk next to it had placed in it, so the border
+ * may differ from the one that was unloaded; no test forces the neighbour of an unloaded full chunk and reads the border.
  */
 @Mixin(value = ChunkMap.class, remap = false)
 public abstract class ChunkMapSaveMixin {

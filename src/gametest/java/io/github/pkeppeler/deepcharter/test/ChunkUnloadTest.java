@@ -3,9 +3,11 @@ package io.github.pkeppeler.deepcharter.test;
 import io.github.pkeppeler.deepcharter.test.mixin.ChunkMapAccess;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.chunk.UpgradeData;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
@@ -41,6 +43,18 @@ public class ChunkUnloadTest {
         if (half.isUnsaved()) {
             throw helper.assertionException(
                     "a half-generated chunk was left marked unsaved, so the next unload tries again");
+        }
+        helper.succeed();
+    }
+
+    /** A full chunk still saves: the mixin must not skip every chunk. */
+    @GameTest
+    public void aFullChunkIsSaved(GameTestHelper helper) {
+        ChunkMapAccess chunkMap = (ChunkMapAccess) helper.getLevel().getChunkSource().chunkMap;
+        LevelChunk full = helper.getLevel().getChunkAt(helper.absolutePos(BlockPos.ZERO));
+        full.markUnsaved();
+        if (!chunkMap.deepcharter$save(full)) {
+            throw helper.assertionException("a full chunk marked unsaved was not written");
         }
         helper.succeed();
     }
