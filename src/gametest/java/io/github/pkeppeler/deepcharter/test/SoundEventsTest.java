@@ -273,7 +273,11 @@ public class SoundEventsTest {
                 continue;
             }
             String[] parts = path.split("\\.", -1);
-            String key = parts.length == 3 ? parts[1] + "/" + parts[2] : "worn/" + parts[1];
+            // The horn's own pool (#946) is worn like the Old Workings' fragments: ambience.horn.<name> is worn/<name>;
+            // the warm-up is worn/<name>.
+            String key = parts.length == 3
+                    ? (parts[1].equals("horn") ? "worn" : parts[1]) + "/" + parts[2]
+                    : "worn/" + parts[1];
             declared.add(key);
             JsonObject entry = manifest.getAsJsonObject(key);
             if (entry == null) {

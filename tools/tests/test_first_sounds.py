@@ -354,7 +354,7 @@ class CutRebuildTest(unittest.TestCase):
             out.writeframes(array.array("h", (int(9000 * math.sin(i * 0.03)) for i in range(44100 * 12))).tobytes())
 
     def build(self, *recordings):
-        with mock.patch.object(first_sounds, "ALL_RECORDINGS", recordings), contextlib.redirect_stdout(io.StringIO()):
+        with mock.patch.object(first_sounds, "ALL_RECORDINGS", recordings), contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             return first_sounds.build(self.sources, self.tmp / "out", self.tmp / "first_sounds.json")
 
     def test_a_changed_cut_is_rendered_again_and_an_unchanged_one_is_kept(self):

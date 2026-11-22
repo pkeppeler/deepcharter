@@ -1754,6 +1754,22 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Open.** The creatures session (#13) may later change how the Retained use the song (a figure that hums it, a sighting that ends it). The cue is a client reading of the figures and needs nothing from them. The story bay is drawn from the choice of the colony's pad, as its lamp is, so it has the phonograph whenever it has the lamp; no fallback bay is needed. The warning's suppression after a wreck's song is global (any `song.wreck` heard, one minute of grace), not by distance, which is enough while one phonograph sings; more would need a distance rule. Seen is a 70 degree view cone, not the render frustum.
 
+## More early recordings (#946, A)
+
+**Problem.** The first three cylinders and the ambience (#864, #866) draw on a handful of Scott's phonautograms. The oldest recordings there are are more than that, and more of them would make the dark stranger without making it louder.
+
+**The pieces.**
+- **Deep fragments.** Four more fragments, in the `broken` tier only: Lucae's 1862 phonautogram made with a human ear (the oldest and the deepest, so the first layers never hear it), the "Ki!" and tuning fork of Donders' 1865 noematachogram, Morey's 1874 "oo", and the 1860 vocal scale with its crosstalk. Cut to 1 to 2 seconds and worn as the others are.
+- **The horn's pool.** The Company horn (#866) plays, after its static warm-up, either a fragment of the layer's tier or one from a pool of its own that the dark never plays (`AmbienceTier.HORN`, events `ambience.horn.*`): Pouillet's 1850 diapason scale, a train on the elevated railroad with test voices (1878), the Volta Laboratory's barometer (1884) and its half-heard story (1885). They are worn as the Old Workings' are and sit near -28 LUFS. Each choice is as likely as the next, so the pool is about two in five of what a horn plays in layer 2. The rates do not change.
+- **Five more cylinders.** Counting (about 1881), the Hamlet soliloquy (about 1884), Sullivan's toast at Little Menlo (1888), Edison's "Around the World on the Phonograph" (1888) and "The Lost Chord" (1888), each a whole recording in `tools/sounds/first_sounds.py` with the cylinder treatment, trimmed to its strongest 15 to 30 seconds (counting and Hamlet are shorter and whole). They are found in wreck lockers and salvage crates like the first three, one more entry in each table's cylinder pool: the chance of a cylinder is the same, and only the choice among them widens. The colony's rack keeps its three. The tooltip is the title and the year.
+- **Credits.** One `CREDITS.md` entry per source, in the form its holder gives. The Volta and Edison files state no licence, so they are credited and linked with none claimed.
+
+**Trade-offs.** A player now finds a cylinder they cannot hear in the colony, and a given cylinder in a locker is rarer (one in eight, not one in three). Florence Nightingale's 1890 recording was not obtained (Wikimedia refused the download), and the doll, the nursery rhyme and Handel's Israel in Egypt are left out under LORE guardrails 4 and 6.
+
+**Knobs.** The `FRAGMENTS` and `SOURCES` in `tools/sounds/ambience.py`; the cylinder entries in `RECORDINGS` in `tools/sounds/first_sounds.py`; the two loot tables' cylinder pools; each event's volume in `sounds.json`.
+
+**Open.** A sixth cylinder (Nightingale) is one more `Recording` entry once its file can be fetched and its licence read.
+
 ## Company rations (#838, A)
 
 **Problem.** A new player's first playtest found no food anywhere and starved before reaching the first crop. The surface has no animals or plants, and the first terminal repair takes real time.
