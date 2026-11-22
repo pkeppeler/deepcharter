@@ -2,6 +2,8 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.Tallies;
 import io.github.pkeppeler.deepcharter.creature.Tally;
@@ -104,12 +106,12 @@ public class TallyTest {
                 pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.GOLDIUM));
                 for (int i = 0; i < ORES; i++) {
                     if (!pod.cargo().tryAdd(pod, OreRegistry.stack(OreType.IRONIUM))) {
-                        throw helper.assertionException("the bay took no ore number %s", i);
+                        throw failure(helper, "the bay took no ore number %s", i);
                     }
                 }
                 holder.teleportTo(level, pod.position(), 90f, 0f);
                 if (!holder.player().startRiding(pod)) {
-                    throw helper.assertionException("the pilot could not mount the pod");
+                    throw failure(helper, "the pilot could not mount the pod");
                 }
             } else {
                 holder.teleportTo(level, Vec3.atBottomCenterOf(origin.east(HALF - 1)), 90f, 0f);
@@ -200,15 +202,15 @@ public class TallyTest {
                     LOGGER.info(
                             "[tally] pod: trail then clamp took {} ticks ({} s)", clampedAt[0], clampedAt[0] / 20.0);
                     if (clampedAt[0] < TUNING.trailTicks()) {
-                        throw helper.assertionException(
+                        throw failure(helper, 
                                 "the Tally clamped after %s ticks, before it had trailed %s",
                                 clampedAt[0], TUNING.trailTicks());
                     }
                     if (arena.ore() != ORES) {
-                        throw helper.assertionException("the bay held %s ore at the clamp, not %s", arena.ore(), ORES);
+                        throw failure(helper, "the bay held %s ore at the clamp, not %s", arena.ore(), ORES);
                     }
                 } else if (helper.getTick() > CLAMP_BUDGET_TICKS) {
-                    throw helper.assertionException(
+                    throw failure(helper, 
                             "the Tally had not clamped to the hatch after %s ticks", helper.getTick());
                 }
                 return;
@@ -219,31 +221,31 @@ public class TallyTest {
                         "[tally] pod: the sample was taken and the Tally gone {} ticks after the clamp",
                         goneAt[0] - clampedAt[0]);
                 if (arena.ore() != ORES - 1 || arena.dear() != 1) {
-                    throw helper.assertionException(
+                    throw failure(helper, 
                             "the bay holds %s cheap and %s dear ore after the skim, not %s and 1",
                             arena.ore(), arena.dear(), ORES - 1);
                 }
                 if (arena.pod.hull() != hull[0]) {
-                    throw helper.assertionException("the hull went from %s to %s", hull[0], arena.pod.hull());
+                    throw failure(helper, "the hull went from %s to %s", hull[0], arena.pod.hull());
                 }
                 if (arena.holder.player().getHealth() != arena.holder.player().getMaxHealth()) {
-                    throw helper.assertionException("the pilot was hurt");
+                    throw failure(helper, "the pilot was hurt");
                 }
                 if (!arena.blocksUnchanged()) {
-                    throw helper.assertionException("the Tally changed a block of the arena");
+                    throw failure(helper, "the Tally changed a block of the arena");
                 }
                 if (arena.droppedItems() != 0) {
-                    throw helper.assertionException("the Tally dropped %s items", arena.droppedItems());
+                    throw failure(helper, "the Tally dropped %s items", arena.droppedItems());
                 }
                 if (arena.told(APPROACH_KEY) != 1 || arena.told(CLAMP_POD_KEY) != 1 || arena.told(SAMPLE_KEY) != 1) {
-                    throw helper.assertionException(
+                    throw failure(helper, 
                             "the pilot was not told once each of the approach, the clamp and the sample: %s",
                             arena.holder.actionBarMessages());
                 }
                 arena.clear();
                 helper.succeed();
             } else if (helper.getTick() - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
-                throw helper.assertionException(
+                throw failure(helper, 
                         "the Tally was still there %s ticks after it clamped, ore %s",
                         helper.getTick() - clampedAt[0], arena.ore());
             }
@@ -272,7 +274,7 @@ public class TallyTest {
                     clampedAt[0] = helper.getTick();
                     arena.holder.setInput(SPRINT);
                 } else if (helper.getTick() > CLAMP_BUDGET_TICKS) {
-                    throw helper.assertionException("the Tally had not clamped to the hatch");
+                    throw failure(helper, "the Tally had not clamped to the hatch");
                 }
                 return;
             }
@@ -286,27 +288,27 @@ public class TallyTest {
                             TUNING.maxHealth());
                 }
                 if (arena.ore() != ORES) {
-                    throw helper.assertionException("the bay holds %s ore after the cutter, not %s", arena.ore(), ORES);
+                    throw failure(helper, "the bay holds %s ore after the cutter, not %s", arena.ore(), ORES);
                 }
                 if (arena.tally.isClamped()) {
-                    throw helper.assertionException("the broken Tally still clamps the hatch");
+                    throw failure(helper, "the broken Tally still clamps the hatch");
                 }
                 if (arena.droppedItems() != 0) {
-                    throw helper.assertionException("the broken Tally dropped %s items", arena.droppedItems());
+                    throw failure(helper, "the broken Tally dropped %s items", arena.droppedItems());
                 }
                 if (arena.told(BITTEN_KEY) != 1 || arena.told(BROKEN_KEY) != 1) {
                     // The mock pilot's lines reach it a tick after the server sends them: look again next tick.
                     if (helper.getTick() - brokeAt[0] < 4) {
                         return;
                     }
-                    throw helper.assertionException(
+                    throw failure(helper, 
                             "the pilot was not told once each that the cutter bites and that it broke: %s",
                             arena.holder.actionBarMessages());
                 }
                 arena.clear();
                 helper.succeed();
             } else if (since > TUNING.cutterBreakTicks() + 20) {
-                throw helper.assertionException(
+                throw failure(helper, 
                         "the Tally lived %s ticks after the pilot drilled (health %s)", since, arena.tally.getHealth());
             }
         });
@@ -341,7 +343,7 @@ public class TallyTest {
                 if (arena.tally.isClamped()) {
                     clampedAt[0] = helper.getTick();
                 } else if (helper.getTick() > CLAMP_BUDGET_TICKS) {
-                    throw helper.assertionException("the Tally had not clamped to the pack");
+                    throw failure(helper, "the Tally had not clamped to the pack");
                 }
                 return;
             }
@@ -349,25 +351,25 @@ public class TallyTest {
                 LOGGER.info(
                         "[tally] foot: the sample was taken {} ticks after the clamp", helper.getTick() - clampedAt[0]);
                 if (arena.ore() != ORES - 1 || arena.dear() != 1) {
-                    throw helper.assertionException(
+                    throw failure(helper, 
                             "the person carries %s cheap and %s dear ore after the skim, not %s and 1",
                             arena.ore(), arena.dear(), ORES - 1);
                 }
                 if (arena.holder.player().getHealth() != arena.holder.player().getMaxHealth()) {
-                    throw helper.assertionException("the person was hurt");
+                    throw failure(helper, "the person was hurt");
                 }
                 if (arena.told(CLAMP_FOOT_KEY) != 1 || arena.told(SAMPLE_KEY) != 1) {
                     if (helper.getTick() - clampedAt[0] < SAMPLE_BUDGET_TICKS) {
                         return;
                     }
-                    throw helper.assertionException(
+                    throw failure(helper, 
                             "the person was not told once each of the clamp and the sample: %s",
                             arena.holder.actionBarMessages());
                 }
                 arena.clear();
                 helper.succeed();
             } else if (helper.getTick() - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
-                throw helper.assertionException(
+                throw failure(helper, 
                         "the Tally was still there %s ticks after it clamped", helper.getTick() - clampedAt[0]);
             }
         });
@@ -393,28 +395,28 @@ public class TallyTest {
                     // The lightest blow there is: a bare hand does 1.
                     arena.tally.hurtServer(level, level.damageSources().playerAttack(person), 1f);
                     if (arena.tally.isAlive()) {
-                        throw helper.assertionException(
+                        throw failure(helper, 
                                 "a blow of 1 left the Tally alive with %s of %s health",
                                 arena.tally.getHealth(), arena.tally.getMaxHealth());
                     }
                     LOGGER.info("[tally] foot: one blow of 1 broke it (health {})", TUNING.maxHealth());
                 } else if (helper.getTick() > CLAMP_BUDGET_TICKS) {
-                    throw helper.assertionException("the Tally had not clamped to the pack");
+                    throw failure(helper, "the Tally had not clamped to the pack");
                 }
                 return;
             }
             if (arena.tally.isRemoved()) {
                 if (arena.ore() != ORES) {
-                    throw helper.assertionException(
+                    throw failure(helper, 
                             "the person carries %s ore after the blow, not %s", arena.ore(), ORES);
                 }
                 if (arena.droppedItems() != 0) {
-                    throw helper.assertionException("the broken Tally dropped %s items", arena.droppedItems());
+                    throw failure(helper, "the broken Tally dropped %s items", arena.droppedItems());
                 }
                 arena.clear();
                 helper.succeed();
             } else if (helper.getTick() - struckAt[0] > 60) {
-                throw helper.assertionException("the broken Tally was still there 60 ticks after the blow");
+                throw failure(helper, "the broken Tally was still there 60 ticks after the blow");
             }
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
@@ -436,11 +438,11 @@ public class TallyTest {
                     level.damageSources().magic(),
                     level.damageSources().inWall())) {
                 if (tally.hurtServer(level, source, 1000f)) {
-                    throw helper.assertionException("the Tally took damage from %s", source.getMsgId());
+                    throw failure(helper, "the Tally took damage from %s", source.getMsgId());
                 }
             }
             if (tally.getHealth() != tally.getMaxHealth()) {
-                throw helper.assertionException("the Tally's health went to %s", tally.getHealth());
+                throw failure(helper, "the Tally's health went to %s", tally.getHealth());
             }
             tally.discard();
             helper.succeed();
@@ -466,24 +468,24 @@ public class TallyTest {
             }
             if (phase[0] == 0) {
                 if (!Tally.draws(arena.pod)) {
-                    throw helper.assertionException("a pod with a pilot and ore draws no Tally");
+                    throw failure(helper, "a pod with a pilot and ore draws no Tally");
                 }
                 arena.pod.cargo().dump(arena.pod);
                 if (Tally.draws(arena.pod)) {
-                    throw helper.assertionException("a pod with an empty bay draws a Tally");
+                    throw failure(helper, "a pod with an empty bay draws a Tally");
                 }
                 person.stopRiding();
                 person.getInventory().clearContent();
                 if (Tally.draws(person)) {
-                    throw helper.assertionException("a person with no ore draws a Tally");
+                    throw failure(helper, "a person with no ore draws a Tally");
                 }
                 person.getInventory().add(OreRegistry.stack(OreType.IRONIUM));
                 if (!Tally.draws(person)) {
-                    throw helper.assertionException("a person with ore in the dark draws no Tally");
+                    throw failure(helper, "a person with ore in the dark draws no Tally");
                 }
                 person.setGameMode(GameType.CREATIVE);
                 if (Tally.draws(person)) {
-                    throw helper.assertionException("a creative person draws a Tally");
+                    throw failure(helper, "a creative person draws a Tally");
                 }
                 person.setGameMode(GameType.SURVIVAL);
                 // room-carver: a light block in this test's own arena
@@ -493,12 +495,12 @@ public class TallyTest {
             } else if (level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, person.blockPosition())
                     >= io.github.pkeppeler.deepcharter.creature.CreatureTuning.DEFAULT.litBlockLight()) {
                 if (Tally.draws(person)) {
-                    throw helper.assertionException("a person with ore standing in a light draws a Tally");
+                    throw failure(helper, "a person with ore standing in a light draws a Tally");
                 }
                 arena.clear();
                 helper.succeed();
             } else if (helper.getTick() - litAt[0] > LIGHT_BUDGET_TICKS) {
-                throw helper.assertionException("the light did not reach the person in %s ticks", LIGHT_BUDGET_TICKS);
+                throw failure(helper, "the light did not reach the person in %s ticks", LIGHT_BUDGET_TICKS);
             }
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, true));
@@ -523,19 +525,19 @@ public class TallyTest {
             Optional<Tally> sent = Tallies.checkMark(level, pod[0], 1.0, level.getRandom());
             if (sent.isEmpty()) {
                 if (++attempts[0] > SEND_ATTEMPT_TICKS) {
-                    throw helper.assertionException(
+                    throw failure(helper, 
                             "%s checks that passed in open dark air sent no Tally", SEND_ATTEMPT_TICKS);
                 }
                 return;
             }
             double distance = sent.get().position().distanceTo(pod[0].position());
             if (distance < TUNING.spawnMinBlocks() - 4 || distance > TUNING.spawnMaxBlocks() + 4) {
-                throw helper.assertionException(
+                throw failure(helper, 
                         "the Tally appeared %s blocks off, outside %s to %s",
                         distance, TUNING.spawnMinBlocks(), TUNING.spawnMaxBlocks());
             }
             if (Tallies.checkMark(level, pod[0], 1.0, level.getRandom()).isPresent()) {
-                throw helper.assertionException("a second Tally was sent to a mark that has one near");
+                throw failure(helper, "a second Tally was sent to a mark that has one near");
             }
             sent.get().discard();
             pod[0].discard();
@@ -546,7 +548,7 @@ public class TallyTest {
             made.setPos(Vec3.atBottomCenterOf(origin.above(40)));
             level.addFreshEntity(made);
             if (Tallies.checkMark(level, made, 0.0, level.getRandom()).isPresent()) {
-                throw helper.assertionException("a check with no chance sent a Tally");
+                throw failure(helper, "a check with no chance sent a Tally");
             }
             pod[0] = made;
         });
@@ -559,20 +561,20 @@ public class TallyTest {
         int range = (int) TUNING.casingRangeBlocks();
         if (TUNING.trailTicks() + 100 > CLAMP_BUDGET_TICKS
                 || TUNING.podSampleTicks() + TUNING.leaveTicks() + 60 > SAMPLE_BUDGET_TICKS) {
-            throw helper.assertionException("the tests' tick budgets do not cover the tuning %s", TUNING);
+            throw failure(helper, "the tests' tick budgets do not cover the tuning %s", TUNING);
         }
         var inside = TestEntities.create(CreatureRegistry.TALLY, helper.getLevel());
         inside.setPos(casing.getX() + 0.5 + range, casing.getY(), casing.getZ() + 0.5 - range);
         if (!Tallies.nearCasing(inside, casing)) {
-            throw helper.assertionException(
+            throw failure(helper, 
                     "the corner of the zone, %s blocks out each way, is not near the casing", range);
         }
         inside.setPos(casing.getX() + 0.5 + range + 1, casing.getY(), casing.getZ() + 0.5);
         if (Tallies.nearCasing(inside, casing)) {
-            throw helper.assertionException("%s blocks out is near the casing", range + 1);
+            throw failure(helper, "%s blocks out is near the casing", range + 1);
         }
         if (Tallies.chance(2) <= Tallies.chance(1)) {
-            throw helper.assertionException("layer 2 sends %s and layer 1 %s", Tallies.chance(2), Tallies.chance(1));
+            throw failure(helper, "layer 2 sends %s and layer 1 %s", Tallies.chance(2), Tallies.chance(1));
         }
         helper.succeed();
     }
@@ -594,15 +596,15 @@ public class TallyTest {
             level.addFreshEntity(tally);
             ScanSlice with = ScanSlice.scan(Tallies.echoed(level, pod), at, Direction.EAST, 1, Chassis.MOLE);
             if (!(with.cell(2, 0) instanceof ScanSlice.Cell.Ore)) {
-                throw helper.assertionException("the Tally's cell reads as %s, not ore", with.cell(2, 0));
+                throw failure(helper, "the Tally's cell reads as %s, not ore", with.cell(2, 0));
             }
             if (!(with.cell(3, 0) instanceof ScanSlice.Cell.Air)) {
-                throw helper.assertionException("the cell beside the Tally reads as %s, not air", with.cell(3, 0));
+                throw failure(helper, "the cell beside the Tally reads as %s, not air", with.cell(3, 0));
             }
             tally.discard();
             ScanSlice without = ScanSlice.scan(Tallies.echoed(level, pod), at, Direction.EAST, 1, Chassis.MOLE);
             if (!(without.cell(2, 0) instanceof ScanSlice.Cell.Air)) {
-                throw helper.assertionException("with no Tally the cell reads as %s, not air", without.cell(2, 0));
+                throw failure(helper, "with no Tally the cell reads as %s, not air", without.cell(2, 0));
             }
             pod.discard();
             helper.succeed();

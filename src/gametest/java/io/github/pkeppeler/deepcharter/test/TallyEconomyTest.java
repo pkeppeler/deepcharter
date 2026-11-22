@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.creature.Tallies;
 import io.github.pkeppeler.deepcharter.creature.TallyTuning;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -75,15 +77,15 @@ public class TallyEconomyTest {
                 hold,
                 (double) TUNING.footSampleTicks() / TICKS_PER_SECOND);
         if (trail < TRAIL_SECONDS_MIN || trail > TRAIL_SECONDS_MAX) {
-            throw helper.assertionException("the trail takes %s s, not about 30", trail);
+            throw failure(helper, "the trail takes %s s, not about 30", trail);
         }
         if (REACTION_SECONDS + cutter >= hold) {
-            throw helper.assertionException(
+            throw failure(helper, 
                     "a pilot who answers after %s s and a cutter that takes %s s do not beat the hold of %s s",
                     REACTION_SECONDS, cutter, hold);
         }
         if (cutter > 1.5) {
-            throw helper.assertionException("the cutter takes %s s to break a Tally: it is not easy to break", cutter);
+            throw failure(helper, "the cutter takes %s s to break a Tally: it is not easy to break", cutter);
         }
         helper.succeed();
     }
@@ -117,22 +119,22 @@ public class TallyEconomyTest {
                 twoLoss / twoRun.net(),
                 meanOre(layerTwo));
         if (oneLoss / oneRun.net() > LAYER_ONE_SHARE_MAX) {
-            throw helper.assertionException(
+            throw failure(helper, 
                     "Tallies cost a layer 1 run %s of its net on average, over %s",
                     oneLoss / oneRun.net(), LAYER_ONE_SHARE_MAX);
         }
         if (twoLoss / twoRun.net() > LAYER_TWO_SHARE_MAX) {
-            throw helper.assertionException(
+            throw failure(helper, 
                     "Tallies cost a layer 2 run %s of its net on average, over %s",
                     twoLoss / twoRun.net(), LAYER_TWO_SHARE_MAX);
         }
         if (twoSkims < LAYER_TWO_SKIMS_MIN || twoSkims > SKIMS_MAX || oneSkims > SKIMS_MAX) {
-            throw helper.assertionException(
+            throw failure(helper, 
                     "a run meets %s skims in layer 1 and %s in layer 2, outside the tax's %s to %s",
                     oneSkims, twoSkims, LAYER_TWO_SKIMS_MIN, SKIMS_MAX);
         }
         if (twoSkims <= oneSkims) {
-            throw helper.assertionException(
+            throw failure(helper, 
                     "layer 2 skims %s a run and layer 1 %s: they do not rise with depth", twoSkims, oneSkims);
         }
         helper.succeed();
@@ -153,7 +155,7 @@ public class TallyEconomyTest {
                 cheapest / run.net(),
                 run.net());
         if (cheapest / run.net() > WORST_SKIM_SHARE_MAX) {
-            throw helper.assertionException(
+            throw failure(helper, 
                     "one ore of $%s is over %s of a layer 1 run's net of $%s",
                     cheapest, WORST_SKIM_SHARE_MAX, run.net());
         }
