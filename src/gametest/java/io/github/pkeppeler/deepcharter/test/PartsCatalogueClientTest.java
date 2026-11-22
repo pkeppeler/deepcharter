@@ -386,8 +386,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
     // ---------------------------------------------------------------- the layout
 
     private static Optional<CatalogueLayout> layoutAt(int width, int height) {
-        return Optional.ofNullable(
-                CatalogueLayout.of(width, height, CatalogueLook.current(), CrtTuning.current(), 9));
+        return Optional.ofNullable(CatalogueLayout.of(width, height, CatalogueLook.current(), CrtTuning.current(), 9));
     }
 
     /** The shortest GUI the consoles draw at: they stand level with the inventory. */

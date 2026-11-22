@@ -528,11 +528,7 @@ public class ThemeLooksTest {
                 "catalogue panel widths",
                 List.of(123, 122),
                 List.of(look.maxPanelWidth(), look.minPanelWidth()));
-        expect(
-                helper,
-                "catalogue console height, the inventory's",
-                List.of(166),
-                List.of(look.consoleHeight()));
+        expect(helper, "catalogue console height, the inventory's", List.of(166), List.of(look.consoleHeight()));
         expect(
                 helper,
                 "catalogue grid",

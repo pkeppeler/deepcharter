@@ -32,6 +32,7 @@ public final class CatalogueScreens {
     private static final Map<Screen, CataloguePanel> PANELS = new HashMap<>();
     /** An item {@link #open} was asked for before the inventory it needs was open, looked up as soon as the panel exists. */
     private static @Nullable Item pending;
+
     private CatalogueScreens() {}
 
     public static void register() {
@@ -50,7 +51,12 @@ public final class CatalogueScreens {
 
     /** Whether a screen {@code width} by {@code height} has room for the panels, which is when they take the place of the vanilla recipe book. */
     private static boolean fits(int width, int height) {
-        return CatalogueLayout.of(width, height, CatalogueLook.current(), CrtTuning.current(), Minecraft.getInstance().font.lineHeight)
+        return CatalogueLayout.of(
+                        width,
+                        height,
+                        CatalogueLook.current(),
+                        CrtTuning.current(),
+                        Minecraft.getInstance().font.lineHeight)
                 != null;
     }
 

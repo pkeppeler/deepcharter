@@ -213,7 +213,6 @@ public record CatalogueLook(
             return deckGap + 2 * deckRow + deckRowGap + bottomBezel;
         }
     }
-    }
 
     public static CatalogueLook current() {
         return UiTheme.current().catalogue();
