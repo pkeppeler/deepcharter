@@ -32,6 +32,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The Drifters' world (#973): what makes a noise in the hollows, and when a source of noise draws a new drifter. Placement keys on the biome tag
@@ -64,7 +65,19 @@ public final class Drifters {
     /** Where each person on foot stood at the last look, to tell walking from standing. Server thread only. */
     private static Map<Seen, Vec3> lastSeen = new HashMap<>();
 
+    /** The source of chance for the roll and the placement in place of the level's, or null. Server thread only. */
+    private static @Nullable RandomSource seeded;
+
     private Drifters() {}
+
+    /**
+     * Makes the tick roll and place with {@code random} in place of the level's, so a test's counts do not depend on chance; null restores
+     * the level's.
+     */
+    // test-seam: a test seeds the tick's chance so that its drifter counts are exact, not a probability
+    public static void seed(@Nullable RandomSource random) {
+        seeded = random;
+    }
 
     public static void init() {
         ServerLifecycleEvents.SERVER_STARTING.register(server -> clear());
@@ -75,6 +88,7 @@ public final class Drifters {
     private static void clear() {
         NOISES.clear();
         lastSeen = new HashMap<>();
+        seeded = null;
     }
 
     /** The nearest noise that reaches {@code from}, as far as its radius times {@code senseMult}. */
@@ -99,6 +113,7 @@ public final class Drifters {
             look(level);
         }
         if (now % tuning.spawn().checkTicks() == 0 && mayPlace(level)) {
+            RandomSource random = seeded != null ? seeded : level.getRandom();
             List<Source> sources = sources(level);
             for (Source source : sources) {
                 Optional<DrifterAlarm.Zone> zone = zoneOf(level, source);
@@ -107,11 +122,11 @@ public final class Drifters {
                                 zone.get().index(),
                                 DrifterAlarm.isRinging(
                                         level, BlockPos.containing(source.pos()).getY()),
-                                level.getRandom())) {
+                                random)) {
                     int inZone = (int) sources.stream()
                             .filter(other -> zoneOf(level, other).equals(zone))
                             .count();
-                    spawnFor(level, source, inZone, level.getRandom());
+                    spawnFor(level, source, inZone, random);
                 }
             }
         }

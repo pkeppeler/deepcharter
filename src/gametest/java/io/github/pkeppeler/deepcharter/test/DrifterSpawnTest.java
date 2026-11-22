@@ -49,6 +49,9 @@ public class DrifterSpawnTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(DrifterSpawnTest.class);
     private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final DrifterTuning TUNING = DrifterTuning.DEFAULT;
+    /** The seed of the tick's chance in {@code theTickPlacesDriftersByPodsUpToTheZoneCap}. */
+    private static final long SEED = 973L;
+
     private static final Identifier HOLLOWS_TEST_BIOME = Identifier.fromNamespaceAndPath("deepcharter-test", "hollows");
     private static final Identifier DRONE = Identifier.fromNamespaceAndPath("deepcharter", "creature.alarm_drone");
     /** The long room of the spawn test: 47 blocks along x (four chunks), 13 across and 19 high, so that a place 18 to 36 blocks from its middle is in it. */
@@ -449,7 +452,8 @@ public class DrifterSpawnTest {
      * The production tick (the look, the roll every {@code checkTicks}, the count by pods and the cap) places the drifters, with the alarm
      * ringing so that a roll comes in a few checks: none while {@code spawn_mobs} is off; one pod holds two (1 plus the alarm's 1), a second pod
      * three (the middle zone's cap), and each new drifter comes at least a check after the last. The drifters are held still so that none
-     * bursts on its pod.
+     * bursts on its pod. The roll and the placement draw from a seeded source ({@link Drifters#seed}), so the counts are reproducible, not a
+     * chance of a flake; the budget only bounds a failure.
      */
     @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 50_000)
     public void theTickPlacesDriftersByPodsUpToTheZoneCap(GameTestHelper helper) {
@@ -473,6 +477,7 @@ public class DrifterSpawnTest {
             try {
                 if (!set[0]) {
                     set[0] = true;
+                    Drifters.seed(RandomSource.create(SEED));
                     room(level, y);
                     hollows(level, y);
                     pods[0] = podAt(helper, level, y, 0, pilots, 0);
@@ -535,6 +540,7 @@ public class DrifterSpawnTest {
                     }
                 }
             } catch (RuntimeException e) {
+                Drifters.seed(null);
                 level.getServer().getGameRules().set(GameRules.SPAWN_MOBS, false, level.getServer());
                 throw e;
             }
@@ -558,6 +564,7 @@ public class DrifterSpawnTest {
 
     private static void finish(
             ServerLevel level, List<? extends Drifter> alive, PodEntity[] pods, MockPlayer[] pilots) {
+        Drifters.seed(null);
         level.getServer().getGameRules().set(GameRules.SPAWN_MOBS, false, level.getServer());
         alive.forEach(Drifter::discard);
         for (int i = 0; i < pods.length; i++) {
