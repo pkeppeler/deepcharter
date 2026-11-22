@@ -11,9 +11,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Compares the light a client reads with the light the server holds (issue 427). A client that is sent a chunk while the server's light
@@ -24,6 +27,8 @@ import net.minecraft.world.level.LightLayer;
 public final class ClientLight {
     /** Ticks the client gets, after the server's light engine is idle, to receive the light packets that follow. */
     private static final int PACKET_TICKS = 10;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClientLight.class);
 
     private ClientLight() {}
 
@@ -154,5 +159,47 @@ public final class ClientLight {
         // check
         context.waitTicks(PACKET_TICKS);
         return describeMismatch(context, server, dimension, box);
+    }
+
+    /**
+     * Logs, for the still {@code name} taken at {@code pos}, the light the client and the server read there, and what else sets the
+     * brightness of the picture (issue 832): a CI log tells whether two runs of one still differ in light or in the lightmap's inputs.
+     */
+    public static void logStill(
+            ClientGameTestContext context,
+            TestServerContext server,
+            ResourceKey<Level> dimension,
+            String phase,
+            String name,
+            BlockPos pos) {
+        String serverRead = server.computeOnServer(s -> {
+            ServerLevel level = serverLevel(s, dimension);
+            return "blockLight=" + level.getBrightness(LightLayer.BLOCK, pos) + " skyLight="
+                    + level.getBrightness(LightLayer.SKY, pos);
+        });
+        String clientRead = context.computeOnClient(client -> {
+            ClientLevel level = clientLevel(client);
+            var probe = client.gameRenderer.mainCamera().attributeProbe();
+            return "blockLight=" + level.getBrightness(LightLayer.BLOCK, pos) + " skyLight="
+                    + level.getBrightness(LightLayer.SKY, pos) + " dimension="
+                    + level.dimension().identifier() + " blockTint="
+                    + probe.getValue(EnvironmentAttributes.BLOCK_LIGHT_TINT, 1f) + " skyFactor="
+                    + probe.getValue(EnvironmentAttributes.SKY_LIGHT_FACTOR, 1f) + " ambient="
+                    + probe.getValue(EnvironmentAttributes.AMBIENT_LIGHT_COLOR, 1f) + " gamma="
+                    + client.options.gamma().get() + " darkness="
+                    + client.options.darknessEffectScale().get();
+        });
+        ChunkPos chunk = ChunkPos.containing(pos);
+        LOGGER.info(
+                "[lit-room] phase={} still={} pos={},{},{} chunk={},{} client: {} | server: {}",
+                phase,
+                name,
+                pos.getX(),
+                pos.getY(),
+                pos.getZ(),
+                chunk.x(),
+                chunk.z(),
+                clientRead,
+                serverRead);
     }
 }

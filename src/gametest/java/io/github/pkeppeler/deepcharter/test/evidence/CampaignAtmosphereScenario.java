@@ -371,7 +371,9 @@ public class CampaignAtmosphereScenario extends EvidenceScenario {
             float pitch,
             String name) {
         stand(context, server, dimension, floor, NORTH, pitch, name);
+        ClientLight.logStill(context, server, dimension, "stood", name, floor.above());
         screenshot(context, name);
+        ClientLight.logStill(context, server, dimension, "shot", name, floor.above());
         frame(context);
     }
 
