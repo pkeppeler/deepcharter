@@ -35,7 +35,7 @@ public final class LayerBlocks {
                     .noLootTable()));
 
     /**
-     * The grained crust (#746, ADR 0060): crust with a vertical grain that flexes on a slow pulse. The id is permanent. Its name and the
+     * The grained crust (#746, ADR 0060): crust with a vertical grain that flexes on a slow pulse. Its name and the
      * messages that explain it are placeholders until the lore session (#12) names them.
      */
     public static final Block GRAINED_CRUST = registerBlock(
@@ -44,6 +44,18 @@ public final class LayerBlocks {
                     .setId(key)
                     .strength(5.0F, 6.0F)
                     .sound(SoundType.STONE)
+                    .noLootTable()));
+
+    /**
+     * The pale growth that closes an unvisited bore (#974, {@link Overgrowth}). A soft block with no drop: a hand cuts it in seconds, the
+     * drill bores it at extra fuel.
+     */
+    public static final Block OVERGROWTH = registerBlock(
+            id("overgrowth"),
+            key -> new OvergrowthBlock(BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .strength(OvergrowthTuning.DEFAULT.hardness())
+                    .sound(SoundType.MOSS)
                     .noLootTable()));
 
     /** The rust-brown rock of layer 1, which the layer's noise settings fill the ground with. */

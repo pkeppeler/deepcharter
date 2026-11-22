@@ -1744,3 +1744,43 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Knobs.** None: the behaviour is the vanilla falling block's. `SurfaceBlocks.REGOLITH_DUST` is the dust colour.
 
 **Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
+
+
+## Overgrowth (#974, A)
+
+**Problem.** The Fungal Hollows are the Sleeper's growth, and a bore is a hole in it ([CREATURES.md](../CREATURES.md#overgrowth)). A hazard that is not a mob and needs no new sensor: leave a bore alone and it heals over. It must read before it costs, never trap anyone, and never take a block a player built (SPEC section 10: hazards never delete player-built blocks).
+
+**What it does.** A bore that nobody visits grows over with the pale `overgrowth` block, from the walls inward, a few cells at a time. It is a soft full block with no drop.
+
+| Situation | What happens | Counterplay |
+|---|---|---|
+| A bore goes unvisited for 5 minutes | The film starts: the cells that touch rock fill first, then the cells that touch the film | Come back before it closes, or line it |
+| A player stands within 32 blocks of the bore | Nothing grows, and the clock starts over | Visiting is the cheapest counterplay |
+| A pod or a player stands in a cell | That cell is skipped | None needed: it never walls anyone in |
+| A lining block (slag brick) is within 2 blocks of a cell | That cell never grows | Line the shaft |
+| A placed block (a liner, a slag brick, a torch, a floor) is in the way | It is never replaced: growth only fills air | None needed |
+| The cell is outside a `fungal_hollows` biome | Nothing grows | None needed |
+
+**The ladder.**
+1. By hand: cut it on foot. It has no tool requirement and a hardness of 1 (stone is 1.5): 1.5 s with an empty hand, a quarter of a second with an iron axe (it is in `mineable/axe`). It drops nothing.
+2. The drill: re-bore it. The drill goes through at the speed of the soft block and burns **3 times** its fuel while a slab with growth in it is under the bit, as the Company rock cutter does. A slab of growth costs about twice the fuel of a slab of stone (soft growth, 3 times the rate), so a long unvisited shaft is a real bill, and a pod that comes back early pays nothing.
+3. Mastery: lining a shaft keeps it open for good. A lining block within 2 blocks of a cell holds that cell open, so a brick every 5 blocks of shaft is all it takes, and the brick never wears. It is a reason to carry bricks into a dig that has no lava: the lava ladder already makes slag brick the lining, and the Hollows give it a second use.
+
+**What a bore is (A).** An air cell that a pod drill or a hand cut out of natural rock (the tag `natural_rock`, Company rock included) or out of growth. The drill and the hand-break event mark the cell in an attachment on its chunk, only when the cell is in a hollows biome, so a world with the tag empty (shipped data until #972) never writes anything and pays nothing. Why not "any air next to rock": it would close natural caves too, which are the layer's own space, and the Drifters live in them. Why not a scan of the drill's path: a cell mark is the same cost, survives a tow or a respawn, and says exactly what to regrow.
+
+**Visits (A).** A player who is not a spectator within `visitRadius` blocks (3D) of any bore cell of a chunk visits the chunk; a pod counts through its pilot. The chunk keeps one last-visit time, written at most every 30 s, so a chunk is saved when a visit is stamped and when growth fills a cell, not every tick. An empty parked pod does not hold the growth back: it would need an entity query on the tick path (m2-rules.md), and the pod itself is safe, since growth never fills a cell an entity is in. Growth only runs in a chunk that is loaded and ticking, as random ticks do.
+
+**Never traps (A).** The player who could be walled in is within the radius, so nothing grows near them; an entity in a cell stops that cell; the drill bores growth; a hand cuts it. A parked pod can be boxed in by growth above it, and then the pilot cuts it from the seat's side on foot: that is rung 1.
+
+**Sensed (A).** The film is the warning: pale cells show on the walls long before a bore closes (the 3 x 3 bore below takes 2 minutes to close from the first cell), and a growth cell sheds a spore into an open side now and then.
+
+**Knobs (`OvergrowthTuning`).** `delayTicks` (6000, 5 minutes), `visitRadius` (32), `passTicks` (100), `cellsPerPass` (3, for the whole chunk), `holdReach` (2), `visitStampTicks` (600), `maxLooks` (48, the cells one pass weighs: a chunk of thousands costs what a small one does), `drillFuelMultiplier` (3), `hardness` (1.0). Data: the biome tag `deepcharter:fungal_hollows` (empty), the block tag `deepcharter:lining` (slag brick), `minecraft:mineable/axe`.
+
+**Pacing: measured.** `OvergrowthTest.theBoreGrowsAtTheMeasuredPace`: a 3 x 3 bore 8 cells long, cut in a stone box in a test biome of the tag, with no player near, left to the clock on the real tick path. The line it prints is `[overgrowth] pacing`. The numbers below follow from the knobs, and the test fails if the run leaves them: first cell in the pass after the delay, then 3 cells every pass. The measured line replaces them in this table once the run has been made (not yet, #974 was written while the GameTest slot was taken).
+
+| What | Ticks | Time |
+|---|---|---|
+| Unvisited until the first cell grows | 6000 to 6100 | 5:00 to 5:05 |
+| First cell to a closed bore (72 cells at 3 every 100 ticks) | 2400 | 2:00 |
+
+**Open questions.** Whether the scanner should mark growth (it reads as rock to sonar at present); whether the liner part should ring a shaft with a brick even without lava, so the part that "keeps it open for good" does so with no pilot; the lore name and the Sleeper's reason (the lore session, #12).
