@@ -1744,3 +1744,42 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Knobs.** None: the behaviour is the vanilla falling block's. `SurfaceBlocks.REGOLITH_DUST` is the dust colour.
 
 **Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
+
+## The thrown kit (#985, A)
+
+**Problem.** CREATURES section 8 gives the operator flares, decoys and charge rounds, and a crew on foot has nothing: the Hush's solo answer is "fused charges and thrown decoys on timers", the Great Listener's is "set a decoy, plant, retreat", and the Retained on foot are kept off by a light in hand, which is also the thing a person needs both hands for. The kit is the operator's rounds by hand, and every throw is bought (pillar 1).
+
+**The three.** Each is a consumable the repair station sells, used from the hand on foot. A throw from a seat is refused and kept. It flies like a snowball and lands on the top face of a block; a wall or a creature turns it back and it drops.
+
+| Item | Lands, then | Reads as | Costs |
+|---|---|---|---|
+| Flare | stands a burning light block for 90 s | real block light, so every rule that reads block light sees it (the natural spawn, the Retained on foot at block light under 3); and a pod within 10 blocks counts as lit, so it draws no Retained | $12 |
+| Decoy | rings a bell every second for 45 s | a noise source: `DrawSources.noiseTarget` hands a creature within 40 blocks the decoy instead of the drill | $25 |
+| Charge | burns a 3 second fuse, then blasts | the pod's blasting charge, through `PodCharge.detonate`: the 3 x 3 column under it, 2 rows deep, clears Company rock and natural rock only where the column holds Company rock, spares what is built, bedrock and fluids, hurts a pod in reach by distance | $55 |
+
+**Ladder.** By hand: the kit is the hand stage of the operator's flare rounds, decoy rounds and charge launcher (layer 4 and the Badger), which fire the same three from a seat at range. A crew with the operator throws less; a solo player on foot throws more.
+
+**Counterplay and its limits.** A flare keeps a Retained off a dark pod, and frees no one already held: the cutter or a blow still ends a grip (CREATURES section 3). A charge hurts a person at the blast, the thrower included, but never kills: it leaves half a heart at worst, so the cost of a bad throw is health and a lesson, not a run. A decoy does nothing to Moloch's things: they are drawn to the dark.
+
+**Measured** (`ThrownKitPacingTest`, quoted by the PR):
+
+| What | Number | Band |
+|---|---|---|
+| Flat throw, level with the eyes | lands 11 blocks away after 11 ticks | 8 to 16 |
+| Lob, 15 degrees up | lands 24 blocks away after 25 ticks | 14 to 30 |
+| Holding a dark stretch for five minutes | 4 flares, $48, 14% of a layer 2 run | 2 to 6 throws, 5% to 25% |
+| The Hush, solo: a three minute tow under decoys, two charges | 6 throws, $210, 60% of a layer 2 run | 4 to 10 throws, 30% to 70% |
+| A Listener: a decoy, a charge | 2 throws, $80, 23% of a layer 2 run | 2 to 3 throws, 10% to 35% |
+| One flare against the Retained's cadence | 90 s against a 20 s wait after a kill: 4 gaps | 3 to 10 |
+| A decoy against the Listeners' 10 s of patience | 45 s | 20 s to 90 s |
+| A charge's fuse against the walk out of its reach | 60 ticks against 24 | at least twice, at most 6 s |
+
+**Knobs.** `ThrownKitTuning` (throw speed, flare light, reach and burn, decoy noise, pull and pulse, charge fuse, radius and damage to a person), the three prices in `Consumable`, and `RepairTuning`'s charge depth, damage and reach, which the thrown charge shares with the pod's.
+
+**Decisions (A).**
+- The flare is a block, not an entity with a virtual light: the light engine and every light rule see it with no special case, and a scheduled tick puts it out through an unload. Its reach for pods is the one part a block cannot carry (a pod's lights are not block light), so `DrawSources` holds it.
+- The decoy's hook is `DrawSources.noiseTarget(level, from, drillAt)`: no Sleeper's creature is built yet, and each one that arrives asks it where to head. The same registry holds the flares, so the creature code reads one place.
+- A thrown charge clears rock only where its column holds Company rock, the pod's own rule: otherwise a $55 throw would be dynamite that outranges the seat.
+- Thrown things are not saved. A throw whose chunk unloads is spent, as the pod's fuse is; a flare's block is saved and burns out on its own.
+
+**Open questions.** Whether a decoy should wake the Retained's cousins (Tallies click toward noise); whether a thrown charge should break a creature's grip on a pod when it lands on the hull; a suit lamp that makes the flare optional on foot.
