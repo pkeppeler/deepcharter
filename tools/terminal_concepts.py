@@ -157,15 +157,17 @@ def nameplate(height, text, ink):
     img.text(x, ty, text, ink)
     return img
 
+VIGNETTE_REACH = 10
 
-def glass_sprite(radius, vignette, shadow=(0, 0), depth=(0, 0), reach=10):
+
+def glass_sprite(radius, vignette, shadow=(0, 0), depth=(0, 0)):
     """The CRT glass over the content: a soft dark edge, the bezel's shadow cast on the top and left of the glass (`shadow` alphas, `depth` pixels), a thin
     light line where the glass catches the light along the bottom and right, and a pale reflection along the top-left arc.
 
     The glass is a rounded rectangle of corner `radius`, cut in nine with a border of `radius` (a corner cell holds the whole arc), and it is clear outside
     the arc: the pixels the porthole of `hatch_frame` leaves open are exactly the pixels this fills, because both ask `hole_distance` of the pixel centre.
     Every ring (the vignette, the shadow, the light lines) is a distance from that edge, so a ring `k` pixels in has the corner radius `radius - k` and
-    its arc runs beside the bezel's. `reach` is how far in the vignette goes.
+    its arc runs beside the bezel's. The vignette goes `VIGNETTE_REACH` pixels in.
     """
     size = 2 * radius + 4
     img = Img(size, size)
@@ -175,7 +177,7 @@ def glass_sprite(radius, vignette, shadow=(0, 0), depth=(0, 0), reach=10):
             if signed >= 0:
                 continue
             t = -signed - 0.5  # 0 on the outermost row of pixels, along a straight edge as along an arc
-            alpha = vignette * (1 - t / reach) ** 1.6 if t < reach else 0
+            alpha = vignette * (1 - t / VIGNETTE_REACH) ** 1.6 if t < VIGNETTE_REACH else 0
             if depth[0] and t < depth[0]:
                 alpha += shadow[0] * max(0.0, -ny) * (1 - t / depth[0]) ** 1.4
             if depth[1] and t < depth[1]:
