@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DrifterTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(DrifterTest.class);
+    private static final String SAMPLE = "deepcharter:campaign_sample";
     private static final DrifterTuning TUNING = DrifterTuning.DEFAULT;
     /** Ticks a test waits for the noise to be heard, a look every {@link DrifterTuning.Noise#lookTicks}, and a margin for a loaded runner. */
     private static final int HEAR_TICKS = 30;
@@ -568,8 +569,8 @@ public class DrifterTest {
      * however many they are. A per-person count would make the two walkers two sources, and the pod's second rider one.
      */
     @GameTest(
-            dimension = "deepcharter:campaign_sample",
-            environment = CampaignEnvironments.C,
+            dimension = SAMPLE,
+            environment = CampaignEnvironments.D,
             maxTicks = FarChunks.AWAIT_BUDGET_TICKS + HEAR_TICKS + 60)
     public void aSourceIsAPodNotAPersonAndTheCrewOnFootIsOne(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
