@@ -5,6 +5,12 @@
   },
   "directives": [
     {
+      "id": "deepcharter:handbook/every_sale_counts/haul_ore",
+      "text": {
+        "translate": "deepcharter.handbook.directive.every_sale_counts.haul_ore"
+      }
+    },
+    {
       "id": "deepcharter:handbook/every_sale_counts/sell_ore",
       "text": {
         "translate": "deepcharter.handbook.directive.every_sale_counts.sell_ore"
