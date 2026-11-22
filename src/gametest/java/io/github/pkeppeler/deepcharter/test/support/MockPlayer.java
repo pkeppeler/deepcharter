@@ -4,6 +4,7 @@ import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.ReferenceCountUtil;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,8 +19,12 @@ import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.protocol.game.ClientboundChunkBatchFinishedPacket;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
+import net.minecraft.network.protocol.game.ClientboundLightUpdatePacket;
+import net.minecraft.network.protocol.game.ClientboundRecipeBookAddPacket;
+import net.minecraft.network.protocol.game.ClientboundRecipeBookRemovePacket;
 import net.minecraft.network.protocol.game.ClientboundSoundEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
+import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
 import net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
 import net.minecraft.resources.Identifier;
@@ -27,6 +32,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 
@@ -35,6 +42,7 @@ import net.minecraft.world.phys.Vec3;
  * with {@link MockPlayers#join}. Everything here runs on the server thread.
  */
 public final class MockPlayer {
+    private static final int TELEPORT_IDS = 32;
     private final MinecraftServer server;
     private final ServerPlayer player;
     private final Connection connection;
@@ -43,8 +51,13 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
+    private final List<Long> soundTicks = new ArrayList<>();
     private final List<CustomPacketPayload> payloads = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
+    private final MockClientLight clientLight = new MockClientLight();
+    private final Set<RecipeDisplayId> recipeDisplays = new HashSet<>();
+    private final Set<RecipeDisplayId> recipeDisplaysEverSent = new HashSet<>();
+    private int recipeToasts;
     private boolean loaded;
 
     MockPlayer(
@@ -75,6 +88,11 @@ public final class MockPlayer {
         return List.copyOf(sounds);
     }
 
+    /** The level game time at which the mock read each sound of {@link #soundsHeard()}, in order: the play tick or the next. */
+    public List<Long> soundTicks() {
+        return List.copyOf(soundTicks);
+    }
+
     /**
      * Every chunk the server has sent this player so far. The mock acknowledges each chunk batch, so sending is not throttled.
      * Read on the mock's tick, so it lags by one.
@@ -83,9 +101,43 @@ public final class MockPlayer {
         return Set.copyOf(chunksSent.keySet());
     }
 
+    /** The light this player's client holds, from the chunk and light packets it was sent. Read on the mock's tick, so it lags by one. */
+    public MockClientLight clientLight() {
+        return clientLight;
+    }
+
     /** How many times the server has sent this player the chunk; a chunk it already has is not sent again. */
     public int timesSent(ChunkPos chunk) {
         return chunksSent.getOrDefault(chunk, 0);
+    }
+
+    /**
+     * The id of every recipe the server has put in this player's recipe book, as a client would hold them: the add and remove
+     * packets applied in order. Read on the mock's tick, so it lags by one.
+     */
+    public Set<Identifier> recipesHeld() {
+        return recipeIds(recipeDisplays);
+    }
+
+    /** The id of every recipe the server has sent this player at any time, even one it removed again. Read on the mock's tick, so it lags by one. */
+    public Set<Identifier> recipesEverSent() {
+        return recipeIds(recipeDisplaysEverSent);
+    }
+
+    private Set<Identifier> recipeIds(Set<RecipeDisplayId> displays) {
+        Set<Identifier> held = new HashSet<>();
+        for (RecipeDisplayId display : displays) {
+            RecipeManager.ServerDisplayInfo info = server.getRecipeManager().getRecipeFromDisplay(display);
+            if (info != null) {
+                held.add(info.parent().id().identifier());
+            }
+        }
+        return held;
+    }
+
+    /** How many recipes the server has told this player to announce with a toast so far. Read on the mock's tick, so it lags by one. */
+    public int recipeToasts() {
+        return recipeToasts;
     }
 
     /**
@@ -156,6 +208,18 @@ public final class MockPlayer {
         confirmDimensionChange();
     }
 
+    /**
+     * Answers every teleport the server is waiting on, as a real client does: until then the server drops the player's position and
+     * vehicle packets. Mounting a vehicle teleports the rider. The server numbers its teleports from 1 and keeps no list, so this
+     * answers each number from 1 to {@link #TELEPORT_IDS}; an answer to a number it is not waiting for is ignored.
+     */
+    public void acknowledgeTeleports() {
+        for (int id = 1; id <= TELEPORT_IDS; id++) {
+            player.connection.handleAcceptTeleportPacket(new ServerboundAcceptTeleportationPacket(
+                    id, player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
+        }
+    }
+
     /** Disconnect and remove the player, also one that respawned (#698). Safe to call when it has already left. */
     public void leave() {
         if (connection.isConnected()) {
@@ -194,9 +258,29 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundSoundEntityPacket packet) {
                     sounds.add(packet.getSound().value().location());
+                    soundTicks.add(player.level().getGameTime());
+                }
+                if (outbound instanceof ClientboundRecipeBookAddPacket packet) {
+                    if (packet.replace()) {
+                        recipeDisplays.clear();
+                    }
+                    for (ClientboundRecipeBookAddPacket.Entry entry : packet.entries()) {
+                        recipeDisplays.add(entry.contents().id());
+                        recipeDisplaysEverSent.add(entry.contents().id());
+                        recipeToasts += entry.notification() ? 1 : 0;
+                    }
+                }
+                if (outbound instanceof ClientboundRecipeBookRemovePacket packet) {
+                    packet.recipes().forEach(recipeDisplays::remove);
                 }
                 if (outbound instanceof ClientboundLevelChunkWithLightPacket packet) {
                     chunksSent.merge(new ChunkPos(packet.x(), packet.z()), 1, Integer::sum);
+                    clientLight.apply(
+                            server.getTickCount(), "chunk", new ChunkPos(packet.x(), packet.z()), packet.lightData());
+                }
+                if (outbound instanceof ClientboundLightUpdatePacket packet) {
+                    clientLight.apply(
+                            server.getTickCount(), "light", new ChunkPos(packet.x(), packet.z()), packet.lightData());
                 }
                 // connection.tick() above may have disconnected the player, which nulls its listener
                 if (outbound instanceof ClientboundChunkBatchFinishedPacket && player.connection != null) {

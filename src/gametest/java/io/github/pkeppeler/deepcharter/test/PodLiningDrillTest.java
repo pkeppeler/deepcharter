@@ -1,9 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -25,12 +24,10 @@ import java.util.function.BiConsumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for what the drill does with hand lining (#313), in layer 1: it keeps the waste rock it bores as spoil when the pod has a hopper (and none without), up to the
@@ -40,7 +37,7 @@ import org.jspecify.annotations.Nullable;
 public class PodLiningDrillTest {
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1000;
     private static final int Z = 3300;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int RADIUS = 4;
 
     /** A mock pilot, and the pod it sits in once the far chunk ticks entities. */
@@ -222,11 +219,5 @@ public class PodLiningDrillTest {
     /** A spoil hopper on the pod, which the pilot's charter owns. */
     private static void fitHopper(GameTestHelper helper, PodEntity pod, MockPlayer pilot) {
         ScannerPods.fit(helper.getLevel().getServer(), pilot.player(), pod, ComponentTrack.SPOIL_HOPPER, 1);
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

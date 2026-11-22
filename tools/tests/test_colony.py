@@ -403,9 +403,10 @@ class TownTest(unittest.TestCase):
         for name, (x, y, z) in town.ANCHORS.items():
             with self.subTest(anchor=name):
                 if name in TERMINALS:
-                    # The game stands the terminal here, on its plinth.
-                    self.assertTrue(self.free(x, y, z))
-                    self.assertIn((x, y - 1, z), self.cells, "no plinth under the terminal")
+                    # The game stands the terminal here, two blocks high, on the ground.
+                    self.assertEqual(1, y, "a terminal stands on the ground")
+                    self.assertTrue(self.free(x, y, z) and self.free(x, y + 1, z), "no room for both halves")
+                    self.assertIn((x, y - 1, z), self.cells, "no ground under the terminal")
                 elif name == "statue":
                     self.assertIn((x, y - 1, z), self.cells, "no plinth under the statue")
                 elif name == "conduit":

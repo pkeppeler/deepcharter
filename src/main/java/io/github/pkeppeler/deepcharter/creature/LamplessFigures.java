@@ -96,7 +96,7 @@ public final class LamplessFigures {
     }
 
     /** {@link LayerChain#bandAt}, empty for a dimension type given inline by a data pack, which has no key: a spawner callback never throws. */
-    private static Optional<Band> bandAt(ServerLevel level, int y) {
+    static Optional<Band> bandAt(ServerLevel level, int y) {
         if (level.dimensionTypeRegistration().unwrapKey().isEmpty()) {
             return Optional.empty();
         }

@@ -1,9 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import static io.github.pkeppeler.deepcharter.test.support.Inputs.SPRINT;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreType;
@@ -38,7 +37,6 @@ import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.item.ItemStack;
@@ -60,7 +58,7 @@ public class PodLinerTest {
     private static final AtomicInteger OWNERS = new AtomicInteger();
 
     private static final int Z = 3416;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int RADIUS = 4;
     private static final int PLENTY = 200;
     private static final int DRILL_TICKS = 2600;
@@ -732,6 +730,11 @@ public class PodLinerTest {
             this.pod = pod;
         }
 
+        /** True once the liner has an anchor, which {@link #start} is read from. */
+        boolean started() {
+            return last != null;
+        }
+
         void tick() {
             Optional<PodLiner.Anchor> now =
                     Versioned.readable(pod, PodLiner.STATE).orElseThrow().anchor();
@@ -799,7 +802,7 @@ public class PodLinerTest {
                 return;
             }
             rig.watch().tick();
-            if (rig.pod().blockPosition().getY() > rig.watch().start - 10) {
+            if (!rig.watch().started() || rig.pod().blockPosition().getY() > rig.watch().start - 10) {
                 return;
             }
             rig.pilot.releaseInput();
@@ -809,10 +812,13 @@ public class PodLinerTest {
             if (!rings.equals(expected)) {
                 throw failure(
                         helper,
-                        "tier %s over 10 slabs should lay %s (the depth below the start, the bricks), it laid %s",
+                        "tier %s over 10 slabs should lay %s (the depth below the start, the bricks), it laid %s (start %s, pod at %s after %s ticks)",
                         tier,
                         expected,
-                        rings);
+                        rings,
+                        rig.watch().start,
+                        rig.pod().position(),
+                        rig.pod().tickCount);
             }
             rig.pod().discard();
             helper.succeed();
@@ -906,11 +912,5 @@ public class PodLinerTest {
             pod.discard();
             helper.succeed();
         });
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

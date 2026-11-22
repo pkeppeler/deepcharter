@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -25,7 +25,6 @@ import java.util.function.Consumer;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.ProblemReporter;
@@ -37,7 +36,6 @@ import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +49,7 @@ public class PodLavaWatchTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(PodLavaWatchTest.class);
     private static final AtomicInteger OWNERS = new AtomicInteger();
     private static final int Z = 5400;
-    private static final int FLOOR = 14;
+    private static final int FLOOR = TestLayers.worldY(1, 14);
     /** Cells of the pod's box, from its feet up. */
     private static final int BOX = 3;
     /** Air cells above the pod's feet in the shaft. */
@@ -573,11 +571,5 @@ public class PodLavaWatchTest {
             throw failure(helper, "unreadable watch state is left as it was read");
         }
         helper.succeed();
-    }
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }
