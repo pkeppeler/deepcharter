@@ -12,17 +12,24 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
+import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.core.Direction;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The engine, drill and rotor loops of every pod with a pilot, heard from where the pod is. Each loop runs while the pod is in
- * its state and ends the tick it leaves it: a pod that starts drilling swaps its engine loop for a drill loop. A pod nobody sits in,
- * or one without power ({@link PodEntity#stranded}), is silent.
+ * The engine, drill and rotor loops of every pod with a pilot. Each loop runs while the pod is in its state. A loop never starts or
+ * stops at full volume: one starts silent and rises, and one whose state ended falls to silence before it stops, so a pod that
+ * starts driving, or drilling, crossfades its engine loops instead of cutting one and starting the next (#961). A pod nobody sits in,
+ * or one without power ({@link PodEntity#stranded}), fades to silence.
+ *
+ * <p>The loops of the pod the player pilots are heard from the cab: they follow no position, because a sound placed at the pod's last
+ * tick position, heard from a camera that moves every frame, pans and swells at the tick rate (twenty times a second). Any other
+ * pod's loops are placed at the pod.
  */
 public final class PodLoops {
     /** One loop slot of a pod: at most one loop of each plays at a time. */
@@ -43,7 +50,8 @@ public final class PodLoops {
         }
     }
 
-    private record Key(int podId, Channel channel) {}
+    /** One loop: a pod, its channel, the sound, and whether it is heard from the cab (the local pilot's) or from where the pod is. */
+    private record Key(int podId, Channel channel, DeepSound sound, boolean cab) {}
 
     private static final Map<Key, Loop> LOOPS = new HashMap<>();
     /** Pod id to the ticks it still counts as moving: {@link SoundTuning#movingHoldTicks} after its last move. */
@@ -111,56 +119,71 @@ public final class PodLoops {
             // ever.
             if (entity instanceof PodEntity pod && !pod.isRemoved() && pod.tickCount > 0) {
                 for (Channel channel : Channel.values()) {
-                    Key key = new Key(pod.getId(), channel);
-                    Optional<DeepSound> wanted = channel.soundOf(pod);
-                    Loop playing = LOOPS.get(key);
-                    if (playing != null && wanted.equals(Optional.of(playing.deepSound))) {
-                        continue;
-                    }
-                    if (playing != null) {
-                        playing.end();
-                        LOOPS.remove(key);
-                    }
-                    if (wanted.isPresent()) {
-                        Loop loop = new Loop(pod, channel, wanted.get());
-                        LOOPS.put(key, loop);
-                        client.getSoundManager().play(loop);
-                    }
+                    // A loop of a state the pod has left is not ended here: it falls to silence and stops itself.
+                    channel.soundOf(pod).ifPresent(wanted -> {
+                        Key key = new Key(pod.getId(), channel, wanted, isCab(pod));
+                        if (!LOOPS.containsKey(key)) {
+                            Loop loop = new Loop(pod, key);
+                            LOOPS.put(key, loop);
+                            client.getSoundManager().play(loop);
+                        }
+                    });
                 }
             }
         }
     }
 
-    /** Follows its pod and ends itself when the pod is gone, in another level, or no longer in the state the loop is for. */
+    /** Whether the player at this client pilots {@code pod}. */
+    private static boolean isCab(PodEntity pod) {
+        return pod.getControllingPassenger() == Minecraft.getInstance().player;
+    }
+
+    /** Follows its pod, fades in while the pod is in the loop's state and out when it leaves it, and stops once it is silent or its pod is gone. */
     private static final class Loop extends AbstractTickableSoundInstance {
         private final PodEntity pod;
-        private final Channel channel;
-        private final DeepSound deepSound;
+        private final Key key;
+        private final float fadeStep = 1f / SoundTuning.DEFAULT.engineFadeTicks();
 
-        private Loop(PodEntity pod, Channel channel, DeepSound sound) {
-            super(sound.event(), SoundSource.NEUTRAL, RandomSource.create());
+        private Loop(PodEntity pod, Key key) {
+            super(key.sound().event(), SoundSource.NEUTRAL, RandomSource.create());
             this.pod = pod;
-            this.channel = channel;
-            this.deepSound = sound;
+            this.key = key;
             this.looping = true;
+            this.volume = 0f;
+            if (key.cab()) {
+                this.relative = true;
+                this.attenuation = SoundInstance.Attenuation.NONE;
+            }
             follow();
+        }
+
+        /** A loop starts at volume 0 and rises; vanilla would drop a silent sound without playing it. */
+        @Override
+        public boolean canStartSilent() {
+            return true;
         }
 
         @Override
         public void tick() {
-            if (pod.isRemoved()
-                    || pod.level() != Minecraft.getInstance().level
-                    || !channel.soundOf(pod).equals(Optional.of(deepSound))) {
-                end();
+            if (pod.isRemoved() || pod.level() != Minecraft.getInstance().level) {
+                stop();
+                return;
+            }
+            boolean wanted = key.channel().soundOf(pod).equals(Optional.of(key.sound())) && isCab(pod) == key.cab();
+            volume = Mth.clamp(volume + (wanted ? fadeStep : -fadeStep), 0f, 1f);
+            if (!wanted && volume == 0f) {
+                stop();
                 return;
             }
             follow();
         }
 
         private void follow() {
-            x = pod.getX();
-            y = pod.getY();
-            z = pod.getZ();
+            if (!key.cab()) {
+                x = pod.getX();
+                y = pod.getY();
+                z = pod.getZ();
+            }
         }
 
         /** {@code stop()} is protected: the outer class ends loops through this. */
