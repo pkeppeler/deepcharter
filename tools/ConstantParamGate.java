@@ -57,23 +57,20 @@ import java.util.stream.Collectors;
  * Constant-parameter gate (#912): fails when a parameter of a method or constructor of the mod (src/main, src/client) has at least one
  * production caller, every one of which passes the same literal there. A parameter nothing varies is a constant in disguise.
  *
- * <p>Run it as {@code java tools/ConstantParamGate.java ...}: a multi-file source launch (JEP 458) that reuses {@link TestOnlyGate}'s
- * source parser, class loading, override test and marker reader, which sit beside it in {@code tools/}.
+ * <p>Run it as {@code java tools/ConstantParamGate.java ...}: a multi-file source launch (JEP 458) that reuses {@link TestOnlyGate}.
  *
- * <p>Callers are read from the compiled classes with a small stack simulation, so a call whose argument is a variable, a ternary or any
- * other expression counts as varying. A literal is a number, string, char, boolean, {@code null}, class literal or enum constant; a
- * {@code static final} constant that is not inlined (a registered object, say) is not one, and an inlined one is indistinguishable from
- * the number it holds. A method handle or method reference counts as a caller with unknown arguments. Tests are not read: a parameter
- * only tests vary still fails.
+ * <p>Callers are read from the compiled classes with a small stack simulation, so an argument that is a variable, a ternary or any other
+ * expression counts as varying. A literal is a number, string, char, boolean, {@code null}, class literal or enum constant; an inlined
+ * {@code static final} is indistinguishable from its value. A method handle or reference counts as a caller with unknown arguments.
+ * Tests are not read: a parameter only tests vary still fails.
  *
  * <p>It passes what the test-only gate passes (overrides, annotated members, {@code @Mixin} classes, local and anonymous classes) and
- * a record's explicit canonical constructor, a varargs parameter, the synthetic enum and outer-instance parameters, and a method with no
+ * a record's canonical constructor, a varargs parameter, the synthetic enum and outer-instance parameters, and a method with no
  * production caller. The marker is {@code // const-param: <reason>}, placed like {@code test-seam:}; its reason needs two or more words
- * that are not a stock phrase. A declaration the parser cannot locate is a finding at the class, which the same marker on the class
- * exempts.
+ * that are not a stock phrase. A declaration the parser cannot locate is a finding at the class, which the marker on the class exempts.
  *
- * <p>Usage: java ConstantParamGate.java --production dir... --sources dir... [--classpath entry...] [--root dir] [--list]. Exit 1 prints
- * the failures; --list prints the key of every finding ({@code Class#member(parameters)#parameter}) and exits 0.
+ * <p>Usage: java ConstantParamGate.java --production dir... --sources dir... [--classpath entry...] [--root dir] [--list]. --list
+ * prints the key of every finding ({@code Class#member(parameters)#parameter}) and exits 0.
  */
 public final class ConstantParamGate {
     private static final String CONSTANT_MARKER = "const-param:";
@@ -243,7 +240,9 @@ public final class ConstantParamGate {
     Map<String, String> run(List<Path> productionDirs) throws IOException {
         gate.classDirs.addAll(productionDirs);
         TestOnlyGate.read(productionDirs, gate.production);
-        gate.production.values().forEach(this::scanCalls);
+        for (ClassModel from : gate.production.values()) {
+            from.methods().forEach(method -> method.code().ifPresent(this::simulate));
+        }
         Map<String, String> findings = new TreeMap<>();
         for (ClassModel model : gate.production.values()) {
             for (MethodModel method : constantCandidates(model)) {
@@ -258,12 +257,6 @@ public final class ConstantParamGate {
             }
         }
         return findings;
-    }
-
-    private void scanCalls(ClassModel from) {
-        for (MethodModel method : from.methods()) {
-            method.code().ifPresent(this::simulate);
-        }
     }
 
     /** Walks the code once, tracking which stack entries are literals, and records the arguments of every call into the mod. */
@@ -326,7 +319,7 @@ public final class ConstantParamGate {
                 }
                 case LoadInstruction load ->
                     frame.push(Val.unknown(load.typeKind().slotSize() == 2));
-                case StoreInstruction ignored -> frame.pop();
+                case StoreInstruction _, MonitorInstruction _ -> frame.pop();
                 case ArrayLoadInstruction load -> {
                     frame.pop();
                     frame.pop();
@@ -351,11 +344,7 @@ public final class ConstantParamGate {
                 }
                 case StackInstruction stack -> simulateStack(frame, stack.opcode());
                 case NewObjectInstruction ignored -> frame.push(Val.UNKNOWN);
-                case NewPrimitiveArrayInstruction ignored -> {
-                    frame.pop();
-                    frame.push(Val.UNKNOWN);
-                }
-                case NewReferenceArrayInstruction ignored -> {
+                case NewPrimitiveArrayInstruction _, NewReferenceArrayInstruction _, TypeCheckInstruction _ -> {
                     frame.pop();
                     frame.push(Val.UNKNOWN);
                 }
@@ -365,11 +354,6 @@ public final class ConstantParamGate {
                     }
                     frame.push(Val.UNKNOWN);
                 }
-                case TypeCheckInstruction ignored -> {
-                    frame.pop();
-                    frame.push(Val.UNKNOWN);
-                }
-                case MonitorInstruction ignored -> frame.pop();
                 case BranchInstruction branch -> {
                     switch (branch.opcode()) {
                         case GOTO, GOTO_W -> {}
@@ -384,18 +368,8 @@ public final class ConstantParamGate {
                         frame.end();
                     }
                 }
-                case LookupSwitchInstruction table -> {
-                    frame.pop();
-                    frame.jump(table.defaultTarget());
-                    table.cases().stream().map(SwitchCase::target).forEach(frame::jump);
-                    frame.end();
-                }
-                case TableSwitchInstruction table -> {
-                    frame.pop();
-                    frame.jump(table.defaultTarget());
-                    table.cases().stream().map(SwitchCase::target).forEach(frame::jump);
-                    frame.end();
-                }
+                case LookupSwitchInstruction table -> jumpSwitch(frame, table.defaultTarget(), table.cases());
+                case TableSwitchInstruction table -> jumpSwitch(frame, table.defaultTarget(), table.cases());
                 case ReturnInstruction ret -> {
                     if (ret.typeKind() != TypeKind.VOID) {
                         frame.pop();
@@ -406,14 +380,20 @@ public final class ConstantParamGate {
                     frame.pop();
                     frame.end();
                 }
-                case NopInstruction ignored -> {}
-                case IncrementInstruction ignored -> {}
+                case NopInstruction _, IncrementInstruction _ -> {}
                 // Any other instruction has an effect on the stack this walk does not model: forget the stack, so later
                 // pops are unknown.
                 case Instruction ignored -> frame.clear();
                 default -> {}
             }
         }
+    }
+
+    private static void jumpSwitch(Frame frame, Label defaultTarget, List<SwitchCase> cases) {
+        frame.pop();
+        frame.jump(defaultTarget);
+        cases.stream().map(SwitchCase::target).forEach(frame::jump);
+        frame.end();
     }
 
     private void simulateCall(Frame frame, InvokeInstruction call) {
@@ -722,7 +702,7 @@ public final class ConstantParamGate {
             return notLocated(member, label, where, source, classPath);
         }
         String reason = TestOnlyGate.markerFor(gate.lexed.get(source), declaration.line(), CONSTANT_MARKER);
-        if (reason != null && validReason(reason)) {
+        if (isValid(reason)) {
             return Map.of();
         }
         Map<String, String> out = new TreeMap<>();
@@ -744,7 +724,7 @@ public final class ConstantParamGate {
             TestOnlyGate.Member member, String label, String where, Path source, String classPath) {
         int line = gate.classLine(source, classPath);
         String reason = TestOnlyGate.markerFor(gate.lexed.get(source), Math.max(line, 1), CONSTANT_MARKER);
-        if (reason != null && validReason(reason)) {
+        if (isValid(reason)) {
             return Map.of();
         }
         return Map.of(
@@ -754,7 +734,11 @@ public final class ConstantParamGate {
                         + (reason != null ? BAD_REASON : ""));
     }
 
-    private static boolean validReason(String reason) {
+    /** A marker's reason, or null when there is no marker: two or more words that are not a stock phrase. */
+    private static boolean isValid(String reason) {
+        if (reason == null) {
+            return false;
+        }
         String trimmed = reason.strip();
         return trimmed.split("\\s+").length >= 2
                 && !GENERIC_REASONS.contains(trimmed.toLowerCase().replaceAll("\\.+$", ""));

@@ -518,7 +518,7 @@ public final class TestOnlyGate {
         String classPath = binary.substring(binary.lastIndexOf('/') + 1).replace('$', '.');
         String innermost = classPath.substring(classPath.lastIndexOf('.') + 1);
         boolean constructor = member.name().equals("<init>");
-        String label = labelOf(member, classPath);
+        String label = labelOf(member, classPath, 0);
         String sourceName = member.owner()
                 .findAttribute(Attributes.sourceFile())
                 .map(a -> a.sourceFile().stringValue())
@@ -529,7 +529,8 @@ public final class TestOnlyGate {
         boolean bare = false;
         if (source != null) {
             where = root.relativize(source.toAbsolutePath().normalize()).toString();
-            Declaration declaration = declarationOf(source, classPath, constructor ? innermost : member.name(), member);
+            Declaration declaration =
+                    declarationOf(source, classPath, constructor ? innermost : member.name(), member, 0);
             if (declaration == null && !constructor) {
                 throw new IllegalStateException(
                         where + ": cannot find the declaration of " + label + "; the gate's parser lost its place");
@@ -549,10 +550,6 @@ public final class TestOnlyGate {
         String caller = found.firstTest.substring(found.firstTest.lastIndexOf('/') + 1);
         return where + ":" + line + " " + label + " is referenced only from src/gametest (first: " + caller + ")"
                 + (bare ? "; its '// test-seam:' marker has no reason" : "");
-    }
-
-    private static String labelOf(Member member, String classPath) {
-        return labelOf(member, classPath, 0);
     }
 
     /** The member as source names it, without the first {@code skip} descriptor parameters. */
@@ -584,12 +581,10 @@ public final class TestOnlyGate {
         return null;
     }
 
-    /** The declaration of {@code member} in {@code source}: same class, name and parameter types, so one overload or nested class never stands for another. */
-    private Declaration declarationOf(Path source, String classPath, String name, Member member) {
-        return declarationOf(source, classPath, name, member, 0);
-    }
-
-    /** As above, ignoring the first {@code skip} descriptor parameters: the ones javac adds that the source does not declare. */
+    /**
+     * The declaration of {@code member} in {@code source}: same class, name and parameter types, so one overload or nested class never
+     * stands for another. The first {@code skip} descriptor parameters are ignored: javac added them.
+     */
     Declaration declarationOf(Path source, String classPath, String name, Member member, int skip) {
         List<Declaration> all = declarations.computeIfAbsent(source, path -> declarationsIn(path));
         List<String> wanted = member.field()
@@ -636,7 +631,7 @@ public final class TestOnlyGate {
     }
 
     /**
-     * The text after {@code // test-seam:} on declaration {@code line} (1-based) or, when that line has none, on a line of the block
+     * The text after {@code // <marker>} on declaration {@code line} (1-based) or, when that line has none, on a line of the block
      * of comment-only lines directly above it.
      */
     static String markerFor(Lexed source, int line, String marker) {
