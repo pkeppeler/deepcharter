@@ -2,6 +2,8 @@ package io.github.pkeppeler.deepcharter.test;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.ClientHandbook;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitDecay;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitHud;
 import io.github.pkeppeler.deepcharter.client.pod.CockpitReading;
@@ -500,6 +502,15 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         && shown.getBlockY() <= floorFeetY
                         && shown.stranded()
                         && SignalDecay.intensity(shown) >= 1);
+        // The floor of the Claim completes a directive, and its popup slides in over the lamps at the right end of the
+        // ribbon. The server polls for it, so the popup is queued some ticks after the pod arrives, later than the
+        // shot clears the toasts. Await the sync that queues it, so the shot's clear removes it (#1023).
+        ClientWait.until(
+                context,
+                "the Deep Claim directive synced to the client",
+                client -> ClientHandbook.completed()
+                        .contains(Identifier.fromNamespaceAndPath(
+                                DeepCharter.MOD_ID, "handbook/staying_safe/reach_deep_claim")));
         context.runOnClient(client -> {
             CockpitDecay decay = CockpitDecay.of(
                     client, TestEntities.vehicle(ClientSession.player(client), PodEntity.class), CockpitLook.current());
