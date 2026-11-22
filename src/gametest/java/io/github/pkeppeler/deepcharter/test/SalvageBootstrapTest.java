@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.ColonyTuning;
 import io.github.pkeppeler.deepcharter.hangar.HangarData;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.test.support.BlockSurvey;
@@ -597,11 +598,11 @@ public class SalvageBootstrapTest {
                         bag.craftPart(helper, "fuel_valve");
                         BlockPos terminal = helper.absolutePos(new BlockPos(0, 1, 0));
                         HandbookChaptersOneToFiveTest.stand(helper, mock, terminal);
-                        helper.getLevel()
-                                .setBlock(
-                                        terminal,
-                                        TerminalTypes.FUEL_PUMP.block().defaultBlockState(),
-                                        3);
+                        TerminalBlock.place(
+                                helper.getLevel(),
+                                terminal,
+                                TerminalTypes.FUEL_PUMP.block().defaultBlockState(),
+                                3);
                         for (Item part : TerminalTypes.FUEL_PUMP.parts()) {
                             bag.take(part, 1, helper, "the fuel pump");
                             player.getInventory().add(new ItemStack(part));

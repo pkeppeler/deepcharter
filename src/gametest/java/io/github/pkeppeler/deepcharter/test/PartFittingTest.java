@@ -1,5 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import com.google.gson.JsonObject;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
@@ -155,10 +157,6 @@ public class PartFittingTest {
     private static InteractionResult useUnit(Scene scene, PodEntity pod, ComponentTrack track) {
         scene.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(unit(track)));
         return UseEntity.on(scene.player(), pod.level(), InteractionHand.MAIN_HAND, pod);
-    }
-
-    private static RuntimeException failure(GameTestHelper helper, String format, Object... args) {
-        return helper.assertionException(format, args);
     }
 
     /** A world's inventories, chests and recipes name these ids (ADR 0053), so a rename is a decision: each is pinned by its literal. */
