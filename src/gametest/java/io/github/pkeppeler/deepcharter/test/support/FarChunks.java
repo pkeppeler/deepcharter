@@ -3,8 +3,10 @@ package io.github.pkeppeler.deepcharter.test.support;
 import io.github.pkeppeler.deepcharter.layer.LightSync;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.IntConsumer;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
@@ -45,6 +47,8 @@ public final class FarChunks {
     private static final Map<Chunk, Integer> HOLDS = new HashMap<>();
     /** The chunks each running test holds, by the test's bounds (what {@code GameTestHelper.getBounds} and the runner share). */
     private static final Map<AABB, List<Chunk>> HELD_BY_TEST = new HashMap<>();
+    /** The chunks {@link #pin} holds for the world's life. */
+    private static final Set<Chunk> PINNED = new HashSet<>();
 
     static {
         // A world's levels must not outlive its server. A pinned chunk's record holds its ServerLevel, the colony pad's
@@ -58,11 +62,12 @@ public final class FarChunks {
 
     /** How many chunks tests hold forced or pinned in the servers that run. */
     public static int heldCount() {
-        return HOLDS.size();
+        return HOLDS.size() + PINNED.size();
     }
 
     private static void forget(MinecraftServer server) {
         HOLDS.keySet().removeIf(chunk -> chunk.level().getServer() == server);
+        PINNED.removeIf(chunk -> chunk.level().getServer() == server);
         HELD_BY_TEST
                 .values()
                 .forEach(chunks -> chunks.removeIf(chunk -> chunk.level().getServer() == server));
@@ -91,13 +96,15 @@ public final class FarChunks {
         }
     }
 
-    /**
-     * Forces a chunk for the rest of the world's life: no test's end lets it go. The colony pad, which tests share, is the case. A
-     * test that holds the same chunk lets go of its own hold only. Server thread only.
-     */
+    /** Forces a chunk for the rest of the world, since the runner unforces every forced chunk at each batch end (#669). */
     public static void pin(ServerLevel level, int chunkX, int chunkZ) {
+        PINNED.add(new Chunk(level, ChunkPos.pack(chunkX, chunkZ)));
         level.setChunkForced(chunkX, chunkZ, true);
-        HOLDS.merge(new Chunk(level, ChunkPos.pack(chunkX, chunkZ)), 1, Integer::sum);
+    }
+
+    /** Whether {@link #pin} holds this chunk, exempt from the runner's batch-end unforce. */
+    public static boolean isPinned(ServerLevel level, int chunkX, int chunkZ) {
+        return PINNED.contains(new Chunk(level, ChunkPos.pack(chunkX, chunkZ)));
     }
 
     /**

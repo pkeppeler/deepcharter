@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import io.github.pkeppeler.deepcharter.colony.Colony;
+import io.github.pkeppeler.deepcharter.colony.ColonySite;
+import io.github.pkeppeler.deepcharter.test.support.ColonyChunks;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import java.util.concurrent.atomic.AtomicReference;
@@ -87,6 +90,26 @@ public class FarChunksTest {
             return;
         }
         throw helper.assertionException("a wait that never settles must fail once the 30 s of ticks are used");
+    }
+
+    /**
+     * The runner unforces every forced chunk of the level when a batch finishes (#669: it dropped the colony pad, and the test that
+     * needed the pad next found its chunk unloaded). That is done here for the pad's chunks, as it does it.
+     */
+    @GameTest
+    public void thePadStaysForcedWhenTheRunnerUnforcesEveryChunkAtTheEndOfABatch(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ColonySite.Placed colony = Colony.placed(level.getServer()).orElseThrow();
+        ColonyChunks.force(level, colony);
+        for (BlockPos pos : ColonyChunks.of(colony)) {
+            // force-ok: simulates GameTestRunner$1.testCompleted's raw batch-end unforce; going through FarChunks would
+            // bypass what is under test
+            level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, false);
+            if (!level.getForceLoadedChunks().contains(ChunkPos.pack(pos.getX() >> 4, pos.getZ() >> 4))) {
+                throw helper.assertionException("the pad chunk at %s was unforced", pos);
+            }
+        }
+        helper.succeed();
     }
 
     /** Two tests that force one chunk: the first to finish does not release it, the second does. */
