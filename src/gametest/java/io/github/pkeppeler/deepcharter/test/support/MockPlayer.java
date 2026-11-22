@@ -76,10 +76,7 @@ public final class MockPlayer {
         return List.copyOf(sounds);
     }
 
-    /**
-     * The level's game time on the mock's tick that read each sound of {@link #soundsHeard()}, in the same order: the tick the sound was
-     * played or the one after, however late the test looks.
-     */
+    /** The level game time at which the mock read each sound of {@link #soundsHeard()}, in order: the play tick or the next. */
     public List<Long> soundTicks() {
         return List.copyOf(soundTicks);
     }

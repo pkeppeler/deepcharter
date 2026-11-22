@@ -594,16 +594,13 @@ public class GrainedCrustTest {
         warningsComeBeforeEachPulse(helper, 5080, 0);
     }
 
-    /**
-     * The creak is judged by the tick it was played on, not the tick the test looked: a test that first looks late (the far chunk was slow
-     * to tick, #958) still finds every creak the walker heard on the schedule.
-     */
+    /** Judged by the tick played, not the tick looked: a late first look (#958) must not shift a creak into the window. */
     @GameTest(maxTicks = MAX_TICKS)
     public void aWarningCreakHeardBeforeTheTestLooksStillCameOnItsTick(GameTestHelper helper) {
-        warningsComeBeforeEachPulse(helper, 5200, 3 * TUNING.grainPulseTicks() + 37);
+        warningsComeBeforeEachPulse(helper, 5200, 3);
     }
 
-    private static void warningsComeBeforeEachPulse(GameTestHelper helper, int x, int lookFromTick) {
+    private static void warningsComeBeforeEachPulse(GameTestHelper helper, int x, int lookAfterPulses) {
         ServerLevel level = room(helper, x);
         pad(level, x);
         MockPlayer walker = MockPlayers.join(helper, "grain-warned");
@@ -616,11 +613,14 @@ public class GrainedCrustTest {
         Arrival<Boolean> ready = ready(helper, level, x);
         int period = TUNING.grainPulseTicks();
         int warnAt = period - WARN_TICKS;
+        // Mid-pulse, so a late look's own phase is never in the warning window.
+        long lookFrom = (level.getGameTime() / period + lookAfterPulses) * period + period / 2;
         TestTicks.each(helper, () -> {
-            if (!ready.isPresent() || helper.getTick() < lookFromTick) {
+            if (!ready.isPresent() || level.getGameTime() < lookFrom) {
                 return;
             }
             List<Identifier> heard = walker.soundsHeard();
+            List<Long> playedAt = walker.soundTicks();
             int cues = 0;
             for (int i = 0; i < heard.size(); i++) {
                 if (!WARNING.equals(heard.get(i))) {
@@ -628,7 +628,7 @@ public class GrainedCrustTest {
                 }
                 cues++;
                 // A mock reads its sounds on its own tick, so a cue is read a tick or two after it was played.
-                long phase = walker.soundTicks().get(i) % period;
+                long phase = playedAt.get(i) % period;
                 if (phase < warnAt || phase > warnAt + 3) {
                     throw failure(
                             helper,
