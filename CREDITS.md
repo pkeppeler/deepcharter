@@ -29,6 +29,6 @@ One more of the same playbacks is the song a wrecked pod's phonograph plays, and
 
 The punch clock in Shift Change calls out an hour now and then in the voice of an 1878 recording, and a few slowed, broken fragments of it are heard in the deepest layers. [tools/sounds/lambert_clock.py](tools/sounds/lambert_clock.py) cuts the hours and fragments from a local copy of the mp3 (which is not in the repository), and [tools/sounds/lambert_clock.json](tools/sounds/lambert_clock.json) records the source's URL, its sha256, its tags verbatim and every cut. The recording skips ten, so the game never calls it.
 
-- **Experimental Talking Clock.** Frank Lambert, about 1878; lead cylinder transferred by Aaron Cramer in 1999; published by Glenn Sage at tinfoil.com (https://www.tinfoil.com/lam-clock~.mp3, notes at https://tinfoil.com/cm-0101.htm).
+- **Experimental Talking Clock.** Frank Lambert, about 1878. The lead cylinder was discovered by Aaron Cramer, and was transferred from it in April 1999 by Glenn Sage (Tinfoil.com) (https://www.tinfoil.com/lam-clock~.mp3, notes at https://tinfoil.com/cm-0101.htm).
 
 The file's own notice, quoted verbatim from its copyright tag: "(C)(P) Glenn Sage (Tinfoil.com).  Do not copy, modify or distribute without permission." Published in the public repo at the user's direction, despite the transfer's do-not-distribute note.

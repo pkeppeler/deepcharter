@@ -81,6 +81,9 @@ class CommittedTest(unittest.TestCase):
         self.assertIn(NOTICE, credits)
         self.assertIn("Published in the public repo at the user's direction, despite the transfer's do-not-distribute note.", credits)
         self.assertIn("https://www.tinfoil.com/lam-clock~.mp3", credits)
+        self.assertIn(
+            "The lead cylinder was discovered by Aaron Cramer, and was transferred from it in April 1999 by Glenn Sage (Tinfoil.com)", credits
+        )
 
     def test_no_mp3_is_tracked(self):
         tracked = subprocess.run(["git", "-C", str(ROOT), "ls-files"], env=git_env.clean_env(ROOT), capture_output=True, text=True).stdout
