@@ -26,8 +26,6 @@ import net.minecraft.world.item.ItemStack;
  * sheet of any shipped item that is.
  */
 final class SpecSheetView {
-    /** The least gap between a rating's name and its figure. */
-    private static final int MIN_GAP = 6;
     /** The dots a line loses its tail to when it is too long. */
     private static final String ELLIPSIS = "..";
 
@@ -48,9 +46,24 @@ final class SpecSheetView {
      * @param title the item's name, in capitals
      * @param cell the item's cell
      * @param lines the lines under the title
+     * @param usedBottom the y under the last of the text
      * @param complete whether every line of the sheet fits
      */
-    record Plan(String title, Rect cell, List<Line> lines, boolean complete) {}
+    record Plan(String title, Rect cell, List<Line> lines, int usedBottom, boolean complete) {}
+
+    /** A sheet placed on a screen: the console, and the text on its glass. */
+    record Placed(SpecSheetLayout layout, Plan plan) {}
+
+    /** Places {@code sheet} on a screen {@code width} by {@code height}: a console as tall as the text needs, centred. */
+    static Placed place(SpecSheet sheet, int width, int height, CatalogueLook look, CrtTuning crt, Font font) {
+        // The text is planned once in the tallest console to see how much room it takes, then again in the console that
+        // size.
+        SpecSheetLayout tallest = SpecSheetLayout.of(width, height, look, crt, font.lineHeight, Integer.MAX_VALUE / 2);
+        Plan measured = plan(sheet, tallest, look, font);
+        int needed = measured.usedBottom() - tallest.glass().y() + look.pad();
+        SpecSheetLayout layout = SpecSheetLayout.of(width, height, look, crt, font.lineHeight, needed);
+        return new Placed(layout, plan(sheet, layout, look, font));
+    }
 
     /** Lays the text of {@code sheet} out inside {@code layout}. */
     static Plan plan(SpecSheet sheet, SpecSheetLayout layout, CatalogueLook look, Font font) {
@@ -87,7 +100,7 @@ final class SpecSheetView {
             }
             String value = rating.value().getString();
             String label = rating.label().getString();
-            int room = width - termWidth(font, value) - MIN_GAP;
+            int room = width - termWidth(font, value) - look.sheetValueGap();
             if (termWidth(font, label) > room) {
                 complete = false;
                 label = fit(font, label, Math.max(0, room));
@@ -96,7 +109,7 @@ final class SpecSheetView {
             lines.add(new Line(value, layout.right() - termWidth(font, value), y, Style.BRIGHT));
             y += pitch;
         }
-        return new Plan(title, cell, List.copyOf(lines), complete);
+        return new Plan(title, cell, List.copyOf(lines), y, complete);
     }
 
     /** Draws {@code sheet} as {@code plan} laid it out, with the mouse at ({@code mouseX}, {@code mouseY}). */

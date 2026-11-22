@@ -15,12 +15,21 @@ import io.github.pkeppeler.deepcharter.handbook.SpecSheetPayload;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheetPopups;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheets;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.pod.Chassis;
+import io.github.pkeppeler.deepcharter.pod.PodBraceTuning;
+import io.github.pkeppeler.deepcharter.pod.PodComponents;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodHeatShieldTuning;
+import io.github.pkeppeler.deepcharter.pod.PodLights;
+import io.github.pkeppeler.deepcharter.pod.PodLinerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.pod.PodSounderTuning;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
 import io.github.pkeppeler.deepcharter.repair.RepairStation;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
+import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.terminal.RepairState;
 import io.github.pkeppeler.deepcharter.terminal.TerminalType;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
@@ -31,7 +40,7 @@ import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
 import io.github.pkeppeler.deepcharter.test.support.WorldData;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItems;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
-import io.github.pkeppeler.deepcharter.upgrade.UpgradeEvents;
+import io.github.pkeppeler.deepcharter.upgrade.UpgradeTerminal;
 import io.github.pkeppeler.deepcharter.upgrade.UpgradeTuning;
 import java.util.List;
 import java.util.Map;
@@ -209,76 +218,107 @@ public class SpecSheetsTest {
                 .thenSucceed();
     }
 
-    @GameTest(maxTicks = 200)
-    public void theFirstBuyAtTheRepairStationShowsTheSheetOnce(GameTestHelper helper) {
+    /** A funded charter's player beside a working terminal of {@code type}, and the terminal. */
+    private record Terminal(MockPlayer buyer, ServerPlayer player, BlockPos pos, CharterId charter) {}
+
+    /**
+     * Repairs every terminal of the world (swapped for this tick only), puts a terminal of {@code type} down, and runs {@code body} with
+     * a player of a funded charter standing beside it. Everything is inside the test's first tick, as a swapped record must be.
+     */
+    private static MockPlayer atTerminal(
+            GameTestHelper helper, TerminalType type, String name, java.util.function.Consumer<Terminal> body) {
         MinecraftServer server = helper.getLevel().getServer();
-        Item bought = RepairRegistry.item(Consumable.BLASTING_CHARGE);
         MockPlayer[] buyer = new MockPlayer[1];
         RepairState fresh = new RepairState();
         WorldData.with(server, RepairState.TYPE, fresh, () -> {
-            for (TerminalType type : List.of(
+            for (TerminalType each : List.of(
                     TerminalTypes.FUEL_PUMP,
                     TerminalTypes.ORE_PROCESSOR,
                     TerminalTypes.UPGRADE_TERMINAL,
                     TerminalTypes.REPAIR_STATION)) {
-                for (var part : type.parts()) {
-                    fresh.insert(type, part).ifPresent(refusal -> {
-                        throw failure(helper, "repairing %s: %s", type.id(), refusal);
+                for (var part : each.parts()) {
+                    fresh.insert(each, part).ifPresent(refusal -> {
+                        throw failure(helper, "repairing %s: %s", each.id(), refusal);
                     });
                 }
             }
             BlockPos relative = new BlockPos(0, 1, 0);
-            helper.setBlock(relative, TerminalTypes.REPAIR_STATION.block().defaultBlockState());
+            helper.setBlock(relative, type.block().defaultBlockState());
             BlockPos pos = helper.absolutePos(relative);
-            buyer[0] = join(helper, "SpecBuyer");
+            buyer[0] = join(helper, name);
             ServerPlayer player = buyer[0].player();
             player.setGameMode(GameType.SURVIVAL);
             expect(
                     helper,
-                    Charters.found(server, player.getUUID(), "Spec Buyers").isEmpty(),
+                    Charters.found(server, player.getUUID(), name + " Co").isEmpty(),
                     "founding the charter should succeed");
             CharterId charter = Charters.charterOfOrThrow(server, player.getUUID())
                     .orElseThrow()
                     .id();
             expect(helper, Charters.deposit(server, charter, 10_000).isEmpty(), "funding the account should succeed");
             buyer[0].teleportTo(helper.getLevel(), Vec3.atCenterOf(pos).add(2, -player.getEyeHeight(), 0), 0, 0);
+            body.accept(new Terminal(buyer[0], player, pos, charter));
+        });
+        return buyer[0];
+    }
+
+    @GameTest(maxTicks = 200)
+    public void theFirstBuyAtTheRepairStationShowsTheSheetOnce(GameTestHelper helper) {
+        Item bought = RepairRegistry.item(Consumable.BLASTING_CHARGE);
+        MockPlayer buyer = atTerminal(helper, TerminalTypes.REPAIR_STATION, "SpecBuyer", terminal -> {
             CompoundTag args = new CompoundTag();
             args.putString(
                     RepairStation.ITEM_KEY, Consumable.BLASTING_CHARGE.itemId().toString());
-            expect(helper, Terminals.act(player, pos, RepairStation.BUY, args).isEmpty(), "the first buy is done");
             expect(
                     helper,
-                    ReadMarks.isRead(player, SpecSheetPopups.markOf(bought)),
+                    Terminals.act(terminal.player(), terminal.pos(), RepairStation.BUY, args)
+                            .isEmpty(),
+                    "the first buy is done");
+            expect(
+                    helper,
+                    ReadMarks.isRead(terminal.player(), SpecSheetPopups.markOf(bought)),
                     "the first buy marks the sheet shown, in the same action");
-            expect(helper, Terminals.act(player, pos, RepairStation.BUY, args).isEmpty(), "the second buy is done");
+            expect(
+                    helper,
+                    Terminals.act(terminal.player(), terminal.pos(), RepairStation.BUY, args)
+                            .isEmpty(),
+                    "the second buy is done");
         });
         // The mock records what the server sent on its own tick, so what it was sent is read after the swap has ended.
         helper.startSequence()
                 .thenIdle(SETTLE)
                 .thenExecute(() -> {
-                    expectShown(helper, buyer[0], List.of(bought), "after two buys");
-                    buyer[0].leave();
+                    expectShown(helper, buyer, List.of(bought), "after two buys");
+                    buyer.leave();
                 })
                 .thenSucceed();
     }
 
     @GameTest(maxTicks = 200)
     public void aPartBoughtAtTheUpgradeTerminalShowsThePartsSheetOnce(GameTestHelper helper) {
-        MockPlayer buyer = join(helper, "SpecPartBuyer");
-        PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(0.5, 1, 0.5));
-        MinecraftServer server = helper.getLevel().getServer();
         Item part = ComponentItems.item(ComponentTrack.HULL);
+        PodEntity[] pod = new PodEntity[1];
+        MockPlayer buyer = atTerminal(helper, TerminalTypes.UPGRADE_TERMINAL, "SpecPartBuyer", terminal -> {
+            // A Mole of the buyer's charter parked at the terminal, which is what the terminal fits a part to.
+            pod[0] = helper.spawn(PodRegistry.POD, new Vec3(3.5, 1, 0.5));
+            PodComponents.register(pod[0], terminal.charter());
+            for (int tier = 2; tier <= 3; tier++) {
+                CompoundTag args = new CompoundTag();
+                args.putString(UpgradeTerminal.TRACK_KEY, ComponentTrack.HULL.id());
+                args.putInt(UpgradeTerminal.TIER_KEY, tier);
+                expect(
+                        helper,
+                        Terminals.act(terminal.player(), terminal.pos(), UpgradeTerminal.BUY, args)
+                                .isEmpty(),
+                        "buying a hull of tier %s",
+                        tier);
+            }
+        });
         helper.startSequence()
                 .thenIdle(SETTLE)
                 .thenExecute(() -> {
-                    // The event the upgrade terminal fires when it installs what it sold.
-                    UpgradeEvents.BOUGHT.invoker().onBought(server, buyer.player(), pod, ComponentTrack.HULL, 2);
-                    UpgradeEvents.BOUGHT.invoker().onBought(server, buyer.player(), pod, ComponentTrack.HULL, 3);
-                })
-                .thenIdle(SETTLE)
-                .thenExecute(() -> {
                     expectShown(helper, buyer, List.of(part), "after buying a hull at tier 2 and then tier 3");
-                    pod.discard();
+                    pod[0].discard();
                     buyer.leave();
                 })
                 .thenSucceed();
@@ -369,15 +409,18 @@ public class SpecSheetsTest {
             expect(
                     helper,
                     keyOf(row.value()).equals("deepcharter.spec.value.drill")
-                            && argsOf(row.value()).equals(List.of(figure(tuning.value(ComponentTrack.DRILL, tier)))),
-                    "tier %s of the drill should read the tuning's %s, got %s %s",
+                            && argsOf(row.value()).equals(List.of(figure(tuning.ratio(ComponentTrack.DRILL, tier)))),
+                    "tier %s of the drill should read the tuning's ratio %s, got %s %s",
                     tier,
-                    tuning.value(ComponentTrack.DRILL, tier),
+                    tuning.ratio(ComponentTrack.DRILL, tier),
                     keyOf(row.value()),
                     argsOf(row.value()));
         }
         // The figures themselves, written out, so a tuning that moves must move this too.
-        expect(helper, argsOf(tiers.get(1).value()).equals(List.of("2.8")), "tier 1 drills at 2.8 (stock 2)");
+        expect(
+                helper,
+                argsOf(tiers.get(1).value()).equals(List.of("1.4")),
+                "tier 1 drills at x1.4 (2.8 over the stock 2)");
         expect(
                 helper,
                 argsOf(tiers.get(2).label()).equals(List.of("2", "500")),
@@ -395,6 +438,24 @@ public class SpecSheetsTest {
                 keyOf(scanner.ratings().getFirst().label()).equals("deepcharter.spec.tier.crafted"),
                 "a scanner has no stock part, so its first row is the crafted tier, got %s",
                 scanner.ratings().getFirst());
+        // A tier 1 scanner is the stock area (32 down), and the tiers above scale it by 1.5, 2 and 3
+        // (ScannerTuning.area), not the
+        // tuning's raw 0.5, 0.75, 1, 1.5.
+        expect(
+                helper,
+                scanner.ratings().subList(0, 4).stream()
+                        .map(rating -> argsOf(rating.value()))
+                        .toList()
+                        .equals(List.of(List.of("32"), List.of("48"), List.of("64"), List.of("96"))),
+                "the scanner reads 32, 48, 64 and 96 down, got %s",
+                scanner.ratings());
+        SpecSheet hull = SpecSheets.of(ComponentItems.item(ComponentTrack.HULL));
+        expect(
+                helper,
+                argsOf(hull.ratings().get(0).value()).equals(List.of("100"))
+                        && argsOf(hull.ratings().get(2).value()).equals(List.of("300")),
+                "a stock hull is 100 HP and tier 2 is three times that (30 over the stock 10), got %s",
+                hull.ratings());
         SpecSheet liner = SpecSheets.of(ComponentItems.item(ComponentTrack.LINER));
         expect(
                 helper,
@@ -411,8 +472,8 @@ public class SpecSheetsTest {
         expect(
                 helper,
                 keyOf(tier.label()).equals("deepcharter.spec.tier.crafted")
-                        && argsOf(tier.value()).equals(List.of("2.8")),
-                "a drill unit fits as tier 1, 2.8, got %s",
+                        && argsOf(tier.value()).equals(List.of("1.4")),
+                "a drill unit fits as tier 1, x1.4, got %s",
                 tier);
         expect(
                 helper,
@@ -516,9 +577,67 @@ public class SpecSheetsTest {
         helper.succeed();
     }
 
+    /**
+     * The gate for the class of mistake where a sheet prints a table's raw number and not what gameplay does with it: for every track and
+     * every tier a Prospector takes, a part is fitted to a real pod and the sheet's figure must be what the pod then has or does. The
+     * tiers above the Prospector's cap cannot be fitted to any pod, so they are not checked here.
+     */
+    @GameTest
+    public void everyTracksSheetFigureIsWhatAPodWithThatPartHas(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        PodEntity pod = helper.spawn(PodRegistry.PROSPECTOR, new Vec3(0.5, 1, 0.5));
+        CharterId owner = CharterId.random();
+        PodComponents.register(pod, owner);
+        PodStats stock = PodStats.base();
+        for (ComponentTrack track : ComponentTrack.values()) {
+            SpecSheet sheet = SpecSheets.of(ComponentItems.item(track));
+            boolean hasStock = UpgradeTuning.DEFAULT.value(track, 0) > 0f;
+            for (int tier = 1; tier <= Math.min(track.maxTier(), Chassis.PROSPECTOR.tierCap()); tier++) {
+                PodComponents.install(pod, ComponentItems.mint(server, track, tier, owner));
+                int fitted = PodComponents.effectiveTier(pod, track);
+                PodStats now = PodStats.of(pod);
+                List<String> expected = switch (track) {
+                    case DRILL -> List.of(figure(stock.ticksPerHardness() / now.ticksPerHardness()));
+                    case HULL -> List.of(figure(now.maxHull()));
+                    case ENGINE -> List.of(figure(now.enginePower()));
+                    case FUEL_TANK -> List.of(figure(now.tankLitres()));
+                    case CARGO_BAY -> List.of(Integer.toString(now.cargoSlots()));
+                    case RADIATOR -> List.of(figure(PodComponents.radiatorRatio(pod)));
+                    case SCANNER ->
+                        List.of(Integer.toString(
+                                ScannerTuning.DEFAULT.area(fitted).down()));
+                    case LIGHTS -> List.of(Integer.toString(PodLights.partLevel(pod)));
+                    case CONSOLE -> List.of(figure(UpgradeTuning.DEFAULT.ratio(track, fitted) * 100f));
+                    case SPOIL_HOPPER -> List.of();
+                    case LINER ->
+                        List.of(Integer.toString(
+                                PodLinerTuning.DEFAULT.tier(fitted).ringEverySlabs()));
+                    case SOUNDER ->
+                        List.of(Integer.toString(
+                                PodSounderTuning.DEFAULT.tier(fitted).slabsBelow()));
+                    case BRACE -> List.of(figure(PodBraceTuning.DEFAULT.hullPerOre()));
+                    case HEAT_SHIELD ->
+                        List.of(figure(PodHeatShieldTuning.DEFAULT.tier(fitted).hullPerBrick()));
+                };
+                SpecSheet.Rating row = sheet.ratings().get(hasStock ? tier : tier - 1);
+                expect(
+                        helper,
+                        fitted == tier && argsOf(row.value()).equals(expected),
+                        "%s at tier %s: a pod with the part is %s and the sheet reads %s",
+                        track,
+                        tier,
+                        expected,
+                        argsOf(row.value()));
+            }
+        }
+        pod.discard();
+        helper.succeed();
+    }
+
     /** A figure the way the sheet prints it: no trailing .0, and a thousands separator on money. */
     private static String figure(float value) {
-        return value == Math.rint(value) ? Long.toString((long) value) : Float.toString(value);
+        float rounded = Math.round(value * 100f) / 100f;
+        return rounded == Math.rint(rounded) ? Long.toString((long) rounded) : Float.toString(rounded);
     }
 
     private static String figure(long dollars) {

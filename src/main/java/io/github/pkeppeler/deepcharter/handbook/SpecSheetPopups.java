@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -44,6 +45,7 @@ public final class SpecSheetPopups {
         UpgradeEvents.BOUGHT.register((server, player, pod, track, tier) -> offer(player, ComponentItems.item(track)));
         ServerTickEvents.END_SERVER_TICK.register(
                 server -> server.getPlayerList().getPlayers().forEach(SpecSheetPopups::pollCrafts));
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> CRAFTED.clear());
         ServerPlayConnectionEvents.DISCONNECT.register(
                 (handler, server) -> CRAFTED.remove(handler.getPlayer().getUUID()));
     }

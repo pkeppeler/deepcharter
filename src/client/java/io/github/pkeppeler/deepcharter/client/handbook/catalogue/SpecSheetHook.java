@@ -5,7 +5,7 @@ import net.minecraft.world.item.Item;
 
 /**
  * Where an item's spec sheet is opened from: the recipe panel's SPEC SHEET button and the pop-up the server asks for on a first craft
- * or buy both call {@link #open}. {@link SpecSheetPopUps#register} sets the opener to the real one when the client starts; until then
+ * or buy both call {@link #open}. {@link SpecSheetOpener#register} sets the opener to the real one when the client starts; until then
  * nothing opens.
  */
 public final class SpecSheetHook {

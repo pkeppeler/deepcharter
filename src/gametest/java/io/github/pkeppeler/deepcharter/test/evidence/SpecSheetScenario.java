@@ -5,7 +5,7 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
-import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetPopUps;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetOpener;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
@@ -107,7 +107,7 @@ public class SpecSheetScenario extends EvidenceScenario {
         // The longest sheet there is, a part with a stock tier and six bought ones, the way a player looks one up
         // later.
         Item drillPart = ComponentItems.item(ComponentTrack.DRILL);
-        context.runOnClient(client -> SpecSheetPopUps.show(drillPart));
+        context.runOnClient(client -> SpecSheetOpener.show(drillPart));
         ClientWait.until(context, "the drill part's sheet", client -> panel.sheetItem() == drillPart);
         hold(context);
         screenshot(context, "sheet-tiers");

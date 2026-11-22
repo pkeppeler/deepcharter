@@ -330,7 +330,7 @@
   "deepcharter.spec.value.brace": "%s HP / ORE",
   "deepcharter.spec.value.cargo_bay": "%s SLOTS",
   "deepcharter.spec.value.console": "REACH %s%%",
-  "deepcharter.spec.value.drill": "%s SPEED",
+  "deepcharter.spec.value.drill": "SPEED x%s",
   "deepcharter.spec.value.engine": "%s POWER",
   "deepcharter.spec.value.fuel_tank": "%s L",
   "deepcharter.spec.value.heat_shield": "%s HP / BRICK",
@@ -338,7 +338,7 @@
   "deepcharter.spec.value.lights": "LIGHT %s",
   "deepcharter.spec.value.liner": "RING / %s SLABS",
   "deepcharter.spec.value.radiator": "HEAT x%s",
-  "deepcharter.spec.value.scanner": "AREA x%s",
+  "deepcharter.spec.value.scanner": "%s DOWN",
   "deepcharter.spec.value.sounder": "HEARS %s DOWN",
   "deepcharter.spec.value.spoil_hopper": "KEEPS SPOIL"
 }

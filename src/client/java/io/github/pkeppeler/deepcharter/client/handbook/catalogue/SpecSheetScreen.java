@@ -1,6 +1,8 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetView.Placed;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheet;
@@ -16,15 +18,12 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * An item's spec sheet on a screen of its own, in the recipe console's look: where a sheet pops up when no inventory with the parts
- * catalogue is open to hold it (a part bought at a terminal, a window too small for the catalogue's consoles). Any click or key but a
- * modifier closes it, and the screen under it, if any, is not touched.
+ * catalogue is open to hold it (nothing open, or a window too small for the catalogue's consoles, once the screen over it has
+ * closed). Any click or any key closes it, so the next sheet waiting ({@link SpecSheetOpener}) can follow.
  */
 public final class SpecSheetScreen extends Screen {
-    /** Where the sheet's console is and what it says there, worked out for the window's size. */
-    private record Shown(SpecSheetLayout layout, SpecSheetView.Plan plan) {}
-
     private final SpecSheet sheet;
-    private @Nullable Shown shown;
+    private @Nullable Placed placed;
 
     public SpecSheetScreen(Item item) {
         super(Component.translatable("deepcharter.catalogue.spec"));
@@ -33,22 +32,20 @@ public final class SpecSheetScreen extends Screen {
 
     @Override
     protected void init() {
-        SpecSheetLayout layout =
-                SpecSheetLayout.of(width, height, CatalogueLook.current(), CrtTuning.current(), font.lineHeight);
-        shown = new Shown(layout, SpecSheetView.plan(sheet, layout, CatalogueLook.current(), font));
+        placed = SpecSheetView.place(sheet, width, height, CatalogueLook.current(), CrtTuning.current(), font);
     }
 
     /** The glass of the sheet's console, where all its text must lie; null before the screen has opened. */
     // test-seam: the client test holds every string of every item's sheet to this glass
     public @Nullable Rect glass() {
-        Shown now = shown;
+        Placed now = placed;
         return now == null ? null : now.layout().glass();
     }
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-        Shown now = Objects.requireNonNull(shown, "<built by init() when the screen opens>");
+        Placed now = Objects.requireNonNull(placed, "<built by init() when the screen opens>");
         SpecSheetView.draw(graphics, font, now.layout(), sheet, now.plan(), mouseX, mouseY);
     }
 
@@ -60,11 +57,22 @@ public final class SpecSheetScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.isEscape() || event.isConfirmation()) {
+        if (event.isEscape() || !isModifier(event)) {
             onClose();
             return true;
         }
         return super.keyPressed(event);
+    }
+
+    /** A key that is only a modifier, which closes nothing. */
+    private static boolean isModifier(KeyEvent event) {
+        int key = event.key();
+        return key == InputConstants.KEY_LSHIFT
+                || key == InputConstants.KEY_RSHIFT
+                || key == InputConstants.KEY_LCONTROL
+                || key == InputConstants.KEY_RCONTROL
+                || key == InputConstants.KEY_LALT
+                || key == InputConstants.KEY_RALT;
     }
 
     @Override

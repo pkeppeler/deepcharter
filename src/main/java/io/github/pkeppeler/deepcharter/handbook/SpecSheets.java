@@ -8,8 +8,10 @@ import io.github.pkeppeler.deepcharter.pod.PodFuelItems;
 import io.github.pkeppeler.deepcharter.pod.PodHeatShieldTuning;
 import io.github.pkeppeler.deepcharter.pod.PodLinerTuning;
 import io.github.pkeppeler.deepcharter.pod.PodSounderTuning;
+import io.github.pkeppeler.deepcharter.pod.PodStats;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
+import io.github.pkeppeler.deepcharter.scanner.ScannerTuning;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentItem;
 import io.github.pkeppeler.deepcharter.upgrade.ComponentTrack;
 import io.github.pkeppeler.deepcharter.upgrade.PartUnits;
@@ -115,14 +117,26 @@ public final class SpecSheets {
         }
     }
 
-    /** The figure a track is rated for at {@code tier}, read from the tuning that does the work. */
+    /**
+     * The figure a track is rated for at {@code tier}, worked out the way gameplay works it out: the stock pod's own stat scaled by the
+     * tier's ratio ({@code PodComponents}), the scanner's area from {@link ScannerTuning#area}, the lights' level as {@code PodLights}
+     * rounds it. The upgrade tuning's own values are only ratios against the stock part, and the stock pod's stats are not those numbers
+     * (a stock hull is 100, not the tuning's 10), so a figure read from the table alone would be wrong.
+     */
     private static Component tierFigure(ComponentTrack track, int tier) {
         UpgradeTuning tuning = UpgradeTuning.DEFAULT;
+        PodStats stock = PodStats.base();
         String key = KEY + "value." + track.id();
         return switch (track) {
-            case DRILL, HULL, ENGINE, FUEL_TANK, RADIATOR, CARGO_BAY, SCANNER, LIGHTS ->
-                Component.translatable(key, number(tuning.value(track, tier)));
-            case CONSOLE -> Component.translatable(key, number(tuning.value(track, tier) * 100f));
+            case DRILL, RADIATOR -> Component.translatable(key, number(tuning.ratio(track, tier)));
+            case HULL -> Component.translatable(key, number(stock.maxHull() * tuning.ratio(track, tier)));
+            case ENGINE -> Component.translatable(key, number(stock.enginePower() * tuning.ratio(track, tier)));
+            case FUEL_TANK -> Component.translatable(key, number(stock.tankLitres() * tuning.ratio(track, tier)));
+            case CARGO_BAY -> Component.translatable(key, Math.round(stock.cargoSlots() * tuning.ratio(track, tier)));
+            case SCANNER ->
+                Component.translatable(key, ScannerTuning.DEFAULT.area(tier).down());
+            case LIGHTS -> Component.translatable(key, Math.round(tuning.value(track, tier)));
+            case CONSOLE -> Component.translatable(key, number(tuning.ratio(track, tier) * 100f));
             case SPOIL_HOPPER -> Component.translatable(key);
             case LINER ->
                 Component.translatable(key, PodLinerTuning.DEFAULT.tier(tier).ringEverySlabs());
@@ -175,6 +189,8 @@ public final class SpecSheets {
 
     /** A figure without a trailing {@code .0}: 4 for 4.0, 2.8 for 2.8. */
     private static String number(float value) {
-        return value == Math.rint(value) ? Long.toString((long) value) : Float.toString(value);
+        // Rounded to two places first, so a product such as 100 * 1.7 never prints as 169.99998.
+        float rounded = Math.round(value * 100f) / 100f;
+        return rounded == Math.rint(rounded) ? Long.toString((long) rounded) : Float.toString(rounded);
     }
 }

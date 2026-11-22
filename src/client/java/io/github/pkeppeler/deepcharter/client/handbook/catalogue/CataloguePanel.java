@@ -2,7 +2,7 @@ package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
-import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetView.Plan;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetView.Placed;
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtDraw;
@@ -56,11 +56,13 @@ public final class CataloguePanel {
     private final CatalogueState state = new CatalogueState();
     private final Font font = Minecraft.getInstance().font;
     private @Nullable CatalogueLayout layout;
-    /** The spec sheet that covers the screen, or null; {@link #sheetLayout} is where it stands at the screen's size. */
+    /** The spec sheet that covers the screen, or null. */
     private @Nullable SpecSheet sheet;
+    /** Where the sheet stands at the screen's size and what it says there; null while no sheet is open. */
+    private @Nullable Placed placed;
 
-    private @Nullable SpecSheetLayout sheetLayout;
-    private @Nullable Plan sheetPlan;
+    private int screenWidth;
+    private int screenHeight;
     private PartsCatalogue catalogue = PartsCatalogue.of(List.of(), ContextMap.EMPTY);
     private @Nullable List<RecipeCollection> builtFrom;
     private StackedItemContents contents = new StackedItemContents();
@@ -89,7 +91,8 @@ public final class CataloguePanel {
     void resize(int width, int height) {
         CatalogueLayout now = CatalogueLayout.of(width, height, look(), CrtTuning.current(), font.lineHeight);
         layout = now;
-        sheetLayout = SpecSheetLayout.of(width, height, look(), CrtTuning.current(), font.lineHeight);
+        screenWidth = width;
+        screenHeight = height;
         planSheet();
     }
 
@@ -99,15 +102,18 @@ public final class CataloguePanel {
         planSheet();
     }
 
+    /** Puts the sheet away, and lets the next one waiting take its place. */
     private void closeSheet() {
         sheet = null;
         planSheet();
+        SpecSheetOpener.drain(Minecraft.getInstance());
     }
 
     private void planSheet() {
         SpecSheet shown = sheet;
-        SpecSheetLayout where = sheetLayout;
-        sheetPlan = shown == null || where == null ? null : SpecSheetView.plan(shown, where, look(), font);
+        placed = shown == null
+                ? null
+                : SpecSheetView.place(shown, screenWidth, screenHeight, look(), CrtTuning.current(), font);
     }
 
     /** The item whose spec sheet covers the screen, or null. */
@@ -120,8 +126,8 @@ public final class CataloguePanel {
     /** The glass of the open spec sheet, or null when none is open. */
     // test-seam: the client test reads where the sheet's text must lie
     public @Nullable Rect sheetGlass() {
-        SpecSheetLayout where = sheetLayout;
-        return sheet == null || where == null ? null : where.glass();
+        Placed where = placed;
+        return where == null ? null : where.layout().glass();
     }
 
     private CatalogueLook look() {
@@ -344,13 +350,14 @@ public final class CataloguePanel {
             return false;
         }
         if (sheet != null) {
-            // The sheet covers everything, so Escape puts it away before anything else; the other keys are the
-            // screen's.
-            if (event.isEscape()) {
-                closeSheet();
-                return true;
+            // The sheet covers everything, so no key may reach the slot under the mouse (a digit would swap it into the
+            // hotbar, Q drop it). The key that closes the inventory is the screen's and ends it all; any other puts the
+            // sheet away and is the sheet's.
+            if (Minecraft.getInstance().options.keyInventory.matches(event)) {
+                return false;
             }
-            return false;
+            closeSheet();
+            return true;
         }
         if (searchFocused) {
             return searchKey(event);
@@ -524,8 +531,7 @@ public final class CataloguePanel {
         CatalogueLook look = look();
         // Nothing under a sheet is lit or named: the sheet covers the screen.
         SpecSheet shownSheet = sheet;
-        SpecSheetLayout sheetAt = sheetLayout;
-        Plan plan = sheetPlan;
+        Placed sheetAt = placed;
         Hit hit = shownSheet == null ? hitAt(mouseX, mouseY) : null;
         graphics.nextStratum();
         drawShelf(graphics, now, look, hit);
@@ -535,8 +541,11 @@ public final class CataloguePanel {
         if (hit != null) {
             drawNameStrip(graphics, now, look, hit);
         }
-        if (shownSheet != null && sheetAt != null && plan != null) {
-            SpecSheetView.draw(graphics, font, sheetAt, shownSheet, plan, mouseX, mouseY);
+        if (shownSheet != null && sheetAt != null) {
+            SpecSheetView.draw(graphics, font, sheetAt.layout(), shownSheet, sheetAt.plan(), mouseX, mouseY);
+            // The screen's own tooltip step comes after this one and would draw the name of the slot under the sheet
+            // over it.
+            HoveredSlot.clear(screen);
         }
     }
 

@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetOpener;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.SpecSheetScreen;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheet;
 import io.github.pkeppeler.deepcharter.handbook.SpecSheetPopups;
@@ -32,6 +33,7 @@ import java.util.Objects;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -59,6 +61,9 @@ public class SpecSheetClientTest implements FabricClientGameTest {
     private static final int SMALLEST_WIDTH = 320;
     /** The narrowest GUI the catalogue's panels draw at, so the narrowest the sheet opens over them. */
     private static final int NARROWEST = 425;
+
+    /** The first slot of the main inventory, below the hotbar. */
+    private static final int INVENTORY_SLOT = 9;
 
     private static final int[][] SIZES = {{WIDTH, HEIGHT}, {NARROWEST, HEIGHT}, {SMALLEST_WIDTH, HEIGHT}};
 
@@ -144,6 +149,12 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                 }
             }
         }
+        List<Rect> glass = new ArrayList<>();
+        drawnBySheetScreen(Items.DIAMOND_SWORD, WIDTH, HEIGHT, glass);
+        drawnBySheetScreen(item("part_drill"), WIDTH, HEIGHT, glass);
+        require(
+                glass.get(0).height() < glass.get(1).height(),
+                "a short sheet is a short console and a long one is taller, the glasses are " + glass);
         System.out.println("[spec-sheet] checked " + items.size() + " sheets at " + SIZES.length + " sizes");
     }
 
@@ -157,7 +168,7 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         List<String> drill = textsOf(item("part_drill"));
         for (int tier = 1; tier <= ComponentTrack.DRILL.maxTier(); tier++) {
             long price = tuning.price(ComponentTrack.DRILL, tier);
-            String figure = figure(tuning.value(ComponentTrack.DRILL, tier)) + " SPEED";
+            String figure = "SPEED x" + figure(tuning.ratio(ComponentTrack.DRILL, tier));
             require(
                     drill.contains(figure),
                     "the drill part reads tier " + tier + "'s " + figure + ", it draws " + drill);
@@ -167,8 +178,21 @@ public class SpecSheetClientTest implements FabricClientGameTest {
         }
         // The figures themselves, written out, so a tuning that moves must move this too.
         require(
-                drill.contains("4 SPEED") && drill.contains("T2 $500") && drill.contains("12 SPEED"),
-                "the drill part reads tier 2 as 4 SPEED at $500 and tier 6 as 12 SPEED, it draws " + drill);
+                drill.contains("SPEED x2") && drill.contains("T2 $500") && drill.contains("SPEED x6"),
+                "the drill part reads tier 2 as SPEED x2 at $500 and tier 6 as SPEED x6, it draws " + drill);
+        // The scanner's figures are the area gameplay scans (ScannerTuning.area), 32 down at tier 1 and 1.5 times that
+        // at tier 2,
+        // not the tuning's raw 0.5 and 0.75.
+        List<String> scanner = textsOf(item("part_scanner"));
+        require(
+                scanner.contains("32 DOWN") && scanner.contains("48 DOWN") && scanner.contains("96 DOWN"),
+                "the scanner part reads 32, 48 and up to 96 DOWN, it draws " + scanner);
+        require(
+                textsOf(item("scanner_unit")).contains("32 DOWN"),
+                "the scanner unit fits as tier 1, 32 DOWN, it draws " + textsOf(item("scanner_unit")));
+        require(
+                textsOf(item("part_hull")).containsAll(List.of("100 HP", "300 HP")),
+                "a stock hull is 100 HP and tier 2 is 300, it draws " + textsOf(item("part_hull")));
         require(
                 textsOf(item("part_radiator")).contains("HEAT x0.75"),
                 "the radiator's tier 2 lowers the heat to x0.75");
@@ -194,7 +218,8 @@ public class SpecSheetClientTest implements FabricClientGameTest {
     }
 
     private static String figure(float value) {
-        return value == Math.rint(value) ? Long.toString((long) value) : Float.toString(value);
+        float rounded = Math.round(value * 100f) / 100f;
+        return rounded == Math.rint(rounded) ? Long.toString((long) rounded) : Float.toString(rounded);
     }
 
     private static String figure(long dollars) {
@@ -240,8 +265,10 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                     CatalogueFixtures.fill(ClientSession.player(client).getRecipeBook()));
             CatalogueScene.openInventory(context);
             theSpecSheetButtonOpensTheSheet(context);
+            theSheetTakesEveryKeyAndHidesTheTooltipUnderIt(context, singleplayer);
             context.setScreen(() -> null);
             aSheetPopsUpWhenTheServerSays(context, singleplayer);
+            twoPopUpsInARowShowOneAfterTheOther(context, singleplayer);
             context.setScreen(() -> null);
         }
     }
@@ -336,6 +363,116 @@ public class SpecSheetClientTest implements FabricClientGameTest {
                     "the server " + (expected ? "shows" : "does not show") + " the sheet of "
                             + BuiltInRegistries.ITEM.getKey(item));
         });
+    }
+
+    /** What the screen draws with the mouse where it really is. */
+    private static List<Drawn> drawnAtTheMouse(Minecraft client, Screen screen) {
+        var window = client.getWindow();
+        return DrawnText.of(screen, (int) client.mouseHandler.getScaledXPos(window), (int)
+                client.mouseHandler.getScaledYPos(window));
+    }
+
+    private static void theSheetTakesEveryKeyAndHidesTheTooltipUnderIt(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runCommand("clear @p");
+        singleplayer.getServer().runCommand("item replace entity @p inventory.0 with minecraft:cobblestone 3");
+        ClientWait.until(
+                context,
+                "the cobblestone in the first inventory slot",
+                client -> ClientSession.player(client)
+                        .getInventory()
+                        .getItem(INVENTORY_SLOT)
+                        .is(Items.COBBLESTONE));
+        CatalogueScene.openInventory(context);
+        AbstractContainerScreen<?> screen = Objects.requireNonNull(
+                context.computeOnClient(client -> (AbstractContainerScreen<?>) client.gui.screen()),
+                "the inventory is open");
+        CataloguePanel panel = CatalogueScene.panel(context);
+        CatalogueLayout layout = CatalogueScene.layout(context, panel);
+        net.minecraft.world.inventory.Slot slot = screen.getMenu().slots.get(INVENTORY_SLOT);
+        Rect cell = new Rect(layout.inventory().x() + slot.x, layout.inventory().y() + slot.y, 16, 16);
+        CatalogueScene.hover(context, cell);
+        context.waitTicks(2);
+
+        // The control: with no sheet open the slot's tooltip is drawn, so a missing tooltip below means the sheet hid
+        // it.
+        require(
+                context.computeOnClient(client -> drawnAtTheMouse(client, screen).stream()
+                        .anyMatch(text -> text.text().equals("Cobblestone"))),
+                "with no sheet the hovered slot's tooltip names the cobblestone");
+
+        Item teleporter = RepairRegistry.item(Consumable.QUANTUM_TELEPORTER);
+        context.runOnClient(client -> SpecSheetOpener.show(teleporter));
+        ClientWait.until(context, "the sheet over the inventory", client -> panel.sheetItem() == teleporter);
+        require(
+                context.computeOnClient(client -> drawnAtTheMouse(client, screen).stream()
+                        .noneMatch(text -> text.text().equals("Cobblestone"))),
+                "the slot under the sheet shows no tooltip over it");
+        context.getInput().pressKey(InputConstants.KEY_1);
+        context.waitTicks(3);
+        require(
+                context.computeOnClient(client -> ClientSession.player(client)
+                                .getInventory()
+                                .getItem(INVENTORY_SLOT)
+                                .is(Items.COBBLESTONE)
+                        && !ClientSession.player(client)
+                                .getInventory()
+                                .getItem(0)
+                                .is(Items.COBBLESTONE)),
+                "a hotbar key with the sheet open does not swap the slot under it, the slots are "
+                        + context.computeOnClient(client ->
+                                ClientSession.player(client).getInventory().getNonEquipmentItems()));
+        require(context.computeOnClient(client -> panel.sheetItem() == null), "the key puts the sheet away");
+        require(context.computeOnClient(client -> client.gui.screen() == screen), "and the inventory stays open");
+
+        // The control again: the same key with no sheet does swap, so the check above can fail.
+        context.getInput().pressKey(InputConstants.KEY_1);
+        ClientWait.until(
+                context,
+                "the cobblestone swapped into the first hotbar slot",
+                client -> ClientSession.player(client).getInventory().getItem(0).is(Items.COBBLESTONE));
+        singleplayer.getServer().runCommand("clear @p");
+    }
+
+    private static void twoPopUpsInARowShowOneAfterTheOther(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        Item first = RepairRegistry.item(Consumable.PLASTIC_EXPLOSIVES);
+        Item second = RepairRegistry.item(Consumable.MATTER_TRANSMITTER);
+        CatalogueScene.openInventory(context);
+        CataloguePanel panel = CatalogueScene.panel(context);
+        offer(singleplayer, first, true);
+        offer(singleplayer, second, true);
+        ClientWait.until(context, "the first pop-up", client -> panel.sheetItem() == first);
+        context.waitTicks(10);
+        require(
+                context.computeOnClient(client -> panel.sheetItem() == first),
+                "the second pop-up waits and does not take the first one's place");
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        ClientWait.until(
+                context, "the second pop-up after the first is put away", client -> panel.sheetItem() == second);
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        ClientWait.until(context, "the sheets put away", client -> panel.sheetItem() == null);
+        require(
+                context.computeOnClient(client -> client.gui.screen() instanceof InventoryScreen),
+                "the inventory stays open");
+
+        // With no screen open they follow in order on screens of their own.
+        context.setScreen(() -> null);
+        Item engine = ComponentItems.item(ComponentTrack.ENGINE);
+        Item cargo = ComponentItems.item(ComponentTrack.CARGO_BAY);
+        offer(singleplayer, engine, true);
+        offer(singleplayer, cargo, true);
+        ClientWait.until(
+                context,
+                "the engine part's sheet first",
+                client -> client.gui.screen() instanceof SpecSheetScreen screen && sheetScreenShows(screen, engine));
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        ClientWait.until(
+                context,
+                "the cargo bay part's sheet after it",
+                client -> client.gui.screen() instanceof SpecSheetScreen screen && sheetScreenShows(screen, cargo));
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        ClientWait.until(context, "both sheets put away", client -> client.gui.screen() == null);
     }
 
     private static void aSheetPopsUpWhenTheServerSays(
