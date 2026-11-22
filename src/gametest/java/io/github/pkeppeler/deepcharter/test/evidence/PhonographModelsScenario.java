@@ -59,6 +59,8 @@ public class PhonographModelsScenario extends EvidenceScenario {
     private static final int SLAB_DEPTH = 5;
     /** The player's eye height above the feet. */
     private static final double EYE = 1.62;
+    /** How far off a block's facing the three-quarter stills stand. */
+    private static final double QUARTER_DEGREES = 40;
     /** Where on the block the camera looks: a little above its middle, where the horn's bell is. */
     private static final Vec3 LOOK_AT = new Vec3(0, 0.15, 0);
 
@@ -184,7 +186,7 @@ public class PhonographModelsScenario extends EvidenceScenario {
                 Level.OVERWORLD,
                 pair[0],
                 state -> state.is(PhonographRegistry.PHONOGRAPH) && !state.getValue(PhonographBlock.LOADED),
-                around(pair[0], Direction.NORTH, 2.0, 0.7),
+                threeQuarter(pair[0], Direction.NORTH, 1.6, 0.8),
                 "phonograph-empty-close");
         still(
                 context,
@@ -192,7 +194,7 @@ public class PhonographModelsScenario extends EvidenceScenario {
                 Level.OVERWORLD,
                 pair[1],
                 state -> state.is(PhonographRegistry.PHONOGRAPH) && state.getValue(PhonographBlock.LOADED),
-                around(pair[1], Direction.NORTH, 2.0, 0.7),
+                threeQuarter(pair[1], Direction.NORTH, 1.6, 0.8),
                 "phonograph-loaded-close");
     }
 
@@ -202,7 +204,8 @@ public class PhonographModelsScenario extends EvidenceScenario {
         ResourceKey<Level> layer = TestLayers.dimension(StructureKind.PUNCH_CLOCK.layer());
         BlockPos horn = BlockPos.containing(at(site, 0, 4.5, 0));
         Predicate<BlockState> isHorn = state -> state.is(AmbienceRegistry.COMPANY_HORN);
-        // The pillars of the hall stand at 4 along and 2 across, so these eyes keep clear of them.
+        // The close eyes hang near the horn's height, a little under its centre, 2 to 2.5 blocks off; the pillars of
+        // the hall stand at 4 along and 2 across.
         still(
                 context,
                 singleplayer,
@@ -263,6 +266,25 @@ public class PhonographModelsScenario extends EvidenceScenario {
             eyes.add(Vec3.atCenterOf(block).add(out).add(0, up, 0));
             side = side.getClockWise();
         }
+        return eyes;
+    }
+
+    /**
+     * Eyes {@code distance} out from the block's centre, {@code QUARTER_DEGREES} off the way it faces to one side and then the other, and
+     * {@code up} above it, so the horn's flare and the cabinet both show; the straight-on eyes of {@link #around} follow as a fallback.
+     */
+    private static List<Vec3> threeQuarter(BlockPos block, Direction front, double distance, double up) {
+        List<Vec3> eyes = new ArrayList<>();
+        double angle = Math.toRadians(QUARTER_DEGREES);
+        Vec3 ahead = Vec3.atLowerCornerOf(front.getUnitVec3i());
+        Vec3 aside = Vec3.atLowerCornerOf(front.getClockWise().getUnitVec3i());
+        for (int sign = 1; sign >= -1; sign -= 2) {
+            Vec3 out = ahead.scale(Math.cos(angle))
+                    .add(aside.scale(sign * Math.sin(angle)))
+                    .scale(distance);
+            eyes.add(Vec3.atCenterOf(block).add(out).add(0, up, 0));
+        }
+        eyes.addAll(around(block, front, distance, up));
         return eyes;
     }
 
