@@ -11,6 +11,7 @@ public final class HandbookInit {
         HandbookRegistry.register();
         HandbookCommands.init();
         HandbookTriggers.init();
+        NoteReadout.init();
         ProgressCarry.register();
     }
 }

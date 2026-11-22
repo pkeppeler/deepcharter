@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
  * @param cockpit the cockpit HUD of a seated pilot: the Ribbon, until a pack turns it off
  * @param tow the chain links of the tow line between two pods
  * @param beam the fake light beams of a lit pod's headlamp and the colony floodlights
+ * @param readout the block name and hint under the crosshair
  */
 public record UiTheme(
         CrtTuning crt,
@@ -41,7 +42,8 @@ public record UiTheme(
         PanelLook panel,
         CockpitLook cockpit,
         TowChainLook tow,
-        BeamLook beam) {
+        BeamLook beam,
+        ReadoutLook readout) {
     /** The areas, each one a file {@code theme/<name>.json}. */
     static final Set<String> AREAS = Set.of(
             "crt",
@@ -55,7 +57,8 @@ public record UiTheme(
             "panel",
             "cockpit",
             "tow",
-            "beam");
+            "beam",
+            "readout");
 
     private static volatile @Nullable UiTheme current;
 
@@ -99,7 +102,8 @@ public record UiTheme(
                 PanelLook.of(area(areas, "panel")),
                 CockpitLook.of(area(areas, "cockpit")),
                 TowChainLook.of(area(areas, "tow")),
-                BeamLook.of(area(areas, "beam")));
+                BeamLook.of(area(areas, "beam")),
+                ReadoutLook.of(area(areas, "readout")));
         if (theme.transmission().maxWidth() <= 2 * theme.crt().padding()) {
             throw new IllegalArgumentException(area(areas, "transmission")
                             .conflict(
