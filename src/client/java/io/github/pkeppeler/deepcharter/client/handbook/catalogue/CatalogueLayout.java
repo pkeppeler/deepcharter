@@ -52,11 +52,6 @@ public record CatalogueLayout(
         public boolean contains(double px, double py) {
             return px >= x && px < right() && py >= y && py < bottom();
         }
-
-        /** Whether the two share a pixel. */
-        public boolean overlaps(Rect other) {
-            return x < other.right() && other.x < right() && y < other.bottom() && other.y < bottom();
-        }
     }
 
     /**
@@ -105,11 +100,6 @@ public record CatalogueLayout(
         /** Cells on one page. */
         public int perPage() {
             return columns * rows;
-        }
-
-        /** The controls, which are drawn over the casing, outside the glass. */
-        public List<Rect> controls() {
-            return List.of(craftable, previous, next, counter);
         }
     }
 

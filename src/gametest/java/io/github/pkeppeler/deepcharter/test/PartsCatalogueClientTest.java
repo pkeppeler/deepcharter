@@ -441,13 +441,13 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         require(inside(inventory, screen), "the inventory image " + inventory + " leaves the screen" + at);
         for (Rect panel : List.of(layout.catalogue(), layout.recipe())) {
             require(inside(panel, screen), "a unit " + panel + " leaves the screen" + at);
-            require(!panel.overlaps(inventory), "a unit " + panel + " overlaps the inventory " + inventory + at);
+            require(!overlap(panel, inventory), "a unit " + panel + " overlaps the inventory " + inventory + at);
             // A phone is a tall slab: a unit twice as tall as it is wide reads as one.
             require(
                     panel.height() * 2 <= panel.width() * 3,
                     "a unit " + panel + " is a tall slab, which reads as a phone" + at);
         }
-        require(!layout.catalogue().overlaps(layout.recipe()), "the two units overlap" + at);
+        require(!overlap(layout.catalogue(), layout.recipe()), "the two units overlap" + at);
         require(layout.recipe().right() <= inventory.x(), "the recipe console is not left of the inventory" + at);
         if (layout.form() == Form.CONSOLE) {
             require(layout.catalogue().x() >= inventory.right(), "the catalogue is not right of the inventory" + at);
@@ -460,7 +460,12 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         }
         Rect glass = layout.catalogueGlass();
         CatalogueLayout.Shelf shelf = layout.shelf();
-        requireHardware(layout.catalogue(), glass, shelf.controls(), shelf.vents(), at);
+        requireHardware(
+                layout.catalogue(),
+                glass,
+                List.of(shelf.craftable(), shelf.previous(), shelf.next(), shelf.counter()),
+                shelf.vents(),
+                at);
         CatalogueLayout.Card card = layout.card();
         requireHardware(layout.recipe(), layout.recipeGlass(), List.of(card.spec()), card.vents(), at);
         for (Rect rect : List.of(shelf.search(), shelf.favourites())) {
@@ -478,8 +483,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 (shelf.favouriteColumns() - 1) * look.gridCell() + look.slotSize(),
                 look.slotSize());
         require(inside(row, shelf.favourites()), "the favourites row " + row + " leaves its area" + at);
-        require(!grid.overlaps(shelf.favourites()), "the item grid runs into the favourites" + at);
-        require(!grid.overlaps(shelf.search()), "the item grid runs into the search field" + at);
+        require(!overlap(grid, shelf.favourites()), "the item grid runs into the favourites" + at);
+        require(!overlap(grid, shelf.search()), "the item grid runs into the search field" + at);
         boolean console = layout.form() == Form.CONSOLE;
         require(
                 shelf.columns()
@@ -509,11 +514,16 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         for (int i = 0; i < parts.size(); i++) {
             Rect part = parts.get(i);
             require(inside(part, casing), "a control or vent " + part + " leaves its casing " + casing + at);
-            require(!part.overlaps(glass), "a control or vent " + part + " is on the glass " + glass + at);
+            require(!overlap(part, glass), "a control or vent " + part + " is on the glass " + glass + at);
             for (int j = i + 1; j < parts.size(); j++) {
-                require(!part.overlaps(parts.get(j)), part + " overlaps " + parts.get(j) + at);
+                require(!overlap(part, parts.get(j)), part + " overlaps " + parts.get(j) + at);
             }
         }
+    }
+
+    /** Whether the two share a pixel. */
+    private static boolean overlap(Rect a, Rect b) {
+        return a.x() < b.right() && b.x() < a.right() && a.y() < b.bottom() && b.y() < a.bottom();
     }
 
     private static boolean inside(Rect inner, Rect outer) {
@@ -651,7 +661,11 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             Rect recipe = layout.recipeGlass();
             Rect inventory = layout.inventory();
             // A string is in a glass or on the plate of a control, which carries its own legend.
-            List<Rect> plates = new ArrayList<>(layout.shelf().controls());
+            List<Rect> plates = new ArrayList<>(List.of(
+                    layout.shelf().craftable(),
+                    layout.shelf().previous(),
+                    layout.shelf().next(),
+                    layout.shelf().counter()));
             plates.add(layout.card().spec());
             for (Drawn text : drawn) {
                 Rect box = new Rect(
