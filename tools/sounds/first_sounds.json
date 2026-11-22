@@ -19,6 +19,26 @@
     "treatment": "dark",
     "treatment_sha256": "25fe6958949de7e585a1901da58d5541594c403cb0a5ae26344aaa1e4fd6e136"
   },
+  "edison_around_the_world": {
+    "artist": "Thomas A. Edison",
+    "bed_frames": 595350,
+    "bed_sha256": "a08e099bf10796b734d7088df90c41e1b3a286e28dee62d4dbf44e6de693a206",
+    "credit": "Thomas A. Edison (1888); Edison yellow paraffine cylinder, catalog EDIS 566. Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park.",
+    "cut": [
+      141.0,
+      168.0
+    ],
+    "duration_seconds": 27.0,
+    "folder": "phonograph",
+    "license": "none stated",
+    "ogg_sha256": "06b5c70e52fb9a63d99c523f62cd686ccd0dee4ed233cc12706c5a2c83cb6b12",
+    "recorded": "1888",
+    "source_sha256": "c979a17377450ba0e6fc7545814a24c825c89a38baa18d2f27d9f02a415d8ba9",
+    "source_url": "https://www.nps.gov/edis/learn/photosmultimedia/upload/EDIS-SRP-0155-06.mp3",
+    "title": "Around the world on the phonograph",
+    "treatment": "cylinder",
+    "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
+  },
   "gamme_de_la_voix": {
     "artist": "Édouard-Léon Scott de Martinville",
     "bed_frames": 350784,
@@ -51,6 +71,26 @@
     "treatment": "cylinder",
     "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
   },
+  "lost_chord": {
+    "artist": "cornet and piano (performers unknown)",
+    "bed_frames": 606375,
+    "bed_sha256": "18f19837fda6d3c5ebd7974b84f4cfee791927046c0f8ef6663289f533190f97",
+    "credit": "Cornet and piano (performers unknown), London (about Aug. 1888); Edison yellow paraffine cylinder, catalog E-2440-3. Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park.",
+    "cut": [
+      96.0,
+      123.5
+    ],
+    "duration_seconds": 27.5,
+    "folder": "phonograph",
+    "license": "none stated",
+    "ogg_sha256": "073166ba587b83230ee52493fc719b76a5b50a22a972f65ab1dc8801bc504c9c",
+    "recorded": "about Aug. 1888",
+    "source_sha256": "7ac837a80584284a7e764ece7f182ecc79efe78093e56d46cbde436a261ccc59",
+    "source_url": "https://www.nps.gov/edis/learn/photosmultimedia/upload/EDIS-SRP-0154-02.mp3",
+    "title": "The Lost Chord, cornet and piano",
+    "treatment": "cylinder",
+    "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
+  },
   "othello": {
     "artist": "Édouard-Léon Scott de Martinville",
     "bed_frames": 391680,
@@ -64,6 +104,58 @@
     "source_sha256": "0e564635920b4457923e112f5dded4c36cd7fe604b906721768682ebf6e64012",
     "source_url": "https://firstsounds.org/sounds/Scott-Feaster-No-38.mp3",
     "title": "Excerpt from Ducis' Othello",
+    "treatment": "cylinder",
+    "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
+  },
+  "sullivan_toast": {
+    "artist": "Arthur Sullivan",
+    "bed_frames": 584325,
+    "bed_sha256": "074361d931bb67d235023bd3d0c64eaa1914a765b53be394727a22a29de851cc",
+    "credit": "Arthur Sullivan (Oct. 5, 1888); Edison yellow paraffine cylinder, catalog E-2439-7. Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park.",
+    "cut": [
+      62.0,
+      88.5
+    ],
+    "duration_seconds": 26.5,
+    "folder": "phonograph",
+    "license": "none stated",
+    "ogg_sha256": "5999f8eaf8ffa8d92991fc8049159ccea7f9eea972c819840cc010382e6f314d",
+    "recorded": "Oct. 5, 1888",
+    "source_sha256": "0c285aa6cb26b11ae824baad1b147307adbca30bd475052b2a10912c2f8d0434",
+    "source_url": "https://www.nps.gov/edis/learn/photosmultimedia/upload/EDIS-SRP-0155-14.mp3",
+    "title": "After dinner toast at Little Menlo",
+    "treatment": "cylinder",
+    "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
+  },
+  "volta_counting": {
+    "artist": "the Volta Laboratory",
+    "bed_frames": 240096,
+    "bed_sha256": "c0e7e3c90c5148d2f11ac5bcaf203e230f8c2be04e3b5e181f482cc6ed9ddcae",
+    "credit": "Recorded at the Volta Laboratory (about 1881); playback by First Sounds (firstsounds.org). The file states no licence.",
+    "duration_seconds": 10.889,
+    "folder": "phonograph",
+    "license": "none stated",
+    "ogg_sha256": "a190c94c7e57416de4fdede248ba3f08b2e2b8b49464a72335f3036f31c42467",
+    "recorded": "about 1881",
+    "source_sha256": "ae41b94eb5da6498c2056ded833e2c8e4251ee4df3d34a6d2c0ea21b34d6ce74",
+    "source_url": "https://www.firstsounds.org/sounds/volta/312119_Lateral_Electroplated_Disc-120.wav",
+    "title": "Counting one to six, with trilled Rs",
+    "treatment": "cylinder",
+    "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
+  },
+  "volta_hamlet": {
+    "artist": "the Volta Laboratory (perhaps Chichester Bell)",
+    "bed_frames": 377072,
+    "bed_sha256": "37dc3cc308313075df1843e36fae00d2c3ff0d4cedfa2237a09c11afcc327371",
+    "credit": "Recorded at the Volta Laboratory (about 1884, perhaps by Chichester Bell); playback by First Sounds (firstsounds.org). The file states no licence.",
+    "duration_seconds": 17.101,
+    "folder": "phonograph",
+    "license": "none stated",
+    "ogg_sha256": "45b92de9b9f464cdbb82d314edc38d0738d9d456c73b59148e24e980dfce9e00",
+    "recorded": "about 1884",
+    "source_sha256": "64fc9eda2aa65bf6ca38c96e2ee5fed549352483a096ded5ff57fee04b1a9a32",
+    "source_url": "https://www.firstsounds.org/sounds/volta/Example1-Green-p93.wav",
+    "title": "The Hamlet soliloquy",
     "treatment": "cylinder",
     "treatment_sha256": "ecc4021220737ceb4be6edb319d4524b61d4949482a591930d05177a94923b69"
   },

@@ -4,10 +4,12 @@ Nothing here downloads: the sources are not in the repo, so a build is tested th
 """
 import array
 import contextlib
+import dataclasses
 import hashlib
 import io
 import json
 import math
+import re
 import shutil
 import subprocess
 import sys
@@ -94,6 +96,8 @@ class CommittedRecordingsTest(unittest.TestCase):
 
     def test_every_credit_is_in_the_form_the_licence_holders_ask_for(self):
         for recording in first_sounds.RECORDINGS:
+            if recording.credit_line:
+                continue  # #946's own credits, in MoreCylindersTest
             credit = self.manifest[recording.name]["credit"]
             self.assertTrue(credit.startswith("Phonautogram by Édouard-Léon Scott de Martinville ("), credit)
             self.assertTrue(
@@ -109,6 +113,8 @@ class CommittedRecordingsTest(unittest.TestCase):
             self.assertEqual(recording.recorded, entry["recorded"])
             self.assertEqual(recording.folder, entry["folder"])
             self.assertIn(entry["treatment"], first_sounds.TREATMENTS)
+            if recording.credit_line:
+                continue
             self.assertTrue(entry["credit"].startswith(f"Phonautogram by {entry['artist']} ({entry['recorded']}); playback"))
         other = first_sounds.Recording("x", "x.mp3", "X", "1900", artist="Someone Else")
         self.assertTrue(other.credit.startswith("Phonautogram by Someone Else (1900);"))
@@ -126,12 +132,115 @@ class CommittedRecordingsTest(unittest.TestCase):
         for recipe in (ROOT / "src/main/resources/data/deepcharter/recipe").glob("*.json"):
             self.assertNotIn("wax_cylinder", json.loads(recipe.read_text())["result"]["id"], recipe.name)
 
+    def test_the_java_recording_names_are_the_pipelines_and_the_colony_rack_keeps_its_three(self):
+        java = (ROOT / "src/main/java/io/github/pkeppeler/deepcharter/sound/phonograph/Recording.java").read_text()
+        members = re.findall(r'^    [A-Z_]+\("([a-z_]+)", (\d{4}), DeepSound\.PHONOGRAPH_[A-Z_]+, (\d+)\)[,;]$', java, re.M)
+        self.assertEqual([r.name for r in first_sounds.RECORDINGS], [name for name, _, _ in members])
+        for name, _, ticks in members:
+            self.assertEqual(math.ceil(self.manifest[name]["duration_seconds"] * 20), int(ticks), name)
+        self.assertIn("COLONY_RACK = List.of(GAMME_DE_LA_VOIX, JEUNE_JOUVENCELLE, OTHELLO);", java)
+
+    def test_each_has_a_title_in_the_lang_and_a_sound_event_that_streams(self):
+        lang = json.loads((ROOT / "src/lang/en_us/sound.json").read_text())
+        sounds = json.loads((ROOT / "src/main/resources/assets/deepcharter/sounds.json").read_text())
+        deep_sound = (ROOT / "src/main/java/io/github/pkeppeler/deepcharter/sound/DeepSound.java").read_text()
+        self.assertEqual("%1$s, %2$s", lang["deepcharter.phonograph.label"])
+        for name in MORE_CYLINDERS:
+            self.assertTrue(lang[f"deepcharter.recording.{name}"], name)
+            event = sounds[f"phonograph.{name}"]
+            self.assertEqual([f"deepcharter:phonograph/{name}"], [sound["name"] for sound in event["sounds"]], name)
+            self.assertTrue(event["sounds"][0]["stream"], name)
+            self.assertEqual("subtitles.deepcharter.phonograph", event["subtitle"], name)
+            self.assertIn(f'("phonograph.{name}")', deep_sound)
+
+    def test_the_wreck_lockers_and_salvage_crates_hold_each_at_the_same_chance_as_before(self):
+        loot = ROOT / "src/main/resources/data/deepcharter/loot_table"
+        for table, chance in (("chests/wreck_locker.json", 0.3), ("blocks/salvage_crate.json", 0.04)):
+            data = json.loads((loot / table).read_text())
+            pools = [p for p in data["pools"] if any(e["name"] == "deepcharter:wax_cylinder" for e in p["entries"])]
+            self.assertEqual(1, len(pools), table)
+            condition = pools[0]["condition"]
+            self.assertIn(chance, [term.get("chance") for term in [condition, *condition.get("terms", [])]], table)
+            held = [e["modifier"][0]["components"]["deepcharter:recording"] for e in pools[0]["entries"]]
+            self.assertEqual([r.name for r in first_sounds.RECORDINGS], held, table)
+            self.assertEqual(1, pools[0]["rolls"], table)
+            self.assertFalse(any("weight" in e for e in pools[0]["entries"]), table)  # each as likely as the next
+
     def test_au_clair_de_la_lune_is_not_among_them(self):
         # The wreck's song (#861) is never a cylinder: it keeps its meaning.
         for recording in first_sounds.RECORDINGS:
             for text in (recording.name, recording.file, recording.title):
                 self.assertNotIn("clair", text.lower())
                 self.assertNotIn("no-36", text.lower())
+
+
+# The five cylinders of #946 and the file each is made from: its canonical URL and the sha256 of the file the manifest credits.
+MORE_CYLINDERS = {
+    "volta_counting": ("https://www.firstsounds.org/sounds/volta/312119_Lateral_Electroplated_Disc-120.wav", "ae41b94eb5da6498c2056ded833e2c8e4251ee4df3d34a6d2c0ea21b34d6ce74"),
+    "volta_hamlet": ("https://www.firstsounds.org/sounds/volta/Example1-Green-p93.wav", "64fc9eda2aa65bf6ca38c96e2ee5fed549352483a096ded5ff57fee04b1a9a32"),
+    "sullivan_toast": ("https://www.nps.gov/edis/learn/photosmultimedia/upload/EDIS-SRP-0155-14.mp3", "0c285aa6cb26b11ae824baad1b147307adbca30bd475052b2a10912c2f8d0434"),
+    "edison_around_the_world": ("https://www.nps.gov/edis/learn/photosmultimedia/upload/EDIS-SRP-0155-06.mp3", "c979a17377450ba0e6fc7545814a24c825c89a38baa18d2f27d9f02a415d8ba9"),
+    "lost_chord": ("https://www.nps.gov/edis/learn/photosmultimedia/upload/EDIS-SRP-0154-02.mp3", "7ac837a80584284a7e764ece7f182ecc79efe78093e56d46cbde436a261ccc59"),
+}
+
+
+class MoreCylindersTest(unittest.TestCase):
+    """#946: five more whole recordings through the cylinder treatment, trimmed to their strongest 15 to 30 seconds."""
+
+    manifest = json.loads(first_sounds.MANIFEST.read_text())
+
+    def test_the_cylinder_set_is_the_original_three_and_the_five_new_ones_in_order(self):
+        self.assertEqual(
+            ["gamme_de_la_voix", "jeune_jouvencelle", "othello", *MORE_CYLINDERS],
+            [recording.name for recording in first_sounds.RECORDINGS],
+        )
+
+    def test_the_manifest_holds_each_canonical_url_and_hash(self):
+        for name, (url, digest) in MORE_CYLINDERS.items():
+            entry = self.manifest[name]
+            self.assertEqual(url, entry["source_url"], name)
+            self.assertEqual(digest, entry["source_sha256"], name)
+
+    def test_each_is_a_cylinder_in_the_phonograph_folder_and_mono(self):
+        for name in MORE_CYLINDERS:
+            entry = self.manifest[name]
+            self.assertEqual(("phonograph", "cylinder"), (entry["folder"], entry["treatment"]), name)
+            self.assertEqual(1, first_sounds.ogg_channels(first_sounds.OUT / "phonograph" / f"{name}.ogg"), name)
+            self.assertEqual(first_sounds.treatment_sha256(), entry["treatment_sha256"], name)
+
+    def test_each_plays_between_ten_and_thirty_seconds(self):
+        # Counting is the whole 10.9 s and Hamlet the whole 17.1 s; the three long ones are trimmed to their strongest stretch.
+        for name in MORE_CYLINDERS:
+            self.assertGreaterEqual(self.manifest[name]["duration_seconds"], 10.0, name)
+            self.assertLessEqual(self.manifest[name]["duration_seconds"], 30.0, name)
+        for name in ("sullivan_toast", "edison_around_the_world", "lost_chord"):
+            start, end = self.manifest[name]["cut"]
+            self.assertTrue(15.0 <= end - start <= 30.0, name)
+
+    def test_a_credit_says_what_is_known_of_each_licence_and_nothing_more(self):
+        for name in MORE_CYLINDERS:
+            entry = self.manifest[name]
+            self.assertEqual("none stated", entry["license"], name)
+            self.assertNotIn("CC BY", entry["credit"], name)
+            self.assertFalse(first_sounds.ALL_RECORDINGS[[r.name for r in first_sounds.ALL_RECORDINGS].index(name)].tagged, name)
+
+    def test_the_national_park_service_is_credited_in_its_own_words(self):
+        for name in ("sullivan_toast", "edison_around_the_world", "lost_chord"):
+            self.assertIn("Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park", self.manifest[name]["credit"], name)
+        self.assertIn("catalog E-2439-7", self.manifest["sullivan_toast"]["credit"])
+        self.assertIn("catalog EDIS 566", self.manifest["edison_around_the_world"]["credit"])
+        self.assertIn("catalog E-2440-3", self.manifest["lost_chord"]["credit"])
+
+    def test_a_manifest_refuses_none_of_them_for_want_of_a_tag_and_still_refuses_a_tagged_one_without_cc_by(self):
+        names = {recording.name for recording in first_sounds.ALL_RECORDINGS if not recording.tagged}
+        self.assertEqual(set(MORE_CYLINDERS), names)
+
+    def test_no_new_recording_is_childrens_or_scripture_or_the_wrecks_song(self):
+        # LORE guardrails 4 and 6 and #861: the talking doll, the nursery rhyme, Handel's Israel in Egypt and every Au clair take are out.
+        for name in MORE_CYLINDERS:
+            recording = next(r for r in first_sounds.RECORDINGS if r.name == name)
+            text = " ".join((recording.name, recording.file, recording.title, recording.url)).lower()
+            self.assertNotRegex(text, r"clair|lune|doll|nursery|twinkle|handel|israel|no-?36|no-?44")
 
 
 class AuClairDeLaLuneTest(unittest.TestCase):
@@ -227,6 +336,47 @@ class DarkRenderTest(unittest.TestCase):
         self.assertAlmostEqual(6.0, len(wreck) / 2 / first_sounds.RATE, delta=0.1)
         peak = lambda raw: max(abs(v) for v in array.array("h", raw[: len(raw) // 2 * 2]))  # noqa: E731
         self.assertLessEqual(peak(dark), peak(wreck))
+
+
+@unittest.skipUnless(all(TOOLS), "ffmpeg is needed to render")
+class CutRebuildTest(unittest.TestCase):
+    """A recording whose cut changed is rendered again, and a refusal anywhere in the list writes nothing."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.sources = self.tmp / "sources"
+        self.sources.mkdir()
+        with wave.open(str(self.sources / "tone.wav"), "wb") as out:
+            out.setnchannels(1)
+            out.setsampwidth(2)
+            out.setframerate(44100)
+            out.writeframes(array.array("h", (int(9000 * math.sin(i * 0.03)) for i in range(44100 * 12))).tobytes())
+
+    def build(self, *recordings):
+        with mock.patch.object(first_sounds, "ALL_RECORDINGS", recordings), contextlib.redirect_stdout(io.StringIO()):
+            return first_sounds.build(self.sources, self.tmp / "out", self.tmp / "first_sounds.json")
+
+    def test_a_changed_cut_is_rendered_again_and_an_unchanged_one_is_kept(self):
+        whole = first_sounds.Recording("t", "tone.wav", "T", "1900", tagged=False, license="none stated")
+        cut = lambda end: dataclasses.replace(whole, cut=(1.0, end))  # noqa: E731
+        self.assertEqual(0, self.build(cut(5.0)))
+        manifest = json.loads((self.tmp / "first_sounds.json").read_text())
+        self.assertAlmostEqual(4.0, manifest["t"]["duration_seconds"], delta=0.1)
+        ogg = first_sounds.sha256(self.tmp / "out" / "phonograph" / "t.ogg")
+        self.assertEqual(0, self.build(cut(5.0)))
+        self.assertEqual(ogg, first_sounds.sha256(self.tmp / "out" / "phonograph" / "t.ogg"))
+        self.assertEqual(0, self.build(cut(8.0)))
+        manifest = json.loads((self.tmp / "first_sounds.json").read_text())
+        self.assertAlmostEqual(7.0, manifest["t"]["duration_seconds"], delta=0.1)
+        self.assertEqual([1.0, 8.0], manifest["t"]["cut"])
+
+    def test_a_tagged_recording_refused_after_an_untagged_one_leaves_nothing_written(self):
+        free = first_sounds.Recording("free", "tone.wav", "Free", "1900", tagged=False, license="none stated")
+        tagged = first_sounds.Recording("tagged", "tone.wav", "Tagged", "1900")
+        self.assertEqual(1, self.build(free, tagged))
+        self.assertFalse((self.tmp / "out").exists())
+        self.assertFalse((self.tmp / "first_sounds.json").exists())
 
 
 @unittest.skipUnless(all(TOOLS), "ffmpeg is needed to render")

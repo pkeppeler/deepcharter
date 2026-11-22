@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.sound.ambience;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +20,8 @@ import org.jspecify.annotations.Nullable;
  *   <li>Near a horn the horn's timer replaces the layer's, and the fragment comes from the horn. The horn adds one fragment: the first
  *       after arriving, not sooner than a minute. After any fragment both timers are drawn again, and the horn's gap is never shorter than
  *       the layer's own, so a horn changes where a fragment is heard from and never how often.
+ *   <li>A horn chooses among the layer's fragments and its own pool ({@link AmbienceTier#HORN}), which the dark never plays: more to hear
+ *       from it, not more often.
  * </ul>
  */
 public final class AmbienceScheduler {
@@ -28,7 +31,7 @@ public final class AmbienceScheduler {
         HORN
     }
 
-    /** A fragment due now: its tier, its name in the tier's pool, and where it sounds from. */
+    /** A fragment due now: its tier (the horn's pool is the tier {@link AmbienceTier#HORN}), its name in that pool, and where it sounds from. */
     public record Pick(AmbienceTier tier, String fragment, Source source) {}
 
     private static final int UNSET = -1;
@@ -77,9 +80,8 @@ public final class AmbienceScheduler {
         if ((hornNear ? --hornTicksLeft : --ticksLeft) > 0) {
             return Optional.empty();
         }
-        AmbienceTier tier = rate.tier();
-        String fragment = quiet ? null : choose(tier);
-        if (fragment == null) {
+        Optional<Pick> chosen = quiet ? Optional.empty() : choose(rate.tier(), hornNear);
+        if (chosen.isEmpty()) {
             int retry = draw(tuning.retryMinTicks(), tuning.retryMaxTicks());
             if (hornNear) {
                 hornTicksLeft = retry;
@@ -88,22 +90,32 @@ public final class AmbienceScheduler {
             }
             return Optional.empty();
         }
-        last = fragment;
+        Pick pick = chosen.get();
+        last = pick.fragment();
         // Any fragment redraws both timers.
         ticksLeft = draw(rate.minTicks(), rate.maxTicks());
         if (hornNear) {
             hornTicksLeft = draw(
                     Math.max(tuning.hornMinTicks(), rate.minTicks()), Math.max(tuning.hornMaxTicks(), rate.maxTicks()));
         }
-        return Optional.of(new Pick(tier, fragment, hornNear ? Source.HORN : Source.DARK));
+        return chosen;
     }
 
-    /** A fragment of the tier other than the last, or null when the pool has nothing else to say. */
-    private @Nullable String choose(AmbienceTier tier) {
-        List<String> others = pools.getOrDefault(tier, List.of()).stream()
-                .filter(name -> !name.equals(last))
-                .toList();
-        return others.isEmpty() ? null : others.get(random.nextInt(others.size()));
+    /**
+     * A fragment of the tier other than the last, or empty when the pool has nothing else to say. Near a horn the horn's own pool is
+     * added, each fragment as likely as the next.
+     */
+    private Optional<Pick> choose(AmbienceTier tier, boolean hornNear) {
+        Source source = hornNear ? Source.HORN : Source.DARK;
+        List<Pick> others = new ArrayList<>();
+        for (AmbienceTier from : hornNear ? List.of(tier, AmbienceTier.HORN) : List.of(tier)) {
+            for (String name : pools.getOrDefault(from, List.of())) {
+                if (!name.equals(last)) {
+                    others.add(new Pick(from, name, source));
+                }
+            }
+        }
+        return others.isEmpty() ? Optional.empty() : Optional.of(others.get(random.nextInt(others.size())));
     }
 
     /** A whole number of ticks from {@code min} to {@code max}, both included. */

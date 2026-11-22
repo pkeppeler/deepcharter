@@ -214,8 +214,11 @@ public class LootTableDropsTest {
         helper.succeed();
     }
 
-    /** A rare find is measured over many more seeds than the common drops. */
-    private static final int RARE_SEEDS = 4000;
+    /**
+     * A rare find is measured over many more seeds than the common drops: enough that each of the recordings (eight since #946) comes up
+     * about 60 times in the crates, whose cylinder is the rarer.
+     */
+    private static final int RARE_SEEDS = 12000;
 
     /** The salvage crate's cylinder: a few in a hundred crates, a single one, and any of the recordings. */
     @GameTest(maxTicks = 400)
@@ -290,12 +293,15 @@ public class LootTableDropsTest {
         if (!found.keySet().equals(Set.of(Recording.values()))) {
             throw helper.assertionException("%s drops the recordings %s, expected every one of them", table, found);
         }
-        // Each recording is as likely as the next: a third of the cylinders, give or take, so a doubled weight fails.
+        // Each recording is as likely as the next, one in however many there are, give or take 40 per cent: a doubled
+        // weight is 78 per cent
+        // over and a halved one 47 per cent under, so either fails, and so does a table that drops only the first few.
+        double each = 1.0 / Recording.values().length;
         for (Map.Entry<Recording, Integer> entry : found.entrySet()) {
             double of = (double) entry.getValue() / cylinders;
-            if (of < 0.25 || of > 0.42) {
+            if (of < each * 0.6 || of > each * 1.4) {
                 throw helper.assertionException(
-                        "%s drops %s in %s of its cylinders, expected a third", table, entry.getKey(), of);
+                        "%s drops %s in %s of its cylinders, expected about %s", table, entry.getKey(), of, each);
             }
         }
     }

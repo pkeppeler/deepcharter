@@ -105,6 +105,36 @@
       "tier": "broken",
       "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
     },
+    "broken/donders_ki": {
+      "cut_sha256": "2da1255e2251c0d74463802b0a0a7df9c4b7c09cec0374cf8bf8723ca5903daa",
+      "duration_seconds": 2.553,
+      "end": 2.0,
+      "fragment": "donders_ki",
+      "kind": "voice",
+      "ogg_sha256": "07f5d3d33ae4c8efcc52f6d000315612a8f77a6b3452af12c351e8cb1cd8e20d",
+      "pcm_frames": 56286,
+      "pcm_sha256": "cb4141c8dbf6d359afb580e16ef384f735cd6a4c4ec6cd5122b749009b5d0d4b",
+      "source": "noematachogram",
+      "source_sha256": "fa40f26c7b30615926193854d29ffe8460a15bf13201e298a948c7bfd21e010a",
+      "start": 0.2,
+      "tier": "broken",
+      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
+    },
+    "broken/ear_a": {
+      "cut_sha256": "834e3df4323023f39485aed632b5d340f6794ac7d721acb01735770ea6f25178",
+      "duration_seconds": 1.788,
+      "end": 3.4,
+      "fragment": "ear_a",
+      "kind": "voice",
+      "ogg_sha256": "e1d0613afe32cb6bd802a7550ac7887a0cdcb42432c3c4a37c558d2d787c4b22",
+      "pcm_frames": 39423,
+      "pcm_sha256": "5017c600f0290fef9943ceb13016dceee968d384ec84cbacc65830b108a020b2",
+      "source": "listening_dead",
+      "source_sha256": "b21a0fe4da6584d511c91bcca026e64eb7ff03ee8d6d5d3b58e0312016b0ff2a",
+      "start": 2.2,
+      "tier": "broken",
+      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
+    },
     "broken/fork_surfaces": {
       "cut_sha256": "c611081ed51eb32eb031568ed2a94bbafe0e9181616727616a8789a8fd6616ad",
       "duration_seconds": 3.577,
@@ -132,6 +162,21 @@
       "source": "diapason_435",
       "source_sha256": "e2a7ca9d1fe61b45cf9c9361d32290c99bf4af8263e4c4d5a82b99836cc57400",
       "start": 19.8,
+      "tier": "broken",
+      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
+    },
+    "broken/morey_oo": {
+      "cut_sha256": "f0933b9f5a9a6a3795e2434f12e43aa1559199e6952b4671382cea6bd3c676eb",
+      "duration_seconds": 1.803,
+      "end": 1.4,
+      "fragment": "morey_oo",
+      "kind": "voice",
+      "ogg_sha256": "f2840da1c6b91726b19bdb5cf639e5830e32f9ebfbc763c4b0d1183281554117",
+      "pcm_frames": 39761,
+      "pcm_sha256": "5de4510089baeddda80dd70f1d490db97613837e0c779257cb9805ff3d56b1ed",
+      "source": "morey_mood",
+      "source_sha256": "b8a49faf5f3a458a785a7acb0819cd0bd888969d833449571f9a108cd7ef9e8d",
+      "start": 0.2,
       "tier": "broken",
       "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
     },
@@ -177,6 +222,21 @@
       "source": "othello",
       "source_sha256": "0e564635920b4457923e112f5dded4c36cd7fe604b906721768682ebf6e64012",
       "start": 12.2,
+      "tier": "broken",
+      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
+    },
+    "broken/scale_crosstalk": {
+      "cut_sha256": "cc982b5f93a9ce372db09f754f263d9ab307e882d14ac46552cb577a5b8b3ee3",
+      "duration_seconds": 2.333,
+      "end": 2.8,
+      "fragment": "scale_crosstalk",
+      "kind": "voice",
+      "ogg_sha256": "c461104d3abde3bd7726a1309d6ed82b1c35caa2a7e22631a99d62f885a824a2",
+      "pcm_frames": 51450,
+      "pcm_sha256": "1d206edb53065ad72120cf92d76142780dacb5636fe6fdea53fe90969bcc3539",
+      "source": "vocal_scale_crosstalk",
+      "source_sha256": "c13f5d490bf699cc5a4ec309c7619529ca68982c3df9c3825bd1a43267a83fce",
+      "start": 1.2,
       "tier": "broken",
       "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
     },
@@ -300,6 +360,21 @@
       "tier": "worn",
       "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
     },
+    "worn/barometer": {
+      "cut_sha256": "464eae1232b834139f5b9e23cd328e1327d106295a114ba29c1982aea44315df",
+      "duration_seconds": 2.8,
+      "end": 3.3,
+      "fragment": "barometer",
+      "kind": "voice",
+      "ogg_sha256": "d6ce95c1671b2faa4daa4ed52b559258816f1288be1617aedbc4f3452cb4619f",
+      "pcm_frames": 61740,
+      "pcm_sha256": "561c2a8e56e09643ae0c4beb23c23f22d5efd1dac21b77d4ef585726f84e938c",
+      "source": "volta_barometer",
+      "source_sha256": "a78affeae998b32203a3e1e1e259f81372e44ddf0222c45b0adf86d9b40f1922",
+      "start": 0.5,
+      "tier": "worn",
+      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
+    },
     "worn/breath_a": {
       "cut_sha256": "3ef1e584ef7d72a02f264aeab9fa576e5229f1b8f65191419fdfa04d34b03b92",
       "duration_seconds": 1.2,
@@ -357,6 +432,21 @@
       "source": "gamme_de_la_voix",
       "source_sha256": "7d72806ac70fc90bb721b523aa420291833088a917ec2c7032aa69b1286d9d5f",
       "start": 10.2,
+      "tier": "worn",
+      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
+    },
+    "worn/diapason": {
+      "cut_sha256": "ea447cd66a215e7d7f37a1d7a2404c1785e85267bc50c0807fe66c5ba765c7d1",
+      "duration_seconds": 2.7,
+      "end": 2.7,
+      "fragment": "diapason",
+      "kind": "tone",
+      "ogg_sha256": "41de7bffe30de900c5dcb4c863142a866cb6254071c7a570b7102b3867652c4f",
+      "pcm_frames": 59535,
+      "pcm_sha256": "f7a6d0e1e846f892e88cebc63a3dc402ed1b907d786f81a49fa06992c2a01d74",
+      "source": "diapason_scale",
+      "source_sha256": "22f4641d0902a3e15fddb6b14c050e62adc80f3981855fdbfe7c433a4bc5d9f5",
+      "start": 0.0,
       "tier": "worn",
       "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
     },
@@ -450,6 +540,66 @@
       "tier": "worn",
       "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
     },
+    "worn/railway": {
+      "cut_sha256": "0deece426d519df5958f846a2b2c297d273fa0564437583d2768ba58353bbb0f",
+      "duration_seconds": 2.8,
+      "end": 19.8,
+      "fragment": "railway",
+      "kind": "tone",
+      "ogg_sha256": "1e3c43dd6bd22e7632b6e27a5fb917972015e28971b042732ede2ee861123184",
+      "pcm_frames": 61740,
+      "pcm_sha256": "828a3f0b2b7289bade4889a20e11c01fe257fa3f9fd52d430a22e8cf1cd2ecb0",
+      "source": "elevated_railroad",
+      "source_sha256": "bb43ff95ac8a0287a14003cd9d5004c60c54bf536838dba9109820d76e838d4b",
+      "start": 17.0,
+      "tier": "worn",
+      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
+    },
+    "worn/story_a": {
+      "cut_sha256": "decd532e57a955c2a1a1a32ed2add84989b2e09f62a7978d2c3c1c6131148751",
+      "duration_seconds": 2.6,
+      "end": 2.6,
+      "fragment": "story_a",
+      "kind": "voice",
+      "ogg_sha256": "912560549fcdc0daf3db0b9f8547f0b2459d6575247ab0050d00ff819e4f0368",
+      "pcm_frames": 57330,
+      "pcm_sha256": "64c67443a87673661dacf66cb4838c8954fa89bf6c8f66deabdfb770eea9bf7c",
+      "source": "volta_story",
+      "source_sha256": "4998a4f52040e1579f7a5ff04c95fdce6bc699782aa8c7d075e8fb9f90f09902",
+      "start": 0.0,
+      "tier": "worn",
+      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
+    },
+    "worn/story_b": {
+      "cut_sha256": "f32f45b628736375cd9d896b1ff73934eb8f387f0b22c5eeeca34d4501c9dcc0",
+      "duration_seconds": 2.6,
+      "end": 54.6,
+      "fragment": "story_b",
+      "kind": "voice",
+      "ogg_sha256": "55b3b3ffc0e4da67ad592fda2d4477377959b9c615980fd8757ca2d57ec66868",
+      "pcm_frames": 57330,
+      "pcm_sha256": "c33c6f89a6cefda1f09827ef655b661d0aabc25fe0977238ff928fbac281e0e6",
+      "source": "volta_story",
+      "source_sha256": "4998a4f52040e1579f7a5ff04c95fdce6bc699782aa8c7d075e8fb9f90f09902",
+      "start": 52.0,
+      "tier": "worn",
+      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
+    },
+    "worn/test_voices": {
+      "cut_sha256": "8fa8cb8b992ebee64e2f2b59bbede44685fa4e47e224244b789618fe3df4435c",
+      "duration_seconds": 2.8,
+      "end": 39.2,
+      "fragment": "test_voices",
+      "kind": "voice",
+      "ogg_sha256": "5c8398244db8fe56e498e39f2d54269ae001fa4b7d61c85a4567a64e0986c0a1",
+      "pcm_frames": 61740,
+      "pcm_sha256": "e585dc8fa133f9b7c438770b954e50dc6eb6050356ca1d50beb9c17c7b76886c",
+      "source": "elevated_railroad",
+      "source_sha256": "bb43ff95ac8a0287a14003cd9d5004c60c54bf536838dba9109820d76e838d4b",
+      "start": 36.4,
+      "tier": "worn",
+      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
+    },
     "worn/vole_a": {
       "cut_sha256": "866d56e943e0e7939b57f31502ab546c31bf93239854ce5703ef2eb4bf37554a",
       "duration_seconds": 1.0,
@@ -500,6 +650,24 @@
       "source_url": "https://firstsounds.org/sounds/1859-Scott-Diapason-435-Hz.mp3",
       "title": "Diapason at 435 Hz, at sequential stages of restoration"
     },
+    "diapason_scale": {
+      "artist": "Claude-Servais-Matthias Pouillet",
+      "credit": "A waveform inscribed by Claude-Servais-Matthias Pouillet (1850); playback by First Sounds (firstsounds.org); CC BY.",
+      "license": "CC BY",
+      "recorded": "1850",
+      "source_sha256": "22f4641d0902a3e15fddb6b14c050e62adc80f3981855fdbfe7c433a4bc5d9f5",
+      "source_url": "https://www.firstsounds.org/features/mp3/diapason-scale.mp3",
+      "title": "Diapason Scale"
+    },
+    "elevated_railroad": {
+      "artist": "Charles Batchelor (for Thomas Edison)",
+      "credit": "Phonautogram by Charles Batchelor for Thomas Edison (Sept. 19, 1878), from the Edison National Historic Site; playback by First Sounds (firstsounds.org); CC BY.",
+      "license": "CC BY",
+      "recorded": "Sept. 19, 1878",
+      "source_sha256": "bb43ff95ac8a0287a14003cd9d5004c60c54bf536838dba9109820d76e838d4b",
+      "source_url": "https://www.firstsounds.org/sounds/1878-Edison-MERR.mp3",
+      "title": "Metropolitan Elevated Railroad from 40 feet away, with test voices"
+    },
     "gamme_de_la_voix": {
       "artist": "Édouard-Léon Scott de Martinville",
       "credit": "Phonautogram by Édouard-Léon Scott de Martinville (May 17, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
@@ -509,6 +677,33 @@
       "source_url": "https://firstsounds.org/sounds/1860-Vocal-Scale-05-09.mp3",
       "title": "Gamme de la Voix, vocal scale"
     },
+    "listening_dead": {
+      "artist": "August Lucae (in Rudolph Koenig's workshop)",
+      "credit": "Phonautogram by August Lucae in Rudolph Koenig's workshop (published in Virchow's Archiv, 1862); playback by First Sounds (firstsounds.org); CC BY.",
+      "license": "CC BY",
+      "recorded": "published 1862",
+      "source_sha256": "b21a0fe4da6584d511c91bcca026e64eb7ff03ee8d6d5d3b58e0312016b0ff2a",
+      "source_url": "https://www.firstsounds.org/features/mp3/listening-dead.mp3",
+      "title": "Phonautogram made using a human ear"
+    },
+    "morey_mood": {
+      "artist": "Charles Anson Morey",
+      "credit": "Phonautogram by Charles Anson Morey (published 1874); playback by First Sounds (firstsounds.org). The file's tag states no licence; the First Sounds site licenses its playbacks under CC BY.",
+      "license": "CC BY (First Sounds site)",
+      "recorded": "published 1874",
+      "source_sha256": "b8a49faf5f3a458a785a7acb0819cd0bd888969d833449571f9a108cd7ef9e8d",
+      "source_url": "https://www.firstsounds.org/features/mp3/morey-mood.mp3",
+      "title": "The vowel \"oo\" in \"mood\""
+    },
+    "noematachogram": {
+      "artist": "Franciscus Cornelis Donders",
+      "credit": "Recorded by Franciscus Cornelis Donders (1865, published 1868); playback by First Sounds (firstsounds.org); CC BY.",
+      "license": "CC BY",
+      "recorded": "recorded 1865, published 1868",
+      "source_sha256": "fa40f26c7b30615926193854d29ffe8460a15bf13201e298a948c7bfd21e010a",
+      "source_url": "https://www.firstsounds.org/features/mp3/noematachogram.mp3",
+      "title": "Noematachogram"
+    },
     "othello": {
       "artist": "Édouard-Léon Scott de Martinville",
       "credit": "Phonautogram by Édouard-Léon Scott de Martinville (Apr. 17, 1860); playback by First Sounds (firstsounds.org), co-produced by Patrick Feaster and David Giovannoni; CC BY.",
@@ -517,6 +712,15 @@
       "source_sha256": "0e564635920b4457923e112f5dded4c36cd7fe604b906721768682ebf6e64012",
       "source_url": "https://firstsounds.org/sounds/Scott-Feaster-No-38.mp3",
       "title": "Excerpt from Ducis' Othello"
+    },
+    "vocal_scale_crosstalk": {
+      "artist": "Édouard-Léon Scott de Martinville",
+      "credit": "Phonautogram by Édouard-Léon Scott de Martinville (May 17, 1860); playback by First Sounds (firstsounds.org); CC BY.",
+      "license": "CC BY",
+      "recorded": "May 17, 1860",
+      "source_sha256": "c13f5d490bf699cc5a4ec309c7619529ca68982c3df9c3825bd1a43267a83fce",
+      "source_url": "https://www.firstsounds.org/sounds/1860-Vocal-Scale.mp3",
+      "title": "Gamme de la Voix, vocal scale with crosstalk"
     },
     "vole_petite_abeille": {
       "artist": "Édouard-Léon Scott de Martinville",
@@ -535,6 +739,24 @@
       "source_sha256": "e25660257cae4ccd2806bc55fdf80abb579311d214f1b1de0508923ee1c1bd66",
       "source_url": "https://firstsounds.org/sounds/1860-Scott-Vole-Petite-Abeille-no-6.mp3",
       "title": "Vole Petite Abeille, vocal solo (no. 6)"
+    },
+    "volta_barometer": {
+      "artist": "the Volta Laboratory",
+      "credit": "Recorded at the Volta Laboratory (1884); playback by First Sounds (firstsounds.org). The file states no licence.",
+      "license": "none stated",
+      "recorded": "1884",
+      "source_sha256": "a78affeae998b32203a3e1e1e259f81372e44ddf0222c45b0adf86d9b40f1922",
+      "source_url": "https://www.firstsounds.org/sounds/volta/287686_Barometer.wav",
+      "title": "Barometer, repeated"
+    },
+    "volta_story": {
+      "artist": "the Volta Laboratory",
+      "credit": "Recorded at the Volta Laboratory (1885); playback by First Sounds (firstsounds.org). The file states no licence.",
+      "license": "none stated",
+      "recorded": "1885",
+      "source_sha256": "4998a4f52040e1579f7a5ff04c95fdce6bc699782aa8c7d075e8fb9f90f09902",
+      "source_url": "https://www.firstsounds.org/sounds/volta/287701_1sthalf.wav",
+      "title": "A half-heard story, with falsetto"
     }
   }
 }

@@ -273,6 +273,127 @@ public class AmbienceSchedulerTest {
         helper.succeed();
     }
 
+    /** A horn's own pool (#946) is played by the horn only: the dark never draws from it, and near a horn it is one choice among many. */
+    @GameTest
+    public void aHornAddsItsOwnPoolToItsChoicesAndTheDarkNeverPlaysIt(GameTestHelper helper) {
+        Map<AmbienceTier, List<String>> pools = Map.of(
+                AmbienceTier.FAINT, List.of("a", "b", "c"),
+                AmbienceTier.WORN, List.of("a", "b", "c", "d"),
+                AmbienceTier.BROKEN, List.of("a", "b"),
+                AmbienceTier.HORN, List.of("h1", "h2", "h3"));
+        long ticks = DAYS * 24_000L;
+        List<Pick> dark = new ArrayList<>();
+        picksAt(
+                new AmbienceScheduler(AmbienceTuning.DEFAULT, pools, new SplittableRandom(3)),
+                2,
+                false,
+                false,
+                ticks,
+                dark);
+        expect(helper, dark.size() > 50, "only %s fragments in the dark", dark.size());
+        dark.forEach(pick -> expect(
+                helper,
+                pick.tier() == AmbienceTier.WORN && pick.source() == Source.DARK,
+                "the dark played %s from %s",
+                pick.fragment(),
+                pick.tier()));
+        List<Pick> horn = new ArrayList<>();
+        picksAt(
+                new AmbienceScheduler(AmbienceTuning.DEFAULT, pools, new SplittableRandom(4)),
+                2,
+                true,
+                false,
+                ticks,
+                horn);
+        long fromPool =
+                horn.stream().filter(pick -> pick.tier() == AmbienceTier.HORN).count();
+        long fromLayer =
+                horn.stream().filter(pick -> pick.tier() == AmbienceTier.WORN).count();
+        expect(
+                helper,
+                fromPool > 0 && fromLayer > 0 && fromPool + fromLayer == horn.size(),
+                "a horn played %s from its pool and %s from the layer of %s",
+                fromPool,
+                fromLayer,
+                horn.size());
+        // Three of seven choices are the horn's own: about 43 per cent, give or take.
+        double share = (double) fromPool / horn.size();
+        expect(helper, share > 0.3 && share < 0.56, "the horn's pool is %s of what it plays", share);
+        for (Pick pick : horn) {
+            expect(
+                    helper,
+                    pools.getOrDefault(pick.tier(), List.of()).contains(pick.fragment())
+                            && pick.source() == Source.HORN,
+                    "%s is not in the pool of %s",
+                    pick.fragment(),
+                    pick.tier());
+        }
+        // The pool adds variety and not frequency: the horn's pace is the same with it as without it.
+        List<Pick> without = new ArrayList<>();
+        picksAt(scheduler(4), 2, true, false, ticks, without);
+        expect(
+                helper,
+                Math.abs(horn.size() - without.size()) <= without.size() / 10 + 1,
+                "a horn played %s with its pool and %s without",
+                horn.size(),
+                without.size());
+        helper.succeed();
+    }
+
+    /** The shipped horn pool: these fragments, each a sound event of {@code ambience.horn.}, and none in a layer's pool. */
+    @GameTest
+    public void theShippedHornPoolIsTheSixFragmentsAndNoLayerPlaysThem(GameTestHelper helper) {
+        List<String> horn = AmbienceFragments.pools().getOrDefault(AmbienceTier.HORN, List.of());
+        expect(
+                helper,
+                Set.copyOf(horn)
+                        .equals(Set.of("diapason", "railway", "test_voices", "barometer", "story_a", "story_b")),
+                "the horn pool is %s",
+                horn);
+        for (String name : horn) {
+            expect(
+                    helper,
+                    AmbienceFragments.sound(AmbienceTier.HORN, name)
+                            .location()
+                            .getPath()
+                            .equals("ambience.horn." + name),
+                    "%s is not an ambience.horn event",
+                    name);
+            for (AmbienceTier tier : List.of(AmbienceTier.FAINT, AmbienceTier.WORN, AmbienceTier.BROKEN)) {
+                expect(
+                        helper,
+                        !AmbienceFragments.pools().getOrDefault(tier, List.of()).contains(name),
+                        "%s is also in the %s pool",
+                        name,
+                        tier);
+            }
+        }
+        helper.succeed();
+    }
+
+    /** The deep fragments (#946) are in the broken pool and in no shallower one. */
+    @GameTest
+    public void theDeepFragmentsAreOnlyInTheBrokenPool(GameTestHelper helper) {
+        for (String name : List.of("ear_a", "donders_ki", "morey_oo", "scale_crosstalk")) {
+            expect(
+                    helper,
+                    AmbienceFragments.pools()
+                            .getOrDefault(AmbienceTier.BROKEN, List.of())
+                            .contains(name),
+                    "%s is not in the broken pool",
+                    name);
+            for (AmbienceTier tier : List.of(AmbienceTier.FAINT, AmbienceTier.WORN, AmbienceTier.HORN)) {
+                expect(
+                        helper,
+                        !AmbienceFragments.pools().getOrDefault(tier, List.of()).contains(name),
+                        "%s is in the %s pool",
+                        name,
+                        tier);
+            }
+        }
+        helper.succeed();
+    }
+
     @GameTest
     public void aHornNeverMakesALayerNoisierThanItsOwnRate(GameTestHelper helper) {
         long ticks = DAYS * 24_000L;

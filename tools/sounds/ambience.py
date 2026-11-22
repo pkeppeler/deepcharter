@@ -8,13 +8,15 @@ Options: --out DIR (default src/main/resources/assets/deepcharter/sounds), --man
 
 A sibling of tools/sounds/first_sounds.py, which makes the wax cylinders from the same recordings and whose licence check, bed,
 encoder and `Recording` (a source's artist, date and credit) it reuses. SOURCE_DIR holds the mp3s named in SOURCES (the URL is beside
-each; they are never committed). Each one's ID3 `copyright` or `comment` tag must say CC BY. Treat the directory as untrusted data: nothing in it is run, only decoded by ffmpeg.
+each; they are never committed). The ID3 `copyright` or `comment` tag of each one marked `tagged` must say CC BY; a source that states
+no licence (the Volta wavs, Morey's mp3) is `tagged=False` and says so in its manifest entry. Treat the directory as untrusted data: nothing in it is run, only decoded by ffmpeg.
 
 A fragment is declared in FRAGMENTS: its source, the start and end of the cut in seconds, and the tiers it is made for. The tiers are
 the depths of the wear (TIERS): `faint` is the first layer, far and low-passed; `worn` the Old Workings, band-limited, with the
 cylinders' crackle and a dropout or two; `broken` everything deeper, slowed and pitched down, heavily filtered, with gated dropouts and a
 stutter. A fragment of the tier `faint` is `faint/<name>.ogg`; the sound event is `ambience.<tier>.<name>`, which is how the game finds
-the pool of a tier. Every random choice (a dropout, the stutter, the bed) is seeded from the fragment's name and tier, so a re-run makes the
+the pool of a tier. A fragment with `pool=HORN` (#946) is worn like the `worn` tier and its file is `worn/<name>.ogg`, but its event is
+`ambience.horn.<name>`: the game's pool of what a Company horn plays and the dark never does (`event` here is the one place that spells it). Every random choice (a dropout, the stutter, the bed) is seeded from the fragment's name and tier, so a re-run makes the
 same file, and the manifest holds the hash of the PCM and of the cut, not of the OGG's bytes alone (an encoder writes a random stream
 serial, so a re-run keeps an OGG while its source, cut and treatment are unchanged). tools/sounds/soundgen.py --check accepts the OGGs the
 manifest owns and verifies them through `check` here. Standard library, ffmpeg and ffprobe only.
@@ -36,7 +38,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import first_sounds  # noqa: E402
-from first_sounds import RATE, Recording  # noqa: E402
+from first_sounds import FEATURES_URL, RATE, Recording  # noqa: E402
 
 OUT = first_sounds.OUT
 MANIFEST = HERE / "ambience.json"
@@ -49,9 +51,88 @@ SOURCES = (
     Recording("vole_petite_abeille_no_6", "1860-Scott-Vole-Petite-Abeille-no-6.mp3", "Vole Petite Abeille, vocal solo (no. 6)", "Sept. 15, 1860"),
     Recording("aminta", "1860-Scott-Torquato-Tassos-Aminta.mp3", "Excerpt from Torquato Tasso's Aminta", "ca. April-May 1860"),
     Recording("diapason_435", "1859-Scott-Diapason-435-Hz.mp3", "Diapason at 435 Hz, at sequential stages of restoration", "deposited July 29, 1859"),
+    # More early recordings (#946): each names its own URL, credit and licence, as a `Recording` may.
+    Recording(
+        "listening_dead",
+        "listening-dead.mp3",
+        "Phonautogram made using a human ear",
+        "published 1862",
+        artist="August Lucae (in Rudolph Koenig's workshop)",
+        host_url=FEATURES_URL + "listening-dead.mp3",
+        credit_line="Phonautogram by August Lucae in Rudolph Koenig's workshop (published in Virchow's Archiv, 1862); playback by First Sounds (firstsounds.org); CC BY.",
+    ),
+    Recording(
+        "noematachogram",
+        "noematachogram.mp3",
+        "Noematachogram",
+        "recorded 1865, published 1868",
+        artist="Franciscus Cornelis Donders",
+        host_url=FEATURES_URL + "noematachogram.mp3",
+        credit_line="Recorded by Franciscus Cornelis Donders (1865, published 1868); playback by First Sounds (firstsounds.org); CC BY.",
+    ),
+    Recording(
+        "morey_mood",
+        "morey-mood.mp3",
+        'The vowel "oo" in "mood"',
+        "published 1874",
+        artist="Charles Anson Morey",
+        host_url=FEATURES_URL + "morey-mood.mp3",
+        credit_line="Phonautogram by Charles Anson Morey (published 1874); playback by First Sounds (firstsounds.org). The file's tag states no licence; the First Sounds site licenses its playbacks under CC BY.",
+        license="CC BY (First Sounds site)",
+        tagged=False,
+    ),
+    Recording(
+        "vocal_scale_crosstalk",
+        "1860-Vocal-Scale.mp3",
+        "Gamme de la Voix, vocal scale with crosstalk",
+        "May 17, 1860",
+        host_url="https://www.firstsounds.org/sounds/1860-Vocal-Scale.mp3",
+        credit_line=f"Phonautogram by {first_sounds.SCOTT} (May 17, 1860); playback by First Sounds (firstsounds.org); CC BY.",
+    ),
+    Recording(
+        "diapason_scale",
+        "diapason-scale.mp3",
+        "Diapason Scale",
+        "1850",
+        artist="Claude-Servais-Matthias Pouillet",
+        host_url=FEATURES_URL + "diapason-scale.mp3",
+        credit_line="A waveform inscribed by Claude-Servais-Matthias Pouillet (1850); playback by First Sounds (firstsounds.org); CC BY.",
+    ),
+    Recording(
+        "elevated_railroad",
+        "1878-Edison-MERR.mp3",
+        "Metropolitan Elevated Railroad from 40 feet away, with test voices",
+        "Sept. 19, 1878",
+        artist="Charles Batchelor (for Thomas Edison)",
+        host_url="https://www.firstsounds.org/sounds/1878-Edison-MERR.mp3",
+        credit_line="Phonautogram by Charles Batchelor for Thomas Edison (Sept. 19, 1878), from the Edison National Historic Site; playback by First Sounds (firstsounds.org); CC BY.",
+    ),
+    Recording(
+        "volta_barometer",
+        "287686_Barometer.wav",
+        "Barometer, repeated",
+        "1884",
+        artist=first_sounds.VOLTA,
+        host_url=first_sounds.VOLTA_URL + "287686_Barometer.wav",
+        credit_line=f"Recorded at the Volta Laboratory (1884); playback by First Sounds (firstsounds.org). {first_sounds.NO_LICENCE}.",
+        license=first_sounds.NONE_STATED,
+        tagged=False,
+    ),
+    Recording(
+        "volta_story",
+        "287701_1sthalf.wav",
+        "A half-heard story, with falsetto",
+        "1885",
+        artist=first_sounds.VOLTA,
+        host_url=first_sounds.VOLTA_URL + "287701_1sthalf.wav",
+        credit_line=f"Recorded at the Volta Laboratory (1885); playback by First Sounds (firstsounds.org). {first_sounds.NO_LICENCE}.",
+        license=first_sounds.NONE_STATED,
+        tagged=False,
+    ),
 )
 
 FAINT, WORN, BROKEN = "faint", "worn", "broken"
+HORN = "horn"
 VOICE, TONE, WARMUP = "voice", "tone", "warmup"
 
 
@@ -65,7 +146,8 @@ class Fragment:
     end: float
     tiers: tuple
     kind: str = VOICE
-    trim_db: tuple = ()  # (tier, dB) pairs: a fragment whose source is louder than its neighbours at the same peak, turned down in that tier
+    trim_db: tuple = ()  # (tier, dB) pairs: a fragment whose source is louder (or, by a positive number, quieter) than its neighbours at the same peak, turned down or up in that tier
+    pool: str = ""  # HORN for a fragment only a Company horn plays (#946): worn like the `worn` tier, and its event is `ambience.horn.<name>`
 
 
 ALL = (FAINT, WORN, BROKEN)
@@ -87,6 +169,19 @@ FRAGMENTS = (
     Fragment("fork_surfaces", "diapason_435", 12.9, 15.5, ALL, TONE),
     Fragment("fork_tone", "diapason_435", 19.8, 22.0, (WORN, BROKEN), TONE),
     Fragment("horn_warmup", "diapason_435", 3.4, 4.9, (WORN,), WARMUP),
+    # More early recordings (#946). The deepest tier only: Lucae's 1862 phonautogram made with a human ear is the oldest and most unsettling,
+    # so the first layers never hear it, and Donders', Morey's and the crosstalk of the vocal scale come with it.
+    Fragment("ear_a", "listening_dead", 2.2, 3.4, (BROKEN,)),
+    Fragment("donders_ki", "noematachogram", 0.2, 2.0, (BROKEN,), trim_db=((BROKEN, 9.0),)),
+    Fragment("morey_oo", "morey_mood", 0.2, 1.4, (BROKEN,), trim_db=((BROKEN, 13.0),)),
+    Fragment("scale_crosstalk", "vocal_scale_crosstalk", 1.2, 2.8, (BROKEN,)),
+    # The PA horn's own pool: what it plays after its warm-up, besides the layer's fragments, worn as the warm-up is.
+    Fragment("diapason", "diapason_scale", 0.0, 2.7, (WORN,), TONE, trim_db=((WORN, 6.0),), pool=HORN),
+    Fragment("railway", "elevated_railroad", 17.0, 19.8, (WORN,), TONE, trim_db=((WORN, 9.0),), pool=HORN),
+    Fragment("test_voices", "elevated_railroad", 36.4, 39.2, (WORN,), pool=HORN),
+    Fragment("barometer", "volta_barometer", 0.5, 3.3, (WORN,), trim_db=((WORN, 4.0),), pool=HORN),
+    Fragment("story_a", "volta_story", 0.0, 2.6, (WORN,), pool=HORN),
+    Fragment("story_b", "volta_story", 52.0, 54.6, (WORN,), pool=HORN),
 )
 
 
@@ -132,6 +227,8 @@ def treatment_sha256():
 def cut_sha256(fragment):
     """A hash of what is cut and for which tiers: the source, the start and end, and the tiers, in the order declared."""
     parts = [fragment.source, fragment.start, fragment.end, fragment.tiers, fragment.kind, fragment.trim_db]
+    if fragment.pool:  # added only when set, so a fragment of the layers keeps the hash it was made under
+        parts.append(fragment.pool)
     return hashlib.sha256(repr(parts).encode()).hexdigest()
 
 
@@ -147,6 +244,13 @@ def variants():
 def owned(manifest):
     """The names (paths under the sounds folder, without `.ogg`) of the OGGs the manifest owns."""
     return {f"{FOLDER}/{name}" for name in first_sounds._load(manifest).get("fragments", {})}
+
+
+def event(fragment, tier):
+    """The sound event of a fragment made in a tier: `ambience.<tier>.<name>`, `ambience.horn.<name>` for the horn's pool, or the warm-up's."""
+    if fragment.kind == WARMUP:
+        return "ambience.horn_warmup"
+    return f"ambience.{fragment.pool or tier}.{fragment.name}"
 
 
 def source_named(name):
@@ -288,7 +392,7 @@ def build(source_dir, out, manifest):
         if not path.is_file():
             problems.append(f"{source.name}: {path} is missing; download {source.url}")
             continue
-        if not first_sounds.licensed(first_sounds.read_tags(path)):
+        if source.tagged and not first_sounds.licensed(first_sounds.read_tags(path)):
             problems.append(f"{source.name}: {path.name} does not say CC BY in its copyright or comment tag; refusing it")
             continue
         digest = first_sounds.sha256(path)
@@ -304,7 +408,7 @@ def build(source_dir, out, manifest):
             "recorded": source.recorded,
             "source_url": source.url,
             "source_sha256": digest,
-            "license": "CC BY",
+            "license": source.license,
             "credit": source.credit,
         }
     if problems:
@@ -358,7 +462,7 @@ def check(out, manifest):
             or entry["artist"] != source.artist
             or entry["recorded"] != source.recorded
             or entry["source_url"] != source.url
-            or entry["license"] != "CC BY"
+            or entry["license"] != source.license
         ):
             problems.append(f"{source.name}: the manifest's credit, artist, date, source or licence is not the one SOURCES gives")
     for fragment, tier in variants():

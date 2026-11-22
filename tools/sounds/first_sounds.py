@@ -6,8 +6,10 @@ Usage:
   tools/py tools/sounds/first_sounds.py --check        verify the committed OGGs against the manifest (no sources, no ffmpeg)
 Options: --out DIR (default src/main/resources/assets/deepcharter/sounds), --manifest FILE (default tools/sounds/first_sounds.json).
 
-SOURCE_DIR holds the mp3s named in ALL_RECORDINGS (downloaded from the URL beside each; they are never committed). Each one's ID3
-`copyright` or `comment` tag must say CC BY, and the script refuses a file whose tag says anything else or nothing. Treat the
+SOURCE_DIR holds the files named in ALL_RECORDINGS (downloaded from the URL beside each; they are never committed). The ID3
+`copyright` or `comment` tag of each recording marked `tagged` (the default) must say CC BY, and the script refuses a file whose tag says
+anything else or nothing. A recording that states no licence (the Volta wavs, the Edison National Historic Site's mp3s, #946) is
+`tagged=False` and its manifest `license` says what is known; it is credited, with its URL. Treat the
 directory as untrusted data: nothing in it is run, only decoded by ffmpeg.
 
 The treatment: the recording's wow and flutter, a mix with a crackle and hiss bed (seeded from the recording's name, so a re-run makes
@@ -46,6 +48,13 @@ FOLDER = "phonograph"
 SCOTT = "Édouard-Léon Scott de Martinville"
 RATE = 22050
 SOURCE_URL = "https://firstsounds.org/sounds/"
+FEATURES_URL = "https://www.firstsounds.org/features/mp3/"
+VOLTA_URL = "https://www.firstsounds.org/sounds/volta/"
+NPS_URL = "https://www.nps.gov/edis/learn/photosmultimedia/upload/"
+VOLTA = "the Volta Laboratory"
+NONE_STATED = "none stated"
+NO_LICENCE = "The file states no licence"
+NPS_CREDIT = "Courtesy of the U.S. National Park Service, Thomas Edison National Historical Park"
 
 # The processing, as numbers: change one and `check` asks for a re-run, because the treatment hash moves.
 HIGH_PASS_HZ = 250  # applied twice, 4 poles, so 130 to 200 Hz is well down and not at full level
@@ -122,14 +131,20 @@ class Recording:
     folder: str = FOLDER
     treatment: str = "cylinder"
     cut: tuple | None = None  # the start and end in seconds of the part of the source that is used; None for all of it
+    # A source that is not one of the CC BY-tagged First Sounds mp3s at SOURCE_URL (#946) gives its own URL, credit and licence. The default
+    # credit is the one for a phonautogram played back by First Sounds; `tagged` is whether the file's own tag must say CC BY.
+    host_url: str = ""
+    credit_line: str = ""
+    license: str = "CC BY"
+    tagged: bool = True
 
     @property
     def url(self):
-        return SOURCE_URL + self.file
+        return self.host_url or SOURCE_URL + self.file
 
     @property
     def credit(self):
-        return (
+        return self.credit_line or (
             f"Phonautogram by {self.artist} ({self.recorded}); playback by First Sounds (firstsounds.org), "
             "co-produced by Patrick Feaster and David Giovannoni; CC BY."
         )
@@ -139,6 +154,66 @@ RECORDINGS = (
     Recording("gamme_de_la_voix", "1860-Vocal-Scale-05-09.mp3", "Gamme de la Voix, vocal scale", "May 17, 1860"),
     Recording("jeune_jouvencelle", "Scott-Feaster-No-09.mp3", "Jeune Jouvencelle, vocal solo", "Aug. 17, 1857"),
     Recording("othello", "Scott-Feaster-No-38.mp3", "Excerpt from Ducis' Othello", "Apr. 17, 1860"),
+    # More early recordings (#946): found in wreck lockers and salvage crates, never in the colony's rack. Each is trimmed to its strongest
+    # stretch (`cut`: the loudest sustained one that ends where the recording does) and carries its own URL, credit and licence.
+    Recording(
+        "volta_counting",
+        "312119_Lateral_Electroplated_Disc-120.wav",
+        "Counting one to six, with trilled Rs",
+        "about 1881",
+        artist=VOLTA,
+        host_url=VOLTA_URL + "312119_Lateral_Electroplated_Disc-120.wav",
+        credit_line=f"Recorded at the Volta Laboratory (about 1881); playback by First Sounds (firstsounds.org). {NO_LICENCE}.",
+        license=NONE_STATED,
+        tagged=False,
+    ),
+    Recording(
+        "volta_hamlet",
+        "Example1-Green-p93.wav",
+        "The Hamlet soliloquy",
+        "about 1884",
+        artist=f"{VOLTA} (perhaps Chichester Bell)",
+        host_url=VOLTA_URL + "Example1-Green-p93.wav",
+        credit_line=f"Recorded at the Volta Laboratory (about 1884, perhaps by Chichester Bell); playback by First Sounds (firstsounds.org). {NO_LICENCE}.",
+        license=NONE_STATED,
+        tagged=False,
+    ),
+    Recording(
+        "sullivan_toast",
+        "EDIS-SRP-0155-14.mp3",
+        "After dinner toast at Little Menlo",
+        "Oct. 5, 1888",
+        artist="Arthur Sullivan",
+        host_url=NPS_URL + "EDIS-SRP-0155-14.mp3",
+        credit_line=f"Arthur Sullivan (Oct. 5, 1888); Edison yellow paraffine cylinder, catalog E-2439-7. {NPS_CREDIT}.",
+        license=NONE_STATED,
+        tagged=False,
+        cut=(62.0, 88.5),
+    ),
+    Recording(
+        "edison_around_the_world",
+        "EDIS-SRP-0155-06.mp3",
+        "Around the world on the phonograph",
+        "1888",
+        artist="Thomas A. Edison",
+        host_url=NPS_URL + "EDIS-SRP-0155-06.mp3",
+        credit_line=f"Thomas A. Edison (1888); Edison yellow paraffine cylinder, catalog EDIS 566. {NPS_CREDIT}.",
+        license=NONE_STATED,
+        tagged=False,
+        cut=(141.0, 168.0),
+    ),
+    Recording(
+        "lost_chord",
+        "EDIS-SRP-0154-02.mp3",
+        "The Lost Chord, cornet and piano",
+        "about Aug. 1888",
+        artist="cornet and piano (performers unknown)",
+        host_url=NPS_URL + "EDIS-SRP-0154-02.mp3",
+        credit_line=f"Cornet and piano (performers unknown), London (about Aug. 1888); Edison yellow paraffine cylinder, catalog E-2440-3. {NPS_CREDIT}.",
+        license=NONE_STATED,
+        tagged=False,
+        cut=(96.0, 123.5),
+    ),
 )
 
 # "Au clair de la lune" (#861): the wreck's song and the warning in the dark. Never a cylinder, so never in RECORDINGS.
@@ -288,12 +363,13 @@ def build(source_dir, out, manifest):
     known = _load(manifest)
     entries = {}
     problems = []
+    pending = []  # (recording, source, digest): validated first, so a refusal later in the list leaves nothing written
     for recording in ALL_RECORDINGS:
         source = source_dir / recording.file
         if not source.is_file():
             problems.append(f"{recording.name}: {source} is missing; download {recording.url}")
             continue
-        if not licensed(read_tags(source)):
+        if recording.tagged and not licensed(read_tags(source)):
             problems.append(f"{recording.name}: {source.name} does not say CC BY in its copyright or comment tag; refusing it")
             continue
         old = known.get(recording.name)
@@ -303,18 +379,30 @@ def build(source_dir, out, manifest):
                 f"{recording.name}: {source.name} is not the file {manifest.name} credits (sha256 differs); delete its manifest entry to accept the new one"
             )
             continue
+        pending.append((recording, source, digest))
+    if problems:
+        print("\n".join(problems), file=sys.stderr)
+        return 1
+    for recording, source, digest in pending:
+        old = known.get(recording.name)
         target = out / recording.folder / f"{recording.name}.ogg"
         if (
             old
             and old["treatment_sha256"] == treatment_sha256(recording.treatment)
+            and old.get("cut") == cut_entry(recording).get("cut")
             and target.is_file()
             and sha256(target) == old["ogg_sha256"]
         ):
             entries[recording.name] = {
                 **old,
+                "title": recording.title,
                 "artist": recording.artist,
+                "recorded": recording.recorded,
                 "folder": recording.folder,
                 "treatment": recording.treatment,
+                "source_url": recording.url,
+                "license": recording.license,
+                "credit": recording.credit,
                 **cut_entry(recording),
             }
             continue
@@ -328,7 +416,7 @@ def build(source_dir, out, manifest):
             "treatment": recording.treatment,
             "source_url": recording.url,
             "source_sha256": digest,
-            "license": "CC BY",
+            "license": recording.license,
             "credit": recording.credit,
             "duration_seconds": round(seconds, 3),
             "bed_frames": frames,
@@ -338,9 +426,6 @@ def build(source_dir, out, manifest):
             **cut_entry(recording),
         }
         print(f"built {recording.name}")
-    if problems:
-        print("\n".join(problems), file=sys.stderr)
-        return 1
     manifest.write_text(json.dumps(entries, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
     return 0
 
@@ -376,7 +461,7 @@ def check(out, manifest):
         if (
             entry["credit"] != recording.credit
             or entry["source_url"] != recording.url
-            or entry["license"] != "CC BY"
+            or entry["license"] != recording.license
             or entry["artist"] != recording.artist
             or entry["recorded"] != recording.recorded
             or entry["folder"] != recording.folder
