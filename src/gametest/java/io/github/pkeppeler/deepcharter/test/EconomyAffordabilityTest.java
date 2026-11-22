@@ -93,6 +93,11 @@ public class EconomyAffordabilityTest {
             Map.entry(Consumable.SHAPED_CHARGE, new Target(false, 0.25, 1)),
             Map.entry(Consumable.HULL_NANOBOTS, new Target(true, 0.25, 1)),
             Map.entry(Consumable.MATTER_TRANSMITTER, new Target(true, 3.5, 4)),
+            // The thrown kit (#985) is a round, not a tool: a flare a tenth of a layer 1 run, a decoy a fifth, a charge
+            // under half.
+            Map.entry(Consumable.THROWN_FLARE, new Target(false, 0.05, 0.15)),
+            Map.entry(Consumable.THROWN_DECOY, new Target(false, 0.15, 0.30)),
+            Map.entry(Consumable.THROWN_CHARGE, new Target(false, 0.35, 0.55)),
             Map.entry(Consumable.TETHER, new Target(false, 0.25, 1)),
             // On foot (#987): the driver is about two fifths of a layer 2 run, a pack of bolts a twentieth.
             Map.entry(Consumable.BOLT_DRIVER, new Target(true, 0.25, 1)),

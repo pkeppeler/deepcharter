@@ -88,8 +88,11 @@ public final class RepairStation {
     }
 
     private static Optional<Component> buy(TerminalAction.Context context) {
-        Optional<Consumable> item =
-                context.args().getString(ITEM_KEY).map(Identifier::tryParse).flatMap(Consumable::byItemId);
+        Optional<Consumable> item = context.args()
+                .getString(ITEM_KEY)
+                .map(Identifier::tryParse)
+                .flatMap(Consumable::byItemId)
+                .filter(Consumable::sold);
         if (item.isEmpty()) {
             return Consumables.refusal("unknown_item");
         }

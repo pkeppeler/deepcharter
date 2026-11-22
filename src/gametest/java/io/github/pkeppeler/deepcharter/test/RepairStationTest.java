@@ -86,6 +86,9 @@ public class RepairStationTest {
             Map.entry(Consumable.SHAPED_CHARGE, 100L),
             Map.entry(Consumable.QUANTUM_TELEPORTER, 690L),
             Map.entry(Consumable.MATTER_TRANSMITTER, 1_650L),
+            Map.entry(Consumable.THROWN_FLARE, 12L),
+            Map.entry(Consumable.THROWN_DECOY, 25L),
+            Map.entry(Consumable.THROWN_CHARGE, 55L),
             Map.entry(Consumable.TETHER, 90L),
             Map.entry(Consumable.BOLT_DRIVER, 175L),
             Map.entry(Consumable.BOLT, 24L));
@@ -425,6 +428,16 @@ public class RepairStationTest {
                 if (consumable.price() != price) {
                     throw helper.assertionException(
                             "%s costs $%d, the shop charges $%d", consumable, consumable.price(), price);
+                }
+                if (!consumable.sold()) {
+                    // Priced and registered, but not on sale (the decoy waits for a creature that it can pull).
+                    expectRefused(
+                            helper,
+                            Terminals.act(player, station.pos(), RepairStation.BUY, item(consumable)),
+                            "buying " + consumable + ", which is not sold");
+                    expectAccount(helper, station, balance, "after the refused purchase of " + consumable);
+                    expectSpent(helper, player, consumable, 0, "after the refused purchase of " + consumable);
+                    continue;
                 }
                 expectDone(
                         helper,
