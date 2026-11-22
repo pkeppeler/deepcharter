@@ -88,11 +88,11 @@ public final class SurfaceBlocks {
         registerWoodBlock(
                 id("great_stalk"),
                 key -> new GreatStalkBlock(
-                        BlockBehaviour.Properties.of().setId(key).strength(1.5F).sound(SoundType.STEM)));
+                        BlockBehaviour.Properties.of().setId(key).strength(1.5F).sound(SoundType.STEM), false));
         registerWoodBlock(
                 id("great_stalk_cap"),
                 key -> new GreatStalkBlock(
-                        BlockBehaviour.Properties.of().setId(key).strength(1.0F).sound(SoundType.FUNGUS)));
+                        BlockBehaviour.Properties.of().setId(key).strength(1.0F).sound(SoundType.FUNGUS), true));
         // Planks pressed from stalk: any recipe that takes planks takes them.
         registerWoodBlock(
                 id("stalk_planks"),

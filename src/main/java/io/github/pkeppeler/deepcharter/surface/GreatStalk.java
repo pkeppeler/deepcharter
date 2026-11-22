@@ -1,5 +1,9 @@
 package io.github.pkeppeler.deepcharter.surface;
 
+import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout.Cell;
+import io.github.pkeppeler.deepcharter.surface.GreatStalkLayout.Part;
+import java.util.HashSet;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -7,7 +11,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The shape of a great stalk, the rare giant of the fungal stalks: a trunk two blocks thick and much taller than an ordinary column
@@ -23,8 +29,15 @@ public final class GreatStalk {
     /** The rim and the dome, above the trunk. */
     private static final int CAP_LAYERS = 2;
 
+    /**
+     * The silhouette great stalks grow in, one of the options of #910, or {@code null} for the straight stalk described above. A
+     * temporary switch: the option picked stays and this and the rest go.
+     */
+    private static final @Nullable GreatStalkShape SHAPE = null;
+
     private static final Block TRUNK = block("great_stalk");
     private static final Block CAP = block("great_stalk_cap");
+    private static final Block STRAND = block("fungal_stalk");
 
     private GreatStalk() {}
 
@@ -38,6 +51,48 @@ public final class GreatStalk {
      * shortest trunk and its cap. A tall trunk is cut short to the clear air above its four columns. Returns whether it grew.
      */
     public static boolean place(WorldGenLevel level, RandomSource random, BlockPos origin) {
+        return place(level, random, origin, SHAPE);
+    }
+
+    /**
+     * Grows a great stalk of the given shape ({@code null} for the straight one) with {@code origin} as the lowest corner of its layout:
+     * every trunk cell must be air, and those at the lowest level over solid ground, or nothing grows. A cap, a root or a strand that has
+     * no room is left out, with whatever then hangs from nothing. Returns whether it grew.
+     */
+    public static boolean place(
+            WorldGenLevel level, RandomSource random, BlockPos origin, @Nullable GreatStalkShape shape) {
+        if (shape == null) {
+            return placeStraight(level, random, origin);
+        }
+        GreatStalkLayout layout = shape.layout(random::nextInt);
+        Set<Cell> blocked = new HashSet<>();
+        for (Cell cell : layout.parts().keySet()) {
+            BlockPos pos = origin.offset(cell.x(), cell.y(), cell.z());
+            boolean room = level.getBlockState(pos).isAir();
+            boolean grounded =
+                    cell.y() > 0 || level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP);
+            if (!room || !grounded) {
+                if (!layout.optional().contains(cell) && layout.parts().get(cell) == Part.TRUNK) {
+                    return false;
+                }
+                blocked.add(cell);
+            }
+        }
+        BlockState strand = STRAND.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Y);
+        layout.without(blocked)
+                .parts()
+                .forEach((cell, part) -> level.setBlock(
+                        origin.offset(cell.x(), cell.y(), cell.z()),
+                        switch (part) {
+                            case TRUNK -> TRUNK.defaultBlockState();
+                            case CAP -> CAP.defaultBlockState();
+                            case STRAND -> strand;
+                        },
+                        Block.UPDATE_CLIENTS));
+        return true;
+    }
+
+    private static boolean placeStraight(WorldGenLevel level, RandomSource random, BlockPos origin) {
         SurfaceTuning tuning = SurfaceTuning.DEFAULT;
         int clear = tuning.greatMaxHeight() + CAP_LAYERS;
         for (int dx = 0; dx < THICKNESS; dx++) {
