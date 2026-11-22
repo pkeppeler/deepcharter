@@ -324,7 +324,7 @@ Staged.
 - Every depth has environment ratings: heat, pressure, flooding, quake bracing.
 - An outpost built from materials below its depth's rating is uninhabitable (heat leaks in, water seeps in, the suit timer keeps running inside) but never destroyed.
 - Rated materials come from that layer's own resources.
-- Rated materials also hold against creatures. A creature breaks only placed blocks it can reach that are not rated for the depth, and it does so while nobody is near, so a rated shell keeps everything inside it safe. The game says so on the outpost's spec sheet, its terminal and a placement readout ([ADR 0070](adr/0070-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)).
+- Rated materials also hold against creatures. A creature breaks only placed blocks it can reach that are not rated for the depth, and it does so while nobody is near, so a rated shell keeps everything inside it safe. The game says so on the outpost's spec sheet, its terminal and a placement readout ([ADR 0072](adr/0072-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)).
 
 ### Pads
 
@@ -350,7 +350,7 @@ Settled 2026-11-21 in the creatures session ([#13](https://github.com/pkeppeler/
 - **Layer bosses** in layers 3 to 7 guard a chassis wreck or catalyst. They gate the upgrade ladder, not the descent, and each charter fights each one once. Bosses mix pod fights and on-foot fights, by layer.
 - **The finale:** phase 1 on foot, where the Chairman can be hurt only in the light of the crew's own lamps; phase 2 in pods, where only the drill and explosives hurt Head Office, which is built from what the charter sold and eats the cargo it takes.
 - Pod combat uses mining gear first (drill, explosives, charge launcher), turrets later (from layer 6). On foot: normal Minecraft combat plus suit gear.
-- **Placed blocks:** creatures break only exposed blocks not rated for the depth, even while nobody is near (section 11, [ADR 0070](adr/0070-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)).
+- **Placed blocks:** creatures break only exposed blocks not rated for the depth, even while nobody is near (section 11, [ADR 0072](adr/0072-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)).
 - The surface has no monsters, and nothing of Moloch's lives below the Ramp.
 
 ## 14. Story and transmissions

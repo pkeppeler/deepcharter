@@ -107,6 +107,10 @@ _Avoid_: factory, Refinery, Great Work
 The vast creature whose body is the deep. Player-facing text only hints at it: never a name, a gender or an explanation.
 _Avoid_: Mother, god, Leviathan
 
+**Moloch**:
+The parasite in the Sleeper's heart cavity, in the shape of an idol, which cannot make anything and only takes. The Employer is its largest lure. Player-facing text names it only in layer 8.
+_Avoid_: the devil, the boss (reserved for fights)
+
 **Motherload**:
 The Sleeper's heart, below the Ramp. The miners' word for the strike of a lifetime.
 _Avoid_: mother lode, core
@@ -288,7 +292,7 @@ A fight in one of layers 3 to 7 that guards the layer's chassis wreck or catalys
 _Avoid_: miniboss, gatekeeper
 
 **Shell**:
-The outer layer of a building's placed blocks: the ones a creature can reach from outside. A closed shell rated for the depth keeps everything inside it safe.
+A building's exposed blocks taken together, closed doors included. A closed shell rated for the depth keeps everything inside it safe.
 _Avoid_: wall, envelope, hull (a pod component)
 
 **Exposed block**:

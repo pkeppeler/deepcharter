@@ -10,10 +10,10 @@ Settled 2026-11-21 in the creatures and combat session ([#13](https://github.com
 |---|---|
 | How often and how lethal | Rare, costly, seldom lethal (section 4). Every mob costs you in the pod and on foot, and gives you a reason to avoid it. |
 | Pods | Damage follows the family: Moloch's take, the Sleeper's hurt, gnawers eat. |
-| Outposts and blocks | Creatures may break placed blocks, but only ones they can reach that are not rated for the depth. A rated shell keeps everything inside safe. They act while nobody is near too, and the game says so plainly (section 9, [ADR 0070](adr/0070-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)). |
+| Outposts and blocks | Creatures may break placed blocks, but only ones they can reach that are not rated for the depth. A rated shell keeps everything inside safe. They act while nobody is near too, and the game says so plainly (section 9, [ADR 0072](adr/0072-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)). |
 | Layer bosses | They gate the upgrade ladder, not the descent. Layers 3 to 7 only. Each charter fights each one once. |
 | The finale | Phase 1 on foot: the Chairman can be hurt only in the light of your own lamps. Phase 2 in pods: only the drill and explosives hurt Head Office, its size comes from what the charter sold, and it eats the cargo you carry. |
-| Crew size | Encounters scale by pods, not people. Solo play is tuned with robots in the empty seats. |
+| Crew size | Encounters scale by pods, not by the crew inside them, and a boss's health also rises with each person fighting it on foot. Solo play is tuned with robots in the empty seats. |
 | The surface | Empty, for good: no monsters at all. This replaces the reskin plan from the 2026-11-21 playtest. |
 | The Retained on foot | They cling to a person in the dark, slow them and drain their hunger until struck off. They still never deal damage. |
 | Recovery units | They take cargo outright and bill you for it. Ordinary machines drop nothing worth hauling. |
@@ -85,7 +85,7 @@ Moloch's, drawn to the dark. Built ([ADR 0046](adr/0046-the-retained-are-a-monst
 - **Sensed:** a tiny dim lamp in the helmet, seen from far off in the dark. No echo on sonar. A low rumble as one sets off toward you.
 - **Pod:** clings to a dark pod and drains fuel down to 5 per cent until it is killed.
 - **On foot** (new): comes to a person in the dark (no light in either hand and block light under 3 where they stand; later, a suit lamp that is off). It clings, slows them to a crawl as if they carried ore, and drains hunger down to a floor until struck off. It never deals damage.
-- **Counters:** lights (pod), a light in hand (on foot), the cutter, any blow.
+- **Counters:** lights (pod) and a light in hand (on foot) keep one away, but never free a pod or person already held. The cutter or any blow ends a grip.
 
 #### Tallies
 
@@ -119,6 +119,10 @@ The Sleeper's: pod-sized glowing spore bladders that drift toward drill noise an
 #### Overgrowth
 
 A hazard of the Sleeper's growth, not a mob. A bore left unvisited grows over with pale soft growth: drillable at extra fuel, cut by hand on foot. Placed blocks never grow over, so a lined shaft stays open. Like every hazard, it never deletes a player's block.
+
+#### The kneeling shapes
+
+A presence. Fungus-grown shapes kneel around the Badger shrine in the Quiet. They never move.
 
 #### The Hush
 
@@ -179,6 +183,10 @@ Fell's, of Moloch's family. Company machines, including the siphon crawlers that
 
 A presence: Moloch's will. Tall recorded sentries at Checkpoint that refuse you and wave you through. They never act.
 
+#### The figure with a radio
+
+A presence ([LORE.md layer 6](LORE.md#6--the-magma-belt-blood)): a lampless figure whose radio crackles on your channel. It walks and never comes to a pod.
+
 #### Scabs
 
 The Sleeper's: slow lava-dwellers that seal wounds.
@@ -234,11 +242,11 @@ Layer 3, the Quiet. The Sleeper's. On foot, then a tow. **Guards:** the Badger w
 
 #### The Undertow
 
-Layer 4, the Basin. The Sleeper's. In pods. **Guards:** the underwater breach and the Lymphium.
+Layer 4, the Basin. The Sleeper's. In pods. **Guards:** the Lymphium.
 
 - A shape the size of the cavern, seen only on sonar. It drags pods with current into the walls and coils around them: a grip the drill cuts, the Retained's rule at boss scale.
 - The navigator marks it, the pilot flies blind by the marks, and the operator lands charges on the mark. The first true crew fight.
-- Drilling the breach is loud, so crossing wakes it. It does not follow through the breach.
+- The breach lies in the Basin too. Drilling it is loud enough to wake the Undertow, but it never follows through, so a pod can always cross: it is never a gate.
 - **Ends:** driven down into the deep water. **Reward:** the Basin's Lymphium is safe for that charter.
 
 #### The Great Listener
@@ -261,12 +269,12 @@ Layer 6, Checkpoint. Fell's. In pods, then on foot. **Guards:** Roz's Crawler, s
 
 #### The Old Idol
 
-Layer 7, the Old Furnaces. Moloch's. In pods. **Guards:** the way down to Survey One's Behemoth on the Floor of Bones.
+Layer 7, the Old Furnaces. Moloch's. In pods. **Guards:** Survey One's Behemoth wreck on the Floor of Bones.
 
 - An older, cold bronze figure built around an open hand, half sunk in bone. A drill's heat relights it.
 - Only the drill and explosives hurt bronze, and its open hands pull cargo into its mouth to heal it. It teaches both of the finale's rules.
 - Kept small, cold and slow, so it reads as a lesson, not a climax.
-- **Ends:** broken. The Company will buy its bronze.
+- **Ends:** broken.
 
 ## 7. The finale
 
@@ -293,7 +301,7 @@ Mining gear comes first; the turret comes late (SPEC section 13). Every round fi
 
 | Tool | Seat | Arrives | What it does | Good against | Costs |
 |---|---|---|---|---|---|
-| Cutter | pilot | built | bites anything on the hull or in the bore while the pod drills; drill tiers bite harder | clingers: the Retained, Tallies, coils | the drill's fuel |
+| Cutter | pilot | built | bites anything on the hull or in the bore while the pod drills; drill tiers bite harder | clingers: the Retained, Tallies, the Undertow's coils | the drill's fuel |
 | Lights | a part | built | a lit pod draws no Moloch's thing | the Retained, masks | the part |
 | Blasting charge | pilot | built | a blast under the pod | anything below | the charge |
 | Active ping | navigator | the Prospector | reveals what is real in range and marks it on the pilot's HUD | the Sleeper's | power; it is loud |
@@ -321,11 +329,11 @@ Mining gear comes first; the turret comes late (SPEC section 13). Every round fi
 
 ## 9. Creatures and placed blocks
 
-SPEC section 10's rule stays: hazards never delete player-built blocks. Creatures have their own rule ([ADR 0070](adr/0070-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)).
+SPEC section 10's rule stays: hazards never delete player-built blocks. Creatures have their own rule ([ADR 0072](adr/0072-creatures-break-exposed-unrated-blocks-even-while-nobody-is-near.md)).
 
 ### One rule per family
 
-- **Moloch's things take; they never break.** The Retained come to a dark outpost and drain its stored fuel. In act 3, Recovery units carry off stored ore. Lights keep the first out, and a sealed shell keeps both out.
+- **Moloch's things take; they never break.** The Retained come to a dark outpost and drain its stored fuel. In act 3, Recovery units carry off stored ore. Lights keep the Retained away. Moloch's things never break a block or open a door, so any closed shell keeps them out, rated or not.
 - **The Sleeper's things break foreign blocks.** They come to an outpost's noise (pads, machines, a parked pod's engine) and break any **exposed** block not rated for that depth. Rated blocks they leave alone: the body accepts its own. The rated material that makes an outpost habitable (SPEC section 11) also makes it safe.
 - **Gnawers chew through anything to reach ore.** Nothing is rated in the uncharted, so a camp there lasts only while it is defended.
 - **Damping blocks** muffle noise: fungal felt from layer 3, damped crystal from layer 5. A pad walled in damping draws nothing, so the layout matters.
@@ -338,7 +346,13 @@ Terminals and pads are never broken. Pods and wrecks are never touched while nob
 
 ### While nobody is near
 
-Creatures keep acting on an outpost nobody is near. When it loads again, the game works out what visited from the time away and the draws: unrated exposed blocks broken by the Sleeper's (more the longer you were gone), stored fuel drained at a dark outpost, stored ore taken in act 3, anything eaten in the uncharted. A month away from a camp built of colony materials is a ruin; a sealed, rated, damped outpost comes back as you left it.
+Creatures keep acting on an outpost nobody is near.
+
+- **Visits are rolled on the world's clock** (game time, which stops while the server is off) for every outpost, from its draws: noise draws the Sleeper's, darkness the Retained, stored ore the Recovery units in act 3 and the gnawers in the uncharted.
+- **A loaded outpost meets the visit in the world.** An unloaded one records it and applies it when it loads.
+- **Each visit breaks or takes a bounded amount:** a few exposed unrated blocks, some stored fuel or ore. The loss grows with the time away until nothing exposed and unrated is left.
+
+A few in-game weeks away from a camp built of colony materials is a ruin. A closed, rated, damped outpost comes back as you left it.
 
 **Ruined, not erased.** A broken storage block spills its contents into a salvage heap that keeps them, as a wreck keeps its cargo.
 
@@ -346,7 +360,7 @@ Creatures keep acting on an outpost nobody is near. When it loads again, the gam
 1. **The spec sheet** the first time a charter places an outpost bed or terminal below layer 2: *"Unattended structures are subject to local conditions. Rated materials hold. Unrated materials do not."*
 2. **The placement readout** while you hold a block at depth: HOLDS HERE, SHELTERED or WILL NOT HOLD UNATTENDED.
 3. **The outpost terminal's risk line:** exposed unrated blocks, gaps in the shell, dark corners, undamped machines.
-4. **An alert while you are away,** to charter members online: *"Disturbance reported at Outpost 2."* You know, and you cannot see.
+4. **An alert when a visit is rolled,** to charter members online wherever they are: *"Disturbance reported at Outpost 2."* You know, and you cannot see.
 5. **An incident report** at the outpost terminal when you return, listing what was lost.
 
 ## 10. Uncharted and after the finale
@@ -360,7 +374,7 @@ Creatures keep acting on an outpost nobody is near. When it loads again, the gam
 
 ## 11. Open questions
 
-- **Numbers:** encounter cadence per zone, alarm strength and decay, boss health per pod and per person on foot, Head Office's floor and ceiling, the rate of loss while nobody is near.
+- **Numbers:** encounter cadence per zone, alarm strength and decay, boss health per pod and per person on foot, Head Office's floor and ceiling, the visit rate and how much each visit takes while nobody is near.
 - **Dependencies:** the sonar signatures need the navigator's sonar; the on-foot costs of Limpets and masks need the suit timer and suit lamp; the shell rule needs outpost ratings.
 - **The Continuity tag** (principle 7): whether a Retained leaves one, and how often.
 - **The smelter**, a Super Motherload idea (a Company terminal that trades ore for charges): parked for the tech-tree ideas pass, because bought charges already give blast shapes and make fighting cost money.
