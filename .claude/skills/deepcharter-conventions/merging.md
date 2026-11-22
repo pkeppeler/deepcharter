@@ -11,7 +11,7 @@ Merge only through `tools/merge-pr.sh <n>`, which refuses and gives the reason. 
 
 ## GitHub and CI gotchas
 
-- The gate reads the closing set from the PR body with `tools/closing_refs.py` (grammar in its docstring; `tools/roadmap.py` uses it too). The closing set must be exactly the branch's issue (`<issue>-<slug>`): mention any other issue the PR fixes in prose that is not after a closing keyword, and close it by hand after the merge. Prose such as "the same fix #252 verified" counts as a reference too, so phrase it another way. A link made by hand in the sidebar is not seen.
+- The gate reads the closing set from the PR body with `tools/closing_refs.py` (grammar in its docstring; `tools/roadmap.py` uses it too). The closing set is exactly the branch's issue (`<issue>-<slug>`): mention any other issue in prose, never after a closing keyword, and close it by hand after the merge. Prose such as "the same fix #252 verified" counts as a reference too, so phrase it another way. A link made by hand in the sidebar is not seen.
 - `tools/mark-review-passed.sh` refuses when GitHub's head sha differs from `git ls-remote origin <branch>` (right after a close/reopen it can lag the push): wait, or close and reopen.
 - The gate blocks on any failing check on the head sha, not only `REQUIRED_CHECKS`.
 - The gate refuses a PR whose changed paths make `tools/ci-client-needed.sh` print `true` unless `client-gametest` has a non-skipped passing run on the head sha. It applies to PRs already open: a game-code PR whose client run was skipped is refused until it gets a real run.
