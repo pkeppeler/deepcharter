@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public final class RoomCarver {
     private static final int ARRIVAL_RADIUS = 4;
     private static final int ARRIVAL_HEIGHT = 5;
+    private static final int POCKET_HEIGHT = 8;
 
     private RoomCarver() {}
 
@@ -44,6 +45,17 @@ public final class RoomCarver {
             level.setBlock(pos, fill, flags);
         }
         LightSync.holdSendUntilLit(level, min.offset(-1, -1, -1), max.offset(1, 1, 1));
+    }
+
+    /**
+     * Opens a pocket in the top of the band under {@code layer}'s floor (a bed of stone with rows of air over it), for a
+     * pod or player that has broken through the crust of {@code layer} to fall into. A layer is a band of one level, so a crossing carries
+     * nothing and the rows under the crust are the next layer's rock.
+     */
+    public static void carvePocketBelow(ServerLevel level, int layer, int x1, int x2, int z1, int z2) {
+        int floor = TestLayers.band(level, layer).minY();
+        carve(level, x1, x2, floor - POCKET_HEIGHT - 1, floor - POCKET_HEIGHT - 1, z1, z2, Blocks.STONE);
+        carve(level, x1, x2, floor - POCKET_HEIGHT, floor - 1, z1, z2, Blocks.AIR);
     }
 
     /** The layer 2 arrival point is in lava, which burns a pod seated there; a sealed room of air around the first player keeps it out. */
