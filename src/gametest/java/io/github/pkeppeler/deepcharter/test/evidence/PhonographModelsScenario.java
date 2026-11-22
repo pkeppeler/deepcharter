@@ -59,6 +59,12 @@ public class PhonographModelsScenario extends EvidenceScenario {
     private static final int SLAB_DEPTH = 5;
     /** The player's eye height above the feet. */
     private static final double EYE = 1.62;
+    /** The farthest an eye may be from its block: a close still taken from further off is a failed still. */
+    private static final double CLOSE = 4;
+
+    /** The same for a still that shows the block in its place. */
+    private static final double IN_PLACE = 9;
+
     /** How far off a block's facing the three-quarter stills stand. */
     private static final double QUARTER_DEGREES = 40;
     /** Where on the block the camera looks: a little above its middle, where the horn's bell is. */
@@ -129,6 +135,7 @@ public class PhonographModelsScenario extends EvidenceScenario {
                 counter,
                 colonys,
                 around(counter, front, 2.0, 0.7),
+                CLOSE,
                 "colony-phonograph-close");
 
         singleplayer.getServer().runOnServer(server -> {
@@ -142,7 +149,17 @@ public class PhonographModelsScenario extends EvidenceScenario {
                 counter,
                 state -> colonys.test(state) && state.getValue(PhonographBlock.LOADED),
                 around(counter, front, 2.0, 0.7),
+                CLOSE,
                 "colony-phonograph-playing");
+        still(
+                context,
+                singleplayer,
+                Level.OVERWORLD,
+                counter,
+                state -> colonys.test(state) && state.getValue(PhonographBlock.LOADED),
+                threeQuarter(counter, front, 1.8, 0.9),
+                CLOSE,
+                "colony-phonograph-three-quarter");
         still(
                 context,
                 singleplayer,
@@ -150,6 +167,7 @@ public class PhonographModelsScenario extends EvidenceScenario {
                 counter,
                 colonys,
                 around(counter, front, 5.5, 1.6),
+                IN_PLACE,
                 "colony-phonograph-in-the-bar");
     }
 
@@ -187,6 +205,7 @@ public class PhonographModelsScenario extends EvidenceScenario {
                 pair[0],
                 state -> state.is(PhonographRegistry.PHONOGRAPH) && !state.getValue(PhonographBlock.LOADED),
                 threeQuarter(pair[0], Direction.NORTH, 1.6, 0.8),
+                CLOSE,
                 "phonograph-empty-close");
         still(
                 context,
@@ -195,6 +214,7 @@ public class PhonographModelsScenario extends EvidenceScenario {
                 pair[1],
                 state -> state.is(PhonographRegistry.PHONOGRAPH) && state.getValue(PhonographBlock.LOADED),
                 threeQuarter(pair[1], Direction.NORTH, 1.6, 0.8),
+                CLOSE,
                 "phonograph-loaded-close");
     }
 
@@ -204,20 +224,10 @@ public class PhonographModelsScenario extends EvidenceScenario {
         ResourceKey<Level> layer = TestLayers.dimension(StructureKind.PUNCH_CLOCK.layer());
         BlockPos horn = BlockPos.containing(at(site, 0, 4.5, 0));
         Predicate<BlockState> isHorn = state -> state.is(AmbienceRegistry.COMPANY_HORN);
-        // The close eyes hang near the horn's height, a little under its centre, 2 to 2.5 blocks off; the pillars of
-        // the hall stand at 4 along and 2 across.
-        still(
-                context,
-                singleplayer,
-                layer,
-                horn,
-                isHorn,
-                List.of(
-                        at(site, -2.5, 1.7, -2.5),
-                        at(site, 2.5, 1.7, -2.5),
-                        at(site, -2.5, 1.7, 2.5),
-                        at(site, 2.5, 1.7, 2.5)),
-                "company-horn-close");
+        // The close eyes hang at the horn block's own Y (half a block under its centre), 2.2 blocks off on a diagonal;
+        // the hall's
+        // pillars stand at 4 along and 2 across.
+        still(context, singleplayer, layer, horn, isHorn, hornEyes(horn), CLOSE, "company-horn-close");
         still(
                 context,
                 singleplayer,
@@ -225,6 +235,7 @@ public class PhonographModelsScenario extends EvidenceScenario {
                 horn,
                 isHorn,
                 List.of(at(site, -1, 1.7, -7), at(site, 1, 1.7, 7), at(site, -1, 1.7, 7), at(site, 1, 1.7, -7)),
+                IN_PLACE,
                 "company-horn-in-the-punch-clock-hall");
     }
 
@@ -239,7 +250,15 @@ public class PhonographModelsScenario extends EvidenceScenario {
                         .getBlockState(stand)
                         .getValue(HorizontalDirectionalBlock.FACING));
         Predicate<BlockState> wrecks = state -> state.is(PhonographRegistry.WRECK_PHONOGRAPH);
-        still(context, singleplayer, layer, stand, wrecks, around(stand, front, 2.0, 0.7), "wreck-phonograph-close");
+        still(
+                context,
+                singleplayer,
+                layer,
+                stand,
+                wrecks,
+                around(stand, front, 2.0, 0.7),
+                CLOSE,
+                "wreck-phonograph-close");
         still(
                 context,
                 singleplayer,
@@ -247,7 +266,21 @@ public class PhonographModelsScenario extends EvidenceScenario {
                 stand,
                 wrecks,
                 around(stand, front, 4.5, 1.5),
+                IN_PLACE,
                 "wreck-phonograph-in-the-bay");
+    }
+
+    /** Four eyes on the diagonals round the horn block, 2.2 blocks off and half a block under its centre. */
+    private static List<Vec3> hornEyes(BlockPos horn) {
+        double off = 2.2 / Math.sqrt(2);
+        Vec3 centre = Vec3.atCenterOf(horn);
+        List<Vec3> eyes = new ArrayList<>();
+        for (int dx = -1; dx <= 1; dx += 2) {
+            for (int dz = -1; dz <= 1; dz += 2) {
+                eyes.add(new Vec3(centre.x + dx * off, horn.getY(), centre.z + dz * off));
+            }
+        }
+        return eyes;
     }
 
     private static Direction facing(TestSingleplayerContext singleplayer, BlockPos pos) {
@@ -299,6 +332,7 @@ public class PhonographModelsScenario extends EvidenceScenario {
             BlockPos block,
             Predicate<BlockState> expected,
             List<Vec3> eyes,
+            double maxDistance,
             String name) {
         Vec3 target = Vec3.atCenterOf(block).add(LOOK_AT);
         Vec3 eye = singleplayer.getServer().computeOnServer(server -> {
@@ -308,6 +342,9 @@ public class PhonographModelsScenario extends EvidenceScenario {
                 throw new AssertionError(name + ": the block at " + block.toShortString() + " is " + state);
             }
             for (Vec3 candidate : eyes) {
+                if (candidate.distanceTo(target) > maxDistance) {
+                    continue;
+                }
                 BlockHitResult hit = level.clip(new ClipContext(
                         candidate,
                         target,
@@ -318,9 +355,12 @@ public class PhonographModelsScenario extends EvidenceScenario {
                     return candidate;
                 }
             }
-            throw new AssertionError(
-                    name + ": no eye of " + eyes.size() + " sees the block at " + block.toShortString());
+            throw new AssertionError(name + ": none of " + eyes.size() + " eyes within " + maxDistance
+                    + " blocks sees the block at " + block.toShortString());
         });
+        System.out.println("[phonograph-models] " + name + " target=" + block.toShortString() + " eye="
+                + String.format("%.2f,%.2f,%.2f", eye.x, eye.y, eye.z) + " dist="
+                + String.format("%.2f", eye.distanceTo(target)) + " fallback=" + (eyes.indexOf(eye) > 0));
         Vec3 d = target.subtract(eye);
         float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
         float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
