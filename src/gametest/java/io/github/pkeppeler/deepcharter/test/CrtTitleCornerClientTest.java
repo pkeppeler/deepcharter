@@ -3,8 +3,12 @@ package io.github.pkeppeler.deepcharter.test;
 import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout.Rect;
+import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
+import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
@@ -18,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -43,7 +48,7 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
 
     /** What the client says about a screen: its title, and the numbers that turn GUI pixels into screenshot pixels and rows into scanline kinds. */
     private record Shot(
-            DrawnText.Drawn title, int guiScale, int glassTop, int scanlineSpacing, PanelLook.Insets content) {}
+            DrawnText.Drawn title, int guiScale, int glassTop, int scanlineSpacing, int cornerX, int cornerY) {}
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -71,6 +76,11 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
             BlockPos offline = singleplayer.getServer().computeOnServer(TerminalPanelScene::setUpOffline);
             check(context, TerminalPanelScreens.GENERIC, null, offline, problems);
         }
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            singleplayer.getServer().runCommand("time set noon"); // a fixed, bright light behind the glass
+            ClientWait.until(context, "the player", client -> client.player != null && client.level != null);
+            checkCatalogue(context, problems);
+        }
         require(problems.isEmpty(), "titles dimmed by the glass:\n" + String.join("\n", problems));
     }
 
@@ -95,27 +105,68 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
                     client.getWindow().getGuiScale(),
                     PanelLook.current().glass().top(),
                     CrtTuning.current().scanlineSpacing(),
-                    PanelLook.current().content());
+                    PanelLook.current().content().left(),
+                    PanelLook.current().content().top());
         });
-        BufferedImage image;
+        BufferedImage image = screenshot(context, "crt-title-corner-" + screen);
+        firstStemProblem(screen, shot, image).ifPresent(problems::add);
+        TerminalPanelScreens.close(context);
+    }
+
+    /**
+     * The parts catalogue's two consoles beside the inventory (#996): each draws the shared glass sprite and its own vignette and highlight, with
+     * its title at the glass's {@code pad} and {@code titleTop}. The search console's title is the shelf's, the recipe console's the card's.
+     */
+    private static void checkCatalogue(ClientGameTestContext context, List<String> problems) {
+        CatalogueScene.openInventory(context);
+        CatalogueLayout layout = CatalogueScene.layout(context, CatalogueScene.panel(context));
+        context.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
+        context.runOnClient(client -> client.gui.toastManager().clear());
+        context.waitTicks(
+                2); // tick-wait: lets the parked cursor un-hover the grid and the toasts leave before the still is
+        // taken
+        BufferedImage image = screenshot(context, "crt-title-corner-catalogue");
+        CatalogueLook look = CatalogueLook.current();
+        Rect[] glasses = {layout.catalogueGlass(), layout.recipeGlass()};
+        String[] names = {"catalogue", "recipe-console"};
+        int[] titleY = {layout.shelf().titleY(), layout.card().titleY()};
+        for (int i = 0; i < glasses.length; i++) {
+            int cornerX = glasses[i].x() + look.pad();
+            int cornerY = glasses[i].y() + look.titleTop();
+            int top = glasses[i].y();
+            String name = names[i];
+            int y = titleY[i];
+            Shot shot = context.computeOnClient(client -> new Shot(
+                    DrawnText.of(Objects.requireNonNull(client.gui.screen(), "the inventory is open")).stream()
+                            .filter(drawn ->
+                                    drawn.box().x() == cornerX && drawn.box().y() == y)
+                            .findFirst()
+                            .orElseThrow(() -> new AssertionError(name + " draws no title at " + cornerX + "," + y)),
+                    client.getWindow().getGuiScale(),
+                    top,
+                    CrtTuning.current().scanlineSpacing(),
+                    cornerX,
+                    cornerY));
+            firstStemProblem(name, shot, image).ifPresent(problems::add);
+        }
+        context.setScreen(() -> null);
+    }
+
+    private static BufferedImage screenshot(ClientGameTestContext context, String name) {
         try {
-            image = ImageIO.read(
-                    context.takeScreenshot("crt-title-corner-" + screen).toFile());
+            return ImageIO.read(context.takeScreenshot(name).toFile());
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        firstStemProblem(screen, shot, image).ifPresent(problems::add);
-        TerminalPanelScreens.close(context);
     }
 
     /** The problem with the title's first stem against the rest of the title, if it is dimmer. */
     private static Optional<String> firstStemProblem(String screen, Shot shot, BufferedImage image) {
         Box box = shot.title().box();
         String title = "the title '" + shot.title().shortText() + "'";
-        if (box.x() != shot.content().left() || box.y() != shot.content().top()) {
-            return Optional.of(
-                    screen + ": " + title + " is at " + box.x() + "," + box.y() + ", not at the content's corner "
-                            + shot.content().left() + "," + shot.content().top());
+        if (box.x() != shot.cornerX() || box.y() != shot.cornerY()) {
+            return Optional.of(screen + ": " + title + " is at " + box.x() + "," + box.y()
+                    + ", not at the content's corner " + shot.cornerX() + "," + shot.cornerY());
         }
         int kinds = shot.scanlineSpacing();
         int[] brightestOfKind = new int[kinds];

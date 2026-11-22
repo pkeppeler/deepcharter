@@ -1,7 +1,9 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
 import io.github.pkeppeler.deepcharter.client.charter.ClientCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
+import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene;
 import io.github.pkeppeler.deepcharter.test.support.TerminalPanelScene.Scene;
@@ -16,7 +18,8 @@ import org.jspecify.annotations.Nullable;
  * Evidence scenario "crt-corner" for #907 and #1012: the corner of the bezel and the glass on the CRT terminals. Stills: {@code crt-corner-<screen>}
  * for every terminal screen (the whole screen); {@code crt-corner-title-zoom-<screen>}, the top-left corner of the glass scaled up with
  * nearest-neighbour so the pixels read, where a title's first stem sits; and for the upgrade terminal {@code crt-corner-bottom-right-zoom}. The
- * crops are placed from the panel's own glass insets, not from a fixed spot.
+ * crops are placed from the panel's own glass insets, not from a fixed spot. The parts catalogue's two consoles (#996) get {@code crt-corner-catalogue}
+ * and a title zoom each ({@code crt-corner-title-zoom-catalogue}, {@code crt-corner-title-zoom-recipe-console}).
  */
 public class CrtCornerScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
@@ -56,6 +59,41 @@ public class CrtCornerScenario extends EvidenceScenario {
             BlockPos offline = singleplayer.getServer().computeOnServer(TerminalPanelScene::setUpOffline);
             shoot(context, TerminalPanelScreens.GENERIC, null, offline, false);
         }
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
+            singleplayer.getServer().runCommand("time set noon"); // a fixed, bright light behind the glass
+            ClientWait.until(context, "the player", client -> client.player != null && client.level != null);
+            shootCatalogue(context);
+        }
+    }
+
+    /** The parts catalogue's two consoles beside the inventory: the whole screen, and the title corner of each console's glass. */
+    private void shootCatalogue(ClientGameTestContext context) {
+        CatalogueScene.openInventory(context);
+        CatalogueLayout layout = CatalogueScene.layout(context, CatalogueScene.panel(context));
+        context.getInput().setCursorPos(OFF_SCREEN, OFF_SCREEN);
+        context.runOnClient(client -> client.gui.toastManager().clear());
+        for (int i = 0; i < HOLD_FRAMES; i++) {
+            context.waitTicks(TICKS_PER_FRAME);
+            frame(context);
+        }
+        screenshot(context, "crt-corner-catalogue");
+        zoomStill(
+                context,
+                "crt-corner-catalogue",
+                "crt-corner-title-zoom-catalogue",
+                layout.catalogueGlass().x() - REACH_OUT,
+                layout.catalogueGlass().y() - REACH_OUT,
+                CROP,
+                CROP);
+        zoomStill(
+                context,
+                "crt-corner-catalogue",
+                "crt-corner-title-zoom-recipe-console",
+                layout.recipeGlass().x() - REACH_OUT,
+                layout.recipeGlass().y() - REACH_OUT,
+                CROP,
+                CROP);
+        context.setScreen(() -> null);
     }
 
     private void shoot(

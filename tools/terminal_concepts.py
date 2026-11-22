@@ -160,8 +160,8 @@ def nameplate(height, text, ink):
 
 VIGNETTE_REACH = 10
 # Shading falls off as exp(-t / decay): dark on the rim, gone by the 6 px the content sits inside the glass edge, so a corner title keeps its brightness (#1012).
-VIGNETTE_DECAY = 0.8
-SHADOW_DECAY = 0.7
+VIGNETTE_DECAY = 0.6
+SHADOW_DECAY = 0.5
 
 
 def glass_sprite(radius, vignette, shadow=(0, 0), depth=(0, 0)):
@@ -476,7 +476,7 @@ def hatch() -> Option:
         "buttonAlign": 1, "buttonPad": 4, "pipSize": 12, "pipX": 3, "pipY": 0,
     }, {
         "frame": Sprite(frame, (gl + radius, gt + radius, gr + radius, gb + radius)),
-        "glass": Sprite(glass_sprite(radius, 200, (110, 80), (6, 5)), (radius,) * 4),
+        "glass": Sprite(glass_sprite(radius, 235, (110, 80), (6, 5)), (radius,) * 4),
         "nameplate": Sprite(plate), "dress_a": Sprite(hatch_gauge()), "dress_b": Sprite(hatch_wheel()),
         "dress_c": Sprite(hatch_stencil("H-04  DECK 3", 72)), "dress_d": Sprite(hatch_warning()),
         "button": Sprite(hatch_button(H[3], H[6], H[0]), (3, 3, 3, 3)),
