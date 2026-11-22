@@ -16,7 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -51,24 +53,18 @@ public class StalkCollapseTest {
     /** Longer than a collapse takes: the sag delay plus one step for each layer of the tallest great stalk and its cap. */
     private static final int COLLAPSE_WAIT = 200;
 
-    /** Where the far player stands, past the item box, so no drop comes to rest within its pickup reach. */
-    private static final int FAR_Z = 30;
+    /**
+     * Where the far player stands, past the item box. A drop flies out at {@link SurfaceTuning#scatterSpeed()} and comes to rest within
+     * about 3 blocks of the block that burst it, so within about 9 blocks of a great stalk's trunk.
+     */
+    private static final int FAR_Z = 20;
 
     /**
-     * Items are counted this far from the test's origin on each side and above and below it, past where drops come to rest. A drop does
-     * not stay where it bursts: the layer above sags into the cell it lies in, which pushes it out of the block, and a push adds speed
-     * each tick, so a drop of a great stalk's trunk (at 3 to 4) was seen 13 blocks from the origin (#967). An item in an entity section
-     * that is not yet accessible is invisible to the count and to {@link #clearArea}, and shows up when the section loads (#952), so
-     * the two tests that count items wait for every chunk of this box ({@link #countable}) before they clear it, and count only
-     * items {@link #MAX_ITEM_AGE} ticks old or less, which no leftover of an earlier test that never ticked here can be.
+     * The two tests that count drops wait for every chunk this far from the test's origin to be entity-ticking before they start
+     * recording, so that no item of an earlier test that never ticked here loads (and spawns, to the recording) during the count (#952).
      */
-    private static final int ITEM_REACH = 24;
+    private static final int AWAIT_REACH = 12;
 
-    /** The oldest an item of this test can be when it is counted: it was dropped after the break, {@link #COLLAPSE_WAIT} ticks before. */
-    private static final int MAX_ITEM_AGE = COLLAPSE_WAIT + 20;
-
-    private static final int ITEM_DEPTH = 20;
-    private static final int ITEM_HEIGHT = 60;
     private static final String SINGLE_ALONE = "deepcharter-test:stalk_count_single";
     private static final String GREAT_ALONE = "deepcharter-test:stalk_count_great";
     /** How far above the test a build in the air stands, off every neighbour. */
@@ -116,9 +112,6 @@ public class StalkCollapseTest {
                 }
             }
         }
-        for (ItemEntity item : items(helper)) {
-            item.discard();
-        }
     }
 
     /**
@@ -126,8 +119,8 @@ public class StalkCollapseTest {
      * polls: it throws until they all are. Call it from the test method.
      */
     private static Runnable countable(GameTestHelper helper) {
-        BlockPos low = helper.absolutePos(new BlockPos(-ITEM_REACH, 0, -ITEM_REACH));
-        BlockPos high = helper.absolutePos(new BlockPos(ITEM_REACH, 0, ITEM_REACH));
+        BlockPos low = helper.absolutePos(new BlockPos(-AWAIT_REACH, 0, -AWAIT_REACH));
+        BlockPos high = helper.absolutePos(new BlockPos(AWAIT_REACH, 0, AWAIT_REACH));
         List<BlockPos> chunks = new ArrayList<>();
         for (int chunkX = low.getX() >> 4; chunkX <= high.getX() >> 4; chunkX++) {
             for (int chunkZ = low.getZ() >> 4; chunkZ <= high.getZ() >> 4; chunkZ++) {
@@ -145,47 +138,74 @@ public class StalkCollapseTest {
         };
     }
 
-    private static List<ItemEntity> items(GameTestHelper helper) {
-        BlockPos low = helper.absolutePos(new BlockPos(-ITEM_REACH, -ITEM_DEPTH, -ITEM_REACH));
-        BlockPos high = helper.absolutePos(new BlockPos(ITEM_REACH, ITEM_HEIGHT, ITEM_REACH));
-        return helper.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(low).minmax(new AABB(high)));
-    }
+    /** Every recording that is running. A Fabric event cannot be unregistered, so the one listener stays and reads this list. */
+    private static final List<Recording> RECORDINGS = new CopyOnWriteArrayList<>();
 
-    /** The items lying about that this test can have dropped, by item id. */
-    private static Map<String, Integer> dropped(GameTestHelper helper) {
-        Map<String, Integer> total = new TreeMap<>();
-        for (ItemEntity item : items(helper)) {
-            if (item.tickCount > MAX_ITEM_AGE) {
-                continue;
+    static {
+        ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
+            if (entity instanceof ItemEntity item) {
+                for (Recording recording : RECORDINGS) {
+                    recording.offer(item);
+                }
             }
-            total.merge(
-                    BuiltInRegistries.ITEM.getKey(item.getItem().getItem()).toString(),
-                    item.getItem().getCount(),
-                    Integer::sum);
-        }
-        return total;
+        });
     }
 
-    /** The failure of a count that is not the by-hand count, listing every item in the box, counted or not. */
-    private static RuntimeException countMismatch(
-            GameTestHelper helper, Map<String, Integer> collapsed, Map<String, Integer> byHand) {
-        StringBuilder items = new StringBuilder();
-        for (ItemEntity item : items(helper)) {
-            items.append(String.format(
-                    "%n  %s x%s at %s, age %s, %s the test's bounds, %s",
-                    BuiltInRegistries.ITEM.getKey(item.getItem().getItem()),
-                    item.getItem().getCount(),
-                    item.blockPosition().toShortString(),
-                    item.tickCount,
-                    helper.getBounds().contains(item.position()) ? "inside" : "outside",
-                    item.tickCount > MAX_ITEM_AGE ? "too old to count" : "counted"));
+    /**
+     * The drops a test makes, counted where they spawn and not where they come to rest: a drop does not stay in the cell it bursts in, the
+     * layer above sags into that cell and pushes it out, speed added each tick, so a trunk's drop was seen 13 blocks from the origin and
+     * the scatter has no bound a box could hold (#967). The burst cell is always on the stalk, so the region is bounded. It holds plain
+     * values only (a listener cannot be unregistered, so it never holds a player).
+     */
+    private static final class Recording {
+        private final AABB region;
+        private final Map<String, Integer> counts = new TreeMap<>();
+        private final List<String> spawns = new ArrayList<>();
+
+        private Recording(AABB region) {
+            this.region = region;
         }
+
+        /** Starts recording the item spawns in the region of the stalk of the test area. */
+        static Recording start(GameTestHelper helper) {
+            BlockPos low = helper.absolutePos(new BlockPos(-2, BASE_ROW, -2));
+            BlockPos high = helper.absolutePos(new BlockPos(10, BASE_ROW + 30, 10));
+            Recording recording = new Recording(new AABB(low).minmax(new AABB(high)));
+            RECORDINGS.add(recording);
+            return recording;
+        }
+
+        synchronized void offer(ItemEntity item) {
+            if (!region.contains(item.position())) {
+                return;
+            }
+            String id = BuiltInRegistries.ITEM.getKey(item.getItem().getItem()).toString();
+            counts.merge(id, item.getItem().getCount(), Integer::sum);
+            spawns.add(String.format(
+                    "%s x%s at %s",
+                    id, item.getItem().getCount(), item.blockPosition().toShortString()));
+        }
+
+        /** Stops recording and returns the spawns by item id. */
+        synchronized Map<String, Integer> stop() {
+            RECORDINGS.remove(this);
+            return new TreeMap<>(counts);
+        }
+
+        synchronized List<String> spawns() {
+            return List.copyOf(spawns);
+        }
+    }
+
+    /** The failure of a count that is not the by-hand count, listing every spawn of the collapse. */
+    private static RuntimeException countMismatch(
+            GameTestHelper helper, Recording collapse, Map<String, Integer> collapsed, Map<String, Integer> byHand) {
         return failure(
                 helper,
-                "the collapse dropped %s, breaking the same blocks by hand dropped %s; the items in the box:%s",
+                "the collapse dropped %s, breaking the same blocks by hand dropped %s; the collapse's spawns:%n  %s",
                 collapsed,
                 byHand,
-                items);
+                String.join("%n  ".formatted(), collapse.spawns()));
     }
 
     private static MockPlayer farPlayer(GameTestHelper helper, String name) {
@@ -261,6 +281,7 @@ public class StalkCollapseTest {
         Runnable countable = countable(helper);
         MockPlayer player = farPlayer(helper, "stalk-collapse");
         AtomicReference<Map<String, Integer>> byHand = new AtomicReference<>();
+        AtomicReference<Recording> collapse = new AtomicReference<>();
         helper.startSequence()
                 .thenWaitUntil(countable)
                 .thenExecute(() -> {
@@ -268,10 +289,11 @@ public class StalkCollapseTest {
                     // The reference: every block from the break up, broken by hand from the top down, so nothing
                     // collapses.
                     column(helper, 2, 2, COLUMN_HEIGHT);
+                    Recording reference = Recording.start(helper);
                     for (int index = COLUMN_HEIGHT - 1; index >= BROKEN_SEGMENT; index--) {
                         breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + index, 2)));
                     }
-                    byHand.set(dropped(helper));
+                    byHand.set(reference.stop());
                     if (byHand.get().getOrDefault("deepcharter:fungal_stalk", 0) != COLUMN_HEIGHT - BROKEN_SEGMENT) {
                         throw failure(
                                 helper,
@@ -282,6 +304,7 @@ public class StalkCollapseTest {
                     clearArea(helper, COLUMN_HEIGHT);
                     // The collapse: one break.
                     column(helper, 2, 2, COLUMN_HEIGHT);
+                    collapse.set(Recording.start(helper));
                     breakByHand(helper, player, helper.absolutePos(new BlockPos(2, BASE_ROW + BROKEN_SEGMENT, 2)));
                 })
                 .thenIdle(COLLAPSE_WAIT)
@@ -301,9 +324,9 @@ public class StalkCollapseTest {
                             .is(Blocks.STONE)) {
                         throw failure(helper, "the floor under the column was touched");
                     }
-                    Map<String, Integer> collapsed = dropped(helper);
+                    Map<String, Integer> collapsed = collapse.get().stop();
                     if (!collapsed.equals(byHand.get())) {
-                        throw countMismatch(helper, collapsed, byHand.get());
+                        throw countMismatch(helper, collapse.get(), collapsed, byHand.get());
                     }
                 })
                 .thenSucceed();
@@ -388,6 +411,7 @@ public class StalkCollapseTest {
         Runnable countable = countable(helper);
         MockPlayer player = farPlayer(helper, "great-collapse");
         Plan plan = new Plan();
+        AtomicReference<Recording> collapse = new AtomicReference<>();
         helper.startSequence()
                 .thenWaitUntil(countable)
                 .thenExecute(() -> {
@@ -403,12 +427,13 @@ public class StalkCollapseTest {
                         }
                     }
                     // The reference: the same blocks, broken by hand from the top down.
+                    Recording reference = Recording.start(helper);
                     List<BlockPos> order = new ArrayList<>(plan.falls);
                     order.sort(Comparator.<BlockPos>comparingInt(BlockPos::getY).reversed());
                     for (BlockPos pos : order) {
                         breakByHand(helper, player, pos);
                     }
-                    plan.byHand = dropped(helper);
+                    plan.byHand = reference.stop();
                     if (plan.byHand.getOrDefault("deepcharter:fungal_stalk", 0) != plan.falls.size()) {
                         throw failure(
                                 helper,
@@ -418,6 +443,7 @@ public class StalkCollapseTest {
                     }
                     clearArea(helper, reach + 4);
                     greatStalk(helper, 3, 3);
+                    collapse.set(Recording.start(helper));
                     breakByHand(helper, player, plan.broken);
                 })
                 .thenIdle(COLLAPSE_WAIT)
@@ -443,9 +469,9 @@ public class StalkCollapseTest {
                             throw failure(helper, "a block above the break stands at %s", pos.toShortString());
                         }
                     }
-                    Map<String, Integer> collapsed = dropped(helper);
+                    Map<String, Integer> collapsed = collapse.get().stop();
                     if (!collapsed.equals(plan.byHand)) {
-                        throw countMismatch(helper, collapsed, plan.byHand);
+                        throw countMismatch(helper, collapse.get(), collapsed, plan.byHand);
                     }
                     if (level.getBlockState(plan.broken).isAir()
                             && after.size() != plan.before.size() - plan.falls.size()) {
