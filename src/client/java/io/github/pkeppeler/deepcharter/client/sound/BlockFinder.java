@@ -8,8 +8,9 @@ import net.minecraft.world.level.block.Block;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Keeps the answer of {@link BlockSearch} for one kind of block (a Company horn, a Company clock) for {@link #REFRESH_TICKS} ticks, since such a block does not move, and forgets it when the
- * player changes level or layer, so a block of the layer left is never heard from the next.
+ * Keeps the answer of {@link BlockSearch} for one kind of block (a Company horn or clock) for {@link #REFRESH_TICKS} ticks, since such
+ * a block does not move, and forgets it when the player changes level or layer, so a block of the layer left is never heard from the
+ * next.
  */
 final class BlockFinder {
     private static final int REFRESH_TICKS = 40;

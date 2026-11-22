@@ -8,7 +8,8 @@
 # The punch clock's hours (#938) have no original: `tools/sounds/lambert_clock.py <mp3>` writes an overlay beside the pack,
 # <out>/lambert-clock/ (sounds/*.ogg and entries.txt, one sounds.json slot per line), from a recording that may not be committed or
 # shared. When it is there this script copies it into the pack, so it replaces the mod's own chimes by id. Only ambience.clock.* slots
-# whose files are in the overlay are accepted.
+# whose files are in the overlay are accepted. A pack that holds it says whose recording it is and what the notice asks, in place of
+# the usual advice to hand the zip to friends.
 #
 # The originals are never committed or uploaded. The script refuses any output path that
 # `git check-ignore` does not confirm is ignored, so the converted audio cannot be staged by
@@ -142,7 +143,7 @@ overlay_entries=()
 if [[ -f $overlay/entries.txt ]]; then
   while IFS= read -r line; do
     [[ -z $line ]] && continue
-    if [[ ! $line =~ ^\"ambience\.clock\.[a-z0-9_]+\":\ \{\ \"replace\":\ true,\ \"sounds\":\ \[.*\]\ \}$ ]]; then
+    if [[ ! $line =~ ^\"ambience\.clock\.[a-z0-9_]+\":\ \{\ \"replace\":\ true,(\ \"subtitle\":\ \"[a-z0-9_.]+\",)?\ \"sounds\":\ \[.*\]\ \}$ ]]; then
       echo "error: bad line in $overlay/entries.txt (only ambience.clock.* slots): $line" >&2
       exit 1
     fi
@@ -200,4 +201,9 @@ printf '{\n  "pack": {\n    "description": "Deep Charter private audio (do not s
 echo "built $((${#ids[@]} + ${#overlay_entries[@]})) sound events (${#overlay_entries[@]} from the Lambert overlay):"
 echo "  $pack"
 echo "  $zipfile"
-echo "Keep it private: hand the zip to friends directly. Never commit or upload it."
+if [[ ${#overlay_entries[@]} -gt 0 ]]; then
+  echo "This pack contains Frank Lambert's 1878 talking clock, transferred by Glenn Sage (tinfoil.com), whose notice asks that it not be"
+  echo "copied or distributed. Keep it private. Never commit or upload it."
+else
+  echo "Keep it private: hand the zip to friends directly. Never commit or upload it."
+fi

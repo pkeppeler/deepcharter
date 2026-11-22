@@ -10,9 +10,10 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Finds the nearest block of one kind (a Company horn or a Company clock) to a place, within a range, in the chunks a level has loaded. Such a block is not a block entity, so
- * there is nothing to ask: this reads each nearby chunk section's palette first, and only a section that holds one is walked. It takes
- * a {@link LevelReader}, so the client's level and a server's level answer alike. A chunk that is not loaded holds none.
+ * Finds the nearest block of one kind (a Company horn or clock) to a place, within a range, in the chunks a level has loaded. Such a
+ * block is not a block entity, so there is nothing to ask: this reads each nearby chunk section's palette first, and only a section that
+ * holds one is walked. It takes a {@link LevelReader}, so the client's level and a server's level answer alike. A chunk that is not
+ * loaded holds none.
  */
 public final class BlockSearch {
     private BlockSearch() {}

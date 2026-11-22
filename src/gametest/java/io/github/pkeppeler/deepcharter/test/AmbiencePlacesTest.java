@@ -5,11 +5,15 @@ import com.google.errorprone.annotations.FormatString;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceTuning;
 import io.github.pkeppeler.deepcharter.sound.ambience.BlockSearch;
+import io.github.pkeppeler.deepcharter.sound.ambience.ClockCaller;
+import io.github.pkeppeler.deepcharter.sound.ambience.ClockHour;
 import io.github.pkeppeler.deepcharter.sound.ambience.ClockTuning;
+import io.github.pkeppeler.deepcharter.sound.ambience.PunchClock;
 import io.github.pkeppeler.deepcharter.sound.ambience.SpotPicker;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.SplittableRandom;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -77,6 +81,58 @@ public class AmbiencePlacesTest {
                 BlockSearch.nearest(level, clock, range, AmbienceRegistry.COMPANY_CLOCK)
                         .isEmpty(),
                 "a horn was taken for a clock");
+        level.setBlock(clock, Blocks.AIR.defaultBlockState(), 3);
+        helper.succeed();
+    }
+
+    @GameTest
+    public void thePunchClockSpeaksOnlyNearAClockWithTheWorldsHourKnownAndItsTimerWaitsForTheVisitor(
+            GameTestHelper helper) {
+        BlockPos clock = new BlockPos(40_408, Y, 40_408);
+        ServerLevel level = arena(helper, clock);
+        int range = ClockTuning.DEFAULT.range();
+        level.setBlock(clock, AmbienceRegistry.COMPANY_CLOCK.defaultBlockState(), 3);
+        Optional<BlockPos> near =
+                BlockSearch.nearest(level, clock.offset(3, 0, 0), range, AmbienceRegistry.COMPANY_CLOCK);
+        Optional<BlockPos> away =
+                BlockSearch.nearest(level, clock.offset(range + 5, 0, 0), range, AmbienceRegistry.COMPANY_CLOCK);
+        OptionalInt hour = ClockHour.of(level);
+        expect(helper, near.isPresent() && away.isEmpty(), "the clock was %s near and %s away", near, away);
+        expect(
+                helper,
+                hour.isPresent() && hour.getAsInt() >= 1 && hour.getAsInt() <= 12,
+                "the world's hour is %s",
+                hour);
+        ClockCaller caller = new ClockCaller(ClockTuning.DEFAULT, new SplittableRandom(1));
+        // Away from the clock, or with no hour, for far longer than any gap: nothing is called and the timer does not
+        // run.
+        for (int tick = 0; tick < 500_000; tick++) {
+            expect(helper, PunchClock.tick(caller, away, hour, false).isEmpty(), "called away from the clock");
+            expect(
+                    helper,
+                    PunchClock.tick(caller, near, OptionalInt.empty(), false).isEmpty(),
+                    "called with no hour");
+        }
+        // Then near: the first call is not before the floor, comes from the clock and strikes the world's hour or
+        // another.
+        for (int tick = 0; tick < ClockTuning.DEFAULT.firstMinTicks() - 1; tick++) {
+            expect(
+                    helper,
+                    PunchClock.tick(caller, near, hour, false).isEmpty(),
+                    "called %s ticks after arriving",
+                    tick);
+        }
+        Optional<PunchClock.Strike> strike = Optional.empty();
+        for (int tick = 0; tick < ClockTuning.DEFAULT.gapMaxTicks() && strike.isEmpty(); tick++) {
+            strike = PunchClock.tick(caller, near, hour, false);
+        }
+        expect(helper, strike.isPresent(), "no call within the longest gap");
+        expect(
+                helper,
+                strike.get().at().equals(clock),
+                "the call came from %s",
+                strike.get().at());
+        expect(helper, !strike.get().call().chimes().isEmpty(), "the call strikes nothing");
         level.setBlock(clock, Blocks.AIR.defaultBlockState(), 3);
         helper.succeed();
     }

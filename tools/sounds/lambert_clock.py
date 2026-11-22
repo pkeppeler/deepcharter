@@ -109,7 +109,7 @@ def find_words(samples, window):
 def decode(mp3):
     """The mp3 as 16-bit mono samples at RATE."""
     raw = subprocess.run(
-        ["ffmpeg", "-nostdin", "-v", "error", "-i", str(mp3), "-ac", "1", "-ar", str(RATE), "-f", "s16le", "-"],
+        ["ffmpeg", "-nostdin", "-v", "error", "-t", "120", "-i", str(mp3.resolve()), "-ac", "1", "-ar", str(RATE), "-f", "s16le", "-"],
         check=True,
         capture_output=True,
     ).stdout
@@ -146,11 +146,25 @@ def plan(hours, fragments):
 
 
 def entry(sound_id, names):
-    """One line of the pack's sounds.json for a sound id: replaces the mod's own sound of that id."""
+    """One line of the pack's sounds.json for a sound id: replaces the mod's own sound of that id, with the mod's own subtitle."""
+    subtitle = "clock_slow" if sound_id.endswith(".fragment") else "clock"
     sounds = ", ".join(
         f'{{ "name": "{NAMESPACE}:{name}", "attenuation_distance": {ATTENUATION} }}' for name in names
     )
-    return f'"{sound_id}": {{ "replace": true, "sounds": [{sounds}] }}'
+    return f'"{sound_id}": {{ "replace": true, "subtitle": "subtitles.deepcharter.ambience.{subtitle}", "sounds": [{sounds}] }}'
+
+
+def _cut(label, cut):
+    """A cut as (start, end), which must be two numbers with 0 <= start < end; `label` names it in the error."""
+    ok = (
+        isinstance(cut, (list, tuple))
+        and len(cut) == 2
+        and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in cut)
+        and 0 <= cut[0] < cut[1]
+    )
+    if not ok:
+        raise SystemExit(f"lambert_clock: the cut for {label} is {cut!r}, not [start, end] in seconds with 0 <= start < end")
+    return (cut[0], cut[1])
 
 
 def load_cuts(path):
@@ -158,11 +172,13 @@ def load_cuts(path):
     if path is None:
         return dict(HOURS_CUTS), list(FRAGMENT_CUTS)
     data = json.loads(Path(path).read_text())
-    hours = {int(hour): tuple(cut) for hour, cut in data.get("hours", {}).items()}
-    bad = sorted(set(hours) - set(range(1, 13)))
-    if bad:
-        raise SystemExit(f"lambert_clock: hours {bad} are not on the dial (1 to 12)")
-    return hours, [tuple(cut) for cut in data.get("fragments", [])]
+    hours = {}
+    for hour, cut in data.get("hours", {}).items():
+        if not hour.isdigit() or not 1 <= int(hour) <= 12:
+            raise SystemExit(f"lambert_clock: hour {hour!r} is not on the dial (1 to 12)")
+        hours[int(hour)] = _cut(f"hour {hour}", cut)
+    fragments = [_cut(f"fragment {number}", cut) for number, cut in enumerate(data.get("fragments", []), 1)]
+    return hours, fragments
 
 
 def check_output(out):
@@ -176,23 +192,34 @@ def check_output(out):
 
 
 def write(mp3, out, hours, fragments):
-    """Cuts every file into `<out>/lambert-clock/sounds/` and writes `entries.txt` there."""
+    """Cuts every file into a temporary folder in `out`, then swaps it in as `<out>/lambert-clock/`, so a failure leaves the old overlay as it
+    was and never a half-built one. Returns the overlay and its slots."""
     files, slots = plan(hours, fragments)
     overlay = out / OVERLAY
-    shutil.rmtree(overlay, ignore_errors=True)
-    (overlay / "sounds").mkdir(parents=True)
-    for name, (kind, start, end) in files.items():
-        begin = max(start - PAD_BEFORE, 0)
-        length = end + PAD_AFTER - begin
-        subprocess.run(
-            [
-                "ffmpeg", "-v", "error", "-nostdin", "-y", "-ss", f"{begin:.3f}", "-t", f"{length:.3f}", "-i", str(mp3),
-                "-af", treatment(kind, length), "-map_metadata", "-1", "-ac", "1", "-ar", str(RATE),
-                "-c:a", "libvorbis", "-q:a", "4", str(overlay / "sounds" / f"{name}.ogg"),
-            ],
-            check=True,
-        )
-    (overlay / "entries.txt").write_text("".join(entry(sound_id, names) + "\n" for sound_id, names in sorted(slots.items())))
+    building = out / f".{OVERLAY}-building"
+    shutil.rmtree(building, ignore_errors=True)
+    (building / "sounds").mkdir(parents=True)
+    try:
+        for name, (kind, start, end) in files.items():
+            begin = max(start - PAD_BEFORE, 0)
+            length = end + PAD_AFTER - begin
+            subprocess.run(
+                [
+                    "ffmpeg", "-v", "error", "-nostdin", "-y", "-ss", f"{begin:.3f}", "-t", f"{length:.3f}", "-i", str(mp3.resolve()),
+                    "-af", treatment(kind, length), "-map_metadata", "-1", "-ac", "1", "-ar", str(RATE),
+                    "-c:a", "libvorbis", "-q:a", "4", str(building / "sounds" / f"{name}.ogg"),
+                ],
+                check=True,
+            )
+        (building / "entries.txt").write_text("".join(entry(sound_id, names) + "\n" for sound_id, names in sorted(slots.items())))
+        old = out / f".{OVERLAY}-old"
+        shutil.rmtree(old, ignore_errors=True)
+        if overlay.exists():
+            overlay.rename(old)
+        building.rename(overlay)
+        shutil.rmtree(old, ignore_errors=True)
+    finally:
+        shutil.rmtree(building, ignore_errors=True)
     return overlay, slots
 
 

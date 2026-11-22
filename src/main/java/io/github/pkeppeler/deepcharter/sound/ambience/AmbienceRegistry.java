@@ -11,7 +11,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
-/** Registers the Company horn and the Company punch clock. Neither has no item: each is only ever set by the structure that holds it, and breaks without a drop. */
+/**
+ * Registers the Company horn and the Company punch clock. Neither has an item: a structure sets each, and each breaks without a drop.
+ */
 public final class AmbienceRegistry {
     public static final Block COMPANY_HORN = register(
             "company_horn",

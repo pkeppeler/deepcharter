@@ -22,6 +22,7 @@ import lambert_clock  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 SOUNDS_JSON = ROOT / "src/main/resources/assets/deepcharter/sounds.json"
 RATE = lambert_clock.RATE
+OVERLAY_NAME = lambert_clock.OVERLAY
 
 
 def words(starts, length=0.4, total=40.0):
@@ -103,6 +104,22 @@ class CutsFileTest(unittest.TestCase):
         self.assertEqual({4: (1.0, 2.0)}, hours)
         self.assertEqual([(3.0, 4.0)], fragments)
 
+    def test_a_bad_cut_is_refused_and_names_its_hour(self):
+        bad = {"two": [1.0], "backwards": [3.0, 2.0], "negative": [-1.0, 2.0], "text": ["a", "b"], "three": [1, 2, 3], "empty": [2.0, 2.0]}
+        for label, cut in bad.items():
+            with self.subTest(label), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "cuts.json"
+                path.write_text(json.dumps({"hours": {"5": cut}}))
+                with self.assertRaises(SystemExit) as raised:
+                    lambert_clock.load_cuts(path)
+                self.assertIn("hour 5", str(raised.exception))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "cuts.json"
+            path.write_text(json.dumps({"fragments": [[1.0, 2.0], [4.0, 3.0]]}))
+            with self.assertRaises(SystemExit) as raised:
+                lambert_clock.load_cuts(path)
+            self.assertIn("fragment 2", str(raised.exception))
+
     def test_an_hour_off_the_dial_is_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "cuts.json"
@@ -149,6 +166,15 @@ class EndToEndTest(unittest.TestCase):
                     text=True,
                 ).stdout.strip()
                 self.assertEqual("1", channels, name)
+            self.assertIn('"subtitle": "subtitles.deepcharter.ambience.clock_slow"', "".join(entries))
+            # A failed run leaves the overlay as it was and no half-built one beside it.
+            broken = Path(tmp) / "broken.wav"
+            broken.write_bytes(b"not audio")
+            with self.assertRaises(subprocess.CalledProcessError):
+                lambert_clock.write(broken, out, {1: (1.0, 2.0)}, [])
+            self.assertEqual(entries, (overlay / "entries.txt").read_text().splitlines())
+            self.assertTrue((overlay / "sounds" / "ambience_clock_hour_2_1.ogg").is_file())
+            self.assertEqual([OVERLAY_NAME], [p.name for p in out.iterdir()])
             # Nothing of the cut leaves the ignored directory.
             tracked = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--", str(out)], env=git_env.clean_env(ROOT), capture_output=True, text=True).stdout
             self.assertEqual("", tracked)

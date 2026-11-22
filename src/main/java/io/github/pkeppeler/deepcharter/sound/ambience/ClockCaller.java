@@ -7,15 +7,15 @@ import java.util.random.RandomGenerator;
 import org.jspecify.annotations.Nullable;
 
 /**
- * When the punch clock calls an hour, and which (#938): the one decision the client's ticker makes each tick about it, with no client in it.
- * It is told whether a Company clock is near, whether something else is sounding, and the world's hour on a twelve-hour dial.
+ * When the punch clock calls an hour, and which (#938): a pure decision, with no client in it. It is told whether something else is
+ * sounding and the world's hour on a twelve-hour dial, on ticks when a Company clock is near.
  *
  * <ul>
- *   <li>Rare: the gap is drawn between {@link ClockTuning#gapMinTicks()} and {@link ClockTuning#gapMaxTicks()} and the timer runs only while
- *       a player is near, so a visitor passing through hears nothing and one who lingers hears about one call an hour. The timer is kept
- *       when the player leaves, so walking out and back does not draw it again.
- *   <li>Right, wrong or skipped: a call is the world's own hour, another hour, or the hour before and the hour after with the world's hour
- *       missing, as Lambert's recording skips ten.
+ *   <li>Rare: the gap is drawn between {@link ClockTuning#gapMinTicks()} and {@link ClockTuning#gapMaxTicks()}. The timer runs only on
+ *       ticks near a clock and is kept when the player leaves, so a visitor passing through hears nothing, one who lingers hears about
+ *       one call an hour, and walking out and back does not draw it again.
+ *   <li>Right, wrong or skipped: a call is the world's own hour, another hour, or the hour before and the hour after with the world's
+ *       hour missing, as Lambert's recording skips ten.
  *   <li>Never twice in a row: a call is never the same hours as the one before, whatever the world's hour.
  *   <li>Something sounding (a hymn, a phonograph, a transmission, a fragment, a call) holds a due call back for a drawn short time.
  * </ul>
@@ -68,16 +68,12 @@ public final class ClockCaller {
     }
 
     /**
-     * One client tick. Returns the call that is due, if one is and nothing holds it back.
+     * One client tick near a clock ({@link PunchClock} asks only then). Returns the call that is due, if one is and nothing holds it back.
      *
-     * @param near      whether a Company clock is within range
      * @param quiet     whether something else is sounding
      * @param worldHour the world's hour on the dial, 1 to 12
      */
-    public Optional<Call> tick(boolean near, boolean quiet, int worldHour) {
-        if (!near) {
-            return Optional.empty();
-        }
+    public Optional<Call> tick(boolean quiet, int worldHour) {
         if (ticksLeft == UNSET) {
             ticksLeft = draw(tuning.firstMinTicks(), tuning.gapMaxTicks());
         }

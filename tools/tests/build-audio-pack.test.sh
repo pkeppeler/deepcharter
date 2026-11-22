@@ -117,9 +117,14 @@ overlay_out=$repo/private/overlay
 mkdir -p "$overlay_out/lambert-clock/sounds"
 tone "$overlay_out/lambert-clock/sounds/ambience_clock_hour_3_1.ogg" 300
 cat >"$overlay_out/lambert-clock/entries.txt" <<'ENTRIES'
-"ambience.clock.hour_3": { "replace": true, "sounds": [{ "name": "deepcharter:ambience_clock_hour_3_1", "attenuation_distance": 32 }] }
+"ambience.clock.hour_3": { "replace": true, "subtitle": "subtitles.deepcharter.ambience.clock", "sounds": [{ "name": "deepcharter:ambience_clock_hour_3_1", "attenuation_distance": 32 }] }
 ENTRIES
+overlay_log=$(build "$overlay_out" 2>&1)
 ok "builds with an overlay" build "$overlay_out"
+ok "an overlay pack names Lambert's notice" grep -qF 'Frank Lambert' <<<"$overlay_log"
+plain_log=$(build "$repo/private/plain" 2>&1)
+check "a pack with no overlay gives the usual advice" "$(grep -qF 'hand the zip to friends' <<<"$plain_log" && echo 0 || echo 1)"
+check "an overlay pack does not advise handing the zip to friends" "$(grep -qF 'hand the zip to friends' <<<"$overlay_log" && echo 1 || echo 0)"
 ok "the overlay's file is in the pack" test -f "$overlay_out/deepcharter-audio-pack/assets/deepcharter/sounds/ambience_clock_hour_3_1.ogg"
 check_overlay() {
   "$py" -c '

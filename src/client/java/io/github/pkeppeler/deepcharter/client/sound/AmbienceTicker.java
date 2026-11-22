@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceTuning;
 import io.github.pkeppeler.deepcharter.sound.ambience.ClockCaller;
 import io.github.pkeppeler.deepcharter.sound.ambience.ClockHour;
 import io.github.pkeppeler.deepcharter.sound.ambience.ClockTuning;
+import io.github.pkeppeler.deepcharter.sound.ambience.PunchClock;
 import io.github.pkeppeler.deepcharter.sound.ambience.QuietTracker;
 import io.github.pkeppeler.deepcharter.sound.ambience.RetainedSight;
 import io.github.pkeppeler.deepcharter.sound.ambience.RetainedWarning;
@@ -191,27 +192,20 @@ public final class AmbienceTicker {
     }
 
     /**
-     * The punch clock (#938): near a Company clock, asks {@link ClockCaller} whether it calls an hour, and strikes the hour or hours it names
-     * from the clock, one after the other. Returns whether it did.
+     * The punch clock (#938): {@link PunchClock} decides, near a Company clock, whether it calls an hour; this strikes the hour or hours it
+     * names from the clock, one after the other. Returns whether it did.
      */
     private static boolean callHour(
             SoundManager sounds, ClientLevel level, int layer, BlockPos feet, boolean quietNow) {
         Optional<BlockPos> clock = layer == LayerChain.SURFACE
                 ? Optional.empty()
                 : CLOCKS.nearest(level, layer, feet, now, CLOCK_TUNING.range());
-        if (clock.isEmpty()) {
+        Optional<PunchClock.Strike> called = PunchClock.tick(clockCaller, clock, ClockHour.of(level), quietNow);
+        if (called.isEmpty()) {
             return false;
         }
-        OptionalInt hour = ClockHour.of(level);
-        if (hour.isEmpty()) {
-            return false;
-        }
-        Optional<ClockCaller.Call> call = clockCaller.tick(true, quietNow, hour.getAsInt());
-        if (call.isEmpty()) {
-            return false;
-        }
-        Vec3 at = Vec3.atCenterOf(clock.get());
-        for (ClockCaller.Chime chime : call.get().chimes()) {
+        Vec3 at = Vec3.atCenterOf(called.get().at());
+        for (ClockCaller.Chime chime : called.get().call().chimes()) {
             SoundEvent strike = AmbienceFragments.clockHour(chime.hour());
             if (chime.delayTicks() == 0) {
                 sounds.play(at(strike, at));

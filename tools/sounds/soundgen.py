@@ -20,7 +20,7 @@ from downloaded sources and owned by tools/sounds/first_sounds.json, which has t
 those OGGs and asks `first_sounds.check` about them. The ambience's fragments (the ambience folder) are the same kind of thing, made by
 tools/sounds/ambience.py and owned by tools/sounds/ambience.json, and `--check` asks `ambience.check` about them.
 
-Standard library and ffmpeg only; this Mac's ffmpeg has the native Vorbis encoder alone, which writes stereo.
+Standard library and ffmpeg only. A recipe in `recipes.MONO` is encoded mono and needs an ffmpeg with libvorbis; the native Vorbis encoder writes stereo.
 """
 import argparse
 import hashlib
@@ -56,7 +56,7 @@ def _encoder_args():
 
 
 def _encode(clip, target, mono=False):
-    """Encodes the clip as stereo Vorbis, or as mono (Minecraft positions mono sounds only) when `mono`, which needs libvorbis."""
+    """Encodes the clip as stereo Vorbis, or mono (which needs libvorbis) when `mono`."""
     target.parent.mkdir(parents=True, exist_ok=True)
     encoder = _encoder_args()
     if mono and encoder[1] != "libvorbis":
@@ -80,7 +80,8 @@ def _load(manifest):
 
 def build(names, out, manifest):
     known = _load(manifest)
-    entries = {}
+    # Naming recipes rebuilds those only: the others keep their entries.
+    entries = {name: entry for name, entry in known.items() if name in recipes.RECIPES}
     for name in names:
         clip = recipes.render(name)
         pcm = clip.sha256()

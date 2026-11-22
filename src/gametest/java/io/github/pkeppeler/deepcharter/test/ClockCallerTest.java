@@ -30,11 +30,11 @@ public class ClockCallerTest {
     private static final int DAYS = 200;
     private static final long TICKS = DAYS * 24_000L;
 
-    private static List<Call> run(long seed, boolean near, boolean quiet, int worldHour, long ticks) {
+    private static List<Call> run(long seed, boolean quiet, int worldHour, long ticks) {
         ClockCaller caller = new ClockCaller(ClockTuning.DEFAULT, new SplittableRandom(seed));
         List<Call> calls = new ArrayList<>();
         for (long tick = 0; tick < ticks; tick++) {
-            caller.tick(near, quiet, worldHour).ifPresent(calls::add);
+            caller.tick(quiet, worldHour).ifPresent(calls::add);
         }
         return calls;
     }
@@ -42,22 +42,19 @@ public class ClockCallerTest {
     @GameTest
     public void aCallIsRareAboutOnceAnHourNearTheClock(GameTestHelper helper) {
         // 200 game days is 4,800,000 ticks, or 66 hours of play: about one call an hour, never one every few minutes.
-        List<Call> calls = run(1, true, false, 3, TICKS);
+        List<Call> calls = run(1, false, 3, TICKS);
         double perHour = calls.size() / (TICKS / 72_000.0);
         expect(helper, perHour > 0.7 && perHour < 1.4, "%s calls an hour of play", perHour);
         helper.succeed();
     }
 
     @GameTest
-    public void nothingIsCalledAwayFromTheClockAndTheTimerWaitsForTheVisitor(GameTestHelper helper) {
-        expect(helper, run(2, false, false, 3, TICKS).isEmpty(), "a call was made with no clock near");
-        ClockCaller caller = new ClockCaller(ClockTuning.DEFAULT, new SplittableRandom(3));
-        // Never near for a long time, then near: the first call is not sooner than the first-call floor.
-        for (int i = 0; i < 500_000; i++) {
-            expect(helper, caller.tick(false, false, 5).isEmpty(), "called away from the clock");
-        }
-        for (int i = 0; i < ClockTuning.DEFAULT.firstMinTicks() - 1; i++) {
-            expect(helper, caller.tick(true, false, 5).isEmpty(), "called %s ticks after arriving", i);
+    public void theFirstCallIsNotSoonerThanTheFloorAfterArriving(GameTestHelper helper) {
+        for (long seed = 0; seed < 20; seed++) {
+            ClockCaller caller = new ClockCaller(ClockTuning.DEFAULT, new SplittableRandom(seed));
+            for (int i = 0; i < ClockTuning.DEFAULT.firstMinTicks() - 1; i++) {
+                expect(helper, caller.tick(false, 5).isEmpty(), "called %s ticks after arriving", i);
+            }
         }
         helper.succeed();
     }
@@ -68,7 +65,7 @@ public class ClockCallerTest {
         Set<Long> gaps = new HashSet<>();
         long last = -1;
         for (long tick = 0; tick < TICKS; tick++) {
-            if (caller.tick(true, false, 7).isPresent()) {
+            if (caller.tick(false, 7).isPresent()) {
                 if (last >= 0) {
                     long gap = tick - last;
                     expect(helper, gap >= ClockTuning.DEFAULT.gapMinTicks(), "a gap of %s ticks", gap);
@@ -85,7 +82,7 @@ public class ClockCallerTest {
     @GameTest
     public void aCallIsNeverTheSameHoursTwiceInARow(GameTestHelper helper) {
         for (int world : new int[] {1, 6, 10, 12}) {
-            List<Call> calls = run(5L + world, true, false, world, TICKS);
+            List<Call> calls = run(5L + world, false, world, TICKS);
             for (int i = 1; i < calls.size(); i++) {
                 expect(
                         helper,
@@ -103,7 +100,7 @@ public class ClockCallerTest {
         int world = 4;
         EnumSet<Kind> seen = EnumSet.noneOf(Kind.class);
         int[] counts = new int[Kind.values().length];
-        List<Call> calls = run(6, true, false, world, TICKS * 3);
+        List<Call> calls = run(6, false, world, TICKS * 3);
         for (Call call : calls) {
             seen.add(call.kind());
             counts[call.kind().ordinal()]++;
@@ -135,7 +132,7 @@ public class ClockCallerTest {
 
     @GameTest
     public void aSkippingCallStrikesTheSecondHourAfterTheFirstHasFinished(GameTestHelper helper) {
-        for (Call call : run(7, true, false, 12, TICKS)) {
+        for (Call call : run(7, false, 12, TICKS)) {
             if (call.kind() != Kind.SKIPPED) {
                 continue;
             }
@@ -158,7 +155,7 @@ public class ClockCallerTest {
         long quietUntil = 400_000;
         List<Long> at = new ArrayList<>();
         for (long tick = 0; tick < quietUntil + 5_000; tick++) {
-            Optional<Call> call = caller.tick(true, tick < quietUntil, 9);
+            Optional<Call> call = caller.tick(tick < quietUntil, 9);
             if (call.isPresent()) {
                 at.add(tick);
             }
