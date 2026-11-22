@@ -75,7 +75,6 @@ public final class FarChunks {
     public static void pin(ServerLevel level, int chunkX, int chunkZ) {
         PINNED.add(new Chunk(level, ChunkPos.pack(chunkX, chunkZ)));
         level.setChunkForced(chunkX, chunkZ, true);
-        HOLDS.merge(new Chunk(level, ChunkPos.pack(chunkX, chunkZ)), 1, Integer::sum);
     }
 
     /** Whether {@link #pin} holds this chunk, exempt from the runner's batch-end unforce. */
