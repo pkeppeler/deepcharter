@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -39,6 +40,19 @@ public final class SporeClouds {
      */
     private record Cloud(ResourceKey<Level> dimension, Vec3 center, long born, Set<UUID> warned) {}
 
+    /** The gas's colour: the cold green of the drifter's own light. */
+    private static final int GREEN = 0x7CE0A0;
+    /** A mote of the gas, and the puff of the burst: dust tinted green, the burst's larger. */
+    private static final DustParticleOptions GAS = new DustParticleOptions(GREEN, 2.0f);
+
+    private static final DustParticleOptions BURST = new DustParticleOptions(GREEN, 3.5f);
+    /** Ticks between two puffs of the gas, motes in each, and the bound on what a cloud sends: 20 a tick at most, for 8 seconds. */
+    private static final int PUFF_EVERY_TICKS = 2;
+
+    private static final int PUFF_PARTICLES = 40;
+    private static final int SPORES = 8;
+    private static final int BURST_PARTICLES = 90;
+
     /** Server thread only. */
     private static final List<Cloud> CLOUDS = new ArrayList<>();
 
@@ -53,6 +67,9 @@ public final class SporeClouds {
     /** Lets a cloud out at {@code center}. */
     public static void release(ServerLevel level, Vec3 center) {
         CLOUDS.add(new Cloud(level.dimension(), center, level.getGameTime(), new HashSet<>()));
+        double radius = DrifterTuning.DEFAULT.cloud().radius();
+        level.sendParticles(
+                BURST, center.x, center.y, center.z, BURST_PARTICLES, radius / 4, radius / 4, radius / 4, 0.12);
     }
 
     private static void tick(ServerLevel level) {
@@ -68,16 +85,32 @@ public final class SporeClouds {
                 clouds.remove();
                 continue;
             }
-            if (age % 4 == 0) {
+            if (age % PUFF_EVERY_TICKS == 0) {
+                // Green dust filling the ball of the damage radius, so the player sees where the gas ends; the standard
+                // deviation is a
+                // third of the radius, so nearly all of it is inside. The game sends it to players within 32 blocks
+                // only.
+                level.sendParticles(
+                        GAS,
+                        cloud.center().x,
+                        cloud.center().y,
+                        cloud.center().z,
+                        PUFF_PARTICLES,
+                        tuning.radius() / 3,
+                        tuning.radius() / 3,
+                        tuning.radius() / 3,
+                        0.0);
+            }
+            if (age % 6 == 0) {
                 level.sendParticles(
                         ParticleTypes.SPORE_BLOSSOM_AIR,
                         cloud.center().x,
                         cloud.center().y,
                         cloud.center().z,
-                        24,
-                        tuning.radius() / 2,
+                        SPORES,
                         tuning.radius() / 3,
-                        tuning.radius() / 2,
+                        tuning.radius() / 3,
+                        tuning.radius() / 3,
                         0.01);
             }
             eatHulls(level, cloud, tuning);

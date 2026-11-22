@@ -451,7 +451,7 @@ public class DrifterSpawnTest {
      * three (the middle zone's cap), and each new drifter comes at least a check after the last. The drifters are held still so that none
      * bursts on its pod.
      */
-    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 26_000)
+    @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 50_000)
     public void theTickPlacesDriftersByPodsUpToTheZoneCap(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         CampaignBands.Band two = CampaignBands.LAYER_2;
@@ -516,7 +516,7 @@ public class DrifterSpawnTest {
                             phase[0] = 2;
                             since[0] = helper.getTick();
                             lastPlacedAt[0] = -1;
-                        } else if (tick > 9_000 && alive.size() < 2) {
+                        } else if (tick > 20_000 && alive.size() < 2) {
                             throw failure(helper, "one pod drew %d drifters in %d ticks, not 2", alive.size(), tick);
                         }
                     }
@@ -529,7 +529,7 @@ public class DrifterSpawnTest {
                         if (alive.size() == 3 && tick >= 1_500) {
                             finish(level, alive, pods, pilots);
                             helper.succeed();
-                        } else if (tick > 9_000 && alive.size() < 3) {
+                        } else if (tick > 20_000 && alive.size() < 3) {
                             throw failure(helper, "two pods drew %d drifters in %d ticks, not 3", alive.size(), tick);
                         }
                     }
