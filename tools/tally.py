@@ -117,10 +117,6 @@ def extent(model):
     return (min(xs), min(ys), min(zs)), (max(xs), max(ys), max(zs))
 
 
-def luma(rgba):
-    return 0.299 * rgba[0] + 0.587 * rgba[1] + 0.114 * rgba[2]
-
-
 def check(model, glow):
     lo, hi = extent(model)
     if hi[1] - lo[1] > MAX_HEIGHT_PX:
@@ -136,8 +132,8 @@ def check(model, glow):
     if not lit:
         raise ValueError("the glowmask has no lit texel: the eye does not show")
     for texel in lit:
-        if not MIN_GLOW_LUMA <= luma(texel) <= MAX_GLOW_LUMA:
-            raise ValueError(f"a glowmask texel {tuple(texel[:3])} has luma {luma(texel):.0f}, not {MIN_GLOW_LUMA} to {MAX_GLOW_LUMA}")
+        if not MIN_GLOW_LUMA <= pc.luma(texel) <= MAX_GLOW_LUMA:
+            raise ValueError(f"a glowmask texel {tuple(texel[:3])} has luma {pc.luma(texel):.0f}, not {MIN_GLOW_LUMA} to {MAX_GLOW_LUMA}")
 
 
 def paint(model):

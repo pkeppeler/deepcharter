@@ -51,7 +51,7 @@ public final class Tally extends PathfinderMob {
     private static final int DISSOLVE_TICKS = 20;
 
     private static final int WANDER_TICKS = 40;
-    private static final double WANDER_BLOCKS = 6;
+    private static final int WANDER_BLOCKS = 6;
     private static final int SPARKS = 10;
     /** How far off the hull the Tally sits, beyond the half width of the pod, and how high on it. */
     private static final double HATCH_GAP = 0.3;
@@ -182,9 +182,9 @@ public final class Tally extends PathfinderMob {
         if (tickCount % WANDER_TICKS == 0) {
             BlockPos at = blockPosition()
                     .offset(
-                            random.nextInt(-(int) WANDER_BLOCKS, (int) WANDER_BLOCKS + 1),
+                            random.nextInt(-WANDER_BLOCKS, WANDER_BLOCKS + 1),
                             random.nextInt(-2, 3),
-                            random.nextInt(-(int) WANDER_BLOCKS, (int) WANDER_BLOCKS + 1));
+                            random.nextInt(-WANDER_BLOCKS, WANDER_BLOCKS + 1));
             if (LoadedBlocks.isLoaded(level, at)
                     && level.getBlockState(at).getCollisionShape(level, at).isEmpty()) {
                 getNavigation().moveTo(at.getX() + 0.5, at.getY() + 0.5, at.getZ() + 0.5, 1.0);
