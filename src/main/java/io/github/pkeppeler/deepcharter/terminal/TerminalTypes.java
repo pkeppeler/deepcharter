@@ -98,6 +98,7 @@ public final class TerminalTypes {
                                 .setId(blockKey)
                                 .strength(-1.0F, 3_600_000.0F)
                                 .sound(SoundType.METAL)
+                                .noOcclusion()
                                 .noLootTable(),
                         repair.isEmpty()));
         ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, id);

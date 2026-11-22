@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.pod.Chassis;
@@ -26,10 +26,8 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for the signal decay (#502): the curve of each layer, the console part that pushes it deeper, the order the instruments fail in and that the
@@ -39,12 +37,6 @@ public class SignalDecayTest {
     private static final int CELLS = 4000;
     private static final long SEED = 0x5EEDL;
     private static final double EPSILON = 1e-9;
-
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
-    }
 
     private static int faults(Instrument instrument, double intensity, long seed, Fault kind) {
         int found = 0;
