@@ -27,9 +27,7 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  */
 public final class VisitBreaks {
     /** What a run of visits broke: what was lost by block, the heaps made, and the box round every cell changed. */
-    public record Broken(Map<Identifier, Integer> lost, int heaps, Optional<BoundingBox> changed) {
-        public static final Broken NOTHING = new Broken(Map.of(), 0, Optional.empty());
-    }
+    public record Broken(Map<Identifier, Integer> lost, int heaps, Optional<BoundingBox> changed) {}
 
     private VisitBreaks() {}
 

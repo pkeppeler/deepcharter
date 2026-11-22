@@ -28,6 +28,7 @@ import io.github.pkeppeler.deepcharter.ore.OreCargoMenu;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.outpost.IncidentReportPayload;
+import io.github.pkeppeler.deepcharter.outpost.VisitCause;
 import io.github.pkeppeler.deepcharter.pod.PodTuning;
 import io.github.pkeppeler.deepcharter.terminal.ParkedPodView;
 import io.github.pkeppeler.deepcharter.terminal.TerminalFeature;
@@ -673,7 +674,7 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                     99999,
                     IncidentReportPayload.Kind.values()[i % IncidentReportPayload.Kind.values().length]));
         }
-        return new IncidentReportPayload(1, 99999, lines, 99);
+        return new IncidentReportPayload(1, 99999, lines, 99, List.of(VisitCause.DARK));
     }
 
     /** The screens nothing registers: the handbook, opened from a key, and the UI kit's demo. */

@@ -24,7 +24,8 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * The outposts of the world: which charter built each, in which layer, and where its middle is. A charter has at most one outpost in a
  * layer. An outpost belongs to its charter (SPEC section 6) and is never destroyed (its blocks are Company property), so the list only grows.
  *
- * <p>The saved form has a {@link #VERSION}. Version 1 saved no dimension; it reads with the dimension of the outpost's layer, and the next save is version 2. Data of another version loads as unreadable, is written back unchanged, and every use of it
+ * <p>The saved form has a {@link #VERSION}. Version 1 saved no dimension; it reads with the dimension of the outpost's layer, and the next
+ * save is version 2. Data of another version loads as unreadable, is written back unchanged, and every use of it
  * throws, as for {@code RepairState}: callers on a callback check {@link #isReadable()} first.
  */
 public final class OutpostData extends SavedData {
@@ -36,9 +37,9 @@ public final class OutpostData extends SavedData {
      * One outpost.
      *
      * @param charter the charter that built it
-     * @param layer     the layer it stands in (1 is the first below the surface)
+     * @param layer   the layer it stands in (1 is the first below the surface)
      * @param dimension the level its hall is in: away settling finds the hall's chunks there
-     * @param centre    the middle of its hall, on the hall's floor
+     * @param centre  the middle of its hall, on the hall's floor
      */
     public record Outpost(CharterId charter, int layer, ResourceKey<Level> dimension, BlockPos centre) {
         private static final Codec<Outpost> CODEC = RecordCodecBuilder.create(instance -> instance.group(

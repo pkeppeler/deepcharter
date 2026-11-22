@@ -11,6 +11,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.datafix.DataFixTypes;
@@ -88,25 +91,51 @@ public final class OutpostVisits extends SavedData {
      * @param taken  items taken from storage, by item (fuel and ore)
      * @param broken items lost with a broken block, by item
      * @param heaps  salvage heaps a broken storage block left
+     * @param causes why visits came, for the causes the report has a line for
      */
-    public record Report(int visits, Map<Identifier, Integer> taken, Map<Identifier, Integer> broken, int heaps) {
+    public record Report(
+            int visits,
+            Map<Identifier, Integer> taken,
+            Map<Identifier, Integer> broken,
+            int heaps,
+            Set<VisitCause> causes) {
         public static final Report NONE = new Report(0, Map.of(), Map.of(), 0);
         private static final Codec<Map<Identifier, Integer>> COUNTS = Codec.unboundedMap(Identifier.CODEC, Codec.INT);
         private static final Codec<Report> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                         Codec.INT.fieldOf("visits").forGetter(Report::visits),
                         COUNTS.fieldOf("taken").forGetter(Report::taken),
                         COUNTS.fieldOf("broken").forGetter(Report::broken),
-                        Codec.INT.fieldOf("heaps").forGetter(Report::heaps))
+                        Codec.INT.fieldOf("heaps").forGetter(Report::heaps),
+                        VisitCause.CODEC
+                                .listOf()
+                                .xmap(Set::copyOf, causes -> List.copyOf(sorted(causes)))
+                                .optionalFieldOf("causes", Set.of())
+                                .forGetter(Report::causes))
                 .apply(instance, Report::new));
 
         public Report {
             taken = Map.copyOf(taken);
             broken = Map.copyOf(broken);
+            causes = Set.copyOf(causes);
+        }
+
+        /** A report with no cause to name. */
+        public Report(int visits, Map<Identifier, Integer> taken, Map<Identifier, Integer> broken, int heaps) {
+            this(visits, taken, broken, heaps, Set.of());
+        }
+
+        /** The causes in the order of the enum, so a report reads and saves the same every time. */
+        public List<VisitCause> sortedCauses() {
+            return sorted(causes);
+        }
+
+        private static List<VisitCause> sorted(Set<VisitCause> causes) {
+            return causes.stream().sorted().toList();
         }
 
         /** True when nothing happened that a report could say. */
         public boolean isEmpty() {
-            return visits == 0 && taken.isEmpty() && broken.isEmpty() && heaps == 0;
+            return visits == 0 && taken.isEmpty() && broken.isEmpty() && heaps == 0 && causes.isEmpty();
         }
 
         /** This report and {@code more} as one, the counts of each item added (saturating). */
@@ -115,7 +144,8 @@ public final class OutpostVisits extends SavedData {
                     (int) Math.min(Integer.MAX_VALUE, (long) visits + more.visits),
                     merged(taken, more.taken),
                     merged(broken, more.broken),
-                    (int) Math.min(Integer.MAX_VALUE, (long) heaps + more.heaps));
+                    (int) Math.min(Integer.MAX_VALUE, (long) heaps + more.heaps),
+                    Stream.concat(causes.stream(), more.causes.stream()).collect(Collectors.toSet()));
         }
 
         private static Map<Identifier, Integer> merged(Map<Identifier, Integer> a, Map<Identifier, Integer> b) {

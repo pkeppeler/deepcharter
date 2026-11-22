@@ -70,7 +70,7 @@ final class IncidentReports {
         lines.sort(Comparator.comparingInt(Line::count).reversed());
         List<Line> shown = new ArrayList<>(lines.subList(0, Math.min(lines.size(), IncidentReportPayload.MAX_LINES)));
         shown.sort(Comparator.comparing(Line::kind));
-        return new IncidentReportPayload(layer, report.visits(), shown, report.heaps());
+        return new IncidentReportPayload(layer, report.visits(), shown, report.heaps(), report.sortedCauses());
     }
 
     private static List<Map.Entry<Identifier, Integer>> sorted(Map<Identifier, Integer> counts) {

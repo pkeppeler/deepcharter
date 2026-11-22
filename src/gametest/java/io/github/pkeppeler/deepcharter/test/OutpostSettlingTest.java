@@ -23,6 +23,7 @@ import io.github.pkeppeler.deepcharter.outpost.SettlingTuning;
 import io.github.pkeppeler.deepcharter.outpost.SettlingTuning.LayerRates;
 import io.github.pkeppeler.deepcharter.outpost.VisitBreaks;
 import io.github.pkeppeler.deepcharter.outpost.VisitBreaks.Broken;
+import io.github.pkeppeler.deepcharter.outpost.VisitCause;
 import io.github.pkeppeler.deepcharter.outpost.VisitRoll;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -46,6 +47,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
@@ -64,6 +66,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -73,6 +76,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -221,6 +225,11 @@ public class OutpostSettlingTest {
                             after.unread().taken().equals(Map.of(idOf(Items.COAL), 37)),
                             "the report should say 37 coal was taken, it says %s",
                             after.unread());
+                    expect(
+                            helper,
+                            after.unread().causes().equals(Set.of(VisitCause.DARK)),
+                            "visits of a dark hall say it was dark: %s",
+                            after.unread());
                     expect(helper, after.pending().isEmpty(), "a loaded zone meets every visit: %s", after.pending());
                     expect(helper, after.settledTo() == 3, "settled to window %s", after.settledTo());
                     expect(
@@ -236,6 +245,7 @@ public class OutpostSettlingTest {
                             "a lit hall loses nothing, %s coal left",
                             SettlingRooms.count(lit.storage(), Items.COAL));
                     expect(helper, litAfter.unread().isEmpty(), "a lit hall has nothing to report: %s", litAfter);
+                    expect(helper, litAfter.unread().causes().isEmpty(), "a lit hall names no cause: %s", litAfter);
                     expect(
                             helper,
                             litAfter.survey().map(Survey::dark).equals(Optional.of(false)),
@@ -588,6 +598,81 @@ public class OutpostSettlingTest {
                 .thenSucceed();
     }
 
+    @GameTest(maxTicks = MAX_TICKS)
+    public void breakingAHeapDropsEveryItemItHoldsAndTheHeapItself(GameTestHelper helper) {
+        Room room = SettlingRooms.stage(helper, 9, SettlingRooms.nobody());
+        SettlingRooms.stock(room, Items.COAL, 100);
+        whenLoaded(helper, room)
+                .thenExecute(() -> {
+                    ServerLevel level = room.level();
+                    SalvageHeaps.spill(level, room.barrel(), List.of(new ItemStack(Items.COBBLESTONE, 40)));
+                    expect(
+                            helper,
+                            level.getBlockState(room.barrel()).is(WreckRegistry.HEAP),
+                            "the barrel's cell should be a heap holding 100 coal and 40 cobblestone");
+                    level.destroyBlock(room.barrel(), true);
+                    expect(helper, level.getBlockState(room.barrel()).isAir(), "the heap is broken");
+                    // entity-query: not applicable, this is src/gametest: the room's chunks are entity-ticking
+                    List<ItemEntity> dropped =
+                            level.getEntitiesOfClass(ItemEntity.class, new AABB(room.floor()).inflate(12));
+                    int coal = 0;
+                    int cobblestone = 0;
+                    for (ItemEntity entity : dropped) {
+                        ItemStack stack = entity.getItem();
+                        if (stack.is(Items.COAL)) {
+                            coal += stack.getCount();
+                        } else if (stack.is(Items.COBBLESTONE)) {
+                            cobblestone += stack.getCount();
+                        } else {
+                            throw failure(helper, "only what the heap held drops, not %s", stack);
+                        }
+                    }
+                    expect(
+                            helper,
+                            coal == 100 && cobblestone == 40,
+                            "every item drops: 100 coal and 40 cobblestone, got %s and %s from %s entities",
+                            coal,
+                            cobblestone,
+                            dropped.size());
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void anyPlayerEvenOneOutsideTheCharterCanOpenAHeap(GameTestHelper helper) {
+        Room room = SettlingRooms.stage(helper, 10, SettlingRooms.nobody());
+        MockPlayer stranger = MockPlayers.join(helper, "heap-stranger");
+        stranger.player().setGameMode(GameType.SURVIVAL);
+        whenLoaded(helper, room)
+                .thenExecute(() -> {
+                    ServerLevel level = room.level();
+                    SalvageHeaps.spill(level, room.barrel(), List.of(new ItemStack(Items.COBBLESTONE)));
+                    stranger.teleportTo(
+                            level, Vec3.atBottomCenterOf(room.floor().above()), 0f, 0f);
+                    expect(
+                            helper,
+                            Charters.readableCharterOf(
+                                            helper.getLevel().getServer(),
+                                            stranger.player().getUUID())
+                                    .isEmpty(),
+                            "the stranger is in no charter");
+                    level.getBlockState(room.barrel())
+                            .useWithoutItem(
+                                    level,
+                                    stranger.player(),
+                                    new BlockHitResult(
+                                            Vec3.atCenterOf(room.barrel()), Direction.UP, room.barrel(), false));
+                    expect(
+                            helper,
+                            stranger.player().containerMenu instanceof ChestMenu menu
+                                    && menu.getRowCount() == 6
+                                    && menu.getContainer() == level.getBlockEntity(room.barrel()),
+                            "the heap's menu should be open for a player of no charter, it is %s",
+                            stranger.player().containerMenu);
+                })
+                .thenSucceed();
+    }
+
     private static void expectNoItemEntities(GameTestHelper helper, Room room) {
         // entity-query: not applicable, this is src/gametest: the room's chunks are entity-ticking
         List<ItemEntity> dropped =
@@ -622,7 +707,7 @@ public class OutpostSettlingTest {
         owner.teleportTo(one, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
         OutpostVisits visits = new OutpostVisits();
         Identifier coal = idOf(Items.COAL);
-        Report report = new Report(3, Map.of(coal, 37), Map.of(idOf(Items.BARREL), 1), 1);
+        Report report = new Report(3, Map.of(coal, 37), Map.of(idOf(Items.BARREL), 1), 1, Set.of(VisitCause.DARK));
         boolean[] ticking = {false};
         FarChunks.awaitEntityTicking(helper, one, floor, () -> ticking[0] = true);
         helper.startSequence()
@@ -677,6 +762,11 @@ public class OutpostSettlingTest {
                             payload);
                     expect(
                             helper,
+                            payload.causes().equals(List.of(VisitCause.DARK)),
+                            "the report says the hall was dark: %s",
+                            payload.causes());
+                    expect(
+                            helper,
                             payload.lines()
                                     .equals(List.of(
                                             new IncidentReportPayload.Line(coal, 37, Kind.FUEL),
@@ -701,7 +791,7 @@ public class OutpostSettlingTest {
                 helper,
                 "{version:1,ledgers:[{charter:[I;1,2,3,4],layer:1,settled_to:100L,survey:{dark:1b,noise:2,fuel_items:3,"
                         + "ore_items:4,breakable:5},pending:{retained:1,sleepers:2,recovery:3},unread:{visits:4,"
-                        + "taken:{\"minecraft:coal\":5},broken:{\"minecraft:stone\":6},heaps:7}}]}");
+                        + "taken:{\"minecraft:coal\":5},broken:{\"minecraft:stone\":6},heaps:7,causes:[\"dark\"]}}]}");
         OutpostVisits.CODEC
                 .parse(NbtOps.INSTANCE, expected)
                 .ifSuccess(visits -> {
@@ -717,7 +807,8 @@ public class OutpostSettlingTest {
                                     4,
                                     Map.of(Identifier.parse("minecraft:coal"), 5),
                                     Map.of(Identifier.parse("minecraft:stone"), 6),
-                                    7));
+                                    7,
+                                    Set.of(VisitCause.DARK)));
                     expect(helper, ledger.equals(want), "the pinned ledger decodes to %s, expected %s", ledger, want);
                     expect(
                             helper,

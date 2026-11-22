@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.client.ui.CrtScreen;
 import io.github.pkeppeler.deepcharter.client.ui.Typewriter;
 import io.github.pkeppeler.deepcharter.outpost.IncidentReportPayload;
 import io.github.pkeppeler.deepcharter.outpost.IncidentReportPayload.Line;
+import io.github.pkeppeler.deepcharter.outpost.VisitCause;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -37,10 +38,13 @@ public final class IncidentReportScreen extends CrtScreen {
         this.body = typewriter(bodyOf(report), new TypewriterSound());
     }
 
-    /** What the report says, one line each: the visits, what was taken or lost, and the heaps, or that nothing was lost. */
+    /** What the report says, one line each: the visits, why they came, what was taken or lost, and the heaps, or that nothing was lost. */
     private static Component bodyOf(IncidentReportPayload report) {
         List<Component> lines = new ArrayList<>();
         lines.add(Component.translatable("screen.deepcharter.incident_report.visits", report.visits()));
+        for (VisitCause cause : report.causes()) {
+            lines.add(Component.translatable("screen.deepcharter.incident_report." + cause.getSerializedName()));
+        }
         for (Line line : report.lines()) {
             lines.add(Component.translatable(
                     "screen.deepcharter.incident_report." + line.kind().name().toLowerCase(Locale.ROOT),

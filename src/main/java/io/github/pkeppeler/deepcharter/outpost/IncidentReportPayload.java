@@ -8,6 +8,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.ByIdMap;
 
 /**
  * Clientbound: the incident report of an outpost, sent to the first member of its charter to open one of its terminals on return. The
@@ -17,8 +18,9 @@ import net.minecraft.resources.Identifier;
  * @param visits  visits met while nobody was near
  * @param lines   what the visits took or broke, by item
  * @param heaps   salvage heaps a broken storage block left
+ * @param causes  why the visits came, one line of the report for each
  */
-public record IncidentReportPayload(int outpost, int visits, List<Line> lines, int heaps)
+public record IncidentReportPayload(int outpost, int visits, List<Line> lines, int heaps, List<VisitCause> causes)
         implements CustomPacketPayload {
     public static final Type<IncidentReportPayload> TYPE =
             new Type<>(Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "incident_report"));
@@ -42,7 +44,9 @@ public record IncidentReportPayload(int outpost, int visits, List<Line> lines, i
                 Line::item,
                 ByteBufCodecs.VAR_INT,
                 Line::count,
-                ByteBufCodecs.idMapper(ordinal -> Kind.values()[ordinal], Kind::ordinal),
+                ByteBufCodecs.idMapper(
+                        ByIdMap.continuous(Kind::ordinal, Kind.values(), ByIdMap.OutOfBoundsStrategy.ZERO),
+                        Kind::ordinal),
                 Line::kind,
                 Line::new);
     }
@@ -56,10 +60,13 @@ public record IncidentReportPayload(int outpost, int visits, List<Line> lines, i
             IncidentReportPayload::lines,
             ByteBufCodecs.VAR_INT,
             IncidentReportPayload::heaps,
+            VisitCause.STREAM_CODEC.apply(ByteBufCodecs.list(VisitCause.MAX)),
+            IncidentReportPayload::causes,
             IncidentReportPayload::new);
 
     public IncidentReportPayload {
         lines = List.copyOf(lines);
+        causes = List.copyOf(causes);
     }
 
     /** Registers the payload type. */

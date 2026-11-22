@@ -16,6 +16,9 @@ import io.github.pkeppeler.deepcharter.terminal.TerminalBlockEntity;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -55,10 +58,14 @@ public final class OutpostSettling {
                     OreRegistry.typeOf(stack).map(OreType::value).orElse(0))
             .reversed();
 
+    /** The outposts whose failure is logged already, so a sweep that fails again every time logs once. */
+    private static final Set<String> FAILED = ConcurrentHashMap.newKeySet();
+
     private OutpostSettling() {}
 
     /** Registers the sweep. */
     public static void init() {
+        ServerLifecycleEvents.SERVER_STOPPED.register(_ -> FAILED.clear());
         ServerTickEvents.END_SERVER_TICK.register(OutpostSettling::sweep);
     }
 
@@ -68,7 +75,10 @@ public final class OutpostSettling {
         }
     }
 
-    /** Settles every outpost of the world now, as a sweep does. Does nothing while the outposts or their ledgers cannot be read. */
+    /**
+     * Settles every outpost of the world now, as a sweep does. Does nothing while the outposts or their ledgers cannot be read, and never
+     * throws: an outpost that fails is logged once and skipped, with its ledger unchanged, and the rest settle.
+     */
     public static void settleAll(MinecraftServer server) {
         SettlingTuning tuning = SettlingTuning.DEFAULT;
         OutpostData outposts = OutpostData.get(server);
@@ -81,9 +91,21 @@ public final class OutpostSettling {
             if (level == null) {
                 continue;
             }
-            long now = level.getGameTime();
-            Ledger ledger = visits.ledgerOf(outpost.charter(), outpost.layer(), now / tuning.windowTicks());
-            visits.put(settle(level, outpost, ledger, now, tuning));
+            try {
+                long now = level.getGameTime();
+                Ledger ledger = visits.ledgerOf(outpost.charter(), outpost.layer(), now / tuning.windowTicks());
+                visits.put(settle(level, outpost, ledger, now, tuning));
+            } catch (RuntimeException e) {
+                // The ledger is not put: its visits stay pending and are met again at the next sweep. What the failed
+                // sweep already did to the world stays done.
+                if (FAILED.add(outpost.charter().toString() + "/" + outpost.layer())) {
+                    DeepCharter.LOGGER.error(
+                            "Away settling failed for the outpost of charter {} in layer {}; skipped, its ledger is unchanged",
+                            outpost.charter(),
+                            outpost.layer(),
+                            e);
+                }
+            }
         }
     }
 
@@ -183,8 +205,9 @@ public final class OutpostSettling {
     }
 
     /**
-     * True when the depth the outpost stands at rates {@code state} enough that a visit leaves it alone. Filled by the ratings of #989:
-     * until they are read here, every block counts as held, so no visit breaks anything, which changes nothing while the Sleeper's rate is 0.
+     * True when the depth the outpost stands at rates {@code state} enough that a visit leaves it alone. The ratings are outpost ratings
+     * (#989, PR #991); wired in #1005. Until then every block counts as held, so no visit breaks anything, which changes nothing while
+     * the Sleeper's rate is 0.
      */
     private static boolean holds(BlockState state) {
         return true;
@@ -252,7 +275,12 @@ public final class OutpostSettling {
                         level,
                         new BlockPos(box.minX(), box.minY(), box.minZ()),
                         new BlockPos(box.maxX(), box.maxY(), box.maxZ())));
-        Report done = new Report(pending.total(), taken, broken.lost(), broken.heaps());
+        Report done = new Report(
+                pending.total(),
+                taken,
+                broken.lost(),
+                broken.heaps(),
+                pending.retained() > 0 ? Set.of(VisitCause.DARK) : Set.of());
         return ledger.withPending(Pending.NONE)
                 .withUnread(ledger.unread().plus(done))
                 .withSurvey(survey(level, outpost, zone));

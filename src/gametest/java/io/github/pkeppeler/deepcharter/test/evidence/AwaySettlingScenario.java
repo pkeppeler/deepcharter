@@ -25,10 +25,12 @@ import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
+import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -101,9 +103,23 @@ public class AwaySettlingScenario extends EvidenceScenario {
                                     .getBlockState(scene.floor().above(3))
                                     .isAir());
             context.waitTicks(40);
-            clearTransmissions(context);
+            clearOverlays(context);
             hold(context);
+            clearOverlays(context);
             screenshot(context, "away-1-lit-hall-with-fuel");
+            // The barrel's contents, so the fuel the visits will take can be seen.
+            singleplayer
+                    .getServer()
+                    .runOnServer(server -> server.getPlayerList()
+                            .getPlayers()
+                            .getFirst()
+                            .openMenu((MenuProvider) SettlingRooms.containerAt(
+                                    TestLayers.level(server, 1), scene.floor().offset(3, 1, 3))));
+            ClientWait.screen(context, ContainerScreen.class);
+            hold(context);
+            clearOverlays(context);
+            screenshot(context, "away-1b-the-barrel-of-coal");
+            context.setScreen(() -> null);
 
             // The lamps go out.
             singleplayer.getServer().runOnServer(server -> {
@@ -126,6 +142,7 @@ public class AwaySettlingScenario extends EvidenceScenario {
                             < 3);
             context.waitTicks(20);
             hold(context);
+            clearOverlays(context);
             screenshot(context, "away-2-dark-hall");
 
             // The pilot goes home, and the ledger shows a long time unattended. The sweep does the rest.
@@ -147,7 +164,7 @@ public class AwaySettlingScenario extends EvidenceScenario {
             ClientWait.until(
                     context, "the pilot on the surface", client -> TestLayers.clientIsIn(client, TestLayers.SURFACE));
             context.waitTicks(10);
-            clearTransmissions(context);
+            clearOverlays(context);
             hold(context);
             screenshot(context, "away-3-alert");
 
@@ -164,7 +181,7 @@ public class AwaySettlingScenario extends EvidenceScenario {
                                     .getBlockState(scene.floor().above(3))
                                     .isAir());
             context.waitTicks(30);
-            clearTransmissions(context);
+            clearOverlays(context);
             context.runOnClient(client -> ClientPlayNetworking.send(new TerminalOpenPayload(scene.pump())));
             ClientWait.screen(context, IncidentReportScreen.class);
             for (int i = 0; i < TYPING_FRAMES; i++) {
@@ -172,6 +189,7 @@ public class AwaySettlingScenario extends EvidenceScenario {
                 frame(context);
             }
             hold(context);
+            clearOverlays(context);
             screenshot(context, "away-4-incident-report");
             context.clickScreenButton("FILED");
             ClientWait.screen(context, FuelPumpScreen.class);
@@ -182,13 +200,18 @@ public class AwaySettlingScenario extends EvidenceScenario {
                             .typewriter()
                             .done());
             hold(context);
+            clearOverlays(context);
             screenshot(context, "away-5-back-at-the-pump");
             context.setScreen(() -> null);
         }
     }
 
-    private static void clearTransmissions(ClientGameTestContext context) {
-        context.runOnClient(client -> TransmissionOverlay.reset());
+    /** Drops the transmission and the "Directive complete" toasts that fill the corner of a still. */
+    private static void clearOverlays(ClientGameTestContext context) {
+        context.runOnClient(client -> {
+            TransmissionOverlay.reset();
+            client.gui.toastManager().clear();
+        });
     }
 
     private void hold(ClientGameTestContext context) {

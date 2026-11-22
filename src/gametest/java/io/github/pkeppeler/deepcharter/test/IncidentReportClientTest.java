@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostVisits;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Ledger;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Pending;
 import io.github.pkeppeler.deepcharter.outpost.OutpostVisits.Report;
+import io.github.pkeppeler.deepcharter.outpost.VisitCause;
 import io.github.pkeppeler.deepcharter.terminal.TerminalOpenPayload;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
@@ -15,6 +16,7 @@ import io.github.pkeppeler.deepcharter.test.support.OutpostScene;
 import io.github.pkeppeler.deepcharter.test.support.OutpostScene.Scene;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -39,7 +41,8 @@ public class IncidentReportClientTest implements FabricClientGameTest {
                         3,
                         Map.of(BuiltInRegistries.ITEM.getKey(Items.COAL), 37),
                         Map.of(BuiltInRegistries.ITEM.getKey(Items.BARREL), 1),
-                        1);
+                        1,
+                        Set.of(VisitCause.DARK));
                 OutpostVisits.get(server)
                         .put(new Ledger(staged.charter(), 1, 0, Optional.empty(), Pending.NONE, report));
                 return staged;
@@ -51,7 +54,12 @@ public class IncidentReportClientTest implements FabricClientGameTest {
                     .getNarrationMessage()
                     .getString());
             for (String line : new String[] {
-                "INCIDENT REPORT: OUTPOST 1", "3 visits while unattended", "37 x Coal", "1 x Barrel", "1 salvage heap"
+                "INCIDENT REPORT: OUTPOST 1",
+                "3 visits while unattended",
+                "The hall was dark.",
+                "37 x Coal",
+                "1 x Barrel",
+                "1 salvage heap"
             }) {
                 require(
                         said.toLowerCase(java.util.Locale.ROOT).contains(line.toLowerCase(java.util.Locale.ROOT)),
