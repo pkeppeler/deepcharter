@@ -12,15 +12,10 @@ val runVmArgs = project.extra["runVmArgs"] as () -> Map<String, List<String>>
 addVmArgToRuns(exitOnOom)
 
 // Server GameTest heap (#541, #805, #807, #816, #957, #1026). CI died of OutOfMemoryError at 2G with peaks of 1.23 to 1.45 GB (#805), so keep the
-// heap at 2x the measured peak or more, and re-measure when the suite grows by a tenth, a test adds a tall world to a campaign environment, or
-// TestBatches.MAX_TESTS rises. Method: a forced GC every 1.5 s (jcmd GC.class_histogram) over a full run. Mechanisms: ChunkMapUnloadMixin (chunks of
-// a finished batch), ChunkMapSaveMixin (writes of half-generated chunks), FarChunks.force (released when a test finishes), CampaignEnvironments
-// (the campaign tests' batches) and TestBatches (at most 6 tests in a campaign batch, 20 in any other).
-// Measured 2026-11-22 (1479 tests, 4 vCPU, 3 runs at 3G): the live set grows 20 to 60 MB per test that reaches the tall campaign level
-// (through TestLayers or a dimension), because a batch keeps its tests' chunks until it ends, over a floor of 0.4 to 0.9 GB (the floor rises
-// through the run). Batches of 50 peaked at 1.5 to 1.7 GB, so 3G failed the 2x rule (#970 kept 3584m); with
-// the caps the runs peaked at 1250, 1352 and 1365 MB, in a batch of 20 or a campaign batch of 6. Batches of 6 everywhere also peaked
-// under 1.45 GB but made tests that race the light and chunk threads fail more often, hence 20.
+// heap at 2x the measured peak or more, and re-measure when the suite grows by a tenth, a test adds a tall world to a campaign environment, or a
+// batch cap (TestBatches) rises. Method: a forced GC every 1.5 s (jcmd GC.class_histogram) over a full run. Mechanisms: ChunkMapUnloadMixin,
+// ChunkMapSaveMixin, FarChunks.force, CampaignEnvironments and TestBatches (why a batch's size sets the peak).
+// Measured 2026-11-22 (1479 tests, 4 vCPU, 3 runs at 3G with the caps): peaks of 1250, 1352 and 1365 MB. Batches of 50 peaked at 1.5 to 1.7 GB.
 val gameTestHeap = "-Xmx3072m"
 addVmArgToRun("gameTest", gameTestHeap)
 

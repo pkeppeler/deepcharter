@@ -663,9 +663,7 @@ public class GrainedCrustTest {
             }
             int tick = (int) helper.getTick();
             if (step[0] == 0) {
-                // Set on the tick of the click: the chest stands beside the grain, which sheds it at its next pulse,
-                // and a wait for the
-                // chunk that outlasts one pulse (a test run alone) left air to click.
+                // The grain sheds the chest at its next pulse, so set it on the tick of the click.
                 level.setBlock(chest, Blocks.CHEST.defaultBlockState(), Block.UPDATE_ALL);
                 ItemStack stack = new ItemStack(Items.COBBLESTONE);
                 player.player().setItemInHand(InteractionHand.MAIN_HAND, stack);

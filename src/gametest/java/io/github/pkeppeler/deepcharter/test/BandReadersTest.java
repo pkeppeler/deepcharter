@@ -255,10 +255,8 @@ public class BandReadersTest {
                 level,
                 floor,
                 () -> WorldData.with(server, OutpostData.TYPE, new OutpostData(), () -> {
-                    // Into the carved rock on the tick of the build: a wait for the chunk that outlasts a few ticks (a
-                    // test run alone, a
-                    // small batch) would suffocate the builder first, and a dead player is an entity in the hall's
-                    // volume.
+                    // On the tick of the build: waiting in carved rock suffocates the builder, a dead player in the
+                    // hall.
                     mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
                     Optional<Component> refusal = OutpostBuilder.build(mock.player(), level, floor, Direction.UP);
                     expect(

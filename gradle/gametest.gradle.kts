@@ -125,7 +125,7 @@ object GametestScan {
 		}.toList()
 		for ((call, args) in calls) {
 			if (dimensionArg.find(args)?.groupValues?.get(1) == "\"\"") {
-				problems.add("$className:${lineOf(text, call.range.first) + 1} names its dimension as a string literal, which the campaign-environment scan cannot read; name it with a private static final String constant")
+				problems.add("$className:${lineOf(text, call.range.first) + 1} names its dimension as a string literal, which the scan cannot read, and a literal could be the campaign world; name any dimension with a private static final String constant")
 			}
 		}
 		if (campaign.isEmpty()) {
