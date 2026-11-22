@@ -53,19 +53,24 @@ public final class ScannerHud {
         HudKeepClear.register(ScannerHud::keepClear);
     }
 
-    /** The plain panel, top right, while it is drawn: the pod has a map and no cockpit on this GUI. */
-    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
-        ScanSlice scanned = slice;
-        if (scanned == null || CockpitHud.seated(client, guiWidth, guiHeight).isPresent()) {
-            return;
-        }
-        ScanArea area = scanned.area();
+    /**
+     * The plain panel's frame on a GUI {@code guiWidth} x {@code guiHeight}, top right: the cells, their frame and the title above them.
+     * What is drawn and what is kept clear are this one box.
+     */
+    private static HudKeepClear.Rect frame(int guiWidth, int guiHeight, ScanArea area) {
         int cell = cellSize(guiWidth, guiHeight, area);
         int left = cellLeft(guiWidth, guiHeight, area, -area.halfWidth()) - FRAME;
         int right = cellLeft(guiWidth, guiHeight, area, area.halfWidth()) + cell + FRAME;
         int top = ScannerLook.current().margin();
         int bottom = cellTop(guiWidth, guiHeight, area, -area.down()) + cell + FRAME;
-        into.add(new HudKeepClear.Rect("scanner panel", left, top, right - left, bottom - top));
+        return new HudKeepClear.Rect("scanner panel", left, top, right - left, bottom - top);
+    }
+
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        ScanSlice scanned = slice;
+        if (scanned != null && CockpitHud.seated(client, guiWidth, guiHeight).isEmpty()) {
+            into.add(frame(guiWidth, guiHeight, scanned.area()));
+        }
     }
 
     /**
@@ -125,11 +130,10 @@ public final class ScannerHud {
         ScanArea area = scanned.area();
         int cell = cellSize(guiWidth, guiHeight, area);
         int left = cellLeft(guiWidth, guiHeight, area, -area.halfWidth());
-        int right = cellLeft(guiWidth, guiHeight, area, area.halfWidth()) + cell;
+        HudKeepClear.Rect frame = frame(guiWidth, guiHeight, area);
         int top = cellTop(guiWidth, guiHeight, area, area.up());
-        int bottom = cellTop(guiWidth, guiHeight, area, -area.down()) + cell;
 
-        graphics.fill(left - FRAME, look.margin(), right + FRAME, bottom + FRAME, look.frameColor());
+        graphics.fill(frame.x(), frame.y(), frame.right(), frame.bottom(), look.frameColor());
         graphics.text(client.font, title(scanned), left, look.margin() + 1, look.titleColor());
         drawCells(graphics, client, scanned, cell, left, top);
     }

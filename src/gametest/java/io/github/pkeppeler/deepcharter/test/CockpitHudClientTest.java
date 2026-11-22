@@ -515,7 +515,12 @@ public class CockpitHudClientTest implements FabricClientGameTest {
                         "In the blackout the fuel lamp and the alert lamp are dark and the hull lamp and the burning lamp stay lit, got "
                                 + Arrays.toString(CockpitHud.decayedLamps(decay, truth)));
             }
-            if (CockpitHud.altimeter(client, Component.literal("-1,200 ft.")).isPresent()) {
+            if (CockpitHud.altimeter(
+                            client,
+                            client.getWindow().getGuiScaledWidth(),
+                            client.getWindow().getGuiScaledHeight(),
+                            Component.literal("-1,200 ft."))
+                    .isPresent()) {
                 throw new AssertionError("In the blackout the altimeter is dark with the depth gauge");
             }
             CockpitHud.Row tag = CockpitHud.tag(decay, CockpitLook.current());

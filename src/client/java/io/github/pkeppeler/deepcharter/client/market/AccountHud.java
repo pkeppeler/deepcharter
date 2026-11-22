@@ -10,7 +10,6 @@ import java.util.Optional;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -29,19 +28,27 @@ public final class AccountHud {
         HudKeepClear.register(AccountHud::keepClear);
     }
 
-    /** The line, left edge halfway down, while it is drawn. */
-    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+    /** The line and the box it covers, left edge halfway down; empty when it is not drawn. What is drawn and what is kept clear are this one box. */
+    private static Optional<Line> line(Minecraft client, int guiWidth, int guiHeight) {
         Optional<Component> text = text();
         if (text.isEmpty() || CockpitHud.showsReadout(client, guiWidth, guiHeight)) {
-            return;
+            return Optional.empty();
         }
         HudLook look = HudLook.current();
-        into.add(new HudKeepClear.Rect(
-                "account line",
-                look.accountMargin(),
-                (int) (guiHeight * look.accountY()),
-                client.font.width(text.get()),
-                client.font.lineHeight));
+        return Optional.of(new Line(
+                text.get(),
+                new HudKeepClear.Rect(
+                        "account line",
+                        look.accountMargin(),
+                        (int) (guiHeight * look.accountY()),
+                        client.font.width(text.get()),
+                        client.font.lineHeight)));
+    }
+
+    private record Line(Component text, HudKeepClear.Rect box) {}
+
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        line(client, guiWidth, guiHeight).ifPresent(line -> into.add(line.box()));
     }
 
     /** The text shown, or empty when the player is on no charter. Public so tests can check it without reading pixels. */
@@ -51,17 +58,13 @@ public final class AccountHud {
     }
 
     private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-        Optional<Component> text = text();
-        if (text.isEmpty() || CockpitHud.showsReadout(Minecraft.getInstance())) {
-            return;
-        }
-        Font font = Minecraft.getInstance().font;
-        HudLook look = HudLook.current();
-        graphics.text(
-                font,
-                text.get(),
-                look.accountMargin(),
-                (int) (graphics.guiHeight() * look.accountY()),
-                look.accountColor());
+        Minecraft client = Minecraft.getInstance();
+        line(client, graphics.guiWidth(), graphics.guiHeight())
+                .ifPresent(line -> graphics.text(
+                        client.font,
+                        line.text(),
+                        line.box().x(),
+                        line.box().y(),
+                        HudLook.current().accountColor()));
     }
 }

@@ -30,6 +30,8 @@ import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.EvidencePins;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.ScannerPods;
@@ -90,7 +92,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
             EvidencePins.handsHidden = true;
             try {
                 seatThePilot(context, singleplayer);
-                expectTheSlipIsClearOfTheCockpitOnScreen(context);
+                expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, "in the cockpit", true);
                 expectTheSlipIsClearOnEveryCockpitGui(context);
                 expectTheSlipIsClearOnAGuiTooSmallForTheCockpit(context);
                 expectTheSlipIsClearOfATransmission(context);
@@ -102,6 +104,7 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                         context,
                         "the pilot out of the pod",
                         client -> client.player != null && client.player.getVehicle() == null);
+                expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(context, "on foot", false);
                 expectTheSlipIsClearOnFoot(context);
             } finally {
                 EvidencePins.reset();
@@ -150,8 +153,14 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         });
     }
 
-    /** The popup the toast manager really draws, at the window's own GUI: where it is, and that none of the cockpit is under it. */
-    private static void expectTheSlipIsClearOfTheCockpitOnScreen(ClientGameTestContext context) {
+    /**
+     * The popup the toast manager really draws, at the window's own GUI. It is drawn where {@link StepToast#placement} says (the text
+     * the manager draws is inside that box, read through a recorder, not taken from the toast's own figures); that box is where
+     * {@link StepToast#place} puts it; none of the HUD, as worked out here from the theme, is under it; and none of the text the real
+     * HUD layers draw is. {@code cockpit} says whether the cockpit is up.
+     */
+    private static void expectTheSlipIsDrawnWhereItIsPlacedAndCoversNoHud(
+            ClientGameTestContext context, String when, boolean cockpit) {
         StepToast[] toast = {null};
         context.runOnClient(client -> {
             toast[0] = StepToast.of(Component.literal(LONG_STEP));
@@ -159,20 +168,38 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
         });
         ClientWait.until(
                 context,
-                "the step popup placed on screen",
-                client -> toast[0].placement().isPresent());
+                "the step popup " + when + " drawn inside the box it was placed in",
+                client -> {
+                    Optional<HudKeepClear.Rect> placed = toast[0].placement();
+                    if (placed.isEmpty()) {
+                        return false;
+                    }
+                    List<Drawn> drawn =
+                            DrawnText.of(graphics -> client.gui.toastManager().extractRenderState(graphics));
+                    Box slip = box(placed.get());
+                    return !drawn.isEmpty()
+                            && drawn.stream()
+                                    .allMatch(text -> text.box().x() >= slip.x()
+                                            && text.box().y() >= slip.y()
+                                            && text.box().right() <= slip.right()
+                                            && text.box().bottom() <= slip.bottom());
+                },
+                client -> "placement " + toast[0].placement() + ", the manager drew "
+                        + DrawnText.of(graphics -> client.gui.toastManager().extractRenderState(graphics)));
         context.runOnClient(client -> {
             int width = client.getWindow().getGuiScaledWidth();
             int height = client.getWindow().getGuiScaledHeight();
             require(
-                    CockpitHud.seated(client).isPresent(),
-                    "the window's GUI " + width + " x " + height + " has the cockpit up");
+                    CockpitHud.seated(client).isPresent() == cockpit,
+                    "the window's GUI " + width + " x " + height + (cockpit ? " has" : " has not") + " the cockpit up");
             Box slip = box(toast[0].placement().orElseThrow());
             Map<String, Box> hud = critical(client, width, height);
-            require(hud.containsKey("hull and alert lamps"), "the cockpit HUD has lamps to keep clear of");
-            requireClear("the step popup on screen at " + width + " x " + height, slip, hud);
-            if (width <= COCKPIT_GUIS[1][0]) {
-                requireTheOldSlotWasWrong(width, hud);
+            requireClear("the step popup " + when + " at " + width + " x " + height, slip, hud);
+            if (cockpit) {
+                require(hud.containsKey("hull and alert lamps"), "the cockpit HUD has lamps to keep clear of");
+                if (width <= COCKPIT_GUIS[1][0]) {
+                    requireTheOldSlotWasWrong(width, hud);
+                }
             }
             require(
                     StepToast.place(
@@ -184,6 +211,15 @@ public class StepToastClearOfHudClientTest implements FabricClientGameTest {
                             .map(StepToastClearOfHudClientTest::box)
                             .equals(Optional.of(slip)),
                     "the popup is where StepToast.place puts it, not somewhere the toast manager moved it");
+            List<Drawn> hudText =
+                    DrawnText.of(graphics -> client.gui.hud.extractRenderState(graphics, client.getDeltaTracker()));
+            require(!hudText.isEmpty(), "the real HUD layers draw some text " + when);
+            for (Drawn text : hudText) {
+                require(
+                        !ClientChecks.overlaps(slip, text.box()),
+                        "the step popup " + when + " at " + slip + " covers the HUD text '" + text.shortText() + "' at "
+                                + text.box());
+            }
         });
         context.runOnClient(client -> client.gui.toastManager().clear());
     }

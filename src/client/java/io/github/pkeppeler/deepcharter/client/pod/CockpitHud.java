@@ -91,6 +91,7 @@ public final class CockpitHud {
 
     public static void init() {
         for (Identifier element : HIDDEN_WHILE_SEATED) {
+            // keep-clear-ok: this takes vanilla's own bars away while seated; it draws nothing of its own
             HudElementRegistry.replaceElement(element, original -> (graphics, deltaTracker) -> {
                 if (seated(Minecraft.getInstance()).isEmpty()) {
                     original.extractRenderState(graphics, deltaTracker);
@@ -313,9 +314,9 @@ public final class CockpitHud {
     }
 
     /** The altimeter's reading as the decay lets it read: gone when the depth gauge is dark, its digits jumping when it jumps. Not seated in a pod, the reading as given; empty only on a drop-out of the depth gauge. */
-    public static Optional<Component> altimeter(Minecraft client, Component reading) {
+    public static Optional<Component> altimeter(Minecraft client, int guiWidth, int guiHeight, Component reading) {
         PodEntity pod = seatedPod(client);
-        if (pod == null || seated(client).isEmpty()) {
+        if (pod == null || seated(client, guiWidth, guiHeight).isEmpty()) {
             return Optional.of(reading);
         }
         CockpitDecay decay = CockpitDecay.of(client, pod, CockpitLook.current());

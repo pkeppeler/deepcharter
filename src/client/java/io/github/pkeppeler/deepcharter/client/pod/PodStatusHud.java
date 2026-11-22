@@ -21,7 +21,6 @@ import java.util.Optional;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.Direction;
@@ -276,14 +275,20 @@ public final class PodStatusHud {
         return readout;
     }
 
-    /** The plain readout's block, top left, while it is drawn: a pilot's pod and no cockpit on this GUI. */
-    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+    /** The readout as it is drawn: its lines and the box they cover, top left. */
+    private record Block(List<Line> lines, HudKeepClear.Rect box) {}
+
+    /**
+     * The plain readout on a GUI {@code guiWidth} x {@code guiHeight}: a pilot's pod and no cockpit on this GUI; empty otherwise. What is
+     * drawn and what is kept clear are this one box.
+     */
+    private static Optional<Block> block(Minecraft client, int guiWidth, int guiHeight) {
         LocalPlayer player = client.player;
         if (player == null
                 || !(player.getVehicle() instanceof PodEntity pod)
                 || !PodSeat.showsPodStatus(pod, player)
                 || CockpitHud.seated(client, guiWidth, guiHeight).isPresent()) {
-            return;
+            return Optional.empty();
         }
         HudLook look = HudLook.current();
         List<Line> lines = readout(player, pod);
@@ -292,29 +297,31 @@ public final class PodStatusHud {
                 .max()
                 .orElse(0);
         int pitch = client.font.lineHeight + look.podStatusLineGap();
-        into.add(new HudKeepClear.Rect(
-                "pod readout",
-                look.podStatusMargin(),
-                look.podStatusMargin(),
-                widest,
-                lines.size() * pitch - look.podStatusLineGap()));
+        return Optional.of(new Block(
+                lines,
+                new HudKeepClear.Rect(
+                        "pod readout",
+                        look.podStatusMargin(),
+                        look.podStatusMargin(),
+                        widest,
+                        lines.size() * pitch - look.podStatusLineGap())));
+    }
+
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        block(client, guiWidth, guiHeight).ifPresent(block -> into.add(block.box()));
     }
 
     private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
-        LocalPlayer player = client.player;
-        if (player == null
-                || !(player.getVehicle() instanceof PodEntity pod)
-                || !PodSeat.showsPodStatus(pod, player)
-                || CockpitHud.seated(client).isPresent()) {
+        Optional<Block> block = block(client, graphics.guiWidth(), graphics.guiHeight());
+        if (block.isEmpty()) {
             return;
         }
-        Font font = client.font;
         HudLook look = HudLook.current();
-        int y = look.podStatusMargin();
-        for (Line line : readout(player, pod)) {
-            graphics.text(font, line.text(), look.podStatusMargin(), y, line.color());
-            y += font.lineHeight + look.podStatusLineGap();
+        int y = block.get().box().y();
+        for (Line line : block.get().lines()) {
+            graphics.text(client.font, line.text(), block.get().box().x(), y, line.color());
+            y += client.font.lineHeight + look.podStatusLineGap();
         }
     }
 }

@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.handbook;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
@@ -42,6 +43,7 @@ public final class StepToast implements Toast {
     private long placedAtMillis = Long.MIN_VALUE;
     private long lastUpdateMillis = -1;
     private long waitedMillis;
+    private boolean gaveUp;
 
     private StepToast(List<String> lines) {
         this.lines = lines;
@@ -133,6 +135,13 @@ public final class StepToast implements Toast {
             waitedMillis += now - lastUpdateMillis;
         }
         lastUpdateMillis = now;
+        if (waitedMillis >= q.toastWaitMillis() && !gaveUp) {
+            gaveUp = true;
+            DeepCharter.LOGGER.info(
+                    "A step popup found no place clear of the HUD in {} ms and was dropped: {}",
+                    waitedMillis,
+                    String.join(" ", lines));
+        }
         visibility = fullyVisibleForMs - waitedMillis < q.toastMillis() * manager.getNotificationDisplayTimeMultiplier()
                         && waitedMillis < q.toastWaitMillis()
                 ? Visibility.SHOW
