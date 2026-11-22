@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.handbook.ItemRecipeLink;
 import io.github.pkeppeler.deepcharter.client.handbook.QuestMapTuning;
 import io.github.pkeppeler.deepcharter.handbook.HandbookChapter;
+import io.github.pkeppeler.deepcharter.handbook.HandbookVisibility;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText;
 import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
@@ -395,15 +396,26 @@ public class QuestMapClientTest implements FabricClientGameTest {
         for (int index = 0; index < pages.size(); index++) {
             screen.goTo(index);
             settle(screen);
-            // a press on the sheet, left of its tabs, where a flowchart's first step sits on a map page
+            // a press on the first step of a map page, else on the sheet, left of its tabs
             double x = screen.width / 2.0 - 60;
             double y = screen.height / 2.0 - 30;
+            if (pages.get(index) instanceof HandbookPage.Chapter map && map.visibility() == HandbookVisibility.FULL) {
+                String first = "Do thing " + map.number() + ".1";
+                int shown = index;
+                Box step = DrawnText.of(screen).stream()
+                        .filter(entry -> entry.text().contains(first))
+                        .findFirst()
+                        .orElseThrow(() -> new AssertionError("page " + shown + " draws no step '" + first + "'"))
+                        .box();
+                x = step.x() + 1;
+                y = step.y() + 1;
+            }
             screen.mouseClicked(mouse(x, y), false);
             List<Drawn> before = DrawnText.of(screen);
-            screen.mouseDragged(mouse(x + 7, y + 5), 7, 5);
+            require(!screen.mouseDragged(mouse(x + 7, y + 5), 7, 5), "page " + index + " takes a drag");
             screen.mouseReleased(mouse(x + 7, y + 5));
-            screen.mouseScrolled(x, y, 0, 1);
-            screen.mouseScrolled(x, y, 0, -1);
+            require(!screen.mouseScrolled(x, y, 0, 1), "page " + index + " takes a scroll up");
+            require(!screen.mouseScrolled(x, y, 0, -1), "page " + index + " takes a scroll down");
             require(
                     DrawnText.of(screen).equals(before),
                     "page " + index + " (" + pages.get(index).getClass().getSimpleName()
@@ -453,7 +465,14 @@ public class QuestMapClientTest implements FabricClientGameTest {
                             "chapter " + chapter + " at " + window[0] + " x " + window[1] + ": "
                                     + DrawnText.leavesScreen(screen, drawn).orElse(""));
                 }
-                for (AbstractWidget tab : tabs(screen)) {
+                List<AbstractWidget> tabs = tabs(screen);
+                for (int i = 1; i < tabs.size(); i++) {
+                    require(
+                            tabs.get(i).getY() >= tabs.get(i - 1).getBottom(),
+                            "tab " + tabs.get(i).getMessage().getString() + " overlaps the tab above it at " + window[0]
+                                    + " x " + window[1]);
+                }
+                for (AbstractWidget tab : tabs) {
                     require(
                             tab.getX() >= 0 && tab.getRight() <= window[0] && tab.getBottom() <= window[1],
                             "chapter tab " + tab.getMessage().getString() + " is on the screen at " + window[0] + " x "
