@@ -1161,7 +1161,7 @@ A full rack of 24 buys about 10 s of lava at tier 1, 14 s at tier 2 and 19 s at 
 - **A hand (on foot, or aimed from the seat).** A blow from a player (a sword, an axe, a fist, an arrow from a player) hurts it for the damage the weapon does; a sword of iron kills it in two blows. A seated pilot can swing at one beside the hull the same way, but only the cutter needs no aim.
 - **Death.** It lets go, the pilot reads "It is gone. The hull is clear.", it makes a last sound, and it dissolves where it stands in smoke and ash over 20 ticks. No blood, no body. The level then waits 400 ticks before it makes the next one of that kind.
 - **Light.** A lights part makes the pod lit, and a lit pod is not drawn (a figure in the pod's light walks on, whole). A light **no longer frees a pod that a figure already holds**, and it does not fade a figure. A light that reaches the spot where a figure would appear keeps it from appearing there (block light 3 or more).
-- **People on foot.** A person near a figure does not make it fade. It does not flee and it does not attack.
+- **People on foot.** A person near a figure does not make it fade. It does not flee and it does not attack. A person on foot in the dark draws a figure too, since #916 ([below](#the-retained-on-foot-916-a)).
 
 **Counterplay, on the ladder.**
 1. **By hand: drill it off.** Sprint down or push into a wall for 2.5 seconds. The warning gives the time to start, and the drain runs while the pilot reads. This is the main verb of the game, so a pilot who is digging anyway kills it without changing what they do. A pod that cannot drill (the surface, Company rock) cannot use the cutter: the pilot gets out and swings, or lights the pod before the next one comes.
@@ -1273,6 +1273,54 @@ The modelled rows rest on three guesses, none measured: a 4-minute run, half of 
 **Does this make the default harder?** Yes, a little: 4 to 6 per cent of a run on average, where before nothing here touched the haul. A first run that loses a $30 ore is a quarter of its net.
 
 **Open.** Their act 3 job, calling the Recovery units, is [#930](https://github.com/pkeppeler/deepcharter/issues/930). The Tally has no call yet; it only needs a hook where a Tally sees an unauthorised pod.
+
+## The Retained on foot (#916, A)
+
+**Problem.** Every mob costs you in the pod and on foot ([CREATURES.md](../CREATURES.md#the-retained)). The Retained cost a dark pod its fuel, but a person who climbs out cost them nothing: the dark was only a problem inside the hull. The creatures session decided they come to a person in the dark the same way. They still never deal damage ([ADR 0046](../adr/0046-the-retained-are-a-monster-that-never-attacks-and-the-lamp-carrier-has-its-own-files.md), amended for #916).
+
+**The rule.**
+- **Who draws one.** A person on foot (not in a seat), alive, in survival or adventure, who stands where the block light is under 3 and holds no light in either hand. A light in hand is an item of the `deepcharter:hand_lights` tag: torches, lanterns, campfires, glowstone, sea lanterns, shroomlight, jack o'lanterns, end rods, froglights and the colony's lamps. A pack, and later the suit lamp and flares, add to the tag; the suit lamp replaces the hand check when it exists. On Peaceful nobody draws one. A creative or spectator player is never drawn.
+- **Coming.** A figure within 16 blocks of such a person walks to them, as it walks to a dark pod. When it sets off, the person reads "Something walks toward you in the dark. A light in your hand keeps it off." and hears the same low rumble. The first time, a person is also told the whole rule in chat. A person who lights up before it arrives is dropped: the figure walks on.
+- **One grip.** A figure holds one thing, a pod or a person, and a person has at most one figure on them.
+- **Cling.** A figure whose box is within 1.5 blocks of the person takes hold: it stands at their side, faces them, and follows them as they move. The person reads "Something has hold of you. It slows you and eats at your hunger. Strike it off."
+- **Weight.** The grip weighs on the person as 20 units of ore: the same modifier, cap and Overburdened status that carried ore gives ([OreEncumbrance](../../src/main/java/io/github/pkeppeler/deepcharter/ore/OreEncumbrance.java)), so they walk at 60 per cent of their speed, 4.3 blocks a second down to 2.6, and the status shows level 4. It adds to any ore they carry, up to the cap of 80 per cent.
+- **Drain.** The grip takes a point of hunger every 6 seconds, as the game's own exhaustion (so the saturation goes first), and takes nothing once the food bar is at 6, a bar of 3 drumsticks. It never starves anyone. At 6 a person cannot sprint, as in the vanilla game; they can still walk and eat. Natural regeneration stops below 18, so a held person stops healing after the first points.
+- **Ending.** Only the figure's death ends the grip. A light in hand, a lit cell and boarding a pod do not. A held person who climbs into a pod keeps draining in the seat while the figure trails (no physics, 8 blocks a second); only its death frees them. The figure has 12 health and takes any blow from a player, so the held person's own blow ends it as a crewmate's does. A person who dies, leaves, changes level or turns creative is let go of, and so is one on Peaceful: a figure neither draws nor holds a person there, and a grip ends when the difficulty turns Peaceful. A relog, or the figure's chunk unloading, frees the person, the same weakness as the pod grip; the weight is read from the live figure every tick, so a rejoin carries none. Nothing here is saved, as a figure is not.
+- **Seated.** A person in a pod's seat is the pod's business: the dark pod draws the figure, not them.
+
+**Counterplay, on the ladder.**
+1. **By hand: a light in hand, or a blow.** A torch keeps one off for free. A person it has reached strikes it: two blows of an iron sword, twelve of a fist. Both are in every first hour.
+2. **A part: lights, and a crewmate.** A pod with lights is not drawn, and a crewmate's blow ends a grip the held person cannot swing at. The suit lamp (not built) replaces the torch.
+3. **Mastery.** A person who keeps their hands lit never meets one; the grip is a cost for the careless, not a toll on every dig.
+
+**Measured** (`RetainedOnFootTest`, server, player units):
+
+| What | Measured |
+|---|---|
+| A person stands in the dark, a figure 10 blocks away: until it holds them | 82 ticks, 4.1 s (the figure walks about 2 blocks a second; a person walks 4.3, so one who hears it and walks off is not caught) |
+| Warning: from sensing at 16 blocks to a grip | about 7 s |
+| Walking speed, held | 0.06 against 0.10, 2.6 blocks a second against 4.3 |
+| Hunger drained, a full bar of 20 to the floor of 6 | 1,682 ticks, 84 s: 6.0 s a point |
+| A bare-handed person kills it | 12 blows, 133 ticks, 6.7 s from the grab: about 1 point of hunger |
+| A person with an iron sword kills it | 2 blows, 13 ticks from the first blow |
+| A grip nobody answers | 84 s to the floor, then it holds on at 6 and takes nothing more |
+
+The first tuning went in as measured. A grip is a real cost: a slow crawl and a food bar that empties in a minute and a half. It is not a death sentence: the bar stops at 3 drumsticks and never at zero, a fist is enough to end it, and a torch avoids it. A grip left to the floor costs 14 points, about three Company rations at 5 points each ([#838](#company-rations-838-a)): the three starting tins.
+
+**This makes the default harder than main** (early game, no light, no pod): a person who steps out of a dark pod now has a risk where they had none, and nothing is lost for one who keeps a torch in hand or a lit pod. The unpacked early game, stock pod, no lights part: a person is as likely to meet one as a pod is, since the same figures draw both ([how often](#the-retained-at-dark-pods-449-a); no new spawns), and a figure that has a pod and a person to choose takes the pod. The rate a person is met on foot is not measured: it depends on how long they stand in the dark away from the pod.
+
+**Knobs.** `CreatureTuning.Foot`: `senseBlocks` (16), `reachBlocks` (1.5), `loadMass` (20, the slowdown is this times `OreTuning.slowdownPerMass`), `secondsPerPoint` (6), `hungerFloor` (6). The lines `creature.deepcharter.foot_approach`, `foot_grab`, `foot_dead` and `foot_first`. The `EXTRA_MASS` event of `OreEncumbrance` is the hook.
+
+**Candidates not built.**
+
+| Candidate | Why not |
+|---|---|
+| Freeing the grip by swapping to a light | The rule decided in #485 and the creatures session: light prevents, only a blow frees |
+| A grip that also dims the screen | Needs a client change and a test; the status and the figure at your side already read |
+| The figure choosing a person over a pod | It takes whichever is nearer; with both in range it takes the pod, which the pilot can cut free |
+| A grip that follows through a breach | A figure is not saved and does not cross a level change; a person who crosses is let go of |
+
+**Open questions.** Should a suit lamp that is off count as dark, and drain battery? When it exists it replaces the hand check, as the issue says. Should a Continuity tag drop (CREATURES principle 7)?
 
 ## Early ore access: salvage (#245, A)
 
