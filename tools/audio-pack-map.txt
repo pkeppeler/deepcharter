@@ -27,6 +27,9 @@ pod.signal_lost        2006_lava.wav.mp3
 creature.approach      2006_lava.wav.mp3
 creature.hurt          1971_clink.wav.mp3
 creature.death         2006_lava.wav.mp3
+creature.drifter_hiss   2006_lava.wav.mp3
+creature.drifter_burst  2004_jettison.wav.mp3
+creature.alarm_drone    1070.mp3
 
 # Drill
 drill.dig              1978_drill_100.wav.mp3 1979_drill_101.wav.mp3 1980_drill_102.wav.mp3 1981_drill_103.wav.mp3 1982_drill_104.wav.mp3

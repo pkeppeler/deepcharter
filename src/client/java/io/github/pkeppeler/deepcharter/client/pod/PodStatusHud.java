@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.client.pod;
 
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
+import io.github.pkeppeler.deepcharter.creature.DrifterAlarm;
 import io.github.pkeppeler.deepcharter.pod.HardLanding;
 import io.github.pkeppeler.deepcharter.pod.PodBrace;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -99,6 +100,12 @@ public final class PodStatusHud {
                 .map(state -> Component.translatable(
                         state.above() ? "hud.deepcharter.pod.lava_above" : "hud.deepcharter.pod.lava_near",
                         state.blocksOff()));
+    }
+
+    /** The warning line shown while the alarm of the pod's zone rings (#973, {@link DrifterAlarm}): the seconds it has left. */
+    public static Optional<Component> drifterAlarmLine(PodEntity pod) {
+        return DrifterAlarm.warning(pod)
+                .map(state -> Component.translatable("hud.deepcharter.pod.drifter_alarm", state.seconds()));
     }
 
     /**
@@ -233,7 +240,8 @@ public final class PodStatusHud {
             Map.entry("hud.deepcharter.pod.lining_dry", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.hard_landing", Kind.ALERT),
             Map.entry("hud.deepcharter.pod.lava_near", Kind.ALERT),
-            Map.entry("hud.deepcharter.pod.lava_above", Kind.ALERT));
+            Map.entry("hud.deepcharter.pod.lava_above", Kind.ALERT),
+            Map.entry("hud.deepcharter.pod.drifter_alarm", Kind.ALERT));
 
     /** A line of the readout and the colour it is drawn in. */
     public record Line(Component text, int color) {
@@ -258,6 +266,7 @@ public final class PodStatusHud {
         burningLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         glazeLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
         lavaNearLine(pod).ifPresent(line -> readout.add(new Line(line, look.podBurningColor())));
+        drifterAlarmLine(pod).ifPresent(line -> readout.add(new Line(line, look.podHardLandingColor())));
         linerLine(pod).ifPresent(line -> readout.add(new Line(line, look.podLinerColor())));
         sounderLines(pod).forEach(line -> readout.add(new Line(line, look.podSounderColor())));
         crustLines(pod, resting(player, pod)).forEach(line -> readout.add(new Line(line, look.podHardLandingColor())));

@@ -17,6 +17,9 @@
 	"creature.approach": { "sounds": [{ "name": "minecraft:ambient.cave", "type": "event", "pitch": 0.7 }] },
 	"creature.hurt": { "sounds": [{ "name": "minecraft:block.sculk_sensor.clicking", "type": "event", "pitch": 0.6 }] },
 	"creature.death": { "sounds": [{ "name": "minecraft:particle.soul_escape", "type": "event", "pitch": 0.6 }] },
+	"creature.drifter_hiss": { "sounds": [{ "name": "minecraft:block.fire.extinguish", "type": "event", "pitch": 1.3, "volume": 0.6 }] },
+	"creature.drifter_burst": { "sounds": [{ "name": "minecraft:entity.puffer_fish.blow_out", "type": "event", "pitch": 0.7 }] },
+	"creature.alarm_drone": { "sounds": [{ "name": "minecraft:block.beacon.ambient", "type": "event", "pitch": 0.5 }] },
 
 	"drill.dig": { "sounds": [{ "name": "deepcharter:drill/dig_1" }, { "name": "deepcharter:drill/dig_2" }, { "name": "deepcharter:drill/dig_3" }] },
 	"drill.blocked": { "sounds": [{ "name": "deepcharter:drill/blocked" }] },
