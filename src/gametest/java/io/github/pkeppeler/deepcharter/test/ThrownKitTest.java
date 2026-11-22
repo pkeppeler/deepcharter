@@ -491,7 +491,7 @@ public class ThrownKitTest {
                             room.level().getBlockState(watchedCell.apply(room)).isAir();
                     if (landedAt[0] < 0) {
                         expect(helper, !gone, "the charge blew before it landed");
-                        if (!room.kits().isEmpty() && room.kits().getFirst().landed()) {
+                        if (room.kitLanded()) {
                             landedAt[0] = room.ticks();
                         } else {
                             expect(helper, room.ticks() <= LAND_BUDGET_TICKS, "the charge never landed");
@@ -601,7 +601,7 @@ public class ThrownKitTest {
         int fuse = DEFAULT.charge().fuseTicks();
         ThrowRoom.start(helper, NO_ROCK_X, room -> dropCharge(helper, room, true), room -> {
             if (landedAt[0] < 0) {
-                if (!room.kits().isEmpty() && room.kits().getFirst().landed()) {
+                if (room.kitLanded()) {
                     landedAt[0] = room.ticks();
                 }
                 return;
@@ -639,7 +639,7 @@ public class ThrownKitTest {
                 },
                 room -> {
                     if (landedAt[0] < 0) {
-                        if (!room.kits().isEmpty() && room.kits().getFirst().landed()) {
+                        if (room.kitLanded()) {
                             landedAt[0] = room.ticks();
                         }
                         return;
@@ -680,7 +680,7 @@ public class ThrownKitTest {
                 },
                 room -> {
                     if (landedAt[0] < 0) {
-                        if (!room.kits().isEmpty() && room.kits().getFirst().landed()) {
+                        if (room.kitLanded()) {
                             landedAt[0] = room.ticks();
                         }
                         return;
@@ -833,7 +833,7 @@ public class ThrownKitTest {
                 },
                 room -> {
                     if (landedAt[0] < 0) {
-                        if (!room.kits().isEmpty() && room.kits().getFirst().landed()) {
+                        if (room.kitLanded()) {
                             landedAt[0] = room.ticks();
                         }
                         return;
@@ -887,7 +887,7 @@ public class ThrownKitTest {
                 },
                 room -> {
                     if (landedAt[0] < 0) {
-                        if (!room.kits().isEmpty() && room.kits().getFirst().landed()) {
+                        if (room.kitLanded()) {
                             landedAt[0] = room.ticks();
                         }
                         return;

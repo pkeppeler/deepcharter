@@ -88,7 +88,7 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
 
     @Override
     public void tick() {
-        if (level().isClientSide() || !landed()) {
+        if (level().isClientSide() || !landed) {
             super.tick();
             return;
         }
@@ -233,10 +233,7 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
         }
     }
 
-    /**
-     * The pod's blast, round where it lies, and the same share of a person's health as of a pod's hull. Friendly fire is by design: the thrower and their
-     * charter's crew are hurt, anyone else only where the server allows PvP, and a pod that another charter owns never is.
-     */
+    /** The pod's blast, round where it lies; a person takes the same share of their health as a pod does of its hull. Who is hurt: the class Javadoc. */
     private void blast(ServerLevel level) {
         RepairTuning repair = RepairTuning.DEFAULT;
         int radius = tuning.charge().blastRadius();
@@ -259,8 +256,7 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
             double share = PodCharge.reachShare(volume, person.getBoundingBox(), repair.chargeReach());
             if (share > 0) {
                 float damage = (float) (tuning.charge().personDamage() * share);
-                // Never lethal: it leaves half a heart at worst (the pod's blast wrecks nobody's run, and a thrown one
-                // kills nobody). No attacker is named: the vanilla PvP rule would spare the thrower from their own
+                // Never lethal. No attacker is named: the vanilla PvP rule would spare the thrower from their own
                 // charge, and isHurt has already decided who is hurt.
                 person.hurtServer(
                         level,

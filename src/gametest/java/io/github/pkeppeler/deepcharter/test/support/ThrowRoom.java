@@ -108,6 +108,12 @@ public final class ThrowRoom {
         return null;
     }
 
+    /** Whether a thrown kit is in the room and has come to rest. */
+    public boolean kitLanded() {
+        List<ThrownKitEntity> kits = kits();
+        return !kits.isEmpty() && kits.getFirst().landed();
+    }
+
     /** The thrown kit in the room, in flight or landed. */
     public List<ThrownKitEntity> kits() {
         // Every test's room is its own 49 blocks wide, so what is within it is this test's.
