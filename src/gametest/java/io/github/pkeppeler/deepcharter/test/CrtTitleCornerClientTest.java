@@ -28,20 +28,24 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Client GameTest for #1012: the glass of a CRT terminal's corner must not dim the first stem of a title that starts near the top-left
- * corner. On each of the terminal screens it takes a screenshot, finds the title (the first string the screen draws) and compares the
- * brightest pixel of its first stem against the brightest pixel of the rest of the title, in rows the scanlines treat alike, so a
- * scanline does not read as dimming.
+ * corner. On each of the terminal screens it takes a screenshot, finds the title (the first string the screen draws, which must sit at the
+ * content's top-left corner) and compares the topmost lit pixel of its first stem, where the glass's shading is heaviest, with the brightest
+ * pixel of the title in rows the scanlines treat alike, so a scanline does not read as dimming.
+ *
+ * <p>Expected, from the sprite's alpha table and not yet measured on a run: the stem's top pixel reads about 0.4 to 0.5 of the title's
+ * brightness on main (glass alpha 125 to 160 of 255 there) and 0.95 or more with the lightened glass (alpha 4 to 11).
  */
 public class CrtTitleCornerClientTest implements FabricClientGameTest {
-    /** A pixel is the title's text, not its halo or the glass's shade, when it is at least this share of the brightest in its row kind. */
-    private static final double TEXT_SHARE = 0.5;
-    /** The first stem must be at least this share of the brightest text in the same kind of row. */
+    /** A pixel is the title's text, not its halo (a fifth of the text's brightness), when it is at least this share of the brightest in its row kind. */
+    private static final double TEXT_SHARE = 0.3;
+    /** The first stem's top pixel must be at least this share of the brightest text in the same kind of row: between main's 0.5 and the fix's 0.95. */
     private static final double FIRST_STEM_SHARE = 0.9;
     /** Where the cursor is parked: well outside the window, so that no button is hovered. */
     private static final double OFF_SCREEN = -10_000;
 
     /** What the client says about a screen: its title, and the numbers that turn GUI pixels into screenshot pixels and rows into scanline kinds. */
-    private record Shot(DrawnText.Drawn title, int guiScale, int glassTop, int scanlineSpacing) {}
+    private record Shot(
+            DrawnText.Drawn title, int guiScale, int glassTop, int scanlineSpacing, PanelLook.Insets content) {}
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -92,7 +96,8 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
                     title,
                     client.getWindow().getGuiScale(),
                     PanelLook.current().glass().top(),
-                    CrtTuning.current().scanlineSpacing());
+                    CrtTuning.current().scanlineSpacing(),
+                    PanelLook.current().content());
         });
         BufferedImage image;
         try {
@@ -108,6 +113,12 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
     /** The problem with the title's first stem against the rest of the title, if it is dimmer. */
     private static Optional<String> firstStemProblem(String screen, Shot shot, BufferedImage image) {
         Box box = shot.title().box();
+        String title = "the title '" + shot.title().shortText() + "'";
+        if (box.x() != shot.content().left() || box.y() != shot.content().top()) {
+            return Optional.of(
+                    screen + ": " + title + " is at " + box.x() + "," + box.y() + ", not at the content's corner "
+                            + shot.content().left() + "," + shot.content().top());
+        }
         int kinds = shot.scanlineSpacing();
         int[] brightestOfKind = new int[kinds];
         for (int y = box.y(); y < box.bottom(); y++) {
@@ -120,33 +131,26 @@ public class CrtTitleCornerClientTest implements FabricClientGameTest {
         for (int brightest : brightestOfKind) {
             overall = Math.max(overall, brightest);
         }
-        require(overall >= 100, screen + ": the title '" + shot.title().shortText() + "' is not visible in the still");
+        if (overall < 100) {
+            return Optional.of(screen + ": " + title + " is not visible in the still");
+        }
         for (int x = box.x(); x < box.right(); x++) {
-            int[] stem = new int[kinds];
-            boolean lit = false;
             for (int y = box.y(); y < box.bottom(); y++) {
                 int kind = Math.floorMod(y - shot.glassTop(), kinds);
                 int value = brightness(shot, image, x, y);
-                if (value >= TEXT_SHARE * brightestOfKind[kind] && brightestOfKind[kind] >= TEXT_SHARE * overall) {
-                    stem[kind] = Math.max(stem[kind], value);
-                    lit = true;
+                if (brightestOfKind[kind] < TEXT_SHARE * overall || value < TEXT_SHARE * brightestOfKind[kind]) {
+                    continue;
                 }
-            }
-            if (!lit) {
-                continue;
-            }
-            for (int kind = 0; kind < kinds; kind++) {
-                if (stem[kind] > 0 && stem[kind] < FIRST_STEM_SHARE * brightestOfKind[kind]) {
-                    return Optional.of(
-                            screen + ": the first stem of '" + shot.title().shortText()
-                                    + "' (GUI column " + x + ") peaks at " + stem[kind] + " in rows of kind " + kind
-                                    + ", the rest of the title at " + brightestOfKind[kind]);
+                // The first lit pixel of the first lit column, from the top: where the glass's shading is heaviest.
+                if (value < FIRST_STEM_SHARE * brightestOfKind[kind]) {
+                    return Optional.of(screen + ": the first stem of " + title + " (GUI column " + x + ", row " + y
+                            + ") reads " + value + ", the rest of the title " + brightestOfKind[kind]
+                            + " in rows of the same scanline kind");
                 }
+                return Optional.empty();
             }
-            return Optional.empty();
         }
-        return Optional.of(
-                screen + ": no lit column in the title '" + shot.title().shortText() + "'");
+        return Optional.of(screen + ": no lit column in " + title);
     }
 
     /** The brightest channel of the middle of GUI pixel ({@code x}, {@code y}) in the screenshot. */

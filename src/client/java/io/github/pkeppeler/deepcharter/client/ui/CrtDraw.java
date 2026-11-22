@@ -46,43 +46,13 @@ public final class CrtDraw {
         decal(graphics, PanelLook.DRESS_D, panel.dressD(), width, height);
     }
 
-    /**
-     * What goes over the content of a screen with the machine panel on: the glass sprite, then the scanlines, both inside the glass rectangle.
-     * The sprite is drawn in four bands round the content rectangle, never over it, so its corner shading cannot dim the first stem of a title
-     * that starts near the top-left corner (#1012). The scanlines still cross the content: they are the CRT look the text is read through.
-     */
+    /** What goes over the content of a screen with the machine panel on: the glass sprite, then the scanlines, both inside the glass rectangle. */
     public static void panelGlass(GuiGraphicsExtractor graphics, PanelLook panel, int width, int height) {
         PanelLook.Insets glass = panel.glass();
-        PanelLook.Insets content = panel.content();
         int right = width - glass.right();
         int bottom = height - glass.bottom();
-        int contentLeft = Math.max(glass.left(), content.left());
-        int contentTop = Math.max(glass.top(), content.top());
-        int contentRight = Math.min(right, width - content.right());
-        int contentBottom = Math.min(bottom, height - content.bottom());
-        glassBand(graphics, glass, right, bottom, glass.left(), glass.top(), right, contentTop);
-        glassBand(graphics, glass, right, bottom, glass.left(), contentBottom, right, bottom);
-        glassBand(graphics, glass, right, bottom, glass.left(), contentTop, contentLeft, contentBottom);
-        glassBand(graphics, glass, right, bottom, contentRight, contentTop, right, contentBottom);
-        roundedScanlines(graphics, glass.left(), glass.top(), right, bottom, panel.glassRadius());
-    }
-
-    /** The glass sprite, whole, clipped to one band of its rectangle. */
-    private static void glassBand(
-            GuiGraphicsExtractor graphics,
-            PanelLook.Insets glass,
-            int right,
-            int bottom,
-            int bandLeft,
-            int bandTop,
-            int bandRight,
-            int bandBottom) {
-        if (bandRight <= bandLeft || bandBottom <= bandTop) {
-            return;
-        }
-        graphics.enableScissor(bandLeft, bandTop, bandRight, bandBottom);
         sprite(graphics, PanelLook.GLASS, glass.left(), glass.top(), right - glass.left(), bottom - glass.top());
-        graphics.disableScissor();
+        roundedScanlines(graphics, glass.left(), glass.top(), right, bottom, panel.glassRadius());
     }
 
     /** The scanlines in a rectangle with rounded corners: each line stops where the glass does ({@link PanelLook#scanlineInset}). */

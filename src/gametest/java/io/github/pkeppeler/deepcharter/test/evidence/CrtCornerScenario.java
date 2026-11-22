@@ -13,13 +13,10 @@ import net.minecraft.core.BlockPos;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Evidence scenario "crt-corner" for #907: the corner of the bezel on the CRT terminals. Stills: {@code crt-corner-<screen>} for the upgrade terminal,
- * the hangar console and the contract terminal (the whole screen), and for the upgrade terminal the top-left and bottom-right corners of the
- * glass scaled up with nearest-neighbour ({@code crt-corner-top-left-zoom}, {@code crt-corner-bottom-right-zoom}) so the pixels read.
- * The crops are placed from the panel's own glass insets, not from a fixed spot.
- *
- * <p>#1012 adds the processor, repair station, fuel pump and generic terminal to the whole-screen stills, and for every screen the top-left corner
- * zoomed ({@code crt-corner-title-zoom-<screen>}): the title's first stem sits there, and the glass used to shade it.
+ * Evidence scenario "crt-corner" for #907 and #1012: the corner of the bezel and the glass on the CRT terminals. Stills: {@code crt-corner-<screen>}
+ * for every terminal screen (the whole screen); {@code crt-corner-title-zoom-<screen>}, the top-left corner of the glass scaled up with
+ * nearest-neighbour so the pixels read, where a title's first stem sits; and for the upgrade terminal {@code crt-corner-bottom-right-zoom}. The
+ * crops are placed from the panel's own glass insets, not from a fixed spot.
  */
 public class CrtCornerScenario extends EvidenceScenario {
     private static final int HOLD_FRAMES = 4;
@@ -75,27 +72,16 @@ public class CrtCornerScenario extends EvidenceScenario {
         }
         String still = "crt-corner-" + screen;
         screenshot(context, still);
-        // #1012: the title starts near the top-left corner of the glass, so every screen gets that corner zoomed, to
-        // show the title's first stem.
-        PanelLook.Insets titleGlass = PanelLook.current().glass();
+        PanelLook.Insets glass = PanelLook.current().glass();
         zoomStill(
                 context,
                 still,
                 "crt-corner-title-zoom-" + screen,
-                titleGlass.left() - REACH_OUT,
-                titleGlass.top() - REACH_OUT,
+                glass.left() - REACH_OUT,
+                glass.top() - REACH_OUT,
                 CROP,
                 CROP);
         if (corners) {
-            PanelLook.Insets glass = PanelLook.current().glass();
-            zoomStill(
-                    context,
-                    still,
-                    "crt-corner-top-left-zoom",
-                    glass.left() - REACH_OUT,
-                    glass.top() - REACH_OUT,
-                    CROP,
-                    CROP);
             zoomStill(
                     context,
                     still,

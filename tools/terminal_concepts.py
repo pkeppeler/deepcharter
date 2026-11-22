@@ -159,6 +159,11 @@ def nameplate(height, text, ink):
 
 
 VIGNETTE_REACH = 10
+# The shading falls off exponentially with the depth `t` into the glass, `exp(-t / decay)`, so it is dark on the rim where the arc is and gone by the
+# 6 pixels the content stays inside the glass edge: a title that starts at the content's corner keeps its brightness (#1012). It never reaches zero
+# inside `VIGNETTE_REACH`, so every pixel of the arc's ring holds some alpha.
+VIGNETTE_DECAY = 0.8
+SHADOW_DECAY = 0.7
 
 
 def glass_sprite(radius, vignette, shadow=(0, 0), depth=(0, 0)):
@@ -178,11 +183,11 @@ def glass_sprite(radius, vignette, shadow=(0, 0), depth=(0, 0)):
             if signed >= 0:
                 continue
             t = -signed - 0.5  # 0 on the outermost row of pixels, along a straight edge as along an arc
-            alpha = vignette * (1 - t / VIGNETTE_REACH) ** 1.6 if t < VIGNETTE_REACH else 0
+            alpha = max(1.0, vignette * math.exp(-t / VIGNETTE_DECAY)) if t < VIGNETTE_REACH else 0
             if depth[0] and t < depth[0]:
-                alpha += shadow[0] * max(0.0, -ny) * (1 - t / depth[0]) ** 1.4
+                alpha += shadow[0] * max(0.0, -ny) * math.exp(-t / SHADOW_DECAY)
             if depth[1] and t < depth[1]:
-                alpha += shadow[1] * max(0.0, -nx) * (1 - t / depth[1]) ** 1.4
+                alpha += shadow[1] * max(0.0, -nx) * math.exp(-t / SHADOW_DECAY)
             if alpha:
                 img.set(x, y, (4, 8, 6, min(235, round(alpha))))
             if 0.5 <= t < 1.5:  # the glass's own edge, catching light along the bottom and the right
@@ -473,7 +478,7 @@ def hatch() -> Option:
         "buttonAlign": 1, "buttonPad": 4, "pipSize": 12, "pipX": 3, "pipY": 0,
     }, {
         "frame": Sprite(frame, (gl + radius, gt + radius, gr + radius, gb + radius)),
-        "glass": Sprite(glass_sprite(radius, 170, (110, 80), (6, 5)), (radius,) * 4),
+        "glass": Sprite(glass_sprite(radius, 200, (110, 80), (6, 5)), (radius,) * 4),
         "nameplate": Sprite(plate), "dress_a": Sprite(hatch_gauge()), "dress_b": Sprite(hatch_wheel()),
         "dress_c": Sprite(hatch_stencil("H-04  DECK 3", 72)), "dress_d": Sprite(hatch_warning()),
         "button": Sprite(hatch_button(H[3], H[6], H[0]), (3, 3, 3, 3)),
