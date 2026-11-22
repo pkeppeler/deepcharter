@@ -71,19 +71,14 @@ public final class FarChunks {
         }
     }
 
-    /**
-     * Forces a chunk for the rest of the world's life: no test's end lets it go. The colony pad, which tests share, is the case. A
-     * test that holds the same chunk lets go of its own hold only. The GameTest runner itself unforces every forced chunk of the
-     * level whenever a batch of tests finishes ({@code GameTestRunner$1.testCompleted}), so a pinned chunk is also protected from
-     * that: {@code ServerLevelForcedMixin} refuses an unforce of a chunk this holds (#669). Server thread only.
-     */
+    /** Forces a chunk for the rest of the world, since the runner unforces every forced chunk at each batch end (#669). */
     public static void pin(ServerLevel level, int chunkX, int chunkZ) {
         PINNED.add(new Chunk(level, ChunkPos.pack(chunkX, chunkZ)));
         level.setChunkForced(chunkX, chunkZ, true);
         HOLDS.merge(new Chunk(level, ChunkPos.pack(chunkX, chunkZ)), 1, Integer::sum);
     }
 
-    /** Whether {@link #pin} holds this chunk, so that nothing may unforce it. Server thread only. */
+    /** Whether {@link #pin} holds this chunk, exempt from the runner's batch-end unforce. */
     public static boolean isPinned(ServerLevel level, int chunkX, int chunkZ) {
         return PINNED.contains(new Chunk(level, ChunkPos.pack(chunkX, chunkZ)));
     }

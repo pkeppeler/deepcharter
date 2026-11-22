@@ -62,7 +62,8 @@ public class FarChunksTest {
         ColonySite.Placed colony = Colony.placed(level.getServer()).orElseThrow();
         ColonyChunks.force(level, colony);
         for (BlockPos pos : ColonyChunks.of(colony)) {
-            // force-ok: the runner's own unforce at the end of a batch, which has no GameTestHelper
+            // force-ok: simulates GameTestRunner$1.testCompleted's raw batch-end unforce; going through FarChunks would
+            // bypass what is under test
             level.setChunkForced(pos.getX() >> 4, pos.getZ() >> 4, false);
             if (!level.getForceLoadedChunks().contains(ChunkPos.pack(pos.getX() >> 4, pos.getZ() >> 4))) {
                 throw helper.assertionException("the pad chunk at %s was unforced", pos);
