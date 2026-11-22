@@ -260,6 +260,8 @@ public final class AtmosphereScenes {
                     // force-ok: a client test and an evidence scenario have no GameTestHelper to release through;
                     // Holds releases what this forces
                     level.setChunkForced(cx, cz, true);
+                    // sync-load: a client test's server has no other test to starve, and the client waits for these
+                    // chunks next
                     level.getChunk(cx, cz);
                 }
             }
@@ -318,6 +320,8 @@ public final class AtmosphereScenes {
                     // force-ok: a client test has no GameTestHelper to release through; the world is discarded when the
                     // test ends
                     level.setChunkForced(cx, cz, true);
+                    // sync-load: a client test's server has no other test to starve, and the client waits for these
+                    // chunks next
                     level.getChunk(cx, cz);
                 }
             }

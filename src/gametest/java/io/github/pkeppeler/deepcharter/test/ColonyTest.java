@@ -226,6 +226,7 @@ public class ColonyTest {
                 throw new IllegalStateException("unreadable data answered a lookup");
             }
         });
+        // sync-load: the case is the chunk load itself, asked for while the colony's saved data is unreadable
         paths.put("chunk load", () -> TestLayers.level(server, 1).getChunk(7000 >> 4, 7000 >> 4));
         UnreadableChecks.assertSavedDataNoThrow(helper, "colony", server, ColonySite.TYPE, paths);
         helper.succeed();
@@ -311,13 +312,19 @@ public class ColonyTest {
         helper.succeed();
     }
 
-    @GameTest
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void aSpawnInWaterMakesTheBuildSearchForDryGround(GameTestHelper helper) {
         ServerLevel level = server(helper).overworld();
         // A lake 181 blocks across on the flat ground, far from every other test.
         int lake = 9000;
         int half = 90;
-        level.getChunk(lake >> 4, lake >> 4);
+        FarChunks.whenLoaded(
+                helper,
+                FarChunks.rect(level, (lake - half) >> 4, (lake - half) >> 4, (lake + half) >> 4, (lake + half) >> 4),
+                () -> aSpawnInWaterMakesTheBuildSearch(helper, level, lake, half));
+    }
+
+    private static void aSpawnInWaterMakesTheBuildSearch(GameTestHelper helper, ServerLevel level, int lake, int half) {
         int surface = level.getHeight(Heightmap.Types.WORLD_SURFACE, lake, lake);
         for (int x = lake - half; x <= lake + half; x++) {
             for (int z = lake - half; z <= lake + half; z++) {
@@ -789,6 +796,8 @@ public class ColonyTest {
         BlockPos centre = colony.center();
         Map<BlockPos, BlockState> land = new LinkedHashMap<>();
         for (BlockPos at : BlockPos.betweenClosed(centre.offset(half + 1, -3, -20), centre.offset(half + 32, 8, 20))) {
+            // sync-load: the strip is within two chunks of the pad, whose ticking chunks hold their neighbourhood
+            // loaded
             level.getChunk(at.getX() >> 4, at.getZ() >> 4);
             land.put(at.immutable(), level.getBlockState(at));
         }

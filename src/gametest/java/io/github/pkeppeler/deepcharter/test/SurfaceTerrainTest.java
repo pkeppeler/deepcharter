@@ -8,12 +8,14 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.ColonyBuilder;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -95,6 +97,19 @@ public class SurfaceTerrainTest {
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void theGroundHoldsOnlyRegolithRockAndBasalt(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
+        FarChunks.whenLoaded(
+                helper,
+                FarChunks.rect(
+                        level,
+                        SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS,
+                        SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS,
+                        SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS,
+                        SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS),
+                () -> theGroundHoldsOnly(helper));
+    }
+
+    private static void theGroundHoldsOnly(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
         Set<String> found = new TreeSet<>();
         for (int chunkX = SAMPLE_CHUNK_X - SAMPLE_CHUNK_RADIUS;
                 chunkX <= SAMPLE_CHUNK_X + SAMPLE_CHUNK_RADIUS;
@@ -102,6 +117,7 @@ public class SurfaceTerrainTest {
             for (int chunkZ = SAMPLE_CHUNK_Z - SAMPLE_CHUNK_RADIUS;
                     chunkZ <= SAMPLE_CHUNK_Z + SAMPLE_CHUNK_RADIUS;
                     chunkZ++) {
+                // sync-load: whenLoaded loaded the chunks of the sample
                 for (LevelChunkSection section : level.getChunk(chunkX, chunkZ).getSections()) {
                     section.maybeHas(state -> {
                         found.add(
@@ -143,9 +159,18 @@ public class SurfaceTerrainTest {
         columns.put("colony plateau", new BlockPos(0, PAD_GROUND, 0));
         columns.put("colony plateau edge", new BlockPos(PAD_CHECK_RADIUS, PAD_GROUND, -PAD_CHECK_RADIUS));
         columns.put("west of the plateau", new BlockPos(-60, PAD_GROUND, 0));
+        FarChunks.whenLoaded(
+                helper,
+                columns.values().stream()
+                        .map(at -> new FarChunks.At(level, at.getX() >> 4, at.getZ() >> 4))
+                        .distinct()
+                        .toList(),
+                () -> expectHeightmapsAgree(helper, level, columns));
+    }
+
+    private static void expectHeightmapsAgree(GameTestHelper helper, ServerLevel level, Map<String, BlockPos> columns) {
         for (Map.Entry<String, BlockPos> column : columns.entrySet()) {
             BlockPos at = column.getValue();
-            level.getChunk(at.getX() >> 4, at.getZ() >> 4);
             int surface = level.getHeight(Heightmap.Types.WORLD_SURFACE, at.getX(), at.getZ());
             int blocking = level.getHeight(Heightmap.Types.MOTION_BLOCKING, at.getX(), at.getZ());
             int blockingNoLeaves = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, at.getX(), at.getZ());
@@ -188,23 +213,49 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
+    private record ExpectedTop(String biome, int minimumRise, String block) {}
+
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void everyBiomeHasItsOwnTopBlock(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        expectTopBlock(helper, level, "deepcharter:regolith_plains", 0, "deepcharter:regolith");
-        expectTopBlock(helper, level, "deepcharter:mesa_country", 0, "deepcharter:ochre_regolith");
-        expectTopBlock(helper, level, "deepcharter:basalt_field", BASALT_MIN_RISE, "deepcharter:basalt_outcrop");
-        helper.succeed();
+        List<ExpectedTop> tops = List.of(
+                new ExpectedTop("deepcharter:regolith_plains", 0, "deepcharter:regolith"),
+                new ExpectedTop("deepcharter:mesa_country", 0, "deepcharter:ochre_regolith"),
+                new ExpectedTop("deepcharter:basalt_field", BASALT_MIN_RISE, "deepcharter:basalt_outcrop"));
+        FarChunks.whenLoaded(
+                helper,
+                tops.stream()
+                        .map(top -> surveyColumn(helper, level, top.biome(), top.minimumRise()))
+                        .map(column -> new FarChunks.At(level, column.getX() >> 4, column.getZ() >> 4))
+                        .toList(),
+                () -> {
+                    tops.forEach(top -> expectTopBlock(helper, level, top.biome(), top.minimumRise(), top.block()));
+                    helper.succeed();
+                });
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void noCreatureSpawnsInTheSurfaceBiomesButMonstersStay(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ChunkGenerator generator = level.getChunkSource().getGenerator();
+        Map<String, BlockPos> columns = new LinkedHashMap<>();
         for (String biome :
                 Arrays.asList("deepcharter:regolith_plains", "deepcharter:mesa_country", "deepcharter:basalt_field")) {
-            BlockPos column = surveyColumn(helper, level, biome, 0);
-            level.getChunkAt(column);
+            columns.put(biome, surveyColumn(helper, level, biome, 0));
+        }
+        FarChunks.whenLoaded(
+                helper,
+                columns.values().stream()
+                        .map(column -> new FarChunks.At(level, column.getX() >> 4, column.getZ() >> 4))
+                        .toList(),
+                () -> expectNoCreatureSpawns(helper, level, generator, columns));
+    }
+
+    private static void expectNoCreatureSpawns(
+            GameTestHelper helper, ServerLevel level, ChunkGenerator generator, Map<String, BlockPos> columns) {
+        for (Map.Entry<String, BlockPos> entry : columns.entrySet()) {
+            String biome = entry.getKey();
+            BlockPos column = entry.getValue();
             for (MobCategory category : MobCategory.values()) {
                 boolean empty = generator
                         .getMobsAt(level, level.structureManager(), category, column)
@@ -400,6 +451,7 @@ public class SurfaceTerrainTest {
     private static void expectTopBlock(
             GameTestHelper helper, ServerLevel level, String biome, int minimumRise, String expected) {
         BlockPos column = surveyColumn(helper, level, biome, minimumRise);
+        // sync-load: the caller waited for the column's chunk with FarChunks.whenLoaded
         LevelChunk chunk = level.getChunkAt(column);
         // level-height: surface_sample is a copy of the overworld for the generator, not a layer of the chain
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(column.getX(), level.getMaxY(), column.getZ());

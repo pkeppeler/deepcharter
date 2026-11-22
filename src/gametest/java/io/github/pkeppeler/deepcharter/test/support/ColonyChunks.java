@@ -127,6 +127,7 @@ public final class ColonyChunks {
     public static void removeHands(MinecraftServer server) {
         FounderStatue.markerPos(server).ifPresent(pos -> {
             ServerLevel overworld = server.overworld();
+            // sync-load: the marker is on the colony's pad, which FarChunks.pin keeps loaded
             overworld.getChunk(pos);
             if (overworld.getBlockState(pos).is(Blocks.STRUCTURE_VOID)) {
                 overworld.setBlock(pos, ColonyKit.RIVETED_PLATE_RED.defaultBlockState(), Block.UPDATE_CLIENTS);
@@ -141,6 +142,7 @@ public final class ColonyChunks {
             return List.of();
         }
         ServerLevel overworld = server.overworld();
+        // sync-load: the statue is on the colony's pad, which FarChunks.pin keeps loaded
         overworld.getChunk(anchor.get());
         // entity-query: the statue's displays that are loaded, for a test that counts his body; whether he has hands is
         // saved data

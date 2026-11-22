@@ -633,6 +633,7 @@ public class CompanyRecoveryTest {
                 server.overworld().getRespawnData().pos()));
         ServerLevel overworld = server.overworld();
         for (GlobalPos place : places) {
+            // sync-load: both places are the colony's office, on the pad, which is pinned
             overworld.getChunk(place.pos());
             for (int dx = -12; dx <= 12; dx++) {
                 for (int dz = -12; dz <= 12; dz++) {

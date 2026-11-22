@@ -31,12 +31,14 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A real {@link ServerPlayer} whose connection is a Netty {@link EmbeddedChannel}. Create one
@@ -61,6 +63,12 @@ public final class MockPlayer {
     private final Set<RecipeDisplayId> recipeDisplaysEverSent = new HashSet<>();
     private int recipeToasts;
     private boolean loaded;
+
+    @Nullable
+    private ChunkPos ticketedChunk;
+
+    @Nullable
+    private ServerLevel ticketedLevel;
 
     MockPlayer(
             MinecraftServer server,
@@ -227,8 +235,30 @@ public final class MockPlayer {
         }
     }
 
+    /** Holds a loading ticket on the player's chunk, and whether the chunk is loaded; the ticket is released when the player moves on or leaves. */
+    private boolean standsInLoadedChunk() {
+        ServerLevel level = player.level();
+        ChunkPos at = player.chunkPosition();
+        if (!at.equals(ticketedChunk) || level != ticketedLevel) {
+            releaseTicket();
+            level.getChunkSource().addTicketWithRadius(TicketType.PLAYER_LOADING, at, 0);
+            ticketedChunk = at;
+            ticketedLevel = level;
+        }
+        return level.getChunkSource().getChunkNow(at.x(), at.z()) != null;
+    }
+
+    private void releaseTicket() {
+        if (ticketedChunk != null && ticketedLevel != null) {
+            ticketedLevel.getChunkSource().removeTicketWithRadius(TicketType.PLAYER_LOADING, ticketedChunk, 0);
+        }
+        ticketedChunk = null;
+        ticketedLevel = null;
+    }
+
     /** Disconnect and remove the player, also one that respawned (#698). Safe to call when it has already left. */
     public void leave() {
+        releaseTicket();
         if (connection.isConnected()) {
             connection.disconnect(Component.literal("mock player left"));
             connection.handleDisconnection();
@@ -241,13 +271,20 @@ public final class MockPlayer {
     }
 
     /**
-     * One server tick of the fake network: tick the connection (which runs the packet listener
+     * One server tick of the fake network, skipped while the mock's chunk is not loaded: tick the connection (which runs the packet listener
      * and sends keep-alives), then drain everything the server wrote to the channel, answering
      * each keep-alive as a real client would.
      */
     void tick() {
         if (ownerDone.getAsBoolean()) {
             leave();
+            return;
+        }
+        // A player's tick reads its block (isInWall), which loads an unloaded chunk on the server thread and starves
+        // every test beside
+        // it (#1020). The mock holds a ticket on its chunk, which loads it on the worker threads, and does not tick
+        // until it has loaded.
+        if (!standsInLoadedChunk()) {
             return;
         }
         if (loaded) {

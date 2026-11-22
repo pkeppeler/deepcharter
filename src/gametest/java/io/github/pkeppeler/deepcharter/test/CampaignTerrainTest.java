@@ -13,6 +13,7 @@ import io.github.pkeppeler.deepcharter.layer.Zones;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CampaignEnvironments;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -105,8 +106,16 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.D,
+            dimension = SAMPLE,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void theFloorOfLayers1And2HoldsThreeRowsOfCrust(GameTestHelper helper) {
+        FarChunks.whenLoaded(
+                helper, sampleChunks(helper), () -> theFloorOfLayers1And2HoldsThreeRowsOfCrustLoaded(helper));
+    }
+
+    private static void theFloorOfLayers1And2HoldsThreeRowsOfCrustLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         int rows = CampaignBands.crustRows();
         for (Band layer : CampaignBands.LAYERS) {
@@ -137,8 +146,16 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.D,
+            dimension = SAMPLE,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void crustIsOnlyAtTheFloorsSoNoneLiesUnderTheSurface(GameTestHelper helper) {
+        FarChunks.whenLoaded(
+                helper, sampleChunks(helper), () -> crustIsOnlyAtTheFloorsSoNoneLiesUnderTheSurfaceLoaded(helper));
+    }
+
+    private static void crustIsOnlyAtTheFloorsSoNoneLiesUnderTheSurfaceLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<Integer> expected = new TreeSet<>();
         for (Band layer : CampaignBands.LAYERS) {
@@ -170,8 +187,15 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.D,
+            dimension = SAMPLE,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void eachBandHoldsItsOwnRock(GameTestHelper helper) {
+        FarChunks.whenLoaded(helper, sampleChunks(helper), () -> eachBandHoldsItsOwnRockLoaded(helper));
+    }
+
+    private static void eachBandHoldsItsOwnRockLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Map<String, Set<String>> found = new TreeMap<>();
         for (BlockPos column : sampledColumns()) {
@@ -207,8 +231,21 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void eachBandHasItsZoneBiome(GameTestHelper helper) throws IOException {
+    @GameTest(
+            environment = CampaignEnvironments.D,
+            dimension = SAMPLE,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
+    public void eachBandHasItsZoneBiome(GameTestHelper helper) {
+        FarChunks.whenLoaded(helper, sampleChunks(helper), () -> {
+            try {
+                eachBandHasItsZoneBiomeLoaded(helper);
+            } catch (IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        });
+    }
+
+    private static void eachBandHasItsZoneBiomeLoaded(GameTestHelper helper) throws IOException {
         ServerLevel level = helper.getLevel();
         BlockPos column = sampledColumns().getFirst();
         Set<String> surfaceBiomes = new TreeSet<>();
@@ -262,12 +299,20 @@ public class CampaignTerrainTest {
         helper.succeed();
     }
 
-    @GameTest(environment = CampaignEnvironments.D, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    @GameTest(
+            environment = CampaignEnvironments.D,
+            dimension = SAMPLE,
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS + MAX_TICKS)
     public void noVanillaBlockIsGenerated(GameTestHelper helper) {
+        FarChunks.whenLoaded(helper, sampleChunks(helper), () -> noVanillaBlockIsGeneratedLoaded(helper));
+    }
+
+    private static void noVanillaBlockIsGeneratedLoaded(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Set<String> vanilla = new TreeSet<>();
         for (int chunkX = SAMPLE_CHUNK_X; chunkX < SAMPLE_CHUNK_X + SAMPLE_CHUNKS; chunkX++) {
             for (int chunkZ = SAMPLE_CHUNK_Z; chunkZ < SAMPLE_CHUNK_Z + SAMPLE_CHUNKS; chunkZ++) {
+                // sync-load: whenLoaded loaded the sample's chunks
                 ChunkAccess chunk = level.getChunk(chunkX, chunkZ);
                 for (var section : chunk.getSections()) {
                     section.maybeHas(state -> {
@@ -521,7 +566,17 @@ public class CampaignTerrainTest {
         expect(helper, blocks.isEmpty(), "%s holds blocks it should not: %s", band.name(), blocks);
     }
 
-    /** Every column of the sample on a grid: ground level, generating the chunks. */
+    /** The chunks {@link #sampledColumns} reads. */
+    private static List<FarChunks.At> sampleChunks(GameTestHelper helper) {
+        return FarChunks.rect(
+                helper.getLevel(),
+                SAMPLE_CHUNK_X,
+                SAMPLE_CHUNK_Z,
+                SAMPLE_CHUNK_X + SAMPLE_CHUNKS - 1,
+                SAMPLE_CHUNK_Z + SAMPLE_CHUNKS - 1);
+    }
+
+    /** Every column of the sample on a grid: ground level, from the chunks that {@link #sampleChunks} loads. */
     private static List<BlockPos> sampledColumns() {
         List<BlockPos> columns = new ArrayList<>();
         int span = SAMPLE_CHUNKS * 16;
@@ -534,6 +589,7 @@ public class CampaignTerrainTest {
     }
 
     private static String idAt(ServerLevel level, BlockPos pos) {
+        // sync-load: every caller waited for the sample's chunks with FarChunks.whenLoaded
         BlockState state = level.getChunk(pos).getBlockState(pos);
         return state.is(Blocks.AIR)
                 ? "minecraft:air"
@@ -543,6 +599,7 @@ public class CampaignTerrainTest {
     private static String biomeAt(ServerLevel level, BlockPos pos) {
         // The cell the generator stored, not level.getBiome(pos): that one blurs a band's edge with the cell next to
         // it.
+        // sync-load: every caller waited for the sample's chunks with FarChunks.whenLoaded
         Optional<String> key = level.getChunk(pos)
                 .getNoiseBiome(pos.getX() >> 2, pos.getY() >> 2, pos.getZ() >> 2)
                 .unwrapKey()

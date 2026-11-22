@@ -202,6 +202,8 @@ public class WorkOrdersTest {
         MinecraftServer server = helper.getLevel().getServer();
         ServerLevel level = server.overworld();
         BlockPos far = TestLayers.pos(TestLayers.SURFACE, 14_000, 120, 14_000);
+        // sync-load: the case needs the chunk loaded and not yet ticking, as one a display is placed into; a forced
+        // chunk would tick
         level.getChunk(far.getX() >> 4, far.getZ() >> 4);
         for (String piece : List.of("founder_c", "founder_c_hands")) {
             server.getCommands()

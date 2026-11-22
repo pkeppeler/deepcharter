@@ -164,10 +164,11 @@ public class PodLinerTest {
             Consumer<ServerLevel> setup,
             Consumer<PodLining.State> check) {
         ServerLevel level = TestLayers.level(helper, 1);
-        shaft(level, x, 8, false);
-        setup.accept(level);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            shaft(level, x, 8, false);
+            setup.accept(level);
             armed.pod = spawnFitted(helper, level, new Vec3(x, FLOOR, Z), tier, rack);
             armed.pod.setAttached(
                     PodLiner.STATE,
@@ -429,9 +430,10 @@ public class PodLinerTest {
     public void aRingThatIsNotDueIsNotLined(GameTestHelper helper) {
         int x = 5492;
         ServerLevel level = TestLayers.level(helper, 1);
-        shaft(level, x, 8, false);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            shaft(level, x, 8, false);
             armed.pod = spawnFitted(helper, level, new Vec3(x, FLOOR, Z), 1, 10);
             armed.pod.setAttached(
                     PodLiner.STATE,
@@ -455,9 +457,10 @@ public class PodLinerTest {
     public void aPodInAnotherColumnThanItsAnchorIsDueAtOnce(GameTestHelper helper) {
         int x = 5540;
         ServerLevel level = TestLayers.level(helper, 1);
-        shaft(level, x, 8, false);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            shaft(level, x, 8, false);
             armed.pod = spawnFitted(helper, level, new Vec3(x, FLOOR, Z), 1, 10);
             // The anchor is at the pod's own height in the column beside: a sidestep puts the pod in a new column, and
             // the ring is due with no slab sunk.
@@ -495,11 +498,13 @@ public class PodLinerTest {
     /** Pods the ring tests arm and then keep from lining: it holds a due ring, a rack and a column of open cells, and nothing may line for 12 ticks. */
     private void ringHeld(GameTestHelper helper, int x, Consumer<PodEntity> hold, Consumer<MockPlayer> afterMount) {
         ServerLevel level = TestLayers.level(helper, 1);
-        shaft(level, x, 8, false);
         MockPlayer pilot = owner(helper);
-        pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            shaft(level, x, 8, false);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(x, FLOOR, Z);
             level.addFreshEntity(pod);
@@ -560,14 +565,16 @@ public class PodLinerTest {
      */
     private void packSplit(GameTestHelper helper, int x, int tier, int rack, int pack, int blocked, Left expected) {
         ServerLevel level = TestLayers.level(helper, 1);
-        shaft(level, x, 8, false);
         for (BlockPos cell : ringCells(x).subList(0, blocked)) {
             level.setBlock(cell, OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3);
         }
         MockPlayer pilot = owner(helper);
-        pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
         Armed armed = new Armed();
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            shaft(level, x, 8, false);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
             PodEntity pod = TestEntities.create(PodRegistry.POD, level);
             pod.setPos(x, FLOOR, Z);
             level.addFreshEntity(pod);
@@ -771,11 +778,15 @@ public class PodLinerTest {
             return seated.get().watch();
         }
 
-        static Rig await(GameTestHelper helper, ServerLevel level, Vec3 at, int tier, boolean sprint) {
+        static Rig await(GameTestHelper helper, ServerLevel level, Vec3 at, int tier, boolean sprint, Runnable build) {
             MockPlayer pilot = owner(helper);
-            pilot.teleportTo(level, at, 0f, 0f);
             Rig rig = new Rig(pilot);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+                // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server
+                // thread.
+                build.run();
+                // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+                pilot.teleportTo(level, at, 0f, 0f);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, level);
                 pod.setPos(at);
                 level.addFreshEntity(pod);
@@ -795,8 +806,7 @@ public class PodLinerTest {
 
     private void drillTenSlabs(GameTestHelper helper, int tier, int x, List<Ring> expected) {
         ServerLevel level = TestLayers.level(helper, 1);
-        shaft(level, x, 14, true);
-        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), tier, true);
+        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR, Z), tier, true, () -> shaft(level, x, 14, true));
         TestTicks.each(helper, () -> {
             if (!rig.seated.isPresent()) {
                 return;
@@ -843,12 +853,14 @@ public class PodLinerTest {
     /** A room of open air with a stone bed 8 blocks under the pod, which the pod falls onto, and a lava source high on its east side. */
     private void fall(GameTestHelper helper, int tier, int x, Consumer<List<Ring>> check) {
         ServerLevel level = TestLayers.level(helper, 1);
-        RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR - 8, FLOOR - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
-        RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR, FLOOR + 10, Z - RADIUS, Z + RADIUS, Blocks.AIR);
-        // Lava high on the east wall: in the liner's view at the landing and in the fall, and a stream that has not
-        // reached the pod when it lands.
-        level.setBlock(new BlockPos(x + 4, FLOOR + 6, Z), Blocks.LAVA.defaultBlockState(), 3);
-        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR + 8, Z), tier, false);
+        Rig rig = Rig.await(helper, level, new Vec3(x, FLOOR + 8, Z), tier, false, () -> {
+            RoomCarver.carve(
+                    level, x - RADIUS, x + RADIUS + 1, FLOOR - 8, FLOOR - 1, Z - RADIUS, Z + RADIUS, Blocks.STONE);
+            RoomCarver.carve(level, x - RADIUS, x + RADIUS + 1, FLOOR, FLOOR + 10, Z - RADIUS, Z + RADIUS, Blocks.AIR);
+            // Lava high on the east wall: in the liner's view at the landing and in the fall, and a stream that has not
+            // reached the pod when it lands.
+            level.setBlock(new BlockPos(x + 4, FLOOR + 6, Z), Blocks.LAVA.defaultBlockState(), 3);
+        });
         boolean[] airborne = {false};
         int[] settled = {0};
         TestTicks.each(helper, () -> {

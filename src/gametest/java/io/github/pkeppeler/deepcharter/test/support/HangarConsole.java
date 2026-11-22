@@ -21,6 +21,7 @@ public final class HangarConsole {
     public static Optional<BlockPos> find(MinecraftServer server) {
         return Colony.anchor(server, ColonyAnchor.HANGAR).flatMap(anchor -> {
             ServerLevel overworld = server.overworld();
+            // sync-load: the hangar anchor is on the colony's pad, which FarChunks.pin keeps loaded
             overworld.getChunk(anchor);
             return BlockPos.betweenClosedStream(
                             anchor.offset(-REACH, -REACH, -REACH), anchor.offset(REACH, REACH, REACH))

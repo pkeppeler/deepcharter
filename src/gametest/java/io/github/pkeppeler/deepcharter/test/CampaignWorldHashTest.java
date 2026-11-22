@@ -65,6 +65,8 @@ public class CampaignWorldHashTest {
                 for (int cx = corner; cx < corner + PATCH; cx++) {
                     for (int cz = corner; cz < corner + PATCH; cz++) {
                         // Generated and read in this one call, on this tick, so nothing needs forcing or waiting on.
+                        // sync-load: a hand-run tool (it returns at once without DEEPCHARTER_WORLD_HASH) that hashes
+                        // the chunks of this very call
                         LevelChunk chunk = level.getChunk(cx, cz);
                         lines.add(world + " " + cx + " " + cz + " " + Long.toHexString(blocks(chunk, stateHashes)) + " "
                                 + Long.toHexString(biomes(chunk)));

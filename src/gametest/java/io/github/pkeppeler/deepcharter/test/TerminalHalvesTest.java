@@ -236,6 +236,7 @@ public class TerminalHalvesTest {
         if (!helper.getLevel().getBlockState(lower.above()).isAir()) {
             throw helper.assertionException("the setup should leave air over the lone lower half");
         }
+        // sync-load: the chunk of the test's own structure, which is loaded
         TerminalActivity.sync(helper.getLevel(), helper.getLevel().getChunkAt(lower));
         BlockState upper = helper.getLevel().getBlockState(lower.above());
         if (!upper.is(TerminalTypes.REPAIR_STATION.block())

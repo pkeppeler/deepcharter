@@ -897,6 +897,8 @@ public class RepairStationTest {
                 overworld.setRespawnData(LevelData.RespawnData.of(
                         Level.OVERWORLD, TestLayers.pos(TestLayers.SURFACE, x, 64, 0), 0f, 0f));
                 if (load) {
+                    // sync-load: the body runs in the same tick as the swap of the colony record, so the chunk must be
+                    // loaded inside it
                     overworld.getChunk(x >> 4, 0);
                 }
                 BlockPos ground = overworld.getHeightmapPos(

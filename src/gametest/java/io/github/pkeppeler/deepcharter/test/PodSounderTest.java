@@ -96,12 +96,14 @@ public class PodSounderTest {
     /** Builds the site, lets {@code build} add its pockets, spawns the pod, and runs {@code check} on the pod after it has settled for a few ticks. */
     private void reads(GameTestHelper helper, int x, int tier, Consumer<ServerLevel> build, Consumer<PodEntity> check) {
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
-        build.accept(level);
         PodEntity[] pod = {null};
         int[] ticks = {0};
-        FarChunks.awaitEntityTicking(
-                helper, level, new BlockPos(x, FLOOR, Z), () -> pod[0] = spawn(helper, level, x, tier));
+        FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
+            build.accept(level);
+            pod[0] = spawn(helper, level, x, tier);
+        });
         TestTicks.each(helper, () -> {
             if (pod[0] == null || ++ticks[0] < SETTLE_TICKS) {
                 return;
@@ -268,10 +270,11 @@ public class PodSounderTest {
     public void aPodWhosePartIsGoneLosesItsStaleMarks(GameTestHelper helper) {
         int x = 6912;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         PodEntity[] pod = {null};
         int[] ticks = {0};
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
             pod[0] = spawn(helper, level, x, 0);
             pod[0].setAttached(PodSounder.STATE, Versioned.of(new PodSounder.State(2, 0b0100)));
         });
@@ -301,11 +304,12 @@ public class PodSounderTest {
         }
         int x = 6528;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
-        pocket(level, x, FLOOR - 1, Z);
         PodEntity[] pod = {null};
         int[] ticks = {0};
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
+            pocket(level, x, FLOOR - 1, Z);
             pod[0] = spawn(helper, level, x, 1);
             UNPOWERED.add(pod[0].getUUID());
         });
@@ -325,12 +329,14 @@ public class PodSounderTest {
     public void theMarksFollowAPocketThatIsMinedAway(GameTestHelper helper) {
         int x = 6576;
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
-        pocket(level, x, FLOOR - 1, Z);
         PodEntity[] pod = {null};
         int[] ticks = {0};
-        FarChunks.awaitEntityTicking(
-                helper, level, new BlockPos(x, FLOOR, Z), () -> pod[0] = spawn(helper, level, x, 1));
+        FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
+            pocket(level, x, FLOOR - 1, Z);
+            pod[0] = spawn(helper, level, x, 1);
+        });
         TestTicks.each(helper, () -> {
             if (pod[0] == null) {
                 return;
@@ -415,16 +421,18 @@ public class PodSounderTest {
     /** As above; with {@code bystander}, a second pod with a tier 2 sounder of its own stands within the blast's reach and drills nothing, and its loss is noted too. */
     private void drillOverAPocket(GameTestHelper helper, int x, int tier, boolean bystander, Consumer<Bleed> check) {
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         BlockPos pocket = new BlockPos(x, FLOOR - 1, Z);
-        pocket(level, x, FLOOR - 1, Z);
         MockPlayer pilot = owner(helper);
-        pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
         PodEntity[] pod = {null};
         int[] ticks = {0};
         int[] slabTicks = {0};
         PodEntity[] other = {null};
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
+            pocket(level, x, FLOOR - 1, Z);
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
             pod[0] = spawn(helper, level, x, tier, pilot);
             if (bystander) {
                 other[0] = spawn(helper, level, x, 2);
@@ -592,20 +600,23 @@ public class PodSounderTest {
 
     private void inThePause(GameTestHelper helper, int x, PauseScript script) {
         ServerLevel level = TestLayers.level(helper, 1);
-        site(level, x);
         BlockPos pocket = new BlockPos(x, FLOOR - 1, Z);
-        pocket(level, x, FLOOR - 1, Z);
         List<BlockPos> ores = List.of(
                 new BlockPos(x - 1, FLOOR - 1, Z - 1),
                 new BlockPos(x, FLOOR - 1, Z - 1),
                 new BlockPos(x - 1, FLOOR - 1, Z));
-        ores.forEach(ore -> level.setBlock(ore, OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3));
         MockPlayer pilot = owner(helper);
-        pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
         PodEntity[] pod = {null};
         int[] slabTicks = {0};
         int[] ticks = {0};
         FarChunks.awaitEntityTicking(helper, level, new BlockPos(x, FLOOR, Z), () -> {
+            // Built once the chunks are loaded: RoomSeal reads the shell, which would load them on the server thread.
+            site(level, x);
+            pocket(level, x, FLOOR - 1, Z);
+            ores.forEach(
+                    ore -> level.setBlock(ore, OreBlocks.of(OreType.IRONIUM).defaultBlockState(), 3));
+            // The pilot arrives after the room is cut: a survival player waiting inside the rock would suffocate.
+            pilot.teleportTo(level, new Vec3(x, FLOOR, Z), 0f, 0f);
             pod[0] = spawn(helper, level, x, 2, pilot);
             if (!pilot.player().startRiding(pod[0])) {
                 throw failure(helper, "the pilot could not mount the pod");

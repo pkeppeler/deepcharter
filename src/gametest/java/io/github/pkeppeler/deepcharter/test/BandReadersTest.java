@@ -88,12 +88,16 @@ public class BandReadersTest {
 
         Bore(GameTestHelper helper, int x, int floor, int crustRows, int feetAbove) {
             ServerLevel level = helper.getLevel();
-            RoomCarver.carve(level, x - 2, x + 2, floor, floor + crustRows - 1, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
-            RoomCarver.carve(level, x - 2, x + 2, floor + crustRows, floor + crustRows + 7, Z - 2, Z + 2, Blocks.AIR);
             Vec3 at = new Vec3(x, floor + feetAbove, Z);
             pilot = MockPlayers.join(helper, "band-bore-" + Math.abs(floor));
             pilot.teleportTo(level, at, 0f, 0f);
             FarChunks.awaitEntityTicking(helper, level, BlockPos.containing(at), () -> {
+                // Carved once the column's chunks are loaded: RoomSeal reads the shell, which would load them on the
+                // server thread.
+                RoomCarver.carve(
+                        level, x - 2, x + 2, floor, floor + crustRows - 1, Z - 2, Z + 2, LayerBlocks.BREACH_CRUST);
+                RoomCarver.carve(
+                        level, x - 2, x + 2, floor + crustRows, floor + crustRows + 7, Z - 2, Z + 2, Blocks.AIR);
                 PodEntity made = TestEntities.create(PodRegistry.POD, level);
                 made.setPos(at);
                 level.addFreshEntity(made);
@@ -237,7 +241,6 @@ public class BandReadersTest {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
         BlockPos floor = new BlockPos(x, ONE.minY() + LayerTuning.DEFAULT.crustThickness() - 1, Z);
-        RoomCarver.carve(level, x - 8, x + 8, floor.getY() + 1, floor.getY() + 16, Z - 8, Z + 8, Blocks.STONE);
         MockPlayer mock = MockPlayers.join(helper, "band-outposter");
         mock.player().setGameMode(GameType.SURVIVAL);
         if (Charters.found(
@@ -250,12 +253,16 @@ public class BandReadersTest {
         CharterId charter = Charters.charterOfOrThrow(server, mock.player().getUUID())
                 .orElseThrow()
                 .id();
-        mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
         FarChunks.awaitEntityTicking(
                 helper,
                 level,
                 floor,
                 () -> WorldData.with(server, OutpostData.TYPE, new OutpostData(), () -> {
+                    // Carved once the chunks are loaded: RoomSeal reads the shell, which would load them on the server
+                    // thread.
+                    RoomCarver.carve(
+                            level, x - 8, x + 8, floor.getY() + 1, floor.getY() + 16, Z - 8, Z + 8, Blocks.STONE);
+                    mock.teleportTo(level, Vec3.atBottomCenterOf(floor.above()), 0f, 0f);
                     Optional<Component> refusal = OutpostBuilder.build(mock.player(), level, floor, Direction.UP);
                     expect(
                             helper,

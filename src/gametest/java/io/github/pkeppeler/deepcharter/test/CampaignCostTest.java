@@ -5,8 +5,10 @@ import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.test.support.ClientLight;
 import io.github.pkeppeler.deepcharter.test.support.ColumnCost;
 import io.github.pkeppeler.deepcharter.test.support.ColumnCost.Measurement;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -78,21 +80,28 @@ public class CampaignCostTest {
     /** The campaign world and {@code tall_layer} put ore in a fresh column, so the context ratio compares a fill with a fill (#743). */
     @GameTest(maxTicks = MAX_TICKS)
     public void theCostWorldsBothRunTheZoneFill(GameTestHelper helper) {
-        for (String world : FILLED_WORLDS) {
-            ServerLevel level = world(helper, world);
-            // Not the column of the colony or of another test's cell: the middle of the sample, as ColumnCost samples
-            // it.
-            LevelChunk chunk = level.getChunk(CHUNK, CHUNK);
-            boolean ore = false;
-            for (LevelChunkSection section : chunk.getSections()) {
-                ore |= section.maybeHas(
-                        state -> OreRegistry.typeOf(state.getBlock()).isPresent());
-            }
-            if (!ore) {
-                throw helper.assertionException(Component.literal(world + " has no ore in a fresh column"));
-            }
-        }
-        helper.succeed();
+        // Not the column of the colony or of another test's cell: the middle of the sample, as ColumnCost samples it.
+        FarChunks.whenLoaded(
+                helper,
+                FILLED_WORLDS.stream()
+                        .map(world -> new FarChunks.At(world(helper, world), CHUNK, CHUNK))
+                        .toList(),
+                () -> {
+                    for (String world : FILLED_WORLDS) {
+                        LevelChunk chunk = Objects.requireNonNull(
+                                world(helper, world).getChunkSource().getChunkNow(CHUNK, CHUNK),
+                                "whenLoaded loaded the chunk");
+                        boolean ore = false;
+                        for (LevelChunkSection section : chunk.getSections()) {
+                            ore |= section.maybeHas(state ->
+                                    OreRegistry.typeOf(state.getBlock()).isPresent());
+                        }
+                        if (!ore) {
+                            throw helper.assertionException(Component.literal(world + " has no ore in a fresh column"));
+                        }
+                    }
+                    helper.succeed();
+                });
     }
 
     private static void report(GameTestHelper helper, Map<String, List<Measurement>> results) {

@@ -5,11 +5,13 @@ import io.github.pkeppeler.deepcharter.ore.OreBlock;
 import io.github.pkeppeler.deepcharter.ore.OreBlock.Host;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
 import io.github.pkeppeler.deepcharter.ore.OreType;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.OreBlocks;
 import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +34,6 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
@@ -55,15 +56,27 @@ public class OreHostTest {
         return layer == 1 ? Host.PACKED_SHALE : Host.GREEN_SHALE;
     }
 
-    @GameTest(maxTicks = 6000)
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void generatedOreInEachLayerSitsInThatLayersRock(GameTestHelper helper) {
+        List<FarChunks.At> chunks = new ArrayList<>();
+        for (int layer = 1; layer <= 2; layer++) {
+            chunks.addAll(FarChunks.rect(
+                    TestLayers.level(helper, layer),
+                    FIRST_CHUNK,
+                    FIRST_CHUNK,
+                    FIRST_CHUNK + SIDE - 1,
+                    FIRST_CHUNK + SIDE - 1));
+        }
+        FarChunks.whenLoaded(helper, chunks, () -> generatedOreSitsInThatLayersRock(helper));
+    }
+
+    private static void generatedOreSitsInThatLayersRock(GameTestHelper helper) {
         for (int layer = 1; layer <= 2; layer++) {
             ServerLevel level = TestLayers.level(helper, layer);
             LayerChain.Band levelBand = TestLayers.band(level, layer);
             Map<Host, Integer> found = new EnumMap<>(Host.class);
             for (int cx = FIRST_CHUNK; cx < FIRST_CHUNK + SIDE; cx++) {
                 for (int cz = FIRST_CHUNK; cz < FIRST_CHUNK + SIDE; cz++) {
-                    level.getChunk(cx, cz, ChunkStatus.FULL);
                     for (int x = cx << 4; x < (cx << 4) + 16; x++) {
                         for (int z = cz << 4; z < (cz << 4) + 16; z++) {
                             for (int y = levelBand.minY();

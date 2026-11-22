@@ -76,10 +76,13 @@ public final class FarChunks {
         }
     }
 
-    /** Forces a chunk for the rest of the world, since the runner unforces every forced chunk at each batch end (#669). */
+    /**
+     * Forces a chunk for the rest of the world, since the runner unforces every forced chunk at each batch end (#669). As {@link #force},
+     * the ticket loads the chunk on the worker threads: a caller that reads it waits first ({@link #awaitEntityTicking}).
+     */
     public static void pin(ServerLevel level, int chunkX, int chunkZ) {
         PINNED.add(new Chunk(level, ChunkPos.pack(chunkX, chunkZ)));
-        level.setChunkForced(chunkX, chunkZ, true);
+        level.getChunkSource().updateChunkForced(new ChunkPos(chunkX, chunkZ), true);
     }
 
     /** Whether {@link #pin} holds this chunk, exempt from the runner's batch-end unforce. */
@@ -233,6 +236,17 @@ public final class FarChunks {
 
     /** A chunk of a level, for {@link #awaitLoaded}. */
     public record At(ServerLevel level, int chunkX, int chunkZ) {}
+
+    /** Every chunk from {@code (minChunkX, minChunkZ)} to {@code (maxChunkX, maxChunkZ)}, both inclusive, for {@link #whenLoaded}. */
+    public static List<At> rect(ServerLevel level, int minChunkX, int minChunkZ, int maxChunkX, int maxChunkZ) {
+        List<At> chunks = new ArrayList<>();
+        for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+            for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+                chunks.add(new At(level, chunkX, chunkZ));
+            }
+        }
+        return chunks;
+    }
 
     /**
      * Forces every chunk of {@code chunks} (held until the test finishes, or until {@link #release}) and runs {@code then} on the

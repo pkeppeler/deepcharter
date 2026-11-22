@@ -10,6 +10,7 @@ import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.BreachEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
 import io.github.pkeppeler.deepcharter.layer.Zones;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
@@ -786,11 +787,14 @@ public class TransmissionsTest {
         MinecraftServer server = server(helper);
         ServerLevel one = TestLayers.level(server, 1);
         ServerLevel two = TestLayers.level(server, 2);
-        // Generate the arrival area in layer 2 now so the crossing does not wait on it.
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dz = -2; dz <= 2; dz++) {
-                two.getChunk((int) BREACH_COLUMN / 16 + dx, (int) BREACH_COLUMN / 16 + dz);
-            }
+        // Load the arrival area in layer 2 now so the crossing does not wait on it; it loads on the worker threads.
+        for (FarChunks.At chunk : FarChunks.rect(
+                two,
+                (int) BREACH_COLUMN / 16 - 2,
+                (int) BREACH_COLUMN / 16 - 2,
+                (int) BREACH_COLUMN / 16 + 2,
+                (int) BREACH_COLUMN / 16 + 2)) {
+            FarChunks.force(helper, two, chunk.chunkX(), chunk.chunkZ());
         }
         MockPlayer crew = MockPlayers.join(helper, "tx-breach");
         CharterId charter = foundedCharter(helper, crew.player().getUUID());
