@@ -1,62 +1,73 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 
 /** Scans generated chunks for a block, as the salvage tests and the gather scenario do. */
 public final class BlockSurvey {
     private BlockSurvey() {}
 
-    /** Every position of {@code wanted} in the chunks within {@code chunks} of the origin, generating them. */
-    public static List<BlockPos> find(ServerLevel level, int chunks, Block wanted) {
-        return find(level, chunks, wanted, ChunkStatus.FULL);
+    /** The chunks within {@code chunks} of the origin, for {@link FarChunks#whenLoaded}. */
+    public static List<FarChunks.At> area(ServerLevel level, int chunks) {
+        List<FarChunks.At> area = new ArrayList<>();
+        for (int chunkX = -chunks; chunkX <= chunks; chunkX++) {
+            for (int chunkZ = -chunks; chunkZ <= chunks; chunkZ++) {
+                area.add(new FarChunks.At(level, chunkX, chunkZ));
+            }
+        }
+        return area;
     }
 
     /**
-     * As {@link #find(ServerLevel, int, Block)}, generating each chunk only as far as {@code status}. A tall world's chunks are costly to
-     * take to {@link ChunkStatus#FULL} (light, promotion to a level chunk); a survey of what the features placed needs {@link
-     * ChunkStatus#FEATURES}.
+     * Every position of {@code wanted} in the chunks within {@code chunks} of the origin, which must be loaded already: a server
+     * GameTest loads them with {@code FarChunks.whenLoaded(helper, BlockSurvey.area(...), ...)}, so the generation does not run on the
+     * server thread (#1016).
      */
-    public static List<BlockPos> find(ServerLevel level, int chunks, Block wanted, ChunkStatus status) {
-        return Objects.requireNonNull(
-                findAll(level, chunks, status, wanted).get(wanted), "findAll answers each block asked");
+    public static List<BlockPos> find(ServerLevel level, int chunks, Block wanted) {
+        return find(chunks, wanted, (chunkX, chunkZ) -> {
+            LevelChunk chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
+            if (chunk == null) {
+                throw new IllegalStateException("chunk (" + chunkX + ", " + chunkZ + ") of "
+                        + level.dimension().identifier()
+                        + " is not loaded; call FarChunks.whenLoaded(helper, BlockSurvey.area(level, n), ...) first");
+            }
+            return chunk;
+        });
     }
 
-    /** As {@link #find(ServerLevel, int, Block, ChunkStatus)} for several blocks in one pass, so each chunk is generated once. */
-    public static Map<Block, List<BlockPos>> findAll(
-            ServerLevel level, int chunks, ChunkStatus status, Block... wanted) {
-        Map<Block, List<BlockPos>> found = new LinkedHashMap<>();
-        for (Block block : wanted) {
-            found.put(block, new ArrayList<>());
-        }
-        Predicate<BlockState> isAny = state -> found.containsKey(state.getBlock());
+    /**
+     * As {@link #find}, generating the chunks on the calling thread. For a scenario that has the server to itself (the evidence world's
+     * client run), never for a server GameTest, whose tests share the server thread.
+     */
+    public static List<BlockPos> generateAndFind(ServerLevel level, int chunks, Block wanted) {
+        return find(chunks, wanted, level::getChunk);
+    }
+
+    private static List<BlockPos> find(int chunks, Block wanted, BiFunction<Integer, Integer, LevelChunk> chunkAt) {
+        List<BlockPos> found = new ArrayList<>();
+        Predicate<BlockState> isIt = state -> state.is(wanted);
         for (int chunkX = -chunks; chunkX <= chunks; chunkX++) {
             for (int chunkZ = -chunks; chunkZ <= chunks; chunkZ++) {
-                ChunkAccess chunk = level.getChunk(chunkX, chunkZ, status);
+                LevelChunk chunk = chunkAt.apply(chunkX, chunkZ);
                 LevelChunkSection[] sections = chunk.getSections();
                 for (int index = 0; index < sections.length; index++) {
-                    if (!sections[index].maybeHas(isAny)) {
+                    if (!sections[index].maybeHas(isIt)) {
                         continue;
                     }
                     int baseY = chunk.getSectionYFromSectionIndex(index) << 4;
                     for (int x = 0; x < 16; x++) {
                         for (int y = 0; y < 16; y++) {
                             for (int z = 0; z < 16; z++) {
-                                List<BlockPos> list = found.get(
-                                        sections[index].getBlockState(x, y, z).getBlock());
-                                if (list != null) {
-                                    list.add(new BlockPos((chunkX << 4) + x, baseY + y, (chunkZ << 4) + z));
+                                if (isIt.test(sections[index].getBlockState(x, y, z))) {
+                                    found.add(new BlockPos((chunkX << 4) + x, baseY + y, (chunkZ << 4) + z));
                                 }
                             }
                         }
