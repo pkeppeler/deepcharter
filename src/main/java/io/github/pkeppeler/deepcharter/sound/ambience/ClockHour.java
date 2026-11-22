@@ -22,11 +22,9 @@ public final class ClockHour {
                 .lookupOrThrow(Registries.TIMELINE)
                 .get(SKY)
                 .map(Holder.Reference::value)
-                .flatMap(sky -> sky.periodTicks().stream()
-                        .mapToLong(period -> ClockCaller.worldHour(sky.getCurrentTicks(level.clockManager()), period))
-                        .boxed()
-                        .findFirst())
-                .map(hour -> OptionalInt.of(hour.intValue()))
+                .flatMap(sky -> sky.periodTicks()
+                        .map(period -> ClockCaller.worldHour(sky.getCurrentTicks(level.clockManager()), period)))
+                .map(OptionalInt::of)
                 .orElse(OptionalInt.empty());
     }
 }

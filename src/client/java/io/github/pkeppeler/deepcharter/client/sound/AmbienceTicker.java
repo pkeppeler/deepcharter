@@ -168,9 +168,7 @@ public final class AmbienceTicker {
         int layer = LayerChain.bandAt(level, feet.getY())
                 .map(LayerChain.Band::layer)
                 .orElse(LayerChain.SURFACE);
-        Optional<BlockPos> horn = layer == LayerChain.SURFACE
-                ? Optional.empty()
-                : HORNS.nearest(level, layer, feet, now, tuning.hornRange());
+        Optional<BlockPos> horn = nearestBlock(HORNS, level, layer, feet, tuning.hornRange());
         boolean quietNow = tracker.quiet(now);
         boolean warned = warn(client, level, quietNow);
         boolean called = callHour(sounds, level, layer, feet, quietNow || warned);
@@ -191,16 +189,23 @@ public final class AmbienceTicker {
         }
     }
 
+    /** The nearest block a finder looks for within {@code range}, never on the surface. */
+    private static Optional<BlockPos> nearestBlock(
+            BlockFinder finder, ClientLevel level, int layer, BlockPos feet, int range) {
+        return layer == LayerChain.SURFACE ? Optional.empty() : finder.nearest(level, layer, feet, now, range);
+    }
+
     /**
      * The punch clock (#938): {@link PunchClock} decides, near a Company clock, whether it calls an hour; this strikes the hour or hours it
      * names from the clock, one after the other. Returns whether it did.
      */
     private static boolean callHour(
             SoundManager sounds, ClientLevel level, int layer, BlockPos feet, boolean quietNow) {
-        Optional<BlockPos> clock = layer == LayerChain.SURFACE
-                ? Optional.empty()
-                : CLOCKS.nearest(level, layer, feet, now, CLOCK_TUNING.range());
-        Optional<PunchClock.Strike> called = PunchClock.tick(clockCaller, clock, ClockHour.of(level), quietNow);
+        Optional<PunchClock.Strike> called = PunchClock.tick(
+                clockCaller,
+                nearestBlock(CLOCKS, level, layer, feet, CLOCK_TUNING.range()),
+                ClockHour.of(level),
+                quietNow);
         if (called.isEmpty()) {
             return false;
         }

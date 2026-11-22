@@ -34,9 +34,6 @@ public final class AmbienceFragments {
                 }
             }
         }
-    }
-
-    static {
         // The punch clock's deep fragments (#938) are one more voice of the broken tier, named "clock" in it.
         POOLS.computeIfAbsent(AmbienceTier.BROKEN, t -> new ArrayList<>()).add(CLOCK);
         SOUNDS.put(AmbienceTier.BROKEN.id() + "." + CLOCK, DeepSound.AMBIENCE_CLOCK_FRAGMENT);
