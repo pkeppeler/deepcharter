@@ -65,7 +65,7 @@ public class LightSyncSafetyNetTest {
     /** Ticks from the hold's request to the send of the neighbour in the late case: more than a window counted from the request. */
     private static final int LATE_SEND_TICKS = 800;
 
-    /** Ticks the net compares for after a hold ended, with a margin: restates its window. */
+    /** Ticks the net compares for after the chunk can be sent, with a margin: restates its window. */
     private static final int NET_WAIT_TICKS = 100 + 40;
     /** Ticks the stored light must not change before the case takes it as settled. */
     private static final int STEADY_TICKS = 6;
