@@ -71,6 +71,14 @@ public class RetainedEconomyTest {
         return stats.tankLitres() * (1 - tuning.cling().floorPercent() / 100.0);
     }
 
+    /**
+     * The litres a run burns at the burn a grab was priced against, which is what the economy was tuned in before #963 slowed it to a seventh
+     * ({@link EarlyRunModel#PRICING_RUN_TANK_SHARE}): a share of it is a share of the tank, which a grab drains litre for litre.
+     */
+    private static double runLitres(Run run) {
+        return run.litres() / EarlyRunModel.PRICING_RUN_TANK_SHARE;
+    }
+
     private static Run runWithLoss(Zone zone, PodStats stats, int shaft, double litresLost) {
         return EarlyRunModel.run(zone, stats.withTankLitres((float) (stats.tankLitres() - litresLost)), shaft);
     }
@@ -92,11 +100,11 @@ public class RetainedEconomyTest {
         // the litres the run burns.
         double cuedLitres = killedLitres(tuning, CUED_REACTION_SECONDS);
         double uncuedLitres = killedLitres(tuning, UNCUED_REACTION_SECONDS);
-        double cuedShare = cuedLitres / whole.litres();
-        double uncuedShare = uncuedLitres / whole.litres();
+        double cuedShare = cuedLitres / runLitres(whole);
+        double uncuedShare = uncuedLitres / runLitres(whole);
         double unansweredLitres = unansweredLitres(stock, tuning);
         Run unanswered = runWithLoss(zone, stock, 0, unansweredLitres);
-        double unansweredShare = unansweredLitres / whole.litres();
+        double unansweredShare = unansweredLitres / runLitres(whole);
         long lights = LIGHTS_OLD_PRICE;
         double unansweredLoss = whole.net() - Math.max(0, unanswered.net());
         LOGGER.info(
@@ -202,7 +210,7 @@ public class RetainedEconomyTest {
     public void theFiguresRiseWithDepthAndStayFairInLayerOne(GameTestHelper helper) {
         CreatureTuning tuning = CreatureTuning.DEFAULT;
         PodStats stock = PodStats.base();
-        double whole = EarlyRunModel.run(Zone.load("topsoil_claims"), stock, 0).litres();
+        double whole = runLitres(EarlyRunModel.run(Zone.load("topsoil_claims"), stock, 0));
         double grabLitres = killedLitres(tuning, CUED_REACTION_SECONDS);
         double oneGrabs = grabsPerRun(tuning, tuning.natural().layerOneChancePerTry());
         double twoGrabs = grabsPerRun(tuning, tuning.natural().chancePerTry());
