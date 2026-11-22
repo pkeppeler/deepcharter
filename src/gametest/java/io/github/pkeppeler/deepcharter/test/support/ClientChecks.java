@@ -79,9 +79,8 @@ public final class ClientChecks {
     }
 
     /**
-     * A screenshot of the surface sky, taken once the client has caught up: the particle option at minimal and the HUD hidden, both put back
-     * after. The sky's {@code dust_mote} ambient particle is dark and random, and a non-forced particle makes {@code ClientLevel.doAddParticle}
-     * return early on minimal, so none is in the shot (#1043). A test that reads pixels of the surface sky shoots it here.
+     * A screenshot of the surface sky once the client has caught up, with minimal particles and the HUD hidden: the sky's dark, random
+     * {@code dust_mote} would otherwise speckle the pixels a test reads (#1043).
      */
     public static Path skyShot(ClientGameTestContext context, String name) {
         Path[] shot = new Path[1];
