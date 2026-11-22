@@ -419,13 +419,13 @@ public class EconomyAffordabilityTest {
     /**
      * Tank refills that a one-way bore of all of layer 1 takes, for a Mole whose tank is of tier 0 to 6, in the deepest zone (it
      * changes drill time per slab through the ore's hardness, so it is the dearest). Literals: a change to the tank ladder, the burn
-     * rates, the drill or layer 1's height moves them.
+     * rates (#963 cut them to about a seventh, so a bore is 20 L and the tank ladder buys it in 3 refills or fewer), the drill or layer 1's height moves them.
      */
-    private static final int[] BORE_TANKS_BY_TANK_TIER = {14, 10, 6, 4, 3, 2, 1};
+    private static final int[] BORE_TANKS_BY_TANK_TIER = {3, 2, 1, 1, 1, 1, 1};
 
-    private static final int BORE_LITRES = 139;
+    private static final int BORE_LITRES = 20;
     /** Litres (in tenths) of a braked drive down layer 1's 192 blocks at 0.6 blocks per tick: 16 s, the rotor on half of it. */
-    private static final int DRIVE_DOWN_DECILITRES = 20;
+    private static final int DRIVE_DOWN_DECILITRES = 3;
     /** The terminal sink speed of a pod in blocks per tick: gravity 0.08 times drag 0.98 over the 0.02 the drag removes. */
     private static final double FREE_FALL_TERMINAL_SINK = 3.92;
 
@@ -487,9 +487,9 @@ public class EconomyAffordabilityTest {
     /** The slabs and the net dollars of a Mole with tier 2 parts in `upper_levels`, from the outpost (#320) and, as before, from the surface. Literals: a change to the fuel, the drill, the ore or the outpost's terms moves them. */
     private static final int OUTPOST_RUN_SLABS = 48;
 
-    private static final int OUTPOST_RUN_NET = 413;
+    private static final int OUTPOST_RUN_NET = 455;
     private static final int SURFACE_START_RUN_SLABS = 31;
-    private static final int SURFACE_START_RUN_NET = 348;
+    private static final int SURFACE_START_RUN_NET = 370;
     /** What the outpost's prices take from a layer 2 run, as a share of what the same run nets at the colony's prices, at least and at most. */
     private static final double OUTPOST_TERMS_SHARE_MIN = 0.15;
 

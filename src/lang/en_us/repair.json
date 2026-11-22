@@ -30,5 +30,8 @@
   "screen.deepcharter.repair.no_pod": "No pod of yours is parked here",
   "screen.deepcharter.repair.repair": "REPAIR %s HP ($%s)",
   "screen.deepcharter.repair.scroll": "%s-%s OF %s - SCROLL",
-  "screen.deepcharter.repair.total": "REPAIR ALL"
+  "screen.deepcharter.repair.total": "REPAIR ALL",
+  "message.deepcharter.repair.recovery_called": "OUT OF FUEL: the Company winch crew is on its way, %s seconds, fee $%s. Refuel the pod to wave them off",
+  "message.deepcharter.repair.recovery_done": "The Company winched you home. Recovery fee: $%s",
+  "message.deepcharter.repair.recovery_short": "The Company winched you home and took $%s of its $%s fee. The rest came out of the hull. Any ore aboard stayed behind"
 }

@@ -1744,3 +1744,41 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 **Knobs.** None: the behaviour is the vanilla falling block's. `SurfaceBlocks.REGOLITH_DUST` is the dust colour.
 
 **Open questions.** Whether a slump should cost the pod something (a hull knock, a slowed drill) so a shallow bore has a price; whether the scanner should show a thin skin over a cut. Neither is built.
+
+## The first tank and the Company recovery (#963, A)
+
+**Problem.** The third playtest: the first pod "can only dig like 10 blocks before it runs out of fuel", then sits dark at the bottom of the shaft. The burn rates came from the original's per-second values (0.063, 0.19 and 0.32 L/s on a 10 L tank), but our drill takes 2.4 s a block in layer 1 (24 ticks of stone, slowed by depth, plus the pod's settling), so the same seconds bought far fewer blocks. Nobody had measured a tank in blocks. And a pilot who ran dry, broke and alone had no way out at all.
+
+**Measured** (`PodFuelTripTest`: the real stock pod, the real drill and a scripted pilot's inputs, in plain layer 1 stone; the pad is the top of layer 1, so a trip starts with the braked fall to the stone).
+
+| One full tank | Before (10 L, 0.32 L/s drilling) | After (10 L, 0.046 L/s drilling) |
+|---|---|---|
+| Straight bore down layer 1 | 13 blocks, 31 s of drilling, then stranded | 93 blocks, 230 s, then stranded |
+| First trip: 40 blocks down, a 6-block side tunnel at 20 and at 40, home on the rotor | 42.0 L, 152 s: four tanks, and a stranding at 38 s | 6.0 L, 152 s, home with 40% of the tank |
+| What a tank of that mix lasts | 0.6 min | 4.2 min |
+| Climb home from 40 blocks down | 3.4 L in 18 s | 0.48 L in 18 s |
+| Low-fuel tone (21%) | 2.1 L: 0.6 of the climb home | 2.1 L: 4.3 times the climb home |
+| Tank tiers 1 to 6, minutes of that mix | 0.9, 1.5, 2.4, 3.6, 6.0, 9.0 | 6.3, 10.5, 16.8, 25.2, 42.1, 63.1 |
+| Reserve tank (+25 L) | 2.1 min | 14.7 min |
+
+**The retune.** The three burn rates fall to 0.009 idle, 0.027 moving and 0.046 drilling (a seventh of the original's), and nothing else moves: not the tank (10 L), the litre price ($1), what a fuel item gives, the reserve tank's 25 L or the tank ladder's ratios, so every one of those keeps its meaning and each tier still multiplies the minutes (1.5x, 1.7x, 1.6x ...). The rate was the wrong number, not the tank. Pins in `PodFuelTripTest`: at least 60 blocks and 180 s from a tank; the first trip home with 30% left and 3.5 minutes of its mix in the tank; the tone leaves twice the climb home; each tier and the reserve at least 1.4x.
+
+**What it moves in the economy.**
+- The Company rock cutter (tier 3 drill) burned three times the drilling rate. That multiplier is now 21, so the cutter burns what it did and a bitten slab still costs about a blasting charge (`PodRockBiteTuning`).
+- The economy is counted in runs, and a run was a whole tank. With a seventh of the burn a tank is seven runs of fuel, but the bay (7 slots on a stock pod) and the drill's minutes still make a run, so `EarlyRunModel` keeps a run at the trip a seventh of a tank pays for (`PRICING_RUN_TANK_SHARE`): its slabs are as they were (48 and 31) and "runs to afford" means what it did, so no part price moves for pacing. A run nets 10% more (fuel is cheaper: $455 against $413 from the outpost, $370 against $348 from the surface), so the matter transmitter, the one price at the top of its band, went from $1,500 to $1,650 to stay at 3.6 layer 2 runs.
+- Fuel is cheaper to burn and as dear to buy: a tank is $10 and lasts four minutes, where it was $10 for 31 s of drilling. Fuel is still the clock; it just no longer ends a first trip at the 10th block.
+
+**Harder or easier.** Easier on the first hour (a first tank carries a real trip), and about 10% easier on money per run. Nothing is harder.
+
+**The Company recovery.** A pod stranded with a pilot aboard starts a clock (one versioned attachment, `company_recovery`, holding the game time it began; the HUD reads the time left from it). The HUD shows `COMPANY WINCH IN 58s  FEE $50  FUEL THE POD TO CANCEL`, and the pilot is told the same once, when the pod strands. A minute later, if the pod is still dry, the crew hauls pod and pilot to the colony (`Teleports`, the machinery of the emergency teleporters) and leaves a litre of fuel to drive to the pump. It costs, every time:
+- The minute in the dark, with a fuel item, a reserve tank or a friend's fuel ending it early. The clock stops when the pod has fuel again.
+- $50, taken from the pod's owner charter (the pilot's, for an unowned pod) up to what the account holds. The account never goes negative ([ADR 0007](../adr/0007-charters-are-one-versioned-saved-data.md)), so there is no debt: what the account cannot pay is taken from the hull, the unpaid share of 25 points, which the repair station mends at $1 a point. A dry, broke, solo pilot comes home with 75 hull and nothing else lost.
+- The ore in the bay, which stays where the pod stopped as spilled ore (nothing mined teleports, SPEC section 11), so a full bay is a trip back down to fetch it.
+
+**Trade-offs.** Cheaper than a tow (no second pod) and dearer than a refuel ($50 and a minute against $10), so carrying fuel is still right and the beep is still an order. The ore loss is the real cost for a pilot with a full bay, the hull for a broke one.
+
+**Knobs.** `RecoveryTuning` (`delayTicks` 1200, `fee` 50, `scrapeHull` 25, `splashLitres` 1), `PodTuning.Fuel` (the three rates), `PodRockBiteTuning.fuelMultiplier`, `EarlyRunModel.PRICING_RUN_TANK_SHARE`.
+
+**Pins.** `PodFuelTripTest` (the tank in the pilot's units, the beep, the ladder), `CompanyRecoveryTest` (a dry, broke, solo pilot is hauled home with no debt and 25 hull gone; a full fee is paid from the account and the ore is left behind; a short account pays what it holds and the hull the rest; a pilot who refuels in the wait calls the crew off), `PodStatusHudClientTest` (the countdown line).
+
+**Open questions.** Whether a hauled pod should also owe a "parking" fee at the pad; whether a second pod in reach should be able to answer the call before the crew (the tow line already does). Neither is built. The ownership rule: the crew moves a pod only for the pilot aboard it and charges only the pod's owner charter, so it never moves or charges anyone else's.

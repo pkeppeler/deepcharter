@@ -49,5 +49,6 @@
   "hud.deepcharter.pod.slag": "Slag %s  Spoil %s",
   "hud.deepcharter.pod.slag_only": "Slag %s",
   "hud.deepcharter.pod.stranded": "STRANDED",
-  "key.deepcharter.line_slab": "Line the slab with slag brick"
+  "key.deepcharter.line_slab": "Line the slab with slag brick",
+  "hud.deepcharter.pod.recovery": "COMPANY WINCH IN %ss  FEE $%s  FUEL THE POD TO CANCEL"
 }

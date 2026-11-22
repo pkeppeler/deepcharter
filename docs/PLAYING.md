@@ -36,7 +36,8 @@ You need a Minecraft Java Edition account.
 - **Move:** W A S D steer the pod.
 - **Rotor:** hold jump (Space) to lift.
 - **Drill:** sprint (default Left Ctrl). Sprint while on the ground drills down; push into a wall to drill sideways.
-- **Refuel:** right-click the pod while holding coal or charcoal.
+- **Refuel:** right-click the pod while holding coal or charcoal. The low-fuel tone sounds at 21% of the tank. A full tank is about four minutes of drilling, driving and climbing, so a first trip down 40 blocks and home leaves fuel to spare.
+- **Stranded:** a pod that runs dry goes dark. Refuel it (a fuel item, or a reserve tank) and it wakes. If nobody does, the HUD counts down a minute and the Company's winch crew hauls you and the pod home for a $50 recovery fee. The fee comes from your charter's account, up to what it holds. A bare account costs hull instead (up to 25 points), never debt. Any ore in the bay stays where the pod stopped, and the crew leaves a litre of fuel to drive to the pump.
 - **Terminals:** right-click one in the colony (fuel pump, ore processor, upgrade terminal, repair station, hangar console). A terminal that is offline takes the parts that repair it: put them in from its screen. Park your pod beside a terminal to use it on the pod.
 - **Handbook:** press H. It lists nine chapters of directives that tick off as you do them. Right-click a sheet of paper in the world to file its Note.
 - **Tow cable:** ride a pod, hold a tow cable and right-click another pod. Right-click a towed pod with the cable to take it off.
@@ -64,7 +65,6 @@ Host only: with the extracted originals in `original_flash_game/extracted/sounds
 ## Known issues
 
 - Content is partial: only the surface and layers 1 and 2 exist, with placeholder text, sounds and models. The lore and the creatures are unfinished.
-- Pods can run out of fuel and strand you. Bring coal.
 - Sodium and Lithium are speed mods and are not ours. If something looks wrong, remove them from the instance (**Edit, Mods**) and check whether the problem goes away. Say so in your report.
 - Do not add other mods, except the optional one above. Old Sodium add-ons are blocked by it. Iris 1.11.7 now supports Sodium 0.9.2, but only as a dev opt-in, not for friends: see [iris-audit.md](tooling/iris-audit.md).
 - Back up your world before updating the build.
