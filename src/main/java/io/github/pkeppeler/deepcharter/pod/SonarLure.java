@@ -67,9 +67,6 @@ final class SonarLure {
     }
 
     private static void hold(MinecraftServer server) {
-        if (HOLDS.isEmpty()) {
-            return;
-        }
         Iterator<Map.Entry<Integer, Hold>> holds = HOLDS.entrySet().iterator();
         while (holds.hasNext()) {
             Map.Entry<Integer, Hold> entry = holds.next();

@@ -383,7 +383,6 @@ public class PodSonarTest {
                                             echo.pos().equals(bodies.get(2).blockPosition())),
                             "a creature outside the echo tag is hollow and returns nothing: %s",
                             echoes(scene.pod()));
-                    bodies.forEach(Entity::discard);
                 });
     }
 
@@ -430,7 +429,6 @@ public class PodSonarTest {
                             !echoesAt(scene.pod(), bodies.get(2).blockPosition()),
                             "a Retained is hollow and returns nothing: %s",
                             echoes(scene.pod()));
-                    bodies.forEach(Entity::discard);
                 });
     }
 
@@ -480,7 +478,6 @@ public class PodSonarTest {
                             !echoesAt(scene.pod(), bodies.get(2).blockPosition()),
                             "a type in both the echo and the hollow tag returns nothing: %s",
                             echoes(scene.pod()));
-                    bodies.forEach(Entity::discard);
                 });
     }
 
@@ -604,7 +601,6 @@ public class PodSonarTest {
                             helper,
                             walkers[2].position().distanceTo(pod) > TUNING.noiseBlocks(),
                             "the creature past the noise stayed where it was");
-                    Stream.concat(Stream.of(walkers), Stream.of(chicken)).forEach(Entity::discard);
                     return true;
                 });
     }
