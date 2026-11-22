@@ -83,6 +83,8 @@ public final class LightSync {
         int unsentSince = -1;
 
         boolean reported;
+        /** Set once the light engine has been waited for {@value #TIMEOUT_TICKS} ticks. */
+        boolean slowReported;
 
         NetWatch(int nextCheck, int until) {
             this.nextCheck = nextCheck;
@@ -92,11 +94,12 @@ public final class LightSync {
         void keepOpen(int now) {
             until = Math.max(until, now + NET_WINDOW_TICKS);
             settling = null;
+            slowReported = false;
         }
     }
 
-    /** The light tasks queued for a chunk when its window ran out, and the tick the watch ends at if they have not run. */
-    private record Settling(CompletableFuture<?> tasks, int cap) {}
+    /** The light tasks queued for a chunk when its window ran out, and the tick they were queued. */
+    private record Settling(CompletableFuture<?> tasks, int since) {}
 
     /** The chunks in the 3x3 of a hold, until the window after they can be sent runs out and the light settles. Server thread only. */
     private static final Map<Key, NetWatch> NET = new HashMap<>();
@@ -342,8 +345,9 @@ public final class LightSync {
     }
 
     /**
-     * Whether the watch is over: its window has run out and the light tasks queued for the chunk by then have run (a light engine
-     * that is behind publishes in wall time, not in ticks), or {@value #TIMEOUT_TICKS} ticks have passed since.
+     * Whether the watch is over: its window has run out and the light tasks queued for the chunk by then have run. A light engine
+     * that is behind publishes in wall time, not in ticks, so no tick count ends the watch before they have: a player would keep
+     * the old light (#954). A watch that has waited {@value #TIMEOUT_TICKS} ticks is reported once and kept.
      */
     private static boolean windowOver(Key key, NetWatch watch, int now) {
         if (now <= watch.until) {
@@ -355,19 +359,19 @@ public final class LightSync {
         Settling settling = watch.settling;
         if (settling == null) {
             settling = new Settling(
-                    key.level.getChunkSource().getLightEngine().waitForPendingTasks(key.chunk.x(), key.chunk.z()),
-                    now + TIMEOUT_TICKS);
+                    key.level.getChunkSource().getLightEngine().waitForPendingTasks(key.chunk.x(), key.chunk.z()), now);
             watch.settling = settling;
         }
         if (settling.tasks.isDone()) {
             return true;
         }
-        if (now > settling.cap) {
+        if (!watch.slowReported && timedOut(now - settling.since)) {
+            watch.slowReported = true;
             DeepCharter.LOGGER.warn(
-                    "A light watch of chunk {} in {} ended before the light engine had run its tasks",
+                    "A light watch of chunk {} in {} has waited {} ticks for the light engine to run its tasks",
                     key.chunk,
-                    key.level.dimension().identifier());
-            return true;
+                    key.level.dimension().identifier(),
+                    now - settling.since);
         }
         return false;
     }

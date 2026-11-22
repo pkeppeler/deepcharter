@@ -490,6 +490,8 @@ public class LightSyncSafetyNetTest {
         FarChunks.Deadline deadline = FarChunks.deadline(120);
         int[] phase = {0};
         int[] waited = {0};
+        int[][] steady = {null};
+        AtomicReference<@Nullable CompletableFuture<?>> marker = new AtomicReference<>();
         BlockPos[] lamp = {null};
         int[][] before = {null};
         boolean[] ended = {false};
@@ -554,6 +556,15 @@ public class LightSyncSafetyNetTest {
                         }
                         waited[0] = 0;
                         phase[0] = 4;
+                    }
+                    case 4 -> {
+                        // The light engine runs in wall time, so a tick count after the change may end before it
+                        // publishes.
+                        if (!steady(level, home, lampChunk, lamp[0], steady, waited, marker)) {
+                            return;
+                        }
+                        waited[0] = 0;
+                        phase[0] = 5;
                     }
                     default -> {
                         if (waited[0]++ < NET_WAIT_TICKS) {
