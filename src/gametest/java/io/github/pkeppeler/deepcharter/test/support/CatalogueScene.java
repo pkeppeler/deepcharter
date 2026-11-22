@@ -41,7 +41,7 @@ public final class CatalogueScene {
         CatalogueLayout.Shelf shelf = layout.shelf();
         CatalogueLook look = CatalogueLook.current();
         return new Rect(
-                shelf.gridX() + (index % shelf.columns()) * look.gridCell(),
+                shelf.left() + (index % shelf.columns()) * look.gridCell(),
                 shelf.gridY() + (index / shelf.columns()) * look.gridCell(),
                 look.slotSize(),
                 look.slotSize());

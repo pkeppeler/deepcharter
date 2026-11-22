@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.DeepCharter;
+import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.Bench;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueFavourites;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
@@ -46,6 +47,7 @@ import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.ImageButton;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CraftingScreen;
@@ -444,17 +446,18 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             require(inside(rect, glass), "a part " + rect + " leaves the catalogue's glass " + glass + at);
         }
         Rect grid = new Rect(
-                shelf.gridX(),
+                shelf.left(),
                 shelf.gridY(),
                 (shelf.columns() - 1) * look.gridCell() + look.slotSize(),
                 (shelf.rows() - 1) * look.gridCell() + look.slotSize());
         require(inside(grid, glass), "the item grid " + grid + " leaves the glass " + glass + at);
         Rect row = new Rect(
-                shelf.favouritesX(),
+                shelf.left(),
                 shelf.favouritesY(),
-                (shelf.favouriteColumns() - 1) * look.gridCell() + look.slotSize(),
+                (shelf.columns() - 1) * look.gridCell() + look.slotSize(),
                 look.slotSize());
-        require(inside(row, shelf.favourites()), "the favourites row " + row + " leaves its area" + at);
+        require(inside(row, glass), "the favourites row " + row + " leaves the glass " + glass + at);
+        require(!overlap(row, grid), "the favourites row " + row + " overlaps the item grid " + grid + at);
         require(!overlap(grid, shelf.favourites()), "the item grid runs into the favourites" + at);
         require(!overlap(grid, shelf.search()), "the item grid runs into the search field" + at);
         require(
@@ -535,6 +538,8 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
         craftableNowFiltersByWhatIsHeld(context, singleplayer, screen, panel);
         thePanelsFollowTheWindowSize(context, screen);
         theCatalogueOpensAtAnItem(context);
+        openingAnItemFromTheHandbookComesBackToIt(context);
+        openingAnItemInAWindowTooSmallLeavesTheHandbookOpen(context);
         theCraftingTableHasTheCatalogueToo(context);
     }
 
@@ -935,6 +940,60 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
                 "and with the inventory open it shows the next item without a new screen");
     }
 
+    /** The handbook opened from the pause menu: its quest map's item click puts the inventory over it, and closing that comes back. */
+    private static void openingAnItemFromTheHandbookComesBackToIt(ClientGameTestContext context) {
+        context.setScreen(() -> null);
+        context.waitTicks(2);
+        Screen parent = context.computeOnClient(client -> {
+            Screen pause = new PauseScreen(true);
+            HandbookScreen.open(client, pause);
+            return pause;
+        });
+        Screen handbook = context.computeOnClient(client -> client.gui.screen());
+        require(handbook instanceof HandbookScreen, "setup: the handbook is open, got " + handbook);
+        context.runOnClient(client -> CatalogueScreens.open(DRILL));
+        ClientWait.screen(context, InventoryScreen.class);
+        context.waitTicks(3);
+        // The first Escape puts the recipe panel away, the second closes the inventory.
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        context.waitTicks(1);
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        ClientWait.until(context, "the handbook back", client -> client.gui.screen() == handbook);
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        ClientWait.until(context, "the handbook's parent", client -> client.gui.screen() == parent);
+        context.setScreen(() -> null);
+    }
+
+    private static void openingAnItemInAWindowTooSmallLeavesTheHandbookOpen(ClientGameTestContext context) {
+        context.setScreen(() -> null);
+        context.waitTicks(2);
+        context.runOnClient(client -> HandbookScreen.open(client, null));
+        Screen handbook = context.computeOnClient(client -> client.gui.screen());
+        require(handbook instanceof HandbookScreen, "setup: the handbook is open, got " + handbook);
+        int scale = context.computeOnClient(client -> client.getWindow().getGuiScale());
+        try {
+            // The screen is not resized, so only the catalogue's own check of the window sees it small.
+            context.runOnClient(client -> client.getWindow().setGuiScale(4));
+            require(
+                    context.computeOnClient(client -> CatalogueLayout.of(
+                                    client.getWindow().getGuiScaledWidth(),
+                                    client.getWindow().getGuiScaledHeight(),
+                                    CatalogueLook.current(),
+                                    CrtTuning.current(),
+                                    client.font.lineHeight)
+                            == null),
+                    "setup: the window is too small for the consoles at GUI scale 4");
+            context.runOnClient(client -> CatalogueScreens.open(DRILL));
+            context.waitTicks(3);
+            require(
+                    context.computeOnClient(client -> client.gui.screen()) == handbook,
+                    "a click on an item in a window too small for the consoles leaves the handbook open");
+        } finally {
+            context.runOnClient(client -> client.getWindow().setGuiScale(scale));
+            context.setScreen(() -> null);
+        }
+    }
+
     private static void hoveringAnInventorySlotWorksToo(
             ClientGameTestContext context,
             TestSingleplayerContext singleplayer,
@@ -1045,7 +1104,7 @@ public class PartsCatalogueClientTest implements FabricClientGameTest {
             require(
                     CatalogueFavourites.shared().items(player).contains(DRILL),
                     "A on a hovered cell stars its item for this player");
-            Rect first = new Rect(layout.shelf().favouritesX(), layout.shelf().favouritesY(), 18, 18);
+            Rect first = new Rect(layout.shelf().left(), layout.shelf().favouritesY(), 18, 18);
             CatalogueScene.hover(context, first);
             require(
                     context.computeOnClient(client -> panel.hoveredItem()) == DRILL,

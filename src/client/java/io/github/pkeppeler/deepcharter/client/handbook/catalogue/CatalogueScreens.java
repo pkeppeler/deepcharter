@@ -4,6 +4,7 @@ import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import java.util.HashMap;
 import java.util.Map;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
@@ -32,11 +33,16 @@ public final class CatalogueScreens {
     private static final Map<Screen, CataloguePanel> PANELS = new HashMap<>();
     /** An item {@link #open} was asked for before the inventory it needs was open, looked up as soon as the panel exists. */
     private static @Nullable Item pending;
+    /** The screen each inventory {@link #open} made over another screen goes back to when it closes. */
+    private static final Map<Screen, Screen> RETURN_TO = new HashMap<>();
+    /** The screen to bring back on the next client tick, once the inventory it was under has closed. */
+    private static @Nullable Screen reopen;
 
     private CatalogueScreens() {}
 
     public static void register() {
         CatalogueKeys.register();
+        ClientTickEvents.END_CLIENT_TICK.register(CatalogueScreens::reopenReturnScreen);
         ScreenEvents.BEFORE_INIT.register((client, screen, width, height) -> {
             if (hasCatalogue(screen) && fits(width, height)) {
                 closeVanillaBook(client);
@@ -72,12 +78,19 @@ public final class CatalogueScreens {
 
     /**
      * Shows the recipes of {@code item}: what a click on an item of the quest map's index card calls, the "recipe one click away" link. Opens the inventory first when
-     * no screen with a catalogue is open. An item the charter knows no recipe of is shown as such, never its recipes.
+     * no screen with a catalogue is open, over the screen that is open now, which comes back when the inventory closes (the handbook, with
+     * its parent). A window too small for the consoles changes nothing. An item the charter knows no recipe of is shown as such, never its
+     * recipes.
+     *
+     * <p>The screen it opens is always the survival {@link InventoryScreen}, so a creative player gets the survival inventory there.
      */
     public static void open(Item item) {
         Minecraft client = Minecraft.getInstance();
         LocalPlayer player = client.player;
-        if (player == null) {
+        if (player == null
+                || !fits(
+                        client.getWindow().getGuiScaledWidth(),
+                        client.getWindow().getGuiScaledHeight())) {
             return;
         }
         Screen open = client.gui.screen();
@@ -90,7 +103,26 @@ public final class CatalogueScreens {
         // A vanilla screen, so it is not one of the mod's screens the layout gate asks to be covered by
         // ScreenLayoutClientTest.
         InventoryScreen inventory = new InventoryScreen(player);
+        if (open != null) {
+            RETURN_TO.put(inventory, open);
+        }
         client.gui.setScreen(inventory);
+        if (client.gui.screen() != inventory) {
+            pending = null;
+            RETURN_TO.remove(inventory);
+        }
+    }
+
+    /** Brings back the screen an inventory of {@link #open} was over, unless something else has opened since. */
+    private static void reopenReturnScreen(Minecraft client) {
+        Screen back = reopen;
+        if (back == null) {
+            return;
+        }
+        reopen = null;
+        if (client.player != null && client.gui.screen() == null) {
+            client.gui.setScreen(back);
+        }
     }
 
     private static void attach(AbstractRecipeBookScreen<?> screen, int width, int height) {
@@ -115,7 +147,13 @@ public final class CatalogueScreens {
         ScreenEvents.afterForeground(screen)
                 .register((s, graphics, mouseX, mouseY, delta) -> panel.extract(graphics, mouseX, mouseY));
         ScreenEvents.afterTick(screen).register(s -> panel.tick());
-        ScreenEvents.remove(screen).register(PANELS::remove);
+        ScreenEvents.remove(screen).register(removed -> {
+            PANELS.remove(removed);
+            Screen back = RETURN_TO.remove(removed);
+            if (back != null) {
+                reopen = back;
+            }
+        });
         ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> !panel.keyPressed(event));
         ScreenKeyboardEvents.allowCharType(screen).register((s, event) -> !panel.charTyped(event));
         ScreenMouseEvents.allowMouseClick(screen).register((s, event) -> !panel.mouseClicked(event));

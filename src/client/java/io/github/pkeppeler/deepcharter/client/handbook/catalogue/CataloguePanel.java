@@ -175,15 +175,14 @@ public final class CataloguePanel {
     /** The cell {@code index} of the item grid or of the favourites row. */
     private Rect gridCell(CatalogueLayout.Shelf shelf, CatalogueLook look, int index) {
         return new Rect(
-                shelf.gridX() + (index % shelf.columns()) * look.gridCell(),
+                shelf.left() + (index % shelf.columns()) * look.gridCell(),
                 shelf.gridY() + (index / shelf.columns()) * look.gridCell(),
                 look.slotSize(),
                 look.slotSize());
     }
 
     private Rect favouriteCell(CatalogueLayout.Shelf shelf, CatalogueLook look, int index) {
-        return new Rect(
-                shelf.favouritesX() + index * look.gridCell(), shelf.favouritesY(), look.slotSize(), look.slotSize());
+        return new Rect(shelf.left() + index * look.gridCell(), shelf.favouritesY(), look.slotSize(), look.slotSize());
     }
 
     private List<Item> favourites() {
@@ -248,8 +247,8 @@ public final class CataloguePanel {
             }
         }
         List<Item> favourites = favourites();
-        int offset = state.favouriteOffset(favourites.size(), shelf.favouriteColumns());
-        for (int i = 0; i < shelf.favouriteColumns() && offset + i < favourites.size(); i++) {
+        int offset = state.favouriteOffset(favourites.size(), shelf.columns());
+        for (int i = 0; i < shelf.columns() && offset + i < favourites.size(); i++) {
             Rect cell = favouriteCell(shelf, look, i);
             if (cell.contains(x, y)) {
                 return new Hit(favourites.get(offset + i), cell);
@@ -515,8 +514,7 @@ public final class CataloguePanel {
         CatalogueHardware.body(graphics, look, now.catalogue(), now.catalogueGlass(), shelf.vents());
         graphics.nextStratum();
 
-        CrtDraw.header(
-                graphics, font, CrtText.terminal(text("title")), shelf.left(), shelf.titleY(), shelf.titleRight());
+        CrtDraw.header(graphics, font, CrtText.terminal(text("title")), shelf.left(), shelf.titleY(), shelf.right());
 
         Rect search = shelf.search();
         graphics.fill(search.x(), search.y(), search.right(), search.bottom(), crt.backgroundColor());
@@ -541,15 +539,15 @@ public final class CataloguePanel {
             dim(
                     graphics,
                     fit(text("empty"), shelf.columns() * look.gridCell()),
-                    shelf.gridX(),
+                    shelf.left(),
                     shelf.gridY() + 2,
                     panel);
         }
 
-        dim(graphics, text("favourites"), shelf.favouritesX(), shelf.favouritesLabelY(), panel);
+        dim(graphics, text("favourites"), shelf.left(), shelf.favouritesLabelY(), panel);
         List<Item> favourites = favourites();
-        int offset = state.favouriteOffset(favourites.size(), shelf.favouriteColumns());
-        for (int i = 0; i < shelf.favouriteColumns() && offset + i < favourites.size(); i++) {
+        int offset = state.favouriteOffset(favourites.size(), shelf.columns());
+        for (int i = 0; i < shelf.columns() && offset + i < favourites.size(); i++) {
             drawCell(graphics, favouriteCell(shelf, look, i), look, favourites.get(offset + i), hit);
         }
 

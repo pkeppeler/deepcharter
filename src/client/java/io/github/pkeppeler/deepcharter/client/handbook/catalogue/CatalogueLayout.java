@@ -46,20 +46,16 @@ public record CatalogueLayout(
     /**
      * The catalogue's content: what is on the glass, and the controls under it.
      *
-     * @param left where text and cells start
-     * @param right where the title and the search end
+     * @param left where text and cells start, the left of the item grid and of the favourites
+     * @param right where the title and the search end, and its rule
      * @param titleY the title's top
-     * @param titleRight the right end of the title's rule
      * @param search the search field
-     * @param gridX the left of the item grid
      * @param gridY the top of the item grid
-     * @param columns the grid's columns
+     * @param columns the grid's columns, and the cells of the favourites row
      * @param rows the grid's rows
      * @param favourites the favourites' label and its row of cells
      * @param favouritesLabelY the top of the "FAVOURITES" label
-     * @param favouritesX the left of the label and of the row
      * @param favouritesY the top of the favourites row
-     * @param favouriteColumns the cells of the favourites row
      * @param craftable the craftable-now switch, a plate with its legend
      * @param previous the page-back knob
      * @param next the page-forward knob
@@ -70,17 +66,13 @@ public record CatalogueLayout(
             int left,
             int right,
             int titleY,
-            int titleRight,
             Rect search,
-            int gridX,
             int gridY,
             int columns,
             int rows,
             Rect favourites,
             int favouritesLabelY,
-            int favouritesX,
             int favouritesY,
-            int favouriteColumns,
             Rect craftable,
             Rect previous,
             Rect next,
@@ -189,17 +181,13 @@ public record CatalogueLayout(
                 left,
                 right,
                 titleY,
-                right,
                 search,
-                left,
                 gridY,
                 columns,
                 rows,
                 favourites,
                 favouritesLabelY,
-                left,
                 favouritesLabelY + look.labelHeight(),
-                columns,
                 craftable,
                 previous,
                 next,
@@ -210,7 +198,7 @@ public record CatalogueLayout(
     /** The vents in the gap from {@code before} to {@code after}, a row of them as tall as the controls less their margin. */
     private static Rect ventsBetween(Rect before, Rect after, CatalogueLook.Casing c) {
         int margin = c.deckGap();
-        int slotsHeight = 3 * c.ventSlots();
+        int slotsHeight = c.ventHeight();
         return new Rect(
                 before.right() + margin,
                 before.y() + (before.height() - slotsHeight) / 2,
@@ -230,7 +218,7 @@ public record CatalogueLayout(
         int needTop = gridY + look.needTop();
         int needRows = Math.max(0, (glass.bottom() - look.contentBottom() - needTop) / look.needRow());
         int lower = upper + c.deckRow() + c.deckRowGap();
-        int slotsHeight = 3 * c.ventSlots();
+        int slotsHeight = c.ventHeight();
         Rect vents = new Rect(
                 glass.x() + c.knobSize() + c.deckGap(),
                 lower + (c.deckRow() - slotsHeight) / 2,

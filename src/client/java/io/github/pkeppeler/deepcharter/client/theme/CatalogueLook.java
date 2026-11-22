@@ -208,6 +208,14 @@ public record CatalogueLook(
                     d.color("highlightColor"));
         }
 
+        /** The rows one vent slot takes: two dark pixels and the lit one under them, the sprite the vents are drawn as. */
+        public static final int VENT_PITCH = 3;
+
+        /** The height of a vent: its slots, one pitch each. */
+        public int ventHeight() {
+            return VENT_PITCH * ventSlots;
+        }
+
         /** What a console has under its glass: the gap, the two rows of controls with the gap between, and the bottom bezel. */
         public int consoleDeck() {
             return deckGap + 2 * deckRow + deckRowGap + bottomBezel;

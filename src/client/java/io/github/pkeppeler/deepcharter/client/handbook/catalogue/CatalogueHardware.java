@@ -12,7 +12,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * What the catalogue's units are made of: the casing with its groove and rivets, the shadowed lip round the glass, the bulge of the glass
- * (a dark ring at its edge and a curved highlight), vents, knobs and toggle switches (#846). Every size and colour is
+ * (a dark ring at its edge and a curved highlight), vents, knobs and toggle switches (#846). The layout sizes and colours are
  * {@link CatalogueLook.Casing}'s; the glass is lit as the colony terminals' is, by {@link CrtDraw}.
  *
  * <p>A unit is drawn in this order: {@link #body} (casing, lip, phosphor), its content, {@link #glassFront} (the glass over the
@@ -135,9 +135,9 @@ final class CatalogueHardware {
     /** A grille of slots in {@code area}: dark slots with a lit lower edge. */
     private static void vents(GuiGraphicsExtractor graphics, CatalogueLook.Casing c, Rect area) {
         for (int slot = 0; slot < c.ventSlots(); slot++) {
-            int y = area.y() + slot * 3;
+            int y = area.y() + slot * CatalogueLook.Casing.VENT_PITCH;
             graphics.fill(area.x(), y, area.right(), y + 2, c.ventColor());
-            graphics.fill(area.x(), y + 2, area.right(), y + 3, c.ventLightColor());
+            graphics.fill(area.x(), y + 2, area.right(), y + CatalogueLook.Casing.VENT_PITCH, c.ventLightColor());
         }
     }
 
