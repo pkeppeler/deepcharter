@@ -1,0 +1,7 @@
+{
+  "parent": "deepcharter:block/terminal_item",
+  "textures": {
+    "front": "deepcharter:block/fuel_pump_front",
+    "front_glow": "deepcharter:block/fuel_pump_front_glow"
+  }
+}

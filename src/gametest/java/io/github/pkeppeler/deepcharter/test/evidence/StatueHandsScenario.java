@@ -6,7 +6,6 @@ import io.github.pkeppeler.deepcharter.colony.FounderStatue;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
 import io.github.pkeppeler.deepcharter.test.support.TestColony;
 import java.util.List;
-import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.server.MinecraftServer;
@@ -95,14 +94,6 @@ public class StatueHandsScenario extends EvidenceScenario {
 
     /** Puts the player at {@code at}, looking at {@code target}. */
     private static void look(TestSingleplayerContext singleplayer, Vec3 at, Vec3 target) {
-        Vec3 d = target.subtract(at);
-        float yaw = (float) Math.toDegrees(Math.atan2(-d.x, d.z));
-        float pitch = (float) Math.toDegrees(Math.atan2(-d.y, Math.hypot(d.x, d.z)));
-        singleplayer
-                .getServer()
-                .runOnServer(server -> server.getPlayerList()
-                        .getPlayers()
-                        .getFirst()
-                        .teleportTo(server.overworld(), at.x, at.y, at.z, Set.of(), yaw, pitch, true));
+        teleportLooking(singleplayer, at, at, target);
     }
 }

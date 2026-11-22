@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import io.github.pkeppeler.deepcharter.sound.DeepSound;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceFragments;
 import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceScheduler;
@@ -20,8 +20,6 @@ import java.util.Set;
 import java.util.SplittableRandom;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #866: when the First Sounds ambience is heard and which fragment. The scheduler is pure (no client, a seeded random
@@ -412,13 +410,5 @@ public class AmbienceSchedulerTest {
             }
         }
         helper.succeed();
-    }
-
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        if (!condition) {
-            throw helper.assertionException(Component.literal(String.format(format, args)));
-        }
     }
 }

@@ -1,5 +1,8 @@
 package io.github.pkeppeler.deepcharter.test;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyPhonograph;
@@ -68,7 +71,7 @@ public class ColonyPhonographTest {
 
     private static BlockPos position(GameTestHelper helper) {
         ColonySite.Placed colony = Colony.placed(server(helper))
-                .orElseThrow(() -> helper.assertionException("the colony was not built when the server started"));
+                .orElseThrow(() -> failure(helper, "the colony was not built when the server started"));
         return TestColony.anchor(colony, ColonyAnchor.LAMP_AND_PICK).offset(FROM_ANCHOR);
     }
 
@@ -77,14 +80,7 @@ public class ColonyPhonographTest {
         if (found instanceof PhonographBlockEntity phonograph) {
             return phonograph;
         }
-        throw helper.assertionException(
-                "the Lamp and Pick has no phonograph at %s, it has %s", pos, String.valueOf(found));
-    }
-
-    private static void expect(GameTestHelper helper, boolean ok, String what, Object... args) {
-        if (!ok) {
-            throw helper.assertionException(what, args);
-        }
+        throw failure(helper, "the Lamp and Pick has no phonograph at %s, it has %s", pos, String.valueOf(found));
     }
 
     private static void use(ServerLevel level, MockPlayer player, BlockPos pos, ItemStack stack, boolean sneaking) {
@@ -283,7 +279,7 @@ public class ColonyPhonographTest {
             CompoundTag saved = phonograph.saveWithFullMetadata(level.registryAccess());
             BlockEntity read = BlockEntity.loadStatic(pos, level.getBlockState(pos), saved, level.registryAccess());
             if (!(read instanceof PhonographBlockEntity loaded)) {
-                throw helper.assertionException("the block entity did not load: %s", String.valueOf(read));
+                throw failure(helper, "the block entity did not load: %s", String.valueOf(read));
             }
             expect(
                     helper,
