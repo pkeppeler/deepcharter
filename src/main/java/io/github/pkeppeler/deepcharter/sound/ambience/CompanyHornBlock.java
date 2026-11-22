@@ -8,7 +8,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * A Company public-address horn, hung from the roof of the punch clock's hall. It is scenery that nothing collides with and no rule
+ * A Company public-address horn, hung on a chain from the roof of the punch clock's hall, or set on a post where the roof is out of reach. It is scenery that nothing collides with and no rule
  * touches: a player near it hears the ambience's fragments from it ({@code AmbienceTicker}, a client part), after a crackle of warm-up.
  * Breaking it costs nothing and drops nothing.
  */

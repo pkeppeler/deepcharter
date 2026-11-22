@@ -2,6 +2,8 @@ package io.github.pkeppeler.deepcharter.layer;
 
 import io.github.pkeppeler.deepcharter.colony.ColonyBlocks;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
+import io.github.pkeppeler.deepcharter.sound.ambience.AmbienceRegistry;
+import java.util.OptionalInt;
 import java.util.SplittableRandom;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -123,6 +125,44 @@ final class StructurePlan {
 
     void air(int u1, int y1, int v1, int u2, int y2, int v2) {
         box(u1, y1, v1, u2, y2, v2, Blocks.AIR.defaultBlockState());
+    }
+
+    /**
+     * A Company horn that never floats. It hangs on an iron chain from the first solid block above it within {@link StructureKind#HORN_REACH}
+     * (the chain fills the blocks between, whatever the carve left there); with none in reach it stands on an iron bar post from the
+     * floor of the hollow, which the structure draws itself. The ceiling is read from the column's own chunk, which is complete
+     * when it is drawn (the neighbours may not be), and the whole support lies in that column: a chunk that does not hold it
+     * draws none of it, so the horn and its support are never decided from different chunks.
+     *
+     * @param y      the horn's height
+     * @param floorY the height of the floor of the hollow, which is solid beneath
+     */
+    void companyHorn(int u, int y, int v, int floorY) {
+        OptionalInt ceiling = ceilingAbove(u, y, v);
+        if (ceiling.isPresent()) {
+            box(u, y + 1, v, u, ceiling.getAsInt() - 1, v, Blocks.IRON_CHAIN.defaultBlockState());
+        } else {
+            box(u, floorY, v, u, y - 1, v, Blocks.IRON_BARS.defaultBlockState());
+        }
+        set(u, y, v, AmbienceRegistry.COMPANY_HORN.defaultBlockState());
+    }
+
+    /**
+     * The height of the first block above {@code y} in the column that a chain can hang from (its underside is sturdy; a fluid or a
+     * gas pocket is not), within {@link StructureKind#HORN_REACH}; empty when there is none, or when the column is in another chunk.
+     */
+    private OptionalInt ceilingAbove(int u, int y, int v) {
+        for (int up = 1; up <= StructureKind.HORN_REACH; up++) {
+            BlockPos pos = inChunk(u, y + up, v);
+            if (pos == null || pos.getY() > band.maxY() || chunk.isOutsideBuildHeight(pos)) {
+                return OptionalInt.empty();
+            }
+            BlockState state = chunk.getBlockState(pos);
+            if (!RoomSeal.needsSealing(state) && state.isFaceSturdy(chunk, pos, Direction.DOWN)) {
+                return OptionalInt.of(y + up);
+            }
+        }
+        return OptionalInt.empty();
     }
 
     /** True with the given chance, and the same answer for the same place in the same structure every time. */
