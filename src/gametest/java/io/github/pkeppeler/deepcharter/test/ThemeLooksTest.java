@@ -12,6 +12,7 @@ import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.HudLook;
 import io.github.pkeppeler.deepcharter.client.theme.PanelLook;
 import io.github.pkeppeler.deepcharter.client.theme.PodPaintLook;
+import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
 import io.github.pkeppeler.deepcharter.client.theme.ScannerLook;
 import io.github.pkeppeler.deepcharter.client.theme.TowChainLook;
 import io.github.pkeppeler.deepcharter.client.theme.TransmissionLook;
@@ -24,6 +25,8 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -213,6 +216,11 @@ public class ThemeLooksTest {
                         new BeamStyle(0xFFFFF0D2, 26, 0.12, 2.6, 0.03, 0.35, 0.1, 6, 0.9, 1.5),
                         new BeamStyle(0xFFFFCF6E, 30, 0.25, 5.0, 0.015, 0.35, 0.05, 24, 0.4, 0.55)),
                 BeamLook.of(area("beam", null)));
+        expect(
+                helper,
+                "readout",
+                new ReadoutLook(14, 2, 1.0, 0xFF7CFC9A, 0xFFE8C170, 4, 6, 2),
+                ReadoutLook.of(area("readout", null)));
         helper.succeed();
     }
 
@@ -332,6 +340,112 @@ public class ThemeLooksTest {
         }
         if (PanelLook.of(area("panel", "{ \"enabled\": 0 }")).fits(854, 480)) {
             throw fail(helper, "a panel that is off fits nowhere");
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The glass is cut to the corner of the frame's porthole (#907): the mod ships radius 18, a pack can name another, and a radius out of range is
+     * refused. The inset table is the one {@code tools/tests/test_terminal_concepts.py} reads off the frame sprite's own porthole, so the scanlines
+     * end where the bezel's curve does.
+     */
+    @GameTest
+    public void theGlassCornerHasTheBezelsRadius(GameTestHelper helper) {
+        PanelLook look = PanelLook.of(area("panel", null));
+        if (look.glassRadius() != 18) {
+            throw fail(helper, "the mod's glass corner is the porthole's 18 pixels, got " + look.glassRadius());
+        }
+        List<Integer> insets = new ArrayList<>();
+        for (int row = 0; row < 20; row++) {
+            insets.add(PanelLook.cornerInset(look.glassRadius(), row));
+        }
+        List<Integer> porthole = List.of(14, 11, 9, 7, 6, 5, 4, 3, 3, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0);
+        if (!insets.equals(porthole)) {
+            throw fail(helper, "the corner insets of radius 18 are " + porthole + ", got " + insets);
+        }
+        if (PanelLook.cornerInset(0, 0) != 0) {
+            throw fail(helper, "a radius of 0 is a square corner");
+        }
+        if (PanelLook.of(area("panel", "{ \"glassRadius\": 24 }")).glassRadius() != 24) {
+            throw fail(helper, "a pack names its own glass radius");
+        }
+        rejected(helper, () -> PanelLook.of(area("panel", "{ \"glassRadius\": 65 }")), "glassRadius");
+        rejected(helper, () -> PanelLook.of(area("panel", "{ \"glassRadius\": -1 }")), "glassRadius");
+        helper.succeed();
+    }
+
+    /** Scanlines stop where the glass does: at the top and the bottom, and on a glass too small for the radius (the radius is cut to half of it). */
+    @GameTest
+    public void scanlinesStopAtTheGlassCorner(GameTestHelper helper) {
+        int[][] cases = {
+            // radius, row, width, height, inset
+            {18, 0, 300, 200, 14},
+            {18, 199, 300, 200, 14},
+            {18, 198, 300, 200, 11},
+            {18, 100, 300, 200, 0},
+            {18, 0, 300, 20, 7},
+            {18, 19, 300, 20, 7},
+            {18, 5, 300, 20, 1},
+            {18, 5, 20, 300, 1},
+            {0, 0, 300, 200, 0},
+            {0, 199, 300, 200, 0},
+        };
+        for (int[] c : cases) {
+            int inset = PanelLook.scanlineInset(c[0], c[1], c[2], c[3]);
+            if (inset != c[4]) {
+                throw fail(helper, "scanlineInset" + Arrays.toString(c) + " should be " + c[4] + ", got " + inset);
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The mod's own three values agree (#907): {@code glassRadius} is at most the border of the glass sprite's nine-slice, which holds the whole arc, and
+     * it is the radius of the frame's porthole, read off the frame's pixels at the top-left and bottom-right corners. A pack's own mismatch is
+     * documented in skins.md.
+     */
+    @GameTest
+    public void theGlassRadiusMatchesTheShippedSprites(GameTestHelper helper) throws IOException {
+        PanelLook look = PanelLook.of(area("panel", null));
+        String sprites = "/assets/deepcharter/textures/gui/sprites/panel/";
+        JsonObject border;
+        try (InputStream stream = ThemeLooksTest.class.getResourceAsStream(sprites + "glass.png.mcmeta")) {
+            border = JsonParser.parseString(new String(stream.readAllBytes(), StandardCharsets.UTF_8))
+                    .getAsJsonObject()
+                    .getAsJsonObject("gui")
+                    .getAsJsonObject("scaling")
+                    .getAsJsonObject("border");
+        }
+        for (String side : List.of("left", "top", "right", "bottom")) {
+            if (look.glassRadius() > border.get(side).getAsInt()) {
+                throw fail(
+                        helper,
+                        "glassRadius " + look.glassRadius() + " is over the glass border " + side + " " + border);
+            }
+        }
+        BufferedImage frame;
+        try (InputStream stream = ThemeLooksTest.class.getResourceAsStream(sprites + "frame.png")) {
+            frame = ImageIO.read(stream);
+        }
+        PanelLook.Insets glass = look.glass();
+        int bottom = frame.getHeight() - glass.bottom() - 1;
+        int right = frame.getWidth() - glass.right() - 1;
+        for (int row = 0; row < look.glassRadius(); row++) {
+            int expected = PanelLook.cornerInset(look.glassRadius(), row);
+            int topLeft = 0;
+            while (frame.getRGB(glass.left() + topLeft, glass.top() + row) >>> 24 != 0) {
+                topLeft++;
+            }
+            int bottomRight = 0;
+            while (frame.getRGB(right - bottomRight, bottom - row) >>> 24 != 0) {
+                bottomRight++;
+            }
+            if (topLeft != expected || bottomRight != expected) {
+                throw fail(
+                        helper,
+                        "the porthole's row " + row + " is " + topLeft + " in at the top left and " + bottomRight
+                                + " at the bottom right, but glassRadius " + look.glassRadius() + " says " + expected);
+            }
         }
         helper.succeed();
     }
@@ -502,7 +616,8 @@ public class ThemeLooksTest {
                 "panel",
                 "cockpit",
                 "tow",
-                "beam")) {
+                "beam",
+                "readout")) {
             areas.put(name, area(name, null));
         }
         return areas;
@@ -515,6 +630,16 @@ public class ThemeLooksTest {
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"lettersPerSecond\": 0 }")), "lettersPerSecond");
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"lettersPerSecond\": -5 }")), "lettersPerSecond");
         rejected(helper, () -> CrtTuning.of(area("crt", "{ \"scanlineSpacing\": 0 }")), "scanlineSpacing");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void theBlockReadoutStaysWithinItsBounds(GameTestHelper helper) {
+        rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"scale\": 3 }")), "scale");
+        rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeInTicks\": 0 }")), "fadeInTicks");
+        rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"fadeOutTicks\": 41 }")), "fadeOutTicks");
+        rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"settleTicks\": -1 }")), "settleTicks");
+        rejected(helper, () -> ReadoutLook.of(area("readout", "{ \"hintColor\": 5 }")), "hintColor");
         helper.succeed();
     }
 
