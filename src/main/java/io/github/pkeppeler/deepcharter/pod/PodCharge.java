@@ -1,5 +1,9 @@
 package io.github.pkeppeler.deepcharter.pod;
 
+import io.github.pkeppeler.deepcharter.charter.Charter;
+import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.Charters;
+import io.github.pkeppeler.deepcharter.layer.CaveIns;
 import io.github.pkeppeler.deepcharter.ore.CompanyRockBlock;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.repair.RepairTuning;
@@ -51,10 +55,18 @@ public final class PodCharge {
         SHAPED
     }
 
-    /** A burning fuse: the volume it will clear (inclusive corners), the kind of charge and the numbers of the tuning it was set with. */
-    record Fuse(Kind kind, BlockPos low, BlockPos high, int ticksLeft, int startTicks, float damage, double reach) {
+    /** A burning fuse: the volume it will clear (inclusive corners), the kind of charge, the numbers of the tuning it was set with, and the charter that set it. */
+    record Fuse(
+            Kind kind,
+            BlockPos low,
+            BlockPos high,
+            int ticksLeft,
+            int startTicks,
+            float damage,
+            double reach,
+            Optional<CharterId> blaster) {
         Fuse burned() {
-            return new Fuse(kind, low, high, ticksLeft - 1, startTicks, damage, reach);
+            return new Fuse(kind, low, high, ticksLeft - 1, startTicks, damage, reach, blaster);
         }
 
         AABB volume() {
@@ -63,6 +75,15 @@ public final class PodCharge {
     }
 
     private PodCharge() {}
+
+    /** The charter whose blast a blast from {@code pod} is: the pod's owner, or the pilot's charter when the pod has none. */
+    public static Optional<CharterId> blasterOf(PodEntity pod) {
+        return PodComponents.ownerCharter(pod)
+                .or(() -> pod.getControllingPassenger() instanceof ServerPlayer pilot
+                        ? Charters.readableCharterOf(pilot.level().getServer(), pilot.getUUID())
+                        : Optional.empty())
+                .map(Charter::id);
+    }
 
     /** Server only: sets a charge under {@code pod}. Empty when it is set (the caller uses the item up), or the reason it was not. */
     public static Optional<Component> set(PodEntity pod, RepairTuning tuning, Kind kind) {
@@ -97,7 +118,8 @@ public final class PodCharge {
                 tuning.chargeFuseTicks(),
                 tuning.chargeFuseTicks(),
                 tuning.chargeDamage(),
-                tuning.chargeReach());
+                tuning.chargeReach(),
+                blasterOf(pod));
         pod.setFuse(fuse);
         level.playSound(
                 null, pod.getX(), pod.getY(), pod.getZ(), DeepSound.DRILL_DYNAMITE.event(), SoundSource.PLAYERS);
@@ -207,11 +229,22 @@ public final class PodCharge {
     /**
      * A blasting charge's blast that nothing set from a pod (a thrown charge, #985): the volume {@code low} to {@code high} (inclusive corners), hurting
      * each pod within {@code reach} of it that {@code hurts} accepts by {@code damage} less its distance share, and clearing rock by the pod's own rule:
-     * only where the volume holds Company rock ({@link #hasCompanyRock}), as a pod's charge is not set anywhere else.
+     * only where the volume holds Company rock ({@link #hasCompanyRock}), as a pod's charge is not set anywhere else. {@code blaster} is the charter
+     * that threw it, whose crew the cave-in reaches when PvP is off ({@link CaveIns#blasted}).
      */
     public static void detonate(
-            ServerLevel level, BlockPos low, BlockPos high, float damage, double reach, Predicate<PodEntity> hurts) {
-        blast(level, new Fuse(Kind.BLASTING, low, high, 0, 0, damage, reach), hasCompanyRock(level, low, high), hurts);
+            ServerLevel level,
+            BlockPos low,
+            BlockPos high,
+            float damage,
+            double reach,
+            Predicate<PodEntity> hurts,
+            Optional<CharterId> blaster) {
+        blast(
+                level,
+                new Fuse(Kind.BLASTING, low, high, 0, 0, damage, reach, blaster),
+                hasCompanyRock(level, low, high),
+                hurts);
     }
 
     /** Whether the volume {@code low} to {@code high} holds Company rock in a loaded chunk: the rule that lets a blasting charge be set, or clear anything. */
@@ -247,6 +280,8 @@ public final class PodCharge {
         }
         level.sendParticles(ParticleTypes.EXPLOSION, middle.x, middle.y, middle.z, 6, 1.0, 0.5, 1.0, 0.0);
         level.playSound(null, middle.x, middle.y, middle.z, DeepSound.DRILL_PLASTIC.event(), SoundSource.PLAYERS);
+        // The blast shakes the roof over anyone on foot near it (#987).
+        CaveIns.blasted(level, middle, fuse.blaster());
     }
 
     /** The cells this fuse's blast clears: a shaped charge's runs of Company rock, or a blasting charge's volume of rock that may go. */
