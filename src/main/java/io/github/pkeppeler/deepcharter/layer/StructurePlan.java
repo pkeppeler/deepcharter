@@ -77,17 +77,23 @@ final class StructurePlan {
         }
     }
 
+    /** The world position of a place in the structure, in any chunk. */
+    private BlockPos column(int u, int y, int v) {
+        return site.origin().offset(site.alongZ() ? v : u, y, site.alongZ() ? u : v);
+    }
+
     /** The world position of a place in the structure, or null where it lies in another chunk. */
     private @Nullable BlockPos inChunk(int u, int y, int v) {
-        int x = site.origin().getX() + (site.alongZ() ? v : u);
-        int z = site.origin().getZ() + (site.alongZ() ? u : v);
+        BlockPos pos = column(u, y, v);
+        int x = pos.getX();
+        int z = pos.getZ();
         if (x < chunkPos.getMinBlockX()
                 || x > chunkPos.getMaxBlockX()
                 || z < chunkPos.getMinBlockZ()
                 || z > chunkPos.getMaxBlockZ()) {
             return null;
         }
-        return new BlockPos(x, site.origin().getY() + y, z);
+        return pos;
     }
 
     /** A barrel that fills from {@code table} when it is first opened, the same for the same site every time. */
@@ -128,29 +134,45 @@ final class StructurePlan {
     }
 
     /**
-     * A Company horn that never floats. It hangs on an iron chain from the first solid block above it within {@link StructureKind#HORN_REACH}
-     * (the chain fills the blocks between, whatever the carve left there); with none in reach it stands on an iron bar post from the
-     * floor of the hollow, which the structure draws itself. The ceiling is read from the column's own chunk, which is complete
-     * when it is drawn (the neighbours may not be), and the whole support lies in that column: a chunk that does not hold it
-     * draws none of it, so the horn and its support are never decided from different chunks.
+     * A Company horn that always hangs from a sturdy block: a chain from the first solid block above it, or with none in reach a
+     * beam over it on a post. The support lies in the horn's own chunk, which is complete when drawn (a neighbour may not be).
      *
-     * @param y      the horn's height
-     * @param floorY the height of the floor of the hollow, which is solid beneath
+     * @param floorY the height of the floor of the hollow
      */
     void companyHorn(int u, int y, int v, int floorY) {
         OptionalInt ceiling = ceilingAbove(u, y, v);
         if (ceiling.isPresent()) {
-            box(u, y + 1, v, u, ceiling.getAsInt() - 1, v, Blocks.IRON_CHAIN.defaultBlockState());
+            for (int cy = y + 1; cy < ceiling.getAsInt(); cy++) {
+                set(u, cy, v, Blocks.IRON_CHAIN.defaultBlockState());
+            }
         } else {
-            box(u, floorY, v, u, y - 1, v, Blocks.IRON_BARS.defaultBlockState());
+            int[] step = postStep(u, v);
+            box(
+                    u + step[0],
+                    floorY,
+                    v + step[1],
+                    u + step[0],
+                    y + 1,
+                    v + step[1],
+                    Blocks.IRON_BLOCK.defaultBlockState());
+            set(u, y + 1, v, Blocks.IRON_BLOCK.defaultBlockState());
         }
         set(u, y, v, AmbienceRegistry.COMPANY_HORN.defaultBlockState());
     }
 
-    /**
-     * The height of the first block above {@code y} in the column that a chain can hang from (its underside is sturdy; a fluid or a
-     * gas pocket is not), within {@link StructureKind#HORN_REACH}; empty when there is none, or when the column is in another chunk.
-     */
+    /** A step to a neighbouring column in the same chunk as {@code (u, v)}, the same from every chunk, so only the horn's chunk draws the post. */
+    private int[] postStep(int u, int v) {
+        BlockPos column = column(u, 0, v);
+        for (int[] step : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            BlockPos next = column(u + step[0], 0, v + step[1]);
+            if ((next.getX() >> 4) == (column.getX() >> 4) && (next.getZ() >> 4) == (column.getZ() >> 4)) {
+                return step;
+            }
+        }
+        throw new IllegalStateException("every neighbour of " + column + " is in another chunk");
+    }
+
+    /** The height of the first sturdy-underside block above {@code y} within {@link StructureKind#HORN_REACH}; empty if none, or the column is in another chunk. */
     private OptionalInt ceilingAbove(int u, int y, int v) {
         for (int up = 1; up <= StructureKind.HORN_REACH; up++) {
             BlockPos pos = inChunk(u, y + up, v);

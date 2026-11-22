@@ -1,5 +1,6 @@
 package io.github.pkeppeler.deepcharter.test.evidence;
 
+import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.colony.Colony;
 import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonySite;
@@ -23,6 +24,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
@@ -182,6 +184,11 @@ public class LayerStructuresScenario extends EvidenceScenario {
                     frame(context);
                 }
                 screenshot(context, shot + "-card-rack");
+                // Up at the Company horn from 3 blocks away, the eye 1.6 over the floor, to show what holds it.
+                fly(singleplayer, layer, at(site, -3, 0, 0), at(site, 0, StructureKind.HORN_HEIGHT + 0.6, 0));
+                settle(context, 0);
+                logHornSupport(singleplayer, site);
+                screenshot(context, shot + "-horn");
             }
             case RAILS -> {
                 for (int i = 0; i < RAIL_FRAMES; i++) {
@@ -221,6 +228,26 @@ public class LayerStructuresScenario extends EvidenceScenario {
                 }
             }
         }
+    }
+
+    /** Logs how the horn is held: a chain of N blocks to a roof at some height, or the gantry. */
+    private static void logHornSupport(TestSingleplayerContext singleplayer, StructureSite site) {
+        singleplayer.getServer().runOnServer(server -> {
+            ServerLevel level = TestLayers.level(server, site.kind().layer());
+            Vec3 at = at(site, 0, StructureKind.HORN_HEIGHT, 0);
+            BlockPos horn = BlockPos.containing(at);
+            BlockPos top = horn.above();
+            while (level.getBlockState(top).is(Blocks.IRON_CHAIN)) {
+                top = top.above();
+            }
+            boolean gantry = level.getBlockState(top).is(Blocks.IRON_BLOCK);
+            DeepCharter.LOGGER.info(
+                    "[horn] site={} horn={} support={} roof={}",
+                    site.origin().toShortString(),
+                    horn.toShortString(),
+                    gantry ? "gantry" : "chain " + (top.getY() - horn.getY() - 1),
+                    gantry ? "none" : top.getY());
+        });
     }
 
     /** Waits longer for the first frame of a path, when the chunks and the dimension have to arrive. */

@@ -76,10 +76,15 @@ public class LayerStructuresTest {
     /** Far from the layer-2 tests, so nothing makes this chunk full first. */
     private static final int SEAL_CELL = 30;
 
-    /** Cells of their own for the punch clock's horn, one with a ceiling over it and one with none in reach. */
+    /** Cells of their own for the punch clock's horn: a roof over it at three distances, and none in reach. */
     private static final int HORN_CEILING_CELL = 31;
 
     private static final int HORN_OPEN_CELL = 32;
+    /** A height of open air over the surface's flat ground, with room for a post below it. */
+    private static final int OPEN_AIR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
+
+    private static final int HORN_ADJACENT_CELL = 33;
+    private static final int HORN_ONE_CHAIN_CELL = 34;
 
     private static final int DISK_CELL = 6;
     private static final int CASING_CELL = 7;
@@ -561,32 +566,38 @@ public class LayerStructuresTest {
     }
 
     /**
-     * Why the horn at {@code horn} floats; null when it hangs on a chain that runs up to a block with a sturdy underside, or stands on a
-     * post of bars that runs down to a block with a sturdy top. Air above it with nothing below is a horn in mid-air.
+     * Why the horn at {@code horn} floats; null when the block above its chain (if any) is a sturdy roof, or a beam that is joined to a
+     * post of iron that stands on a sturdy floor.
      */
     static @Nullable String hornSupportProblem(ServerLevel level, BlockPos horn) {
-        BlockPos above = horn.above();
-        while (level.getBlockState(above).is(Blocks.IRON_CHAIN)) {
-            above = above.above();
+        BlockPos top = horn.above();
+        while (level.getBlockState(top).is(Blocks.IRON_CHAIN)) {
+            top = top.above();
         }
-        if (level.getBlockState(above).isFaceSturdy(level, above, Direction.DOWN)) {
+        BlockState above = level.getBlockState(top);
+        if (!above.isFaceSturdy(level, top, Direction.DOWN)) {
+            return String.format(
+                    "the horn at %s hangs from %s at %s, which is not sturdy",
+                    horn.toShortString(), above, top.toShortString());
+        }
+        if (!above.is(Blocks.IRON_BLOCK)) {
             return null;
         }
-        BlockPos below = horn.below();
-        while (level.getBlockState(below).is(Blocks.IRON_BARS)) {
-            below = below.below();
+        for (Direction side : Direction.Plane.HORIZONTAL) {
+            BlockPos post = top.relative(side);
+            while (level.getBlockState(post).is(Blocks.IRON_BLOCK)) {
+                post = post.below();
+            }
+            if (!post.equals(top.relative(side)) && level.getBlockState(post).isFaceSturdy(level, post, Direction.UP)) {
+                return null;
+            }
         }
-        if (!below.equals(horn.below()) && level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)) {
-            return null;
-        }
-        return String.format(
-                "the horn at %s floats: %s above its chain, %s under its post",
-                horn.toShortString(), level.getBlockState(above), level.getBlockState(below));
+        return String.format("the beam over the horn at %s has no post to a floor", horn.toShortString());
     }
 
     /**
-     * The punch clock of {@code cell}, its chunk stopped before it is full, with the column over the horn cleared of rock from the roof
-     * of the hall up to {@code clearTo} blocks above the floor. Then the chunk becomes full, which draws the structure.
+     * The punch clock of {@code cell}, its chunk stopped before it is full, with the column over the horn cleared to air up to
+     * {@code clearTo} above the floor and, when {@code ceiling} is given, stone at that height; then the chunk fills, which draws it.
      */
     private static StructureSite drawPunchClock(
             GameTestHelper helper, int cell, int clearTo, @Nullable Integer ceiling) {
@@ -594,16 +605,16 @@ public class LayerStructuresTest {
         LayerChain.Band band = TestLayers.band(level, 2);
         StructureSite site = StructureSite.in(
                 level.getSeed(), StructureKind.PUNCH_CLOCK, band.minY(), band.height(), cell, cell, conduit(helper));
+        if (site.origin().getY() + StructureKind.HORN_HEIGHT + StructureKind.HORN_REACH + 1 > band.maxY()) {
+            throw failure(helper, "the band tops out at %d, too low to test a horn's reach", band.maxY());
+        }
         ChunkPos chunkPos = ChunkPos.containing(site.origin());
         ChunkAccess proto = level.getChunk(chunkPos.x(), chunkPos.z(), ChunkStatus.FEATURES);
         if (proto instanceof ImposterProtoChunk) {
             throw failure(helper, "%s: chunk already FULL, another test loaded it", chunkPos);
         }
-        for (int y = HORN_HEIGHT + 1; y <= clearTo; y++) {
-            BlockPos pos = at(site, 0, y, 0);
-            if (pos.getY() <= band.maxY()) {
-                proto.setBlockState(pos, Blocks.AIR.defaultBlockState(), 0);
-            }
+        for (int y = StructureKind.HORN_HEIGHT + 1; y <= clearTo; y++) {
+            proto.setBlockState(at(site, 0, y, 0), Blocks.AIR.defaultBlockState(), 0);
         }
         if (ceiling != null) {
             proto.setBlockState(at(site, 0, ceiling, 0), Blocks.STONE.defaultBlockState(), 0);
@@ -612,74 +623,91 @@ public class LayerStructuresTest {
         return site;
     }
 
-    /** The horn's height over the floor of the hall, in the site's coordinates. */
-    private static final int HORN_HEIGHT = 4;
-
-    @GameTest(maxTicks = 600)
-    public void aHornUnderARoofHangsOnAChainFromItAndNotOnAPost(GameTestHelper helper) {
+    /** A roof {@code over} blocks above the horn: a chain of {@code over - 1} between, which is none when the roof is right over it. */
+    private void hornHangsFromRoof(GameTestHelper helper, int cell, int over) {
         ServerLevel level = TestLayers.level(helper, 2);
-        int ceiling = HORN_HEIGHT + 10;
-        StructureSite site = drawPunchClock(helper, HORN_CEILING_CELL, ceiling + 3, ceiling);
-        BlockPos horn = at(site, 0, HORN_HEIGHT, 0);
+        int ceiling = StructureKind.HORN_HEIGHT + over;
+        StructureSite site = drawPunchClock(helper, cell, ceiling + 3, ceiling);
+        BlockPos horn = at(site, 0, StructureKind.HORN_HEIGHT, 0);
         helper.succeedWhen(() -> {
             expect(helper, level, horn, AmbienceRegistry.COMPANY_HORN);
-            for (int y = HORN_HEIGHT + 1; y < ceiling; y++) {
+            for (int y = StructureKind.HORN_HEIGHT + 1; y < ceiling; y++) {
                 expect(helper, level, at(site, 0, y, 0), Blocks.IRON_CHAIN);
             }
             expect(helper, level, at(site, 0, ceiling, 0), Blocks.STONE);
-            expect(helper, level, at(site, 0, HORN_HEIGHT - 1, 0), Blocks.AIR);
-            String problem = hornSupportProblem(level, horn);
-            if (problem != null) {
-                throw failure(helper, "%s", problem);
-            }
+            expect(helper, level, at(site, 0, StructureKind.HORN_HEIGHT - 1, 0), Blocks.AIR);
+            requireSupported(helper, level, horn);
         });
     }
 
+    private static void requireSupported(GameTestHelper helper, ServerLevel level, BlockPos horn) {
+        String problem = hornSupportProblem(level, horn);
+        if (problem != null) {
+            throw failure(helper, "%s", problem);
+        }
+    }
+
     @GameTest(maxTicks = 600)
-    public void aHornWithNoRoofInReachStandsOnAPostFromTheFloor(GameTestHelper helper) {
+    public void aHornUnderADistantRoofHangsOnAChainFromIt(GameTestHelper helper) {
+        hornHangsFromRoof(helper, HORN_CEILING_CELL, 10);
+    }
+
+    @GameTest(maxTicks = 600)
+    public void aHornWithTheRoofRightOverItKeepsTheRoofAndHasNoChain(GameTestHelper helper) {
+        hornHangsFromRoof(helper, HORN_ADJACENT_CELL, 1);
+    }
+
+    @GameTest(maxTicks = 600)
+    public void aHornWithTheRoofTwoOverItHangsOnOneChain(GameTestHelper helper) {
+        hornHangsFromRoof(helper, HORN_ONE_CHAIN_CELL, 2);
+    }
+
+    @GameTest(maxTicks = 600)
+    public void aHornWithNoRoofInReachHangsFromABeamOnAPost(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 2);
-        StructureSite site = drawPunchClock(helper, HORN_OPEN_CELL, HORN_HEIGHT + StructureKind.HORN_REACH + 4, null);
-        BlockPos horn = at(site, 0, HORN_HEIGHT, 0);
+        StructureSite site =
+                drawPunchClock(helper, HORN_OPEN_CELL, StructureKind.HORN_HEIGHT + StructureKind.HORN_REACH + 1, null);
+        BlockPos horn = at(site, 0, StructureKind.HORN_HEIGHT, 0);
         helper.succeedWhen(() -> {
             expect(helper, level, horn, AmbienceRegistry.COMPANY_HORN);
-            for (int y = 0; y < HORN_HEIGHT; y++) {
-                expect(helper, level, at(site, 0, y, 0), Blocks.IRON_BARS);
-            }
-            expect(helper, level, at(site, 0, HORN_HEIGHT + 1, 0), Blocks.AIR);
-            String problem = hornSupportProblem(level, horn);
-            if (problem != null) {
-                throw failure(helper, "%s", problem);
-            }
+            expect(helper, level, horn.above(), Blocks.IRON_BLOCK);
+            expect(helper, level, horn.above(2), Blocks.AIR);
+            expect(helper, level, horn.below(), Blocks.AIR);
+            requireSupported(helper, level, horn);
         });
     }
 
     @GameTest
     public void theSupportCheckSeesAFloatingHornAndASupportedOne(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
+        BlockPos at = new BlockPos(44_008, OPEN_AIR_Y, 44_008);
+        FarChunks.force(helper, level, at.getX() >> 4, at.getZ() >> 4);
+        level.getChunk(at.getX() >> 4, at.getZ() >> 4, ChunkStatus.FULL);
         BlockState horn = AmbienceRegistry.COMPANY_HORN.defaultBlockState();
         BlockState chain = Blocks.IRON_CHAIN.defaultBlockState();
-        BlockState bars = Blocks.IRON_BARS.defaultBlockState();
+        BlockState iron = Blocks.IRON_BLOCK.defaultBlockState();
         BlockState stone = Blocks.STONE.defaultBlockState();
         BlockState air = Blocks.AIR.defaultBlockState();
-        BlockPos at = helper.absolutePos(new BlockPos(1, 4, 1));
         level.setBlock(at, horn, Block.UPDATE_CLIENTS);
         expectFloating(helper, level, at, "a horn in open air");
         level.setBlock(at.above(), chain, Block.UPDATE_CLIENTS);
-        level.setBlock(at.above(2), chain, Block.UPDATE_CLIENTS);
         expectFloating(helper, level, at, "a horn on a chain that ends in air");
-        level.setBlock(at.above(3), stone, Block.UPDATE_CLIENTS);
-        if (hornSupportProblem(level, at) != null) {
-            throw failure(helper, "a horn on a chain to stone was reported as floating");
+        level.setBlock(at.above(2), stone, Block.UPDATE_CLIENTS);
+        requireSupported(helper, level, at);
+        level.setBlock(at.above(), air, Block.UPDATE_CLIENTS);
+        expectFloating(helper, level, at, "a horn with a dent in the roof right over it");
+        level.setBlock(at.above(), stone, Block.UPDATE_CLIENTS);
+        requireSupported(helper, level, at);
+        level.setBlock(at.above(2), air, Block.UPDATE_CLIENTS);
+        level.setBlock(at.above(), iron, Block.UPDATE_CLIENTS);
+        expectFloating(helper, level, at, "a beam with no post");
+        level.setBlock(at.above().east(), iron, Block.UPDATE_CLIENTS);
+        expectFloating(helper, level, at, "a beam on a post that ends in air");
+        for (int down = 0; down <= 2; down++) {
+            level.setBlock(at.above().east().below(down), iron, Block.UPDATE_CLIENTS);
         }
-        for (int up = 1; up <= 3; up++) {
-            level.setBlock(at.above(up), air, Block.UPDATE_CLIENTS);
-        }
-        level.setBlock(at.below(), bars, Block.UPDATE_CLIENTS);
-        expectFloating(helper, level, at, "a horn on a post that ends in air");
-        level.setBlock(at.below(2), stone, Block.UPDATE_CLIENTS);
-        if (hornSupportProblem(level, at) != null) {
-            throw failure(helper, "a horn on a post to stone was reported as floating");
-        }
+        level.setBlock(at.above().east().below(3), stone, Block.UPDATE_CLIENTS);
+        requireSupported(helper, level, at);
         helper.succeed();
     }
 
