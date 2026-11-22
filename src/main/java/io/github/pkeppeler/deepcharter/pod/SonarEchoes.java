@@ -1,27 +1,18 @@
 package io.github.pkeppeler.deepcharter.pod;
 
-import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.scanner.LoadedBlocks;
 import io.github.pkeppeler.deepcharter.scanner.ScanSlice;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /** The echoes a ping gets from the world itself: the blocks around the pod, and the creatures that echo. Both listen to {@link SonarEvents#COLLECT}. */
 final class SonarEchoes {
-    /** Creatures that return an echo. Data, so a creature joins with a line of JSON ({@code tags/entity_type/sonar_echoes.json}); the hollow ones are not in it. */
-    static final TagKey<EntityType<?>> ECHOING =
-            TagKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "sonar_echoes"));
-
     private SonarEchoes() {}
 
     static void init() {
@@ -83,7 +74,12 @@ final class SonarEchoes {
         }
     }
 
-    /** A creature in {@link #ECHOING} within range returns an echo at its block: moved when it is going faster than {@link SonarTuning#movingSpeed()}, else ore (a body standing still is a dense return). */
+    /**
+     * A creature in {@link SonarTags#ECHOING} within range returns an echo at its block: moved when it is going faster than
+     * {@link SonarTuning#movingSpeed()}, else ore (a body standing still is a dense return). One in {@link SonarTags#ORE_ECHOING} is ore at any
+     * speed, and one in {@link SonarTags#HOLLOW} returns nothing. A grounded creature's fall speed is gravity holding it down, not a move, so only its
+     * horizontal speed counts.
+     */
     private static void creatures(SonarPing ping, SonarEvents.Sink sink) {
         double range = ping.rangeBlocks();
         double movingSquared = SonarTuning.DEFAULT.movingSpeed() * SonarTuning.DEFAULT.movingSpeed();
@@ -93,12 +89,21 @@ final class SonarEchoes {
                 .getEntities(
                         ping.pod(),
                         AABB.ofSize(ping.origin(), 2 * range, 2 * range, 2 * range),
-                        e -> e.is(ECHOING) && !ping.pod().hasPassenger(e))) {
+                        e -> !e.is(SonarTags.HOLLOW)
+                                && (e.is(SonarTags.ECHOING) || e.is(SonarTags.ORE_ECHOING))
+                                && !ping.pod().hasPassenger(e))) {
             if (creature.position().distanceToSqr(ping.origin()) <= range * range) {
                 sink.add(
-                        creature.getDeltaMovement().lengthSqr() >= movingSquared ? SonarKind.MOVED : SonarKind.ORE,
+                        !creature.is(SonarTags.ORE_ECHOING) && speedSquared(creature) >= movingSquared
+                                ? SonarKind.MOVED
+                                : SonarKind.ORE,
                         creature.blockPosition());
             }
         }
+    }
+
+    private static double speedSquared(Entity creature) {
+        Vec3 velocity = creature.getDeltaMovement();
+        return creature.onGround() ? velocity.x * velocity.x + velocity.z * velocity.z : velocity.lengthSqr();
     }
 }

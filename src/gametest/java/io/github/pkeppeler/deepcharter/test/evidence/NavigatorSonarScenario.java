@@ -3,6 +3,9 @@ package io.github.pkeppeler.deepcharter.test.evidence;
 import io.github.pkeppeler.deepcharter.client.pod.SonarHud;
 import io.github.pkeppeler.deepcharter.client.pod.SonarKeys;
 import io.github.pkeppeler.deepcharter.client.theme.SonarLook;
+import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
+import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
+import io.github.pkeppeler.deepcharter.creature.Tally;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -34,7 +37,7 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Evidence scenario "navigator-sonar" (#988): a mock player pilots a Prospector in a block of stone and the real client rides second, as the navigator.
  * Before the ping the scope is empty. One press of the ping key returns the contacts round the pod: ore (filled squares), a gas pocket close by (a hollow
- * square) and one far off that reads as an empty cave (a dot), a cave (dots), and a body standing in a hollow (an ore echo, since it stands still). The
+ * square) and one far off that reads as an empty cave (a dot), a cave (dots), a body standing in a hollow (an ore echo, since it stands still), a Tally in a hollow far west (a Company machine: an ore echo) and a Retained in one far east (hollow: its room is an open cave and the figure returns nothing). The
  * navigator then turns toward the ore echo ahead and marks it, and the mark shows on the HUD. The echoes dim over their ten seconds, and the bar under the scope fills as the sonar clears for the next ping. The stills zoom on the scope.
  */
 public class NavigatorSonarScenario extends EvidenceScenario {
@@ -186,6 +189,19 @@ public class NavigatorSonarScenario extends EvidenceScenario {
         body.setNoGravity(true);
         body.setPos(X + 4 * CELL + 2, FLOOR_Y + 1, Z - 2 * CELL + 2);
         level.addFreshEntity(body);
+        // Far west, a Tally (a Company machine) in a hollow of its own: it echoes as ore. Far east, a Retained in
+        // another: the
+        // hollow returns an open cave and the figure in it returns nothing.
+        room(level, X - 5 * CELL, FLOOR_Y, Z - 3 * CELL, 1, 1);
+        Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
+        tally.setNoAi(true);
+        tally.setPos(X - 5 * CELL + 2, FLOOR_Y + 1, Z - 3 * CELL + 2);
+        level.addFreshEntity(tally);
+        room(level, X + 4 * CELL, FLOOR_Y, Z + CELL, 1, 1);
+        LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
+        figure.setNoAi(true);
+        figure.setPos(X + 4 * CELL + 2, FLOOR_Y, Z + CELL + 2);
+        level.addFreshEntity(figure);
         ServerPlayer real = real(level, two);
         real.teleportTo(level, X, FLOOR_Y, Z, Set.of(), 0f, 0f, true);
         two.mock().teleportTo(level, new Vec3(X, FLOOR_Y, Z), 0f, 0f);

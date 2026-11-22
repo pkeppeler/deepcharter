@@ -6,6 +6,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 import com.mojang.serialization.Codec;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.attachment.Versioned;
+import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.OreType;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
@@ -18,6 +19,7 @@ import io.github.pkeppeler.deepcharter.pod.SonarEvents;
 import io.github.pkeppeler.deepcharter.pod.SonarKind;
 import io.github.pkeppeler.deepcharter.pod.SonarMark;
 import io.github.pkeppeler.deepcharter.pod.SonarPing;
+import io.github.pkeppeler.deepcharter.pod.SonarTags;
 import io.github.pkeppeler.deepcharter.pod.SonarTuning;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -37,8 +39,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
@@ -46,10 +50,13 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.animal.chicken.Chicken;
+import net.minecraft.world.entity.monster.zombie.Husk;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.storage.TagValueInput;
@@ -69,11 +76,14 @@ public class PodSonarTest {
     private static final AtomicInteger PLAYERS = new AtomicInteger();
     private static final SonarTuning TUNING = SonarTuning.DEFAULT;
     private static final int Z = 7000;
-    private static final int FLOOR = 40;
+    private static final int FLOOR = TestLayers.worldY(1, 40);
     /** Blocks the stone reaches from the pod, past the range, so that a cell at the edge of it is still stone. */
     private static final int REACH = 26;
 
     private static final int SETTLE_TICKS = 4;
+    /** How close to the pod's middle a walker is when it has arrived: at the hull, which is wider than the walker. */
+    private static final double PRESENT_BLOCKS = 7;
+
     private static final int CELL = 4;
     /** Pods the test has marked as without power; a Fabric listener cannot be unregistered, so it acts only on these. */
     private static final Set<UUID> UNPOWERED = ConcurrentHashMap.newKeySet();
@@ -344,6 +354,223 @@ public class PodSonarTest {
                 });
     }
 
+    // ---- signatures: what echoes and what does not (#924) ----
+
+    private static <T extends net.minecraft.world.entity.Mob> T still(
+            ServerLevel level, EntityType<T> type, double x, double y, double z) {
+        T mob = TestEntities.create(type, level);
+        mob.removeFreeWill();
+        mob.setPos(x, y, z);
+        level.addFreshEntity(mob);
+        return mob;
+    }
+
+    private static boolean isIn(EntityType<?> type, TagKey<EntityType<?>> tag) {
+        return BuiltInRegistries.ENTITY_TYPE.wrapAsHolder(type).is(tag);
+    }
+
+    private static boolean echoesAt(PodEntity pod, BlockPos pos) {
+        return echoes(pod).stream().anyMatch(echo -> echo.pos().equals(pos));
+    }
+
+    /** A Company machine echoes as ore (CREATURES.md section 2), moving or not; a Retained is hollow and returns nothing. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void aTallyEchoesAsOreAtAnySpeedAndARetainedReturnsNothing(GameTestHelper helper) {
+        int x = 8152;
+        List<Entity> bodies = new ArrayList<>();
+        scene(
+                helper,
+                x,
+                level -> {
+                    room(level, x + 8, FLOOR, Z, 2, 1, 4);
+                    bodies.add(still(level, CreatureRegistry.TALLY, x + 9.5, FLOOR + 1, Z + 1.5));
+                    bodies.add(still(level, CreatureRegistry.TALLY, x + 13.5, FLOOR + 1, Z + 1.5));
+                    bodies.add(still(level, CreatureRegistry.LAMPLESS_FIGURE, x + 11.5, FLOOR, Z + 2.5));
+                },
+                scene -> {
+                    bodies.get(1).setDeltaMovement(TUNING.movingSpeed() * 4, 0, 0);
+                    PodSonar.ping(scene.pod());
+                    expectEcho(helper, scene.pod(), SonarKind.ORE, bodies.get(0).blockPosition());
+                    expectEcho(helper, scene.pod(), SonarKind.ORE, bodies.get(1).blockPosition());
+                    expect(
+                            helper,
+                            !echoesAt(scene.pod(), bodies.get(2).blockPosition()),
+                            "a Retained is hollow and returns nothing: %s",
+                            echoes(scene.pod()));
+                    bodies.forEach(Entity::discard);
+                });
+    }
+
+    /** The tags that say who echoes are pinned with the real types, so a creature that joins by a tag line cannot move another. */
+    @GameTest
+    public void theShippedSignatureTagsHoldTheCreaturesThatExist(GameTestHelper helper) {
+        expect(
+                helper,
+                isIn(CreatureRegistry.TALLY, SonarTags.ORE_ECHOING) && !isIn(CreatureRegistry.TALLY, SonarTags.HOLLOW),
+                "a Tally echoes as ore");
+        expect(
+                helper,
+                isIn(CreatureRegistry.LAMPLESS_FIGURE, SonarTags.HOLLOW)
+                        && !isIn(CreatureRegistry.LAMPLESS_FIGURE, SonarTags.ECHOING)
+                        && !isIn(CreatureRegistry.LAMPLESS_FIGURE, SonarTags.ORE_ECHOING)
+                        && !isIn(CreatureRegistry.LAMPLESS_FIGURE, SonarTags.HEARS),
+                "a Retained is hollow: no echo, and it does not hear");
+        helper.succeed();
+    }
+
+    /** A real mob on the ground reads as still: gravity is not a move. Walking at a block a second reads as moved. A hollow type in a broad tag still returns none. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
+    public void aMobStandingOnTheFloorEchoesStillAndAWalkingOneAsMovedAndHollowWins(GameTestHelper helper) {
+        int x = 8216;
+        List<Entity> bodies = new ArrayList<>();
+        scene(
+                helper,
+                x,
+                level -> {
+                    room(level, x + 8, FLOOR, Z, 2, 1, 4);
+                    bodies.add(still(level, EntityTypes.COW, x + 9.5, FLOOR, Z + 1.5));
+                    bodies.add(still(level, EntityTypes.COW, x + 13.5, FLOOR, Z + 1.5));
+                    bodies.add(still(level, EntityTypes.PIG, x + 11.5, FLOOR, Z + 2.5));
+                },
+                scene -> {
+                    expect(helper, bodies.get(0).onGround(), "the cow has settled on the floor");
+                    bodies.get(1)
+                            .setDeltaMovement(
+                                    TUNING.movingSpeed() * 2, bodies.get(1).getDeltaMovement().y, 0);
+                    PodSonar.ping(scene.pod());
+                    expectEcho(helper, scene.pod(), SonarKind.ORE, bodies.get(0).blockPosition());
+                    expectEcho(
+                            helper, scene.pod(), SonarKind.MOVED, bodies.get(1).blockPosition());
+                    expect(
+                            helper,
+                            !echoesAt(scene.pod(), bodies.get(2).blockPosition()),
+                            "a type in both the echo and the hollow tag returns nothing: %s",
+                            echoes(scene.pod()));
+                    bodies.forEach(Entity::discard);
+                });
+    }
+
+    // ---- the ping draws the Sleeper's (#924) ----
+
+    private static void corridor(GameTestHelper helper, ServerLevel level, int x, int length) {
+        for (int cx = (x + REACH) >> 4; cx <= (x + length + 4) >> 4; cx++) {
+            for (int cz = (Z - REACH) >> 4; cz <= (Z + REACH) >> 4; cz++) {
+                FarChunks.force(helper, level, cx, cz);
+            }
+        }
+        RoomCarver.carve(
+                level, x + REACH + 1, x + length + 4, FLOOR - REACH, FLOOR + REACH, Z - REACH, Z + REACH, Blocks.STONE);
+        RoomCarver.carve(
+                level,
+                new BlockPos(x + CELL, FLOOR, Z - 3),
+                new BlockPos(x + length, FLOOR + 2, Z + 3),
+                Blocks.AIR.defaultBlockState());
+    }
+
+    /** A husk with no will of its own, the test's stand-in for a Sleeper's walker (sun-proof; its follow range is how far it can path). */
+    private static Husk walker(ServerLevel level, double x, double lane) {
+        Husk husk = TestEntities.create(EntityTypes.HUSK, level);
+        husk.setPos(x, FLOOR, Z + lane);
+        husk.removeFreeWill();
+        level.addFreshEntity(husk);
+        return husk;
+    }
+
+    /**
+     * Who hears a ping, and how fast it comes. Tagged husks (the test's stand-ins for the Sleeper's) at 36 and 47 blocks set out for the pod; one
+     * at 52, past the noise, does not; a chicken inside the noise and outside the tag does not. The husk from 36 blocks walks to the hull.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 1200)
+    public void pacingAPingDrawsTheTaggedCreaturesInTheNoiseAndNoOtherAndTheyWalkTheDistance(GameTestHelper helper) {
+        int x = 8300;
+        Husk[] walkers = new Husk[3];
+        Chicken[] chicken = new Chicken[1];
+        double[] startAway = new double[2];
+        int[] age = {-1};
+        int[] arrived = {0};
+        run(
+                helper,
+                x,
+                level -> {
+                    corridor(helper, level, x, 56);
+                    walkers[0] = walker(level, x + 36.5, 0.5);
+                    walkers[1] = walker(level, x + 47.5, -2.5);
+                    walkers[2] = walker(level, x + 52.5, 2.5);
+                    chicken[0] = TestEntities.create(EntityTypes.CHICKEN, level);
+                    chicken[0].setPos(x + 20.5, FLOOR, Z + 0.5);
+                    chicken[0].removeFreeWill();
+                    level.addFreshEntity(chicken[0]);
+                },
+                scene -> {
+                    Vec3 pod = scene.pod().position();
+                    if (age[0] < 0) {
+                        // A creature paths only from the ground, and the far chunks tick a little after the pod's.
+                        if (!Stream.concat(Stream.of(walkers), Stream.of(chicken))
+                                .allMatch(Entity::onGround)) {
+                            return false;
+                        }
+                        startAway[0] = walkers[0].position().distanceTo(pod);
+                        startAway[1] = walkers[1].position().distanceTo(pod);
+                        PodSonar.ping(scene.pod());
+                        expect(
+                                helper,
+                                walkers[0].getNavigation().isInProgress()
+                                        && walkers[1].getNavigation().isInProgress(),
+                                "a tagged creature in the noise sets out for the ping: %s from %s blocks, %s from %s",
+                                walkers[0].getNavigation().isInProgress(),
+                                startAway[0],
+                                walkers[1].getNavigation().isInProgress(),
+                                startAway[1]);
+                        expect(
+                                helper,
+                                !walkers[2].getNavigation().isInProgress(),
+                                "a tagged creature past the noise does not hear it");
+                        expect(
+                                helper,
+                                !chicken[0].getNavigation().isInProgress(),
+                                "a creature not in the tag does not answer it");
+                        age[0] = 0;
+                        return false;
+                    }
+                    age[0]++;
+                    if (arrived[0] == 0 && walkers[0].position().distanceTo(pod) < PRESENT_BLOCKS) {
+                        arrived[0] = age[0];
+                    }
+                    boolean walking = walkers[0].getNavigation().isInProgress()
+                            || walkers[1].getNavigation().isInProgress();
+                    if (arrived[0] == 0 || walking) {
+                        expect(
+                                helper,
+                                age[0] < 1100,
+                                "the creatures walked: arrived %s, walking %s",
+                                arrived[0],
+                                walking);
+                        return false;
+                    }
+                    double far = walkers[1].position().distanceTo(pod);
+                    DeepCharter.LOGGER.info(
+                            "[sonar-lure] a walker heard from {} blocks was at the hull after {} ticks; one heard from {} stopped {} blocks off; "
+                                    + "one past the noise stayed {} blocks off",
+                            startAway[0],
+                            arrived[0],
+                            startAway[1],
+                            far,
+                            walkers[2].position().distanceTo(pod));
+                    expect(
+                            helper,
+                            far < startAway[1] - 20,
+                            "the creature at the edge of the noise came a good way: %s of %s blocks",
+                            far,
+                            startAway[1]);
+                    expect(
+                            helper,
+                            walkers[2].position().distanceTo(pod) > TUNING.noiseBlocks(),
+                            "the creature past the noise stayed where it was");
+                    Stream.concat(Stream.of(walkers), Stream.of(chicken)).forEach(Entity::discard);
+                    return true;
+                });
+    }
+
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void anotherSystemAddsEchoesThroughTheCollectEvent(GameTestHelper helper) {
         int x = 7384;
@@ -524,11 +751,6 @@ public class PodSonarTest {
                 });
     }
 
-    /** What #924's creatures will ask of a ping, written here so the radius is pinned before they do: within the noise radius of where it came from. */
-    private static boolean withinNoise(SonarPing ping, Vec3 listener) {
-        return ping.origin().distanceToSqr(listener) <= (double) ping.noiseBlocks() * ping.noiseBlocks();
-    }
-
     /** How far a ping is heard: the noise event carries the radius, and a listener answers it by that radius. Measured on a real ping. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 100)
     public void pacingAPingIsHeardFortyEightBlocksAndAfterItsEchoesAreSet(GameTestHelper helper) {
@@ -556,13 +778,10 @@ public class PodSonarTest {
                     ping.noiseBlocks(),
                     ping.rangeBlocks());
             expect(helper, ping.origin().equals(origin) && ping.pod() == scene.pod(), "the noise is the pod's");
+            expect(helper, ping.hears(origin.add(ping.noiseBlocks(), 0, 0)), "something 48 blocks off is in the noise");
             expect(
                     helper,
-                    withinNoise(ping, origin.add(ping.noiseBlocks(), 0, 0)),
-                    "something 48 blocks off is in the noise");
-            expect(
-                    helper,
-                    !withinNoise(ping, origin.add(ping.noiseBlocks() + 0.01, 0, 0)),
+                    !ping.hears(origin.add(ping.noiseBlocks() + 0.01, 0, 0)),
                     "something just past 48 blocks is not");
             expect(
                     helper,
