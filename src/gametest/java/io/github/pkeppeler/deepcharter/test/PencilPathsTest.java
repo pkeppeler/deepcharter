@@ -419,11 +419,16 @@ public class PencilPathsTest {
                         helper, "%s is outside layer 2's band: no shaft, no place", outside.toShortString());
             }
         }
-        ServerLevel layerOne = TestLayers.level(server, 1);
-        if (LayerStructures.siteNear(layerOne, StructureKind.KELLS_SHAFT, shaft.origin())
+        // Layer 1 shares the campaign level, so the other layer is a height: the shaft's column in layer 1's band is no
+        // place.
+        BlockPos inLayerOne = new BlockPos(
+                shaft.origin().getX(),
+                TestLayers.band(layer, 1).minY() + 1,
+                shaft.origin().getZ());
+        if (LayerStructures.siteNear(layer, StructureKind.KELLS_SHAFT, inLayerOne)
                         .isPresent()
-                || new PencilPlace.Structure(StructureKind.KELLS_SHAFT).reached(layerOne, shaft.origin(), Set.of())) {
-            throw Failures.failure(helper, "layer 1's level holds no layer 2, so it holds no Kells' shaft");
+                || new PencilPlace.Structure(StructureKind.KELLS_SHAFT).reached(layer, inLayerOne, Set.of())) {
+            throw Failures.failure(helper, "%s is in layer 1, which holds no Kells' shaft", inLayerOne.toShortString());
         }
 
         // The shaft: one block past the reach is out, the reach itself is in, and the path needs N10.

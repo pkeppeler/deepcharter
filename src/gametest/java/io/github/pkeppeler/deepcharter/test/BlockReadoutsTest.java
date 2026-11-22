@@ -51,6 +51,14 @@ public class BlockReadoutsTest {
                 .orElseThrow(() -> helper.assertionException("%s has no readout", state));
     }
 
+    /** The readout of {@code state} at the lowest block of {@code layer}, in the level that holds it: in the campaign level, a position decides the layer. */
+    private static Readout readoutIn(GameTestHelper helper, BlockState state, int layer) {
+        Level level = TestLayers.level(helper, layer);
+        BlockPos pos = new BlockPos(0, TestLayers.band(level, layer).minY(), 0);
+        return SHARED.readout(state, level, pos, helper.makeMockPlayer(GameType.SURVIVAL))
+                .orElseThrow(() -> helper.assertionException("%s has no readout", state));
+    }
+
     private static void expectWords(
             GameTestHelper helper, Readout readout, String nameKey, Optional<String> hintKey, String what) {
         String name = key(helper, readout.name());
@@ -151,10 +159,10 @@ public class BlockReadoutsTest {
     public void deepRockIsPodDrillOnlyOnlyBelowLayerOne(GameTestHelper helper) {
         BlockState shale = LayerBlocks.GREEN_SHALE.defaultBlockState();
         for (int layer : new int[] {TestLayers.SURFACE, 1}) {
-            Readout readout = readout(helper, shale, TestLayers.level(helper, layer));
+            Readout readout = readoutIn(helper, shale, layer);
             expectWords(helper, readout, "block.deepcharter.green_shale", Optional.empty(), "rock in layer " + layer);
         }
-        Readout deep = readout(helper, shale, TestLayers.level(helper, 2));
+        Readout deep = readoutIn(helper, shale, 2);
         expectWords(helper, deep, "block.deepcharter.green_shale", Optional.of(POD_DRILL_ONLY), "rock in layer 2");
         helper.succeed();
     }
@@ -162,11 +170,11 @@ public class BlockReadoutsTest {
     @GameTest
     public void aDisguisedBlockReadsAsItsDisguiseHintIncluded(GameTestHelper helper) {
         BlockState pocket = HazardBlocks.GAS_POCKET.defaultBlockState();
-        Readout shallow = readout(helper, pocket, TestLayers.level(helper, 1));
+        Readout shallow = readoutIn(helper, pocket, 1);
         expectWords(helper, shallow, "block.minecraft.stone", Optional.empty(), "a gas pocket in layer 1");
-        Readout deep = readout(helper, pocket, TestLayers.level(helper, 2));
+        Readout deep = readoutIn(helper, pocket, 2);
         expectWords(helper, deep, "block.minecraft.stone", Optional.of(POD_DRILL_ONLY), "a gas pocket in layer 2");
-        Readout stone = readout(helper, Blocks.STONE.defaultBlockState(), TestLayers.level(helper, 2));
+        Readout stone = readoutIn(helper, Blocks.STONE.defaultBlockState(), 2);
         if (!stone.equals(deep)) {
             throw helper.assertionException("a gas pocket read %s, stone %s: they must read alike", deep, stone);
         }
@@ -234,7 +242,9 @@ public class BlockReadoutsTest {
         for (BlockState state : new BlockState[] {
             LayerBlocks.BREACH_CRUST.defaultBlockState(), LayerBlocks.GREEN_SHALE.defaultBlockState()
         }) {
-            Readout readout = SHARED.readout(state, TestLayers.level(helper, 2), BlockPos.ZERO, creative)
+            Level deep = TestLayers.level(helper, 2);
+            BlockPos pos = new BlockPos(0, TestLayers.band(deep, 2).minY(), 0);
+            Readout readout = SHARED.readout(state, deep, pos, creative)
                     .orElseThrow(() -> helper.assertionException("%s has no readout", state));
             if (readout.hint().isPresent()) {
                 throw helper.assertionException("a creative player read a hint on %s: %s", state, readout.hint());

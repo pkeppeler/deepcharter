@@ -157,7 +157,7 @@ The **Employee Handbook** is a company-issued onboarding manual.
 
 ### Directives and progress
 
-- **Directives** are the handbook's objectives, shown as a **quest map**: chapter tabs down the side, and each chapter a flowchart sheet you can drag and zoom. They complete automatically from game events: item obtained, block placed or repaired, layer entered, item crafted, or a custom trigger from our code.
+- **Directives** are the handbook's objectives, shown as a **quest map**: a tab down the side for the intro and one for each chapter on every page, and each chapter a fixed flowchart sheet: nothing on it drags, pans or zooms (playtest 3, #962). They complete automatically from game events: item obtained, block placed or repaired, layer entered, item crafted, or a custom trigger from our code.
 - A step shows its instruction, the items it needs with counts and progress, a link to its chapter page and each item's recipe one click away. The chapter text pages stay as the manual.
 - A completed step shows a themed popup. Nothing is pinned on screen. The book opens where the player left it, and L opens it as well as H.
 - Directives give no rewards. The employer's transmission bonuses still exist separately.

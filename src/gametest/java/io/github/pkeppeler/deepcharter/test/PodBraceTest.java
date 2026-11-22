@@ -34,8 +34,8 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * Server GameTests for the crust warning and the breach brace (#378). Layer 1 is crust at y 0 to 2 (3 rows of 8 hull each), so a pod with its
- * feet at y 3 stands on top of the crust, and a pod at y 10 is 7 slabs above it. The pods here are not added to the world: the tests read
+ * Server GameTests for the crust warning and the breach brace (#378). Layer 1 is crust at local y 0 to 2 (its lowest rows) (3 rows of 8 hull each), so a pod with its
+ * feet at y 3 stands on top of the crust, and a pod at local y 10 is 7 slabs above it. The pods here are not added to the world: the tests read
  * the warning and the brace from their state and run the brace's tick by hand.
  */
 public class PodBraceTest {
@@ -52,10 +52,11 @@ public class PodBraceTest {
         return owner;
     }
 
-    /** A Mole with its feet at {@code y}, {@code hull} hull and a brace if {@code braced}; not in the world, so it never ticks. */
-    private static PodEntity pod(GameTestHelper helper, ServerLevel level, int y, float hull, boolean braced) {
+    /** A Mole with its feet at {@code localY} in {@code layer}, {@code hull} hull and a brace if {@code braced}; not in the world, so it never ticks. */
+    private static PodEntity pod(
+            GameTestHelper helper, ServerLevel level, int layer, int localY, float hull, boolean braced) {
         PodEntity pod = TestEntities.create(PodRegistry.POD, level);
-        pod.setPos(100, y, 3800);
+        pod.setPos(100, TestLayers.worldY(layer, localY), 3800);
         if (braced) {
             ScannerPods.fit(helper.getLevel().getServer(), owner(helper).player(), pod, ComponentTrack.BRACE, 1);
         }
@@ -116,8 +117,8 @@ public class PodBraceTest {
     @GameTest
     public void theBraceLeavesTheDrillAndTheCrustAsTheyAre(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
-        PodStats stock = PodStats.of(pod(helper, one, 10, 100f, false));
-        PodStats braced = PodStats.of(pod(helper, one, 10, 100f, true));
+        PodStats stock = PodStats.of(pod(helper, one, 1, 10, 100f, false));
+        PodStats braced = PodStats.of(pod(helper, one, 1, 10, 100f, true));
         if (stock.crustHullDamage() != ROW || braced.crustHullDamage() != ROW) {
             throw failure(
                     helper,
@@ -155,19 +156,19 @@ public class PodBraceTest {
     public void aHullTheCrustWillEndIsWarnedOfAboveTheCrust(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
         expectWarning(
-                helper, pod(helper, one, 10, 20f, false), 7, 3, FULL_CRUST, "for 20 hull 7 slabs above the crust");
+                helper, pod(helper, one, 1, 10, 20f, false), 7, 3, FULL_CRUST, "for 20 hull 7 slabs above the crust");
         expectWarning(
                 helper,
-                pod(helper, one, 10, FULL_CRUST, false),
+                pod(helper, one, 1, 10, FULL_CRUST, false),
                 7,
                 3,
                 FULL_CRUST,
                 "for exactly the crust's price, which leaves no hull");
-        expectNone(helper, pod(helper, one, 10, FULL_CRUST + 1, false), "for a hull that outlasts the crust by 1");
-        expectNone(helper, pod(helper, one, 10, 100f, false), "for a full hull");
+        expectNone(helper, pod(helper, one, 1, 10, FULL_CRUST + 1, false), "for a hull that outlasts the crust by 1");
+        expectNone(helper, pod(helper, one, 1, 10, 100f, false), "for a full hull");
         expectWarning(
                 helper,
-                pod(helper, one, 10, 20f, true),
+                pod(helper, one, 1, 10, 20f, true),
                 7,
                 3,
                 FULL_CRUST,
@@ -182,23 +183,23 @@ public class PodBraceTest {
         int crustTop = 3;
         expectWarning(
                 helper,
-                pod(helper, one, crustTop + reach, 5f, false),
+                pod(helper, one, 1, crustTop + reach, 5f, false),
                 reach,
                 3,
                 FULL_CRUST,
                 "at the reach of the warning");
-        expectNone(helper, pod(helper, one, crustTop + reach + 1, 5f, false), "one slab beyond the reach");
+        expectNone(helper, pod(helper, one, 1, crustTop + reach + 1, 5f, false), "one slab beyond the reach");
         helper.succeed();
     }
 
     @GameTest
     public void inTheCrustTheWarningCountsOnlyTheRowsLeft(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
-        expectWarning(helper, pod(helper, one, 2, 10f, false), 0, 2, 2 * ROW, "2 rows from the bottom");
+        expectWarning(helper, pod(helper, one, 1, 2, 10f, false), 0, 2, 2 * ROW, "2 rows from the bottom");
         expectWarning(
-                helper, pod(helper, one, 1, ROW, false), 0, 1, ROW, "1 row from the bottom, with exactly its price");
-        expectNone(helper, pod(helper, one, 1, ROW + 1, false), "1 row from the bottom, with hull to spare");
-        expectNone(helper, pod(helper, one, 0, 1f, false), "with no crust left under the pod");
+                helper, pod(helper, one, 1, 1, ROW, false), 0, 1, ROW, "1 row from the bottom, with exactly its price");
+        expectNone(helper, pod(helper, one, 1, 1, ROW + 1, false), "1 row from the bottom, with hull to spare");
+        expectNone(helper, pod(helper, one, 1, 0, 1f, false), "with no crust left under the pod");
         helper.succeed();
     }
 
@@ -206,9 +207,12 @@ public class PodBraceTest {
     public void thereIsNoWarningWhereThereIsNoCrustToCross(GameTestHelper helper) {
         expectNone(
                 helper,
-                pod(helper, TestLayers.level(helper, 2), 10, 1f, false),
+                pod(helper, TestLayers.level(helper, 2), 2, 10, 1f, false),
                 "in the last layer, whose crust is not drilled");
-        expectNone(helper, pod(helper, helper.getLevel().getServer().overworld(), 70, 1f, false), "on the surface");
+        expectNone(
+                helper,
+                pod(helper, helper.getLevel().getServer().overworld(), TestLayers.SURFACE, 70, 1f, false),
+                "on the surface");
         helper.succeed();
     }
 
@@ -217,20 +221,20 @@ public class PodBraceTest {
     @GameTest
     public void theBraceWorksOnlyForAPodThatHasOneAndNeedsIt(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
-        PodEntity none = pod(helper, one, 10, 5f, false);
+        PodEntity none = pod(helper, one, 1, 10, 5f, false);
         ore(helper, none, OreType.IRONIUM);
         expectPatching(helper, none, PodBrace.Patching.IDLE, "for a pod with no brace");
-        PodEntity hurt = pod(helper, one, 10, 5f, true);
+        PodEntity hurt = pod(helper, one, 1, 10, 5f, true);
         ore(helper, hurt, OreType.IRONIUM);
         expectPatching(helper, hurt, PodBrace.Patching.WORKING, "for a braced pod whose hull would not hold the crust");
         float enough = FULL_CRUST + PodBraceTuning.DEFAULT.reserveHull();
-        PodEntity patched = pod(helper, one, 10, enough, true);
+        PodEntity patched = pod(helper, one, 1, 10, enough, true);
         ore(helper, patched, OreType.IRONIUM);
         expectPatching(helper, patched, PodBrace.Patching.IDLE, "for a hull the reserve over the crust's price");
-        PodEntity short_ = pod(helper, one, 10, enough - 0.5f, true);
+        PodEntity short_ = pod(helper, one, 1, 10, enough - 0.5f, true);
         ore(helper, short_, OreType.IRONIUM);
         expectPatching(helper, short_, PodBrace.Patching.WORKING, "for a hull half a point under the reserve");
-        PodEntity far = pod(helper, one, 10 + PodBraceTuning.DEFAULT.warnSlabs(), 5f, true);
+        PodEntity far = pod(helper, one, 1, 10 + PodBraceTuning.DEFAULT.warnSlabs(), 5f, true);
         ore(helper, far, OreType.IRONIUM);
         expectPatching(helper, far, PodBrace.Patching.IDLE, "beyond the reach of the crust");
         helper.succeed();
@@ -239,7 +243,7 @@ public class PodBraceTest {
     @GameTest
     public void theBraceWaitsForRestAndNeedsOreToBurn(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
-        PodEntity pod = pod(helper, one, 10, 5f, true);
+        PodEntity pod = pod(helper, one, 1, 10, 5f, true);
         expectPatching(helper, pod, PodBrace.Patching.NO_ORE, "for an empty bay");
         ore(helper, pod, OreType.IRONIUM);
         if (PodBrace.status(pod, false).patching() != PodBrace.Patching.WAITS_FOR_REST) {
@@ -254,7 +258,7 @@ public class PodBraceTest {
     @GameTest
     public void aPatchBurnsTheCheapestOreForHullOnTheBeat(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
-        PodEntity pod = pod(helper, one, 10, 5f, true);
+        PodEntity pod = pod(helper, one, 1, 10, 5f, true);
         ore(helper, pod, OreType.SILVERIUM, OreType.IRONIUM);
         tick(pod, PATCH + 1);
         if (pod.hull() != 5f || pod.cargoUsed() != 2) {
@@ -292,7 +296,7 @@ public class PodBraceTest {
     @GameTest
     public void aPodInTheAirIsNotPatched(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
-        PodEntity pod = pod(helper, one, 10, 5f, true);
+        PodEntity pod = pod(helper, one, 1, 10, 5f, true);
         ore(helper, pod, OreType.IRONIUM);
         pod.setOnGround(false);
         tick(pod, PATCH);
@@ -306,7 +310,7 @@ public class PodBraceTest {
     @GameTest
     public void aPodThatMovedWithinTheRestTimeIsNotPatchedUntilItHasRested(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
-        PodEntity pod = pod(helper, one, 10, 5f, true);
+        PodEntity pod = pod(helper, one, 1, 10, 5f, true);
         ore(helper, pod, OreType.IRONIUM);
         pod.setOnGround(false);
         tick(pod, 5);
@@ -334,14 +338,14 @@ public class PodBraceTest {
         if (OreType.GOLDIUM.value() <= cap || OreType.SILVERIUM.value() > cap) {
             throw failure(helper, "the cap of %s lets silverium through and stops goldium", cap);
         }
-        PodEntity dear = pod(helper, one, 10, 5f, true);
+        PodEntity dear = pod(helper, one, 1, 10, 5f, true);
         ore(helper, dear, OreType.GOLDIUM);
         expectPatching(helper, dear, PodBrace.Patching.NO_CHEAP_ORE, "for a bay of only dear ore");
         tick(dear, PATCH);
         if (dear.hull() != 5f || dear.cargoUsed() != 1) {
             throw failure(helper, "dear ore is not burned: hull %s, %s ore", dear.hull(), dear.cargoUsed());
         }
-        PodEntity mixed = pod(helper, one, 10, 5f, true);
+        PodEntity mixed = pod(helper, one, 1, 10, 5f, true);
         ore(helper, mixed, OreType.GOLDIUM, OreType.IRONIUM);
         tick(mixed, PATCH);
         tick(mixed, 2 * PATCH);
@@ -364,9 +368,10 @@ public class PodBraceTest {
         int x = 4100;
         int z = 3800;
         ServerLevel one = TestLayers.level(helper, 1);
-        RoomCarver.carve(one, x - 4, x + 4, 0, 2, z - 4, z + 4, LayerBlocks.BREACH_CRUST);
-        RoomCarver.carve(one, x - 4, x + 4, 3, 9, z - 4, z + 4, Blocks.STONE);
-        RoomCarver.carve(one, x - 4, x + 4, 10, 16, z - 4, z + 4, Blocks.AIR);
+        int floor = TestLayers.band(one, 1).minY();
+        RoomCarver.carve(one, x - 4, x + 4, floor, floor + 2, z - 4, z + 4, LayerBlocks.BREACH_CRUST);
+        RoomCarver.carve(one, x - 4, x + 4, floor + 3, floor + 9, z - 4, z + 4, Blocks.STONE);
+        RoomCarver.carve(one, x - 4, x + 4, floor + 10, floor + 16, z - 4, z + 4, Blocks.AIR);
         MockPlayer pilot = MockPlayers.join(helper, "brace-holder");
         pilot.teleportTo(one, TestLayers.vec(1, x, 10, z), 0f, 0f);
         PodEntity[] pod = {null};
@@ -395,7 +400,7 @@ public class PodBraceTest {
                         pod[0].cargoUsed(),
                         pod[0].getY());
             }
-            if (pod[0].getY() < 10 - SLABS + 0.01) {
+            if (pod[0].getY() < TestLayers.worldY(1, 10) - SLABS + 0.01) {
                 pilot.releaseInput();
                 pod[0].discard();
                 helper.succeed();
@@ -449,7 +454,7 @@ public class PodBraceTest {
     @GameTest
     public void aPodWithNoPowerIsNotPatched(GameTestHelper helper) {
         ServerLevel one = TestLayers.level(helper, 1);
-        PodEntity pod = pod(helper, one, 10, 5f, true);
+        PodEntity pod = pod(helper, one, 1, 10, 5f, true);
         ore(helper, pod, OreType.IRONIUM);
         pod.setStranded(true);
         tick(pod, PATCH);

@@ -280,6 +280,10 @@ public class PencilSheetClientTest implements FabricClientGameTest {
         click(screen, pencilTab(screen));
         settle(screen);
         require(screen.page() == pencilPage(pages(SHIPPED)), "the pencil tab opens the sheet, page " + screen.page());
+        require(
+                screen.section() == CHAPTERS + 1,
+                "the pencil tab reads as selected on the sheet: the section is the one after the chapters, got "
+                        + screen.section());
         List<AbstractWidget> chapterOne = widgetsLabelled(screen, "1").stream()
                 .filter(widget -> widget.getX() >= screen.width / 2)
                 .toList();

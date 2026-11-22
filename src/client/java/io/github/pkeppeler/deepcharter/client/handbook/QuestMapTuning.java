@@ -55,12 +55,8 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param itemCountTop distance from the top of an item icon to its count's text
  * @param stampLeft distance from the text column's left edge to the centre of the COMPLETE or COMING SOON stamp
  * @param stampTop distance from the sheet's first line to the centre of that stamp
- * @param zoomMin smallest zoom of a flowchart
- * @param zoomMax largest zoom of a flowchart
- * @param zoomStep zoom factor of one scroll notch
- * @param panMargin how much of the flowchart must stay in view when it is dragged away
  * @param toastWidth width of the step-done popup
- * @param toastHeight height of the step-done popup
+ * @param toastHeight least height of the step-done popup; it grows to fit a step that wraps to more lines
  * @param toastMillis how long the step-done popup shows
  * @param toastInset space between the step-done popup's edge and its text
  * @param barsNoteGap space between the redaction bars and the margin note under them
@@ -144,10 +140,6 @@ public record QuestMapTuning(
         int itemCountTop,
         int stampLeft,
         int stampTop,
-        double zoomMin,
-        double zoomMax,
-        double zoomStep,
-        int panMargin,
         int toastWidth,
         int toastHeight,
         int toastMillis,
@@ -237,10 +229,6 @@ public record QuestMapTuning(
                 d.integer("itemCountTop", 0),
                 d.integer("stampLeft", 0),
                 d.integer("stampTop", 0),
-                d.decimal("zoomMin", 0.1, 10),
-                d.decimal("zoomMax", 0.1, 10),
-                d.decimal("zoomStep", 0.1, 10),
-                d.integer("panMargin", 0),
                 d.integer("toastWidth", 1),
                 d.integer("toastHeight", 1),
                 d.integer("toastMillis", 1),

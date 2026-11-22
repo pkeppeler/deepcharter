@@ -36,7 +36,8 @@ You need a Minecraft Java Edition account.
 - **Move:** W A S D steer the pod.
 - **Rotor:** hold jump (Space) to lift.
 - **Drill:** sprint (default Left Ctrl). Sprint while on the ground drills down; push into a wall to drill sideways.
-- **Refuel:** right-click the pod while holding coal or charcoal.
+- **Refuel:** right-click the pod while holding coal or charcoal. The low-fuel tone sounds at 21% of the tank. A full tank is about four minutes of drilling, driving and climbing, so a first trip down 40 blocks and home leaves fuel to spare.
+- **Stranded:** a pod that runs dry goes dark. Refuel it (a fuel item, or a reserve tank) and it wakes. If nobody does, the HUD counts down a minute and the Company's winch crew hauls you and the pod home for a recovery fee of $30 for each layer you are down (layer 2 is $60). The fee comes from your charter's account, up to what it holds. A bare account costs hull instead, a point a dollar, never debt, and never below 10 hull. Any ore in the bay stays where the pod stopped, for about 30 minutes, and the crew leaves a litre of fuel to drive to the pump.
 - **Terminals:** right-click one in the colony (fuel pump, ore processor, upgrade terminal, repair station, hangar console). A terminal that is offline takes the parts that repair it: put them in from its screen. Park your pod beside a terminal to use it on the pod.
 - **Handbook:** press H. It lists nine chapters of directives that tick off as you do them. Right-click a sheet of paper in the world to file its Note.
 - **Tow cable:** ride a pod, hold a tow cable and right-click another pod. Right-click a towed pod with the cable to take it off.
@@ -44,7 +45,7 @@ You need a Minecraft Java Edition account.
 
 ## Your first hour
 
-There are no trees and no ore on the surface. The Company's salvage crates lie in a ring round the colony, 100 to 160 blocks out: break one by hand for planks, sticks, cloth, scrap iron, scrap copper and a little redstone. Pale stalks grow on the floors of craters, such as the great pit south of the square, and in patches among the crates: fell them for wood (break one block and everything above it sags and bursts in a spore puff, the drops scattering; now and then a great stalk, two blocks thick under a wide cap, gives a whole stack), craft the stalk into planks, and burn planks to melt scrap in a furnace. Regolith rock is your stone. That is enough for tools, a torch and every part the colony's terminals need. The crates do not come back, but your pod's rock does: with a spoil hopper fitted, park at the ore processor and press the spoil it kept into new salvage crates.
+There are no trees and no ore on the surface. The Company's salvage crates lie in a ring round the colony, 100 to 160 blocks out: break one by hand for planks, sticks, cloth, scrap iron, scrap copper and a little redstone. Pale stalks grow on the floors of craters, such as the great pit south of the square, and in patches among the crates: fell them for wood (break one block and everything above it sags and bursts in a spore puff, the drops scattering; now and then a great stalk, three thin trunks braided round each other with a shelf jutting off each, gives a whole stack; break one trunk and only that trunk comes down), craft the stalk into planks, and burn planks to melt scrap in a furnace. Regolith rock is your stone. That is enough for tools, a torch and every part the colony's terminals need. The crates do not come back, but your pod's rock does: with a spoil hopper fitted, park at the ore processor and press the spoil it kept into new salvage crates.
 
 ## Optional mod: dynamic lights
 
@@ -64,7 +65,6 @@ Host only: with the extracted originals in `original_flash_game/extracted/sounds
 ## Known issues
 
 - Content is partial: only the surface and layers 1 and 2 exist, with placeholder text, sounds and models. The lore and the creatures are unfinished.
-- Pods can run out of fuel and strand you. Bring coal.
 - Sodium and Lithium are speed mods and are not ours. If something looks wrong, remove them from the instance (**Edit, Mods**) and check whether the problem goes away. Say so in your report.
 - Do not add other mods, except the optional one above. Old Sodium add-ons are blocked by it. Iris 1.11.7 now supports Sodium 0.9.2, but only as a dev opt-in, not for friends: see [iris-audit.md](tooling/iris-audit.md).
 - Back up your world before updating the build.

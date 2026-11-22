@@ -3,9 +3,11 @@ package io.github.pkeppeler.deepcharter.client.handbook;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Where the player left the handbook: the page, and the pan, zoom and picked step of each chapter's flowchart. The book opens there
+ * Where the player left the handbook: the page, and the picked step of each chapter's flowchart. The book opens there
  * next time. {@link #SESSION} is the one a player's own opening uses; it is forgotten on leaving a world. Client thread.
  */
 public final class HandbookMemory {
@@ -16,7 +18,8 @@ public final class HandbookMemory {
     private String page = "";
 
     private int chapter;
-    private final Map<Integer, MapView> views = new HashMap<>();
+    /** The step picked on each chapter's index card, by chapter number; a chapter with none shows its current step. */
+    private final Map<Integer, Identifier> picks = new HashMap<>();
 
     /** Remembers {@code page} as the one the book was left on. */
     void remember(HandbookPage page) {
@@ -56,15 +59,21 @@ public final class HandbookMemory {
         };
     }
 
-    /** The flowchart state of chapter {@code number}, made on first use. */
-    MapView view(int number) {
-        return views.computeIfAbsent(number, key -> new MapView());
+    /** The step picked on chapter {@code number}'s card, or null when the player has picked none. */
+    @Nullable
+    Identifier picked(int number) {
+        return picks.get(number);
+    }
+
+    /** Remembers {@code step} as the one picked on chapter {@code number}'s card. */
+    void pick(int number, Identifier step) {
+        picks.put(number, step);
     }
 
     /** Forgets everything: the next opening is at the cover. */
     public static void forgetSession() {
         SESSION.page = "";
         SESSION.chapter = 0;
-        SESSION.views.clear();
+        SESSION.picks.clear();
     }
 }
