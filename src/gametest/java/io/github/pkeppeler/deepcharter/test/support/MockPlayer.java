@@ -31,6 +31,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.display.RecipeDisplayId;
@@ -51,6 +52,7 @@ public final class MockPlayer {
     private final List<Component> actionBar = new ArrayList<>();
     private final List<Component> chat = new ArrayList<>();
     private final List<Identifier> sounds = new ArrayList<>();
+    private final Map<Integer, List<Identifier>> soundsByEntity = new HashMap<>();
     private final List<Long> soundTicks = new ArrayList<>();
     private final List<CustomPacketPayload> payloads = new ArrayList<>();
     private final Map<ChunkPos, Integer> chunksSent = new HashMap<>();
@@ -86,6 +88,11 @@ public final class MockPlayer {
     /** The id of every sound the server has played to this player alone (a sound entity packet) so far, oldest first. Read on the mock's tick, so it lags by one. */
     public List<Identifier> soundsHeard() {
         return List.copyOf(sounds);
+    }
+
+    /** As {@link #soundsHeard}, only sounds played at {@code source}, so nearby tests do not hear each other. */
+    public List<Identifier> soundsHeardFrom(Entity source) {
+        return List.copyOf(soundsByEntity.getOrDefault(source.getId(), List.of()));
     }
 
     /** The level game time at which the mock read each sound of {@link #soundsHeard()}, in order: the play tick or the next. */
@@ -258,6 +265,9 @@ public final class MockPlayer {
                 }
                 if (outbound instanceof ClientboundSoundEntityPacket packet) {
                     sounds.add(packet.getSound().value().location());
+                    soundsByEntity
+                            .computeIfAbsent(packet.getId(), id -> new ArrayList<>())
+                            .add(packet.getSound().value().location());
                     soundTicks.add(player.level().getGameTime());
                 }
                 if (outbound instanceof ClientboundRecipeBookAddPacket packet) {
