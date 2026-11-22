@@ -114,7 +114,7 @@ What it explains:
 
 - **Lamps.** A lamp is life, and quietly, faith.
   - The Retained are lampless. "Things come to dark pods."
-    - A Retained never attacks anyone. It comes to a dark pod (one with a pilot and no lights), clings to the hull and drains the fuel, and does not let go until it is killed (the drill kills it from the seat; a person on foot can kill it too). A lit pod is left alone, but light does not make a Retained fade or free a pod it holds, and neither does a person near it. The user's calls (pkeppeler, 2026-10-11, #449 and #485): "them grabbing and draining a pod, its gas, but not attacking is good"; and they "must be killed", or they keep draining the fuel.
+    - A Retained never attacks anyone. It comes to a dark pod (one with a pilot and no lights), clings to the hull and drains the fuel, and does not let go until it is killed (the drill kills it from the seat; a person on foot can kill it too). A lit pod is left alone, but light does not make a Retained fade or free a pod it holds, and neither does a person near it. The user's calls (pkeppeler, 2026-10-11, #449 and #485): "them grabbing and draining a pod, its gas, but not attacking is good"; and they "must be killed", or they keep draining the fuel. The creatures session (2026-11-21) added that a Retained clings the same way to a person in the dark: it slows them and drains their hunger, never their health ([CREATURES.md](CREATURES.md#the-retained)).
     - Each carries a tiny, dim lamp in the bracket of its helmet, and is seen from far off in the dark. They are "even creepier": a lamp that gives no light to the one who carries it, a counterfeit of a miner's, in the bracket that the Company left empty. (The figure of Prospector's Run has none lit: Tomas comes back without his lamp.) The user's calls (pkeppeler, 2026-10-11, #449 and #506): the pole, the hand and the ribs were rejected, and the lamp is "a tiny, dim light in its helmet"; and they are "not rare" once the player is fairly deep.
   - The colony chapel's candle has burned for 38 years with nobody tending it. Nobody ever comments.
   - Ines left the Prospector's lights on for her brother; one is still burning.
@@ -275,7 +275,7 @@ Zones: **Intake → the Works → the Boardroom.** The Ramp lies below.
 
 ## 12. The finale
 
-Combat details belong to the creatures session ([#13](https://github.com/pkeppeler/deepcharter/issues/13)); this is the story's shape. The Retained are not the finale's fight: they are the ordinary mob of layers 1 and 2 (section 6, #449). The boss is the Chairman.
+Combat details are in [CREATURES.md](CREATURES.md#7-the-finale), from the creatures session ([#13](https://github.com/pkeppeler/deepcharter/issues/13)); this is the story's shape. The Retained are not the finale's fight: they are the ordinary mob of layers 1 and 2 (section 6, #449). The boss is the Chairman.
 
 1. **Phase 1, the Chairman.** Fell in a frock coat and the smiling bronze mask, hands always open. The sender field's letters slide into MOLOCH. He is pompous and ridiculous, and mocking him is the right response.
 2. **Phase 2, Head Office stands up.** The bronze figure rises, built from what *this charter* sold, so each charter fights its own. You break it with drill and charge, but you cannot kill it: everything it is made of was given to it.
@@ -317,3 +317,5 @@ Three families:
 - **The gnawers:** post-game only.
 
 Fixed beats: something moving in the dark (layers 1 and 2, never attacks a person, comes to dark pods and drains their fuel, some carry a lamp), listeners drawn to resonance (layer 5), THE EYES that never attack (layer 7), and the two-phase finale (layer 8).
+
+The creatures session built on these hooks: [CREATURES.md](CREATURES.md).
