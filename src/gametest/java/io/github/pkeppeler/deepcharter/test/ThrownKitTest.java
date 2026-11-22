@@ -9,6 +9,7 @@ import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
 import io.github.pkeppeler.deepcharter.creature.DrawSources;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
+import io.github.pkeppeler.deepcharter.layer.CaveInTuning;
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.pod.PodComponents;
@@ -85,6 +86,8 @@ public class ThrownKitTest {
     private static final int PLACED_X = 8032;
     private static final int CREW_X = 8096;
     private static final int PODS_X = 8160;
+    private static final int ROOF_CREW_X = 8224;
+    private static final int ROOF_STRANGER_X = 8288;
     /** A batch of its own with the PvP rule off: the rule is the server's, so a test that turns it off cannot share a batch with one that needs it on. */
     private static final String PVP_OFF = "deepcharter-test:pvp_off";
 
@@ -901,6 +904,79 @@ public class ThrownKitTest {
                                 hull[0] - other[0].hull());
                         own[0].discard();
                         other[0].discard();
+                        helper.succeed();
+                    }
+                });
+    }
+
+    /** A thrown charge shakes the roof over the thrower's crewmate on foot, PvP off: the same charter rule as a pod's charge (#987). */
+    @GameTest(maxTicks = MAX_TICKS, environment = PVP_OFF)
+    public void aThrownChargeShakesTheRoofOverTheThrowersCrewmateWhenPvpIsOff(GameTestHelper helper) {
+        roofUnderBlast(helper, ROOF_CREW_X, true);
+    }
+
+    /** With PvP off, a thrown charge does not shake the roof over a person of another charter: that would be griefing. */
+    @GameTest(maxTicks = MAX_TICKS, environment = PVP_OFF)
+    public void aThrownChargeNeverShakesTheRoofOverAPersonOfAnotherCharterWhenPvpIsOff(GameTestHelper helper) {
+        roofUnderBlast(helper, ROOF_STRANGER_X, false);
+    }
+
+    /**
+     * Throws a charge at the thrower's feet and walks the thrower out of the cave-in's stretch. A person on foot 5 blocks off stands under a slab of
+     * natural rock, and is the thrower's crewmate when {@code crewmate} is true, and of another charter otherwise. Once the fuse and the cave-in's
+     * warning have run, the slab is gone when {@code crewmate} is true and stands otherwise.
+     */
+    private static void roofUnderBlast(GameTestHelper helper, int x, boolean crewmate) {
+        MockPlayer under = MockPlayers.join(helper, crewmate ? "roof-crewmate" : "roof-stranger");
+        int[] landedAt = {-1};
+        int fuse = DEFAULT.charge().fuseTicks();
+        int warn = CaveInTuning.DEFAULT.warnTicks();
+        ThrowRoom.start(
+                helper,
+                x,
+                room -> {
+                    MinecraftServer server = room.level().getServer();
+                    CharterId mine =
+                            found(helper, server, room.thrower().player().getUUID(), "Thrower");
+                    if (crewmate) {
+                        var applied = Charters.apply(server, under.player().getUUID(), mine);
+                        expect(helper, applied.isEmpty(), "the crewmate could not apply: %s", applied);
+                        var approved = Charters.approve(
+                                server,
+                                room.thrower().player().getUUID(),
+                                under.player().getUUID());
+                        expect(helper, approved.isEmpty(), "the crewmate was not approved: %s", approved);
+                    } else {
+                        found(helper, server, under.player().getUUID(), "Stranger");
+                    }
+                    expect(helper, !room.level().isPvpAllowed(), "the pvp_off environment should turn PvP off");
+                    set(room, 0, -1, 0, HazardBlocks.COMPANY_ROCK);
+                    for (int dx = 4; dx <= 6; dx++) {
+                        for (int dz = -1; dz <= 1; dz++) {
+                            set(room, dx, 2, dz, Blocks.STONE);
+                        }
+                    }
+                    under.player().setGameMode(GameType.SURVIVAL);
+                    under.teleportTo(room.level(), Vec3.atBottomCenterOf(room.cell(5, 0, 0)), 0f, 0f);
+                    dropCharge(helper, room, true);
+                },
+                room -> {
+                    if (landedAt[0] < 0) {
+                        if (room.kitLanded()) {
+                            landedAt[0] = room.ticks();
+                        }
+                        return;
+                    }
+                    if (room.ticks() - landedAt[0] > fuse + warn + SLACK_TICKS) {
+                        boolean standing =
+                                room.level().getBlockState(room.cell(5, 2, 0)).is(Blocks.STONE);
+                        expect(
+                                helper,
+                                standing != crewmate,
+                                crewmate
+                                        ? "the roof over the thrower's crewmate should have fallen"
+                                        : "the roof over a person of another charter should stand with PvP off");
+                        under.leave();
                         helper.succeed();
                     }
                 });
