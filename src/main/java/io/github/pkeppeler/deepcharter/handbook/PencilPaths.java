@@ -6,6 +6,7 @@ import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.layer.StructureKind;
 import io.github.pkeppeler.deepcharter.layer.StructureSite;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -86,12 +87,8 @@ public final class PencilPaths {
                 .orElseGet(() -> data.get().player(player));
     }
 
-    /**
-     * The paths drawn for {@code player}: those of {@link #ALL} whose Note their charter has found (their own Notes on no charter),
-     * in the sheet's order.
-     */
-    public static List<PencilPath> drawnFor(MinecraftServer server, UUID player) {
-        Set<Identifier> found = Set.copyOf(Notes.foundFor(server, player));
+    /** The paths drawn once the Notes {@code found} are found: those of {@link #ALL} whose Note is among them, in the sheet's order. */
+    public static List<PencilPath> drawnFrom(Collection<Identifier> found) {
         return ALL.stream().filter(path -> found.contains(path.from())).toList();
     }
 

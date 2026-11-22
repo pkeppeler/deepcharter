@@ -210,8 +210,7 @@ final class PaperDraw {
         if (wobble == 0) {
             return 0;
         }
-        int hash = (seed * 31 + index) * 0x9E3779B1;
-        return Math.floorMod(hash >>> 16, 2 * wobble + 1) - wobble;
+        return new java.util.Random(seed * 1_000_003L + index * 7_919L).nextInt(2 * wobble + 1) - wobble;
     }
 
     /** A ring of radius {@code radius} round ({@code x}, {@code y}): the circle that marks a spot as done. */

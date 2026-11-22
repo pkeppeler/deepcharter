@@ -71,6 +71,11 @@ public class PencilPathsTest {
         }
     }
 
+    /** The paths the sheet draws for {@code player}: the ones whose Note their charter has found. */
+    private static List<PencilPath> drawn(MinecraftServer server, ServerPlayer player) {
+        return PencilPaths.drawnFrom(Notes.foundFor(server, player.getUUID()));
+    }
+
     private static Set<Identifier> completed(MinecraftServer server, ServerPlayer player) {
         return PencilPaths.completedFor(server, player.getUUID());
     }
@@ -110,31 +115,29 @@ public class PencilPathsTest {
         ServerPlayer outsider = survivor(helper, "Outsider").player();
         CharterId id = TestCharters.found(helper, server, director);
         TestCharters.join(helper, server, id, director, crew);
-        if (!PencilPaths.drawnFor(server, director.getUUID()).isEmpty()) {
+        if (!drawn(server, director).isEmpty()) {
             throw helper.assertionException("with no Note found nothing is drawn");
         }
 
         // N05 is the survey stake tag: a Note, and no pencil path starts at it.
         find(helper, director, 5, FindResult.FOUND);
-        if (!PencilPaths.drawnFor(server, director.getUUID()).isEmpty()) {
+        if (!drawn(server, director).isEmpty()) {
             throw helper.assertionException("a Note that no path starts at draws nothing");
         }
         find(helper, director, 7, FindResult.FOUND);
         for (ServerPlayer member : List.of(director, crew)) {
-            if (!PencilPaths.drawnFor(server, member.getUUID()).equals(List.of(PencilPaths.ONES_BELOW))) {
+            if (!drawn(server, member).equals(List.of(PencilPaths.ONES_BELOW))) {
                 throw helper.assertionException(
-                        "N07 draws its path for %s: %s",
-                        member.getGameProfile().name(), PencilPaths.drawnFor(server, member.getUUID()));
+                        "N07 draws its path for %s: %s", member.getGameProfile().name(), drawn(server, member));
             }
         }
-        if (!PencilPaths.drawnFor(server, outsider.getUUID()).isEmpty()) {
+        if (!drawn(server, outsider).isEmpty()) {
             throw helper.assertionException("a path is drawn for the charter that found the Note, not for anyone else");
         }
         find(helper, crew, 10, FindResult.FOUND);
-        if (!PencilPaths.drawnFor(server, director.getUUID()).equals(PencilPaths.ALL)) {
+        if (!drawn(server, director).equals(PencilPaths.ALL)) {
             throw helper.assertionException(
-                    "N10 draws the second path, in the sheet's order: %s",
-                    PencilPaths.drawnFor(server, director.getUUID()));
+                    "N10 draws the second path, in the sheet's order: %s", drawn(server, director));
         }
         if (!completed(server, director).isEmpty()) {
             throw helper.assertionException("a path starts open: finding the Note completes nothing");
@@ -471,7 +474,7 @@ public class PencilPathsTest {
                 throw helper.assertionException("unreadable paths read as empty");
             }
         });
-        paths.put("drawn", () -> PencilPaths.drawnFor(server, player.getUUID()));
+        paths.put("drawn", () -> drawn(server, player));
         paths.put("sync", () -> {
             if (!PencilSyncPayload.of(server, player.getUUID()).completed().isEmpty()) {
                 throw helper.assertionException("unreadable paths sync as empty");

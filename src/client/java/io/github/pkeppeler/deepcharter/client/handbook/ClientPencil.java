@@ -21,10 +21,9 @@ public final class ClientPencil {
 
     /** The paths the sheet draws for the Notes in {@link ClientNotes}, each marked done when the charter has reached its place. */
     public static List<HandbookPage.PencilEntry> entries() {
-        List<Identifier> notes =
-                ClientNotes.entries().stream().map(HandbookNote::id).toList();
-        return PencilPaths.ALL.stream()
-                .filter(path -> notes.contains(path.from()))
+        return PencilPaths.drawnFrom(
+                        ClientNotes.entries().stream().map(HandbookNote::id).toList())
+                .stream()
                 .map(path -> new HandbookPage.PencilEntry(path, completed.contains(path.id())))
                 .toList();
     }
