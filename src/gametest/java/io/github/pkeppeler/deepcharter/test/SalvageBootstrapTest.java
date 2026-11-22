@@ -332,7 +332,8 @@ public class SalvageBootstrapTest {
     public void aStalkColumnIsAWalkFromEveryCrate(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         FarChunks.whenLoaded(helper, BlockSurvey.area(level, SURVEY_CHUNKS), () -> {
-            List<BlockPos> bases = columnBases(inSurface(level, BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk"))));
+            List<BlockPos> bases =
+                    columnBases(inSurface(level, BlockSurvey.find(level, SURVEY_CHUNKS, block("fungal_stalk"))));
             List<BlockPos> crates = inSurface(level, BlockSurvey.find(level, SURVEY_CHUNKS, block("salvage_crate")));
             double[] nearest = crates.stream()
                     .mapToDouble(crate -> bases.stream()
