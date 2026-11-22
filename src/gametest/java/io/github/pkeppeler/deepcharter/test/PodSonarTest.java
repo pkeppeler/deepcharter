@@ -69,7 +69,7 @@ public class PodSonarTest {
     private static final AtomicInteger PLAYERS = new AtomicInteger();
     private static final SonarTuning TUNING = SonarTuning.DEFAULT;
     private static final int Z = 7000;
-    private static final int FLOOR = 40;
+    private static final int FLOOR = TestLayers.worldY(1, 40);
     /** Blocks the stone reaches from the pod, past the range, so that a cell at the edge of it is still stone. */
     private static final int REACH = 26;
 
