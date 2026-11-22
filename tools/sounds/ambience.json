@@ -555,36 +555,6 @@
       "tier": "worn",
       "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
     },
-    "worn/story_a": {
-      "cut_sha256": "decd532e57a955c2a1a1a32ed2add84989b2e09f62a7978d2c3c1c6131148751",
-      "duration_seconds": 2.6,
-      "end": 2.6,
-      "fragment": "story_a",
-      "kind": "voice",
-      "ogg_sha256": "912560549fcdc0daf3db0b9f8547f0b2459d6575247ab0050d00ff819e4f0368",
-      "pcm_frames": 57330,
-      "pcm_sha256": "64c67443a87673661dacf66cb4838c8954fa89bf6c8f66deabdfb770eea9bf7c",
-      "source": "volta_story",
-      "source_sha256": "4998a4f52040e1579f7a5ff04c95fdce6bc699782aa8c7d075e8fb9f90f09902",
-      "start": 0.0,
-      "tier": "worn",
-      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
-    },
-    "worn/story_b": {
-      "cut_sha256": "f32f45b628736375cd9d896b1ff73934eb8f387f0b22c5eeeca34d4501c9dcc0",
-      "duration_seconds": 2.6,
-      "end": 54.6,
-      "fragment": "story_b",
-      "kind": "voice",
-      "ogg_sha256": "55b3b3ffc0e4da67ad592fda2d4477377959b9c615980fd8757ca2d57ec66868",
-      "pcm_frames": 57330,
-      "pcm_sha256": "c33c6f89a6cefda1f09827ef655b661d0aabc25fe0977238ff928fbac281e0e6",
-      "source": "volta_story",
-      "source_sha256": "4998a4f52040e1579f7a5ff04c95fdce6bc699782aa8c7d075e8fb9f90f09902",
-      "start": 52.0,
-      "tier": "worn",
-      "treatment_sha256": "3d9ccfcef88dde3d378dbcb5992fd1531ff3e60302bd2504b19d215d6adaa3e3"
-    },
     "worn/test_voices": {
       "cut_sha256": "8fa8cb8b992ebee64e2f2b59bbede44685fa4e47e224244b789618fe3df4435c",
       "duration_seconds": 2.8,
@@ -661,7 +631,7 @@
     },
     "elevated_railroad": {
       "artist": "Charles Batchelor (for Thomas Edison)",
-      "credit": "Phonautogram by Charles Batchelor for Thomas Edison (Sept. 19, 1878), from the Edison National Historic Site; playback by First Sounds (firstsounds.org); CC BY.",
+      "credit": "Phonautogram by Charles Batchelor for Thomas Edison (Sept. 19, 1878), from the Thomas Edison National Historical Park; playback by First Sounds (firstsounds.org); CC BY.",
       "license": "CC BY",
       "recorded": "Sept. 19, 1878",
       "source_sha256": "bb43ff95ac8a0287a14003cd9d5004c60c54bf536838dba9109820d76e838d4b",
@@ -688,8 +658,8 @@
     },
     "morey_mood": {
       "artist": "Charles Anson Morey",
-      "credit": "Phonautogram by Charles Anson Morey (published 1874); playback by First Sounds (firstsounds.org). The file's tag states no licence; the First Sounds site licenses its playbacks under CC BY.",
-      "license": "CC BY (First Sounds site)",
+      "credit": "Phonautogram by Charles Anson Morey (published 1874); playback by First Sounds (firstsounds.org). The file states no licence.",
+      "license": "none stated",
       "recorded": "published 1874",
       "source_sha256": "b8a49faf5f3a458a785a7acb0819cd0bd888969d833449571f9a108cd7ef9e8d",
       "source_url": "https://www.firstsounds.org/features/mp3/morey-mood.mp3",
@@ -748,15 +718,6 @@
       "source_sha256": "a78affeae998b32203a3e1e1e259f81372e44ddf0222c45b0adf86d9b40f1922",
       "source_url": "https://www.firstsounds.org/sounds/volta/287686_Barometer.wav",
       "title": "Barometer, repeated"
-    },
-    "volta_story": {
-      "artist": "the Volta Laboratory",
-      "credit": "Recorded at the Volta Laboratory (1885); playback by First Sounds (firstsounds.org). The file states no licence.",
-      "license": "none stated",
-      "recorded": "1885",
-      "source_sha256": "4998a4f52040e1579f7a5ff04c95fdce6bc699782aa8c7d075e8fb9f90f09902",
-      "source_url": "https://www.firstsounds.org/sounds/volta/287701_1sthalf.wav",
-      "title": "A half-heard story, with falsetto"
     }
   }
 }

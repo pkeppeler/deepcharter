@@ -41,13 +41,12 @@ Five more recordings a player can find on a wax cylinder in a wreck's locker or 
 
 ### Deep fragments and the horn
 
-Short fragments of the recordings below are heard in the deepest layers and from the Company's PA horn: a human ear's phonautogram, a syllable of the noematachogram, Morey's vowel, a vocal scale with its crosstalk, a diapason scale, a train on the elevated railroad with test voices, a barometer and a half-heard story.
+Short fragments of the recordings below are heard in the deepest layers and from the Company's PA horn: a human ear's phonautogram, a syllable of the noematachogram, Morey's vowel, a vocal scale with its crosstalk, a diapason scale, a train on the elevated railroad with test voices and a barometer.
 
 - **Phonautogram made using a human ear.** Phonautogram by August Lucae in Rudolph Koenig's workshop (published in Virchow's Archiv, 1862); playback by First Sounds (firstsounds.org); CC BY. Source: https://www.firstsounds.org/features/mp3/listening-dead.mp3
 - **Noematachogram.** Recorded by Franciscus Cornelis Donders (1865, published 1868); playback by First Sounds (firstsounds.org); CC BY. Source: https://www.firstsounds.org/features/mp3/noematachogram.mp3
-- **The vowel "oo" in "mood".** Phonautogram by Charles Anson Morey (published 1874); playback by First Sounds (firstsounds.org). The file's tag states no licence; the First Sounds site licenses its playbacks under CC BY. Source: https://www.firstsounds.org/features/mp3/morey-mood.mp3
+- **The vowel "oo" in "mood".** Phonautogram by Charles Anson Morey (published 1874); playback by First Sounds (firstsounds.org). The file states no licence. Source: https://www.firstsounds.org/features/mp3/morey-mood.mp3
 - **Gamme de la Voix, vocal scale with crosstalk.** Phonautogram by Édouard-Léon Scott de Martinville (May 17, 1860); playback by First Sounds (firstsounds.org); CC BY. Source: https://www.firstsounds.org/sounds/1860-Vocal-Scale.mp3
 - **Diapason Scale.** A waveform inscribed by Claude-Servais-Matthias Pouillet (1850); playback by First Sounds (firstsounds.org); CC BY. Source: https://www.firstsounds.org/features/mp3/diapason-scale.mp3
-- **Metropolitan Elevated Railroad from 40 feet away, with test voices.** Phonautogram by Charles Batchelor for Thomas Edison (Sept. 19, 1878), from the Edison National Historic Site; playback by First Sounds (firstsounds.org); CC BY. Source: https://www.firstsounds.org/sounds/1878-Edison-MERR.mp3
+- **Metropolitan Elevated Railroad from 40 feet away, with test voices.** Phonautogram by Charles Batchelor for Thomas Edison (Sept. 19, 1878), from the Thomas Edison National Historical Park; playback by First Sounds (firstsounds.org); CC BY. Source: https://www.firstsounds.org/sounds/1878-Edison-MERR.mp3
 - **Barometer, repeated.** Recorded at the Volta Laboratory (1884); playback by First Sounds (firstsounds.org). The file states no licence. Source: https://www.firstsounds.org/sounds/volta/287686_Barometer.wav
-- **A half-heard story, with falsetto.** Recorded at the Volta Laboratory (1885); playback by First Sounds (firstsounds.org). The file states no licence. Source: https://www.firstsounds.org/sounds/volta/287701_1sthalf.wav

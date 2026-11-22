@@ -8,7 +8,7 @@ Options: --out DIR (default src/main/resources/assets/deepcharter/sounds), --man
 
 SOURCE_DIR holds the files named in ALL_RECORDINGS (downloaded from the URL beside each; they are never committed). The ID3
 `copyright` or `comment` tag of each recording marked `tagged` (the default) must say CC BY, and the script refuses a file whose tag says
-anything else or nothing. A recording that states no licence (the Volta wavs, the Edison National Historic Site's mp3s, #946) is
+anything else or nothing. A recording that states no licence (the Volta wavs, Morey's mp3 and the Thomas Edison National Historical Park's mp3s, #946) is
 `tagged=False` and its manifest `license` says what is known; it is credited, with its URL. Treat the
 directory as untrusted data: nothing in it is run, only decoded by ffmpeg.
 
@@ -137,6 +137,7 @@ class Recording:
     credit_line: str = ""
     license: str = "CC BY"
     tagged: bool = True
+    gain_db: float = 0.0  # a per-recording level change after the treatment, in dB (negative turns a loud source down): 0 leaves it alone
 
     @property
     def url(self):
@@ -155,7 +156,8 @@ RECORDINGS = (
     Recording("jeune_jouvencelle", "Scott-Feaster-No-09.mp3", "Jeune Jouvencelle, vocal solo", "Aug. 17, 1857"),
     Recording("othello", "Scott-Feaster-No-38.mp3", "Excerpt from Ducis' Othello", "Apr. 17, 1860"),
     # More early recordings (#946): found in wreck lockers and salvage crates, never in the colony's rack. Each is trimmed to its strongest
-    # stretch (`cut`: the loudest sustained one that ends where the recording does) and carries its own URL, credit and licence.
+    # stretch (`cut`: the loudest sustained one that ends where the recording does, both ends in a pause so no word is clipped), carries its own
+    # URL, credit and licence, and where its source is louder than the first three, a `gain_db` that brings it level with them.
     Recording(
         "volta_counting",
         "312119_Lateral_Electroplated_Disc-120.wav",
@@ -166,6 +168,7 @@ RECORDINGS = (
         credit_line=f"Recorded at the Volta Laboratory (about 1881); playback by First Sounds (firstsounds.org). {NO_LICENCE}.",
         license=NONE_STATED,
         tagged=False,
+        gain_db=-1.0,
     ),
     Recording(
         "volta_hamlet",
@@ -177,6 +180,7 @@ RECORDINGS = (
         credit_line=f"Recorded at the Volta Laboratory (about 1884, perhaps by Chichester Bell); playback by First Sounds (firstsounds.org). {NO_LICENCE}.",
         license=NONE_STATED,
         tagged=False,
+        gain_db=-2.0,
     ),
     Recording(
         "sullivan_toast",
@@ -188,7 +192,8 @@ RECORDINGS = (
         credit_line=f"Arthur Sullivan (Oct. 5, 1888); Edison yellow paraffine cylinder, catalog E-2439-7. {NPS_CREDIT}.",
         license=NONE_STATED,
         tagged=False,
-        cut=(62.0, 88.5),
+        cut=(62.65, 87.0),
+        gain_db=-1.6,
     ),
     Recording(
         "edison_around_the_world",
@@ -200,7 +205,8 @@ RECORDINGS = (
         credit_line=f"Thomas A. Edison (1888); Edison yellow paraffine cylinder, catalog EDIS 566. {NPS_CREDIT}.",
         license=NONE_STATED,
         tagged=False,
-        cut=(141.0, 168.0),
+        cut=(142.65, 167.2),
+        gain_db=-1.6,
     ),
     Recording(
         "lost_chord",
@@ -212,7 +218,8 @@ RECORDINGS = (
         credit_line=f"Cornet and piano (performers unknown), London (about Aug. 1888); Edison yellow paraffine cylinder, catalog E-2440-3. {NPS_CREDIT}.",
         license=NONE_STATED,
         tagged=False,
-        cut=(96.0, 123.5),
+        cut=(93.5, 122.5),
+        gain_db=-2.8,
     ),
 )
 
@@ -318,6 +325,7 @@ def _render(recording, source, target):
     Returns the length of the bed in samples, which is the length of the recording.
     """
     treatment = TREATMENTS[recording.treatment]
+    band = treatment.band + (f",volume={recording.gain_db}dB" if recording.gain_db else "")
     voice_filters = treatment.voice
     if recording.cut:
         voice_filters = f"atrim=start={recording.cut[0]}:end={recording.cut[1]},asetpts=PTS-STARTPTS,{voice_filters}"
@@ -343,7 +351,7 @@ def _render(recording, source, target):
             out.writeframes(mixed.tobytes())
         target.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(
-            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(wav), "-af", treatment.band]
+            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", str(wav), "-af", band]
             + ["-map_metadata", "-1", "-ac", "1", *_encoder_args(), str(target)],
             check=True,
         )
@@ -390,6 +398,7 @@ def build(source_dir, out, manifest):
             old
             and old["treatment_sha256"] == treatment_sha256(recording.treatment)
             and old.get("cut") == cut_entry(recording).get("cut")
+            and old.get("gain_db") == gain_entry(recording).get("gain_db")
             and target.is_file()
             and sha256(target) == old["ogg_sha256"]
         ):
@@ -404,6 +413,7 @@ def build(source_dir, out, manifest):
                 "license": recording.license,
                 "credit": recording.credit,
                 **cut_entry(recording),
+                **gain_entry(recording),
             }
             continue
         frames = _render(recording, source, target)
@@ -424,6 +434,7 @@ def build(source_dir, out, manifest):
             "treatment_sha256": treatment_sha256(recording.treatment),
             "ogg_sha256": sha256(target),
             **cut_entry(recording),
+            **gain_entry(recording),
         }
         print(f"built {recording.name}")
     manifest.write_text(json.dumps(entries, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
@@ -433,6 +444,11 @@ def build(source_dir, out, manifest):
 def cut_entry(recording):
     """The manifest's `cut` field of a recording that uses part of its source, and nothing for one that uses all of it."""
     return {"cut": list(recording.cut)} if recording.cut else {}
+
+
+def gain_entry(recording):
+    """The manifest's `gain_db` field of a recording turned up or down after the treatment, and nothing for one that is not."""
+    return {"gain_db": recording.gain_db} if recording.gain_db else {}
 
 
 def owned(manifest):
@@ -467,8 +483,9 @@ def check(out, manifest):
             or entry["folder"] != recording.folder
             or entry["treatment"] != recording.treatment
             or entry.get("cut") != cut_entry(recording).get("cut")
+            or entry.get("gain_db") != gain_entry(recording).get("gain_db")
         ):
-            problems.append(f"{recording.name}: the manifest's credit, artist, date, folder, treatment, cut, source or licence is not the one ALL_RECORDINGS gives")
+            problems.append(f"{recording.name}: the manifest's credit, artist, date, folder, treatment, cut, gain, source or licence is not the one ALL_RECORDINGS gives")
         if entry["treatment_sha256"] != treatment_sha256(recording.treatment):
             problems.append(f"{recording.name}: the treatment changed since it was made; run tools/sounds/first_sounds.py")
     for name in sorted(set(known) - {recording.name for recording in ALL_RECORDINGS}):

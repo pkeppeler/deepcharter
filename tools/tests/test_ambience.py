@@ -13,6 +13,7 @@ import sys
 import tempfile
 import unittest
 from array import array
+from unittest import mock
 from pathlib import Path
 
 SOUNDS = Path(__file__).resolve().parent.parent / "sounds"
@@ -37,10 +38,9 @@ NEW_SOURCES = {
     "diapason_scale": ("https://www.firstsounds.org/features/mp3/diapason-scale.mp3", "22f4641d0902a3e15fddb6b14c050e62adc80f3981855fdbfe7c433a4bc5d9f5"),
     "elevated_railroad": ("https://www.firstsounds.org/sounds/1878-Edison-MERR.mp3", "bb43ff95ac8a0287a14003cd9d5004c60c54bf536838dba9109820d76e838d4b"),
     "volta_barometer": ("https://www.firstsounds.org/sounds/volta/287686_Barometer.wav", "a78affeae998b32203a3e1e1e259f81372e44ddf0222c45b0adf86d9b40f1922"),
-    "volta_story": ("https://www.firstsounds.org/sounds/volta/287701_1sthalf.wav", "4998a4f52040e1579f7a5ff04c95fdce6bc699782aa8c7d075e8fb9f90f09902"),
 }
 DEEP_FRAGMENTS = {"ear_a", "donders_ki", "morey_oo", "scale_crosstalk"}
-HORN_POOL = {"diapason", "railway", "test_voices", "barometer", "story_a", "story_b"}
+HORN_POOL = {"diapason", "railway", "test_voices", "barometer"}
 TOOLS = (shutil.which("ffmpeg"), shutil.which("ffprobe"))
 
 
@@ -53,10 +53,16 @@ def voices(tier):
     ]
 
 
+def measure(path):
+    """The integrated loudness (LUFS) and the true peak (dBTP) of an OGG, by ffmpeg's ebur128."""
+    done = subprocess.run(
+        ["ffmpeg", "-nostdin", "-i", str(path), "-af", "ebur128=peak=true", "-f", "null", "-"], capture_output=True, text=True
+    )
+    return float(re.findall(r"I:\s+(-?\d+\.\d) LUFS", done.stderr)[-1]), float(re.findall(r"Peak:\s+(-?\d+\.\d) dBFS", done.stderr)[-1])
+
+
 def lufs(path):
-    """The integrated loudness of an OGG, by ffmpeg's ebur128."""
-    done = subprocess.run(["ffmpeg", "-nostdin", "-i", str(path), "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True)
-    return float(re.findall(r"I:\s+(-?\d+\.\d) LUFS", done.stderr)[-1])
+    return measure(path)[0]
 
 
 class DeclaredFragmentsTest(unittest.TestCase):
@@ -215,16 +221,19 @@ class NewSourcesTest(unittest.TestCase):
                 self.assertIn("states no licence", entry["credit"], name)
                 self.assertNotIn("CC BY", entry["credit"], name)
             else:
-                self.assertTrue(entry["license"].startswith("CC BY"), name)
+                self.assertEqual("CC BY", entry["license"], name)
+                self.assertTrue(ambience.source_named(name).tagged, name)
                 self.assertIn("CC BY", entry["credit"], name)
             self.assertIn("First Sounds", entry["credit"], name)
 
-    def test_morey_is_credited_to_the_site_because_its_tag_has_no_licence(self):
+    def test_morey_states_no_licence_because_its_file_states_none(self):
         entry = self.manifest["sources"]["morey_mood"]
-        self.assertIn("tag states no licence", entry["credit"])
+        self.assertEqual("none stated", entry["license"])
+        self.assertNotIn("CC BY", entry["credit"])
         self.assertFalse(ambience.source_named("morey_mood").tagged)
 
-    def test_a_source_that_must_say_cc_by_is_refused_without_it(self):
+    def test_the_tagged_sources_are_exactly_the_ones_whose_files_say_cc_by(self):
+        # A pin of which sources carry the check; the refusal itself is BuildTaggedTest below.
         tagged = {name for name in NEW_SOURCES if ambience.source_named(name).tagged}
         self.assertEqual({"listening_dead", "noematachogram", "vocal_scale_crosstalk", "diapason_scale", "elevated_railroad"}, tagged)
 
@@ -251,6 +260,49 @@ class LoudnessTest(unittest.TestCase):
             loudness = lufs(ambience.OUT / "ambience" / tier / f"{fragment.name}.ogg")
             self.assertGreaterEqual(loudness, -34.0, ambience.key(fragment, tier))
             self.assertLessEqual(loudness, -24.0, ambience.key(fragment, tier))
+
+
+    def test_every_new_cylinder_is_level_with_the_first_three_and_under_a_ceiling_of_minus_one_dbtp(self):
+        # The first three are -13.1 to -19.3 LUFS (and overshoot, to +0.5 dBTP: left as they were). The new ones sit in that range, within 2 dB of
+        # -13.5 at the loudest, and none passes -1 dBTP.
+        manifest = json.loads(first_sounds.MANIFEST.read_text())
+        for recording in first_sounds.RECORDINGS[3:]:
+            loudness, peak = measure(first_sounds.OUT / "phonograph" / f"{recording.name}.ogg")
+            self.assertTrue(-19.5 <= loudness <= -12.5, (recording.name, loudness))
+            self.assertLessEqual(peak, -1.0, recording.name)
+            self.assertEqual(recording.gain_db, manifest[recording.name].get("gain_db", 0.0), recording.name)
+
+
+@unittest.skipUnless(all(TOOLS), "ffmpeg is needed to render")
+class BuildTaggedTest(unittest.TestCase):
+    """A source whose file does not say CC BY is refused when it is `tagged` and accepted when it is not."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.sources = self.tmp / "sources"
+        self.sources.mkdir()
+        import math
+        import wave
+
+        with wave.open(str(self.sources / "tone.wav"), "wb") as out:
+            out.setnchannels(1)
+            out.setsampwidth(2)
+            out.setframerate(44100)
+            out.writeframes(array("h", (int(9000 * math.sin(i * 0.03)) for i in range(44100 * 3))).tobytes())
+
+    def build(self, tagged):
+        source = first_sounds.Recording("t", "tone.wav", "T", "1900", tagged=tagged, license="CC BY" if tagged else "none stated")
+        fragment = ambience.Fragment("t_a", "t", 0.2, 1.2, (ambience.BROKEN,))
+        with mock.patch.object(ambience, "SOURCES", (source,)), mock.patch.object(ambience, "FRAGMENTS", (fragment,)):
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                return ambience.build(self.sources, self.tmp / "out", self.tmp / "ambience.json")
+
+    def test_an_untagged_file_is_refused_when_the_source_must_say_cc_by_and_accepted_when_it_need_not(self):
+        self.assertEqual(1, self.build(tagged=True))
+        self.assertFalse((self.tmp / "ambience.json").exists())
+        self.assertEqual(0, self.build(tagged=False))
+        self.assertEqual("none stated", json.loads((self.tmp / "ambience.json").read_text())["sources"]["t"]["license"])
 
 
 class TreatmentTest(unittest.TestCase):

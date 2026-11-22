@@ -29,9 +29,9 @@ public enum Recording implements StringRepresentable, TooltipProvider {
     OTHELLO("othello", 1860, DeepSound.PHONOGRAPH_OTHELLO, 356),
     VOLTA_COUNTING("volta_counting", 1881, DeepSound.PHONOGRAPH_VOLTA_COUNTING, 218),
     VOLTA_HAMLET("volta_hamlet", 1884, DeepSound.PHONOGRAPH_VOLTA_HAMLET, 343),
-    SULLIVAN_TOAST("sullivan_toast", 1888, DeepSound.PHONOGRAPH_SULLIVAN_TOAST, 530),
-    EDISON_AROUND_THE_WORLD("edison_around_the_world", 1888, DeepSound.PHONOGRAPH_EDISON_AROUND_THE_WORLD, 540),
-    LOST_CHORD("lost_chord", 1888, DeepSound.PHONOGRAPH_LOST_CHORD, 550);
+    SULLIVAN_TOAST("sullivan_toast", 1888, DeepSound.PHONOGRAPH_SULLIVAN_TOAST, 487),
+    EDISON_AROUND_THE_WORLD("edison_around_the_world", 1888, DeepSound.PHONOGRAPH_EDISON_AROUND_THE_WORLD, 491),
+    LOST_CHORD("lost_chord", 1888, DeepSound.PHONOGRAPH_LOST_CHORD, 580);
 
     public static final StringRepresentable.EnumCodec<Recording> CODEC =
             StringRepresentable.fromEnum(Recording::values);

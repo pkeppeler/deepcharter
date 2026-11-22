@@ -77,8 +77,8 @@ SOURCES = (
         "published 1874",
         artist="Charles Anson Morey",
         host_url=FEATURES_URL + "morey-mood.mp3",
-        credit_line="Phonautogram by Charles Anson Morey (published 1874); playback by First Sounds (firstsounds.org). The file's tag states no licence; the First Sounds site licenses its playbacks under CC BY.",
-        license="CC BY (First Sounds site)",
+        credit_line="Phonautogram by Charles Anson Morey (published 1874); playback by First Sounds (firstsounds.org). The file states no licence.",
+        license=first_sounds.NONE_STATED,
         tagged=False,
     ),
     Recording(
@@ -105,7 +105,7 @@ SOURCES = (
         "Sept. 19, 1878",
         artist="Charles Batchelor (for Thomas Edison)",
         host_url="https://www.firstsounds.org/sounds/1878-Edison-MERR.mp3",
-        credit_line="Phonautogram by Charles Batchelor for Thomas Edison (Sept. 19, 1878), from the Edison National Historic Site; playback by First Sounds (firstsounds.org); CC BY.",
+        credit_line="Phonautogram by Charles Batchelor for Thomas Edison (Sept. 19, 1878), from the Thomas Edison National Historical Park; playback by First Sounds (firstsounds.org); CC BY.",
     ),
     Recording(
         "volta_barometer",
@@ -115,17 +115,6 @@ SOURCES = (
         artist=first_sounds.VOLTA,
         host_url=first_sounds.VOLTA_URL + "287686_Barometer.wav",
         credit_line=f"Recorded at the Volta Laboratory (1884); playback by First Sounds (firstsounds.org). {first_sounds.NO_LICENCE}.",
-        license=first_sounds.NONE_STATED,
-        tagged=False,
-    ),
-    Recording(
-        "volta_story",
-        "287701_1sthalf.wav",
-        "A half-heard story, with falsetto",
-        "1885",
-        artist=first_sounds.VOLTA,
-        host_url=first_sounds.VOLTA_URL + "287701_1sthalf.wav",
-        credit_line=f"Recorded at the Volta Laboratory (1885); playback by First Sounds (firstsounds.org). {first_sounds.NO_LICENCE}.",
         license=first_sounds.NONE_STATED,
         tagged=False,
     ),
@@ -146,7 +135,7 @@ class Fragment:
     end: float
     tiers: tuple
     kind: str = VOICE
-    trim_db: tuple = ()  # (tier, dB) pairs: a fragment whose source is louder (or, by a positive number, quieter) than its neighbours at the same peak, turned down or up in that tier
+    trim_db: tuple = ()  # (tier, dB) pairs: a fragment whose source is louder than its neighbours at the same peak, turned down in that tier; a positive number raises a quiet source
     pool: str = ""  # HORN for a fragment only a Company horn plays (#946): worn like the `worn` tier, and its event is `ambience.horn.<name>`
 
 
@@ -180,8 +169,6 @@ FRAGMENTS = (
     Fragment("railway", "elevated_railroad", 17.0, 19.8, (WORN,), TONE, trim_db=((WORN, 9.0),), pool=HORN),
     Fragment("test_voices", "elevated_railroad", 36.4, 39.2, (WORN,), pool=HORN),
     Fragment("barometer", "volta_barometer", 0.5, 3.3, (WORN,), trim_db=((WORN, 4.0),), pool=HORN),
-    Fragment("story_a", "volta_story", 0.0, 2.6, (WORN,), pool=HORN),
-    Fragment("story_b", "volta_story", 52.0, 54.6, (WORN,), pool=HORN),
 )
 
 

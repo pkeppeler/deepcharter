@@ -124,8 +124,6 @@ public enum DeepSound {
     AMBIENCE_HORN_RAILWAY("ambience.horn.railway"),
     AMBIENCE_HORN_TEST_VOICES("ambience.horn.test_voices"),
     AMBIENCE_HORN_BAROMETER("ambience.horn.barometer"),
-    AMBIENCE_HORN_STORY_A("ambience.horn.story_a"),
-    AMBIENCE_HORN_STORY_B("ambience.horn.story_b"),
     SONG_WRECK("song.wreck"),
     SONG_DARK("song.dark");
 

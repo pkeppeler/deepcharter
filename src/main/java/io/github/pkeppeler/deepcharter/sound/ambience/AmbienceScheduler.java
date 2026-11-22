@@ -20,8 +20,8 @@ import org.jspecify.annotations.Nullable;
  *   <li>Near a horn the horn's timer replaces the layer's, and the fragment comes from the horn. The horn adds one fragment: the first
  *       after arriving, not sooner than a minute. After any fragment both timers are drawn again, and the horn's gap is never shorter than
  *       the layer's own, so a horn changes where a fragment is heard from and never how often.
- *   <li>A horn chooses among the layer's fragments and its own pool ({@link AmbienceTier#HORN}), which the dark never plays: more to hear
- *       from it, not more often.
+ *   <li>A horn chooses among the layer's fragments and its own pool, which is not a tier and which the dark never draws from: more to
+ *       hear from it, not more often. Each fragment of the two is as likely as the next.
  * </ul>
  */
 public final class AmbienceScheduler {
@@ -31,23 +31,44 @@ public final class AmbienceScheduler {
         HORN
     }
 
-    /** A fragment due now: its tier (the horn's pool is the tier {@link AmbienceTier#HORN}), its name in that pool, and where it sounds from. */
-    public record Pick(AmbienceTier tier, String fragment, Source source) {}
+    /** Where a fragment is drawn from: a layer's tier pool, or the horn's own. */
+    public enum Pool {
+        LAYER,
+        HORN
+    }
+
+    /** A fragment due now: the layer's tier, its name in {@code pool}, where it sounds from. The horn's pool is only ever heard from a horn. */
+    public record Pick(AmbienceTier tier, String fragment, Source source, Pool pool) {
+        public Pick {
+            if (pool == Pool.HORN && source != Source.HORN) {
+                throw new IllegalArgumentException("the horn's pool is only heard from a horn");
+            }
+        }
+    }
 
     private static final int UNSET = -1;
 
     private final AmbienceTuning tuning;
     private final Map<AmbienceTier, List<String>> pools;
+    private final List<String> hornPool;
     private final RandomGenerator random;
     private int layer = 0;
     private int ticksLeft = UNSET;
     private int hornTicksLeft = UNSET;
     private @Nullable String last;
 
-    /** @param pools the fragments of each tier, by name */
-    public AmbienceScheduler(AmbienceTuning tuning, Map<AmbienceTier, List<String>> pools, RandomGenerator random) {
+    /**
+     * @param pools    the fragments of each tier, by name
+     * @param hornPool the fragments only a horn plays, by name
+     */
+    public AmbienceScheduler(
+            AmbienceTuning tuning,
+            Map<AmbienceTier, List<String>> pools,
+            List<String> hornPool,
+            RandomGenerator random) {
         this.tuning = tuning;
         this.pools = pools;
+        this.hornPool = hornPool;
         this.random = random;
     }
 
@@ -101,17 +122,19 @@ public final class AmbienceScheduler {
         return chosen;
     }
 
-    /**
-     * A fragment of the tier other than the last, or empty when the pool has nothing else to say. Near a horn the horn's own pool is
-     * added, each fragment as likely as the next.
-     */
+    /** A fragment of the tier other than the last, or empty when there is nothing else to say. Near a horn its own pool is added. */
     private Optional<Pick> choose(AmbienceTier tier, boolean hornNear) {
         Source source = hornNear ? Source.HORN : Source.DARK;
         List<Pick> others = new ArrayList<>();
-        for (AmbienceTier from : hornNear ? List.of(tier, AmbienceTier.HORN) : List.of(tier)) {
-            for (String name : pools.getOrDefault(from, List.of())) {
+        for (String name : pools.getOrDefault(tier, List.of())) {
+            if (!name.equals(last)) {
+                others.add(new Pick(tier, name, source, Pool.LAYER));
+            }
+        }
+        if (hornNear) {
+            for (String name : hornPool) {
                 if (!name.equals(last)) {
-                    others.add(new Pick(from, name, source));
+                    others.add(new Pick(tier, name, source, Pool.HORN));
                 }
             }
         }

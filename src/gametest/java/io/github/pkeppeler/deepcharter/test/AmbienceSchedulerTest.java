@@ -40,7 +40,7 @@ public class AmbienceSchedulerTest {
     private static final int DAYS = 40;
 
     private static AmbienceScheduler scheduler(long seed) {
-        return new AmbienceScheduler(AmbienceTuning.DEFAULT, POOLS, new SplittableRandom(seed));
+        return new AmbienceScheduler(AmbienceTuning.DEFAULT, POOLS, List.of(), new SplittableRandom(seed));
     }
 
     /** The picks of {@code ticks} ticks in one layer, and the tick of each. */
@@ -148,7 +148,7 @@ public class AmbienceSchedulerTest {
                 28,
                 16);
         for (AmbienceTuning tuning : List.of(quick, AmbienceTuning.DEFAULT)) {
-            AmbienceScheduler scheduler = new AmbienceScheduler(tuning, POOLS, new SplittableRandom(3));
+            AmbienceScheduler scheduler = new AmbienceScheduler(tuning, POOLS, List.of(), new SplittableRandom(3));
             List<Pick> picks = new ArrayList<>();
             picksAt(scheduler, 2, false, false, tuning == quick ? 20_000 : 4_000_000, picks);
             expect(helper, picks.size() > 100, "only %s picks to compare", picks.size());
@@ -178,7 +178,8 @@ public class AmbienceSchedulerTest {
                 List.of("only"),
                 AmbienceTier.BROKEN,
                 List.of("only"));
-        AmbienceScheduler scheduler = new AmbienceScheduler(AmbienceTuning.DEFAULT, single, new SplittableRandom(4));
+        AmbienceScheduler scheduler =
+                new AmbienceScheduler(AmbienceTuning.DEFAULT, single, List.of(), new SplittableRandom(4));
         List<Pick> picks = new ArrayList<>();
         picksAt(scheduler, 1, false, false, 10 * 24_000L, picks);
         picksAt(scheduler, 2, false, false, 10 * 24_000L, picks);
@@ -273,18 +274,14 @@ public class AmbienceSchedulerTest {
         helper.succeed();
     }
 
-    /** A horn's own pool (#946) is played by the horn only: the dark never draws from it, and near a horn it is one choice among many. */
+    /** A horn's own pool (#946) is played by the horn only: the dark is never given it, and near a horn it is one choice among many. */
     @GameTest
     public void aHornAddsItsOwnPoolToItsChoicesAndTheDarkNeverPlaysIt(GameTestHelper helper) {
-        Map<AmbienceTier, List<String>> pools = Map.of(
-                AmbienceTier.FAINT, List.of("a", "b", "c"),
-                AmbienceTier.WORN, List.of("a", "b", "c", "d"),
-                AmbienceTier.BROKEN, List.of("a", "b"),
-                AmbienceTier.HORN, List.of("h1", "h2", "h3"));
+        List<String> hornPool = List.of("h1", "h2", "h3");
         long ticks = DAYS * 24_000L;
         List<Pick> dark = new ArrayList<>();
         picksAt(
-                new AmbienceScheduler(AmbienceTuning.DEFAULT, pools, new SplittableRandom(3)),
+                new AmbienceScheduler(AmbienceTuning.DEFAULT, POOLS, hornPool, new SplittableRandom(3)),
                 2,
                 false,
                 false,
@@ -293,40 +290,40 @@ public class AmbienceSchedulerTest {
         expect(helper, dark.size() > 50, "only %s fragments in the dark", dark.size());
         dark.forEach(pick -> expect(
                 helper,
-                pick.tier() == AmbienceTier.WORN && pick.source() == Source.DARK,
-                "the dark played %s from %s",
+                pick.pool() == AmbienceScheduler.Pool.LAYER && pick.source() == Source.DARK,
+                "the dark played %s from the %s pool",
                 pick.fragment(),
-                pick.tier()));
+                pick.pool()));
         List<Pick> horn = new ArrayList<>();
         picksAt(
-                new AmbienceScheduler(AmbienceTuning.DEFAULT, pools, new SplittableRandom(4)),
+                new AmbienceScheduler(AmbienceTuning.DEFAULT, POOLS, hornPool, new SplittableRandom(4)),
                 2,
                 true,
                 false,
                 ticks,
                 horn);
-        long fromPool =
-                horn.stream().filter(pick -> pick.tier() == AmbienceTier.HORN).count();
-        long fromLayer =
-                horn.stream().filter(pick -> pick.tier() == AmbienceTier.WORN).count();
+        long fromPool = horn.stream()
+                .filter(pick -> pick.pool() == AmbienceScheduler.Pool.HORN)
+                .count();
         expect(
                 helper,
-                fromPool > 0 && fromLayer > 0 && fromPool + fromLayer == horn.size(),
-                "a horn played %s from its pool and %s from the layer of %s",
+                fromPool > 0 && fromPool < horn.size(),
+                "a horn played %s of %s from its pool",
                 fromPool,
-                fromLayer,
                 horn.size());
-        // Three of seven choices are the horn's own: about 43 per cent, give or take.
+        // Three of seven choices are the horn's own, each as likely as the next: about 43 per cent, give or take.
         double share = (double) fromPool / horn.size();
         expect(helper, share > 0.3 && share < 0.56, "the horn's pool is %s of what it plays", share);
         for (Pick pick : horn) {
+            List<String> from = pick.pool() == AmbienceScheduler.Pool.HORN
+                    ? hornPool
+                    : POOLS.getOrDefault(AmbienceTier.WORN, List.of());
             expect(
                     helper,
-                    pools.getOrDefault(pick.tier(), List.of()).contains(pick.fragment())
-                            && pick.source() == Source.HORN,
-                    "%s is not in the pool of %s",
+                    from.contains(pick.fragment()) && pick.source() == Source.HORN,
+                    "%s is not in the %s pool",
                     pick.fragment(),
-                    pick.tier());
+                    pick.pool());
         }
         // The pool adds variety and not frequency: the horn's pace is the same with it as without it.
         List<Pick> without = new ArrayList<>();
@@ -340,26 +337,35 @@ public class AmbienceSchedulerTest {
         helper.succeed();
     }
 
+    /** A pick from the horn's pool that does not come from a horn cannot be made: the dark has no way to name that pool. */
+    @GameTest
+    public void aPickFromTheHornsPoolMustComeFromAHorn(GameTestHelper helper) {
+        boolean refused = false;
+        try {
+            new Pick(AmbienceTier.WORN, "h1", Source.DARK, AmbienceScheduler.Pool.HORN);
+        } catch (IllegalArgumentException expected) {
+            refused = true;
+        }
+        expect(helper, refused, "a dark pick from the horn's pool was made");
+        helper.succeed();
+    }
+
     /** The shipped horn pool: these fragments, each a sound event of {@code ambience.horn.}, and none in a layer's pool. */
     @GameTest
-    public void theShippedHornPoolIsTheSixFragmentsAndNoLayerPlaysThem(GameTestHelper helper) {
-        List<String> horn = AmbienceFragments.pools().getOrDefault(AmbienceTier.HORN, List.of());
+    public void theShippedHornPoolIsTheFourFragmentsAndNoLayerPlaysThem(GameTestHelper helper) {
+        List<String> horn = AmbienceFragments.hornPool();
         expect(
                 helper,
-                Set.copyOf(horn)
-                        .equals(Set.of("diapason", "railway", "test_voices", "barometer", "story_a", "story_b")),
+                Set.copyOf(horn).equals(Set.of("diapason", "railway", "test_voices", "barometer")),
                 "the horn pool is %s",
                 horn);
         for (String name : horn) {
             expect(
                     helper,
-                    AmbienceFragments.sound(AmbienceTier.HORN, name)
-                            .location()
-                            .getPath()
-                            .equals("ambience.horn." + name),
+                    AmbienceFragments.hornSound(name).location().getPath().equals("ambience.horn." + name),
                     "%s is not an ambience.horn event",
                     name);
-            for (AmbienceTier tier : List.of(AmbienceTier.FAINT, AmbienceTier.WORN, AmbienceTier.BROKEN)) {
+            for (AmbienceTier tier : AmbienceTier.values()) {
                 expect(
                         helper,
                         !AmbienceFragments.pools().getOrDefault(tier, List.of()).contains(name),
@@ -382,7 +388,7 @@ public class AmbienceSchedulerTest {
                             .contains(name),
                     "%s is not in the broken pool",
                     name);
-            for (AmbienceTier tier : List.of(AmbienceTier.FAINT, AmbienceTier.WORN, AmbienceTier.HORN)) {
+            for (AmbienceTier tier : List.of(AmbienceTier.FAINT, AmbienceTier.WORN)) {
                 expect(
                         helper,
                         !AmbienceFragments.pools().getOrDefault(tier, List.of()).contains(name),
@@ -471,7 +477,7 @@ public class AmbienceSchedulerTest {
                 28,
                 16);
         Map<AmbienceTier, List<String>> two = Map.of(AmbienceTier.WORN, List.of("x", "y"));
-        AmbienceScheduler scheduler = new AmbienceScheduler(quick, two, new SplittableRandom(9));
+        AmbienceScheduler scheduler = new AmbienceScheduler(quick, two, List.of(), new SplittableRandom(9));
         List<Pick> picks = new ArrayList<>();
         picksAt(scheduler, 1, false, false, 6, picks);
         expect(helper, picks.size() == 1, "expected one pick, got %s", picks.size());

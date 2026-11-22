@@ -231,7 +231,8 @@ class MoreCylindersTest(unittest.TestCase):
         self.assertIn("catalog EDIS 566", self.manifest["edison_around_the_world"]["credit"])
         self.assertIn("catalog E-2440-3", self.manifest["lost_chord"]["credit"])
 
-    def test_a_manifest_refuses_none_of_them_for_want_of_a_tag_and_still_refuses_a_tagged_one_without_cc_by(self):
+    def test_the_untagged_recordings_are_exactly_the_new_cylinders(self):
+        # A pin of which entries skip the tag check; the refusal itself is CutRebuildTest.
         names = {recording.name for recording in first_sounds.ALL_RECORDINGS if not recording.tagged}
         self.assertEqual(set(MORE_CYLINDERS), names)
 
@@ -370,6 +371,32 @@ class CutRebuildTest(unittest.TestCase):
         manifest = json.loads((self.tmp / "first_sounds.json").read_text())
         self.assertAlmostEqual(7.0, manifest["t"]["duration_seconds"], delta=0.1)
         self.assertEqual([1.0, 8.0], manifest["t"]["cut"])
+
+    def test_a_tone_whose_tag_lacks_cc_by_is_refused_when_tagged_and_accepted_when_not(self):
+        for tagged, expected in ((True, 1), (False, 0)):
+            recording = first_sounds.Recording("u", "tone.wav", "U", "1900", tagged=tagged, license="none stated")
+            self.assertEqual(expected, self.build(recording), tagged)
+            self.assertEqual(expected == 0, (self.tmp / "first_sounds.json").exists(), tagged)
+            shutil.rmtree(self.tmp / "out", ignore_errors=True)
+            (self.tmp / "first_sounds.json").unlink(missing_ok=True)
+
+    def test_a_gain_is_applied_after_the_treatment_and_a_changed_one_is_rendered_again(self):
+        quiet = first_sounds.Recording("g", "tone.wav", "G", "1900", tagged=False, license="none stated", gain_db=-6.0)
+        loud = dataclasses.replace(quiet, gain_db=0.0)
+
+        def peak(recording):
+            self.assertEqual(0, self.build(recording))
+            raw = subprocess.run(
+                ["ffmpeg", "-v", "error", "-nostdin", "-i", str(self.tmp / "out" / "phonograph" / "g.ogg"), "-ac", "1", "-f", "s16le", "-"],
+                check=True,
+                capture_output=True,
+            ).stdout
+            return max(abs(v) for v in array.array("h", raw[: len(raw) // 2 * 2]))
+
+        before = peak(loud)
+        after = peak(quiet)
+        self.assertLess(after, before * 0.7)
+        self.assertEqual(-6.0, json.loads((self.tmp / "first_sounds.json").read_text())["g"]["gain_db"])
 
     def test_a_tagged_recording_refused_after_an_untagged_one_leaves_nothing_written(self):
         free = first_sounds.Recording("free", "tone.wav", "Free", "1900", tagged=False, license="none stated")
