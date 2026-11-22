@@ -42,6 +42,7 @@ public final class CreatureRegistry {
                     .fireImmune()
                     .clientTrackingRange(10)
                     .build(DRIFTER_KEY));
+
     private static final ResourceKey<EntityType<?>> TALLY_KEY =
             ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, "tally"));
 
