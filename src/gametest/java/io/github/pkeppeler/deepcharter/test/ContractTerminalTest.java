@@ -8,6 +8,7 @@ import io.github.pkeppeler.deepcharter.charter.terminal.ContractState;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractState.Role;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminal;
 import io.github.pkeppeler.deepcharter.charter.terminal.ContractTerminalTuning;
+import io.github.pkeppeler.deepcharter.terminal.TerminalBlock;
 import io.github.pkeppeler.deepcharter.terminal.TerminalRefusal;
 import io.github.pkeppeler.deepcharter.terminal.Terminals;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
@@ -40,7 +41,11 @@ public class ContractTerminalTest {
 
     private static BlockPos place(GameTestHelper helper) {
         BlockPos relative = new BlockPos(0, 1, 0);
-        helper.setBlock(relative, ContractTerminal.TYPE.block().defaultBlockState());
+        TerminalBlock.place(
+                helper.getLevel(),
+                helper.absolutePos(relative),
+                ContractTerminal.TYPE.block().defaultBlockState(),
+                3);
         return helper.absolutePos(relative);
     }
 
