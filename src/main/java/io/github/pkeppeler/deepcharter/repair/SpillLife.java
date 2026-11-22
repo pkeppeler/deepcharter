@@ -5,7 +5,5 @@ public enum SpillLife {
     /** Vanilla's five minutes. */
     VANILLA,
     /** {@code ItemEntity#setExtendedLifetime}: about 32 minutes of game time. */
-    EXTENDED,
-    /** Never. */
-    FOREVER
+    EXTENDED
 }

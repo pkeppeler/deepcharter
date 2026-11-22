@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.repair;
 
 /**
- * Tunables for the Company recovery of a stranded pod (#963, ADR 0073, docs/adr/0073-the-company-winches-a-stranded-pod-home-for-a-fee-that-the-hull-pays-when-the-account-cannot.md),
+ * Tunables for the Company recovery of a stranded pod (#963, ADR 0073),
  * read as {@code RecoveryTuning.DEFAULT.thing()}.
  *
  * @param delayTicks    ticks a pilot waits in the dark pod before the winch crew hauls it home (a minute: time for a friend with a fuel item to arrive, and long enough to hurt)
@@ -16,7 +16,7 @@ public record RecoveryTuning(
     /**
      * (A) A minute of waiting, and $30 a layer: a full tank is $10 at the pump, so a refuel is always cheaper, and layer 1's $30 is a quarter of what a stock layer 1 run
      * nets ($124, {@code EarlyRunModel}), layer 2's $60 an eighth of a layer 2 run ($455). A pilot who cannot pay loses hull at the repair station's $1 a point, so money and
-     * hull cost the same, down to {@code minHull}: a broke pilot loses 30 hull in layer 1, 60 in layer 2 and 90 from layer 3. The ore lies {@link SpillLife#EXTENDED about 32 minutes}: an unlimited life is as safe but leaves a heap in every shaft that anyone ever stranded in, for ore the pilot can fetch in a few minutes.
+     * hull cost the same, down to {@code minHull}: a broke pilot loses 30 hull in layer 1, 60 in layer 2 and 90 from layer 3. The ore lies {@link SpillLife#EXTENDED about 32 minutes}.
      */
     public static final RecoveryTuning DEFAULT = new RecoveryTuning(1200, 30L, 10f, 1f, 6.0, SpillLife.EXTENDED);
 

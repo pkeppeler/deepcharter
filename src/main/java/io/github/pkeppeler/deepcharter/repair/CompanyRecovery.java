@@ -31,7 +31,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * The Company's recovery crew (#963, [ADR 0073](../../../../../../../../docs/adr/0073-the-company-winches-a-stranded-pod-home-for-a-fee-that-the-hull-pays-when-the-account-cannot.md), SPEC section 7: a stranded pod waits for "rescue or a reserve tank"). A pod that is stranded with a
+ * The Company's recovery crew (#963, ADR 0073, SPEC section 7: a stranded pod waits for "rescue or a reserve tank"). A pod that is stranded with a
  * pilot aboard starts a clock; when {@link RecoveryTuning#delayTicks()} have passed with the pod still dry, the crew winches it, and
  * everyone in it, home to the colony. It is the one way out that needs no fuel, no item and no money, so a pilot who runs dry at the bottom
  * of a shaft is never stuck, and it costs something every time:
@@ -180,12 +180,7 @@ public final class CompanyRecovery {
         pod.setFuel(tuning.splashLitres() / PodStats.of(pod).tankLitres() * full);
         pod.setStranded(false);
         pod.setHull(hullAfter);
-        GlobalPos colony = Teleports.destination(server);
-        Optional<Component> refusal = Teleports.send(pod, tuning.scatter(), colony, tuning.spill());
-        if (refusal.isPresent() && !colony.equals(Teleports.worldSpawn(server))) {
-            // The colony's column stays blocked: the world spawn is the one other place the Company knows.
-            refusal = Teleports.send(pod, tuning.scatter(), Teleports.worldSpawn(server), tuning.spill());
-        }
+        Optional<Component> refusal = sendHome(pod, server, tuning);
         if (refusal.isPresent()) {
             pod.setFuel(fuelBefore);
             pod.setStranded(true);
@@ -202,6 +197,16 @@ public final class CompanyRecovery {
                 paid >= fee
                         ? Component.translatable("message.deepcharter.repair.recovery_done", paid)
                         : Component.translatable("message.deepcharter.repair.recovery_short", paid, fee));
+    }
+
+    /** Sends the pod to the colony, or to the world spawn when the colony's column stays blocked. Empty when it went. */
+    private static Optional<Component> sendHome(PodEntity pod, MinecraftServer server, RecoveryTuning tuning) {
+        GlobalPos colony = Teleports.destination(server);
+        Optional<Component> refusal = Teleports.send(pod, tuning.scatter(), colony, tuning.spill());
+        GlobalPos spawn = Teleports.worldSpawn(server);
+        return refusal.isPresent() && !colony.equals(spawn)
+                ? Teleports.send(pod, tuning.scatter(), spawn, tuning.spill())
+                : refusal;
     }
 
     private static void refund(MinecraftServer server, Charter charter, long amount) {

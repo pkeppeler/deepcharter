@@ -82,10 +82,8 @@ final class Teleports {
         for (PodCargo.Entry entry : held) {
             ItemEntity drop = new ItemEntity(
                     from, departure.x, departure.y, departure.z, entry.stack().copy());
-            switch (spill) {
-                case EXTENDED -> drop.setExtendedLifetime();
-                case FOREVER -> drop.setUnlimitedLifetime();
-                case VANILLA -> {}
+            if (spill == SpillLife.EXTENDED) {
+                drop.setExtendedLifetime();
             }
             from.addFreshEntity(drop);
         }
