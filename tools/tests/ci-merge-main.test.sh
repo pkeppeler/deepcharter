@@ -77,7 +77,6 @@ check "up to date makes no merge commit" "$(git -C "$work/pr" rev-parse HEAD)" "
 # A checkout that is not the head.
 fresh
 commit_in "$work/pr" a.txt feature
-head=$(git -C "$work/pr" rev-parse HEAD)
 run "$(git -C "$work/pr" rev-parse HEAD~1)"
 check "a checkout that is not the head exits 1" "$rc" 1
 has "it names the problem" "is not the PR head"
