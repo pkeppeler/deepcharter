@@ -77,8 +77,6 @@ public class ColonyInteriorLightTest {
                 throw failure(helper, "no room of the layout holds a cell a block does not fill");
             }
             if (!problems.isEmpty()) {
-                // The stored light settles on Util.backgroundExecutor(), so wait on the wall clock, not the tick budget
-                // (#1042).
                 String message = String.format(
                         "%s problem(s) in %s interior cell(s):\n  %s",
                         problems.size(), cells, String.join("\n  ", problems));

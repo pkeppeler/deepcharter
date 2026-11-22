@@ -1133,7 +1133,6 @@ public class RetainedTest {
                 two.setBlock(column.above(), Blocks.AIR.defaultBlockState(), 3);
                 helper.succeed();
             } else {
-                // The light runs on Util.backgroundExecutor(), so a tick budget fails under load (#1042).
                 lit[0].await(helper, two, false, () -> "the light of level 15 did not reach the room");
             }
         });

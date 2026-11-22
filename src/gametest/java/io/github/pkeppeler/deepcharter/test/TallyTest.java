@@ -566,7 +566,6 @@ public class TallyTest {
                 arena.clear();
                 helper.succeed();
             } else {
-                // The light runs on Util.backgroundExecutor(), so a tick budget fails under load (#1042).
                 lit[0].await(helper, level, false, () -> "the light did not reach the person");
             }
         });
