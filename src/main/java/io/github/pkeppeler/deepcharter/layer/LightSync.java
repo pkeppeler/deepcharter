@@ -305,7 +305,7 @@ public final class LightSync {
                     watch.unsentSince = now;
                 } else if (!watch.reported && timedOut(now - watch.unsentSince)) {
                     watch.reported = true;
-                    DeepCharter.LOGGER.error(
+                    DeepCharter.LOGGER.warn(
                             "A light watch has waited {} ticks for chunk {} in {} to be sendable",
                             now - watch.unsentSince,
                             key.chunk,
