@@ -1,0 +1,637 @@
+package io.github.pkeppeler.deepcharter.test;
+
+import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
+import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
+import io.github.pkeppeler.deepcharter.creature.FootGrips;
+import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
+import io.github.pkeppeler.deepcharter.ore.OreRegistry;
+import io.github.pkeppeler.deepcharter.ore.OreTuning;
+import io.github.pkeppeler.deepcharter.pod.PodEntity;
+import io.github.pkeppeler.deepcharter.pod.PodRegistry;
+import io.github.pkeppeler.deepcharter.test.support.FarChunks;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
+import io.github.pkeppeler.deepcharter.test.support.MockPlayers;
+import io.github.pkeppeler.deepcharter.test.support.TestEntities;
+import io.github.pkeppeler.deepcharter.test.support.TestLayers;
+import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.food.FoodData;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LightBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Server GameTests for #916, the Retained on foot: a person in the dark with no light in either hand draws a figure that clings, weighs on
+ * them as ore does, drains their hunger to a floor and never hurts them, and the grip ends only when the figure dies. Each test builds a
+ * closed, dark room in a far chunk, with the person at one end and the figure at the other.
+ */
+public class RetainedOnFootTest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RetainedOnFootTest.class);
+    private static final CreatureTuning TUNING = CreatureTuning.DEFAULT;
+    private static final CreatureTuning.Foot FOOT = TUNING.foot();
+
+    /** The room's half width; 13 blocks across with its walls, inside the one chunk that is forced. */
+    private static final int HALF = 6;
+
+    private static final int ROOM_HEIGHT = 8;
+    private static final int FIRST_SLOT_X = 7432;
+    private static final int SLOT_Z_SPACING = 64;
+    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 100);
+    /** Ticks for a figure to walk 10 blocks to a person: its walk is about 2 blocks a second, with a margin for a loaded runner. */
+    private static final int APPROACH_BUDGET_TICKS = 11 * 20;
+    /** Ticks a grip needs to drain a full food bar to the floor: 14 points at 6 seconds is 1,680 ticks, with a margin for a loaded runner. */
+    private static final int DRAIN_BUDGET_TICKS = 2400;
+
+    /** Ticks the grip is watched after food reached the floor: over two points of drain at 6 seconds a point, so a missing floor shows. */
+    private static final int HOLD_AT_FLOOR_TICKS = 260;
+    /** Ticks a light, or a person's answer that does not kill, is watched. */
+    private static final int WATCH_TICKS = 160;
+    /** Ticks between two blows by hand: a hurt mob ignores a blow that is no stronger than the last for 10 ticks. */
+    private static final int BLOW_SPACING_TICKS = 12;
+    /** Ticks for the light of a block to spread to a cell, or to go from it: slow on a loaded runner. */
+    private static final int LIGHT_BUDGET_TICKS = 200;
+    /** Ticks a dead figure has to be gone, and the person freed: the dissolve (20 ticks) and a margin. */
+    private static final int FREED_BUDGET_TICKS = 60;
+
+    private static final String APPROACH_KEY = "creature.deepcharter.foot_approach";
+    private static final String GRAB_KEY = "creature.deepcharter.foot_grab";
+    private static final String DEAD_KEY = "creature.deepcharter.foot_dead";
+    private static final String FIRST_KEY = "creature.deepcharter.foot_first";
+    private static final float EPSILON = 1e-4f;
+    /** What a sword hits for, and a fist. */
+    private static final float SWORD_DAMAGE = 6f;
+
+    private static final float FIST_DAMAGE = 1f;
+
+    private static final AtomicInteger JOINS = new AtomicInteger();
+
+    /** A closed, dark room with a person at its east end and a figure at its west end. */
+    private record Room(ServerLevel level, BlockPos origin, MockPlayer person, LamplessFigure figure) {
+        static Room build(GameTestHelper helper, ServerLevel level, BlockPos origin, int figureWest) {
+            for (int u = -HALF - 1; u <= HALF + 1; u++) {
+                for (int v = -HALF - 1; v <= HALF + 1; v++) {
+                    for (int y = -1; y <= ROOM_HEIGHT; y++) {
+                        boolean shell =
+                                y == -1 || y == ROOM_HEIGHT || Math.abs(u) == HALF + 1 || Math.abs(v) == HALF + 1;
+                        // room-carver: a closed room of its own stone shell in the overworld test structure, not layer
+                        // rock
+                        level.setBlock(
+                                origin.offset(u, y, v), (shell ? Blocks.STONE : Blocks.AIR).defaultBlockState(), 3);
+                    }
+                }
+            }
+            MockPlayer person = MockPlayers.join(helper, "retained-walker-" + JOINS.incrementAndGet());
+            person.teleportTo(level, Vec3.atBottomCenterOf(origin.east(HALF - 1)), 90f, 0f);
+            person.player().setGameMode(GameType.SURVIVAL);
+            LamplessFigure figure = TestEntities.create(CreatureRegistry.LAMPLESS_FIGURE, level);
+            figure.setPos(Vec3.atBottomCenterOf(origin.west(figureWest)));
+            figure.setHeading(Direction.NORTH);
+            level.addFreshEntity(figure);
+            return new Room(level, origin, person, figure);
+        }
+
+        ServerPlayer player() {
+            return person.player();
+        }
+
+        /** A full food bar with no saturation behind it, so that every point the grip takes shows at once. */
+        void fillFood() {
+            FoodData food = player().getFoodData();
+            food.setFoodLevel(20);
+            food.setSaturation(0f);
+        }
+
+        void clear() {
+            figure.discard();
+            person.leave();
+        }
+    }
+
+    /**
+     * A person in the dark draws a figure from 10 blocks away; it clings, the person moves as if they carried ore, the grip takes their
+     * hunger down to the floor and no further, never hurts them and does not let go. The numbers it logs are the pacing of #916.
+     */
+    @GameTest(
+            maxTicks = FarChunks.AWAIT_BUDGET_TICKS
+                    + APPROACH_BUDGET_TICKS
+                    + DRAIN_BUDGET_TICKS
+                    + HOLD_AT_FLOOR_TICKS
+                    + 60)
+    public void aPersonInTheDarkDrawsAFigureThatClingsSlowsAndDrainsHungerToTheFloor(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(0);
+        Room[] made = {null};
+        int[] phase = {0};
+        long[] since = {0};
+        float[] speedFree = {0};
+        TestTicks.each(helper, () -> {
+            Room room = made[0];
+            if (room == null) {
+                return;
+            }
+            ServerPlayer player = room.player();
+            long waited = helper.getTick() - since[0];
+            switch (phase[0]) {
+                case 0 -> {
+                    if (room.figure.isClinging()) {
+                        LOGGER.info(
+                                "[retained-foot] the figure walked 10 blocks to a person in the dark and took hold in {} ticks ({} s)",
+                                waited,
+                                waited / 20f);
+                        if (!FootGrips.isHeld(player)) {
+                            throw helper.assertionException("the figure clings but the person is not held");
+                        }
+                        phase[0] = 1;
+                        since[0] = helper.getTick();
+                    } else if (waited > APPROACH_BUDGET_TICKS) {
+                        throw helper.assertionException(
+                                "the figure had not taken hold of the person in the dark %s ticks after it was placed 10 blocks away (it stands at %s, the person at %s)",
+                                waited, room.figure.position(), player.position());
+                    }
+                }
+                case 1 -> {
+                    expectHeld(helper, room, waited);
+                    if (waited == 5) {
+                        expectSlowedLikeOre(helper, room, speedFree[0]);
+                        LOGGER.info(
+                                "[retained-foot] walking speed {} free, {} held: {} blocks a second to {} (attribute 0.1 is {})",
+                                speedFree[0],
+                                player.getAttributeValue(Attributes.MOVEMENT_SPEED),
+                                speedFree[0] * 43.17,
+                                player.getAttributeValue(Attributes.MOVEMENT_SPEED) * 43.17,
+                                "4.317");
+                    }
+                    if (player.getFoodData().getFoodLevel() <= FOOT.hungerFloor()) {
+                        LOGGER.info(
+                                "[retained-foot] the grip drained food 20 to the floor of {} in {} ticks: {} s a point, {} s to the floor",
+                                FOOT.hungerFloor(),
+                                waited,
+                                waited / 20f / (20 - FOOT.hungerFloor()),
+                                waited / 20f);
+                        phase[0] = 2;
+                        since[0] = helper.getTick();
+                    } else if (waited > DRAIN_BUDGET_TICKS) {
+                        throw helper.assertionException(
+                                "food was %s %s ticks after the grab; the floor is %s",
+                                player.getFoodData().getFoodLevel(), waited, FOOT.hungerFloor());
+                    }
+                }
+                default -> {
+                    expectHeld(helper, room, waited);
+                    if (player.getFoodData().getFoodLevel() < FOOT.hungerFloor()) {
+                        throw helper.assertionException(
+                                "the grip took food to %s, under its floor of %s",
+                                player.getFoodData().getFoodLevel(), FOOT.hungerFloor());
+                    }
+                    if (waited >= HOLD_AT_FLOOR_TICKS) {
+                        expectUnharmed(helper, room);
+                        room.clear();
+                        helper.succeed();
+                    }
+                }
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            made[0] = Room.build(helper, level, origin, HALF - 1);
+            made[0].fillFood();
+            speedFree[0] = (float) made[0].player().getAttributeValue(Attributes.MOVEMENT_SPEED);
+            since[0] = helper.getTick();
+            if (!FootGrips.draws(made[0].player())) {
+                throw helper.assertionException("a person on foot in the dark with empty hands does not draw a figure");
+            }
+        });
+    }
+
+    /** The speed the person has is the free speed less what the same mass of ore takes, and the Overburdened status says so. */
+    private static void expectSlowedLikeOre(GameTestHelper helper, Room room, float speedFree) {
+        OreTuning ore = OreTuning.DEFAULT;
+        double slowdown = Math.min(ore.maxSlowdown(), FOOT.loadMass() * ore.slowdownPerMass());
+        float expected = (float) (speedFree * (1 - slowdown));
+        float speed = (float) room.player().getAttributeValue(Attributes.MOVEMENT_SPEED);
+        if (Math.abs(speed - expected) > EPSILON) {
+            throw helper.assertionException(
+                    "a held person walks at %s; %s of ore mass takes it from %s to %s",
+                    speed, FOOT.loadMass(), speedFree, expected);
+        }
+        MobEffectInstance status = room.player().getEffect(OreRegistry.OVERBURDENED);
+        if (status == null) {
+            throw helper.assertionException("a held person shows no Overburdened status");
+        }
+    }
+
+    private static void expectHeld(GameTestHelper helper, Room room, long ticks) {
+        if (!room.figure.isClinging() || !room.figure.isAlive() || !FootGrips.isHeld(room.player())) {
+            throw helper.assertionException(
+                    "the figure let go %s ticks after it took hold, with no one to strike it (clinging %s, alive %s, held %s)",
+                    ticks, room.figure.isClinging(), room.figure.isAlive(), FootGrips.isHeld(room.player()));
+        }
+        if (ticks > 10 && !room.player().getBoundingBox().inflate(0.25).intersects(room.figure.getBoundingBox())) {
+            throw helper.assertionException(
+                    "the clinging figure at %s is off the person at %s",
+                    room.figure.position(), room.player().position());
+        }
+    }
+
+    /** The person's health is untouched, and they were told once that it came, once that it took hold, and the rule was said once. */
+    private static void expectUnharmed(GameTestHelper helper, Room room) {
+        ServerPlayer player = room.player();
+        if (player.getHealth() != player.getMaxHealth()) {
+            throw helper.assertionException(
+                    "the person's health went to %s while the figure held them", player.getHealth());
+        }
+        long came = told(room.person.actionBarMessages(), APPROACH_KEY);
+        long took = told(room.person.actionBarMessages(), GRAB_KEY);
+        long rule = told(room.person.chatMessages(), FIRST_KEY);
+        if (came != 1 || took != 1 || rule != 1) {
+            throw helper.assertionException(
+                    "the person should be told once that it came, once that it took hold, and the rule once (came %s, hold %s, rule %s)",
+                    came, took, rule);
+        }
+    }
+
+    private static long told(List<Component> lines, String key) {
+        return lines.stream()
+                .filter(line -> line.getContents() instanceof TranslatableContents contents
+                        && contents.getKey().equals(key))
+                .count();
+    }
+
+    /** A torch in hand keeps one off: a figure 3 blocks away that stands in the same dark room never takes hold. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + WATCH_TICKS + 60)
+    public void aLightInHandKeepsAFigureOff(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(1);
+        Room[] made = {null};
+        long[] since = {0};
+        TestTicks.each(helper, () -> {
+            Room room = made[0];
+            if (room == null) {
+                return;
+            }
+            if (room.figure.isClinging() || FootGrips.isHeld(room.player())) {
+                throw helper.assertionException("a figure took hold of a person who holds a torch");
+            }
+            if (FootGrips.draws(room.player())) {
+                throw helper.assertionException("a person who holds a torch draws a figure");
+            }
+            if (helper.getTick() - since[0] >= WATCH_TICKS) {
+                expectNoFoodLoss(helper, room);
+                room.clear();
+                helper.succeed();
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            made[0] = Room.build(helper, level, origin, 2);
+            made[0].fillFood();
+            made[0].player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TORCH));
+            since[0] = helper.getTick();
+        });
+    }
+
+    private static void expectNoFoodLoss(GameTestHelper helper, Room room) {
+        if (room.player().getFoodData().getFoodLevel() < 20) {
+            throw helper.assertionException(
+                    "a person who holds a torch lost food: %s",
+                    room.player().getFoodData().getFoodLevel());
+        }
+    }
+
+    /** A light in either hand counts and an ordinary item does not; a lantern in the off hand counts, a stone block (no light) does not. */
+    @GameTest
+    public void aLightInEitherHandKeepsOneOffAndAStoneDoesNot(GameTestHelper helper) {
+        MockPlayer person = MockPlayers.join(helper, "retained-hands-" + JOINS.incrementAndGet());
+        ServerPlayer player = person.player();
+        player.setGameMode(GameType.SURVIVAL);
+        try {
+            expectDraws(helper, player, true, "empty hands");
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.STONE));
+            player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.IRON_SWORD));
+            expectDraws(helper, player, true, "stone and a sword");
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TORCH));
+            expectDraws(helper, player, false, "a torch in the main hand");
+            player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.LANTERN));
+            expectDraws(helper, player, false, "a lantern in the off hand");
+            player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
+            expectDraws(helper, player, true, "empty hands again");
+            player.setGameMode(GameType.CREATIVE);
+            expectDraws(helper, player, false, "a creative player");
+            player.setGameMode(GameType.SPECTATOR);
+            expectDraws(helper, player, false, "a spectator");
+            helper.succeed();
+        } finally {
+            person.leave();
+        }
+    }
+
+    /** Someone in a pod's seat is the pod's business (the dark pod draws the figure), not on foot: they draw none. */
+    @GameTest
+    public void aPersonSeatedInAPodIsNotOnFoot(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        MockPlayer person = MockPlayers.join(helper, "retained-seated-" + JOINS.incrementAndGet());
+        ServerPlayer player = person.player();
+        player.setGameMode(GameType.SURVIVAL);
+        PodEntity pod = TestEntities.create(PodRegistry.POD, level);
+        pod.setPos(player.position());
+        level.addFreshEntity(pod);
+        try {
+            expectDraws(helper, player, true, "a person on foot, before boarding");
+            if (!player.startRiding(pod)) {
+                throw helper.assertionException("the person could not mount the pod");
+            }
+            expectDraws(helper, player, false, "a person in a pod's seat");
+        } finally {
+            pod.discard();
+            person.leave();
+        }
+        helper.succeed();
+    }
+
+    private static void expectDraws(GameTestHelper helper, ServerPlayer player, boolean expected, String who) {
+        if (FootGrips.draws(player) != expected) {
+            throw helper.assertionException("%s should%s draw a figure", who, expected ? "" : " not");
+        }
+    }
+
+    /** Block light 3 where a person stands is lit, and 2 is dark: the same line the spawn rule and the lit pod use. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 2 * LIGHT_BUDGET_TICKS + 60)
+    public void aPersonDrawsAFigureOnlyWhereTheBlockLightIsUnderThree(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(2);
+        Room[] made = {null};
+        int[] phase = {0};
+        long[] since = {0};
+        int lit = TUNING.litBlockLight();
+        TestTicks.each(helper, () -> {
+            Room room = made[0];
+            if (room == null) {
+                return;
+            }
+            BlockPos feet = room.player().blockPosition();
+            int expected = phase[0] == 0 ? lit : lit - 1;
+            int brightness = level.getBrightness(LightLayer.BLOCK, feet);
+            if (brightness != expected) {
+                if (helper.getTick() - since[0] > LIGHT_BUDGET_TICKS) {
+                    throw helper.assertionException(
+                            "block light at the person's feet is %s, %s ticks after a light block of %s was set",
+                            brightness, LIGHT_BUDGET_TICKS, expected);
+                }
+                return;
+            }
+            expectDraws(helper, room.player(), phase[0] == 1, "a person at block light " + expected);
+            if (phase[0] == 0) {
+                phase[0] = 1;
+                since[0] = helper.getTick();
+                level.setBlock(feet, light(lit - 1), 3);
+            } else {
+                room.clear();
+                helper.succeed();
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            made[0] = Room.build(helper, level, origin, 0);
+            // Far from the person, so that it never reaches them while the light settles.
+            made[0].figure.discard();
+            level.setBlock(made[0].player().blockPosition(), light(lit), 3);
+            since[0] = helper.getTick();
+        });
+    }
+
+    /** A light that comes after the grip does not free the person, as it does not free a pod, and the grip goes on weighing and draining. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + WATCH_TICKS + 60)
+    public void aLightDoesNotFreeAPersonAlreadyHeld(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(3);
+        Room[] made = {null};
+        long[] litAt = {-1};
+        int[] foodAtLight = {0};
+        TestTicks.each(helper, () -> {
+            Room room = made[0];
+            if (room == null) {
+                return;
+            }
+            if (litAt[0] < 0) {
+                if (room.figure.isClinging()) {
+                    litAt[0] = helper.getTick();
+                    foodAtLight[0] = room.player().getFoodData().getFoodLevel();
+                    room.player().setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TORCH));
+                    level.setBlock(room.player().blockPosition(), light(15), 3);
+                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS) {
+                    throw helper.assertionException("the figure had not taken hold of the person");
+                }
+                return;
+            }
+            expectHeld(helper, room, helper.getTick() - litAt[0]);
+            if (!FootGrips.isHeld(room.player())) {
+                throw helper.assertionException("a light freed a held person");
+            }
+            if (room.player().getFoodData().getFoodLevel() < foodAtLight[0]
+                    && room.player().getFoodData().getFoodLevel() < foodAtLight[0] - 1) {
+                throw helper.assertionException("food fell faster than the grip drains it");
+            }
+            if (helper.getTick() - litAt[0] >= WATCH_TICKS) {
+                if (room.player().getEffect(OreRegistry.OVERBURDENED) == null) {
+                    throw helper.assertionException("a light took the weight off a held person");
+                }
+                level.setBlock(room.player().blockPosition(), Blocks.AIR.defaultBlockState(), 3);
+                room.clear();
+                helper.succeed();
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            made[0] = Room.build(helper, level, origin, HALF - 1);
+            made[0].fillFood();
+        });
+    }
+
+    /** A crewmate's blows free a held person: two blows of a sword kill the figure, the weight goes and the person is told. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + FREED_BUDGET_TICKS + 120)
+    public void aCrewmatesBlowsFreeAHeldPerson(GameTestHelper helper) {
+        expectBlowsFree(helper, slot(4), true, SWORD_DAMAGE);
+    }
+
+    /** The person's own blows free them too: any blow ends it. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + FREED_BUDGET_TICKS + 120)
+    public void aHeldPersonStrikesTheFigureOffThemselves(GameTestHelper helper) {
+        expectBlowsFree(helper, slot(5), false, SWORD_DAMAGE);
+    }
+
+    /** (Pacing, #916) A held person with bare hands: a fist hits for 1, so twelve blows kill a figure of 12. The test logs what that costs in hunger. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + FREED_BUDGET_TICKS + 400)
+    public void aHeldPersonWithBareHandsKillsTheFigureInTwelveBlows(GameTestHelper helper) {
+        expectBlowsFree(helper, slot(8), false, FIST_DAMAGE);
+    }
+
+    private static void expectBlowsFree(GameTestHelper helper, BlockPos origin, boolean byCrewmate, float damage) {
+        ServerLevel level = helper.getLevel();
+        Room[] made = {null};
+        MockPlayer[] crew = {null};
+        long[] blowAt = {-1};
+        long[] diedAt = {-1};
+        int[] blows = {0};
+        long[] heldAt = {0};
+        int[] foodAtHold = {0};
+        TestTicks.each(helper, () -> {
+            Room room = made[0];
+            if (room == null) {
+                return;
+            }
+            ServerPlayer striker = byCrewmate && crew[0] != null ? crew[0].player() : room.player();
+            if (blowAt[0] < 0) {
+                if (room.figure.isClinging()) {
+                    if (byCrewmate) {
+                        crew[0] = MockPlayers.join(helper, "retained-crew-" + JOINS.incrementAndGet());
+                        crew[0].teleportTo(level, room.figure.position().add(0, 0, 1), 0f, 0f);
+                    }
+                    blowAt[0] = helper.getTick() - BLOW_SPACING_TICKS;
+                    heldAt[0] = helper.getTick();
+                    foodAtHold[0] = room.player().getFoodData().getFoodLevel();
+                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS) {
+                    throw helper.assertionException("the figure had not taken hold of the person");
+                }
+                return;
+            }
+            if (diedAt[0] < 0) {
+                if (helper.getTick() - blowAt[0] >= BLOW_SPACING_TICKS && room.figure.isAlive()) {
+                    blowAt[0] = helper.getTick();
+                    room.figure.hurtServer(level, level.damageSources().playerAttack(striker), damage);
+                    blows[0]++;
+                }
+                if (!room.figure.isAlive()) {
+                    diedAt[0] = helper.getTick();
+                    int expectedBlows = (int) Math.ceil(room.figure.getMaxHealth() / damage);
+                    if (blows[0] != expectedBlows) {
+                        throw helper.assertionException(
+                                "a figure of %s health took %s blows of %s to die, not %s",
+                                room.figure.getMaxHealth(), blows[0], damage, expectedBlows);
+                    }
+                    LOGGER.info(
+                            "[retained-foot] {} blows of {} killed the figure {} ticks after it took hold; food {} to {}",
+                            blows[0],
+                            damage,
+                            diedAt[0] - heldAt[0],
+                            foodAtHold[0],
+                            room.player().getFoodData().getFoodLevel());
+                }
+                return;
+            }
+            if (FootGrips.isHeld(room.player()) || room.figure.isClinging()) {
+                throw helper.assertionException("a dead figure still holds the person");
+            }
+            boolean weightGone = room.player().getEffect(OreRegistry.OVERBURDENED) == null;
+            float speed = (float) room.player().getAttributeValue(Attributes.MOVEMENT_SPEED);
+            if (weightGone && room.figure.isRemoved()) {
+                if (Math.abs(speed - 0.1f) > EPSILON) {
+                    throw helper.assertionException("the freed person walks at %s, not their own speed", speed);
+                }
+                if (told(room.person.actionBarMessages(), DEAD_KEY) != 1) {
+                    throw helper.assertionException("the person was not told once that it is gone");
+                }
+                if (crew[0] != null) {
+                    crew[0].leave();
+                }
+                room.clear();
+                helper.succeed();
+            } else if (helper.getTick() - diedAt[0] > FREED_BUDGET_TICKS) {
+                throw helper.assertionException(
+                        "%s ticks after the figure died: weight gone %s, figure removed %s",
+                        helper.getTick() - diedAt[0], weightGone, room.figure.isRemoved());
+            }
+        });
+        FarChunks.awaitEntityTicking(
+                helper, level, origin, () -> made[0] = Room.build(helper, level, origin, HALF - 1));
+    }
+
+    /** A figure that goes without dying (its chunk unloads, a command removes it) leaves no weight behind. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + FREED_BUDGET_TICKS + 60)
+    public void aFigureThatIsRemovedLeavesNoWeightBehind(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(6);
+        Room[] made = {null};
+        long[] removedAt = {-1};
+        TestTicks.each(helper, () -> {
+            Room room = made[0];
+            if (room == null) {
+                return;
+            }
+            if (removedAt[0] < 0) {
+                if (room.figure.isClinging()) {
+                    room.figure.discard();
+                    removedAt[0] = helper.getTick();
+                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS) {
+                    throw helper.assertionException("the figure had not taken hold of the person");
+                }
+                return;
+            }
+            if (room.player().getEffect(OreRegistry.OVERBURDENED) == null && !FootGrips.isHeld(room.player())) {
+                room.clear();
+                helper.succeed();
+            } else if (helper.getTick() - removedAt[0] > FREED_BUDGET_TICKS) {
+                throw helper.assertionException("the weight stayed on a person whose figure was removed");
+            }
+        });
+        FarChunks.awaitEntityTicking(
+                helper, level, origin, () -> made[0] = Room.build(helper, level, origin, HALF - 1));
+    }
+
+    /** A held person who is switched to creative is let go of, and a figure never holds a creative player. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + FREED_BUDGET_TICKS + 60)
+    public void aHeldPersonWhoTurnsCreativeIsLetGo(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(7);
+        Room[] made = {null};
+        long[] changedAt = {-1};
+        TestTicks.each(helper, () -> {
+            Room room = made[0];
+            if (room == null) {
+                return;
+            }
+            if (changedAt[0] < 0) {
+                if (room.figure.isClinging()) {
+                    room.player().setGameMode(GameType.CREATIVE);
+                    changedAt[0] = helper.getTick();
+                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS) {
+                    throw helper.assertionException("the figure had not taken hold of the person");
+                }
+                return;
+            }
+            if (!room.figure.isClinging()
+                    && room.player().getEffect(OreRegistry.OVERBURDENED) == null
+                    && !FootGrips.isHeld(room.player())) {
+                room.clear();
+                helper.succeed();
+            } else if (helper.getTick() - changedAt[0] > FREED_BUDGET_TICKS) {
+                throw helper.assertionException("a creative player is still held");
+            }
+        });
+        FarChunks.awaitEntityTicking(
+                helper, level, origin, () -> made[0] = Room.build(helper, level, origin, HALF - 1));
+    }
+
+    private static BlockPos slot(int index) {
+        return new BlockPos(FIRST_SLOT_X, FLOOR_Y, FIRST_SLOT_X + index * SLOT_Z_SPACING);
+    }
+
+    private static BlockState light(int level) {
+        return Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, level);
+    }
+}
