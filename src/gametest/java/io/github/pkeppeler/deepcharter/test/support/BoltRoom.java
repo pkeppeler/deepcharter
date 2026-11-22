@@ -1,14 +1,22 @@
 package io.github.pkeppeler.deepcharter.test.support;
 
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
+import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.repair.Consumable;
 import io.github.pkeppeler.deepcharter.repair.RepairRegistry;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -16,6 +24,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -133,5 +142,31 @@ public final class BoltRoom {
         figure.setNoAi(true);
         level.addFreshEntity(figure);
         return figure;
+    }
+
+    private static final AtomicInteger CHARTERS = new AtomicInteger();
+
+    /** Founds a charter with {@code founder} and returns its id. */
+    public static CharterId charter(GameTestHelper helper, MockPlayer founder) {
+        MinecraftServer server = helper.getLevel().getServer();
+        Optional<CharterRefusal> refusal =
+                Charters.found(server, founder.player().getUUID(), "Roof crew " + CHARTERS.incrementAndGet());
+        if (refusal.isPresent()) {
+            throw failure(helper, "founding a charter was refused: %s", refusal.get());
+        }
+        return Charters.charterOfOrThrow(server, founder.player().getUUID())
+                .orElseThrow()
+                .id();
+    }
+
+    /** Runs {@code blast} with the server's PvP rule set to {@code pvp}, and puts it back: the rule is read in the blast. */
+    public static void withPvp(MinecraftServer server, boolean pvp, Runnable blast) {
+        boolean was = server.getGameRules().get(GameRules.PVP);
+        try {
+            server.getGameRules().set(GameRules.PVP, pvp, server);
+            blast.run();
+        } finally {
+            server.getGameRules().set(GameRules.PVP, was, server);
+        }
     }
 }

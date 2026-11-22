@@ -225,7 +225,7 @@ public final class PodCharge {
         level.sendParticles(ParticleTypes.EXPLOSION, middle.x, middle.y, middle.z, 6, 1.0, 0.5, 1.0, 0.0);
         level.playSound(null, middle.x, middle.y, middle.z, DeepSound.DRILL_PLASTIC.event(), SoundSource.PLAYERS);
         // The blast shakes the roof over anyone on foot near it (#987).
-        CaveIns.blasted(level, middle);
+        CaveIns.blasted(level, middle, Optional.empty());
     }
 
     /** The cells this fuse's blast clears: a shaped charge's runs of Company rock, or a blasting charge's volume of rock that may go. */

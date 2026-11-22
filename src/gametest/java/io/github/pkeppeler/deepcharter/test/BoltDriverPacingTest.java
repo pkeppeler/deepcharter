@@ -2,12 +2,14 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.arm;
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.bolts;
+import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.charter;
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.corridor;
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.figure;
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.fire;
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.walker;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.Tally;
 import io.github.pkeppeler.deepcharter.layer.CaveInTuning;
@@ -22,8 +24,10 @@ import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Run;
 import io.github.pkeppeler.deepcharter.test.support.EarlyRunModel.Zone;
 import io.github.pkeppeler.deepcharter.test.support.FarChunks;
 import io.github.pkeppeler.deepcharter.test.support.MockPlayer;
+import io.github.pkeppeler.deepcharter.test.support.RoomCarver;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
+import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.core.BlockPos;
@@ -49,6 +53,8 @@ public class BoltDriverPacingTest {
     private static final int SPAWN_PROTECTION_TICKS = 100;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1200;
     private static final int TUNNEL = 40;
+    /** The rock of a cave-in has fallen, and the last of it is down, this many ticks after the warning. */
+    private static final int ROCK_FELL_TICKS = 30;
     /** The longest spacing tried, in blocks: far more than a bolt reaches. */
     private static final int WIDEST_SPACING = 12;
 
@@ -261,6 +267,102 @@ public class BoltDriverPacingTest {
             }
             helper.succeed();
         });
+    }
+
+    /** The creak lead is the warning every hazard gives, 3 s: at least this many ticks from a blast to the first rock falling, and at most this many. */
+    private static final int LEAD_MIN = 60;
+
+    private static final int LEAD_MAX = 65;
+    /** Roof cells that fall in a cave-in: a disc of the stretch's radius holds 29, so this band holds a stretch that is small, never a whole tunnel. */
+    private static final int FALLEN_MIN = 21;
+
+    private static final int FALLEN_MAX = 29;
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aCaveInCreaksForThreeSecondsAndBringsDownARoundStretchOfRoof(GameTestHelper helper) {
+        Corridor corridor = corridor(helper, 14, 29);
+        ServerLevel level = corridor.level();
+        BlockPos middle = corridor.floor(7);
+        int half = CAVE_IN.stretchRadius();
+        // The corridor is 1 wide: open it into a room as wide as the stretch, so the fall's radius is measured in two
+        // dimensions.
+        RoomCarver.carve(
+                level,
+                corridor.x(),
+                corridor.x() + 13,
+                middle.getY(),
+                middle.getY() + 1,
+                middle.getZ() - half,
+                middle.getZ() + half,
+                Blocks.AIR);
+        MockPlayer under = walker(helper, corridor, "pacing-under", 7, EAST);
+        long[] blastedAt = {-1};
+        long[] firstFall = {-1};
+        TestTicks.each(helper, () -> {
+            if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
+                return;
+            }
+            long now = level.getGameTime();
+            if (blastedAt[0] < 0) {
+                // Their own charter's blast, so the PvP rule does not matter.
+                CharterId mine = charter(helper, under);
+                CaveIns.blasted(level, corridor.stand(7).add(0, 1, 0), Optional.of(mine));
+                blastedAt[0] = now;
+                return;
+            }
+            if (firstFall[0] < 0 && fallenRoof(level, middle, half).cells > 0) {
+                firstFall[0] = now - blastedAt[0];
+            }
+            if (now - blastedAt[0] != CAVE_IN.warnTicks() + ROCK_FELL_TICKS) {
+                return;
+            }
+            Fallen fallen = fallenRoof(level, middle, half);
+            LOGGER.info(
+                    "[cave-in-pacing] measured: the first rock fell {} ticks after the blast ({} warns); {} roof cells fell, as far as {} cells from"
+                            + " the person ({} is the stretch)",
+                    firstFall[0],
+                    CAVE_IN.warnTicks(),
+                    fallen.cells,
+                    fallen.farthest,
+                    CAVE_IN.stretchRadius());
+            if (firstFall[0] < LEAD_MIN || firstFall[0] > LEAD_MAX) {
+                throw failure(
+                        helper,
+                        "the roof should creak %d to %d ticks before it falls, it creaked %d",
+                        LEAD_MIN,
+                        LEAD_MAX,
+                        firstFall[0]);
+            }
+            if (fallen.cells < FALLEN_MIN || fallen.cells > FALLEN_MAX) {
+                throw failure(helper, "%d to %d roof cells should fall, %d did", FALLEN_MIN, FALLEN_MAX, fallen.cells);
+            }
+            if (fallen.farthest < CAVE_IN.stretchRadius() - 1 || fallen.farthest > CAVE_IN.stretchRadius()) {
+                throw failure(
+                        helper,
+                        "the fall should reach %d to %d cells from the person, it reached %.2f",
+                        CAVE_IN.stretchRadius() - 1,
+                        CAVE_IN.stretchRadius(),
+                        fallen.farthest);
+            }
+            helper.succeed();
+        });
+    }
+
+    /** How much roof has come down: the cells of the room's roof that are no longer stone, and the farthest of them from {@code middle}. */
+    private record Fallen(int cells, double farthest) {}
+
+    private static Fallen fallenRoof(ServerLevel level, BlockPos middle, int half) {
+        int count = 0;
+        double farthest = 0;
+        for (int dx = -half - 1; dx <= half + 1; dx++) {
+            for (int dz = -half; dz <= half; dz++) {
+                if (!level.getBlockState(middle.offset(dx, 2, dz)).is(Blocks.STONE)) {
+                    count++;
+                    farthest = Math.max(farthest, Math.sqrt(dx * dx + dz * dz));
+                }
+            }
+        }
+        return new Fallen(count, farthest);
     }
 
     @GameTest

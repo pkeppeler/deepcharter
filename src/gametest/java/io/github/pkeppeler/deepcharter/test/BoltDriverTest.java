@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.test;
 
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.arm;
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.bolts;
+import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.charter;
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.corridor;
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.cut;
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.figure;
@@ -9,11 +10,16 @@ import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.fire;
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.setBolt;
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.told;
 import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.walker;
+import static io.github.pkeppeler.deepcharter.test.support.BoltRoom.withPvp;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
 import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
+import io.github.pkeppeler.deepcharter.charter.CharterId;
+import io.github.pkeppeler.deepcharter.charter.Charters;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.layer.CaveInTuning;
 import io.github.pkeppeler.deepcharter.layer.CaveIns;
+import io.github.pkeppeler.deepcharter.layer.CaveInsProbe;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -29,6 +35,7 @@ import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.TestTicks;
 import io.github.pkeppeler.deepcharter.test.support.UnloadedChunk;
 import java.util.List;
+import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -36,14 +43,19 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Server GameTests for the bolt driver (#987): what it fires, what it never touches, the roof bolts it sets, and what a roof bolt does in
@@ -589,7 +601,7 @@ public class BoltDriverTest {
                 pod.setPos(corridor.stand(11));
                 level.addFreshEntity(pod);
                 rider.player().startRiding(pod, true, false);
-                CaveIns.blasted(level, corridor.stand(5).add(0, 1, 0));
+                CaveIns.blasted(level, corridor.stand(5).add(0, 1, 0), Optional.empty());
                 startedAt[0] = now;
                 return;
             }
@@ -674,5 +686,311 @@ public class BoltDriverTest {
                                         level.getBlockState(cell));
                             }
                         }));
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aStoppedServerForgetsACaveInThatWasCreaking(GameTestHelper helper) {
+        Corridor corridor = corridor(helper, LENGTH, 22);
+        walker(helper, corridor, "bolt-stopped", 7, EAST);
+        long[] startedAt = {-1};
+        TestTicks.each(helper, () -> {
+            if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
+                return;
+            }
+            long now = corridor.level().getGameTime();
+            if (startedAt[0] < 0) {
+                expect(
+                        helper,
+                        CaveIns.shake(corridor.level(), corridor.floor(7)),
+                        "the roof over a person is loose: the cave-in should start");
+                // The static map outlives a server in one JVM: a stop must empty it.
+                CaveInsProbe.stopped();
+                startedAt[0] = now;
+                return;
+            }
+            if (now - startedAt[0] == CAVE_IN.warnTicks() + 3) {
+                expect(helper, corridor.standing(7), "a cave-in that was creaking when the server stopped fell later");
+                expect(
+                        helper,
+                        CaveIns.shake(corridor.level(), corridor.floor(7)),
+                        "after a stop the same place can creak again: nothing stale blocks it");
+                helper.succeed();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPersonWhoIgnoresTheCreakIsHurtWithinTheCapAndNeitherKilledNorEntombed(GameTestHelper helper) {
+        Corridor corridor = corridor(helper, LENGTH, 23);
+        MockPlayer under = walker(helper, corridor, "bolt-ignores", 7, EAST);
+        long[] startedAt = {-1};
+        TestTicks.each(helper, () -> {
+            if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
+                return;
+            }
+            ServerPlayer player = under.player();
+            // A full stomach heals: keep it low, so a loss is the rock's.
+            player.getFoodData().setFoodLevel(6);
+            ServerLevel level = corridor.level();
+            long now = level.getGameTime();
+            if (startedAt[0] < 0) {
+                expect(helper, player.getHealth() == player.getMaxHealth(), "the person starts at full health");
+                expect(
+                        helper,
+                        CaveIns.shake(level, corridor.floor(7)),
+                        "the roof over a person is loose: the cave-in should start");
+                startedAt[0] = now;
+                return;
+            }
+            if (now - startedAt[0] != CAVE_IN.warnTicks() + ROCK_SETTLES_TICKS) {
+                return;
+            }
+            float lost = player.getMaxHealth() - player.getHealth();
+            expect(helper, player.isAlive(), "a cave-in costs you, it does not kill a person at full health");
+            expect(helper, lost > 0, "the rock that fell on a person who stood under it should hurt");
+            expect(
+                    helper,
+                    lost <= CAVE_IN.fallDamageMax(),
+                    "one cave-in cost %.1f health, the cap is %d",
+                    lost,
+                    CAVE_IN.fallDamageMax());
+            expect(
+                    helper,
+                    level.noBlockCollision(player, player.getBoundingBox()) && !player.isInWall(),
+                    "the person is inside rock after the cave-in: %s",
+                    level.getBlockState(player.blockPosition()));
+            double before = player.getY();
+            player.move(MoverType.SELF, new Vec3(0, 0.2, 0));
+            expect(helper, player.getY() > before, "the person is wedged and cannot move up out of the rubble");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void withPvpOffABlastShakesOnlyTheRoofOfItsOwnCharter(GameTestHelper helper) {
+        Corridor corridor = corridor(helper, LENGTH, 24);
+        MockPlayer ours = walker(helper, corridor, "bolt-own-crew", 1, EAST);
+        MockPlayer theirs = walker(helper, corridor, "bolt-other-crew", 7, EAST);
+        walker(helper, corridor, "bolt-no-charter", 12, EAST);
+        MinecraftServer server = helper.getLevel().getServer();
+        long[] startedAt = {-1};
+        TestTicks.each(helper, () -> {
+            if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
+                return;
+            }
+            long now = corridor.level().getGameTime();
+            if (startedAt[0] < 0) {
+                CharterId mine = charter(helper, ours);
+                charter(helper, theirs);
+                withPvp(
+                        server,
+                        false,
+                        () -> CaveIns.blasted(
+                                corridor.level(), corridor.stand(7).add(0, 1, 0), Optional.of(mine)));
+                startedAt[0] = now;
+                return;
+            }
+            if (now - startedAt[0] == CAVE_IN.warnTicks() + 3) {
+                expect(helper, !corridor.standing(1), "a blast shakes the roof over a person of its own charter");
+                expect(
+                        helper,
+                        corridor.standing(7),
+                        "with PvP off a blast does not shake another charter's crew: that would be griefing");
+                expect(helper, corridor.standing(12), "nor a person on no charter, with PvP off");
+                helper.succeed();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void withPvpOnABlastShakesEveryonesRoof(GameTestHelper helper) {
+        Corridor corridor = corridor(helper, LENGTH, 25);
+        MockPlayer ours = walker(helper, corridor, "bolt-pvp-own", 1, EAST);
+        MockPlayer theirs = walker(helper, corridor, "bolt-pvp-other", 7, EAST);
+        walker(helper, corridor, "bolt-pvp-none", 12, EAST);
+        MinecraftServer server = helper.getLevel().getServer();
+        long[] startedAt = {-1};
+        TestTicks.each(helper, () -> {
+            if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
+                return;
+            }
+            long now = corridor.level().getGameTime();
+            if (startedAt[0] < 0) {
+                CharterId mine = charter(helper, ours);
+                charter(helper, theirs);
+                withPvp(
+                        server,
+                        true,
+                        () -> CaveIns.blasted(
+                                corridor.level(), corridor.stand(7).add(0, 1, 0), Optional.of(mine)));
+                startedAt[0] = now;
+                return;
+            }
+            if (now - startedAt[0] == CAVE_IN.warnTicks() + 3) {
+                expect(
+                        helper,
+                        !corridor.standing(1) && !corridor.standing(7) && !corridor.standing(12),
+                        "where the server allows PvP a blast shakes every person on foot near it");
+                helper.succeed();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void dynamiteFromAPodIsTheCharterOfItsPilotWhenPvpIsOff(GameTestHelper helper) {
+        Corridor corridor = corridor(helper, LENGTH, 26);
+        MockPlayer pilot = walker(helper, corridor, "bolt-owner-pilot", 7, 90f);
+        MockPlayer crew = walker(helper, corridor, "bolt-owner-crew", 1, EAST);
+        MockPlayer stranger = walker(helper, corridor, "bolt-owner-stranger", 13, EAST);
+        MinecraftServer server = helper.getLevel().getServer();
+        long[] startedAt = {-1};
+        TestTicks.each(helper, () -> {
+            if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
+                return;
+            }
+            ServerLevel level = corridor.level();
+            long now = level.getGameTime();
+            if (startedAt[0] < 0) {
+                charter(helper, pilot);
+                CharterId pilots = Charters.charterOfOrThrow(
+                                server, pilot.player().getUUID())
+                        .orElseThrow()
+                        .id();
+                expect(
+                        helper,
+                        Charters.apply(server, crew.player().getUUID(), pilots).isEmpty()
+                                && Charters.approve(
+                                                server,
+                                                pilot.player().getUUID(),
+                                                crew.player().getUUID())
+                                        .isEmpty(),
+                        "the crew member should join the pilot's charter");
+                charter(helper, stranger);
+                PodEntity pod = TestEntities.create(PodRegistry.POD, level);
+                pod.setPos(corridor.stand(7));
+                level.addFreshEntity(pod);
+                pilot.player().startRiding(pod, true, false);
+                pilot.player()
+                        .getInventory()
+                        .setItem(
+                                pilot.player().getInventory().getSelectedSlot(),
+                                new ItemStack(RepairRegistry.item(Consumable.DYNAMITE)));
+                withPvp(server, false, () -> {
+                    expect(
+                            helper,
+                            pilot.player()
+                                    .gameMode
+                                    .useItem(
+                                            pilot.player(),
+                                            level,
+                                            pilot.player().getItemInHand(InteractionHand.MAIN_HAND),
+                                            InteractionHand.MAIN_HAND)
+                                    .consumesAction(),
+                            "the pilot's dynamite should go off");
+                });
+                startedAt[0] = now;
+                return;
+            }
+            if (now - startedAt[0] == CAVE_IN.warnTicks() + 3) {
+                expect(helper, !corridor.standing(1), "dynamite shakes the roof over a person on the pilot's charter");
+                expect(helper, corridor.standing(13), "with PvP off it does not shake another charter's crew");
+                helper.succeed();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void theDriverUsesBoltsInThePackAndTheOffhandAndNotThoseWorn(GameTestHelper helper) {
+        Corridor corridor = corridor(helper, LENGTH, 27);
+        MockPlayer shooter = walker(helper, corridor, "bolt-slots", 1, EAST);
+        ServerPlayer player = shooter.player();
+        arm(player, 0);
+        player.setItemSlot(EquipmentSlot.CHEST, new ItemStack(RepairRegistry.item(Consumable.BOLT), 3));
+        long[] stage = {0, 0};
+        TestTicks.each(helper, () -> {
+            if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
+                return;
+            }
+            if (stage[0] == 0) {
+                expect(
+                        helper,
+                        !fire(player).consumesAction()
+                                && player.getItemBySlot(EquipmentSlot.CHEST).getCount() == 3,
+                        "bolts worn in an armor slot are not in the pack: the driver is empty, and they are kept");
+                expect(
+                        helper,
+                        !setBolt(player, corridor.roof(1)).consumesAction()
+                                && !corridor.level()
+                                        .getBlockState(corridor.roof(1).below())
+                                        .is(LayerBlocks.ROOF_BOLT),
+                        "no roof bolt is set from bolts that are not in the pack");
+                stage[0] = 1;
+                stage[1] = helper.getTick();
+                return;
+            }
+            if (stage[0] == 1) {
+                if (helper.getTick() < stage[1] + MESSAGE_TICKS) {
+                    return;
+                }
+                expect(
+                        helper,
+                        told(shooter, "message.deepcharter.repair.bolt_none"),
+                        "an empty pack says so, got %s",
+                        shooter.actionBarMessages());
+                player.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(RepairRegistry.item(Consumable.BOLT), 2));
+                expect(
+                        helper,
+                        setBolt(player, corridor.roof(1)).consumesAction()
+                                && corridor.level()
+                                        .getBlockState(corridor.roof(1).below())
+                                        .is(LayerBlocks.ROOF_BOLT),
+                        "a bolt in the offhand is in the pack and sets a roof bolt");
+                expect(
+                        helper,
+                        player.getOffhandItem().getCount() == 1
+                                && player.getItemBySlot(EquipmentSlot.CHEST).getCount() == 3,
+                        "the roof bolt took one bolt from the offhand and none of the worn ones: %s and %s",
+                        player.getOffhandItem().getCount(),
+                        player.getItemBySlot(EquipmentSlot.CHEST).getCount());
+                helper.succeed();
+            }
+        });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS)
+    public void aPlayerWhoMayNotBuildHereSetsNoRoofBolt(GameTestHelper helper) {
+        Corridor corridor = corridor(helper, LENGTH, 28);
+        MockPlayer setter = walker(helper, corridor, "bolt-adventure", 5, EAST);
+        setter.player().setGameMode(GameType.ADVENTURE);
+        arm(setter.player(), 2);
+        long[] actedAt = {-1};
+        TestTicks.each(helper, () -> {
+            if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
+                return;
+            }
+            if (actedAt[0] < 0) {
+                BlockPos roof = corridor.roof(5);
+                expect(
+                        helper,
+                        !setBolt(setter.player(), roof).consumesAction(),
+                        "a player in adventure mode cannot place blocks and cannot set a roof bolt");
+                expect(
+                        helper,
+                        !corridor.level().getBlockState(roof.below()).is(LayerBlocks.ROOF_BOLT)
+                                && bolts(setter.player()) == 2,
+                        "a refused bolt places nothing and spends nothing, the pack holds %d",
+                        bolts(setter.player()));
+                actedAt[0] = helper.getTick();
+                return;
+            }
+            if (helper.getTick() >= actedAt[0] + MESSAGE_TICKS) {
+                expect(
+                        helper,
+                        told(setter, "message.deepcharter.repair.bolt_forbidden"),
+                        "the refusal says why, got %s",
+                        setter.actionBarMessages());
+                helper.succeed();
+            }
+        });
     }
 }

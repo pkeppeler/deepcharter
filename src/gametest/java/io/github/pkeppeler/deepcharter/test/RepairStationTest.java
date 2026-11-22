@@ -55,6 +55,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
@@ -76,17 +77,17 @@ import net.minecraft.world.phys.Vec3;
  */
 public class RepairStationTest {
     /** The prices after issue 210 (see EconomyAffordabilityTest for why), written out so that the code cannot move them. */
-    private static final Map<Consumable, Long> SHOP_PRICES = Map.of(
-            Consumable.RESERVE_FUEL_TANK, 100L,
-            Consumable.HULL_NANOBOTS, 345L,
-            Consumable.DYNAMITE, 100L,
-            Consumable.PLASTIC_EXPLOSIVES, 300L,
-            Consumable.BLASTING_CHARGE, 40L,
-            Consumable.SHAPED_CHARGE, 100L,
-            Consumable.QUANTUM_TELEPORTER, 690L,
-            Consumable.MATTER_TRANSMITTER, 1_650L,
-            Consumable.BOLT_DRIVER, 175L,
-            Consumable.BOLT, 24L);
+    private static final Map<Consumable, Long> SHOP_PRICES = Map.ofEntries(
+            Map.entry(Consumable.RESERVE_FUEL_TANK, 100L),
+            Map.entry(Consumable.HULL_NANOBOTS, 345L),
+            Map.entry(Consumable.DYNAMITE, 100L),
+            Map.entry(Consumable.PLASTIC_EXPLOSIVES, 300L),
+            Map.entry(Consumable.BLASTING_CHARGE, 40L),
+            Map.entry(Consumable.SHAPED_CHARGE, 100L),
+            Map.entry(Consumable.QUANTUM_TELEPORTER, 690L),
+            Map.entry(Consumable.MATTER_TRANSMITTER, 1_650L),
+            Map.entry(Consumable.BOLT_DRIVER, 175L),
+            Map.entry(Consumable.BOLT, 24L));
 
     private static final long PER_HP = 1L;
     private static final int ARENA = 4;
@@ -473,6 +474,43 @@ public class RepairStationTest {
                     Terminals.act(player, station.pos(), RepairStation.BUY, item(Consumable.DYNAMITE)),
                     "buying with a full inventory");
             expectAccount(helper, station, Consumable.DYNAMITE.price(), "a full inventory costs nothing");
+            helper.succeed();
+        });
+    }
+
+    @GameTest
+    public void aPackThatDoesNotFitWholeIsRefusedAndNothingIsCharged(GameTestHelper helper) {
+        withStation(helper, station -> {
+            ServerPlayer player = station.pilot().player();
+            Inventory inventory = player.getInventory();
+            Item bolt = RepairRegistry.item(Consumable.BOLT);
+            int pack = Consumable.BOLT.perPurchase();
+            fund(helper, station, 1_000);
+            for (int slot = 0; slot < inventory.getNonEquipmentItems().size(); slot++) {
+                inventory.setItem(slot, new ItemStack(Blocks.DIRT));
+            }
+            inventory.setItem(Inventory.SLOT_OFFHAND, new ItemStack(Blocks.DIRT));
+            // One bolt short of room for the pack: the stack has space, but not for all of it.
+            inventory.setItem(3, new ItemStack(bolt, bolt.getDefaultMaxStackSize() - pack + 1));
+            expectRefused(
+                    helper,
+                    Terminals.act(player, station.pos(), RepairStation.BUY, item(Consumable.BOLT)),
+                    "buying a pack of " + pack + " with room for " + (pack - 1));
+            expectAccount(helper, station, 1_000, "a pack that does not fit costs nothing");
+            if (inventory.countItem(bolt) != bolt.getDefaultMaxStackSize() - pack + 1) {
+                throw helper.assertionException(
+                        "the refused pack changed the bolts held: %s", inventory.countItem(bolt));
+            }
+            inventory.setItem(3, new ItemStack(bolt, bolt.getDefaultMaxStackSize() - pack));
+            expectDone(
+                    helper,
+                    Terminals.act(player, station.pos(), RepairStation.BUY, item(Consumable.BOLT)),
+                    "buying a pack with room for exactly " + pack);
+            expectAccount(helper, station, 1_000 - Consumable.BOLT.price(), "the pack that fits is charged once");
+            if (inventory.countItem(bolt) != bolt.getDefaultMaxStackSize()) {
+                throw helper.assertionException(
+                        "the pack should fill the stack, it holds %s", inventory.countItem(bolt));
+            }
             helper.succeed();
         });
     }

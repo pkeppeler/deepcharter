@@ -84,7 +84,7 @@ final class Consumables {
         }
         play(pod, sound);
         // The blast shakes the roof over anyone on foot near it (#987).
-        CaveIns.blasted(level, pod.getBoundingBox().getCenter());
+        CaveIns.blasted(level, pod.getBoundingBox().getCenter(), Optional.empty());
         return Optional.empty();
     }
 
