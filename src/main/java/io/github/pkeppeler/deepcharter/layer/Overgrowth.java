@@ -26,6 +26,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -97,6 +98,11 @@ public final class Overgrowth {
 
     private static Identifier id(String path) {
         return Identifier.fromNamespaceAndPath(DeepCharter.MOD_ID, path);
+    }
+
+    /** The biome stored for the cell: {@code Level.getBiome} blends neighbouring cells at an edge, which would let growth leak a block out of the hollows. */
+    private static Holder<Biome> stored(ServerLevel level, BlockPos pos) {
+        return level.getNoiseBiome(pos.getX() >> 2, pos.getY() >> 2, pos.getZ() >> 2);
     }
 
     private static OvergrowthTuning tuning() {
@@ -177,7 +183,7 @@ public final class Overgrowth {
      * where the chunk's saved bores are of a version this build cannot read (they are never overwritten). Call it after the block is gone.
      */
     public static void markBore(ServerLevel level, BlockPos pos) {
-        if (!level.getBiome(pos).is(HOLLOWS)) {
+        if (!stored(level, pos).is(HOLLOWS)) {
             return;
         }
         LevelChunk chunk = level.getChunkAt(pos);
@@ -327,7 +333,7 @@ public final class Overgrowth {
 
     private static boolean freeToGrow(ServerLevel level, LoadedBlocks blocks, BlockPos pos) {
         return blocks.canChange(pos)
-                && level.getBiome(pos).is(HOLLOWS)
+                && stored(level, pos).is(HOLLOWS)
                 && touchesRockOrGrowth(blocks, pos)
                 && !heldOpen(blocks, pos)
                 && !occupied(level, pos);

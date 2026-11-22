@@ -1776,11 +1776,11 @@ Each column sums to 30 in the first four rows. The shafts are 50.7 blocks deep w
 
 **Knobs (`OvergrowthTuning`).** `delayTicks` (6000, 5 minutes), `visitRadius` (32), `passTicks` (100), `cellsPerPass` (3, for the whole chunk), `holdReach` (2), `visitStampTicks` (600), `maxLooks` (48, the cells one pass weighs: a chunk of thousands costs a scan of its keys and 48 block reads). Chunks pass on their own tick of the 100, by chunk hash, `drillFuelMultiplier` (3), `hardness` (1.0). Data: the biome tag `deepcharter:fungal_hollows` (empty), the block tag `deepcharter:lining` (slag brick), `minecraft:mineable/axe`.
 
-**Pacing: expected (not yet measured).** `OvergrowthTest.theBoreGrowsAtTheExpectedPace`: a 3 x 3 bore 8 cells long, cut in a stone box in a test biome of the tag, with no player near, left to the clock on the real tick path. The line it prints is `[overgrowth] pacing`. The numbers below follow from the knobs, and the test fails if the run leaves them: first cell in the pass after the delay, then 3 cells every pass. The logged line replaces them once the run has been made (it waits for the GameTest slot).
+**Pacing: measured.** `OvergrowthTest.theBoreGrowsAtTheMeasuredPace`: a 3 x 3 bore 8 cells long (72 cells), cut in a stone box in a test biome of the tag, with no player near, left to the clock on the real tick path. The test passes only if the first cell grows 6000 to 6100 ticks after the cut and the bore closes within 8 passes of the fewest possible (23 passes). Its log line: `[overgrowth] pacing: first growth 6077 ticks (303.9 s) after the bore was cut; closed (72 cells) 2300 ticks (115.0 s) after the first`. The whole class (13 tests) runs in about 25 s of wall time, the pacing test taking a few seconds of it (the server ticks unthrottled).
 
 | What | Ticks | Time |
 |---|---|---|
-| Unvisited until the first cell grows | 6000 to 6100 | 5:00 to 5:05 |
-| First cell to a closed bore (72 cells at 3 every 100 ticks) | 2400 | 2:00 |
+| Unvisited until the first cell grows | 6077 | 5:04 |
+| First cell to a closed bore (72 cells at 3 every 100 ticks) | 2300 | 1:55 |
 
 **Open questions.** Whether the scanner should mark growth (it reads as rock to sonar at present); whether the liner part should ring a shaft with a brick even without lava, so the part that "keeps it open for good" does so with no pilot; the lore name and the Sleeper's reason (the lore session, #12).

@@ -30,7 +30,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
@@ -320,7 +319,7 @@ public class OvergrowthTest {
     public void nothingGrowsOutsideTheBiomeTag(GameTestHelper helper) {
         // Read before the room is carved, which puts the column in the hollows.
         Identifier layerBiome = TestLayers.level(helper, 1)
-                .getBiome(new BlockPos(column(5), FLOOR, Z))
+                .getNoiseBiome(column(5) >> 2, FLOOR >> 2, Z >> 2)
                 .unwrapKey()
                 .orElseThrow()
                 .identifier();
@@ -360,6 +359,8 @@ public class OvergrowthTest {
             LevelChunk chunk = chunkOf(level, x);
             hand.teleportTo(level, new Vec3(x + 0.5, FLOOR + BORE_LENGTH + 2, Z + 0.5), 0f, 0f);
             hand.player().setGameMode(GameType.SURVIVAL);
+            // A player in the air digs at a fifth of the speed.
+            hand.player().setOnGround(true);
             BlockPos growth = new BlockPos(x, FLOOR, Z);
             BlockPos rock = new BlockPos(x + 1, FLOOR, Z);
             level.setBlock(growth, LayerBlocks.OVERGROWTH.defaultBlockState(), Block.UPDATE_ALL);
@@ -645,7 +646,7 @@ public class OvergrowthTest {
 
     /** Waits the real clock out on the real tick path: no player near, nothing passed in. Prints the line that mechanics.md quotes. */
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 12_000)
-    public void theBoreGrowsAtTheExpectedPace(GameTestHelper helper) {
+    public void theBoreGrowsAtTheMeasuredPace(GameTestHelper helper) {
         int x = column(10);
         ServerLevel level = room(helper, x);
         Arrival<Boolean> ready = ready(helper, level, x);
@@ -736,7 +737,10 @@ public class OvergrowthTest {
     /** Puts the column's whole chunk in {@code biome}. */
     private static void fillBiome(ServerLevel level, int x, Identifier biome) {
         Hollows.fill(
-                level, new BlockPos(x - 8, FLOOR, Z - 8), new BlockPos(x + 7, FLOOR + BORE_LENGTH - 1, Z + 7), biome);
+                level,
+                new BlockPos(x - 8, FLOOR - 4, Z - 8),
+                new BlockPos(x + 7, FLOOR + BORE_LENGTH - 1, Z + 7),
+                biome);
     }
 
     /** Cuts the 3 x 3 bore the way the drill does: the cell goes, then it is marked. */

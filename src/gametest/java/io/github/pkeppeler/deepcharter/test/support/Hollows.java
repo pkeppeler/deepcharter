@@ -3,8 +3,10 @@ package io.github.pkeppeler.deepcharter.test.support;
 import io.github.pkeppeler.deepcharter.layer.Overgrowth;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
@@ -32,11 +34,16 @@ public final class Hollows {
                         "fillbiome %d %d %d %d %d %d %s"
                                 .formatted(a.getX(), a.getY(), a.getZ(), b.getX(), b.getY(), b.getZ(), biome));
         for (BlockPos at : new BlockPos[] {a, b}) {
-            if (!level.getBiome(at).unwrapKey().orElseThrow().identifier().equals(biome)) {
+            if (!stored(level, at).unwrapKey().orElseThrow().identifier().equals(biome)) {
                 throw new IllegalStateException("/fillbiome did not put " + at + " in " + biome + "; it is in "
-                        + level.getBiome(at).unwrapKey());
+                        + stored(level, at).unwrapKey());
             }
         }
+    }
+
+    /** The biome stored for the cell, as the growth reads it. */
+    private static Holder<Biome> stored(ServerLevel level, BlockPos pos) {
+        return level.getNoiseBiome(pos.getX() >> 2, pos.getY() >> 2, pos.getZ() >> 2);
     }
 
     /** Takes the cell out of the rock and marks it a bore, as the pod drill does ({@code PodDrill}). */
