@@ -9,7 +9,6 @@ import io.github.pkeppeler.deepcharter.client.handbook.HandbookPage;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreen;
 import io.github.pkeppeler.deepcharter.client.handbook.HandbookScreenTuning;
 import io.github.pkeppeler.deepcharter.client.hangar.HangarScreen;
-import io.github.pkeppeler.deepcharter.client.layer.BreachEffects;
 import io.github.pkeppeler.deepcharter.client.market.OreProcessorScreen;
 import io.github.pkeppeler.deepcharter.client.ore.OreCargoScreen;
 import io.github.pkeppeler.deepcharter.client.repair.RepairStationScreen;
@@ -173,8 +172,6 @@ public class DesignTourScenario extends EvidenceScenario {
     private static final int SETTLE_STABLE_POLLS = 5;
     /** Where the cursor is parked when a screen is open: well outside the window, so that no slot or button is hovered. */
     private static final double OFF_SCREEN = -10_000;
-    /** The breach fade is shot held half black. */
-    private static final float FADE_SHOT_ALPHA = 0.5f;
     /** The tour's charter has this id on every run, so that its pods are painted the same colour on every run (ADR 0041: the slot is the id's hash). */
     private static final CharterId TOUR_CHARTER = new CharterId(new UUID(0L, 0L));
     /** The kit's blocks: the public block fields of {@link ColonyKit}. */
@@ -280,7 +277,7 @@ public class DesignTourScenario extends EvidenceScenario {
 
         /**
          * Holds still what moves on client ticks and frames and that no wait can settle (issue 309). The switches are in
-         * {@link EvidencePins}. The breach fade is held only for its own still.
+         * {@link EvidencePins}.
          */
         private void pinTheClient() {
             EvidencePins.spritesFrozen = true;
@@ -1204,9 +1201,10 @@ public class DesignTourScenario extends EvidenceScenario {
                 BlockPos min = TestLayers.pos(1, x - 3, 3, z - 3);
                 BlockPos max = TestLayers.pos(1, x + 3, 8, z + 3);
                 RoomCarver.carve(one, min, max, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+                RoomCarver.carvePocketBelow(one, 1, x - 2, x + 2, z - 2, z + 2);
             });
             litRooms.add(new LitRoom(
-                    TestLayers.dimension(1),
+                    layerDimension(1),
                     new Box(TestLayers.pos(1, x - 3, 3, z - 3), TestLayers.pos(1, x + 3, 8, z + 3))));
             nightVision();
             view(1, TestLayers.vec(1, x + 0.5, 6.5, z + 0.5), TestLayers.vec(1, x + 0.5, 1.5, z + 1.5), 120);
@@ -1242,15 +1240,11 @@ public class DesignTourScenario extends EvidenceScenario {
             hud(true);
             ctx.runOnClient(
                     client -> ClientSession.player(client).getInventory().clearContent());
-            view(1, new Vec3(x + 0.5, 4.0, z + 0.5), new Vec3(x + 0.5, 0.5, z + 1.5), 30);
+            view(1, TestLayers.vec(1, x + 0.5, 4.0, z + 0.5), TestLayers.vec(1, x + 0.5, 0.5, z + 1.5), 30);
             clearTransmissions();
             still("hud-altimeter-layer-1-floor");
-            // The fade, held: with the pin set, the fade and the typing of the transmission stand still from the moment
-            // the
-            // crossing begins,
-            // so the still does not depend on the client tick that it lands on, or on how long the new level takes to
-            // load.
-            EvidencePins.breachFadeAlpha = FADE_SHOT_ALPHA;
+            // The crossing is in place (ADR 0061): the HUD shakes and nothing fades, so the transmissions of the
+            // crossing are what is shot.
             serverDo(server -> {
                 ServerLevel one = TestLayers.level(server, 1);
                 player(server)
@@ -1258,13 +1252,8 @@ public class DesignTourScenario extends EvidenceScenario {
             });
             ClientWait.until(
                     ctx,
-                    "layer 2 with the breach fade running and no screen",
-                    client -> TestLayers.clientIsIn(client, 2)
-                            && client.gui.screen() == null
-                            && BreachEffects.fadeAlpha(0f) > 0f);
-            settle("hud-breach-fade");
-            screenshot(ctx, "hud-breach-fade");
-            EvidencePins.breachFadeAlpha = -1f;
+                    "layer 2 with no screen",
+                    client -> TestLayers.clientIsIn(client, 2) && client.gui.screen() == null);
 
             // Then the two transmissions of the crossing, each shot once it has typed out.
             Set<Identifier> shot = new HashSet<>();
@@ -1309,7 +1298,7 @@ public class DesignTourScenario extends EvidenceScenario {
                 return new Vec3(x + 0.5, floor + EYE, z + 0.5);
             });
             litRooms.add(new LitRoom(
-                    TestLayers.dimension(2),
+                    layerDimension(2),
                     new Box(
                             BlockPos.containing(hall).offset(-6, -1, -6),
                             BlockPos.containing(hall).offset(6, 6, 6))));
@@ -1655,6 +1644,10 @@ public class DesignTourScenario extends EvidenceScenario {
 
         private <T extends @Nullable Object> T serverGet(Function<MinecraftServer, T> action) {
             return sp.getServer().computeOnServer(action::apply);
+        }
+
+        private ResourceKey<Level> layerDimension(int layer) {
+            return serverGet(server -> TestLayers.dimension(server, layer));
         }
 
         private void serverDo(Consumer<MinecraftServer> action) {

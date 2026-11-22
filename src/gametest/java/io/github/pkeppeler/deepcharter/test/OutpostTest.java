@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.charter.CharterData;
 import io.github.pkeppeler.deepcharter.charter.CharterId;
 import io.github.pkeppeler.deepcharter.charter.CharterRefusal;
@@ -64,7 +64,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #320: a charter builds an outpost at the breach floor of layer 1 with a kit. The hall has the colony's own fuel
@@ -93,13 +92,6 @@ public class OutpostTest {
         ServerPlayer player() {
             return mock.player();
         }
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 
     private static ServerLevel layerOne(GameTestHelper helper) {
@@ -834,6 +826,13 @@ public class OutpostTest {
                                 }
                             }
                         }
+                        RoomCarver.carvePocketBelow(
+                                stage.level(),
+                                1,
+                                stage.floor().getX() - 1,
+                                stage.floor().getX() + 2,
+                                stage.floor().getZ() - 1,
+                                stage.floor().getZ() + 2);
                         ready[0] = true;
                     });
         });

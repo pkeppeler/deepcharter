@@ -1,7 +1,7 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
+
 import io.github.pkeppeler.deepcharter.ore.HazardBlocks;
 import io.github.pkeppeler.deepcharter.pod.PodEntity;
 import io.github.pkeppeler.deepcharter.pod.PodRegistry;
@@ -39,7 +39,7 @@ import org.jspecify.annotations.Nullable;
 public class ShapedChargeTest {
     private static final RepairTuning TUNING = RepairTuning.DEFAULT;
     private static final int Z = 5400;
-    private static final int FLOOR = 60;
+    private static final int FLOOR = TestLayers.worldY(1, 60);
     private static final int BED = 16;
     private static final int ROOM = 14;
     /** Blocks east that the pod is moved to leave the blast: its box then starts over chargeReach from the footprint, and the pod stays in its chunk (x is a multiple of 16). */
@@ -389,12 +389,5 @@ public class ShapedChargeTest {
         }
         pilot.player().getInventory().clearContent();
         return Component.translatable("message.deepcharter.repair." + key);
-    }
-
-    // assertionException(String, Object...) leaves the placeholders unfilled in the report.
-    @FormatMethod
-    private static RuntimeException failure(
-            GameTestHelper helper, @FormatString String format, @Nullable Object... args) {
-        return helper.assertionException(Component.literal(String.format(format, args)));
     }
 }

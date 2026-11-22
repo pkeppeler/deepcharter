@@ -19,7 +19,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -81,18 +80,15 @@ public class CockpitRibbonScenario extends EvidenceScenario {
             EvidencePins.handsHidden = true;
             try {
                 Room upper = singleplayer.getServer().computeOnServer(server -> {
-                    var type = server.registryAccess()
-                            .lookupOrThrow(Registries.DIMENSION_TYPE)
-                            .getValueOrThrow(LayerChain.type(1));
-                    return new Room(TestLayers.dimension(1), type.minY() + type.height() - UPPER_FLOOR_BELOW_TOP);
+                    LayerChain.Band band = TestLayers.band(server, 1);
+                    return new Room(
+                            TestLayers.dimension(server, 1), band.minY() + band.height() - UPPER_FLOOR_BELOW_TOP);
                 });
                 Room deep = singleplayer.getServer().computeOnServer(server -> {
-                    int last = LayerChain.count(server.registryAccess());
-                    int minY = server.registryAccess()
-                            .lookupOrThrow(Registries.DIMENSION_TYPE)
-                            .getValueOrThrow(LayerChain.type(last))
-                            .minY();
-                    return new Room(TestLayers.dimension(last), minY + DEEP_FLOOR_ABOVE_MIN);
+                    int last = LayerChain.layerCount(TestLayers.level(server, 1));
+                    return new Room(
+                            TestLayers.dimension(server, last),
+                            TestLayers.band(server, last).minY() + DEEP_FLOOR_ABOVE_MIN);
                 });
                 singleplayer.getServer().runOnServer(server -> {
                     buildRoom(server, upper, ROOM_RADIUS, ROOM_RADIUS);

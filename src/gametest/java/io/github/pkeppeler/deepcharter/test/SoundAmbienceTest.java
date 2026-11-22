@@ -1,12 +1,13 @@
 package io.github.pkeppeler.deepcharter.test;
 
-import com.google.errorprone.annotations.FormatMethod;
-import com.google.errorprone.annotations.FormatString;
+import static io.github.pkeppeler.deepcharter.test.support.Failures.expect;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.layer.LayerChain;
+import io.github.pkeppeler.deepcharter.layer.gen.BandBiomeSource;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -23,7 +24,6 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.sounds.SoundEvent;
@@ -33,7 +33,6 @@ import net.minecraft.world.attribute.BackgroundMusic;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Server GameTests for #249: every biome of the surface and of each layer carries its own drone bed in its {@code ambient_sounds}, with
@@ -48,12 +47,17 @@ public class SoundAmbienceTest {
         return event.value().location();
     }
 
-    /** The biomes of a layer, from the layer's own biome source. */
+    /** The biomes of a layer, from the campaign level's biome source, which keeps each layer's own list. */
     private static Set<Identifier> layerBiomes(MinecraftServer server, int layer) {
         BiomeSource source =
                 TestLayers.level(server, layer).getChunkSource().getGenerator().getBiomeSource();
+        if (!(source instanceof BandBiomeSource bands)) {
+            throw new IllegalStateException("the campaign level is not given its biomes by band: " + source);
+        }
         Set<Identifier> ids = new TreeSet<>();
-        source.possibleBiomes()
+        bands.layers()
+                .get(layer - 1)
+                .biomes()
                 .forEach(biome -> ids.add(biome.unwrapKey().orElseThrow().identifier()));
         return ids;
     }
@@ -164,21 +168,13 @@ public class SoundAmbienceTest {
 
     /**
      * What a player in each place could hear as music, in every mode: the biome's own music, creative and underwater too. Since #744 the
-     * track is the biome's own, and the layer's dimension type sets none, so the type can be shared by every band of the campaign world.
+     * track is the biome's own, so the one type of the campaign world serves every band.
      */
     @GameTest
     public void noLayerMusicInAnyModeIsAVanillaTrack(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
         var registry = server.registryAccess().lookupOrThrow(Registries.BIOME);
         for (int layer = 1; layer <= LayerChain.count(server.registryAccess()); layer++) {
-            expect(
-                    helper,
-                    !TestLayers.level(server, layer)
-                            .dimensionType()
-                            .attributes()
-                            .contains(EnvironmentAttributes.BACKGROUND_MUSIC),
-                    "the dimension type of layer %s still sets background music; it belongs to the zone biomes",
-                    layer);
             for (Identifier biomeId : layerBiomes(server, layer)) {
                 Biome biome =
                         Objects.requireNonNull(registry.getValue(biomeId), "registry.getValue(biomeId) is absent");
@@ -270,13 +266,5 @@ public class SoundAmbienceTest {
             }
         }
         helper.succeed();
-    }
-
-    @FormatMethod
-    private static void expect(
-            GameTestHelper helper, boolean condition, @FormatString String format, @Nullable Object... args) {
-        if (!condition) {
-            throw helper.assertionException(Component.literal(String.format(format, args)));
-        }
     }
 }
