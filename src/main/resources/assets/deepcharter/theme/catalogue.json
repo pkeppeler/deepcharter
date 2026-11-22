@@ -1,5 +1,4 @@
 {
-  "form": 0,
   "maxPanelWidth": 123,
   "minPanelWidth": 122,
   "screenEdge": 1,
@@ -76,17 +75,5 @@
   "maxQueryLength": 24,
   "nameStripPad": 3,
   "nameStripGap": 2,
-  "caretHeight": 3,
-
-  "monitorWidth": 343,
-  "monitorHeight": 71,
-  "monitorGap": 1,
-  "monitorSidebar": 96,
-  "monitorFavouritesWidth": 66,
-  "monitorFavouriteColumns": 3,
-  "monitorGutter": 6,
-  "monitorColumns": 7,
-  "monitorRows": 2,
-  "monitorDeckGap": 8,
-  "monitorCraftableWidth": 112
+  "caretHeight": 3
 }

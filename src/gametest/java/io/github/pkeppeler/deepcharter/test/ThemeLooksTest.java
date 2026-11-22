@@ -530,9 +530,9 @@ public class ThemeLooksTest {
                 List.of(look.maxPanelWidth(), look.minPanelWidth()));
         expect(
                 helper,
-                "catalogue console height, the inventory's, and the form",
-                List.of(166, 0),
-                List.of(look.consoleHeight(), look.form().ordinal()));
+                "catalogue console height, the inventory's",
+                List.of(166),
+                List.of(look.consoleHeight()));
         expect(
                 helper,
                 "catalogue grid",
@@ -540,7 +540,6 @@ public class ThemeLooksTest {
                 List.of(look.gridColumns(), look.gridRows(), look.gridCell()));
         rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"minPanelWidth\": 200 }")), "minPanelWidth");
         rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"gridColumns\": 0 }")), "gridColumns");
-        rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"form\": 2 }")), "form");
         rejected(helper, () -> CatalogueLook.of(area("catalogue", "{ \"cycleMillis\": 5 }")), "cycleMillis");
         helper.succeed();
     }

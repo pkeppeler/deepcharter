@@ -1,7 +1,6 @@
 package io.github.pkeppeler.deepcharter.client.handbook.catalogue;
 
 import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook;
-import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook.Form;
 import io.github.pkeppeler.deepcharter.client.ui.CrtTuning;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -10,30 +9,20 @@ import org.jspecify.annotations.Nullable;
  * Where everything of the catalogue and its recipe panel sits on a screen of a given size, in GUI pixels. Pure arithmetic over the
  * {@link CatalogueLook} numbers: the draw code and the input code read the same rectangles, and a test reads them against the screen.
  *
- * <p>Both forms put the recipe console to the left of the inventory image, level with it. In the {@linkplain Form#CONSOLE console} form
- * the catalogue is a second console to its right, so each is as wide as {@link CatalogueLook#maxPanelWidth()} allows and a band under
- * {@link CatalogueLook#minPanelWidth()} hides both. In the {@linkplain Form#MONITOR monitor} form the catalogue is one wide monitor over
- * the inventory, and the inventory image moves down to make room for it ({@code inventory} says where it ends up). The unit is
- * {@linkplain #of hidden} (null) when the window has no room for it, because the content has no room to fit.
+ * <p>The recipe console stands to the left of the inventory image and the catalogue console to its right, each level with it and as wide
+ * as {@link CatalogueLook#maxPanelWidth()} allows; a band under {@link CatalogueLook#minPanelWidth()} hides both. The layout is
+ * {@linkplain #of hidden} (null) when the window has no room for them, because the content has no room to fit.
  *
- * @param form the form the layout is of
  * @param catalogue the catalogue's casing
  * @param catalogueGlass the glass of the catalogue
  * @param shelf what is drawn on the catalogue's glass and under it
  * @param recipe the recipe console's casing
  * @param recipeGlass the glass of the recipe console
  * @param card what is drawn on the recipe console's glass and under it
- * @param inventory the inventory image the units stand beside or under
+ * @param inventory the inventory image the consoles stand beside
  */
 public record CatalogueLayout(
-        Form form,
-        Rect catalogue,
-        Rect catalogueGlass,
-        Shelf shelf,
-        Rect recipe,
-        Rect recipeGlass,
-        Card card,
-        Rect inventory) {
+        Rect catalogue, Rect catalogueGlass, Shelf shelf, Rect recipe, Rect recipeGlass, Card card, Rect inventory) {
     /** The width of the inventory image of the screens the catalogue stands beside (vanilla's default). */
     public static final int IMAGE_WIDTH = 176;
     /** The height of that image. */
@@ -135,61 +124,27 @@ public record CatalogueLayout(
      */
     public static @Nullable CatalogueLayout of(
             int width, int height, CatalogueLook look, CrtTuning crt, int lineHeight) {
-        boolean monitor = look.form() == Form.MONITOR;
         int inventoryLeft = (width - IMAGE_WIDTH) / 2;
         int rightX = inventoryLeft + IMAGE_WIDTH + look.gapRight();
         int rightWidth = Math.min(look.maxPanelWidth(), width - look.screenEdge() - rightX);
         int leftWidth = Math.min(look.maxPanelWidth(), inventoryLeft - look.gapLeft() - look.screenEdge());
-        if (leftWidth < look.minPanelWidth() || (!monitor && rightWidth < look.minPanelWidth())) {
+        if (leftWidth < look.minPanelWidth() || rightWidth < look.minPanelWidth()) {
             return null;
         }
-        CatalogueLook.Monitor m = look.monitor();
-        int inventoryTop;
-        int monitorTop = 0;
-        if (monitor) {
-            int stack = m.height() + m.gap() + IMAGE_HEIGHT;
-            if (height < stack + 2 * look.screenEdge() || width < m.width() + 2 * look.screenEdge()) {
-                return null;
-            }
-            monitorTop = (height - stack) / 2;
-            inventoryTop = monitorTop + m.height() + m.gap();
-        } else {
-            if (height < look.consoleHeight() + 2 * look.screenEdge()) {
-                return null;
-            }
-            inventoryTop = (height - IMAGE_HEIGHT) / 2;
+        if (height < look.consoleHeight() + 2 * look.screenEdge()) {
+            return null;
         }
+        int inventoryTop = (height - IMAGE_HEIGHT) / 2;
         Rect inventory = new Rect(inventoryLeft, inventoryTop, IMAGE_WIDTH, IMAGE_HEIGHT);
 
         Rect recipe =
                 new Rect(inventoryLeft - look.gapLeft() - leftWidth, inventoryTop, leftWidth, look.consoleHeight());
         Rect recipeGlass = glass(recipe, look, look.casing().consoleDeck());
         Card card = card(recipeGlass, look, crt, lineHeight);
-        if (monitor) {
-            int left = inventoryLeft + (IMAGE_WIDTH - m.width()) / 2;
-            Rect casing = new Rect(left, monitorTop, m.width(), m.height());
-            Rect glass = glass(casing, look, look.casing().monitorDeck());
-            return new CatalogueLayout(
-                    look.form(),
-                    casing,
-                    glass,
-                    monitorShelf(glass, look, crt, lineHeight),
-                    recipe,
-                    recipeGlass,
-                    card,
-                    inventory);
-        }
         Rect casing = new Rect(rightX, inventoryTop, rightWidth, look.consoleHeight());
         Rect glass = glass(casing, look, look.casing().consoleDeck());
         return new CatalogueLayout(
-                look.form(),
-                casing,
-                glass,
-                consoleShelf(glass, look, crt, lineHeight),
-                recipe,
-                recipeGlass,
-                card,
-                inventory);
+                casing, glass, shelf(glass, look, crt, lineHeight), recipe, recipeGlass, card, inventory);
     }
 
     private static Rect glass(Rect casing, CatalogueLook look, int deck) {
@@ -206,7 +161,7 @@ public record CatalogueLayout(
         return titleY + lineHeight + crt.headerRuleGap() + 1 + look.titleGap();
     }
 
-    private static Shelf consoleShelf(Rect glass, CatalogueLook look, CrtTuning crt, int lineHeight) {
+    private static Shelf shelf(Rect glass, CatalogueLook look, CrtTuning crt, int lineHeight) {
         CatalogueLook.Casing c = look.casing();
         int left = glass.x() + look.pad();
         int right = glass.right() - look.pad();
@@ -250,52 +205,6 @@ public record CatalogueLayout(
                 next,
                 counter,
                 List.of(ventsBetween(previous, counter, c), ventsBetween(counter, next, c)));
-    }
-
-    private static Shelf monitorShelf(Rect glass, CatalogueLook look, CrtTuning crt, int lineHeight) {
-        CatalogueLook.Casing c = look.casing();
-        CatalogueLook.Monitor m = look.monitor();
-        int left = glass.x() + look.pad();
-        int right = left + m.sidebar();
-        int titleY = glass.y() + look.titleTop();
-        Rect search = new Rect(left, belowTitle(titleY, look, crt, lineHeight), m.sidebar(), look.searchHeight());
-        int favouritesRight = glass.right() - look.pad();
-        int favouritesX = favouritesRight - m.favouritesWidth();
-        int gridX = right + m.gutter();
-        int slackPerCell = look.gridCell() - look.slotSize();
-        int columns = Math.clamp((favouritesX - m.gutter() - gridX + slackPerCell) / look.gridCell(), 1, m.columns());
-        int gridHeight = (m.rows() - 1) * look.gridCell() + look.slotSize();
-        int gridY = glass.y() + (glass.height() - gridHeight) / 2;
-        int favouritesBlock = look.labelHeight() + look.slotSize();
-        int favouritesLabelY = glass.y() + (glass.height() - favouritesBlock) / 2;
-        Rect favourites = new Rect(favouritesX, favouritesLabelY, favouritesRight - favouritesX, favouritesBlock);
-
-        int row = glass.bottom() + c.deckGap();
-        Rect previous = new Rect(glass.x(), row, c.knobSize(), c.knobSize());
-        Rect counter = new Rect(previous.right() + c.deckGap(), row, c.counterWidth(), c.deckRow());
-        Rect next = new Rect(counter.right() + c.deckGap(), row, c.knobSize(), c.knobSize());
-        Rect craftable = new Rect(next.right() + m.deckGap(), row, m.craftableWidth(), c.deckRow());
-        Rect vents = ventsBetween(craftable, new Rect(glass.right(), row, 0, c.deckRow()), c);
-        return new Shelf(
-                left,
-                right,
-                titleY,
-                right,
-                search,
-                gridX,
-                gridY,
-                columns,
-                m.rows(),
-                favourites,
-                favouritesLabelY,
-                favouritesX,
-                favouritesLabelY + look.labelHeight(),
-                m.favouriteColumns(),
-                craftable,
-                previous,
-                next,
-                counter,
-                List.of(vents));
     }
 
     /** The vents in the gap from {@code before} to {@code after}, a row of them as tall as the controls less their margin. */

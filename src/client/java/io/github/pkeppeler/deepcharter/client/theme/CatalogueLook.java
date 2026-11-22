@@ -5,9 +5,8 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
 /**
  * The size, place and hardware of the parts catalogue and its recipe panel ({@code theme/catalogue.json}, #846), in GUI pixels. The
  * glass is lit in the colony terminals' colours, {@code crt.json} and {@code panel.json}; the casing round it, the lip, vents, rivets,
- * knobs and switches are drawn from the numbers and colours here ({@link Casing}), and the monitor form's sizes are {@link Monitor}.
+ * knobs and switches are drawn from the numbers and colours here ({@link Casing}).
  *
- * @param form which form the catalogue takes, {@link Form}: a console beside the inventory, or a monitor above it
  * @param maxPanelWidth the widest a console gets, beside the inventory
  * @param minPanelWidth the narrowest a console draws at; room for less hides the panels
  * @param screenEdge pixels between a panel and the window's edge
@@ -46,10 +45,8 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param nameStripPad pixels between the border of the strip that names the hovered item and its text
  * @param nameStripGap pixels between the hovered cell and that strip
  * @param caretHeight the thickness of the search field's caret, the underline after the text; at least the scanline spacing, so a scanline never takes it
- * @param monitor the monitor form's sizes
  */
 public record CatalogueLook(
-        Form form,
         int maxPanelWidth,
         int minPanelWidth,
         int screenEdge,
@@ -87,16 +84,7 @@ public record CatalogueLook(
         int maxQueryLength,
         int nameStripPad,
         int nameStripGap,
-        int caretHeight,
-        Monitor monitor) {
-    /** The two forms of the catalogue, chosen by the theme's {@code form} (0 or 1). */
-    public enum Form {
-        /** Two squat consoles flanking the inventory: the catalogue on its right, the recipe on its left. */
-        CONSOLE,
-        /** A wide CRT monitor over the inventory, which moves down to make room, and the recipe console on its left. */
-        MONITOR
-    }
-
+        int caretHeight) {
     /**
      * The casing round a glass and the hardware on it, drawn in the pack's metal greens.
      *
@@ -224,108 +212,15 @@ public record CatalogueLook(
         public int consoleDeck() {
             return deckGap + 2 * deckRow + deckRowGap + bottomBezel;
         }
-
-        /** What the monitor has under its glass: the gap, one row of controls and the bottom bezel. */
-        public int monitorDeck() {
-            return deckGap + deckRow + bottomBezel;
-        }
     }
-
-    /**
-     * The monitor form's sizes: one wide unit over the inventory, with the title and search left of the grid and the favourites right of it.
-     *
-     * @param width the monitor's width
-     * @param height the monitor's height
-     * @param gap pixels between the monitor and the inventory under it
-     * @param sidebar the width of the title and the search field
-     * @param favouritesWidth the width kept for the favourites, the label and the cells
-     * @param favouriteColumns the cells of the favourites row
-     * @param gutter pixels between the grid and the sidebars
-     * @param columns the grid's columns
-     * @param rows the grid's rows
-     * @param deckGap pixels between the page controls and the craftable switch
-     * @param craftableWidth the width of the craftable switch's plate
-     */
-    public record Monitor(
-            int width,
-            int height,
-            int gap,
-            int sidebar,
-            int favouritesWidth,
-            int favouriteColumns,
-            int gutter,
-            int columns,
-            int rows,
-            int deckGap,
-            int craftableWidth) {
-        static Monitor of(ThemeData d) {
-            return new Monitor(
-                    d.integer("monitorWidth", 100, 1000),
-                    d.integer("monitorHeight", 40, 200),
-                    d.integer("monitorGap", 0, 32),
-                    d.integer("monitorSidebar", 40, 400),
-                    d.integer("monitorFavouritesWidth", 20, 400),
-                    d.integer("monitorFavouriteColumns", 1, 12),
-                    d.integer("monitorGutter", 0, 32),
-                    d.integer("monitorColumns", 1, 24),
-                    d.integer("monitorRows", 1, 6),
-                    d.integer("monitorDeckGap", 0, 64),
-                    d.integer("monitorCraftableWidth", 40, 400));
-        }
     }
 
     public static CatalogueLook current() {
         return UiTheme.current().catalogue();
     }
 
-    /** This look with {@code other} for its form. */
-    public CatalogueLook withForm(Form other) {
-        return new CatalogueLook(
-                other,
-                maxPanelWidth,
-                minPanelWidth,
-                screenEdge,
-                gapLeft,
-                gapRight,
-                consoleHeight,
-                casing,
-                pad,
-                gridRightPad,
-                contentBottom,
-                titleTop,
-                titleGap,
-                searchHeight,
-                searchPad,
-                searchGap,
-                gridCell,
-                gridColumns,
-                gridRows,
-                gridGap,
-                labelHeight,
-                slotSize,
-                iconInset,
-                recipeCell,
-                stationGap,
-                arrowX,
-                arrowY,
-                resultX,
-                resultY,
-                counterY,
-                needTop,
-                needRow,
-                needTextX,
-                needTextY,
-                cycleMillis,
-                maxQueryLength,
-                nameStripPad,
-                nameStripGap,
-                caretHeight,
-                monitor);
-    }
-
     public static CatalogueLook of(ThemeData d) {
         CatalogueLook look = new CatalogueLook(
-                Form.values()[d.integer("form", 0, Form.values().length - 1)],
                 d.integer("maxPanelWidth", 40, 400),
                 d.integer("minPanelWidth", 40, 400),
                 d.integer("screenEdge", 0, 64),
@@ -363,8 +258,7 @@ public record CatalogueLook(
                 d.integer("maxQueryLength", 1, 256),
                 d.integer("nameStripPad", 0, 16),
                 d.integer("nameStripGap", 0, 16),
-                d.integer("caretHeight", 1, 8),
-                Monitor.of(d));
+                d.integer("caretHeight", 1, 8));
         if (look.minPanelWidth() > look.maxPanelWidth()) {
             throw d.conflict("minPanelWidth must not exceed maxPanelWidth", "minPanelWidth", "maxPanelWidth");
         }

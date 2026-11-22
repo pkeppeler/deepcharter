@@ -33,7 +33,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The parts catalogue of one open screen: the catalogue and the recipe console round the inventory image, in the colony terminals' CRT
- * look (#846), in the form {@link CatalogueLook#form()} says. It draws over the screen after the screen has drawn, reads keys and clicks before the screen does
+ * look (#846). It draws over the screen after the screen has drawn, reads keys and clicks before the screen does
  * and takes the ones that are its own, so a click on a panel never reaches the inventory behind it.
  *
  * <p>It is not a widget: the screen it stands beside is a vanilla one, so the text the panels draw is the screen's own for the layout
@@ -70,8 +70,6 @@ public final class CataloguePanel {
     private int ticks;
     private int mouseX = -1;
     private int mouseY = -1;
-    private int screenWidth;
-    private int screenHeight;
 
     CataloguePanel(AbstractRecipeBookScreen<?> screen) {
         this.screen = screen;
@@ -81,22 +79,12 @@ public final class CataloguePanel {
 
     /** Lays the panels out for a screen {@code width} by {@code height}. */
     void resize(int width, int height) {
-        screenWidth = width;
-        screenHeight = height;
         CatalogueLayout now = CatalogueLayout.of(width, height, look(), CrtTuning.current(), font.lineHeight);
         layout = now;
-        if (now != null) {
-            ScreenTop.move(screen, now.inventory().y());
-        }
     }
 
     private CatalogueLook look() {
-        return CatalogueScreens.look();
-    }
-
-    /** Lays the panels out again, after the form they are in changed. */
-    void relayout() {
-        resize(screenWidth, screenHeight);
+        return CatalogueLook.current();
     }
 
     /** The layout, or null while the screen is too narrow to hold the panels and they are hidden. */

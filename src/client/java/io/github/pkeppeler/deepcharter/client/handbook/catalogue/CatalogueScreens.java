@@ -32,9 +32,6 @@ public final class CatalogueScreens {
     private static final Map<Screen, CataloguePanel> PANELS = new HashMap<>();
     /** An item {@link #open} was asked for before the inventory it needs was open, looked up as soon as the panel exists. */
     private static @Nullable Item pending;
-    /** The form a test or a scenario asked for in place of the theme's, or null. */
-    private static CatalogueLook.@Nullable Form formOverride;
-
     private CatalogueScreens() {}
 
     public static void register() {
@@ -51,23 +48,9 @@ public final class CatalogueScreens {
         });
     }
 
-    /** The look in force: the theme's, in the form {@link #form} asked for if it did. */
-    public static CatalogueLook look() {
-        CatalogueLook current = CatalogueLook.current();
-        CatalogueLook.Form form = formOverride;
-        return form == null ? current : current.withForm(form);
-    }
-
-    /** Shows the catalogue in {@code form} instead of the theme's from now on, on the screens open too; null goes back to the theme's. */
-    // test-seam: the evidence scenario records both forms in one run, and the client test checks each
-    public static void form(CatalogueLook.@Nullable Form form) {
-        formOverride = form;
-        PANELS.values().forEach(CataloguePanel::relayout);
-    }
-
     /** Whether a screen {@code width} by {@code height} has room for the panels, which is when they take the place of the vanilla recipe book. */
     private static boolean fits(int width, int height) {
-        return CatalogueLayout.of(width, height, look(), CrtTuning.current(), Minecraft.getInstance().font.lineHeight)
+        return CatalogueLayout.of(width, height, CatalogueLook.current(), CrtTuning.current(), Minecraft.getInstance().font.lineHeight)
                 != null;
     }
 

@@ -4,9 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueFavourites;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueLayout;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CataloguePanel;
-import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueScreens;
 import io.github.pkeppeler.deepcharter.client.handbook.catalogue.CatalogueState;
-import io.github.pkeppeler.deepcharter.client.theme.CatalogueLook.Form;
 import io.github.pkeppeler.deepcharter.scanner.ScannerRegistry;
 import io.github.pkeppeler.deepcharter.test.support.CatalogueScene;
 import io.github.pkeppeler.deepcharter.test.support.ClientChecks;
@@ -14,7 +12,6 @@ import io.github.pkeppeler.deepcharter.test.support.ClientSession;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -24,8 +21,8 @@ import net.minecraft.world.item.Items;
 
 /**
  * Evidence scenario "m2-parts-catalogue" for #846: the inventory with the parts catalogue, five items starred, and the recipe of the
- * scanner unit shown (R on its cell, with two iron and two copper in hand so the have/need rows differ), a hover and then a search typed,
- * once for each form of the catalogue (stills {@code console-*} and {@code monitor-*}). The recipes are the ones the server taught from
+ * scanner unit shown (R on its cell, with two iron and two copper in hand so the have/need rows differ), a hover and then a search typed
+ * (stills {@code console-recipe}, {@code console-hover} and {@code console-search}). The recipes are the ones the server taught from
  * what the player holds (ADR 0070), not a fixture.
  */
 public class PartsCatalogueScenario extends EvidenceScenario {
@@ -63,24 +60,14 @@ public class PartsCatalogueScenario extends EvidenceScenario {
                             .isEmpty());
             context.waitTicks(TOAST_TICKS);
 
-            ClientChecks.withHudHidden(context, () -> {
-                try {
-                    for (Form form : Form.values()) {
-                        recordForm(context, panel, form);
-                    }
-                } finally {
-                    CatalogueScreens.form(null);
-                }
-            });
+            ClientChecks.withHudHidden(context, () -> recordStills(context, panel));
             context.setScreen(() -> null);
         }
     }
 
-    /** The three stills of one form: the recipe of the scanner unit looked up, a hover, and a search typed. */
-    private void recordForm(ClientGameTestContext context, CataloguePanel panel, Form form) {
-        String still = form.name().toLowerCase(Locale.ROOT);
+    /** The three stills: the recipe of the scanner unit looked up, a hover, and a search typed. */
+    private void recordStills(ClientGameTestContext context, CataloguePanel panel) {
         context.runOnClient(client -> {
-            CatalogueScreens.form(form);
             panel.state().setQuery("");
             panel.state().clear();
         });
@@ -95,18 +82,18 @@ public class PartsCatalogueScenario extends EvidenceScenario {
         context.getInput().pressKey(InputConstants.KEY_R);
         context.waitTicks(2);
         hold(context);
-        screenshot(context, still + "-recipe");
+        screenshot(context, "console-recipe");
 
         CatalogueScene.hover(context, CatalogueScene.gridCell(layout, cell > 0 ? cell - 1 : cell + 1));
         hold(context);
-        screenshot(context, still + "-hover");
+        screenshot(context, "console-hover");
 
         CatalogueScene.hover(context, layout.shelf().search());
         context.getInput().pressMouse(LEFT_MOUSE);
         context.getInput().typeChars("iron");
         context.waitTicks(2);
         hold(context);
-        screenshot(context, still + "-search");
+        screenshot(context, "console-search");
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
     }
 
