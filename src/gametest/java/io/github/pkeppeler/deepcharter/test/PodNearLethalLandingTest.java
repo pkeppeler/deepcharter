@@ -24,11 +24,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
 /**
- * Server GameTests for #893: a pod whose hard landing empties or nearly empties the hull stays on the floor it landed on, in the
- * campaign world where the layers are bands of one level. A probe pod of full hull drops first and says what the landing costs; the
- * subject then drops the same way with that much hull, one more or one less. Columns 22000 to 22399 are this class's; each case's two shafts sit inside one forced chunk.
+ * Server GameTests for #893: a pod whose hard landing empties or nearly empties the hull stays on the floor it landed
+ * on, in the campaign world where the layers are bands of one level. A probe pod of full hull drops first and says what
+ * the landing costs; the subject then drops the same way with that much hull, one more or one less. Columns 22000 to
+ * 22399 are this class's; each case's two shafts sit inside one forced chunk.
  */
 public class PodNearLethalLandingTest {
     private static final String SAMPLE = "deepcharter:campaign_sample";
@@ -42,10 +44,10 @@ public class PodNearLethalLandingTest {
         BreachEvents.CROSSED.register((entity, from, to, fromLayer, toLayer) -> CROSSED.add(entity.getUUID()));
     }
 
-    /** The hull is the landing's cost, so the landing takes it to exactly 0. */
+    /** The hull is the landing's cost, to a hair short so that float rounding cannot leave a sliver of hull. */
     @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aCrewedPodWithExactlyTheHullTheLandingCostsIsWreckedOnTheFloor(GameTestHelper helper) {
-        drop(helper, 22004, Hit.LANDING, 0f, true);
+        drop(helper, 22004, Hit.LANDING, -HULL_EPSILON / 2, true);
     }
 
     @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
@@ -60,7 +62,7 @@ public class PodNearLethalLandingTest {
 
     @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void anEmptyPodWithExactlyTheHullTheLandingCostsIsWreckedOnTheFloor(GameTestHelper helper) {
-        drop(helper, 22196, Hit.LANDING, 0f, false);
+        drop(helper, 22196, Hit.LANDING, -HULL_EPSILON / 2, false);
     }
 
     /** Every other way into 0 hull ends in the same wreck, so a pod emptied in the air is no different once it lands. */
@@ -72,6 +74,27 @@ public class PodNearLethalLandingTest {
     @GameTest(dimension = SAMPLE, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 600)
     public void aCrewedPodWhoseHullIsSetToZeroInTheAirIsWreckedOnTheFloor(GameTestHelper helper) {
         drop(helper, 22324, Hit.ZERO, 0f, true);
+    }
+
+    /** Moving a grounded pod with {@code setPos} leaves {@code onGround()} true until its next tick. */
+    @GameTest(maxTicks = 60)
+    public void aServerSetPosLeavesAGroundedPodOnGroundForTheTickAfter(GameTestHelper helper) {
+        PodEntity pod = helper.spawn(PodRegistry.POD, new Vec3(3.5, 2, 3.5));
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    if (!pod.onGround() || pod.tickCount < 5) {
+                        throw helper.assertionException(Component.literal("the pod has not settled"));
+                    }
+                })
+                .thenExecute(() -> pod.setPos(pod.getX(), pod.getY() + 5, pod.getZ()))
+                .thenExecute(() -> {
+                    if (!pod.onGround()) {
+                        throw helper.assertionException(
+                                Component.literal("onGround() should stay true right after a setPos lift"));
+                    }
+                    pod.discard();
+                })
+                .thenSucceed();
     }
 
     /** What empties the hull: the landing itself, or something else while the pod is still in the air. */
@@ -164,7 +187,7 @@ public class PodNearLethalLandingTest {
             }
             float hull = subject.hull();
             boolean lethal = hit != Hit.LANDING || spare <= 0f;
-            if (lethal != Wrecks.isWreck(subject) || (lethal ? hull != 0f : Math.abs(hull - spare) > HULL_EPSILON)) {
+            if (lethal != Wrecks.isWreck(subject) || Math.abs(hull - (lethal ? 0f : spare)) > HULL_EPSILON) {
                 throw helper.assertionException(Component.literal(String.format(
                         "a landing that costs %s on %s hull should leave a wreck exactly when the hull is gone, hull %s wreck %s",
                         cost[0], cost[0] + spare, hull, Wrecks.isWreck(subject))));
