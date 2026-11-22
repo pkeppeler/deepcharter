@@ -57,7 +57,7 @@ public class BoltDriverTest {
     private static final float EAST = -90f;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1200;
     /** A joined player is invulnerable for its first 60 ticks. */
-    private static final int SPAWN_PROTECTION_TICKS = 70;
+    private static final int SPAWN_PROTECTION_TICKS = 100;
 
     /** A mock reads what the server sends it on its own tick, a tick or two later. */
     private static final int MESSAGE_TICKS = 3;
@@ -259,6 +259,12 @@ public class BoltDriverTest {
         MinecraftServer server = helper.getLevel().getServer();
         TestTicks.each(helper, () -> {
             if (!corridor.ready().isPresent() || helper.getTick() < SPAWN_PROTECTION_TICKS) {
+                return;
+            }
+            // A joined player takes no damage until its client has loaded, and for its first ticks: wait it out.
+            if (other.player()
+                    .isInvulnerableTo(
+                            corridor.level(), corridor.level().damageSources().generic())) {
                 return;
             }
             // A full stomach heals: keep it low, so a loss is the bolt's.

@@ -46,7 +46,7 @@ public class BoltDriverPacingTest {
     private static final BoltDriverTuning DRIVER = BoltDriverTuning.DEFAULT;
     private static final CaveInTuning CAVE_IN = CaveInTuning.DEFAULT;
     private static final float EAST = -90f;
-    private static final int SPAWN_PROTECTION_TICKS = 70;
+    private static final int SPAWN_PROTECTION_TICKS = 100;
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 1200;
     private static final int TUNNEL = 40;
     /** The longest spacing tried, in blocks: far more than a bolt reaches. */
