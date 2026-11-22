@@ -5,11 +5,15 @@ import static io.github.pkeppeler.deepcharter.test.support.ClientChecks.require;
 import io.github.pkeppeler.deepcharter.client.outpost.PlacementReadoutHud;
 import io.github.pkeppeler.deepcharter.client.theme.CockpitLook;
 import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.layer.LayerBlocks;
 import io.github.pkeppeler.deepcharter.ore.SlagBrick;
 import io.github.pkeppeler.deepcharter.outpost.Placements;
 import io.github.pkeppeler.deepcharter.outpost.Ratings;
+import io.github.pkeppeler.deepcharter.test.support.ClientChecks.Box;
 import io.github.pkeppeler.deepcharter.test.support.ClientWait;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText;
+import io.github.pkeppeler.deepcharter.test.support.DrawnText.Drawn;
 import io.github.pkeppeler.deepcharter.test.support.PlacementStage;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import java.util.List;
@@ -17,6 +21,7 @@ import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -29,7 +34,9 @@ import net.minecraft.world.phys.HitResult;
  * Client GameTest for the placement readout and the spec sheet of #989. Layers 1 and 2 ask nothing, so with a block in hand and the crosshair on a
  * block there, a rated one or not, the readout says nothing and never fades in; a block's tooltip states its ratings; and the longest line the
  * readout can say fits the narrowest GUI the cockpit draws at. What the words are for a depth that asks something is {@code OutpostRatingsTest}'s,
- * checked against an example row. It reads the HUD's state, not its pixels.
+ * checked against an example row. Where a depth has no rated material (layer 3 for now) the readout is up, and the box {@link HudKeepClear} gives
+ * for it is the box its text is drawn in, two lines under the block readout's, so a popup keeps clear of what is drawn; it is gone once the readout
+ * is. It otherwise reads the HUD's state, not its pixels.
  */
 public class PlacementReadoutClientTest implements FabricClientGameTest {
     /** Space the readout leaves each side of its widest line in the narrowest GUI, in GUI pixels. */
@@ -67,6 +74,8 @@ public class PlacementReadoutClientTest implements FabricClientGameTest {
                 }
             }
 
+            expectTheReadoutKeepsItsBoxClear(context, singleplayer);
+
             List<String> slag = tooltip(context, new ItemStack(SlagBrick.item()));
             require(
                     slag.equals(List.of(
@@ -89,6 +98,75 @@ public class PlacementReadoutClientTest implements FabricClientGameTest {
                     "the longest readout line, '" + worst.getString() + "', is " + width + " px wide, over the " + room
                             + " px that fits the narrowest cockpit GUI");
         }
+    }
+
+    /**
+     * Layer 3 has no rated material yet, so a block in hand reads WILL NOT HOLD with a reason. The one rectangle {@link HudKeepClear} names for
+     * it is worked out here from the theme and the font, holds every string the readout draws, and is gone when the block is put away.
+     */
+    private static void expectTheReadoutKeepsItsBoxClear(
+            ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        singleplayer.getServer().runOnServer(server -> {
+            PlacementStage.build(server, 3);
+            PlacementStage.hold(server, new ItemStack(Items.OAK_PLANKS));
+        });
+        ClientWait.until(
+                context,
+                "the placement readout up in layer 3 and drawn",
+                client -> TestLayers.clientIsIn(client, 3)
+                        && PlacementReadoutHud.shown().isPresent()
+                        && !drawn(client).isEmpty());
+        context.runOnClient(client -> {
+            int width = client.getWindow().getGuiScaledWidth();
+            int height = client.getWindow().getGuiScaledHeight();
+            List<HudKeepClear.Rect> mine = HudKeepClear.rects(client, width, height).stream()
+                    .filter(rect -> rect.what().equals("placement readout"))
+                    .toList();
+            require(mine.size() == 1, "the placement readout keeps exactly one box clear, listed " + mine);
+            HudKeepClear.Rect kept = mine.getFirst();
+            Placements.Readout readout = PlacementReadoutHud.shown().orElseThrow();
+            ReadoutLook look = ReadoutLook.current();
+            int line = client.font.lineHeight + look.lineGap();
+            int widest = Math.max(
+                    client.font.width(readout.verdict().label()),
+                    client.font.width(readout.reason().orElseThrow()));
+            int expectedWidth = (int) Math.ceil(widest * look.scale());
+            require(
+                    kept.x() == (width - expectedWidth) / 2 && kept.width() == expectedWidth,
+                    "the kept box " + kept + " is centred and as wide as the wider line, " + expectedWidth);
+            require(
+                    kept.y() == height / 2 + look.offsetY() + (int) Math.ceil(2 * line * look.scale())
+                            && kept.height() == (int) Math.ceil((client.font.lineHeight + line) * look.scale()),
+                    "the kept box " + kept + " is two lines under the block readout and holds both lines");
+            Box box = new Box(kept.x(), kept.y(), kept.width(), kept.height());
+            for (Drawn text : drawn(client)) {
+                require(
+                        text.box().x() >= box.x()
+                                && text.box().y() >= box.y()
+                                && text.box().right() <= box.right()
+                                && text.box().bottom() <= box.bottom(),
+                        "the readout drew '" + text.shortText() + "' at " + text.box() + ", outside the box " + box
+                                + " it keeps clear");
+            }
+        });
+        singleplayer.getServer().runOnServer(server -> PlacementStage.hold(server, ItemStack.EMPTY));
+        ClientWait.until(
+                context,
+                "the placement readout gone with the block put away",
+                client -> PlacementReadoutHud.shown().isEmpty());
+        require(
+                context.computeOnClient(
+                        client -> HudKeepClear.rects(
+                                        client,
+                                        client.getWindow().getGuiScaledWidth(),
+                                        client.getWindow().getGuiScaledHeight())
+                                .stream()
+                                .noneMatch(rect -> rect.what().equals("placement readout"))),
+                "a readout that is gone keeps nothing clear");
+    }
+
+    private static List<Drawn> drawn(Minecraft client) {
+        return DrawnText.of(graphics -> PlacementReadoutHud.extract(graphics, client.getDeltaTracker()));
     }
 
     private static List<String> tooltip(ClientGameTestContext context, ItemStack stack) {

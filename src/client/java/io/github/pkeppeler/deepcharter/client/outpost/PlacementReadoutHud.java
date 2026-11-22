@@ -4,9 +4,11 @@ import io.github.pkeppeler.deepcharter.DeepCharter;
 import io.github.pkeppeler.deepcharter.client.layer.ReadoutFade;
 import io.github.pkeppeler.deepcharter.client.theme.Colors;
 import io.github.pkeppeler.deepcharter.client.theme.ReadoutLook;
+import io.github.pkeppeler.deepcharter.client.ui.HudKeepClear;
 import io.github.pkeppeler.deepcharter.outpost.Placements;
 import io.github.pkeppeler.deepcharter.outpost.Placements.Readout;
 import io.github.pkeppeler.deepcharter.outpost.Placements.Verdict;
+import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -46,6 +48,35 @@ public final class PlacementReadoutHud {
         HudElementRegistry.attachElementAfter(VanillaHudElements.CROSSHAIR, ID, PlacementReadoutHud::extract);
         ClientTickEvents.END_CLIENT_TICK.register(PlacementReadoutHud::tick);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> FADE.reset());
+        HudKeepClear.register(PlacementReadoutHud::keepClear);
+    }
+
+    /**
+     * The box of the lines on a GUI {@code guiWidth} x {@code guiHeight}, as the scale puts them: as wide as the wider line, the verdict and the
+     * reason under it, starting {@link #LINES_BELOW} lines under the crosshair's anchor. What is drawn and what is kept clear are this one box.
+     */
+    private static HudKeepClear.Rect box(Font font, Readout readout, int guiWidth, int guiHeight) {
+        ReadoutLook look = ReadoutLook.current();
+        int line = font.lineHeight + look.lineGap();
+        int widest = font.width(readout.verdict().label());
+        int height = font.lineHeight;
+        if (readout.reason().isPresent()) {
+            widest = Math.max(widest, font.width(readout.reason().get()));
+            height += line;
+        }
+        int width = (int) Math.ceil(widest * look.scale());
+        return new HudKeepClear.Rect(
+                "placement readout",
+                (guiWidth - width) / 2,
+                guiHeight / 2 + look.offsetY() + (int) Math.ceil(LINES_BELOW * line * look.scale()),
+                width,
+                (int) Math.ceil(height * look.scale()));
+    }
+
+    private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
+        if (client.gui.screen() == null && !client.gui.hud.isHidden()) {
+            shown().ifPresent(readout -> into.add(box(client.font, readout, guiWidth, guiHeight)));
+        }
     }
 
     /** What the block in hand would read at the aimed spot: empty with no block in hand, no aimed block, no world, in a screen, with the HUD hidden or where the depth asks nothing. */
@@ -82,7 +113,7 @@ public final class PlacementReadoutHud {
         FADE.tick(looked(client), ReadoutLook.current());
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         Optional<Readout> shown = shown();
         if (shown.isEmpty() || client.gui.screen() != null || client.gui.hud.isHidden()) {
@@ -94,21 +125,20 @@ public final class PlacementReadoutHud {
         }
         ReadoutLook look = ReadoutLook.current();
         Font font = client.font;
-        int line = font.lineHeight + look.lineGap();
+        HudKeepClear.Rect box = box(font, shown.get(), graphics.guiWidth(), graphics.guiHeight());
         graphics.pose().pushMatrix();
-        graphics.pose().translate(graphics.guiWidth() / 2f, graphics.guiHeight() / 2f + look.offsetY());
+        graphics.pose().translate(graphics.guiWidth() / 2f, box.y());
         graphics.pose().scale((float) look.scale(), (float) look.scale());
         int verdictColor = shown.get().verdict() == Verdict.WILL_NOT_HOLD ? look.hintColor() : look.nameColor();
-        centred(
-                graphics,
-                font,
-                shown.get().verdict().label(),
-                LINES_BELOW * line,
-                Colors.withAlpha(verdictColor, alpha));
+        centred(graphics, font, shown.get().verdict().label(), 0, Colors.withAlpha(verdictColor, alpha));
         shown.get()
                 .reason()
                 .ifPresent(reason -> centred(
-                        graphics, font, reason, (LINES_BELOW + 1) * line, Colors.withAlpha(look.hintColor(), alpha)));
+                        graphics,
+                        font,
+                        reason,
+                        font.lineHeight + look.lineGap(),
+                        Colors.withAlpha(look.hintColor(), alpha)));
         graphics.pose().popMatrix();
     }
 
