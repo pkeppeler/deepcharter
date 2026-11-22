@@ -3,8 +3,6 @@
 # merge-main through the remote ref, so a PR head cannot swap the action or tools/ci-merge-main.sh. A job that lacks
 # the step, or uses a local ./.github/actions/merge-main or a .ci-main checkout, fails.
 set -euo pipefail
-# shellcheck source=/dev/null
-source "$(dirname "${BASH_SOURCE[0]}")/lib/no-git-env.sh"
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 remote='uses: pkeppeler/deepcharter/.github/actions/merge-main@main'
