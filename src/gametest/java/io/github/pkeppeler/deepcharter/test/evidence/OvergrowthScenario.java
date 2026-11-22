@@ -47,6 +47,7 @@ public class OvergrowthScenario extends EvidenceScenario {
     private static final int DRILL_TICKS = 400;
     private static final int DRILLED_SLABS = 3;
     private static final float LOOK_DOWN = 14f;
+    private static final float LOOK_AHEAD = 4f;
     private static final OvergrowthTuning TUNING = OvergrowthTuning.DEFAULT;
 
     @Override
@@ -63,28 +64,25 @@ public class OvergrowthScenario extends EvidenceScenario {
                 BlockPos middle = new BlockPos(player.getBlockX(), FLOOR_Y, player.getBlockZ());
                 ServerLevel one = TestLayers.level(server, 1);
                 build(one, middle);
-                player.setGameMode(GameType.SURVIVAL);
+                // The growth stills are taken from a spectator's eye in the chamber, with the pod parked behind the
+                // camera.
+                player.setGameMode(GameType.SPECTATOR);
                 player.teleportTo(
-                        one, middle.getX() + 0.5, FLOOR_Y, middle.getZ() - 4.5, Set.of(), 0f, LOOK_DOWN, true);
+                        one, middle.getX() + 0.5, FLOOR_Y + 2, middle.getZ() - 6.5, Set.of(), 0f, LOOK_AHEAD, true);
                 PodEntity pod = TestEntities.create(PodRegistry.POD, one);
-                pod.setPos(middle.getX() + 0.5, FLOOR_Y, middle.getZ() - 4.5);
+                pod.setPos(middle.getX() - 6.5, FLOOR_Y, middle.getZ() - 6.5);
                 one.addFreshEntity(pod);
-                if (!player.startRiding(pod)) {
-                    throw new AssertionError("the player could not mount the pod");
-                }
                 return middle;
             });
             ClientWait.until(
                     context,
-                    "the player riding a pod in layer 1",
-                    client -> client.player != null
-                            && client.player.getVehicle() instanceof PodEntity
-                            && TestLayers.clientIsIn(client, 1));
+                    "the player in layer 1",
+                    client -> client.player != null && TestLayers.clientIsIn(client, 1));
             context.runOnClient(client -> {
-                client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-                ClientSession.player(client).setXRot(LOOK_DOWN);
+                client.options.setCameraType(CameraType.FIRST_PERSON);
+                ClientSession.player(client).setXRot(LOOK_AHEAD);
             });
-            context.waitTicks(40);
+            context.waitTicks(60);
             frames(context, 4);
             screenshot(context, "overgrowth-open");
 
@@ -140,7 +138,22 @@ public class OvergrowthScenario extends EvidenceScenario {
             pod.setPos(site.getX() - OFFSET + 0.5, FLOOR_Y, site.getZ() - 3.5);
             pod.setYRot(0f);
             pod.setFuel(100f);
+            ServerPlayer player = server.getPlayerList().getPlayers().getFirst();
+            player.setGameMode(GameType.SURVIVAL);
+            player.teleportTo(
+                    TestLayers.level(server, 1), pod.getX(), pod.getY(), pod.getZ(), Set.of(), 0f, LOOK_DOWN, true);
+            if (!player.startRiding(pod)) {
+                throw new AssertionError("the player could not mount the pod");
+            }
             return pod.fuel();
+        });
+        ClientWait.until(
+                context,
+                "the player riding the pod",
+                client -> client.player != null && client.player.getVehicle() instanceof PodEntity);
+        context.runOnClient(client -> {
+            client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            ClientSession.player(client).setXRot(LOOK_DOWN);
         });
         context.waitTicks(20);
         context.getInput().holdKey(options -> options.keyUp);
@@ -202,17 +215,22 @@ public class OvergrowthScenario extends EvidenceScenario {
                         new BlockPos(x + axis - 2, FLOOR_Y + 1, z + dz), niche.defaultBlockState(), Block.UPDATE_ALL);
                 level.setBlock(
                         new BlockPos(x + axis + 2, FLOOR_Y + 1, z + dz), niche.defaultBlockState(), Block.UPDATE_ALL);
+            }
+            for (int dz = 1; dz < TUNNEL; dz += 3) {
                 level.setBlock(
                         new BlockPos(x + axis, FLOOR_Y + BORE_HEIGHT, z + dz),
                         Blocks.GLOWSTONE.defaultBlockState(),
                         Block.UPDATE_ALL);
             }
         }
-        for (int lampX : new int[] {-6, 0, 6}) {
-            level.setBlock(
-                    new BlockPos(x + lampX, FLOOR_Y + 4, z - 5),
-                    Blocks.GLOWSTONE.defaultBlockState(),
-                    Block.UPDATE_ALL);
+        // Light for the camera: the chamber's roof, and a lamp over the middle of each mouth.
+        for (int lampX : new int[] {-6, -2, 2, 6}) {
+            for (int lampZ : new int[] {-7, -4, -2}) {
+                level.setBlock(
+                        new BlockPos(x + lampX, FLOOR_Y + 5, z + lampZ),
+                        Blocks.GLOWSTONE.defaultBlockState(),
+                        Block.UPDATE_ALL);
+            }
         }
     }
 
@@ -257,7 +275,9 @@ public class OvergrowthScenario extends EvidenceScenario {
     }
 
     private static PodEntity pod(net.minecraft.server.MinecraftServer server) {
-        return TestEntities.vehicle(server.getPlayerList().getPlayers().getFirst(), PodEntity.class);
+        return TestLayers.level(server, 1)
+                .getEntities(PodRegistry.POD, pod -> true)
+                .getFirst();
     }
 
     private static double podZ(TestSingleplayerContext singleplayer) {
