@@ -1204,7 +1204,7 @@ The helmet lamp is a 2 by 2 pixel lens in the hard hat's bracket, dull amber, no
 |---|---|---|
 | A fill that ends the grip (the #449 rule) | none | It is the rule the user withdrew: the Retained must be killed |
 | A ram: the pod rams the figure against rock | a new input, a hit test, a cost | The cutter does the same thing with no new input, and the main verb already does it |
-| A tool in the hand that hits harder than the hand | a new item, a recipe | The sword and the axe do. A follow-up if the creatures session (#13) wants a weapon of its own |
+| A tool in the hand that hits harder than the hand | a new item, a recipe | The sword and the axe do. The creatures session (#13) gave on-foot combat the bolt driver instead ([CREATURES.md](../CREATURES.md#on-foot)) |
 | A lamp toggle (lamp off to save fuel) | an input, a packet and a cost on `PodFuel` | The lamp costs no fuel today, so there is nothing to save; the lights part is the choice. A follow-up if the lamp is given a fuel cost |
 | A flare (a consumable thrown to draw it away) | an item, a recipe, a repair-station price | A good rung 2.5 for a pilot with no lights. A follow-up |
 | A dynamic light that moves with the helmet lamp | a light block that follows it and a ledger | The glowmask already shows from afar with vanilla lighting; a follow-up |
@@ -1224,7 +1224,7 @@ The helmet lamp is a 2 by 2 pixel lens in the hard hat's bracket, dull amber, no
 
 **Open questions.**
 - Should the lamp cost fuel, and have a switch? Then "run dark to save fuel" is a real choice and the Retained are its price.
-- Should a killed figure drop something (a lamp, a scrap of company cloth), so that killing them pays? The creatures session (#13) may rework combat; this is the minimum that makes the decision true.
+- Should a killed figure drop something (a lamp, a scrap of company cloth), so that killing them pays? Answered by the creatures session (#13): no loot, so the dead keep their dignity. A brass Continuity tag that becomes a Note is a proposal ([CREATURES.md](../CREATURES.md#3-principles)).
 - The warning, hurt and death sounds are placeholders (vanilla sculk and soul sounds); the audio pass should give them a voice.
 
 ## Early ore access: salvage (#245, A)
