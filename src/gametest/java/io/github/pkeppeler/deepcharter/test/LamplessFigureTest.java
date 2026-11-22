@@ -46,7 +46,6 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
 
@@ -515,7 +514,6 @@ public class LamplessFigureTest {
             for (int chunkX = bounds.minX() >> 4; chunkX <= bounds.maxX() >> 4; chunkX++) {
                 for (int chunkZ = bounds.minZ() >> 4; chunkZ <= bounds.maxZ() >> 4; chunkZ++) {
                     FarChunks.force(helper, level, chunkX, chunkZ);
-                    level.getChunk(chunkX, chunkZ, ChunkStatus.FULL);
                 }
             }
             MockPlayer mock = MockPlayers.join(helper, "figure-watcher");
