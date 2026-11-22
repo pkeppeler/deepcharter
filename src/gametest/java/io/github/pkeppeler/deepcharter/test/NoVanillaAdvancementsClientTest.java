@@ -59,10 +59,10 @@ public class NoVanillaAdvancementsClientTest implements FabricClientGameTest {
                         .filter(id -> id.getNamespace().equals(Identifier.DEFAULT_NAMESPACE))
                         .toList();
                 require(vanilla.isEmpty(), "the client was sent vanilla advancements: " + vanilla);
-                require(
-                        !ClientSession.player(client).getRecipeBook().getCollections().stream()
-                                .anyMatch(collection -> !collection.getRecipes().isEmpty()),
-                        "the client's recipe book holds a recipe");
+                // The oak log is an ingredient, so the charter's known recipes (ADR 0070) put its recipes in the book,
+                // quietly:
+                // what the book may hold is KnownRecipes' to test, and the absent toast above is what vanilla's unlock
+                // would show.
             });
             require(
                     !singleplayer
