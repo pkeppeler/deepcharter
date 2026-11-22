@@ -1,6 +1,6 @@
 {
   "item.deepcharter.tether": "Tether",
-  "message.deepcharter.tether.clipped": "Clipped on to the pod's winch. Use the tether in the air to winch home, sneak to unhook",
+  "message.deepcharter.tether.clipped": "Clipped on. Use the tether in the air to winch, sneak to unhook",
   "message.deepcharter.tether.hauling": "Winch hauling",
   "message.deepcharter.tether.hauling_stopped": "Winch stopped",
   "message.deepcharter.tether.arrived": "Home. The line stays clipped",

@@ -43,7 +43,10 @@ public class TetherScenario extends EvidenceScenario {
 
     private static final int SHELF_TOP = FLOOR_Y + SHELF;
     private static final int PIT_HEIGHT = SHELF + 12;
-    private static final float FACING_WEST = 90f;
+    /** South, so the pod, to the west, is on the right of the picture and the whole line is in it. */
+    private static final float FACING_SOUTH = 0f;
+
+    private static final float LOOK_UP = -20f;
     private static final int TICKS_PER_FRAME = 3;
     private static final int FALL_TICKS = 75;
     private static final int MAX_HAUL_TICKS = 400;
@@ -84,7 +87,7 @@ public class TetherScenario extends EvidenceScenario {
             // Over the lip: the fall is caught by the line, and nobody is hurt.
             singleplayer.getServer().runOnServer(server -> {
                 ServerPlayer player = player(server);
-                player.teleportTo(level(server), X + 4.5, SHELF_TOP, Z + 0.5, Set.of(), FACING_WEST, 0, true);
+                player.teleportTo(level(server), X + 4.5, SHELF_TOP, Z + 0.5, Set.of(), FACING_SOUTH, LOOK_UP, true);
             });
             for (int ticks = 0; ticks < FALL_TICKS; ticks += TICKS_PER_FRAME) {
                 context.waitTicks(TICKS_PER_FRAME);
@@ -125,6 +128,11 @@ public class TetherScenario extends EvidenceScenario {
             screenshot(context, "tether-hauled-home");
 
             // A tow: the same tether hooks the wreck to the pod, and the pod drives off with it.
+            singleplayer
+                    .getServer()
+                    .runOnServer(server -> player(server)
+                            .teleportTo(level(server), X - 7.5, SHELF_TOP, Z - 5.5, Set.of(), FACING_SOUTH, 5, true));
+            context.waitTicks(10);
             singleplayer.getServer().runOnServer(server -> {
                 if (!UseEntity.on(player(server), level(server), InteractionHand.MAIN_HAND, pod(server, pods[1]))
                                 .consumesAction()
@@ -216,13 +224,21 @@ public class TetherScenario extends EvidenceScenario {
                 one.setBlock(new BlockPos(X + 21, y, z), Blocks.GLOWSTONE.defaultBlockState(), 3);
             }
         }
+        // Lamps set into the face of the shelf, where a person hangs, and on the shelf by the pod.
+        for (int y = FLOOR_Y + 3; y < SHELF_TOP; y += 4) {
+            for (int z = Z - 3; z <= Z + 3; z += 3) {
+                one.setBlock(new BlockPos(X + 2, y, z), Blocks.GLOWSTONE.defaultBlockState(), 3);
+            }
+        }
+        one.setBlock(new BlockPos(X - 7, SHELF_TOP, Z - 3), Blocks.GLOWSTONE.defaultBlockState(), 3);
+        one.setBlock(new BlockPos(X - 1, SHELF_TOP, Z + 4), Blocks.GLOWSTONE.defaultBlockState(), 3);
         for (int z = Z - 36; z <= Z + 36; z += 8) {
             one.setBlock(new BlockPos(X - 15, SHELF_TOP + 3, z), Blocks.GLOWSTONE.defaultBlockState(), 3);
         }
         ServerPlayer player = player(server);
         player.setGameMode(GameType.SURVIVAL);
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(RepairRegistry.item(Consumable.TETHER)));
-        player.teleportTo(one, X - 0.5, SHELF_TOP, Z + 0.5, Set.of(), FACING_WEST, 0, true);
+        player.teleportTo(one, X - 0.5, SHELF_TOP, Z + 0.5, Set.of(), FACING_SOUTH, 0, true);
         PodEntity pod = TestEntities.create(PodRegistry.POD, one);
         pod.setPos(X - 4.5, SHELF_TOP, Z + 0.5);
         one.addFreshEntity(pod);
