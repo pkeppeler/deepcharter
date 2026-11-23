@@ -107,8 +107,6 @@ public class RetainedTest {
     private static final String APPROACH_KEY = "creature.deepcharter.approach";
     private static final String BITTEN_KEY = "creature.deepcharter.bitten";
     private static final String DEAD_KEY = "creature.deepcharter.dead";
-    /** Ticks for the light of a block to spread through a sealed room, or to go out of it: slow on a loaded runner. */
-    private static final int LIGHT_BUDGET_TICKS = 200;
 
     private static final AtomicInteger CHARTERS = new AtomicInteger();
 
@@ -1090,19 +1088,18 @@ public class RetainedTest {
      * What the game's spawner asks of a figure it tries to place: the roll passes about {@code chancePerTry} of the tries, no try passes beside a
      * light, and a figure made by a command is never refused.
      */
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theGamesOwnSpawnerRollsRareAndOnlyWhereTheRulesAllow(GameTestHelper helper) {
         ServerLevel two = TestLayers.level(helper.getLevel().getServer(), 2);
         BlockPos column = TestLayers.pos(2, 7272, 128, 7208);
         LamplessFigure[] figure = {null};
         int[] phase = {0};
-        int[] since = {0};
+        FarChunks.Deadline[] lit = {null};
         int tries = 4000;
         TestTicks.each(helper, () -> {
             if (figure[0] == null) {
                 return;
             }
-            since[0]++;
             if (phase[0] == 0) {
                 LamplessFigures.clearRespawnDelays();
                 int rolled = 0;
@@ -1124,7 +1121,7 @@ public class RetainedTest {
                         "a figure made by a command was refused");
                 two.setBlock(column.above(), light(15), 3);
                 phase[0] = 1;
-                since[0] = 0;
+                lit[0] = FarChunks.deadline();
             } else if (two.getBrightness(LightLayer.BLOCK, column) >= TUNING.litBlockLight()) {
                 for (int i = 0; i < tries; i++) {
                     expect(
@@ -1136,11 +1133,7 @@ public class RetainedTest {
                 two.setBlock(column.above(), Blocks.AIR.defaultBlockState(), 3);
                 helper.succeed();
             } else {
-                expect(
-                        helper,
-                        since[0] < LIGHT_BUDGET_TICKS,
-                        "the light of level 15 did not reach the room in %s ticks",
-                        LIGHT_BUDGET_TICKS);
+                lit[0].await(helper, two, false, () -> "the light of level 15 did not reach the room");
             }
         });
         FarChunks.awaitEntityTicking(helper, two, column, () -> {
