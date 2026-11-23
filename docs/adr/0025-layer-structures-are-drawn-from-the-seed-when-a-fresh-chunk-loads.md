@@ -48,3 +48,12 @@ The rule that a chunk which generates before the colony is built is not drawn is
 - **Held before it.** A fresh chunk of a level that holds layers, loaded while no pad is chosen (the build reads the ground of candidate pads first, and the spawn chunks generate before the server starts), is remembered by level and position in memory. `ColonyEvents.BEGUN`, fired when `ColonyBuilder` has recorded the pad, draws each one once. A chunk that was saved and unloaded in between is read from disk and drawn then, once; a crash between the two leaves it undrawn, as a crash always could.
 - **Unreadable colony data** draws nothing and holds nothing (logged once): a held chunk would never be drawn.
 - Layer dimensions are unaffected: no chunk of a layer generates before the colony begins.
+
+## Amended, 2026-11-23 (#913): the held chunks are saved
+
+The held chunks of #799 were in memory, so a server stop before the pad was chosen lost them: the chunk was saved undrawn, reloaded with `newlyGenerated` false and was never drawn.
+
+- **A saved set.** `PendingStructures` (its own `SavedData`, version 1, `Unreadable` for another version) holds the level and position of each chunk. It is its own record and not a part of `ColonySite`, so a test that swaps the colony's record cannot hide a chunk added meanwhile.
+- **Drained twice.** `LayerStructures.drawPending` runs on `ColonyEvents.BEGUN` and on server start (`SERVER_STARTED`, for a pad chosen in an earlier run). It does nothing while no pad is chosen. Each chunk is released, then loaded (from disk if need be) and drawn, once.
+- **Draw once still holds.** Only a chunk that was never drawn is held; a drawn chunk is never added, so a block a player took out stays out. A chunk released and then failing to draw is logged and not tried again.
+- Unreadable pending data holds and draws nothing (logged once).

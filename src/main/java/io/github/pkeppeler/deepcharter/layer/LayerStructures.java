@@ -6,22 +6,16 @@ import io.github.pkeppeler.deepcharter.colony.ColonyAnchor;
 import io.github.pkeppeler.deepcharter.colony.ColonyEvents;
 import io.github.pkeppeler.deepcharter.layer.LayerChain.Band;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
@@ -39,12 +33,6 @@ public final class LayerStructures {
     private static final AtomicBoolean LOGGED_FAILURE = new AtomicBoolean();
     private static final AtomicBoolean LOGGED_UNREADABLE_COLONY = new AtomicBoolean();
 
-    /**
-     * The chunks that generated before the colony's pad was chosen, by level: held, and drawn once the pad is chosen. Each is a chunk of a
-     * level that holds layers, so in the campaign world it is a chunk of the surface band and of every layer band. Server thread only.
-     */
-    private static final Map<ResourceKey<Level>, Set<ChunkPos>> WAITING = new HashMap<>();
-
     private LayerStructures() {}
 
     public static void init() {
@@ -53,8 +41,9 @@ public final class LayerStructures {
                 draw(level, chunk);
             }
         });
-        ColonyEvents.BEGUN.register((server, colony) -> drawWaiting(server));
-        ServerLifecycleEvents.SERVER_STOPPED.register(server -> WAITING.clear());
+        ColonyEvents.BEGUN.register((server, colony) -> drawPending(server));
+        // A chunk saved undrawn before the pad was chosen: the pad may be chosen already, in an earlier run.
+        ServerLifecycleEvents.SERVER_STARTED.register(LayerStructures::drawPending);
     }
 
     private static void draw(ServerLevel level, LevelChunk chunk) {
@@ -73,7 +62,8 @@ public final class LayerStructures {
         if (conduit.isPresent()) {
             drawSites(level, chunk, bands, conduit.get());
         } else if (Colony.readable(level.getServer()).isPresent()) {
-            WAITING.computeIfAbsent(level.dimension(), key -> new HashSet<>()).add(chunk.getPos());
+            PendingStructures.readable(level.getServer())
+                    .ifPresent(pending -> pending.add(level.dimension(), chunk.getPos()));
         } else if (LOGGED_UNREADABLE_COLONY.compareAndSet(false, true)) {
             DeepCharter.LOGGER.warn(
                     "A chunk of layer {} generated while the colony's saved data is unreadable, so it gets no structures",
@@ -81,19 +71,32 @@ public final class LayerStructures {
         }
     }
 
-    /** Draws the chunks that generated before the pad was chosen, now that it is; each once. */
-    private static void drawWaiting(MinecraftServer server) {
-        Map<ResourceKey<Level>, Set<ChunkPos>> waiting = new HashMap<>(WAITING);
-        WAITING.clear();
-        waiting.forEach((dimension, chunks) -> {
-            ServerLevel level = server.getLevel(dimension);
-            if (level == null) {
-                return;
-            }
-            for (ChunkPos pos : chunks) {
-                // A chunk that unloaded since was saved undrawn: it loads from disk, which is no draw of its own.
-                draw(level, level.getChunk(pos.x(), pos.z()));
-            }
+    /**
+     * Draws the chunks that generated before the pad was chosen ({@link PendingStructures}), each once, when the pad is chosen: on
+     * {@code BEGUN} and on server start. A chunk is released before it is drawn, so one that fails is not tried at every start.
+     */
+    public static void drawPending(MinecraftServer server) {
+        if (Colony.plannedAnchor(server, ColonyAnchor.CONDUIT).isEmpty()) {
+            return;
+        }
+        PendingStructures.readable(server).ifPresent(pending -> {
+            pending.snapshot().forEach((dimension, chunks) -> {
+                ServerLevel level = server.getLevel(dimension);
+                if (level == null) {
+                    return;
+                }
+                for (ChunkPos pos : chunks) {
+                    pending.remove(dimension, pos);
+                    try {
+                        // A chunk that unloaded since was saved undrawn: it loads from disk, which is no draw of its
+                        // own.
+                        draw(level, level.getChunk(pos.x(), pos.z()));
+                    } catch (RuntimeException e) {
+                        DeepCharter.LOGGER.error(
+                                "A pending chunk {} of {} could not be drawn", pos, dimension.identifier(), e);
+                    }
+                }
+            });
         });
     }
 
