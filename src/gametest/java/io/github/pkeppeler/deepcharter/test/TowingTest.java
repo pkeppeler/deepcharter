@@ -294,9 +294,7 @@ public class TowingTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aTowedPodOverADropBesideTheTowersLedgeFallsAndRestsWithoutSnappingOntoIt(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 1);
-        Vec3 start = skyRoom(level, SKY_X + 200);
-        BlockPos ledge = BlockPos.containing(start).below();
-        RoomCarver.carve(level, ledge.offset(-1, 0, -1), ledge.offset(1, 0, 1), Blocks.STONE.defaultBlockState());
+        Vec3 start = ledgeRoom(level, SKY_X + 200);
         double trail = TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE);
         Vec3[] resting = {Vec3.ZERO};
         towScene(
@@ -330,13 +328,7 @@ public class TowingTest {
                                 start.y,
                                 towed.position());
                     }
-                    if (towed.position().distanceTo(resting[0]) > 0.1) {
-                        throw failure(
-                                helper,
-                                "the towed pod should be at rest by tick 80, it was at %s and is at %s",
-                                resting[0],
-                                towed.position());
-                    }
+                    requireAtRest(helper, 80, resting[0], towed);
                     return true;
                 });
     }
@@ -348,9 +340,7 @@ public class TowingTest {
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
     public void aTowedPodOnASlackLineFallsPastTheTowersLedgeAndHangsFromItsLip(GameTestHelper helper) {
         ServerLevel level = TestLayers.level(helper, 1);
-        Vec3 start = skyRoom(level, SKY_X + 300);
-        BlockPos ledge = BlockPos.containing(start).below();
-        RoomCarver.carve(level, ledge.offset(-1, 0, -1), ledge.offset(1, 0, 1), Blocks.STONE.defaultBlockState());
+        Vec3 start = ledgeRoom(level, SKY_X + 300);
         double trail = TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE);
         Vec3[] resting = {Vec3.ZERO};
         towScene(
@@ -377,13 +367,7 @@ public class TowingTest {
                                 below,
                                 towed.position());
                     }
-                    if (towed.position().distanceTo(resting[0]) > 0.1) {
-                        throw failure(
-                                helper,
-                                "the towed pod should be at rest by tick 120, it was at %s and is at %s",
-                                resting[0],
-                                towed.position());
-                    }
+                    requireAtRest(helper, 120, resting[0], towed);
                     return true;
                 });
     }
@@ -1550,6 +1534,25 @@ public class TowingTest {
                 z + 3,
                 Blocks.AIR);
         return new Vec3(x + 3.0, TOW_FLOOR, z + 3.0);
+    }
+
+    /** A sky room with a 3 x 3 stone ledge under its start point; returns the start point. */
+    private static Vec3 ledgeRoom(ServerLevel level, int x) {
+        Vec3 start = skyRoom(level, x);
+        BlockPos ledge = BlockPos.containing(start).below();
+        RoomCarver.carve(level, ledge.offset(-1, 0, -1), ledge.offset(1, 0, 1), Blocks.STONE.defaultBlockState());
+        return start;
+    }
+
+    private static void requireAtRest(GameTestHelper helper, int tick, Vec3 was, PodEntity towed) {
+        if (towed.position().distanceTo(was) > 0.1) {
+            throw failure(
+                    helper,
+                    "the towed pod should be at rest by tick %s, it was at %s and is at %s",
+                    tick,
+                    was,
+                    towed.position());
+        }
     }
 
     private static void requireNoWalls(GameTestHelper helper, PodEntity towed) {

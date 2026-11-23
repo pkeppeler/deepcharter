@@ -400,19 +400,18 @@ public final class PodTowing {
         line.resting = wanted.y < 0 && moved.y > wanted.y + EPSILON;
         Vec3 next = restOnTower(tower, towed, held.add(moved));
         Vec3 pivot = anchor;
+        double left = rope;
         if (bend.isPresent()) {
             pivot = bend.get().subtract(middle);
-            next = clamp(next, pivot, rope - eye.distanceTo(bend.get()));
-        } else {
-            next = clamp(next, anchor, rope);
+            left = rope - eye.distanceTo(bend.get());
         }
+        next = clamp(next, pivot, left);
         Vec3 from = bend.orElse(eye);
         Vec3 carried = null;
         if (!fits(towed, from, next, bend.isEmpty())) {
-            Optional<Drape> draped = bend.isPresent() ? Optional.empty() : drape(tower, towed, middle, next, rope);
-            Optional<Vec3> caught = bend.isPresent()
-                    ? caughtOnLip(towed, bend.get(), pivot, rope - eye.distanceTo(bend.get()), held, next)
-                    : Optional.empty();
+            Optional<Drape> draped = bend.isPresent() ? Optional.empty() : drape(towed, eye, middle, next, rope);
+            Optional<Vec3> caught =
+                    bend.isPresent() ? caughtOnLip(towed, bend.get(), pivot, left, held, next) : Optional.empty();
             if (draped.isPresent()) {
                 bend = Optional.of(draped.get().lip());
                 pivot = bend.get().subtract(middle);
@@ -464,12 +463,11 @@ public final class PodTowing {
     private record Drape(Vec3 lip, Vec3 next) {}
 
     /**
-     * Drapes the line over the edge that blocks it, for a pod below its tower and in open space: of the corners of the block the line from the tower to the pod at {@code next}
-     * runs into, the nearest one the tower and the pod both see. The pod then hangs on what is left of the line, measured from the
-     * tower to the lip and on to the pod. Empty where no corner serves, as in a bend of rock the pod must follow the path round.
+     * Drapes the line over the edge that blocks it, for a pod below its tower and in open space: of the corners of the block the
+     * line from {@code eye} (the tower's centre) to the pod at {@code next} runs into, the nearest one both see. The pod then hangs
+     * on what is left of the line. Empty where no corner serves, as in a bend of rock the pod must follow the path round.
      */
-    private static Optional<Drape> drape(PodEntity tower, PodEntity towed, Vec3 middle, Vec3 next, double rope) {
-        Vec3 eye = tower.getBoundingBox().getCenter();
+    private static Optional<Drape> drape(PodEntity towed, Vec3 eye, Vec3 middle, Vec3 next, double rope) {
         Vec3 podMiddle = next.add(middle);
         AABB hull = towed.getBoundingBox().move(next.subtract(towed.position()));
         if (podMiddle.y > eye.y - DRAPE_MIN_DROP || !inOpenSpace(towed.level(), towed, hull.inflate(DRAPE_ROOM))) {
