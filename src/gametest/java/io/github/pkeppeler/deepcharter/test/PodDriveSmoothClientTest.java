@@ -602,8 +602,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             }
         } finally {
             PacketJitter.stop();
-            context.getInput().releaseKey(options -> options.keyUp);
-            context.waitTicks(INPUT_LAG_TICKS);
+            stopDriving(context);
         }
         // The server still drives the pod on the last input it had for a tick or two after the put: the place it ends
         // on is the target.
@@ -648,8 +647,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                         onClient(context, rig.ownPodId()).distanceTo(serverPosition(rig.two(), rig.ownPodId())));
             }
         } finally {
-            context.getInput().releaseKey(options -> options.keyUp);
-            context.waitTicks(INPUT_LAG_TICKS);
+            stopDriving(context);
         }
         LOGGER.info(
                 "PodDriveSmoothClientTest: a teleport {} blocks behind a pod still being driven: within {} blocks of the server's pod after {} ticks (allowed {})",
@@ -712,6 +710,12 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         require(
                 deepest <= wallFrom + SETTLE_TOLERANCE,
                 "a fast coast drew the pod to z " + deepest + ", through the wall that begins at z " + wallFrom);
+    }
+
+    /** Releases the drive key and waits for the release to reach the server. */
+    private static void stopDriving(ClientGameTestContext context) {
+        context.getInput().releaseKey(options -> options.keyUp);
+        context.waitTicks(INPUT_LAG_TICKS);
     }
 
     /** Fills the thin wall of {@link #expectFastCoastStopsAtThinWall} with {@code block}, centred on {@code wall}. */
