@@ -106,9 +106,8 @@ public record AirFaceLiningFeature(int layer, Block rock, Block lining, int dept
             if (section.hasOnlyAir() || !section.maybeHas(state -> state.is(rock) || seals(state))) {
                 continue;
             }
-            // A lining reads at most MAX_DEPTH + 1 blocks out (a seal, one further in), under a section, so it reaches
-            // no further than the
-            // sections next to its own.
+            // A lining reads at most MAX_DEPTH + 1 blocks out (a seal, one further in), less than a section, so it
+            // reaches no further than the sections next to its own.
             boolean sidesOnly =
                     !mayBeOpen(chunk, index - 1) && !mayBeOpen(chunk, index) && !mayBeOpen(chunk, index + 1);
             int sectionY = chunk.getSectionYFromSectionIndex(index) << 4;
