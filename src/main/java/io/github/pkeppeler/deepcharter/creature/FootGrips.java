@@ -65,12 +65,7 @@ public final class FootGrips {
                 && person.level().getBrightness(LightLayer.BLOCK, person.blockPosition())
                         < CreatureTuning.DEFAULT.litBlockLight()
                 && !lightInHand(person)
-                && !litByFlare(person);
-    }
-
-    /** Within the reach of a burning flare ({@link DrawSources}), which reads the flare, not the light engine, so it protects from the tick it lands. */
-    private static boolean litByFlare(ServerPlayer person) {
-        return DrawSources.litByFlare(person.level(), person.position());
+                && !DrawSources.litByFlare(person.level(), person.position());
     }
 
     /** A light in either hand: an item of {@link #HAND_LIGHTS}, as a torch or a lantern is. */

@@ -938,7 +938,6 @@ public class RetainedOnFootTest {
         ServerLevel level = helper.getLevel();
         BlockPos origin = slot(13);
         Room[] made = {null};
-        BlockPos[] flare = {null};
         long[] burnsOutAt = {0};
         TestTicks.each(helper, () -> {
             Room room = made[0];
@@ -967,11 +966,8 @@ public class RetainedOnFootTest {
             made[0] = Room.build(helper, level, origin, HALF - 1);
             ServerPlayer player = made[0].player();
             expectDraws(helper, player, true, "a person in the dark before the flare lands");
-            flare[0] = player.blockPosition().west(2);
-            // An inert block: the flare entry and block are all litByFlare reads, and no light is ever published.
-            level.setBlock(flare[0], Blocks.STONE.defaultBlockState(), 3);
             burnsOutAt[0] = level.getGameTime() + FLARE_BURN_TICKS;
-            DrawSources.addFlare(level, flare[0], Blocks.STONE, FLARE_REACH, burnsOutAt[0]);
+            landFlare(level, player.blockPosition().west(2), burnsOutAt[0]);
             if (level.getBrightness(LightLayer.BLOCK, player.blockPosition()) >= TUNING.litBlockLight()) {
                 throw failure(helper, "the test's flare block lit the person; it must stay dark");
             }
@@ -996,13 +992,7 @@ public class RetainedOnFootTest {
                 if (room.figure.isClinging()) {
                     litAt[0] = helper.getTick();
                     flare[0] = room.player().blockPosition().west(2);
-                    level.setBlock(flare[0], Blocks.STONE.defaultBlockState(), 3);
-                    DrawSources.addFlare(
-                            level,
-                            flare[0],
-                            Blocks.STONE,
-                            FLARE_REACH,
-                            level.getGameTime() + WATCH_TICKS + FLARE_BURN_TICKS);
+                    landFlare(level, flare[0], level.getGameTime() + WATCH_TICKS + FLARE_BURN_TICKS);
                 } else if (helper.getTick() > APPROACH_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS) {
                     throw failure(helper, "the figure had not taken hold of the person");
                 }
@@ -1022,6 +1012,12 @@ public class RetainedOnFootTest {
             made[0] = Room.build(helper, level, origin, HALF - 1);
             made[0].fillFood();
         });
+    }
+
+    /** An inert block with a flare entry: all litByFlare reads, and no light is ever published. */
+    private static void landFlare(ServerLevel level, BlockPos pos, long burnsOutAt) {
+        level.setBlock(pos, Blocks.STONE.defaultBlockState(), 3);
+        DrawSources.addFlare(level, pos, Blocks.STONE, FLARE_REACH, burnsOutAt);
     }
 
     private static BlockPos slot(int index) {
