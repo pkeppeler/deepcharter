@@ -1954,6 +1954,47 @@ A default build is not harder than on main: no Sleeper creature is shipped, so n
 
 **Open questions.** Whether a hauled pod should also owe a "parking" fee at the pad; whether a second pod in reach should be able to answer the call before the crew (the tow line already does). Neither is built. The ownership rule: the crew moves a pod only for the pilot aboard it and charges only the pod's owner charter, so it never moves or charges anyone else's.
 
+## The bolt driver and the cave-in (#987, A)
+
+**Problem.** CREATURES section 8 gives on-foot play a bolt driver, a mining roof-bolter that fires bolts and sets roof bolts "against cave-ins". No cave-in existed: SPEC section 11 lists them as a hazard (blocking a stretch of shaft rather than erasing it) and nothing in the game dropped a roof. So the driver's second half had nothing to answer. Both halves are built here: the hazard, small and readable, and the counter.
+
+**The cave-in (`CaveIns`).** The natural rock over a person on foot comes down.
+- It starts when a blast goes off near them: dynamite, plastic explosives, the blasting and shaped charges and a thrown charge all shake the roof over each person on foot within 12 blocks, if the server allows PvP or the person is on the charter that set the blast off (the pod's owner, or its pilot's charter; the thrower's, for a thrown charge), so no crew is griefed by another's blast. `CaveIns.shake` is the call an earthquake or a creature would make later; nothing starts one on its own yet ([ADR 0081](../adr/0081-a-blast-shakes-the-roof-over-a-person-on-foot-and-roof-bolts-hold-it.md)).
+- The roof is the first block over their head within 5 blocks, within 3 blocks flat of where they stood, when it is natural rock with air under it. A person in a pod seat is not shaken (the pod is the cover). Rock a person built, Company rock and the grained crust are never a roof.
+- It warns for 60 ticks (3 s, the warning every hazard here gives): the roof creaks every 10 ticks, sheds dust, and the person is told. Then the loose roof falls as falling rock and lies where it lands, so a collapsed stretch is a heap in the tunnel to mine through, not a hole. Rock that would land on a person shatters on them instead (a falling block settles inside the cell of whatever stands there, which entombed them): it hurts by the blocks it fell, 1 health each up to 6, never takes their last health, and leaves no block. Rock that lands on a snow layer or a plant overwrites it.
+- The roof is read again at the fall: a roof bolt set while it creaks saves what it reaches.
+
+**The roof bolt (`roof_bolt` block).** The driver, used on the underside of a roof, hangs a bolt in the cell under it. Every roof block within 3 blocks of a bolt holds. A bolt is a block, not an attachment: it shows as a plate and rod against the ceiling, a creature or a hand can break it, it goes when its roof does, it drops nothing, and it persists with the chunk like any block. It has no item; only the driver sets one.
+
+**The bolt driver.** A tool (`Consumable.Kind.TOOL`) bought at the repair station ($175) and kept. Its bolts are consumed items sold in packs of 8 for $24 (`Consumable.perPurchase`); a pack that does not fit in the inventory whole is refused and nothing is charged. The driver draws on the pack and the offhand, never on what is worn:
+- A right click on a roof sets a roof bolt. Refused: in a pod seat, with no bolts, where the player may not build, on anything that is not natural rock, within 2 blocks of another bolt (it would hold nothing new). The bolt is spent before the roof bolt hangs.
+- A right click anywhere else fires a bolt along the look line, 24 blocks. It stops at the first block and changes nothing there; at the first creature it takes 5 health. A Retained has 12, so it takes three (a Tally's one blow breaks it). It hurts another player only where the server allows PvP.
+- Either costs one bolt (a creative player's pack is not touched). Firing rests 12 ticks, setting 20.
+
+**Ladder.** By hand: the cave-in is a creak to run from. The driver: you bolt the stretch before you blast, or in the three seconds the creak gives. Later rungs, not built: a pod part that bolts as it bores (the liner's cousin), and a rated roof that needs none.
+
+**Trade-offs.** Bolts cost money every shot, and a bolt set is a bolt not fired. Measured by `BoltDriverPacingTest` on the real driver and cave-in, with the dollars modelled from `EarlyRunModel`:
+
+| What | Number | Basis |
+|---|---|---|
+| Creak before the first rock falls | 60 ticks (3 s) | measured, `BoltDriverPacingTest` |
+| Roof cells that fall, and how far from the person | 29, as far as 3 cells | measured |
+| Bolts to end a Retained | 3 ($9) | measured |
+| Bolts to break a Tally | 1 | measured |
+| Roof bolt spacing in a 1-wide tunnel | 1 every 5 blocks | measured |
+| Bolting 100 blocks of tunnel | 20 bolts, $60, 13% of a layer 2 run | spacing measured, dollars modelled |
+| Three Retained fights in a layer 2 run | $27, 6% of the run's $455 | modelled |
+| The driver | $175, 38% of a layer 2 run | modelled |
+| A pack of 8 bolts | $24, 5% of a layer 2 run | modelled |
+
+**Harder or easier.** The cave-in is new and harder, but only a blast starts one, and nothing on foot is shaken by a pod's drilling or by the walk. The default pod build is unchanged (a pilot's roof is never shaken). Unpacked, on foot near a pod's blast, the risk is new: a person with no driver and no bolts has the 3 s creak to leave the stretch (3 blocks flat, a few steps) and otherwise takes 2 to 5 health from one rock. Early game, where a pilot dynamites with a crew mate on foot, the crew mate takes it; on a server with PvP off, only the crew of the charter that set the blast do.
+
+**Knobs.** `CaveInTuning` (`warnTicks`, `cueTicks`, `stretchRadius`, `ceilingReach`, `boltReach`, `shakeReach`, `fallDamage`, `fallDamageMax`) and `BoltDriverTuning` (`range`, `damage`, `fireCooldownTicks`, `setCooldownTicks`, `boltSpacing`); prices and the pack size in `Consumable`.
+
+**Pins.** `BoltDriverTest` (ids, firing and ammo, range, no grief, PvP, the pod seat, setting, the creak before the fall, the held and loose stretch, a bolt set during the creak, the blast hook from a pod's dynamite and whose charter it shakes, a person who ignores the creak, a stop that forgets a creak, persistence across a chunk save and load) and `BoltDriverPacingTest`.
+
+**Open questions.** An organic start for cave-ins in layers 2 and 3 (a loose-roof worldgen feature, or the deep tremors of SPEC section 11), once on-foot exploring has places worth collapsing. Whether the Sleeper's creatures should start one, as the immune response to drilling.
+
 ## The tether (#986, A)
 
 **Problem.** A person on foot (SPEC section 9) has nothing between them and a long fall, a grip they cannot walk out of, or a wreck to haul away. CREATURES section 8 lists "a line to the pod's winch: pulls you back, and tows in the Hush fight" as the on-foot kit's answer.

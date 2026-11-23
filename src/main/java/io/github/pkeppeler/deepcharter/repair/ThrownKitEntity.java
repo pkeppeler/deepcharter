@@ -246,7 +246,8 @@ public final class ThrownKitEntity extends ThrowableItemProjectile {
                 high,
                 repair.chargeDamage(),
                 repair.chargeReach(),
-                pod -> PodComponents.mayAccess(pod, charter));
+                pod -> PodComponents.mayAccess(pod, charter),
+                charter.map(Charter::id));
         AABB volume = new AABB(low.getX(), low.getY(), low.getZ(), high.getX() + 1, high.getY() + 1, high.getZ() + 1);
         // entity-query: round a charge that a ticking projectile landed, so its chunks are entity-ticking; a person
         // in an unloaded chunk is out of the blast's reach anyway
