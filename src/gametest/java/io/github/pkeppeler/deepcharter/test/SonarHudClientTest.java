@@ -44,11 +44,11 @@ import net.minecraft.world.phys.Vec3;
  * where the navigator looks; when the pilot gets off, the client is the pilot and the scope is gone.
  */
 public class SonarHudClientTest implements FabricClientGameTest {
-    private static final int X = 1600;
-    private static final int Z = 1600;
-    private static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
+    static final int X = 1600;
+    static final int Z = 1600;
+    static final int FLOOR_Y = TestLayers.worldY(TestLayers.SURFACE, 200);
     private static final int ORE_AHEAD = 8;
-    private static final int SITE_RADIUS = 12;
+    static final int SITE_RADIUS = 12;
     private static final int CELL = 4;
     /** How far a channel of the drawn pixel may be from the echo's colour: the echo is blended over the scope's face at its fading alpha. */
     private static final int CHANNEL_TOLERANCE = 80;
@@ -210,7 +210,7 @@ public class SonarHudClientTest implements FabricClientGameTest {
      * A cube of stone round the pod's corner with the cab's four cells opened, and one ore block {@link #ORE_AHEAD} blocks south of the pod. Both
      * players stand at the pod before it is spawned, so the chunks are theirs.
      */
-    private static void buildSite(ServerLevel level, TwoPlayerServer two) {
+    static void buildSite(ServerLevel level, TwoPlayerServer two) {
         RoomCarver.carve(
                 level,
                 new BlockPos(X - SITE_RADIUS, FLOOR_Y - SITE_RADIUS, Z - SITE_RADIUS),
@@ -238,7 +238,7 @@ public class SonarHudClientTest implements FabricClientGameTest {
     }
 
     /** Seats the mock first and the real player second in a new Prospector at the corner of the cab's cells, facing south. Returns the pod's id. */
-    private static int board(ServerLevel level, TwoPlayerServer two) {
+    static int board(ServerLevel level, TwoPlayerServer two) {
         ServerPlayer real = real(level, two);
         PodEntity pod = TestEntities.create(PodRegistry.PROSPECTOR, level);
         pod.setPos(new Vec3(X, FLOOR_Y, Z));

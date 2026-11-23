@@ -122,7 +122,7 @@ public final class SonarHud {
         return PodSonar.reading(pod).map(state -> new Frame(pod, state, level.getGameTime(), player));
     }
 
-    private static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+    public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft client = Minecraft.getInstance();
         Optional<Frame> frame = frame(client);
         if (frame.isEmpty()) {
