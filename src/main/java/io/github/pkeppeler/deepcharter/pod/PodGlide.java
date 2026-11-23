@@ -67,7 +67,9 @@ final class PodGlide extends AbstractInterpolationHandler {
 
     @Override
     protected void startInterpolating(PositionPath path, float yRot, float xRot) {
-        snapping = entity.position().distanceTo(path.endPosition()) > PodGlideTuning.DEFAULT.snapGap();
+        // Sticky until arrival: the moves that follow a teleport of a driven pod find it nearer than snapGap, and must
+        // not ease the rest.
+        snapping = snapping || entity.position().distanceTo(path.endPosition()) > PodGlideTuning.DEFAULT.snapGap();
         if (snapping) {
             // A far move is a teleport, not an overshoot to settle back from: a stale coast must not ease it.
             coastDirection = null;
@@ -146,12 +148,14 @@ final class PodGlide extends AbstractInterpolationHandler {
 
     /**
      * Draws the pod one more tick at its reported speed, short of any block; false when it cannot move at all. The tick is swept in
-     * sub-steps no longer than the box's smallest side, so a step bigger than the box cannot skip a thin block.
+     * sub-steps no longer than the box's smallest side (at most {@link PodGlideTuning#coastSweepSteps()} of them, so a huge synced speed costs a bounded
+     * number of checks), so a step bigger than the box cannot skip a thin block.
      */
     private boolean coast(Vec3 reported) {
         AABB box = entity.getBoundingBox();
         double side = Math.min(box.getXsize(), Math.min(box.getYsize(), box.getZsize()));
-        int pieces = Math.max(1, (int) Math.ceil(reported.length() / side));
+        int pieces =
+                Math.clamp((long) Math.ceil(reported.length() / side), 1, PodGlideTuning.DEFAULT.coastSweepSteps());
         Vec3 piece = reported.scale(1.0 / pieces);
         Vec3 step = Vec3.ZERO;
         for (int i = 1; i <= pieces && entity.level().noCollision(entity, box.move(piece.scale(i))); i++) {

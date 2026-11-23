@@ -21,6 +21,9 @@ package io.github.pkeppeler.deepcharter.pod;
  *                      bounce back, not a snap
  * @param snapGap       blocks beyond which the pod is not eased but glides over {@code steps} ticks as before: a real teleport, or a
  *                      server so far behind that easing would trail the pilot for seconds
+ * @param coastSweepSteps the most sub-steps a coast tick is swept in for collision: a step is swept in pieces no longer than the pod's
+ *                      smallest side, and a huge synced speed (an explosion, a tow) is capped here, so it costs a bounded number of checks.
+ *                      Real speeds need fewer
  */
 public record PodGlideTuning(
         int steps,
@@ -29,6 +32,7 @@ public record PodGlideTuning(
         int coastTicks,
         int settleDelayTicks,
         double settleShare,
-        double snapGap) {
-    public static final PodGlideTuning DEFAULT = new PodGlideTuning(2, 1.35, 12, 2, 10, 0.2, 16.0);
+        double snapGap,
+        int coastSweepSteps) {
+    public static final PodGlideTuning DEFAULT = new PodGlideTuning(2, 1.35, 12, 2, 10, 0.2, 16.0, 8);
 }

@@ -26,6 +26,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -135,6 +136,9 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
     /** A backward teleport past the snap gap, from a pod that has just coasted: a snap, so it arrives as one does. */
     private static final double TELEPORT_BACK = 24.0;
 
+    /** How near the drawn pod must get to the server's, which keeps driving off, in {@link #SNAP_TICKS}: measured 1.73 with the snap held, 10.9 without it. */
+    private static final double DRIVING_TELEPORT_TOLERANCE = 3.0;
+
     /** Client ticks a held move is stalled for before the teleport arrives behind a coasting pod. */
     private static final int TELEPORT_STALL_TICKS = 4;
 
@@ -242,6 +246,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             });
             expectPushesEase(context, rig);
             expectTeleportBehindCoastSnaps(context, rig);
+            expectTeleportWhileDrivingSnaps(context, rig);
             expectFastCoastStopsAtThinWall(context, rig);
             expectPinnedPodSettles(context, rig);
             PacketJitter.start();
@@ -615,10 +620,47 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                 arrivedAt,
                 TELEPORT_STALL_TICKS,
                 drawn.getLast().distanceTo(end));
+        int byTick = TELEPORT_STALL_TICKS + SNAP_TICKS;
         require(
-                arrivedAt > 0 && arrivedAt <= TELEPORT_STALL_TICKS + SNAP_TICKS,
-                "a teleport behind a coasting pod arrived after " + arrivedAt + " ticks, over "
-                        + (TELEPORT_STALL_TICKS + SNAP_TICKS) + ": it was eased, not snapped");
+                drawn.get(byTick - 1).distanceTo(end) <= SETTLE_TOLERANCE,
+                "a teleport behind a coasting pod was " + drawn.get(byTick - 1).distanceTo(end)
+                        + " blocks short of its place after " + byTick + " ticks (arrived after " + arrivedAt
+                        + "): it was eased, not snapped");
+    }
+
+    /**
+     * A teleport of more than {@code snapGap} blocks while the pod is still being driven snaps, though the moves that follow it find the
+     * pod within {@code snapGap} of its place: the snap lasts until the pod arrives. Judged against the server's own pod, which keeps
+     * driving, by how near the drawn pod gets within {@link #SNAP_TICKS} ticks.
+     */
+    private static void expectTeleportWhileDrivingSnaps(ClientGameTestContext context, Rig rig) {
+        returnToStart(context, rig);
+        Vec3 to = rig.ownStart().add(0, 0, -TELEPORT_BACK);
+        double nearest = Double.MAX_VALUE;
+        try {
+            context.getInput().holdKey(options -> options.keyUp);
+            context.waitTicks(PIN_AFTER_TICKS);
+            rig.two().server().runOnServer(server -> put(server.overworld(), rig.ownPodId(), to));
+            for (int tick = 1; tick <= SNAP_TICKS; tick++) {
+                context.waitTick();
+                nearest = Math.min(
+                        nearest,
+                        onClient(context, rig.ownPodId()).distanceTo(serverPosition(rig.two(), rig.ownPodId())));
+            }
+        } finally {
+            context.getInput().releaseKey(options -> options.keyUp);
+            context.waitTicks(INPUT_LAG_TICKS);
+        }
+        LOGGER.info(
+                "PodDriveSmoothClientTest: a teleport {} blocks behind a pod still being driven: within {} blocks of the server's pod after {} ticks (allowed {})",
+                TELEPORT_BACK,
+                nearest,
+                SNAP_TICKS,
+                DRIVING_TELEPORT_TOLERANCE);
+        require(
+                nearest <= DRIVING_TELEPORT_TOLERANCE,
+                "a teleport behind a pod still being driven came within " + nearest + " blocks of its place in "
+                        + SNAP_TICKS + " ticks, over " + DRIVING_TELEPORT_TOLERANCE + ": the snap did not last");
     }
 
     /**
@@ -629,52 +671,56 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         Vec3 at = rig.mockStart();
         BlockPos wall = BlockPos.containing(at.x, at.y, at.z + THIN_WALL_AHEAD);
         double wallFrom = wall.getZ();
-        rig.two().server().runOnServer(server -> {
-            put(server.overworld(), rig.mockPodId(), at);
-            for (int x = -3; x <= 3; x++) {
-                for (int y = 0; y < WALL_HEIGHT; y++) {
-                    server.overworld().setBlock(wall.offset(x, y, 0), Blocks.STONE.defaultBlockState(), 3);
-                }
+        double deepest = 0;
+        try {
+            rig.two().server().runOnServer(server -> {
+                put(server.overworld(), rig.mockPodId(), at);
+                setWall(server.overworld(), wall, Blocks.STONE);
+            });
+            ClientWait.until(
+                    context,
+                    "the watched pod standing at its place before the wall",
+                    () -> context.computeOnClient(client -> standsAt(client, rig.mockPodId(), at)),
+                    () -> "watched pod on the client " + onClient(context, rig.mockPodId()) + " for " + at);
+            context.runOnClient(client -> {
+                Entity pod = TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId());
+                pod.setDeltaMovement(0, 0, FAST_COAST_SPEED);
+                pod.moveOrInterpolateTo(pod.position(), pod.getYRot(), pod.getXRot());
+            });
+            for (int tick = 0; tick < FAST_COAST_TICKS; tick++) {
+                context.waitTick();
+                deepest = Math.max(
+                        deepest,
+                        context.computeOnClient(
+                                client -> TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId())
+                                        .getBoundingBox()
+                                        .maxZ));
             }
-        });
-        ClientWait.until(
-                context,
-                "the watched pod standing at its place before the wall",
-                () -> context.computeOnClient(client -> standsAt(client, rig.mockPodId(), at)),
-                () -> "watched pod on the client " + onClient(context, rig.mockPodId()) + " for " + at);
-        double[] deepest = {0};
-        context.runOnClient(client -> {
-            Entity pod = TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId());
-            pod.setDeltaMovement(0, 0, FAST_COAST_SPEED);
-            pod.moveOrInterpolateTo(pod.position(), pod.getYRot(), pod.getXRot());
-        });
-        for (int tick = 0; tick < FAST_COAST_TICKS; tick++) {
-            context.waitTick();
-            deepest[0] = Math.max(
-                    deepest[0],
-                    context.computeOnClient(
-                            client -> TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId())
-                                    .getBoundingBox()
-                                    .maxZ));
+        } finally {
+            context.runOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId())
+                    .setDeltaMovement(Vec3.ZERO));
+            rig.two().server().runOnServer(server -> {
+                setWall(server.overworld(), wall, Blocks.AIR);
+                put(server.overworld(), rig.mockPodId(), rig.mockStart());
+            });
         }
-        context.runOnClient(client -> TestEntities.require(ClientLight.clientLevel(client), rig.mockPodId())
-                .setDeltaMovement(Vec3.ZERO));
         LOGGER.info(
                 "PodDriveSmoothClientTest: a coast of {} blocks a tick at a wall from z {}: the pod's box reached z {}",
                 FAST_COAST_SPEED,
                 wallFrom,
-                deepest[0]);
+                deepest);
         require(
-                deepest[0] <= wallFrom + SETTLE_TOLERANCE,
-                "a fast coast drew the pod to z " + deepest[0] + ", through the wall that begins at z " + wallFrom);
-        rig.two().server().runOnServer(server -> {
-            for (int x = -3; x <= 3; x++) {
-                for (int y = 0; y < WALL_HEIGHT; y++) {
-                    server.overworld().setBlock(wall.offset(x, y, 0), Blocks.AIR.defaultBlockState(), 3);
-                }
+                deepest <= wallFrom + SETTLE_TOLERANCE,
+                "a fast coast drew the pod to z " + deepest + ", through the wall that begins at z " + wallFrom);
+    }
+
+    /** Fills the thin wall of {@link #expectFastCoastStopsAtThinWall} with {@code block}, centred on {@code wall}. */
+    private static void setWall(ServerLevel level, BlockPos wall, Block block) {
+        for (int x = -3; x <= 3; x++) {
+            for (int y = 0; y < WALL_HEIGHT; y++) {
+                level.setBlock(wall.offset(x, y, 0), block.defaultBlockState(), 3);
             }
-            put(server.overworld(), rig.mockPodId(), rig.mockStart());
-        });
+        }
     }
 
     /**
