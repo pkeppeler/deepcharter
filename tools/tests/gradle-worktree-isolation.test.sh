@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Tests that two worktrees never share a configuration cache entry or a daemon (#1120).
+# Gradle keeps compiled build scripts in the daemon JVM, so a daemon that built worktree A first made worktree B's
+# configuration cache entry name A's applied scripts (`script '<A>/gradle/x.gradle.kts'`), and a reused entry bound a run in B to
+# A's files. The wrapper therefore gives each checkout its own daemon registry (`-Dorg.gradle.daemon.registry.base`).
+# Two scratch projects with identical scripts and a copy of this repo's gradlew stand in for two worktrees, under a scratch
+# GRADLE_USER_HOME so `--stop` only reaches the daemons the test started. Needs the Gradle distribution in the real Gradle home.
+# Usage: tools/tests/gradle-worktree-isolation.test.sh      Debug knob: KEEP_WORK=1.
+set -uo pipefail
+
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+work=$(cd "$(mktemp -d)" && pwd -P)
+cleanup() {
+  local w
+  for w in a b; do
+    if [[ -x $work/$w/gradlew ]]; then (cd "$work/$w" && ./gradlew --stop >/dev/null 2>&1) || true; fi
+  done
+  if [[ -n ${KEEP_WORK:-} ]]; then echo "kept $work"; else rm -rf "$work" 2>/dev/null || { sleep 2; rm -rf "$work"; }; fi
+}
+trap cleanup EXIT
+
+failures=0
+check() { # check <description> <condition-result: 0 = ok>
+  if [[ $2 -eq 0 ]]; then echo "ok   $1"; else echo "FAIL $1"; failures=$((failures + 1)); fi
+}
+
+real_home=${GRADLE_USER_HOME:-$HOME/.gradle}
+export GRADLE_USER_HOME=$work/gradle-home
+mkdir -p "$GRADLE_USER_HOME"
+if [[ -d $real_home/wrapper ]]; then ln -s "$real_home/wrapper" "$GRADLE_USER_HOME/wrapper"; fi
+printf '%s\n' "org.gradle.daemon.idletimeout=60000" "org.gradle.jvmargs=-Xmx256m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xshare:auto" \
+  >"$GRADLE_USER_HOME/gradle.properties"
+
+for w in a b; do
+  mkdir -p "$work/$w/gradle"
+  cp "$root/gradlew" "$work/$w/gradlew"
+  cp -R "$root/gradle/wrapper" "$work/$w/gradle/wrapper"
+  echo 'rootProject.name = "isolationprobe"' >"$work/$w/settings.gradle.kts"
+  echo 'apply(from = "gradle/probe.gradle.kts")' >"$work/$w/build.gradle.kts"
+  echo 'org.gradle.configuration-cache=true' >"$work/$w/gradle.properties"
+  # A class in an applied script is what the cache entry records as a script scope.
+  cat >"$work/$w/gradle/probe.gradle.kts" <<'S'
+class Probe { fun hi() = "probe" }
+tasks.register("probe") { doLast { println("RESULT " + Probe().hi()) } }
+S
+done
+
+# run <worktree>: runs the probe task there and prints its output.
+run() { (cd "$work/$1" && ./gradlew --offline --console=plain probe 2>&1); }
+
+out_a=$(run a)
+out_b=$(run b)
+[[ $out_a == *"RESULT probe"* && $out_b == *"RESULT probe"* ]]; check "the probe task runs in both worktrees" $?
+[[ $out_b == *"Configuration cache entry stored"* ]]; check "the second worktree stores its own entry" $?
+
+# Every file of an entry that mentions a worktree path; the entry's script scopes are the ones that leaked.
+mentions() { grep -rlaF -- "$2" "$work/$1/.gradle/configuration-cache" 2>/dev/null | grep -c .; }
+[[ $(mentions a "$work/a") -gt 0 ]]; check "the entry in A names A's script scopes" $?
+[[ $(mentions b "$work/a") -eq 0 ]]; check "the entry in B names nothing of A's" $?
+
+out_b2=$(run b)
+[[ $out_b2 == *"Reusing configuration cache"* ]]; check "B still reuses its own entry" $?
+
+if [[ $failures -ne 0 ]]; then echo "$failures check(s) failed"; exit 1; fi
+echo "all checks passed"
