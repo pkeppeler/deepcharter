@@ -51,7 +51,7 @@ public final class FootGrips {
 
     /**
      * Whether a person draws a figure: not on Peaceful, on foot, alive, not a creative or spectator player, not held already, standing where the block
-     * light is under {@link CreatureTuning#litBlockLight}, and with no light in either hand (an item of {@link #HAND_LIGHTS}). The suit lamp, when it exists, replaces the
+     * light is under {@link CreatureTuning#litBlockLight}, and with no light in either hand (an item of {@link #HAND_LIGHTS}), and not within the reach of a burning flare ({@link DrawSources}: a flare protects at once, though it frees no one already held). The suit lamp, when it exists, replaces the
      * hand check.
      */
     public static boolean draws(ServerPlayer person) {
@@ -63,7 +63,13 @@ public final class FootGrips {
                 && holder(person) == null
                 && person.level().getBrightness(LightLayer.BLOCK, person.blockPosition())
                         < CreatureTuning.DEFAULT.litBlockLight()
-                && !lightInHand(person);
+                && !lightInHand(person)
+                && !litByFlare(person);
+    }
+
+    /** Within the reach of a burning flare ({@link DrawSources}), which reads the flare, not the light engine, so it protects from the tick it lands. */
+    private static boolean litByFlare(ServerPlayer person) {
+        return DrawSources.litByFlare(person.level(), person.position());
     }
 
     /** A light in either hand: an item of {@link #HAND_LIGHTS}, as a torch or a lantern is. */

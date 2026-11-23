@@ -4,6 +4,7 @@ import static io.github.pkeppeler.deepcharter.test.support.Failures.failure;
 
 import io.github.pkeppeler.deepcharter.creature.CreatureRegistry;
 import io.github.pkeppeler.deepcharter.creature.CreatureTuning;
+import io.github.pkeppeler.deepcharter.creature.DrawSources;
 import io.github.pkeppeler.deepcharter.creature.FootGrips;
 import io.github.pkeppeler.deepcharter.creature.LamplessFigure;
 import io.github.pkeppeler.deepcharter.ore.OreRegistry;
@@ -81,6 +82,10 @@ public class RetainedOnFootTest {
     private static final int BLOW_SPACING_TICKS = 12;
     /** Ticks for the light of a block to spread to a cell, or to go from it: slow on a loaded runner. */
     private static final int LIGHT_BUDGET_TICKS = 200;
+    /** Ticks a test flare burns, and the reach it keeps the dark off within. */
+    private static final int FLARE_BURN_TICKS = 60;
+
+    private static final double FLARE_REACH = 6.0;
     /** Ticks a dead figure has to be gone, and the person freed: the dissolve (20 ticks) and a margin. */
     private static final int FREED_BUDGET_TICKS = 60;
 
@@ -921,6 +926,104 @@ public class RetainedOnFootTest {
             throw failure(helper, "hand_lights must hold a torch and not a stone");
         }
         helper.succeed();
+    }
+
+    /**
+     * A flare protects a person on foot from the tick it registers (#1073, ADR 0078), as it does a pod: the keep-off reads the flare's block and
+     * entry, never the light. The flare's block here emits none, so the light engine has nothing to publish and the person is dark throughout;
+     * only the flare entry can keep the figure off. Once it burns out the person draws again.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + FLARE_BURN_TICKS + APPROACH_BUDGET_TICKS + 60)
+    public void aFlareProtectsAPersonOnFootFromTheTickItLandsThenBurnsOut(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(13);
+        Room[] made = {null};
+        BlockPos[] flare = {null};
+        long[] burnsOutAt = {0};
+        TestTicks.each(helper, () -> {
+            Room room = made[0];
+            if (room == null) {
+                return;
+            }
+            ServerPlayer player = room.player();
+            if (level.getGameTime() < burnsOutAt[0]) {
+                expectDraws(helper, player, false, "a person within a burning flare's reach");
+                if (room.figure.isClinging() || FootGrips.holder(player) != null) {
+                    throw failure(helper, "a figure took hold of a person a flare protects");
+                }
+                return;
+            }
+            level.setBlock(flare[0], Blocks.AIR.defaultBlockState(), 3);
+            if (room.figure.isClinging() || FootGrips.holder(player) != null) {
+                room.clear();
+                helper.succeed();
+                return;
+            }
+            expectDraws(helper, player, true, "a person once the flare has burnt out");
+            if (helper.getTick() > FarChunks.AWAIT_BUDGET_TICKS + FLARE_BURN_TICKS + APPROACH_BUDGET_TICKS) {
+                throw failure(helper, "the figure never took hold of the person after the flare burnt out");
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            made[0] = Room.build(helper, level, origin, HALF - 1);
+            ServerPlayer player = made[0].player();
+            expectDraws(helper, player, true, "a person in the dark before the flare lands");
+            flare[0] = player.blockPosition().west(2);
+            // An inert block: the flare entry and block are all litByFlare reads, and no light is ever published.
+            level.setBlock(flare[0], Blocks.STONE.defaultBlockState(), 3);
+            burnsOutAt[0] = level.getGameTime() + FLARE_BURN_TICKS;
+            DrawSources.addFlare(level, flare[0], Blocks.STONE, FLARE_REACH, burnsOutAt[0]);
+            if (level.getBrightness(LightLayer.BLOCK, player.blockPosition()) >= TUNING.litBlockLight()) {
+                throw failure(helper, "the test's flare block lit the person; it must stay dark");
+            }
+            expectDraws(helper, player, false, "a person on the tick their flare registers");
+        });
+    }
+
+    /** A flare that lands after the grip does not free a held person, as no light does: the figure goes on holding and the weight stays. */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + APPROACH_BUDGET_TICKS + WATCH_TICKS + 60)
+    public void aFlareDoesNotFreeAPersonAlreadyHeld(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = slot(14);
+        Room[] made = {null};
+        long[] litAt = {-1};
+        BlockPos[] flare = {null};
+        TestTicks.each(helper, () -> {
+            Room room = made[0];
+            if (room == null) {
+                return;
+            }
+            if (litAt[0] < 0) {
+                if (room.figure.isClinging()) {
+                    litAt[0] = helper.getTick();
+                    flare[0] = room.player().blockPosition().west(2);
+                    level.setBlock(flare[0], Blocks.STONE.defaultBlockState(), 3);
+                    DrawSources.addFlare(
+                            level,
+                            flare[0],
+                            Blocks.STONE,
+                            FLARE_REACH,
+                            level.getGameTime() + WATCH_TICKS + FLARE_BURN_TICKS);
+                } else if (helper.getTick() > APPROACH_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS) {
+                    throw failure(helper, "the figure had not taken hold of the person");
+                }
+                return;
+            }
+            expectHeld(helper, room, helper.getTick() - litAt[0]);
+            if (helper.getTick() - litAt[0] >= WATCH_TICKS) {
+                if (room.player().getEffect(OreRegistry.OVERBURDENED) == null) {
+                    throw failure(helper, "a flare took the weight off a held person");
+                }
+                level.setBlock(flare[0], Blocks.AIR.defaultBlockState(), 3);
+                DrawSources.clear();
+                room.clear();
+                helper.succeed();
+            }
+        });
+        FarChunks.awaitEntityTicking(helper, level, origin, () -> {
+            made[0] = Room.build(helper, level, origin, HALF - 1);
+            made[0].fillFood();
+        });
     }
 
     private static BlockPos slot(int index) {
