@@ -48,6 +48,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -216,7 +217,6 @@ public class DimensionCrossingTest {
                 BlockPos.containing(start),
                 chunksAround(overworld, x, z, arrivalReach()),
                 () -> mock.teleportTo(one, start, 0, 0),
-                () -> {},
                 ticks -> {
                     ServerPlayer player = mock.player();
                     expectInDimensionOf(helper, player, TestLayers.SURFACE);
@@ -276,8 +276,7 @@ public class DimensionCrossingTest {
                 chunksAround(two, x, z, arrivalReach()),
                 () -> {
                     // Fill the top of layer 2's dimension, so only a cut pocket can hold the arriving player, then open
-                    // the row under
-                    // the pocket, so only the pocket's own floor can hold it up.
+                    // the row under the pocket, so only the pocket's own floor can hold it up.
                     RoomCarver.carve(
                             two,
                             ceiling.offset(-radius, -12, -radius),
@@ -467,12 +466,24 @@ public class DimensionCrossingTest {
                             helper,
                             mock.player().startRiding(pods[0], true, false),
                             "the mock could not board the tower");
-                    // Floored level with the pocket's floor: without a floor, follow() snaps the pod onto its tower on
-                    // its first
-                    // tick (#1122); drop the floor when #1122 is fixed.
-                    openGalleryAtTheArrival(two, x, z, gallery);
+                    // The pocket's rows of air at the arrival, over a stone floor level with the pocket's: without a
+                    // floor, follow() snaps the pod onto its tower on its first tick (#1122); drop the floor when #1122
+                    // is fixed.
+                    BlockPos arrival = BlockPos.containing(
+                            x, TestLayers.dimensionBand(two).maxY() - LayerTuning.DEFAULT.pocketHeight(), z);
+                    RoomCarver.carve(
+                            two,
+                            arrival.offset(-gallery, -1, -gallery),
+                            arrival.offset(gallery, -1, gallery),
+                            Blocks.STONE.defaultBlockState(),
+                            Block.UPDATE_ALL);
+                    RoomCarver.carve(
+                            two,
+                            arrival.offset(-gallery, 0, -gallery),
+                            arrival.offset(gallery, LayerTuning.DEFAULT.pocketHeight() - 1, gallery),
+                            Blocks.AIR.defaultBlockState(),
+                            Block.UPDATE_ALL);
                 },
-                () -> {},
                 ticks -> {
                     ServerPlayer player = mock.player();
                     expectInDimensionOf(helper, player, 2);
@@ -544,7 +555,6 @@ public class DimensionCrossingTest {
                                     && rider.player().startRiding(pods[1], true, false),
                             "the mocks could not board");
                 },
-                () -> {},
                 ticks -> {
                     ServerPlayer seated = rider.player();
                     expectInDimensionOf(helper, seated, 2);
@@ -616,8 +626,8 @@ public class DimensionCrossingTest {
 
     /**
      * The shape every crossing test takes. Waits until {@code sourcePos} ticks entities in {@code source} and every chunk of
-     * {@code loaded} is loaded, both off the server thread; then runs {@code setup} once. From the next tick it runs {@code during}, then
-     * {@code check} with the ticks since setup: the test passes on the first tick {@code check} does not throw, and fails with its last
+     * {@code loaded} is loaded, both off the server thread; then runs {@code setup} once. From the next tick it runs {@code check} with
+     * the ticks since setup: the test passes on the first tick {@code check} does not throw, and fails with its last
      * failure {@link #CROSSING_TICKS} after setup.
      */
     private static void staged(
@@ -626,7 +636,6 @@ public class DimensionCrossingTest {
             BlockPos sourcePos,
             List<FarChunks.At> loaded,
             Runnable setup,
-            Runnable during,
             IntConsumer check) {
         boolean[] ticking = {false};
         boolean[] ready = {false};
@@ -641,7 +650,6 @@ public class DimensionCrossingTest {
                 }
                 return;
             }
-            during.run();
             int ticks = (int) (helper.getTick() - setUpAt[0]);
             try {
                 check.accept(ticks);
@@ -668,8 +676,8 @@ public class DimensionCrossingTest {
             List<FarChunks.At> arrival,
             Runnable setup,
             Runnable check) {
-        int layer = TestLayers.dimensionBand(level).layer();
-        Vec3 start = new Vec3(x, TestLayers.dimensionBand(level).minY() + START_HEIGHT, z);
+        LayerChain.Band band = TestLayers.dimensionBand(level);
+        Vec3 start = new Vec3(x, band.minY() + START_HEIGHT, z);
         staged(
                 helper,
                 level,
@@ -680,13 +688,13 @@ public class DimensionCrossingTest {
                     setup.run();
                     mock.teleportTo(level, start, 0, 0);
                 },
-                () -> {
+                ticks -> {
                     ServerPlayer player = mock.player();
-                    if (TestLayers.isInDimensionOf(player, layer)) {
+                    if (TestLayers.isInDimensionOf(player, band.layer())) {
                         player.setPos(player.getX(), player.getY() - 1, player.getZ());
                     }
-                },
-                ticks -> check.run());
+                    check.run();
+                });
     }
 
     /** Puts a mock at {@code start} in {@code level} and passes when, {@link #WATCH_TICKS} later, it is still there and nothing fired. */
@@ -699,7 +707,6 @@ public class DimensionCrossingTest {
                 BlockPos.containing(start),
                 List.of(),
                 () -> mock.teleportTo(level, start, 0, 0),
-                () -> {},
                 ticks -> {
                     ServerPlayer player = mock.player();
                     expect(
@@ -736,6 +743,8 @@ public class DimensionCrossingTest {
         int radius = LayerTuning.DEFAULT.pocketRadius();
         int height = LayerTuning.DEFAULT.pocketHeight();
         int reach = radius + 1;
+        BlockState lava = Blocks.LAVA.defaultBlockState();
+        BlockState gas = HazardBlocks.GAS_POCKET.defaultBlockState();
         MockPlayer mock = MockPlayers.join(helper, name);
         long[] arrivedAt = {-1};
         staged(
@@ -746,35 +755,20 @@ public class DimensionCrossingTest {
                 () -> {
                     for (int i = -radius; i <= radius; i += radius) {
                         for (int dy = 0; dy < height; dy += 2) {
-                            to.setBlock(
-                                    bottom.offset(reach, dy, i), Blocks.LAVA.defaultBlockState(), Block.UPDATE_CLIENTS);
-                            to.setBlock(
-                                    bottom.offset(-reach, dy, i),
-                                    Blocks.LAVA.defaultBlockState(),
-                                    Block.UPDATE_CLIENTS);
-                            to.setBlock(
-                                    bottom.offset(i, dy, reach), Blocks.LAVA.defaultBlockState(), Block.UPDATE_CLIENTS);
-                            to.setBlock(
-                                    bottom.offset(i, dy, -reach),
-                                    Blocks.LAVA.defaultBlockState(),
-                                    Block.UPDATE_CLIENTS);
-                            to.setBlock(
-                                    bottom.offset(reach, dy + 1, i),
-                                    HazardBlocks.GAS_POCKET.defaultBlockState(),
-                                    Block.UPDATE_CLIENTS);
-                            to.setBlock(
-                                    bottom.offset(i, dy + 1, -reach),
-                                    HazardBlocks.GAS_POCKET.defaultBlockState(),
-                                    Block.UPDATE_CLIENTS);
+                            to.setBlock(bottom.offset(reach, dy, i), lava, Block.UPDATE_CLIENTS);
+                            to.setBlock(bottom.offset(-reach, dy, i), lava, Block.UPDATE_CLIENTS);
+                            to.setBlock(bottom.offset(i, dy, reach), lava, Block.UPDATE_CLIENTS);
+                            to.setBlock(bottom.offset(i, dy, -reach), lava, Block.UPDATE_CLIENTS);
+                            to.setBlock(bottom.offset(reach, dy + 1, i), gas, Block.UPDATE_CLIENTS);
+                            to.setBlock(bottom.offset(i, dy + 1, -reach), gas, Block.UPDATE_CLIENTS);
                         }
-                        to.setBlock(bottom.offset(i, height, 0), Blocks.LAVA.defaultBlockState(), Block.UPDATE_CLIENTS);
+                        to.setBlock(bottom.offset(i, height, 0), lava, Block.UPDATE_CLIENTS);
                         if (floorIsRock) {
-                            to.setBlock(bottom.offset(i, -1, 0), Blocks.LAVA.defaultBlockState(), Block.UPDATE_CLIENTS);
+                            to.setBlock(bottom.offset(i, -1, 0), lava, Block.UPDATE_CLIENTS);
                         }
                     }
                     mock.teleportTo(from, start, 0, 0);
                 },
-                () -> {},
                 ticks -> {
                     ServerPlayer player = mock.player();
                     expect(
@@ -824,27 +818,6 @@ public class DimensionCrossingTest {
                 level,
                 column.offset(-halfWidth, 0, -halfWidth),
                 column.offset(halfWidth, SHAFT_HEIGHT, halfWidth),
-                Blocks.AIR.defaultBlockState(),
-                Block.UPDATE_ALL);
-    }
-
-    /**
-     * Opens a gallery where a descent into {@code level} arrives at the column: the pocket's rows of air under the ceiling,
-     * {@code halfWidth} blocks out each way, over a stone floor level with the pocket's. The ceiling row itself stays.
-     */
-    private static void openGalleryAtTheArrival(ServerLevel level, double x, double z, int halfWidth) {
-        int ceiling = TestLayers.dimensionBand(level).maxY();
-        BlockPos arrival = BlockPos.containing(x, ceiling - LayerTuning.DEFAULT.pocketHeight(), z);
-        RoomCarver.carve(
-                level,
-                arrival.offset(-halfWidth, -1, -halfWidth),
-                arrival.offset(halfWidth, -1, halfWidth),
-                Blocks.STONE.defaultBlockState(),
-                Block.UPDATE_ALL);
-        RoomCarver.carve(
-                level,
-                arrival.offset(-halfWidth, 0, -halfWidth),
-                arrival.offset(halfWidth, LayerTuning.DEFAULT.pocketHeight() - 1, halfWidth),
                 Blocks.AIR.defaultBlockState(),
                 Block.UPDATE_ALL);
     }
