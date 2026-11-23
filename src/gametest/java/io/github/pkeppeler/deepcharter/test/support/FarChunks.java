@@ -249,6 +249,11 @@ public final class FarChunks {
         return chunks;
     }
 
+    /** Every chunk over the block columns {@code minX..maxX}, {@code minZ..maxZ}, both inclusive, for {@link #whenLoaded}. */
+    public static List<At> overBlocks(ServerLevel level, int minX, int minZ, int maxX, int maxZ) {
+        return rect(level, minX >> 4, minZ >> 4, maxX >> 4, maxZ >> 4);
+    }
+
     /**
      * Forces every chunk of {@code chunks} (held until the test finishes, or until {@link #release}) and runs {@code then} on the
      * first tick when all of them are loaded, or fails the test naming the first one still missing after {@link #WAIT_SECONDS}. The

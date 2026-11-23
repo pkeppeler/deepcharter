@@ -1126,7 +1126,7 @@ public class ProspectorChassisTest {
     /** Every chunk the site touches. */
     private static List<FarChunks.At> chunksOf(ServerLevel level, StructureSite site) {
         BoundingBox box = site.bounds();
-        return FarChunks.rect(level, box.minX() >> 4, box.minZ() >> 4, box.maxX() >> 4, box.maxZ() >> 4);
+        return FarChunks.overBlocks(level, box.minX(), box.minZ(), box.maxX(), box.maxZ());
     }
 
     /** Asks for every chunk the site touches again, so that one that is loaded already must not be drawn twice. */

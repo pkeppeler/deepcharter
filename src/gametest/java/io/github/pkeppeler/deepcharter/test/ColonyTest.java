@@ -321,7 +321,7 @@ public class ColonyTest {
         int half = 90;
         FarChunks.whenLoaded(
                 helper,
-                FarChunks.rect(level, (lake - half) >> 4, (lake - half) >> 4, (lake + half) >> 4, (lake + half) >> 4),
+                FarChunks.overBlocks(level, lake - half, lake - half, lake + half, lake + half),
                 () -> aSpawnInWaterMakesTheBuildSearch(helper, level, lake, half));
     }
 
@@ -412,12 +412,8 @@ public class ColonyTest {
     private static List<FarChunks.At> eastLandChunks(ServerLevel level, ColonySite.Placed colony) {
         int half = ColonyTuning.DEFAULT.padSize() / 2;
         BlockPos centre = colony.center();
-        return FarChunks.rect(
-                level,
-                (centre.getX() + half + 1) >> 4,
-                (centre.getZ() - 20) >> 4,
-                (centre.getX() + half + 32) >> 4,
-                (centre.getZ() + 20) >> 4);
+        return FarChunks.overBlocks(
+                level, centre.getX() + half + 1, centre.getZ() - 20, centre.getX() + half + 32, centre.getZ() + 20);
     }
 
     @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)

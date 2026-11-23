@@ -932,12 +932,12 @@ public class LayerStructuresTest {
         BlockPos around = colony.center();
         FarChunks.whenLoaded(
                 helper,
-                FarChunks.rect(
+                FarChunks.overBlocks(
                         server.overworld(),
-                        (around.getX() - PAD_REACH) >> 4,
-                        (around.getZ() - PAD_REACH) >> 4,
-                        (around.getX() + PAD_REACH) >> 4,
-                        (around.getZ() + PAD_REACH) >> 4),
+                        around.getX() - PAD_REACH,
+                        around.getZ() - PAD_REACH,
+                        around.getX() + PAD_REACH,
+                        around.getZ() + PAD_REACH),
                 () -> theColonyHoldsNotesOneToFour(helper, server, colony));
     }
 

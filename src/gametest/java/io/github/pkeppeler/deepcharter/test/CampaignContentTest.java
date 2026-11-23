@@ -317,12 +317,12 @@ public class CampaignContentTest {
         int radius = ColonyTuning.DEFAULT.conduitRadius();
         FarChunks.whenLoaded(
                 helper,
-                FarChunks.rect(
+                FarChunks.overBlocks(
                         level,
-                        (centre.getX() - radius) >> 4,
-                        (centre.getZ() - radius) >> 4,
-                        (centre.getX() + radius) >> 4,
-                        (centre.getZ() + radius) >> 4),
+                        centre.getX() - radius,
+                        centre.getZ() - radius,
+                        centre.getX() + radius,
+                        centre.getZ() + radius),
                 () -> theConduitIsContinuous(helper, level, colony, centre, radius));
     }
 
