@@ -29,3 +29,8 @@ Amended 2026-11-22 (#915): the guard on surface biomes covers visual and audio a
 - The blend at a layer's edge is the camera's, as measured in #744: against the surface's own factor it is 0.29 at the edge and 0 twelve blocks in (the study read 0.32 and 0; the sample here is 1/32 steps).
 - A rename of `addDefaultLayers` or `addBiomeLayerForAttribute`, or a change to its signature, fails the game at startup (`defaultRequire: 1`), not silently.
 - The server still keeps sky light 15 in an open shaft (cutover item 4, unchanged).
+
+## Note, 2026-11-21 (#803)
+
+The user approved the look on 2026-11-21 (#214): the default `cardinal_light`, `ambient_light` 0.0, and the soft fade at the surface floor. The two provisional values are final. The type now ships as `minecraft:overworld` (`data/minecraft/dimension_type/overworld.json`), and a campaign level is one whose type is `minecraft:overworld`. The test pack's `campaign_sample` uses it; the flat test overworld uses `deepcharter:test_overworld`, so it is not a campaign level. The darkening with depth comes from each zone biome's ambient colour; the dimension's own ambient light is 0.
+

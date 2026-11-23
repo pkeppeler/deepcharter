@@ -4,13 +4,13 @@ Deep Charter is a co-op Minecraft mod in the spirit of Motherload: drive a pod d
 
 You get two files from the host: `deepcharter-friends-{{VERSION}}.mrpack` (the client) and an address to join. The host also runs `deepcharter-server-{{VERSION}}.zip`.
 
-**Start a new world for this version.** The colony replaces what stands at the world spawn, so a world with a build there loses it. The surface terrain changed too: in an old world, new chunks have red regolith land and the old chunks keep their grass and trees, so the two meet in a hard seam. The old colony stays where it was, with no flat ground. A new world has none of this. A later version will not open an old world at all: see [Old worlds](#old-worlds).
+**Start a new world for this version.** The overworld is now one tall campaign world: the surface and both layers are bands of one dimension, and a breach is a dig with no teleport. A world made by an earlier version is not opened: see [Old worlds](#old-worlds).
 
 ## Old worlds
 
-This version opens a world made by the version before it, with the problems above. The version that makes the overworld the tall campaign world does not: chunks saved in an old world would have air under them, and players and pods left in the old layer dimensions would be lost. So a world made before it is not migrated.
+This version does not open a world made by the version before it. Chunks saved in an old world would have air under them, and players and pods left in the old layer dimensions would be lost. So a world made before it is not migrated.
 
-Such a version refuses the old world, and changes nothing in it. Singleplayer shows "This world cannot be opened", and a dedicated server logs the reason and stops. The older Deep Charter that made the world can still open it. A version that changes the world format again needs a new world in the same way.
+It refuses the old world, and changes nothing in it. Singleplayer shows "This world cannot be opened", and a dedicated server logs the reason and stops. The older Deep Charter that made the world can still open it. A version that changes the world format again needs a new world in the same way.
 
 To start a new world: in singleplayer, **Create New World**. On a server, delete or move the `world` folder, then start it again.
 
