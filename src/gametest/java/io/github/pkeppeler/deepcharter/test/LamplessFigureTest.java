@@ -46,7 +46,6 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
 
@@ -372,12 +371,15 @@ public class LamplessFigureTest {
                 if (!level.getBlockState(feet).is(BlockTags.RAILS)) {
                     throw failure(helper, "the second figure stands at %s, which is not a rail", feet.toShortString());
                 }
-                if (level.getBrightness(LightLayer.BLOCK, feet) >= TUNING.litBlockLight()) {
+                // light-wait-ok: waits on the game-time respawn delay, not on light; the check fails only on light that
+                // is already there, so a lagging engine reads dark and passes
+                int light = level.getBrightness(LightLayer.BLOCK, feet);
+                if (light >= TUNING.litBlockLight()) {
                     throw failure(
                             helper,
                             "the second figure appeared at %s, where the light is %d",
                             feet.toShortString(),
-                            level.getBrightness(LightLayer.BLOCK, feet));
+                            light);
                 }
                 killedAt[0] = level.getGameTime();
                 figure[0].kill(level);
@@ -515,7 +517,6 @@ public class LamplessFigureTest {
             for (int chunkX = bounds.minX() >> 4; chunkX <= bounds.maxX() >> 4; chunkX++) {
                 for (int chunkZ = bounds.minZ() >> 4; chunkZ <= bounds.maxZ() >> 4; chunkZ++) {
                     FarChunks.force(helper, level, chunkX, chunkZ);
-                    level.getChunk(chunkX, chunkZ, ChunkStatus.FULL);
                 }
             }
             MockPlayer mock = MockPlayers.join(helper, "figure-watcher");

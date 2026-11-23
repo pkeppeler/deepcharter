@@ -87,7 +87,6 @@ public class TallyTest {
     private static final int SETTLE_TICKS = 10;
 
     private static final int SEND_ATTEMPT_TICKS = 100;
-    private static final int LIGHT_BUDGET_TICKS = 200;
     private static final String APPROACH_KEY = "creature.deepcharter.tally_approach";
     private static final String CLAMP_POD_KEY = "creature.deepcharter.tally_clamp_pod";
     private static final String CLAMP_FOOT_KEY = "creature.deepcharter.tally_clamp_foot";
@@ -103,7 +102,13 @@ public class TallyTest {
             boolean podRide,
             MockPlayer holder,
             Tally tally,
-            List<BlockState> blocks) {
+            List<BlockState> blocks,
+            long builtAt) {
+        /** Ticks since the arena was built: the budgets count from there, not from the test's start, which the wait for the chunk takes a share of. */
+        long age(GameTestHelper helper) {
+            return helper.getTick() - builtAt;
+        }
+
         static Arena build(GameTestHelper helper, ServerLevel level, BlockPos origin, boolean podRide) {
             for (int u = -HALF - 1; u <= HALF + 1; u++) {
                 for (int v = -HALF - 1; v <= HALF + 1; v++) {
@@ -147,7 +152,7 @@ public class TallyTest {
             Tally tally = TestEntities.create(CreatureRegistry.TALLY, level);
             tally.setPos(Vec3.atBottomCenterOf(origin.west(HALF - 1).above(2)));
             level.addFreshEntity(tally);
-            return new Arena(level, origin, pod, podRide, holder, tally, survey(level, origin));
+            return new Arena(level, origin, pod, podRide, holder, tally, survey(level, origin), helper.getTick());
         }
 
         private static List<BlockState> survey(ServerLevel level, BlockPos origin) {
@@ -221,7 +226,7 @@ public class TallyTest {
             }
             if (clampedAt[0] < 0) {
                 if (arena.tally.isClamped()) {
-                    clampedAt[0] = helper.getTick();
+                    clampedAt[0] = arena.age(helper);
                     LOGGER.info(
                             "[tally] pod: trail then clamp took {} ticks ({} s)", clampedAt[0], clampedAt[0] / 20.0);
                     if (clampedAt[0] < TUNING.trailTicks() || clampedAt[0] > TUNING.trailTicks() + APPROACH_TICKS_MAX) {
@@ -235,13 +240,13 @@ public class TallyTest {
                     if (arena.ore() != ORES) {
                         throw failure(helper, "the bay held %s ore at the clamp, not %s", arena.ore(), ORES);
                     }
-                } else if (helper.getTick() > CLAMP_BUDGET_TICKS) {
-                    throw failure(helper, "the Tally had not clamped to the hatch after %s ticks", helper.getTick());
+                } else if (arena.age(helper) > CLAMP_BUDGET_TICKS) {
+                    throw failure(helper, "the Tally had not clamped to the hatch after %s ticks", arena.age(helper));
                 }
                 return;
             }
             if (arena.tally.isRemoved()) {
-                goneAt[0] = helper.getTick();
+                goneAt[0] = arena.age(helper);
                 LOGGER.info(
                         "[tally] pod: the sample was taken and the Tally gone {} ticks after the clamp",
                         goneAt[0] - clampedAt[0]);
@@ -273,11 +278,11 @@ public class TallyTest {
                 }
                 arena.clear();
                 helper.succeed();
-            } else if (helper.getTick() - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
+            } else if (arena.age(helper) - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
                 throw failure(
                         helper,
                         "the Tally was still there %s ticks after it clamped, ore %s",
-                        helper.getTick() - clampedAt[0],
+                        arena.age(helper) - clampedAt[0],
                         arena.ore());
             }
         });
@@ -302,17 +307,17 @@ public class TallyTest {
             }
             if (clampedAt[0] < 0) {
                 if (arena.tally.isClamped()) {
-                    clampedAt[0] = helper.getTick();
+                    clampedAt[0] = arena.age(helper);
                     arena.holder.setInput(SPRINT);
-                } else if (helper.getTick() > CLAMP_BUDGET_TICKS) {
+                } else if (arena.age(helper) > CLAMP_BUDGET_TICKS) {
                     throw failure(helper, "the Tally had not clamped to the hatch");
                 }
                 return;
             }
-            long since = helper.getTick() - clampedAt[0];
+            long since = arena.age(helper) - clampedAt[0];
             if (!arena.tally.isAlive()) {
                 if (brokeAt[0] < 0) {
-                    brokeAt[0] = helper.getTick();
+                    brokeAt[0] = arena.age(helper);
                     if (since < TallyTimings.cutterBreakTicks(TUNING)
                             || since > TallyTimings.cutterBreakTicks(TUNING) + CUTTER_SLACK_TICKS) {
                         throw failure(
@@ -338,7 +343,7 @@ public class TallyTest {
                 }
                 if (arena.told(BITTEN_KEY) != 1 || arena.told(BROKEN_KEY) != 1) {
                     // The mock pilot's lines reach it a tick after the server sends them: look again next tick.
-                    if (helper.getTick() - brokeAt[0] < 4) {
+                    if (arena.age(helper) - brokeAt[0] < 4) {
                         return;
                     }
                     throw failure(
@@ -385,15 +390,16 @@ public class TallyTest {
             }
             if (clampedAt[0] < 0) {
                 if (arena.tally.isClamped()) {
-                    clampedAt[0] = helper.getTick();
-                } else if (helper.getTick() > CLAMP_BUDGET_TICKS) {
+                    clampedAt[0] = arena.age(helper);
+                } else if (arena.age(helper) > CLAMP_BUDGET_TICKS) {
                     throw failure(helper, "the Tally had not clamped to the pack");
                 }
                 return;
             }
             if (arena.tally.isRemoved()) {
                 LOGGER.info(
-                        "[tally] foot: the sample was taken {} ticks after the clamp", helper.getTick() - clampedAt[0]);
+                        "[tally] foot: the sample was taken {} ticks after the clamp",
+                        arena.age(helper) - clampedAt[0]);
                 if (arena.ore() != ORES - 1 || arena.dear() != 1) {
                     throw failure(
                             helper,
@@ -406,7 +412,7 @@ public class TallyTest {
                     throw failure(helper, "the person was hurt");
                 }
                 if (arena.told(CLAMP_FOOT_KEY) != 1 || arena.told(SAMPLE_KEY) != 1) {
-                    if (helper.getTick() - clampedAt[0] < SAMPLE_BUDGET_TICKS) {
+                    if (arena.age(helper) - clampedAt[0] < SAMPLE_BUDGET_TICKS) {
                         return;
                     }
                     throw failure(
@@ -416,9 +422,11 @@ public class TallyTest {
                 }
                 arena.clear();
                 helper.succeed();
-            } else if (helper.getTick() - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
+            } else if (arena.age(helper) - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
                 throw failure(
-                        helper, "the Tally was still there %s ticks after it clamped", helper.getTick() - clampedAt[0]);
+                        helper,
+                        "the Tally was still there %s ticks after it clamped",
+                        arena.age(helper) - clampedAt[0]);
             }
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
@@ -438,7 +446,7 @@ public class TallyTest {
             }
             if (struckAt[0] < 0) {
                 if (arena.tally.isClamped()) {
-                    struckAt[0] = helper.getTick();
+                    struckAt[0] = arena.age(helper);
                     ServerPlayer person = arena.holder.player();
                     // The lightest blow there is: a bare hand does 1.
                     arena.tally.hurtServer(level, level.damageSources().playerAttack(person), 1f);
@@ -450,7 +458,7 @@ public class TallyTest {
                                 arena.tally.getMaxHealth());
                     }
                     LOGGER.info("[tally] foot: one blow of 1 broke it (health {})", TUNING.maxHealth());
-                } else if (helper.getTick() > CLAMP_BUDGET_TICKS) {
+                } else if (arena.age(helper) > CLAMP_BUDGET_TICKS) {
                     throw failure(helper, "the Tally had not clamped to the pack");
                 }
                 return;
@@ -464,7 +472,7 @@ public class TallyTest {
                 }
                 arena.clear();
                 helper.succeed();
-            } else if (helper.getTick() - struckAt[0] > 60) {
+            } else if (arena.age(helper) - struckAt[0] > 60) {
                 throw failure(helper, "the broken Tally was still there 60 ticks after the blow");
             }
         });
@@ -499,20 +507,20 @@ public class TallyTest {
     }
 
     /** (#917) What draws a Tally: a person aboard a pod that holds ore, or on foot with ore in the dark; never one with nothing to sample. */
-    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + LIGHT_BUDGET_TICKS + 60)
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 60)
     public void onlyOreInTheDarkDrawsATally(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos origin = slot(5);
         Arena[] made = {null};
         int[] phase = {0};
-        long[] litAt = {-1};
+        FarChunks.Deadline[] lit = {null};
         TestTicks.each(helper, () -> {
             Arena arena = made[0];
             if (arena == null) {
                 return;
             }
             ServerPlayer person = arena.holder.player();
-            if (phase[0] == 0 && helper.getTick() < SETTLE_TICKS) {
+            if (phase[0] == 0 && arena.age(helper) < SETTLE_TICKS) {
                 return;
             }
             if (phase[0] == 0) {
@@ -548,7 +556,7 @@ public class TallyTest {
                 person.setGameMode(GameType.SURVIVAL);
                 // room-carver: a light block in this test's own arena
                 level.setBlock(person.blockPosition(), Blocks.LIGHT.defaultBlockState(), 3);
-                litAt[0] = helper.getTick();
+                lit[0] = FarChunks.deadline();
                 phase[0] = 1;
             } else if (level.getBrightness(LightLayer.BLOCK, person.blockPosition())
                     >= CreatureTuning.DEFAULT.litBlockLight()) {
@@ -557,8 +565,8 @@ public class TallyTest {
                 }
                 arena.clear();
                 helper.succeed();
-            } else if (helper.getTick() - litAt[0] > LIGHT_BUDGET_TICKS) {
-                throw failure(helper, "the light did not reach the person in %s ticks", LIGHT_BUDGET_TICKS);
+            } else {
+                lit[0].await(helper, level, false, () -> "the light did not reach the person");
             }
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, true));
@@ -690,7 +698,7 @@ public class TallyTest {
             if (arena.ore() != ORES || arena.told(CLAMP_POD_KEY) != 0) {
                 throw failure(helper, "the walled-off Tally took ore or told the pilot it clamped");
             }
-            if (helper.getTick() > CLAMP_BUDGET_TICKS + 40) {
+            if (arena.age(helper) > CLAMP_BUDGET_TICKS + 40) {
                 if (arena.tally.position().x > origin.getX()) {
                     throw failure(helper, "the Tally came through the wall to %s", arena.tally.position());
                 }
@@ -727,7 +735,7 @@ public class TallyTest {
             }
             if (clampedAt[0] < 0) {
                 if (arena.tally.isClamped()) {
-                    clampedAt[0] = helper.getTick();
+                    clampedAt[0] = arena.age(helper);
                     if (!Tally.draws(arena.pod)) {
                         throw failure(helper, "a dark pod with ore and a pilot draws no Tally");
                     }
@@ -738,7 +746,7 @@ public class TallyTest {
                     if (Tally.draws(arena.pod)) {
                         throw failure(helper, "a lit pod draws a Tally");
                     }
-                } else if (helper.getTick() > CLAMP_BUDGET_TICKS) {
+                } else if (arena.age(helper) > CLAMP_BUDGET_TICKS) {
                     throw failure(helper, "the Tally had not clamped to the hatch");
                 }
                 return;
@@ -753,7 +761,7 @@ public class TallyTest {
                 }
                 arena.clear();
                 helper.succeed();
-            } else if (arena.ore() == ORES && helper.getTick() - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
+            } else if (arena.ore() == ORES && arena.age(helper) - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
                 throw failure(helper, "the Tally let go of a lit pod and took nothing");
             }
         });
@@ -774,9 +782,9 @@ public class TallyTest {
             }
             if (goneAt[0] < 0) {
                 if (arena.tally.isClamped()) {
-                    goneAt[0] = helper.getTick();
+                    goneAt[0] = arena.age(helper);
                     arena.pod.discard();
-                } else if (helper.getTick() > CLAMP_BUDGET_TICKS) {
+                } else if (arena.age(helper) > CLAMP_BUDGET_TICKS) {
                     throw failure(helper, "the Tally had not clamped to the hatch");
                 }
                 return;
@@ -787,7 +795,7 @@ public class TallyTest {
                 }
                 arena.clear();
                 helper.succeed();
-            } else if (helper.getTick() - goneAt[0] > 10) {
+            } else if (arena.age(helper) - goneAt[0] > 10) {
                 throw failure(helper, "the Tally still clamped a pod that was gone 10 ticks ago");
             }
         });
@@ -808,9 +816,9 @@ public class TallyTest {
             }
             if (leftAt[0] < 0) {
                 if (arena.tally.isClamped()) {
-                    leftAt[0] = helper.getTick();
+                    leftAt[0] = arena.age(helper);
                     arena.holder.leave();
-                } else if (helper.getTick() > CLAMP_BUDGET_TICKS) {
+                } else if (arena.age(helper) > CLAMP_BUDGET_TICKS) {
                     throw failure(helper, "the Tally had not clamped to the pack");
                 }
                 return;
@@ -822,7 +830,7 @@ public class TallyTest {
                 arena.tally.discard();
                 arena.pod.discard();
                 helper.succeed();
-            } else if (helper.getTick() - leftAt[0] > 10) {
+            } else if (arena.age(helper) - leftAt[0] > 10) {
                 throw failure(helper, "the Tally still clamped a person who left 10 ticks ago");
             }
         });
@@ -847,7 +855,7 @@ public class TallyTest {
             }
             if (clampedAt[0] < 0) {
                 if (arena.tally.isClamped()) {
-                    clampedAt[0] = helper.getTick();
+                    clampedAt[0] = arena.age(helper);
                     TagValueOutput output =
                             TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
                     arena.pod.saveWithoutId(output);
@@ -876,7 +884,7 @@ public class TallyTest {
                             TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
                     arena.pod.saveWithoutId(kept);
                     saved[0] = kept.buildResult();
-                } else if (helper.getTick() > CLAMP_BUDGET_TICKS) {
+                } else if (arena.age(helper) > CLAMP_BUDGET_TICKS) {
                     throw failure(helper, "the Tally had not clamped to the hatch");
                 }
                 return;
@@ -890,9 +898,11 @@ public class TallyTest {
                 }
                 arena.clear();
                 helper.succeed();
-            } else if (helper.getTick() - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
+            } else if (arena.age(helper) - clampedAt[0] > SAMPLE_BUDGET_TICKS) {
                 throw failure(
-                        helper, "the Tally was still there %s ticks after it clamped", helper.getTick() - clampedAt[0]);
+                        helper,
+                        "the Tally was still there %s ticks after it clamped",
+                        arena.age(helper) - clampedAt[0]);
             }
         });
         FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, true));

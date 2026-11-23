@@ -9,16 +9,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.AABB;
 
 /**
  * Awaits entity ticking in a far chunk of a fresh world. The test method must call this, never a tick
- * callback. It forces the chunk, because a mock player teleported within its own dimension never loads
+ * callback. It forces the chunk, without loading it on the server thread (#1016), because a mock player teleported within its own dimension never loads
  * chunks around itself. A chunk it forces is released when the test finishes ({@link #release}): a forced chunk pins the
  * generation neighbourhood around it (up to 17 x 17 chunks of proto chunks and their sections), so one left forced for the rest
  * of the run grows the heap with the suite (#569).
@@ -51,7 +53,28 @@ public final class FarChunks {
     /** The chunks {@link #pin} holds for the world's life. */
     private static final Set<Chunk> PINNED = new HashSet<>();
 
+    static {
+        // A world's levels must not outlive its server. A pinned chunk's record holds its ServerLevel, the colony pad's
+        // chunks are pinned in every world, and a client run makes a server for each test class: 6 levels and 70 MB of
+        // each world stayed on the heap until it ran out (#803).
+        ServerLifecycleEvents.SERVER_STOPPED.register(FarChunks::forget);
+    }
+
     private FarChunks() {}
+
+    /** How many chunks tests hold forced or pinned in the servers that run. */
+    public static int heldCount() {
+        return HOLDS.size() + PINNED.size();
+    }
+
+    private static void forget(MinecraftServer server) {
+        HOLDS.keySet().removeIf(chunk -> chunk.level().getServer() == server);
+        PINNED.removeIf(chunk -> chunk.level().getServer() == server);
+        HELD_BY_TEST
+                .values()
+                .forEach(chunks -> chunks.removeIf(chunk -> chunk.level().getServer() == server));
+        HELD_BY_TEST.values().removeIf(List::isEmpty);
+    }
 
     /**
      * Forces a chunk until {@code helper}'s test finishes. A chunk that is forced already and that no test holds (a colony's pad,
@@ -68,7 +91,8 @@ public final class FarChunks {
         if (mine.contains(chunk)) {
             return;
         }
-        boolean forcedNow = level.setChunkForced(chunkX, chunkZ, true);
+        // setChunkForced would also load the chunk on the server thread; the ticket alone loads it on the workers.
+        boolean forcedNow = level.getChunkSource().updateChunkForced(new ChunkPos(chunkX, chunkZ), true);
         if (forcedNow || HOLDS.containsKey(chunk)) {
             HOLDS.merge(chunk, 1, Integer::sum);
             mine.add(chunk);
@@ -228,6 +252,79 @@ public final class FarChunks {
      */
     public static void awaitEntityTicking(GameTestHelper helper, ServerLevel level, BlockPos pos, Runnable then) {
         awaitEntityTicking(helper, level, List.of(pos), index -> then.run());
+    }
+
+    /** A chunk of a level, for {@link #awaitLoaded}. */
+    public record At(ServerLevel level, int chunkX, int chunkZ) {}
+
+    /**
+     * Forces every chunk of {@code chunks} (held until the test finishes, or until {@link #release}) and runs {@code then} on the
+     * first tick when all of them are loaded, or fails the test naming the first one still missing after {@link #WAIT_SECONDS}. The
+     * chunks load on the worker threads, so the server keeps ticking: use this where a test would read or fill a chunk with
+     * {@code getChunk}, which loads it on the server thread and starves every test beside it. As {@link #awaitEntityTicking}, call it from
+     * the test method, and {@code then} only sets state.
+     *
+     * @throws IllegalStateException if called after the test's first tick
+     */
+    public static void awaitLoaded(GameTestHelper helper, List<At> chunks, Runnable then) {
+        if (helper.getTick() != 0) {
+            throw new IllegalStateException(
+                    "FarChunks.awaitLoaded must be called from the test method, not from a tick callback");
+        }
+        chunks.forEach(chunk -> force(helper, chunk.level(), chunk.chunkX(), chunk.chunkZ()));
+        Deadline deadline = deadline();
+        boolean[] done = {false};
+        TestTicks.each(helper, () -> {
+            if (done[0]) {
+                return;
+            }
+            At missing = null;
+            for (At chunk : chunks) {
+                if (chunk.level().getChunkSource().getChunkNow(chunk.chunkX(), chunk.chunkZ()) == null) {
+                    missing = chunk;
+                    break;
+                }
+            }
+            if (missing == null) {
+                done[0] = true;
+                then.run();
+                return;
+            }
+            At first = missing;
+            deadline.await(
+                    helper,
+                    first.level(),
+                    false,
+                    () -> "chunk " + new ChunkPos(first.chunkX(), first.chunkZ()) + " in "
+                            + first.level().dimension() + " was not loaded after " + WAIT_SECONDS + " s");
+        });
+    }
+
+    /**
+     * As {@link #awaitLoaded}, then runs {@code body} as a step of the test, where it may read the chunks, fail and
+     * {@code helper.succeed()}. Call it from the test method, last or with the test's other sequences started after it.
+     */
+    public static void whenLoaded(GameTestHelper helper, List<At> chunks, Runnable body) {
+        boolean[] loaded = {false};
+        awaitLoaded(helper, chunks, () -> loaded[0] = true);
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    if (!loaded[0]) {
+                        throw helper.assertionException("the chunks are not loaded yet");
+                    }
+                })
+                .thenExecute(body);
+    }
+
+    /** As the list form, for a test that needs every column ticking: runs {@code then} once on the tick when the last one is. */
+    public static void awaitAllEntityTicking(
+            GameTestHelper helper, ServerLevel level, List<BlockPos> positions, Runnable then) {
+        int[] waiting = {positions.size()};
+        awaitEntityTicking(helper, level, positions, index -> {
+            if (--waiting[0] == 0) {
+                then.run();
+            }
+        });
     }
 
     /**

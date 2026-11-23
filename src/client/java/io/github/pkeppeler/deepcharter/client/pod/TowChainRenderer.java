@@ -73,7 +73,7 @@ public final class TowChainRenderer {
 
     private static @Nullable RenderType renderType;
 
-    private static RenderType renderType() {
+    static RenderType renderType() {
         if (renderType == null) {
             renderType = RenderTypes.entityCutout(TEXTURE);
         }
@@ -153,6 +153,12 @@ public final class TowChainRenderer {
                 towed.chassis().width() / 2.0,
                 TowTuning.DEFAULT.lineLength(),
                 look.linkLength());
+        light(level, chain, look);
+        return chain;
+    }
+
+    /** Fills the light of each link of {@code chain}'s built curve from the world, no darker in block light than {@code look} allows. Shared with {@link TetherLineRenderer}. */
+    static void light(ClientLevel level, Chain chain, TowChainLook look) {
         TowChain curve = chain.curve;
         for (int i = 0; i < curve.links; i++) {
             LIGHT_AT.set(
@@ -163,6 +169,5 @@ public final class TowChainRenderer {
             chain.lights[i] = LightCoordsUtil.pack(
                     Math.max(LightCoordsUtil.block(light), look.minBlockLight()), LightCoordsUtil.sky(light));
         }
-        return chain;
     }
 }
