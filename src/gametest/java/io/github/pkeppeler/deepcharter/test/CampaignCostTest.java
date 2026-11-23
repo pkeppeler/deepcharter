@@ -94,11 +94,7 @@ public class CampaignCostTest {
             new Window(CampaignBands.LAYER_1, "campaign_layer_1", "campaign_layer_1_floor"),
             new Window(CampaignBands.LAYER_2, "campaign_layer_2", "campaign_layer_2_floor"));
 
-    /**
-     * The bands that were over the bar when the gate was written (ADR 0086): each is held to its pooled ratio plus the bar's 15%, so it
-     * cannot get worse, until its issue makes the campaign generator's layer bands cost about one layer per row and deletes it. No
-     * other band may have one ({@link #RATCHETED}): a band added since is held to {@value BandCost#BAR}x.
-     */
+    /** The bands that were over the bar when the gate was written (ADR 0086). No other band may have one ({@link #RATCHETED}). */
     private static final List<Ratchet> RATCHETS =
             List.of(new Ratchet(CampaignBands.LAYER_1, 1.265, 1132), new Ratchet(CampaignBands.LAYER_2, 1.598, 1132));
 

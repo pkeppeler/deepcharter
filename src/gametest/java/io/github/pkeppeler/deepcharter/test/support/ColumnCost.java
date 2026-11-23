@@ -65,8 +65,6 @@ public final class ColumnCost {
         MinecraftServerAccess server = (MinecraftServerAccess) helper.getLevel().getServer();
         int autosave = server.deepcharter$ticksUntilAutosave();
         if (!smoke) {
-            // The server's autosave writes every level's chunks every few thousand ticks, into whichever reading is
-            // open.
             server.deepcharter$setTicksUntilAutosave(Integer.MAX_VALUE);
         }
         ArrayDeque<Run> queue = new ArrayDeque<>();
