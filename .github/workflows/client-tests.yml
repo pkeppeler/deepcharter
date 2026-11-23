@@ -117,9 +117,8 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: merged-main-${{ matrix.shard }}
-          # A re-run of this shard uploads the same name again, which v4+ otherwise rejects. After a `--failed`
-          # re-run the aggregate downloads the earlier attempt's artifact for each shard that did not re-run, which
-          # is that shard's sha from its successful attempt; if main moved since, the shas differ and it fails closed.
+          # A re-run uploads the same name again, which v4+ rejects without this. After `--failed` the aggregate
+          # reads the earlier sha of each shard that did not re-run; if main moved, the shas differ and it fails.
           overwrite: true
           path: ${{ runner.temp }}/main-sha-${{ matrix.shard }}
           retention-days: 1
@@ -130,9 +129,8 @@ jobs:
 
   # The one name tools/merge-pr.sh requires for the suite (#1079). Succeeds only when every shard did; skipped
   # when the shards were (the changes job decided no run), which the gate reads as "skipping" like any skipped run.
-  # It also records a `merged-main` notice holding the main sha every shard merged, and fails when they differ or one
-  # recorded none: the merge gate on main, from before it read the shards, takes the suite's main from this job.
-  # It never merges main itself (that could record a sha the shards did not test).
+  # It also records the shards' agreed `merged-main` notice (tools/ci-shard-main.sh), for the gate on main. It never
+  # merges main itself (that could record a sha the shards did not test).
   client-gametest:
     name: client-gametest
     needs: [changes, client-shard]
