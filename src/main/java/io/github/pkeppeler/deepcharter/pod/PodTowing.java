@@ -96,7 +96,7 @@ public final class PodTowing {
 
     private static final double EPSILON = 1e-7;
     /** Blocks a pod hangs below its tower at least for the line to drape over a lip: beside it a line that is blocked is not a line over an edge. */
-    private static final double DRAPE_MIN_DROP = 0.5;
+    private static final double DRAPE_MIN_DROP = 0.25;
     /** Blocks a pod may be past the length of its line and still count as on it: the clamp onto the line's sphere leaves rounding. */
     private static final double LINE_SLACK = 1e-3;
     /** Blocks of open space around a pod for the line to drape over a lip for it: in a shaft or a tunnel the pod follows the path instead. */
