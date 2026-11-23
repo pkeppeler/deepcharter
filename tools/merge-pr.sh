@@ -154,10 +154,9 @@ based_names=("${REQUIRED_CHECKS[@]}")
 # merged the current main. An aggregate pass with no passing shard is not trusted.
 shard_names=$(awk -F'\t' '$1 == "pass" && $2 ~ /^client-gametest-shard / { print $2 }' <<<"$checks")
 if grep -qxF "pass"$'\t'"client-gametest" <<<"$checks"; then # pipe-grep-q: fail-closed
-  # TEMPORARY legacy path (delete with #1116): a PR whose CI ran before #1079 sharded the suite has one `client-gametest`
-  # job that merged main itself and recorded the notice, and a stale-base re-run reuses that old workflow, so it never
-  # gets shards. Legacy only when no client-gametest-shard run of any kind (even a never-started template one) exists
-  # for the head; then that job's own annotation is checked below. The new aggregate records none, so it is refused there.
+  # TEMPORARY legacy path (delete with #1116): CI from before #1079 ran one `client-gametest` job that recorded the
+  # merged-main notice itself, and a stale-base re-run reuses that workflow. Legacy only when the head has no
+  # client-gametest-shard run of any kind (even a never-started template one); the new aggregate records no notice.
   if [[ -z $shard_names ]]; then
     if grep -q '^client-gametest-shard ' <<<"$run_lines"; then
       refuse "client-gametest passed but no client-gametest-shard run did, so nothing shows what the suite ran"
