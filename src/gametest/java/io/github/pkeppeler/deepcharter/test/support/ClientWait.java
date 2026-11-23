@@ -59,7 +59,7 @@ public final class ClientWait {
         while (!condition.getAsBoolean()) {
             if (deadline.expired()) {
                 throw new AssertionError("Timed out after " + FarChunks.WAIT_SECONDS + " s waiting for " + what
-                        + "; it had " + actual.get() + "; held chunks: " + LightSync.heldChunks());
+                        + "; it had " + actual.get() + "; LightSync holds: " + LightSync.heldChunks());
             }
             try {
                 Thread.sleep(FarChunks.POLL_MILLIS);
@@ -75,7 +75,7 @@ public final class ClientWait {
      * Waits until the client holds every chunk that the square of {@code radius} blocks round {@code (x, z)} touches. A test that seats
      * players at a spot it just built calls this before it seats them: the server tracks an entity for a player only once it has sent the chunk the
      * entity stands in, and a rider moves chunk when it boards, so a chunk still queued for sending makes the other rider vanish from the client
-     * for a tick, and with them the client's seat in the pod.
+     * for a tick, and with them the client's seat in the pod. It relies on the server sending a chunk before any entity in it.
      */
     public static void chunksAround(ClientGameTestContext context, int x, int z, int radius) {
         int minX = SectionPos.blockToSectionCoord(x - radius);

@@ -77,6 +77,7 @@ public class SonarHudClientTest implements FabricClientGameTest {
                     "the sonar scope for the navigator",
                     client -> SonarHud.frame(client).isPresent());
             ScopeShot before = ScopeShot.take(context, "sonar-navigator-before");
+            requireNavigator(context);
             context.getInput().pressKey(SonarKeys.PING);
             ClientWait.until(
                     context,
@@ -166,9 +167,26 @@ public class SonarHudClientTest implements FabricClientGameTest {
         }
     }
 
+    /**
+     * Fails, naming the cause, unless the client is the navigator of its pod now: the scope is drawn and the ping key is sent only for a navigator. A client
+     * that lost the other rider for a tick (#1082) is told apart from a wrong pixel or a ping that never came.
+     */
+    public static void requireNavigator(ClientGameTestContext context) {
+        String seat = context.computeOnClient(client -> {
+            int passengers = client.player != null && client.player.getVehicle() instanceof PodEntity pod
+                    ? pod.getPassengers().size()
+                    : 0;
+            return SonarHud.frame(client).isPresent()
+                    ? ""
+                    : "the client is not the navigator: its pod shows " + passengers + " passengers";
+        });
+        require(seat.isEmpty(), seat);
+    }
+
     /** A screenshot with the geometry of the scope: where its middle pixel is on the screen. */
     private record ScopeShot(BufferedImage image, int guiHeight, int scale) {
         static ScopeShot take(ClientGameTestContext context, String name) {
+            requireNavigator(context);
             int[] window = context.computeOnClient(client -> new int[] {
                 client.getWindow().getWidth(),
                 client.getWindow().getGuiScaledHeight(),
