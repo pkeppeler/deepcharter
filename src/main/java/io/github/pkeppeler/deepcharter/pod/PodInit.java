@@ -13,6 +13,7 @@ public final class PodInit {
         PodCommands.init();
         PodMovement.init();
         HardLanding.init();
+        PodCues.init();
         PodDrill.init();
         PodCargo.init();
         PodFuel.init();
@@ -21,9 +22,11 @@ public final class PodInit {
         PodLining.init();
         PodLiner.init();
         PodSounder.init();
+        PodSonar.init();
         PodLavaWatch.init();
         PodBrace.init();
         PodHeatShield.init();
         PodTowing.init();
+        PodTether.init();
     }
 }

@@ -36,17 +36,24 @@ final class Teleports {
      * data is unreadable.
      */
     static GlobalPos destination(MinecraftServer server) {
-        return Colony.respawnPoint(server).orElseGet(() -> {
-            LevelData.RespawnData spawn = server.overworld().getRespawnData();
-            return GlobalPos.of(spawn.dimension(), spawn.pos());
-        });
+        return Colony.respawnPoint(server).orElseGet(() -> worldSpawn(server));
     }
 
     /** Sends {@code pod}, at most {@code scatter} blocks from the destination. Empty when it went, or the reason it did not. */
     static Optional<Component> send(PodEntity pod, double scatter) {
+        return send(pod, scatter, destination(((ServerLevel) pod.level()).getServer()), SpillLife.VANILLA);
+    }
+
+    /** The world spawn, where a transit goes when the colony's column is blocked. */
+    static GlobalPos worldSpawn(MinecraftServer server) {
+        LevelData.RespawnData spawn = server.overworld().getRespawnData();
+        return GlobalPos.of(spawn.dimension(), spawn.pos());
+    }
+
+    /** As {@link #send(PodEntity, double)}, to {@code target}, with the spilled ore lying for {@code spill}. */
+    static Optional<Component> send(PodEntity pod, double scatter, GlobalPos target, SpillLife spill) {
         ServerLevel from = (ServerLevel) pod.level();
         MinecraftServer server = from.getServer();
-        GlobalPos target = destination(server);
         ServerLevel to = server.getLevel(target.dimension());
         if (to == null || !pod.canUsePortal(true) || !pod.canTeleport(from, to)) {
             return Consumables.refusal("teleport_blocked");
@@ -73,8 +80,12 @@ final class Teleports {
         arrived.getPassengersAndSelf().forEach(Entity::resetFallDistance);
         // The ore is spilled first, so that a failure after it loses nothing: the bay is emptied last.
         for (PodCargo.Entry entry : held) {
-            from.addFreshEntity(new ItemEntity(
-                    from, departure.x, departure.y, departure.z, entry.stack().copy()));
+            ItemEntity drop = new ItemEntity(
+                    from, departure.x, departure.y, departure.z, entry.stack().copy());
+            if (spill == SpillLife.EXTENDED) {
+                drop.setExtendedLifetime();
+            }
+            from.addFreshEntity(drop);
         }
         // The saved cargo travelled with the pod (a crossing is a new entity): empty the arriving bay.
         if (arrived instanceof PodEntity moved) {
