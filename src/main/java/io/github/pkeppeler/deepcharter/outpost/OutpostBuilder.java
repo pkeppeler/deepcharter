@@ -126,10 +126,10 @@ public final class OutpostBuilder {
         if (entity instanceof ItemEntity item) {
             // Sweeping another crew's death pile into the builder's pockets would be looting it.
             if (item.getOwner() instanceof ServerPlayer owner
-                    && !Charters.readableCharterOf(server, owner.getUUID())
+                    && Charters.readableCharterOf(server, owner.getUUID())
                             .map(Charter::id)
                             .filter(builders.id()::equals)
-                            .isPresent()) {
+                            .isEmpty()) {
                 return Optional.of(
                         Component.translatable("message.deepcharter.outpost.occupied_items", owner.getName()));
             }
@@ -173,12 +173,16 @@ public final class OutpostBuilder {
         }
         int dx = player.getBlockX() - floor.getX();
         int dz = player.getBlockZ() - floor.getZ();
-        boolean alongX = Math.abs(dx) >= Math.abs(dz);
         int out = EDGE + 1;
+        int x = Mth.clamp(dx, -EDGE, EDGE);
+        int z = Mth.clamp(dz, -EDGE, EDGE);
+        if (Math.abs(dx) >= Math.abs(dz)) {
+            x = dx >= 0 ? out : -out;
+        } else {
+            z = dz >= 0 ? out : -out;
+        }
         int y = Mth.clamp(player.getBlockY(), floor.getY() + 1, floor.getY() + HEIGHT);
-        BlockPos spot = alongX
-                ? new BlockPos(floor.getX() + (dx >= 0 ? out : -out), y, floor.getZ() + Mth.clamp(dz, -EDGE, EDGE))
-                : new BlockPos(floor.getX() + Mth.clamp(dx, -EDGE, EDGE), y, floor.getZ() + (dz >= 0 ? out : -out));
+        BlockPos spot = floor.offset(x, y - floor.getY(), z);
         if (!level.getBlockState(spot).isAir() && level.getBlockEntity(spot) == null) {
             level.setBlock(spot, Blocks.AIR.defaultBlockState(), FLAGS);
         }

@@ -649,24 +649,52 @@ public class OutpostTest {
         return level.getEntitiesOfClass(ItemEntity.class, area);
     }
 
+    /** A stack dropped in the hall, {@code dx} and {@code dz} from the floor's middle. */
+    private static ItemEntity dropItem(Stage stage, double dx, double dz, ItemStack stack) {
+        ItemEntity item = new ItemEntity(
+                stage.level(),
+                stage.floor().getX() + dx,
+                stage.floor().getY() + 2,
+                stage.floor().getZ() + dz,
+                stack);
+        stage.level().addFreshEntity(item);
+        return item;
+    }
+
+    private static void fillInventory(Stage stage) {
+        for (int slot = 0; slot < 36; slot++) {
+            stage.player().getInventory().setItem(slot, new ItemStack(Items.DIRT, 64));
+        }
+    }
+
+    /** The kit builds: {@code what} must not refuse it. */
+    private static void expectBuilt(GameTestHelper helper, Stage stage, String what) {
+        Optional<Component> refusal = build(stage);
+        if (refusal.isPresent()) {
+            throw failure(
+                    helper,
+                    "%s must not refuse the kit, it said %s",
+                    what,
+                    refusal.get().getString());
+        }
+    }
+
+    /** The refusal the builder gives is given {@code name} as its one argument. */
+    private static void expectNamed(GameTestHelper helper, Stage stage, Component name, String whose) {
+        Component said = build(stage).orElseThrow();
+        if (!(said.getContents() instanceof TranslatableContents translatable)
+                || translatable.getArgs().length != 1
+                || !name.equals(translatable.getArgs()[0])) {
+            throw failure(helper, "the refusal should be given %s name, it was %s", whose, said);
+        }
+    }
+
     @GameTest(maxTicks = MAX_TICKS)
     public void aLooseStackInTheHallIsSweptToTheBuilderNotRefused(GameTestHelper helper) {
         Stage stage = stage(helper, 9600, true);
         whenReady(helper, stage, () -> {
-            ItemEntity stack = new ItemEntity(
-                    stage.level(),
-                    stage.floor().getX() + 3.5,
-                    stage.floor().getY() + 2,
-                    stage.floor().getZ() + 3.5,
-                    new ItemStack(Items.DIAMOND, 7));
-            stage.level().addFreshEntity(stack);
-            Optional<Component> refusal = build(stage);
-            if (refusal.isPresent()) {
-                throw failure(
-                        helper,
-                        "a loose stack must not refuse the kit, it said %s",
-                        refusal.get().getString());
-            }
+            ItemEntity stack = dropItem(stage, 3.5, 3.5, new ItemStack(Items.DIAMOND, 7));
+            expectBuilt(helper, stage, "a loose stack");
             if (!stack.isRemoved()) {
                 throw failure(helper, "the swept stack's entity should be discarded");
             }
@@ -686,23 +714,9 @@ public class OutpostTest {
         whenReady(helper, stage, () -> {
             Vec3 outside = Vec3.atBottomCenterOf(stage.floor().offset(7, 1, 0));
             stage.mock().teleportTo(stage.level(), outside, 0f, 0f);
-            for (int slot = 0; slot < 36; slot++) {
-                stage.player().getInventory().setItem(slot, new ItemStack(Items.DIRT, 64));
-            }
-            stage.level()
-                    .addFreshEntity(new ItemEntity(
-                            stage.level(),
-                            stage.floor().getX() + 0.5,
-                            stage.floor().getY() + 2,
-                            stage.floor().getZ() + 3.5,
-                            new ItemStack(Items.DIAMOND, 5)));
-            Optional<Component> refusal = build(stage);
-            if (refusal.isPresent()) {
-                throw failure(
-                        helper,
-                        "a loose stack must not refuse the kit, it said %s",
-                        refusal.get().getString());
-            }
+            fillInventory(stage);
+            dropItem(stage, 0.5, 3.5, new ItemStack(Items.DIAMOND, 5));
+            expectBuilt(helper, stage, "a loose stack");
             if (stage.player().getInventory().countItem(Items.DIAMOND) != 0) {
                 throw failure(helper, "a full inventory takes no diamond");
             }
@@ -738,13 +752,7 @@ public class OutpostTest {
                     11);
             stage.level().addFreshEntity(orb);
             int before = stage.player().totalExperience;
-            Optional<Component> refusal = build(stage);
-            if (refusal.isPresent()) {
-                throw failure(
-                        helper,
-                        "an orb must not refuse the kit, it said %s",
-                        refusal.get().getString());
-            }
+            expectBuilt(helper, stage, "an orb");
             if (!orb.isRemoved()) {
                 throw failure(helper, "the swept orb should be discarded");
             }
@@ -775,13 +783,7 @@ public class OutpostTest {
                     ProblemReporter.DISCARDING, stage.level().registryAccess(), saved));
             stage.level().addFreshEntity(orb);
             int before = stage.player().totalExperience;
-            Optional<Component> refusal = build(stage);
-            if (refusal.isPresent()) {
-                throw failure(
-                        helper,
-                        "an orb must not refuse the kit, it said %s",
-                        refusal.get().getString());
-            }
+            expectBuilt(helper, stage, "an orb");
             int gained = stage.player().totalExperience - before;
             if (!orb.isRemoved() || gained != 15) {
                 throw failure(helper, "the merged orb's 15 experience should be paid in full, gained %s", gained);
@@ -793,23 +795,9 @@ public class OutpostTest {
     public void aSweptStackThatDoesNotFitLiesOutsideTheShellWhenTheBuilderStandsInTheHall(GameTestHelper helper) {
         Stage stage = stage(helper, 10200, true);
         whenReady(helper, stage, () -> {
-            for (int slot = 0; slot < 36; slot++) {
-                stage.player().getInventory().setItem(slot, new ItemStack(Items.DIRT, 64));
-            }
-            stage.level()
-                    .addFreshEntity(new ItemEntity(
-                            stage.level(),
-                            stage.floor().getX() + 0.5,
-                            stage.floor().getY() + 2,
-                            stage.floor().getZ() + 3.5,
-                            new ItemStack(Items.DIAMOND, 5)));
-            Optional<Component> refusal = build(stage);
-            if (refusal.isPresent()) {
-                throw failure(
-                        helper,
-                        "a loose stack must not refuse the kit, it said %s",
-                        refusal.get().getString());
-            }
+            fillInventory(stage);
+            dropItem(stage, 0.5, 3.5, new ItemStack(Items.DIAMOND, 5));
+            expectBuilt(helper, stage, "a loose stack");
             List<ItemEntity> lying =
                     itemsIn(stage.level(), shellOf(stage.floor()).inflate(4));
             if (lying.size() != 1 || lying.getFirst().getItem().getCount() != 5) {
@@ -833,22 +821,11 @@ public class OutpostTest {
             other.mock()
                     .teleportTo(
                             stage.level(), Vec3.atBottomCenterOf(stage.floor().offset(7, 1, 0)), 0f, 0f);
-            ItemEntity pile = new ItemEntity(
-                    stage.level(),
-                    stage.floor().getX() + 3.5,
-                    stage.floor().getY() + 2,
-                    stage.floor().getZ() + 3.5,
-                    new ItemStack(Items.DIAMOND, 7));
+            ItemEntity pile = dropItem(stage, 3.5, 3.5, new ItemStack(Items.DIAMOND, 7));
             pile.setThrower(other.player());
-            stage.level().addFreshEntity(pile);
             try {
                 expectRefusal(helper, stage, stage.floor(), Direction.UP, OCCUPIED_ITEMS, "another charter's items");
-                Component said = build(stage).orElseThrow();
-                if (!(said.getContents() instanceof TranslatableContents translatable)
-                        || translatable.getArgs().length != 1
-                        || !other.player().getName().equals(translatable.getArgs()[0])) {
-                    throw failure(helper, "the refusal should be given the owner's name, it was %s", said);
-                }
+                expectNamed(helper, stage, other.player().getName(), "the owner's");
                 if (pile.isRemoved() || stage.player().getInventory().countItem(Items.DIAMOND) != 0) {
                     throw failure(helper, "a refused kit must sweep nothing");
                 }
@@ -862,21 +839,9 @@ public class OutpostTest {
     public void theBuildersOwnCharterItemsAreSwept(GameTestHelper helper) {
         Stage stage = stage(helper, 10400, true);
         whenReady(helper, stage, () -> {
-            ItemEntity thrown = new ItemEntity(
-                    stage.level(),
-                    stage.floor().getX() + 3.5,
-                    stage.floor().getY() + 2,
-                    stage.floor().getZ() + 3.5,
-                    new ItemStack(Items.DIAMOND, 7));
+            ItemEntity thrown = dropItem(stage, 3.5, 3.5, new ItemStack(Items.DIAMOND, 7));
             thrown.setThrower(stage.player());
-            stage.level().addFreshEntity(thrown);
-            Optional<Component> refusal = build(stage);
-            if (refusal.isPresent()) {
-                throw failure(
-                        helper,
-                        "the builder's own thrown stack must not refuse the kit, it said %s",
-                        refusal.get().getString());
-            }
+            expectBuilt(helper, stage, "the builder's own thrown stack");
             if (!thrown.isRemoved() || stage.player().getInventory().countItem(Items.DIAMOND) != 7) {
                 throw failure(helper, "the builder's own thrown 7 diamonds should be swept into the inventory");
             }
@@ -890,21 +855,10 @@ public class OutpostTest {
             Tally tally = TestEntities.create(CreatureRegistry.TALLY, stage.level());
             tally.setPos(Vec3.atBottomCenterOf(stage.floor().offset(2, 2, 2)));
             stage.level().addFreshEntity(tally);
-            ItemEntity stack = new ItemEntity(
-                    stage.level(),
-                    stage.floor().getX() + 3.5,
-                    stage.floor().getY() + 2,
-                    stage.floor().getZ() + 3.5,
-                    new ItemStack(Items.DIAMOND, 7));
-            stage.level().addFreshEntity(stack);
+            ItemEntity stack = dropItem(stage, 3.5, 3.5, new ItemStack(Items.DIAMOND, 7));
             try {
                 expectRefusal(helper, stage, stage.floor(), Direction.UP, OCCUPIED, "a mob in the hall");
-                Component said = build(stage).orElseThrow();
-                if (!(said.getContents() instanceof TranslatableContents translatable)
-                        || translatable.getArgs().length != 1
-                        || !tally.getName().equals(translatable.getArgs()[0])) {
-                    throw failure(helper, "the refusal should be given the Tally's name, it was %s", said);
-                }
+                expectNamed(helper, stage, tally.getName(), "the Tally's");
                 if (stack.isRemoved() || stage.player().getInventory().countItem(Items.DIAMOND) != 0) {
                     throw failure(helper, "a refused kit must sweep nothing");
                 }
@@ -922,12 +876,7 @@ public class OutpostTest {
             MockPlayer other = MockPlayers.join(helper, "outposter-crewmate");
             other.teleportTo(stage.level(), Vec3.atBottomCenterOf(stage.floor().offset(3, 1, 3)), 0f, 0f);
             expectRefusal(helper, stage, stage.floor(), Direction.UP, OCCUPIED, "another player in the hall");
-            Component said = build(stage).orElseThrow();
-            if (!(said.getContents() instanceof TranslatableContents translatable)
-                    || translatable.getArgs().length != 1
-                    || !other.player().getName().equals(translatable.getArgs()[0])) {
-                throw failure(helper, "the refusal should be given the other player's name, it was %s", said);
-            }
+            expectNamed(helper, stage, other.player().getName(), "the other player's");
         });
     }
 
