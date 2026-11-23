@@ -254,26 +254,31 @@ public class SurfaceTerrainTest {
         helper.succeed();
     }
 
+    /** The surface stays empty (#915, ADR 0036): no category of any surface biome lists a creature, monsters included. */
     @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
-    public void noCreatureSpawnsInTheSurfaceBiomesButMonstersStay(GameTestHelper helper) {
+    public void noCreatureSpawnsInTheSurfaceBiomes(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ChunkGenerator generator = level.getChunkSource().getGenerator();
-        for (String biome :
-                Arrays.asList("deepcharter:regolith_plains", "deepcharter:mesa_country", "deepcharter:basalt_field")) {
+        for (String biome : Arrays.asList(
+                "deepcharter:regolith_plains",
+                "deepcharter:mesa_country",
+                "deepcharter:basalt_field",
+                "deepcharter:salvage_yard")) {
             BlockPos column = surveyColumn(helper, level, biome, 0);
             level.getChunkAt(column);
             for (MobCategory category : MobCategory.values()) {
-                boolean empty = generator
+                int listed = generator
                         .getMobsAt(level, level.structureManager(), category, column)
-                        .isEmpty();
-                if (empty == (category == MobCategory.MONSTER)) {
+                        .unwrap()
+                        .size();
+                if (listed != 0) {
                     throw failure(
                             helper,
-                            "%s at %s: category %s is %s",
+                            "%s at %s: category %s lists %d creatures",
                             biome,
                             column.toShortString(),
                             category,
-                            empty ? "empty, and a night should bring monsters" : "not empty");
+                            listed);
                 }
             }
         }
@@ -287,6 +292,21 @@ public class SurfaceTerrainTest {
             throw failure(
                     helper,
                     "the wandering trader spawns in a fresh world: its spawner ignores the biomes, so the rule must be off");
+        }
+        helper.succeed();
+    }
+
+    /** The spawners that ignore a biome's list are off in a fresh world; {@code spawn_monsters} stays on, or the Retained would stop too. */
+    @GameTest
+    public void aFreshWorldHasNoPatrolsPhantomsOrWardensButKeepsMonsterSpawning(GameTestHelper helper) {
+        GameRules rules = helper.getLevel().getServer().getGameRules();
+        if (rules.get(GameRules.SPAWN_PATROLS)
+                || rules.get(GameRules.SPAWN_PHANTOMS)
+                || rules.get(GameRules.SPAWN_WARDENS)) {
+            throw failure(helper, "a fresh world spawns patrols, phantoms or wardens: no biome list reaches them");
+        }
+        if (!rules.get(GameRules.SPAWN_MONSTERS)) {
+            throw failure(helper, "spawn_monsters is off in a fresh world, and the Retained would not spawn either");
         }
         helper.succeed();
     }
