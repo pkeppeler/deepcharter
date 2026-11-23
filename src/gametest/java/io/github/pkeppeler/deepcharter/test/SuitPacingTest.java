@@ -138,7 +138,6 @@ public class SuitPacingTest {
                             pocket.floor().offset(-2, 1, -2), pocket.floor().offset(2, 3, 2))) {
                         level.setBlock(pos, Blocks.WATER.defaultBlockState(), 3);
                     }
-                    SuitScenes.setReserve(player, CAPACITY, true);
                     mock.teleportTo(level, pocket.stand(), 0f, 0f);
                     player.setGameMode(GameType.SURVIVAL);
                 })
@@ -148,6 +147,8 @@ public class SuitPacingTest {
                     }
                 })
                 .thenExecute(() -> {
+                    // Filled here, not before the wait: the real tick pays a second out while the water settles.
+                    SuitScenes.setReserve(player, CAPACITY, true);
                     int wet = SuitScenes.secondsToEmpty(player, LIMIT);
                     player.setGameMode(GameType.SPECTATOR);
                     print("unbuilt depth, submerged", "measured", wet);

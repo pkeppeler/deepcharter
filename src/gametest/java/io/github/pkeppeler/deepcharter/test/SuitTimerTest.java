@@ -406,6 +406,32 @@ public class SuitTimerTest {
                 .thenSucceed();
     }
 
+    /** Leaving the End respawns the person alive: that is no new life, and the suit keeps the reserve it had. */
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
+    public void aRespawnAliveOutOfTheEndDoesNotRefillTheSuit(GameTestHelper helper) {
+        MockPlayer mock = MockPlayers.join(helper, "suit-end-exit");
+        ServerPlayer before = mock.player();
+        SuitScenes.setReserve(before, 12f, true);
+        helper.startSequence()
+                .thenExecute(() -> {
+                    // The flag the credits leave: the respawn command then takes the alive path out of the End.
+                    before.wonGame = true;
+                    before.connection.handleClientCommand(
+                            new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
+                    expect(helper, before.connection.getPlayer() != before, "the player should have respawned");
+                })
+                .thenIdle(2)
+                .thenExecute(() -> {
+                    SuitState state = SuitScenes.state(before.connection.getPlayer());
+                    expect(
+                            helper,
+                            near(state.reserve(), 12f) && state.explained(),
+                            "a respawn alive is no death and must not refill the suit, it reads %s",
+                            state);
+                })
+                .thenSucceed();
+    }
+
     /** What is saved, and what goes to the client, is pinned by literal values. */
     @GameTest
     public void theSuitsSavedAndSentFormsArePinned(GameTestHelper helper) {

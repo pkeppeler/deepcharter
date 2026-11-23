@@ -62,8 +62,12 @@ public final class SuitTicker {
     static void init() {
         ServerTickEvents.END_SERVER_TICK.register(SuitTicker::tick);
         // The new player's attachments are copied from the old one's around this event, in no order I can rely on, so
-        // the refill waits for the next tick.
-        ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> NEW_LIVES.add(newPlayer.getUUID()));
+        // the refill waits for the next tick. A respawn alive (out of the End) is no new life and refills nothing.
+        ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
+            if (!alive) {
+                NEW_LIVES.add(newPlayer.getUUID());
+            }
+        });
     }
 
     /** What the suit does this second: how, at what rate, on which axes, and in which hall it leaks. */

@@ -1,6 +1,7 @@
 package io.github.pkeppeler.deepcharter.outpost;
 
 import io.github.pkeppeler.deepcharter.outpost.OutpostData.Outpost;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -23,7 +24,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public final class OutpostHabitability {
     /** The axes a shell is judged on: what leaks air. */
     public static final Set<RatingAxis> AXES =
-            Set.copyOf(EnumSet.of(RatingAxis.HEAT, RatingAxis.PRESSURE, RatingAxis.FLOODING));
+            Collections.unmodifiableSet(EnumSet.of(RatingAxis.HEAT, RatingAxis.PRESSURE, RatingAxis.FLOODING));
 
     private OutpostHabitability() {}
 

@@ -102,11 +102,15 @@ public final class SuitScenes {
 
     /** A sequence that starts on the first tick the pocket's chunk is entity-ticking. Call from the test method. */
     public static GameTestSequence sequence(GameTestHelper helper, Pocket pocket) {
+        return sequence(helper, pocket.level(), pocket.floor(), "pocket");
+    }
+
+    private static GameTestSequence sequence(GameTestHelper helper, ServerLevel level, BlockPos pos, String what) {
         boolean[] ready = {false};
-        FarChunks.awaitEntityTicking(helper, pocket.level(), pocket.floor(), () -> ready[0] = true);
+        FarChunks.awaitEntityTicking(helper, level, pos, () -> ready[0] = true);
         return helper.startSequence().thenWaitUntil(() -> {
             if (!ready[0]) {
-                throw helper.assertionException("waiting for the pocket's chunk to tick entities");
+                throw helper.assertionException("waiting for the %s's chunk to tick entities", what);
             }
         });
     }
@@ -244,16 +248,30 @@ public final class SuitScenes {
         return new Hall(level, floor, mock, charter);
     }
 
-    /** Runs {@code body} on the first tick the hall's chunk ticks, with a fresh outpost record swapped in for its length. */
+    /**
+     * Runs {@code body} on the first tick the hall's chunk ticks, with a fresh outpost record swapped in for its length, and then succeeds.
+     * A body that waits for anything uses {@link #hallSequence} instead: the test is done once this succeeds, and a finished test drops its
+     * sequences unrun.
+     */
     public static void whenHallReady(GameTestHelper helper, Hall hall, Runnable body) {
         FarChunks.awaitEntityTicking(
                 helper,
                 hall.level(),
                 hall.floor(),
-                () -> WorldData.with(hall.level().getServer(), OutpostData.TYPE, new OutpostData(), () -> {
+                () -> withFreshOutposts(hall, () -> {
                     body.run();
                     helper.succeed();
                 }));
+    }
+
+    /** A sequence that starts on the first tick the hall's chunk ticks. Call from the test method; the sequence owns the success. */
+    public static GameTestSequence hallSequence(GameTestHelper helper, Hall hall) {
+        return sequence(helper, hall.level(), hall.floor(), "hall");
+    }
+
+    /** Runs {@code body} with a fresh outpost record swapped in for its length, on this tick. */
+    public static void withFreshOutposts(Hall hall, Runnable body) {
+        WorldData.with(hall.level().getServer(), OutpostData.TYPE, new OutpostData(), body);
     }
 
     /** Saved outpost data holding {@code outposts}, as the world would load it. */

@@ -43,11 +43,11 @@ public final class OutpostRisks {
     }
 
     /**
-     * The line for a shell in {@code status} against a depth that asks {@code required}: none where the depth asks nothing. Only the
-     * holding line is marked good, so the screens draw it in phosphor and the others in amber.
+     * The line for a shell in {@code status} against a depth that asks {@code required}: none where the depth asks nothing of a suit
+     * ({@link SuitDrain#asks}). Only the holding line is marked good, so the screens draw it in phosphor and the others in amber.
      */
     public static List<Component> lines(Optional<Ratings> required, OutpostHabitability.Status status) {
-        if (required.isPresent() && required.get().equals(Ratings.NONE)) {
+        if (required.isPresent() && !SuitDrain.asks(required.get())) {
             return List.of();
         }
         if (required.isEmpty()) {
