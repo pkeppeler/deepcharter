@@ -2121,13 +2121,13 @@ A default build is not harder than on main: nothing changes for a pod with no na
 
 **Rest.** A powered pod seat or a habitable hall gives back 15 a second (full in 12 s). A pod with no power holds the reserve. Under water with reserve left the air holds at full; at zero vanilla drowning resumes.
 
-**Warnings and harm.** An amber line and a beep at 30 s left, a red, blinking line and a faster beep at 10 s, "SUIT BREACHED" at zero. A breach hurts 2 hit points every 40 ticks with a new damage type (`deepcharter:suit_exposure`, which armour does not cut and difficulty does not scale, so it runs on Peaceful too) where the depth still asks something. The first drain says once, for each player and across deaths, what is short: "SUIT RATING EXCEEDED: HEAT, PRESSURE". A respawn refills the suit.
+**Warnings and harm.** An amber line at 30 s left with a beep every 5 s, a red, blinking line at 10 s with a beep every second, "SUIT BREACHED" at zero. A breach hurts 2 hit points every 40 ticks, about 20 s from zero to death at full health, with a new damage type (`deepcharter:suit_exposure`, which armour does not cut and difficulty does not scale, so it runs on Peaceful too) where the depth still asks something. The first drain says once, for each player and across deaths, what is short: "SUIT RATING EXCEEDED: HEAT, PRESSURE", or "SUIT DRAINING AT THIS DEPTH" where no axis is short (a row that asks only flooding, while dry, costs the base alone). A respawn refills the suit.
 
 **The gauge.** Bottom right, above the air row: "SUIT 1:42" (the time left at the current rate), a segmented bar and the axes that drain it, in phosphor, then amber, then red and blinking. It is hidden where the suit is inert, while seated in a pod, for a creative player or a spectator, and in a sound hall once the suit is full, so a layer-1 hall shows nothing. A suit log this build cannot read shows "SUIT LOG UNREADABLE" in red, and the suit neither drains nor hurts.
 
-**Outposts.** `OutpostHabitability.of(level, outpost)` reads the hall's shell, its 442 cells less the 405 inside, against the row at the hall's middle: habitable when a row exists and every block of the shell meets it. A gap (air or a fluid) is not judged; it is the creature rule's exposure ([#926](https://github.com/pkeppeler/deepcharter/issues/926)), which later replaces the box with its flood fill. Inside a hall that holds, the suit refills. Inside one that does not it runs at `leakShare`, half the outside rate however many blocks fall short, so an unrated hall doubles a person's time, and dripping water shows the seep. No fluid is placed and nothing is destroyed. The kit's hall leaves its crust pit and rock hatch open, so against a row of heat 2 it holds only once they are patched with slag brick.
+**Outposts.** `OutpostHabitability.of(level, outpost)` reads the hall's shell, its 442 cells less the 405 inside, against the row at the hall's middle: habitable when a row exists and every block of the shell meets it on the suit's axes, heat, pressure and flooding. Quake is not judged: a shortfall there does not leak air, it is a structural risk. A gap (air or a fluid) is not judged; it is the creature rule's exposure ([#926](https://github.com/pkeppeler/deepcharter/issues/926)), which later replaces the box with its flood fill. Inside a hall that holds, the suit refills. Inside one that does not it runs at `leakShare` (0.5), half the outside rate however many blocks fall short, so an unrated hall doubles a person's time, and dripping water shows the seep. No fluid is placed and nothing is destroyed. The kit's hall leaves its crust pit and rock hatch open, so against a row of heat 2 it holds only once they are patched with slag brick.
 
-**The risk line.** One line under the header of the outpost's fuel pump and sell terminal: "SHELL HOLDS: SUIT REFILLS HERE" in phosphor, "SHELL LEAKS: heat, pressure (14 blocks): SUIT RUNS AT HALF" in amber, or "NOTHING IS RATED AT THIS DEPTH". Hidden where the depth asks nothing, so today it shows only in the unbuilt depth. A guest sees the line the owner does.
+**The risk line.** One line under the header of the outpost's fuel pump and sell terminal: "SHELL HOLDS: SUIT REFILLS HERE" in phosphor, "SHELL LEAKS: heat, pressure (14 blocks): SUIT RUNS AT 50%" in amber (the share is `leakShare`, so it follows the tuning, and the axes are never quake), or "NOTHING IS RATED AT THIS DEPTH". Hidden where the depth asks nothing, so today it shows only in the unbuilt depth. A guest sees the line the owner does.
 
 **Pacing in player units (`SuitPacingTest` prints `[suit-pacing]` lines; whole seconds until the reserve is spent).**
 
@@ -2137,17 +2137,18 @@ A default build is not harder than on main: nothing changes for a pod with no na
 | Unbuilt depth, submerged (10.5 a second) | 18 s | measured |
 | Unbuilt depth, inside an unrated hall (2.75 a second) | 66 s | measured |
 | Refill from empty in a powered pod seat | 12 s | measured |
-| Zero to death, full health (10 hits, 40 ticks apart) | 20 s | measured |
+| Zero to death, full health (10 hits, 40 ticks apart) | about 20 s: up to 3 s to the first hit, then 18 s | measured |
 | A row (1,1,1), dry | 120 s | modelled |
 | A row (2,2,2), dry | 72 s | modelled |
 | A row (2,3,3), submerged | 30 s | modelled |
 | A row (5,3,0), dry | 40 s | modelled |
 
-The test fails if a layer-3 row ever leaves a stock suit under 60 s dry.
+The test fails if a built row that asks something (from layer 3 on) leaves a stock suit under 60 s dry, and it shows the check refusing a row that does (the unbuilt depth's).
 
 **Decisions (A).**
 - The environment is the depth's row, and the suit is rated like a block: one table for what a block and a person must hold.
 - Costs are summed, not maxed; a hall leaks at half, whatever the number of bad blocks; the capacity is 180 s.
+- A hall is judged for the suit on heat, pressure and flooding only. A hall short on quake alone shelters the suit and its risk line says it holds: quake is a structural risk, not a leak, and is left to a later change.
 - The suit is inert in layers 1 and 2 and on the surface, and its breach is harmless where the depth asks nothing. The only place this is harder than before is the unbuilt depth below layer 2, which no early run reaches: the unpacked and the early-game columns are unchanged.
 - "Water seeps in" is particles and the drain, with no real water: placing fluid would delete a player's blocks.
 - Flooding is answered by the oxygen and toxins track (#1064), so the SPEC's four suit tracks stay four.

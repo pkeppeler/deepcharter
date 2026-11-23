@@ -98,8 +98,8 @@ public class OutpostHabitabilityTest {
                     !built.habitable()
                             && built.shellBlocks() == SHELL_CELLS - SHAFT_GAPS
                             && built.unrated() == open.size()
-                            && built.shortOn().equals(Set.of(RatingAxis.values())),
-                    "the kit leaves a crust pit and a rock hatch, so against heat and quake 2 it holds nothing yet: %s with %s open cells",
+                            && built.shortOn().equals(OutpostHabitability.AXES),
+                    "the kit leaves a crust pit and a rock hatch, short on every axis the suit is judged on, never quake: %s with %s open cells",
                     built,
                     open.size());
             expect(

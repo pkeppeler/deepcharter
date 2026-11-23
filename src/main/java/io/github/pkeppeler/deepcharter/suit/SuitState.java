@@ -7,6 +7,7 @@ import io.github.pkeppeler.deepcharter.outpost.RatingAxis;
 import io.netty.buffer.ByteBuf;
 import java.util.Arrays;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 
@@ -51,11 +52,14 @@ public record SuitState(float reserve, boolean explained, Mode mode, int axes, f
         }
     }
 
-    /** The saved body: the reserve and the flag. Nothing else is kept, so a mode is never stale after a load. */
+    /**
+     * The saved body: the reserve and the flag. Nothing else is kept, so a mode is never stale after a load. A reserve out of range reads
+     * clamped, and one that is not a number reads as a full suit ({@link #sane}).
+     */
     public static final MapCodec<SuitState> BODY = RecordCodecBuilder.mapCodec(instance -> instance.group(
                     Codec.FLOAT.fieldOf("reserve").forGetter(SuitState::reserve),
                     Codec.BOOL.optionalFieldOf("explained", false).forGetter(SuitState::explained))
-            .apply(instance, (reserve, explained) -> new SuitState(reserve, explained, Mode.INERT, 0, 0f)));
+            .apply(instance, (reserve, explained) -> new SuitState(sane(reserve), explained, Mode.INERT, 0, 0f)));
 
     /** The wire body: the saved body, then the mode, the axes and the rate. */
     public static final StreamCodec<ByteBuf, SuitState> STREAM = StreamCodec.composite(
@@ -87,6 +91,23 @@ public record SuitState(float reserve, boolean explained, Mode mode, int axes, f
                         .orElse(Component.empty()));
     }
 
+    /**
+     * The line the first drain shows: the axes that are short, or a line of its own where none is (a row that asks only flooding, while
+     * dry, drains at the base cost alone).
+     */
+    public MutableComponent exceededLine() {
+        return axes == 0
+                ? Component.translatable("message.deepcharter.suit.draining")
+                : Component.translatable("message.deepcharter.suit.exceeded", axesText(", "));
+    }
+
+    /** {@code reserve} clamped to 0 to the suit's capacity; a reserve that is not a number is a full suit. */
+    static float sane(float reserve) {
+        return Float.isNaN(reserve)
+                ? SuitTuning.DEFAULT.capacity()
+                : Math.clamp(reserve, 0f, SuitTuning.DEFAULT.capacity());
+    }
+
     /** A full reserve, nothing told yet. */
     public static SuitState full() {
         return new SuitState(SuitTuning.DEFAULT.capacity(), false, Mode.INERT, 0, 0f);
@@ -94,8 +115,7 @@ public record SuitState(float reserve, boolean explained, Mode mode, int axes, f
 
     /** This state with {@code reserve} clamped to the suit's capacity. */
     SuitState withReserve(float reserve) {
-        return new SuitState(
-                Math.max(0f, Math.min(SuitTuning.DEFAULT.capacity(), reserve)), explained, mode, axes, rate);
+        return new SuitState(sane(reserve), explained, mode, axes, rate);
     }
 
     /** This state doing {@code mode} at {@code rate} on {@code axes}. */

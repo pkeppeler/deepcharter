@@ -11,6 +11,7 @@
   "hud.deepcharter.suit.unreadable": "SUIT LOG UNREADABLE",
   "message.deepcharter.suit.breached": "SUIT BREACHED",
   "message.deepcharter.suit.critical": "SUIT CRITICAL: %s SECONDS",
+  "message.deepcharter.suit.draining": "SUIT DRAINING AT THIS DEPTH",
   "message.deepcharter.suit.exceeded": "SUIT RATING EXCEEDED: %s",
   "message.deepcharter.suit.low": "SUIT LOW: %s SECONDS"
 }

@@ -443,6 +443,27 @@ public class SuitTimerTest {
                 "the flag is written once set, it wrote %s",
                 explainedWritten);
 
+        // A reserve out of range, or not a number, reads as a sane one: NaN as a full suit, the rest clamped.
+        Map<Float, Float> sane = new LinkedHashMap<>();
+        sane.put(Float.NaN, CAPACITY);
+        sane.put(-5f, 0f);
+        sane.put(Float.POSITIVE_INFINITY, CAPACITY);
+        sane.put(CAPACITY + 1f, CAPACITY);
+        for (Map.Entry<Float, Float> entry : sane.entrySet()) {
+            CompoundTag odd = new CompoundTag();
+            odd.putInt("version", 1);
+            odd.putFloat("reserve", entry.getKey());
+            Versioned<SuitState> read = disk.parse(NbtOps.INSTANCE, odd).getOrThrow();
+            expect(
+                    helper,
+                    read instanceof Versioned.Readable<SuitState> readable
+                            && readable.value().reserve() == entry.getValue(),
+                    "a saved reserve of %s should read as %s, it read %s",
+                    entry.getKey(),
+                    entry.getValue(),
+                    read);
+        }
+
         CompoundTag future = UnreadableChecks.futureData();
         expect(
                 helper,
@@ -482,7 +503,28 @@ public class SuitTimerTest {
         expect(
                 helper,
                 SuitTuning.DEFAULT.leakShare() == 0.5f && SuitTuning.DEFAULT.capacity() == 180f,
-                "the terminal's 'RUNS AT HALF' and the docs say half and 180 s");
+                "the docs say a hall leaks at half and the suit holds 180 s");
+        helper.succeed();
+    }
+
+    /** The first drain's line names the axes that are short; where none is (a row that asks only flooding, dry), it stands alone. */
+    @GameTest
+    public void theFirstDrainLineNamesTheShortAxesOrStandsAlone(GameTestHelper helper) {
+        Component named = new SuitState(100f, false, Mode.EXPOSED, mask(RatingAxis.HEAT, RatingAxis.PRESSURE), 1.5f)
+                .exceededLine();
+        expect(
+                helper,
+                key(named).equals("message.deepcharter.suit.exceeded")
+                        && ((TranslatableContents) named.getContents()).getArgs().length == 1,
+                "a drain on heat and pressure names them, it said %s",
+                named);
+        Component bare = new SuitState(100f, false, Mode.EXPOSED, 0, 0.5f).exceededLine();
+        expect(
+                helper,
+                key(bare).equals("message.deepcharter.suit.draining")
+                        && ((TranslatableContents) bare.getContents()).getArgs().length == 0,
+                "a drain on no axis has a line of its own with nothing dangling, it said %s",
+                bare);
         helper.succeed();
     }
 

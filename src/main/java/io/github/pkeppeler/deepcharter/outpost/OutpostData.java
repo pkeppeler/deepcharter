@@ -67,6 +67,11 @@ public final class OutpostData extends SavedData {
                     && dy < OutpostBuilder.HEIGHT + 1;
         }
 
+        /** The middle of the top row inside the hall, just under its ceiling. */
+        public BlockPos insideTop() {
+            return centre.above(OutpostBuilder.HEIGHT);
+        }
+
         /** True when {@code pos} is in the hall: inside its shell, from the floor to the ceiling. */
         public boolean contains(BlockPos pos) {
             int dy = pos.getY() - centre.getY();

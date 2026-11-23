@@ -2,6 +2,7 @@ package io.github.pkeppeler.deepcharter.outpost;
 
 import io.github.pkeppeler.deepcharter.charter.Charter;
 import io.github.pkeppeler.deepcharter.outpost.OutpostData.Outpost;
+import io.github.pkeppeler.deepcharter.suit.SuitTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalNotices;
 import java.util.List;
 import java.util.Optional;
@@ -54,7 +55,11 @@ public final class OutpostRisks {
         }
         return List.of(Component.translatable(
                 "notice.deepcharter.outpost.leaks",
-                RatingAxis.list(status.shortOn().stream().sorted().toList()),
-                status.unrated()));
+                RatingAxis.list(status.shortOn().stream()
+                        .filter(OutpostHabitability.AXES::contains)
+                        .sorted()
+                        .toList()),
+                status.unrated(),
+                Math.round(SuitTuning.DEFAULT.leakShare() * 100)));
     }
 }

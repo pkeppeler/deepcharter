@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiFunction;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.ChatFormatting;
@@ -28,6 +29,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.level.Level;
 
 /**
  * Runs every player's suit (#993, ADR 0083). Every tick it holds the air of a person under water whose suit still has reserve, and hurts a
@@ -89,12 +91,21 @@ public final class SuitTicker {
      * suit only when it changed. Does nothing for a suit whose data is unreadable.
      */
     public static void second(ServerPlayer player) {
+        second(player, OutpostHabitability::requiredAt);
+    }
+
+    /**
+     * One second of {@code player}'s suit, with a hall judged against the row {@code hallRow} gives for it in place of its depth's own.
+     */
+    // test-seam: no built layer asks quake yet, so a hall short on quake alone is staged against a row the world does
+    // not have
+    public static void second(ServerPlayer player, BiFunction<Level, Outpost, Optional<Ratings>> hallRow) {
         Optional<SuitState> read = Versioned.readable(player, SuitRegistry.SUIT);
         if (read.isEmpty()) {
             return;
         }
         SuitState before = read.get();
-        Plan plan = plan(player);
+        Plan plan = plan(player, hallRow);
         SuitTuning tuning = SuitTuning.DEFAULT;
         float reserve = before.reserve();
         Mode mode = plan.mode();
@@ -103,7 +114,7 @@ public final class SuitTicker {
         } else if (mode.drains()) {
             reserve -= plan.rate();
         }
-        reserve = Math.max(0f, Math.min(tuning.capacity(), reserve));
+        reserve = SuitState.sane(reserve);
         if (mode.drains() && reserve <= 0f) {
             mode = Mode.BREACHED;
         }
@@ -121,12 +132,12 @@ public final class SuitTicker {
     }
 
     /** Where the person is decides what the suit does: seated, sheltered, leaking, exposed, or none of them. */
-    private static Plan plan(ServerPlayer player) {
-        if (!player.isAlive() || player.isSpectator() || player.isCreative()) {
-            return Plan.of(Mode.INERT);
-        }
-        if (player.getVehicle() instanceof PodEntity pod) {
+    private static Plan plan(ServerPlayer player, BiFunction<Level, Outpost, Optional<Ratings>> hallRow) {
+        if (OnFoot.seated(player) && player.getVehicle() instanceof PodEntity pod) {
             return Plan.of(PodEvents.isPowered(pod) ? Mode.POD_REFILL : Mode.POD_HOLD);
+        }
+        if (!OnFoot.is(player)) {
+            return Plan.of(Mode.INERT);
         }
         SuitTuning tuning = SuitTuning.DEFAULT;
         ServerLevel level = player.level();
@@ -134,7 +145,7 @@ public final class SuitTicker {
         Optional<Outpost> hall =
                 halls.isReadable() ? halls.enclosing(level.dimension(), player.blockPosition()) : Optional.empty();
         if (hall.isPresent()) {
-            Optional<Ratings> row = OutpostHabitability.requiredAt(level, hall.get());
+            Optional<Ratings> row = hallRow.apply(level, hall.get());
             Status status = OutpostHabitability.of(level, hall.get(), row);
             if (status.habitable()) {
                 return Plan.of(Mode.SHELTERED);
@@ -161,10 +172,7 @@ public final class SuitTicker {
         SuitTuning tuning = SuitTuning.DEFAULT;
         SuitState told = after;
         if (!before.explained()) {
-            player.sendOverlayMessage(Component.translatable(
-                            "message.deepcharter.suit.exceeded",
-                            plan.axes() == 0 ? Component.empty() : after.axesText(", "))
-                    .withStyle(ChatFormatting.GOLD));
+            player.sendOverlayMessage(after.exceededLine().withStyle(ChatFormatting.GOLD));
             told = told.told();
         }
         float left = before.reserve() / plan.rate();
@@ -210,9 +218,12 @@ public final class SuitTicker {
         player.level().playSound(null, player, SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.PLAYERS, 0.6f, pitch);
     }
 
-    /** Water drips from the ceiling of a hall that leaks; none is placed, because fluid would delete a player's blocks. */
+    /**
+     * Water drips from the ceiling of a hall that leaks; none is placed, because fluid would delete a player's blocks. Each person in the
+     * hall sends their own, so two people see twice the drips: a heavier seep, not worth a clock for each hall.
+     */
     private static void drip(ServerPlayer player, Outpost hall) {
-        BlockPos ceiling = hall.centre().above(5);
+        BlockPos ceiling = hall.insideTop();
         player.level()
                 .sendParticles(
                         ParticleTypes.DRIPPING_WATER,

@@ -11,6 +11,7 @@ import io.github.pkeppeler.deepcharter.outpost.OutpostHabitability;
 import io.github.pkeppeler.deepcharter.outpost.OutpostHabitability.Status;
 import io.github.pkeppeler.deepcharter.outpost.OutpostRisks;
 import io.github.pkeppeler.deepcharter.outpost.Ratings;
+import io.github.pkeppeler.deepcharter.suit.SuitTuning;
 import io.github.pkeppeler.deepcharter.terminal.TerminalNotices;
 import io.github.pkeppeler.deepcharter.terminal.TerminalTypes;
 import io.github.pkeppeler.deepcharter.terminal.TerminalView;
@@ -70,8 +71,11 @@ public class OutpostRiskLineTest {
             Object[] args = ((TranslatableContents) leaks.getFirst().getContents()).getArgs();
             expect(
                     helper,
-                    args.length == 2 && args[1].equals(leaking.unrated()) && args[0] instanceof Component,
-                    "the leak names the axes and counts the blocks, got %s",
+                    args.length == 3
+                            && args[1].equals(leaking.unrated())
+                            && args[0] instanceof Component
+                            && args[2].equals(Math.round(SuitTuning.DEFAULT.leakShare() * 100)),
+                    "the leak names the axes, counts the blocks and gives the suit's share in per cent, got %s",
                     List.of(args));
 
             for (BlockPos pos : BlockPos.betweenClosed(

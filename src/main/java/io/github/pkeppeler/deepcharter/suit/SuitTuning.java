@@ -36,7 +36,7 @@ public record SuitTuning(
         int breachTicks) {
     /**
      * (A) Every value. Capacity 180 s; at the unbuilt depth's (5,5,5) a stock suit lasts 33 s dry and 17 s wet, an unrated hall doubles
-     * the time, a rest of 12 s fills it, and a breach kills a full-health person in 20 s.
+     * the time, a rest of 12 s fills it, and a breach kills a full-health person in about 20 s.
      */
     public static final SuitTuning DEFAULT = new SuitTuning(
             180f, 0.5f, 0.5f, 0.5f, 1.0f, Ratings.NONE, new Ratings(5, 5, 5, 0), 0.5f, 15f, 30f, 10f, 2f, 40);
