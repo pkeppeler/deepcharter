@@ -4,11 +4,9 @@
 # Merges the given PRs one at a time, in order, through tools/merge-pr.sh (the gate).
 # Per PR: wait until no workflow run for the head is unfinished, run the gate, then
 #   - PR already MERGED (checked first and after every refusal): done, skipped
-#   - refusal carrying the "[stale-base]" marker (stale base): re-run the head sha's newest non-skipped
-#     "CI" and "Client tests" workflow runs (every CI job merges the live main when it runs; the PR's state and head
-#     are never touched), sleep, wait for CI again, retry (up to MERGE_QUEUE_STALE_RETRIES, default 3).
-#     A run still in progress is skipped (the API refuses to re-run it); if it finishes stale, the next
-#     retry re-runs it, at the cost of one retry. No run for the sha, or a refused re-run, stops the queue
+#   - refusal carrying the "[stale-base]" marker (stale base): re-run the head's CI and Client tests runs
+#     (see rerun_ci; the PR's state and head are never touched), sleep, wait for CI again, retry
+#     (up to MERGE_QUEUE_STALE_RETRIES, default 3). No run for the sha, or a refused re-run, stops the queue
 #   - refusal "mergeable: UNKNOWN": sleep, retry (up to MERGE_QUEUE_UNKNOWN_RETRIES, default 4)
 #   - any other refusal: stop the queue and print the reason
 # After a merge, cleanup never loses work. It removes the PR's worktree only when that
@@ -122,7 +120,8 @@ wait_ci() {
 
 # rerun_ci <pr> <sha>: re-run the newest non-skipped CI and Client tests runs of the head sha. Returns 1 and sets
 # $rerun_err when no such run exists, the runs cannot be listed or the API refuses a re-run (for example a
-# run older than 30 days). An unfinished run is skipped: wait_ci waits for it.
+# run older than 30 days). Every CI job merges the live main when it runs. An unfinished run is skipped (the API
+# refuses to re-run it); if it finishes stale, the next retry re-runs it, at the cost of one retry.
 rerun_ci() {
   local sha=$2 rows latest id name status
   rerun_err=
