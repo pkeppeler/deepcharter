@@ -11,7 +11,7 @@ Issue #1111. Supersedes the plan in #804 (closed as not planned) to delete the l
 - **Depth is one continuous axis.** The campaign is a vertical stack of tall dimensions. The overworld is first: the surface and as many bands as fit, down to y -2032. Deep dimensions follow below it, each up to 4,064 blocks tall, the limit of one dimension.
 - **Layers are defined by depth, not by dimension.** A dimension can hold several layers. A dimension boundary can fall in the middle of a layer, so a layer can span two dimensions. A **band** is a layer's slice inside one dimension.
 - **A seam is a storage boundary, not a layer boundary.** Crossing it should feel like going on down through the same layer. A seam that coincides with a layer boundary carries that boundary's crust; a seam can also fall mid-layer, with no crust. The term is the one the SPEC and ADR 0060 use for the join to the uncharted worlds, which is a seam of the same kind.
-- **The surface stays at y -64 to 319.** The sky above it stays free for sky biomes. Layers do not grow by raising the surface: the sky stays free for sky biomes.
+- **The surface stays at y -64 to 319.** Layers do not grow by raising the surface: the sky stays free for sky biomes.
 - **The crossing machinery stays**, as the base for the seam: the layer dimensions and their types, `BreachService`'s teleport with its arrival pocket, the fade, `PodTowing`'s carry across levels, `LayerChain`'s per-dimension API, `LayerRegistry`'s cross-world links, and the `TestLayers` fallback. Nothing is deleted or changed by this ADR.
 
 ## Why
