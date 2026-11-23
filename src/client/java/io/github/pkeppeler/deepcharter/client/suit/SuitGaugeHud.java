@@ -23,8 +23,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * The suit gauge (#993, ADR 0083): a segmented bar, a line "SUIT 1:42" and the axes that drain it, at the bottom right above vanilla's air
- * row. It reads the player's own suit attachment, which the server sends to its owner alone. It is hidden where the suit is inert (the
+ * The suit gauge (#993, ADR 0083): a line "SUIT 1:42", a segmented bar and the axes that drain it, at the top left, under the altimeter's
+ * row. Vanilla's centred lines (the action bar, the held item's name, the title and the subtitle) can be as wide as a narrow GUI, and on
+ * one 240 high no right-hand place between them, or beside the hotbar, holds the gauge; the top right is where vanilla shows potion effects.
+ * It reads the player's own suit attachment, which the server sends to its owner alone. It is hidden where the suit is inert (the
  * depth asks nothing), while seated in a pod, and for a creative player or a spectator; a suit log that cannot be read shows one red line.
  * What is drawn and what is kept clear are the one box {@link #box}.
  */
@@ -127,24 +129,19 @@ public final class SuitGaugeHud {
         return String.format(Locale.ROOT, "%d:%02d", whole / 60, whole % 60);
     }
 
-    /** The box of the gauge on a GUI {@code guiWidth} x {@code guiHeight}: as wide as the bar or its wider line, up from the bottom margin. */
-    public static HudKeepClear.Rect box(Font font, Gauge gauge, int guiWidth, int guiHeight) {
+    /** The box of the gauge, the same on every GUI size: as wide as the bar or its wider line, at the top left margins. */
+    public static HudKeepClear.Rect box(Font font, Gauge gauge) {
         SuitLook look = SuitLook.current();
         int width = Math.max(look.barWidth(), Math.max(font.width(gauge.label()), font.width(gauge.axes())));
         int height = font.lineHeight
                 + look.lineGap()
                 + look.barHeight()
                 + (gauge.axes().getString().isEmpty() ? 0 : look.lineGap() + font.lineHeight);
-        return new HudKeepClear.Rect(
-                "suit gauge",
-                guiWidth - look.rightMargin() - width,
-                guiHeight - look.bottomMargin() - height,
-                width,
-                height);
+        return new HudKeepClear.Rect("suit gauge", look.leftMargin(), look.topMargin(), width, height);
     }
 
     private static void keepClear(Minecraft client, int guiWidth, int guiHeight, List<HudKeepClear.Rect> into) {
-        gauge(client).ifPresent(gauge -> into.add(box(client.font, gauge, guiWidth, guiHeight)));
+        gauge(client).ifPresent(gauge -> into.add(box(client.font, gauge)));
     }
 
     public static void extract(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
@@ -156,22 +153,16 @@ public final class SuitGaugeHud {
         Gauge gauge = shown.get();
         SuitLook look = SuitLook.current();
         Font font = client.font;
-        HudKeepClear.Rect box = box(font, gauge, graphics.guiWidth(), graphics.guiHeight());
+        HudKeepClear.Rect box = box(font, gauge);
         int colour = colour(gauge.tone(), look);
-        graphics.text(font, gauge.label(), box.right() - font.width(gauge.label()), box.y(), colour, true);
+        graphics.text(font, gauge.label(), box.x(), box.y(), colour, true);
         int barY = box.y() + font.lineHeight + look.lineGap();
         boolean hidden = gauge.blinks() && (client.player.tickCount / look.blinkTicks()) % 2 == 1;
         if (!hidden) {
-            bar(graphics, look, box.right() - look.barWidth(), barY, gauge.fraction(), colour);
+            bar(graphics, look, box.x(), barY, gauge.fraction(), colour);
         }
         if (!gauge.axes().getString().isEmpty()) {
-            graphics.text(
-                    font,
-                    gauge.axes(),
-                    box.right() - font.width(gauge.axes()),
-                    barY + look.barHeight() + look.lineGap(),
-                    colour,
-                    true);
+            graphics.text(font, gauge.axes(), box.x(), barY + look.barHeight() + look.lineGap(), colour, true);
         }
     }
 

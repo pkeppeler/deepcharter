@@ -251,7 +251,7 @@ public class ThemeLooksTest {
         expect(
                 helper,
                 "suit",
-                new SuitLook(6, 66, 96, 5, 16, 1, 2, 0xFF7CFC9A, 0xFFFFB000, 0xFFFF4A3A, 0xFF2E7A45, 5),
+                new SuitLook(6, 20, 96, 5, 16, 1, 2, 0xFF7CFC9A, 0xFFFFB000, 0xFFFF4A3A, 0xFF2E7A45, 5),
                 SuitLook.of(area("suit", null)));
         helper.succeed();
     }

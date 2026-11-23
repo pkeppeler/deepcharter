@@ -116,6 +116,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
     private static final int NAME_LENGTH = CharterTuning.DEFAULT.maxNameLength();
     /** A balance with as many digits as an account is likely to show. */
     private static final long BALANCE = 999_999_999L;
+    /** How many times the paged order sheet lists each work order: more rows than one page of it holds at {@link #HEIGHT}. */
+    private static final int ORDER_SHEET_ENTRIES = 5;
 
     /** One thing to check after a screen is open: a track chosen, a page turned. */
     private record Variant(String name, VariantStep step) {}
@@ -559,7 +561,8 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
     /**
      * The ore processor draws its account line only for a player on a charter, and the order rows sit under that line, so its online cases
      * are checked again once the player has founded one (#993: the risk line pushed the line under the rows). Every work order is listed.
-     * With the risk line no row fits under the account line, so the heading opens the order sheet: each of its pages is a variant.
+     * With the risk line no row fits under the account line, so the heading opens the order sheet; that case lists each order several times,
+     * so the sheet has more than one page, and each page, with its pager beside BACK, is checked.
      */
     private static void checkWithACharter(
             ClientGameTestContext context, TestSingleplayerContext world, List<String> problems) {
@@ -580,36 +583,60 @@ public class ScreenLayoutClientTest implements FabricClientGameTest {
                 client -> OreProcessorScreen.accountLine().endsWith("$" + BALANCE),
                 client -> "account line '" + OreProcessorScreen.accountLine() + "'");
         TerminalView online = onlineView(TerminalTypes.ORE_PROCESSOR, features());
-        TerminalView risky = riskyView(online);
+        TerminalView risky = withOrderSheetPages(riskyView(online));
         check(context, new Case("ore_processor online, on a charter", () -> TerminalScreens.create(online)), problems);
         check(
                 context,
                 new Case(
-                        "ore_processor online, longest risk line, on a charter",
+                        "ore_processor online, longest risk line, more orders than a page, on a charter",
                         () -> TerminalScreens.create(risky),
                         List.of(new Variant("every page of the order sheet", ScreenLayoutClientTest::everyOrderPage))),
                 problems);
     }
 
-    /** Opens the order sheet from its heading and checks each page, turning with the pager while it can. */
+    /**
+     * Opens the order sheet from its heading and checks each page, the pager beside BACK among its buttons, turning with the pager while it
+     * can. The view lists more orders than a page holds, so there is a second page.
+     */
     private static List<String> everyOrderPage(ClientGameTestContext context, Screen screen) {
         context.clickScreenButton("WORK ORDERS");
         require(
                 context.computeOnClient(client -> ((OreProcessorScreen) screen).showingOrders()),
                 "WORK ORDERS opens the order sheet");
         List<String> problems = new ArrayList<>();
-        for (int page = 1; page <= WorkOrder.values().length; page++) {
+        int listed = ORDER_SHEET_ENTRIES * WorkOrder.values().length;
+        for (int page = 1; page <= listed; page++) {
             int shown = page;
             problems.addAll(context.computeOnClient(
                     client -> problemsOf("ore_processor order sheet / page " + shown, screen, List.of())));
             if (!context.computeOnClient(client -> ClientChecks.buttons(screen).stream()
                     .anyMatch(button ->
                             button.active && button.getMessage().getString().equals(">")))) {
+                require(
+                        page >= 2,
+                        "the order sheet lists " + listed + " orders on one page; the pager was never laid out");
                 return problems;
             }
             context.clickScreenButton(">");
         }
-        throw new AssertionError("the order sheet turned more pages than there are work orders");
+        throw new AssertionError("the order sheet turned more pages than it lists orders");
+    }
+
+    /** {@code view} with each work order listed {@link #ORDER_SHEET_ENTRIES} times, more than one page of the order sheet holds. */
+    private static TerminalView withOrderSheetPages(TerminalView view) {
+        ProcessorView processor = view.feature(ProcessorView.class).orElseThrow();
+        List<WorkOrdersView.Entry> orders = new ArrayList<>();
+        for (int i = 0; i < ORDER_SHEET_ENTRIES; i++) {
+            orders.addAll(processor.orders().orders());
+        }
+        return new TerminalView(
+                view.pos(),
+                view.type(),
+                view.repaired(),
+                view.unlocked(),
+                view.parts(),
+                Optional.of(new ProcessorView(new WorkOrdersView(true, orders), processor.cargo())),
+                view.notices());
     }
 
     /** The contract terminal at each role, with the longest names and as many rows as it lists. */

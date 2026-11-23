@@ -223,11 +223,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
 
     /** The y of the first ore row, under the heading and the one line that says what the list does. */
     private int holdsTop() {
-        return contentTop(MARGIN)
-                + font.lineHeight
-                + 14
-                + 2 * (font.lineHeight + CrtTuning.current().lineSpacing())
-                + GAP;
+        return underHeader() + 2 * (font.lineHeight + CrtTuning.current().lineSpacing()) + GAP;
     }
 
     /** The withdraw list: a row for each ore the parked pods hold, with the three amounts, and BACK. */
@@ -359,13 +355,13 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
         layoutOrderPage(sheetRowsTop(), perPage);
     }
 
-    /** The y of the order sheet's heading, under the header. */
-    private int sheetHeadingTop() {
+    /** The y of the first line under the header: the intro (after the notice), the order sheet's heading, the withdraw list's text. */
+    private int underHeader() {
         return contentTop(MARGIN) + font.lineHeight + 14;
     }
 
     private int sheetRowsTop() {
-        return sheetHeadingTop() + font.lineHeight + GAP;
+        return underHeader() + font.lineHeight + GAP;
     }
 
     /** How many order rows fit in {@code room} pixels, none when it is too short for one. */
@@ -399,8 +395,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
         }
         if (pages > 1) {
             // On the order sheet beside BACK; on the main sheet on the heading's row, after its text, so that the pager
-            // does
-            // not sit in the fuse button's row.
+            // does not sit in the fuse button's row.
             int pagerY = showingOrders()
                     ? contentBottom(MARGIN) - BUTTON_HEIGHT
                     : headingTop() + (font.lineHeight - BUTTON_HEIGHT) / 2;
@@ -432,9 +427,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
     private int accountTop() {
         int introLines =
                 CrtText.wrap(font, typewriter.text(), contentWidth(MARGIN)).size();
-        return contentTop(MARGIN)
-                + font.lineHeight
-                + 14
+        return underHeader()
                 + noticeHeight()
                 + introLines * (font.lineHeight + CrtTuning.current().lineSpacing())
                 + GAP * 2;
@@ -537,7 +530,7 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
     /** What the list does, then the ore of each row at the left of its buttons, or the line that says there is none. */
     private void extractWithdrawal(GuiGraphicsExtractor graphics, CrtTuning tuning) {
         List<String> lines = withdrawLines();
-        int y = contentTop(MARGIN) + font.lineHeight + 14;
+        int y = underHeader();
         for (String line : CrtText.wrap(font, lines.getFirst(), contentWidth(MARGIN))) {
             CrtDraw.glowText(graphics, font, line, contentLeft(MARGIN), y, tuning.phosphorColor());
             y += font.lineHeight + tuning.lineSpacing();
@@ -589,23 +582,13 @@ public final class OreProcessorScreen extends CrtScreen implements TerminalViewS
             List<String> lines = orderLines();
             if (!lines.isEmpty()) {
                 CrtDraw.glowText(
-                        graphics,
-                        font,
-                        lines.getFirst(),
-                        contentLeft(MARGIN),
-                        sheetHeadingTop(),
-                        tuning.phosphorColor());
+                        graphics, font, lines.getFirst(), contentLeft(MARGIN), underHeader(), tuning.phosphorColor());
             }
             super.extractRenderState(graphics, mouseX, mouseY, partialTick);
             return;
         }
         TerminalNoticeLine.draw(graphics, font, view, contentLeft(MARGIN), contentTop(MARGIN), contentWidth(MARGIN));
-        drawTypewriter(
-                graphics,
-                typewriter,
-                contentLeft(MARGIN),
-                contentTop(MARGIN) + font.lineHeight + 14 + noticeHeight(),
-                contentWidth(MARGIN));
+        drawTypewriter(graphics, typewriter, contentLeft(MARGIN), underHeader() + noticeHeight(), contentWidth(MARGIN));
         int top = accountTop();
         CrtDraw.glowText(graphics, font, accountLine(), contentLeft(MARGIN), top, tuning.phosphorColor());
         if (typewriter.done()) {

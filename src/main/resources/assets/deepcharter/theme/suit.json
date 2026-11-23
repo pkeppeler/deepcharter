@@ -1,6 +1,6 @@
 {
-  "rightMargin": 6,
-  "bottomMargin": 66,
+  "leftMargin": 6,
+  "topMargin": 20,
   "barWidth": 96,
   "barHeight": 5,
   "segments": 16,

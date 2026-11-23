@@ -23,26 +23,27 @@ import io.github.pkeppeler.deepcharter.test.support.PlacementStage;
 import io.github.pkeppeler.deepcharter.test.support.TestEntities;
 import io.github.pkeppeler.deepcharter.test.support.TestLayers;
 import io.github.pkeppeler.deepcharter.test.support.UnreadableChecks;
+import io.github.pkeppeler.deepcharter.test.support.VanillaHudRows;
 import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
 
 /**
  * Client GameTest for the suit gauge (#993): how it reads for each state of the suit (words, colour, blinking), that it shows nothing where
  * the suit is inert, in a pod's seat and for a creative player, that a suit log this build cannot read says so in red, that the one
- * rectangle {@link HudKeepClear} gives for it is the box its text is drawn in, and that it fits the narrowest GUI. The live part runs in
+ * rectangle {@link HudKeepClear} gives for it is the box its text is drawn in, and that on the smallest GUI and the default window's it
+ * fits and is clear of vanilla's rows ({@link VanillaHudRows}) and of the mod's other HUD parts. The live part runs in
  * the unbuilt depth, where the real suit drains, so it reads what the client holds and not fixed numbers.
  */
 public class SuitGaugeClientTest implements FabricClientGameTest {
-    /** Space the gauge leaves its right edge in the narrowest GUI, in GUI pixels. */
-    private static final int MIN_GUI_WIDTH = 320;
-
-    private static final int MIN_GUI_HEIGHT = 240;
+    /** The smallest GUI the game allows and the default window's at GUI scale 2. */
+    private static final int[][] GUIS = {{320, 240}, {427, 240}};
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -160,17 +161,25 @@ public class SuitGaugeClientTest implements FabricClientGameTest {
                 .orElseThrow();
         require(held.tone() == Tone.DIM, "a held suit is dim, read " + describe(held));
 
-        // The widest the gauge gets: the longest line of words and every axis, in the narrowest GUI.
+        // The widest and tallest the gauge gets, on the smallest GUI and the default window's: inside it and clear of
+        // vanilla's rows.
+        Gauge unreadable = new Gauge(
+                Component.translatable("hud.deepcharter.suit.unreadable"), Component.empty(), 0f, Tone.RED, false);
         context.runOnClient(client -> {
-            for (Gauge gauge : List.of(fine, amber, red, breached)) {
-                HudKeepClear.Rect box = SuitGaugeHud.box(client.font, gauge, MIN_GUI_WIDTH, MIN_GUI_HEIGHT);
-                require(
-                        box.x() >= 0
-                                && box.right()
-                                        <= MIN_GUI_WIDTH - SuitLook.current().rightMargin()
-                                && box.y() >= 0
-                                && box.bottom() <= MIN_GUI_HEIGHT,
-                        "the gauge " + describe(gauge) + " at " + box + " leaves the narrowest GUI");
+            for (int[] gui : GUIS) {
+                for (Gauge gauge : List.of(fine, amber, red, breached, unreadable)) {
+                    HudKeepClear.Rect box = SuitGaugeHud.box(client.font, gauge);
+                    require(
+                            box.x() >= 0 && box.right() <= gui[0] && box.y() >= 0 && box.bottom() <= gui[1],
+                            "the gauge " + describe(gauge) + " at " + box + " leaves the GUI " + gui[0] + " x "
+                                    + gui[1]);
+                    for (HudKeepClear.Rect row : VanillaHudRows.rects(gui[0], gui[1])) {
+                        require(
+                                !box.overlaps(row),
+                                "the gauge " + describe(gauge) + " at " + box + " runs into vanilla's " + row.what()
+                                        + " " + row + " on " + gui[0] + " x " + gui[1]);
+                    }
+                }
             }
         });
     }
@@ -190,15 +199,23 @@ public class SuitGaugeClientTest implements FabricClientGameTest {
                     .toList();
             require(mine.size() == 1, "the suit gauge keeps exactly one box clear, listed " + mine);
             Gauge gauge = SuitGaugeHud.gauge(client).orElseThrow();
-            HudKeepClear.Rect expected = SuitGaugeHud.box(client.font, gauge, width, height);
+            HudKeepClear.Rect expected = SuitGaugeHud.box(client.font, gauge);
             require(
                     mine.getFirst().equals(expected),
                     "the kept box " + mine.getFirst() + " is the drawn box " + expected);
             SuitLook look = SuitLook.current();
             require(
-                    expected.right() == width - look.rightMargin() && expected.bottom() == height - look.bottomMargin(),
-                    "the gauge sits at the bottom right, margins " + look.rightMargin() + " and " + look.bottomMargin()
+                    expected.x() == look.leftMargin() && expected.y() == look.topMargin(),
+                    "the gauge sits at the top left, margins " + look.leftMargin() + " and " + look.topMargin()
                             + ", box " + expected);
+            for (int[] gui : GUIS) {
+                for (HudKeepClear.Rect other : HudKeepClear.rects(client, gui[0], gui[1])) {
+                    require(
+                            other.what().equals("suit gauge") || !expected.overlaps(other),
+                            "the gauge " + expected + " runs into the " + other.what() + " " + other + " on " + gui[0]
+                                    + " x " + gui[1]);
+                }
+            }
             Box box = new Box(expected.x(), expected.y(), expected.width(), expected.height());
             List<Drawn> drawn = DrawnText.of(graphics -> SuitGaugeHud.extract(graphics, client.getDeltaTracker()));
             require(!drawn.isEmpty(), "the gauge should draw its line");

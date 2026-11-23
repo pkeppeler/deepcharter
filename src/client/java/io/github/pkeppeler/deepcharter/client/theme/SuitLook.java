@@ -3,11 +3,12 @@ package io.github.pkeppeler.deepcharter.client.theme;
 import io.github.pkeppeler.deepcharter.theme.ThemeData;
 
 /**
- * How the suit gauge looks ({@code theme/suit.json}, #993): a segmented bar and a line of text at the bottom right, above the air row.
+ * How the suit gauge looks ({@code theme/suit.json}, #993): a line of text, a segmented bar and the axes under it, at the top left.
  * Colours are ARGB; lengths are GUI pixels.
  *
- * @param rightMargin  space between the gauge and the screen's right edge
- * @param bottomMargin space between the gauge's lowest line and the screen's bottom edge: enough to clear the hotbar, the health row and the air row
+ * @param leftMargin   space between the gauge and the screen's left edge
+ * @param topMargin    space between the gauge's top line and the screen's top edge: enough to clear the altimeter at the top centre, with
+ *                     its jitter, on the narrowest GUI
  * @param barWidth     the bar's width
  * @param barHeight    the bar's height
  * @param segments     how many cells the bar is cut into
@@ -20,8 +21,8 @@ import io.github.pkeppeler.deepcharter.theme.ThemeData;
  * @param blinkTicks   how long the bar shows and hides while it blinks
  */
 public record SuitLook(
-        int rightMargin,
-        int bottomMargin,
+        int leftMargin,
+        int topMargin,
         int barWidth,
         int barHeight,
         int segments,
@@ -45,8 +46,8 @@ public record SuitLook(
                     "the bar is too narrow for its cells and their gaps", "barWidth", "segments", "segmentGap");
         }
         return new SuitLook(
-                d.integer("rightMargin", 0, 100),
-                d.integer("bottomMargin", 0, 200),
+                d.integer("leftMargin", 0, 100),
+                d.integer("topMargin", 0, 100),
                 barWidth,
                 d.integer("barHeight", 2, 20),
                 segments,
