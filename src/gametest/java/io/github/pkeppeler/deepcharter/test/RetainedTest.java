@@ -1089,14 +1089,14 @@ public class RetainedTest {
      * What the game's spawner asks of a figure it tries to place: the roll passes about {@code chancePerTry} of the tries, no try passes beside a
      * light, and a figure made by a command is never refused.
      */
-    @GameTest(environment = CampaignEnvironments.D, maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 400)
+    @GameTest(maxTicks = 2 * FarChunks.AWAIT_BUDGET_TICKS + 400)
     public void theGamesOwnSpawnerRollsRareAndOnlyWhereTheRulesAllow(GameTestHelper helper) {
         ServerLevel two = TestLayers.level(helper.getLevel().getServer(), 2);
         BlockPos column = TestLayers.pos(2, 7272, 128, 7208);
         LamplessFigure[] figure = {null};
         int[] phase = {0};
+        FarChunks.Deadline[] lit = {null};
         int tries = 4000;
-        FarChunks.Deadline[] lightDeadline = {FarChunks.deadline()};
         TestTicks.each(helper, () -> {
             if (figure[0] == null) {
                 return;
@@ -1122,7 +1122,7 @@ public class RetainedTest {
                         "a figure made by a command was refused");
                 two.setBlock(column.above(), light(15), 3);
                 phase[0] = 1;
-                lightDeadline[0] = FarChunks.deadline();
+                lit[0] = FarChunks.deadline();
             } else if (two.getBrightness(LightLayer.BLOCK, column) >= TUNING.litBlockLight()) {
                 for (int i = 0; i < tries; i++) {
                     expect(
@@ -1134,13 +1134,7 @@ public class RetainedTest {
                 two.setBlock(column.above(), Blocks.AIR.defaultBlockState(), 3);
                 helper.succeed();
             } else {
-                // Wall-clock, as the test above waits: the light engine works off the server thread, and its queue is
-                // shared with every test of the batch that builds in the level.
-                lightDeadline[0].await(
-                        helper,
-                        two,
-                        false,
-                        () -> "the light of level 15 did not reach the room in " + FarChunks.WAIT_SECONDS + " s");
+                lit[0].await(helper, two, false, () -> "the light of level 15 did not reach the room");
             }
         });
         FarChunks.awaitEntityTicking(helper, two, column, () -> {

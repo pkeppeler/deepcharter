@@ -18,6 +18,9 @@ public final class PacketJitter {
     private static final int PERIOD = 3;
 
     private static int period;
+    /** The client game time until which every move is held; -1 when no stall is on. */
+    private static long stallUntil = -1;
+
     private static boolean replaying;
     private static boolean registered;
     private static final List<Runnable> HELD = new ArrayList<>();
@@ -28,16 +31,34 @@ public final class PacketJitter {
     public static void start() {
         HELD.clear();
         period = PERIOD;
+        registerOnce();
+    }
+
+    private static void registerOnce() {
         if (!registered) {
             registered = true;
-            // An event cannot be unregistered; with no period it does nothing.
+            // An event cannot be unregistered; with no period and no stall it does nothing.
             ClientTickEvents.START_CLIENT_TICK.register(PacketJitter::replayIfDue);
         }
+    }
+
+    /**
+     * Holds every entity move for the next {@code ticks} client ticks, then hands them all over in one tick: what a client sees when
+     * the server falls behind and catches up, or the network stalls and delivers. Call it with the jitter off or on.
+     */
+    public static void stall(int ticks) {
+        ClientLevel level = Minecraft.getInstance().level;
+        if (level == null) {
+            throw new IllegalStateException("no client level to stall");
+        }
+        registerOnce();
+        stallUntil = level.getGameTime() + ticks;
     }
 
     /** Ends the jitter and drops any move still held: a held move is one the client never sees, which is what a test that ended wants. */
     public static void stop() {
         period = 0;
+        stallUntil = -1;
         HELD.clear();
     }
 
@@ -47,7 +68,16 @@ public final class PacketJitter {
      */
     private static void replayIfDue(Minecraft client) {
         ClientLevel level = client.level;
-        if (period != 0 && level != null && level.getGameTime() % period != 1) {
+        if (level == null) {
+            return;
+        }
+        if (stallUntil >= 0) {
+            if (level.getGameTime() < stallUntil) {
+                return;
+            }
+            stallUntil = -1;
+            replayHeld();
+        } else if (period != 0 && level.getGameTime() % period != 1) {
             replayHeld();
         }
     }
@@ -65,6 +95,16 @@ public final class PacketJitter {
         }
     }
 
+    /** Whether a stall holds a packet now, to be handled by {@code handle} when the stall ends. Only a stall holds it, never the jitter. */
+    public static boolean stalls(Runnable handle) {
+        Minecraft client = Minecraft.getInstance();
+        if (stallUntil < 0 || replaying || client.level == null || !client.isSameThread()) {
+            return false;
+        }
+        HELD.add(handle);
+        return true;
+    }
+
     /**
      * Whether the client is to skip a position packet now, and handle it later by running {@code handle}. A tick that is not skipped
      * replays the held packets first, in order, so entities see their moves and teleports in the order the server sent them: a
@@ -75,8 +115,12 @@ public final class PacketJitter {
         ClientLevel level = client.level;
         // A packet arrives on the network thread first, and vanilla hands it to the client thread by calling the
         // handler again.
-        if (period == 0 || replaying || level == null || !client.isSameThread()) {
+        if ((period == 0 && stallUntil < 0) || replaying || level == null || !client.isSameThread()) {
             return false;
+        }
+        if (stallUntil >= 0) {
+            HELD.add(handle);
+            return true;
         }
         if (level.getGameTime() % period == 1) {
             HELD.add(handle);

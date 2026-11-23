@@ -85,10 +85,11 @@ object GametestScan {
 	private val oneShotCheck = Regex("""\bthrow\b|\bfail\s*\(|\bassert\w*\s*\(|\bexpect\w*\s*\(\s*helper\b""")
 
 	// A @GameTest whose dimension constant (read per file) is "deepcharter:campaign_sample" must name a CampaignEnvironments batch (#957); the batches are the
-	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal is not seen.
+	// campaign constants of test/support/CampaignEnvironments.java, so a new batch needs no edit here. A dimension spelled as a literal would not be
+	// seen, so the gate refuses the literal (#1026).
 	private val campaignConstant = Regex("""\bString\s+(\w+)\s*=\s*"deepcharter:campaign_sample"\s*;""")
 	private val gameTestCall = Regex("""@GameTest\s*\(""")
-	private val dimensionArg = Regex("""\bdimension\s*=\s*(\w+)""")
+	private val dimensionArg = Regex("""\bdimension\s*=\s*(\w+|"")""")
 	private val campaignEnvironmentName = Regex("""\bString\s+(\w+)\s*=\s*"deepcharter-test:campaign_""")
 
 	// The index of the bracket that closes the one at [open], in text whose comments and literals are blanked; -1 when it never closes.
@@ -117,17 +118,24 @@ object GametestScan {
 
 	private fun campaignEnvironmentProblems(className: String, text: String, sourceText: String, environments: List<String>): List<String> {
 		val campaign = campaignConstant.findAll(sourceText).map { it.groupValues[1] }.toSet()
+		val problems = mutableListOf<String>()
+		val calls = gameTestCall.findAll(text).map { call ->
+			val open = call.range.last
+			call to text.substring(open, closing(text, open) + 1)
+		}.toList()
+		for ((call, args) in calls) {
+			if (dimensionArg.find(args)?.groupValues?.get(1) == "\"\"") {
+				problems.add("$className:${lineOf(text, call.range.first) + 1} names its dimension as a string literal, which the scan cannot read, and a literal could be the campaign world; name any dimension with a private static final String constant")
+			}
+		}
 		if (campaign.isEmpty()) {
-			return emptyList()
+			return problems
 		}
 		if (environments.isEmpty()) {
-			return listOf("$className names the campaign world but test/support/CampaignEnvironments.java is missing or defines no String constant of \"deepcharter-test:campaign_...\"; the gate cannot tell which environments exist")
+			return problems + listOf("$className names the campaign world but test/support/CampaignEnvironments.java is missing or defines no String constant of \"deepcharter-test:campaign_...\"; the gate cannot tell which environments exist")
 		}
 		val named = Regex("""\benvironment\s*=\s*CampaignEnvironments\.(?:${environments.joinToString("|")})\b""")
-		val problems = mutableListOf<String>()
-		for (call in gameTestCall.findAll(text)) {
-			val open = call.range.last
-			val args = text.substring(open, closing(text, open) + 1)
+		for ((call, args) in calls) {
 			val dimension = dimensionArg.find(args)?.groupValues?.get(1)
 			if (dimension in campaign && !named.containsMatchIn(args)) {
 				problems.add("$className:${lineOf(text, call.range.first) + 1} runs in the campaign world ($dimension) without an environment; add environment = CampaignEnvironments.<one of ${environments.joinToString(", ")}> (the fewest tests or forced chunks)")

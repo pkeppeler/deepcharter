@@ -11,22 +11,21 @@ val runVmArgs = project.extra["runVmArgs"] as () -> Map<String, List<String>>
 
 addVmArgToRuns(exitOnOom)
 
-// Server GameTest heap (#541, #805, #807, #816, #957). CI died of OutOfMemoryError at 2G with peaks of 1.23 to 1.45 GB (#805), so keep the
-// heap at 2x the measured peak or more, and re-measure when the suite grows by a tenth or a test adds a tall world to a campaign environment.
-// Method: -Xlog:gc plus a forced GC every 1.5 s. Mechanisms: ChunkMapUnloadMixin (chunks of a finished batch), ChunkMapSaveMixin (writes of
-// half-generated chunks), FarChunks.force (released when a test finishes), and CampaignEnvironments (the campaign tests' batches).
-// Measured 2026-11-22 after #818 (1454 tests, 4 vCPU, 3 runs at 3G with the campaign tests in four environments of 13 to 23): the highest live
-// set was 1560, 1555 and 1748 MB, in default batches of 50 whose layer tests reach the campaign level through TestLayers; the four environments
-// peaked at 1034 to 1517 MB. Main's tree (4G) peaked at 1946 MB. 2x 1748 MB is 3496 MB, so 3584m; 3G fits only a peak under 1.5 GB. Back to 3G when #1026 bounds the TestLayers batches.
-val gameTestHeap = "-Xmx3584m"
+// Server GameTest heap (#541, #805, #807, #816, #957, #1026). CI died of OutOfMemoryError at 2G with peaks of 1.23 to 1.45 GB (#805), so keep the
+// heap at 2x the measured peak or more, and re-measure when the suite grows by a tenth, a test adds a tall world to a campaign environment, or a
+// batch cap (TestBatches) rises. Method: a forced GC every 1.5 s (jcmd GC.class_histogram) over a full run. Mechanisms: ChunkMapUnloadMixin,
+// ChunkMapSaveMixin, FarChunks.force, CampaignEnvironments, TestBatches.
+// Measured 2026-11-22 (1479 tests, 4 vCPU, 3 runs at 3G with the caps): peaks of 1250, 1352 and 1365 MB. Batches of 50 peaked at 1.5 to 1.7 GB.
+val gameTestHeap = "-Xmx3072m"
 addVmArgToRun("gameTest", gameTestHeap)
 
-// Client GameTest heap, 3G (the default is a quarter of RAM). The suite's live set after a forced collection (HeapHistogram, at the start of each
-// class) was 1.35 GB at the last of 69 classes (WorldLoadWaitClientTest; CI 4 vCPU, run 45062159956, passing), so 3G is 2.2 times it, and the
-// live set still grows by about 20 MB a class: the dedicated servers a test starts (TwoPlayerServer, CampaignWorldClientTest) stay on the heap
-// with their 6 levels (#914). Do not raise the heap for it; fix #914, and re-measure when the suite grows by a tenth. Two of these JVMs plus
-// 1.5 GB of native memory each fit a 16 GB Mac, so the default two client slots stay. The run logs its collections (-Xlog:gc,
-// build/client-gc.log); the client-gametest action prints the peak and the live set from it.
+// Client GameTest heap, 3G (the default is a quarter of RAM). The suite's live set after a full collection (CI 4 vCPU) was 1.35 GB at the last
+// of 69 classes by the per-class histogram (HeapHistogram; run 45062159956, passing) and up to 1.93 GB after a full collection mid-suite by the
+// GC log (run 45090031870, head 464c91b6, 70 full collections, peak before a collection 3070 MB), so 3G is 1.6 to 2.2 times it. The live set still grows by about
+// 20 MB a class: the dedicated servers a test starts (TwoPlayerServer, CampaignWorldClientTest) stay on the heap with their 6 levels (#914).
+// Do not raise the heap for it; fix #914, and re-measure when the suite grows by a tenth. Two of these JVMs plus 1.5 GB of native memory each
+// fit a 16 GB Mac, so the default two client slots stay. The run logs its collections (-Xlog:gc, build/client-gc.log); the client-gametest
+// action prints the peak and the live set from it.
 val clientGameTestHeap = "-Xmx3G"
 addVmArgToRun("clientGameTest", clientGameTestHeap)
 addVmArgToRun("clientGameTest", "-Xlog:gc:file=" + layout.buildDirectory.file("client-gc.log").get().asFile.path + ":uptime")

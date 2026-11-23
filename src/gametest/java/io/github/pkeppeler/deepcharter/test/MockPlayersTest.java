@@ -337,9 +337,12 @@ public class MockPlayersTest {
         });
     }
 
-    /** A finished test lets go of its mock player (#656). Runs with the two probes above: filter the class, not one test. */
+    /**
+     * A finished test lets go of its mock player (#656). Runs with the probes above: filter the class, not one test. Its name sorts after
+     * theirs, so a batch boundary in the class puts the probes in its batch or an earlier one, never a later one.
+     */
     @GameTest(maxTicks = 200)
-    public void finishedTestDoesNotRetainItsMock(GameTestHelper helper) {
+    public void theRetentionProbesLeaveNoMockBehindOnceTheirTestsEnd(GameTestHelper helper) {
         helper.succeedWhen(() -> {
             List<WeakReference<ServerPlayer>> respawned = RESPAWN_PROBE.get();
             WeakReference<ServerPlayer> first = PROBE.get();

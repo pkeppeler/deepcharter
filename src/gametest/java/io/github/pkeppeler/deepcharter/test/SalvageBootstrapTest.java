@@ -372,7 +372,7 @@ public class SalvageBootstrapTest {
                 + (double) (a.getZ() - b.getZ()) * (a.getZ() - b.getZ());
     }
 
-    @GameTest(environment = CampaignEnvironments.B, dimension = "deepcharter:campaign_sample", maxTicks = MAX_TICKS)
+    @GameTest(environment = CampaignEnvironments.C, dimension = SAMPLE, maxTicks = MAX_TICKS)
     public void stalksGrowOnTheFloorsOfLayerOneCaves(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         FarChunks.whenLoaded(helper, BlockSurvey.area(level, 6), () -> {
