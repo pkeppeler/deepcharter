@@ -11,8 +11,10 @@ package io.github.pkeppeler.deepcharter.pod;
  * @param catchUpTicks  a gap is closed at no less than one share of this many ticks, so a large gap closes faster than {@code catchUp}
  *                      allows and the pace is continuous in the gap, with no cliff
  * @param coastTicks    ticks a pod keeps going at its reported speed with no move to follow, so a late server draws a pod that
- *                      keeps moving, not one that freezes and lunges; it never draws more than {@code coastTicks} times the speed past
- *                      where the server put the pod
+ *                      keeps moving, not one that freezes and lunges; it never draws more than {@code coastTicks - 1 + coastTailShare} times the speed
+ *                      past where the server put the pod
+ * @param coastTailShare the share of its speed the last coast tick draws: a server one tick later than the full-speed coast slows the
+ *                      pod instead of stopping it dead (#1112). Above the 0.5 floor of a steady tick in {@code PodDriveSmoothClientTest}
  * @param settleDelayTicks ticks with no move, while the server still reports the pod moving, before a pod that coasted too far goes
  *                      back to the server's last position: a stall that long means the pod has stopped there (a pin, a tow, a world
  *                      change), while a shorter one is a late server whose next move is the real answer, and going back first would
@@ -27,8 +29,9 @@ public record PodGlideTuning(
         double catchUp,
         int catchUpTicks,
         int coastTicks,
+        double coastTailShare,
         int settleDelayTicks,
         double settleShare,
         double snapGap) {
-    public static final PodGlideTuning DEFAULT = new PodGlideTuning(2, 1.35, 12, 2, 10, 0.2, 16.0);
+    public static final PodGlideTuning DEFAULT = new PodGlideTuning(2, 1.35, 12, 3, 0.6, 10, 0.15, 16.0);
 }

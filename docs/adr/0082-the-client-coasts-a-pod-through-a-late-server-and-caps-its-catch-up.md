@@ -49,3 +49,12 @@ At the stock speed 0.2, in `PodDriveSmoothClientTest`:
 
 - The pod's client copy holds three counters and a direction; the server's copy holds nothing.
 - New pod tunables that only affect how the client draws a pod go in `PodGlideTuning`.
+
+## Amendment: the coast has a tail, and a coasted pod does not crawl (#1112)
+
+Two causes, both in the tick after a stall. (1) A moveless stretch of 4 ticks was the coast's whole window (2 ticks of the glide, then 2 of coast); the tall world's server ticks (#841) run long, so a 3-tick stall plus the server's own lateness reached 5 and the pod stood for a tick. (2) A pod that had coasted sat almost on the next move's target, and the glide covered half of that small gap (0.135 blocks, so 0.0675) in the tick, while the server reported 0.2: a crawl. The 0.0675 is that value, and it is what the three CI failures (#897, #1000, #1095) showed against the 0.1 floor in `PodDriveSmoothClientTest`.
+
+- `coastTicks` is 3 and the last coast tick draws only `coastTailShare` (0.6) of the speed: a server one tick later than before slows the pod to 0.12 a tick instead of stopping it dead. The window is 5 moveless ticks, full speed for 4 of them.
+- While the server reports the pod moving, a glide tick covers at least that speed, or the whole gap when it is smaller; the catch-up cap still applies, so there is no lunge.
+- A stall that hides a stop draws the pod up to `coastTicks - 1 + coastTailShare` (2.6) x speed (0.52 blocks) past it, not 0.40. `settleShare` is 0.15, so the way back stays at 0.02 a frame at most, under half the frame's speed.
+- A stall longer than 5 ticks still stands the pod for the rest of it. A 5-tick drive (the lagging server) holds the steady floor.
