@@ -1,4 +1,7 @@
 {
+  "block.deepcharter.basalt_core": "Basalt",
+  "block.deepcharter.columnar_basalt": "Columnar Basalt",
+  "block.deepcharter.glowcap": "Glowcap",
   "block.deepcharter.grained_crust": "Grained Crust",
   "block.deepcharter.green_shale": "Green Shale",
   "block.deepcharter.green_shale_rubble": "Green Shale Rubble",

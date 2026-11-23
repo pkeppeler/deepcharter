@@ -21,6 +21,8 @@ import java.util.Arrays;
  * @param grainSqueezeHull  hull a pod that is neither moving nor drilling loses to each pulse while it touches the grained crust
  * @param grainSqueezeDamage health a player on foot loses to each pulse while touching the grained crust
  * @param grainSkateHeatPerSecond hull heat a pod takes each second its drill skates sideways across the grain, before a radiator
+ * @param glowcapLight      the block light of a glowcap, layer 3's glowing fungus (#972), read once when the block is registered: a small
+ *                          light, so the fungus glows and the caverns stay dark (art direction: small things glow)
  */
 public record LayerTuning(
         int seaLevel,
@@ -36,10 +38,14 @@ public record LayerTuning(
         int grainPulseTicks,
         float grainSqueezeHull,
         float grainSqueezeDamage,
-        float grainSkateHeatPerSecond) {
-    public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f);
+        float grainSkateHeatPerSecond,
+        int glowcapLight) {
+    public static final LayerTuning DEFAULT = new LayerTuning(63, 3.28, 3, 2, 4, 384, 24, 56, 10f, 15, 100, 5f, 4f, 4f, 6);
 
     public LayerTuning {
+        if (glowcapLight < 0 || glowcapLight > 15) {
+            throw new IllegalArgumentException("glowcapLight is a block light, 0 to 15, got " + glowcapLight);
+        }
         if (grainPulseTicks < 2) {
             throw new IllegalArgumentException("grainPulseTicks must be at least 2, got " + grainPulseTicks);
         }

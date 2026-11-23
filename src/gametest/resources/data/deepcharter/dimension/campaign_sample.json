@@ -147,6 +147,15 @@
             "deepcharter:shift_change",
             "deepcharter:prospectors_run"
           ]
+        },
+        {
+          "min_y": -768,
+          "height": 256,
+          "biomes": [
+            "deepcharter:garden",
+            "deepcharter:spore_fields",
+            "deepcharter:quiet"
+          ]
         }
       ],
       "unbuilt": "deepcharter:unbuilt_depth"

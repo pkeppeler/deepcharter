@@ -18,8 +18,9 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
 /**
- * Blocks of the layer feature: the breach crust, and the rock of layers 1 and 2 with its rubble. Their looks (ten textures of the rock, two of the
- * rubble) are blockstate variants in the resource pack, written by {@code tools/layer_concepts/make.py}.
+ * Blocks of the layer feature: the breach crust, the rock of layers 1 and 2 with its rubble, and the basalt of layer 3. Their looks (ten textures of
+ * the rock, two of the rubble, six columns of the basalt) are blockstate variants in the resource pack, written by
+ * {@code tools/layer_concepts/make.py}.
  */
 public final class LayerBlocks {
     private static final Identifier BREACH_CRUST_ID =
@@ -64,6 +65,34 @@ public final class LayerBlocks {
     public static final Block PACKED_SHALE = registerBlock(id("packed_shale"), LayerBlocks::rock);
     /** The grey-green rock of layer 2, which the layer's noise settings fill the ground with. */
     public static final Block GREEN_SHALE = registerBlock(id("green_shale"), LayerBlocks::rock);
+    /**
+     * The dark basalt of layer 3 (#972), which the noise settings fill its ground with and the zone fill turns into ore and hazards: a plain cube,
+     * the rock behind the columns that line every face open to the caverns (#504).
+     */
+    public static final Block BASALT_CORE = registerBlock(id("basalt_core"), LayerBlocks::rock);
+    /**
+     * The columnar basalt of layer 3 (#504): a hexagonal column that lines each face of the basalt open to the caverns
+     * ({@link io.github.pkeppeler.deepcharter.layer.gen.AirFaceLiningFeature}). The column does not fill its cell, so it does not occlude: the
+     * dark core behind shows through its corners, and its flank faces take the light of their own cell.
+     */
+    public static final Block COLUMNAR_BASALT = registerBlock(
+            id("columnar_basalt"),
+            key -> new Block(BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .strength(1.5F, 6.0F)
+                    .sound(SoundType.BASALT)
+                    .requiresCorrectToolForDrops()
+                    .noOcclusion()));
+    /** The cold-glowing fungus of layer 3's floors (#972), its natural light. */
+    public static final Block GLOWCAP = registerBlock(
+            id("glowcap"),
+            key -> new GlowcapBlock(BlockBehaviour.Properties.of()
+                    .setId(key)
+                    .instabreak()
+                    .sound(SoundType.FUNGUS)
+                    .noCollision()
+                    .noOcclusion()
+                    .lightLevel(state -> LayerTuning.DEFAULT.glowcapLight())));
     /** Broken rock of layer 1, for the rubble heaps of its formation. */
     public static final Block PACKED_SHALE_RUBBLE = registerBlock(id("packed_shale_rubble"), LayerBlocks::rubble);
     /** Broken rock of layer 2, for the rubble heaps of its formation. */
@@ -113,9 +142,8 @@ public final class LayerBlocks {
         return switch (layer) {
             case 1 -> PACKED_SHALE;
             case 2 -> GREEN_SHALE;
-            default ->
-                throw new IllegalStateException(
-                        "Layer " + layer + " has no rock block yet (layer 3 waits for M3, #504)");
+            case 3 -> BASALT_CORE;
+            default -> throw new IllegalStateException("Layer " + layer + " has no rock block yet");
         };
     }
 
