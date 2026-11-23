@@ -60,14 +60,17 @@ public class ThrownKitTest {
     private static final RepairTuning REPAIR = RepairTuning.DEFAULT;
     /** Ticks a throw may take to land: a flat throw is in the air about 12 ticks; the rest is a margin for a loaded runner. */
     private static final int LAND_BUDGET_TICKS = 80;
-    /** Ticks for the light of a block to spread through a sealed room, or to go out of it: slow on a loaded runner. */
-    private static final int LIGHT_BUDGET_TICKS = 200;
     /** Ticks either side of a scheduled end at which the end is checked: a scheduled block tick is not exact to the tick. */
     private static final int SLACK_TICKS = 6;
 
     private static final int MAX_TICKS = FarChunks.AWAIT_BUDGET_TICKS + 600;
-    /** The flare burns this long in the tests that watch it go out, which is far under the shipped 90 seconds. */
-    private static final int SHORT_BURN_TICKS = 120;
+    /**
+     * The flare burns this long in the test that watches it go out: long enough that a light that takes a second or two of wall clock to settle
+     * is seen while the flare burns (a waiting tick sleeps {@link FarChunks#POLL_MILLIS}), short enough to wait out.
+     */
+    private static final int SHORT_BURN_TICKS = 1200;
+    /** The flare burns longer than any wait under a {@link FarChunks.Deadline} can last, in the test that waits for its light; the burn is {@code SHORT_BURN_TICKS}' and the pacing test's. */
+    private static final int OUTLASTING_BURN_TICKS = FarChunks.AWAIT_BUDGET_TICKS * FarChunks.CEILING_FACTOR;
 
     private static final int USED_UP_X = 7008;
     private static final int IN_POD_X = 7072;
@@ -88,6 +91,7 @@ public class ThrownKitTest {
     private static final int PODS_X = 8160;
     private static final int ROOF_CREW_X = 8224;
     private static final int ROOF_STRANGER_X = 8288;
+    private static final int BURNS_OUT_X = 8352;
     /** A batch of its own with the PvP rule off: the rule is the server's, so a test that turns it off cannot share a batch with one that needs it on. */
     private static final String PVP_OFF = "deepcharter-test:pvp_off";
 
@@ -222,16 +226,93 @@ public class ThrownKitTest {
         });
     }
 
-    @GameTest(maxTicks = MAX_TICKS + 2 * LIGHT_BUDGET_TICKS)
-    public void aFlareLightsTheDarkAroundItThenBurnsOut(GameTestHelper helper) {
+    /**
+     * The light is the engine's, on its own thread, so it is awaited on a wall clock, and a burn is game time: the flare keeps its shipped light and
+     * reach but burns past the wait, so a slow engine cannot fail this test by the flare going out. How long the shipped flare burns is
+     * {@code ThrownKitTuning}'s and {@link #aFlareBurnsOutAndItsLightGoesWithIt}'s.
+     */
+    @GameTest(maxTicks = MAX_TICKS + FarChunks.AWAIT_BUDGET_TICKS)
+    public void aFlareLightsTheDarkAroundIt(GameTestHelper helper) {
+        ThrownKitTuning tuning = withFlare(OUTLASTING_BURN_TICKS);
+        int litBlockLight = CreatureTuning.DEFAULT.litBlockLight();
+        @Nullable BlockPos[] landed = {null};
+        FarChunks.Deadline deadline = FarChunks.deadline();
+        ThrowRoom.start(
+                helper,
+                LIGHT_X,
+                room -> {
+                    expectDark(helper, room.level(), room.cell(0, 0, 0), "before the throw");
+                    throwIt(helper, room, Consumable.THROWN_FLARE, tuning);
+                },
+                room -> {
+                    ServerLevel level = room.level();
+                    if (landed[0] == null) {
+                        landed[0] = room.flare();
+                        expect(
+                                helper,
+                                landed[0] != null || room.ticks() <= LAND_BUDGET_TICKS,
+                                "the flare never landed");
+                        return;
+                    }
+                    BlockPos flare = landed[0];
+                    Vec3 centre = Vec3.atCenterOf(flare);
+                    BlockPos nearby = flare.offset(4, 0, 0);
+                    expect(
+                            helper,
+                            level.getBlockState(flare).is(RepairRegistry.FLARE_LIGHT),
+                            "the flare went out early");
+                    expect(helper, DrawSources.litByFlare(level, centre), "a burning flare lights its own place");
+                    double reach = DEFAULT.flare().keepOffBlocks();
+                    expect(
+                            helper,
+                            DrawSources.litByFlare(level, centre.add(reach - 1, 0, 0)),
+                            "a place within the flare's reach is lit");
+                    expect(
+                            helper,
+                            !DrawSources.litByFlare(level, centre.add(reach + 2, 0, 0)),
+                            "a place beyond the flare's reach is not lit");
+                    boolean lit = level.getBrightness(LightLayer.BLOCK, flare) >= litBlockLight
+                            && level.getBrightness(LightLayer.BLOCK, nearby) >= litBlockLight;
+                    deadline.await(
+                            helper,
+                            level,
+                            lit,
+                            () -> "the flare never lit the dark round it, light at the flare is "
+                                    + level.getBrightness(LightLayer.BLOCK, flare));
+                    if (!lit) {
+                        return;
+                    }
+                    BoundingBox box = new BoundingBox(
+                            flare.getX() - 6,
+                            flare.getY(),
+                            flare.getZ() - 6,
+                            flare.getX() + 6,
+                            flare.getY() + 2,
+                            flare.getZ() + 6);
+                    int expected = BlockLightOracle.expected(level, box).at(flare);
+                    expect(
+                            helper,
+                            expected == DEFAULT.flare().lightLevel()
+                                    && level.getBrightness(LightLayer.BLOCK, flare) == expected,
+                            "the blocks give the flare's light %d at the flare, stored is %d",
+                            expected,
+                            level.getBrightness(LightLayer.BLOCK, flare));
+                    helper.succeed();
+                });
+    }
+
+    @GameTest(maxTicks = MAX_TICKS + FarChunks.AWAIT_BUDGET_TICKS + FarChunks.AWAIT_BUDGET_TICKS)
+    public void aFlareBurnsOutAndItsLightGoesWithIt(GameTestHelper helper) {
         ThrownKitTuning tuning = withFlare(SHORT_BURN_TICKS);
         int litBlockLight = CreatureTuning.DEFAULT.litBlockLight();
         @Nullable BlockPos[] landed = {null};
         int[] landedAt = {0};
-        boolean[] checkedLight = {false};
+        boolean[] lightSeen = {false};
+        FarChunks.Deadline lit = FarChunks.deadline();
+        FarChunks.Deadline[] dark = {null};
         ThrowRoom.start(
                 helper,
-                LIGHT_X,
+                BURNS_OUT_X,
                 room -> {
                     expectDark(helper, room.level(), room.cell(0, 0, 0), "before the throw");
                     throwIt(helper, room, Consumable.THROWN_FLARE, tuning);
@@ -250,55 +331,42 @@ public class ThrownKitTest {
                     BlockPos flare = landed[0];
                     int since = room.ticks() - landedAt[0];
                     boolean burning = level.getBlockState(flare).is(RepairRegistry.FLARE_LIGHT);
-                    Vec3 centre = Vec3.atCenterOf(flare);
-                    BlockPos nearby = flare.offset(4, 0, 0);
                     if (since < SHORT_BURN_TICKS - SLACK_TICKS) {
-                        expect(helper, burning, "the flare went out %d ticks after landing, early", since);
-                        expect(helper, DrawSources.litByFlare(level, centre), "a burning flare lights its own place");
-                        double reach = tuning.flare().keepOffBlocks();
                         expect(
                                 helper,
-                                DrawSources.litByFlare(level, centre.add(reach - 1, 0, 0)),
-                                "a place within the flare's reach is lit");
-                        expect(
+                                burning,
+                                "the flare went out %d ticks after landing, before its burn of %d",
+                                since,
+                                SHORT_BURN_TICKS);
+                    }
+                    if (!lightSeen[0]) {
+                        boolean lightIsOn = level.getBrightness(LightLayer.BLOCK, flare) >= litBlockLight;
+                        lit.await(
                                 helper,
-                                !DrawSources.litByFlare(level, centre.add(reach + 2, 0, 0)),
-                                "a place beyond the flare's reach is not lit");
-                        if (!checkedLight[0]
-                                && level.getBrightness(LightLayer.BLOCK, flare) >= litBlockLight
-                                && level.getBrightness(LightLayer.BLOCK, nearby) >= litBlockLight) {
-                            BoundingBox box = new BoundingBox(
-                                    flare.getX() - 6,
-                                    flare.getY(),
-                                    flare.getZ() - 6,
-                                    flare.getX() + 6,
-                                    flare.getY() + 2,
-                                    flare.getZ() + 6);
-                            int expected = BlockLightOracle.expected(level, box).at(flare);
-                            expect(
-                                    helper,
-                                    expected == tuning.flare().lightLevel()
-                                            && level.getBrightness(LightLayer.BLOCK, flare) == expected,
-                                    "the blocks give the flare's light %d at the flare, stored is %d",
-                                    expected,
-                                    level.getBrightness(LightLayer.BLOCK, flare));
-                            checkedLight[0] = true;
+                                level,
+                                lightIsOn || !burning,
+                                () -> "the flare never lit its place while it burned");
+                        if (!lightIsOn) {
+                            expect(helper, burning, "the flare burnt out before its light was ever seen");
+                            return;
                         }
-                    } else if (since > SHORT_BURN_TICKS + SLACK_TICKS) {
-                        expect(helper, checkedLight[0], "the flare never lit the dark round it while it burned");
-                        expect(helper, !burning, "the flare still burns %d ticks after landing", since);
-                        expect(
-                                helper,
-                                !DrawSources.litByFlare(level, centre),
-                                "a burnt out flare still lights its place");
-                        if (level.getBrightness(LightLayer.BLOCK, flare) == 0) {
-                            helper.succeed();
-                        } else {
-                            expect(
-                                    helper,
-                                    since < SHORT_BURN_TICKS + LIGHT_BUDGET_TICKS,
-                                    "the light stayed after the flare went out");
-                        }
+                        lightSeen[0] = true;
+                    }
+                    if (since <= SHORT_BURN_TICKS + SLACK_TICKS) {
+                        return;
+                    }
+                    expect(helper, !burning, "the flare still burns %d ticks after landing", since);
+                    expect(
+                            helper,
+                            !DrawSources.litByFlare(level, Vec3.atCenterOf(flare)),
+                            "a burnt out flare still lights its place");
+                    if (dark[0] == null) {
+                        dark[0] = FarChunks.deadline();
+                    }
+                    boolean gone = level.getBrightness(LightLayer.BLOCK, flare) == 0;
+                    dark[0].await(helper, level, gone, () -> "the light stayed after the flare went out");
+                    if (gone) {
+                        helper.succeed();
                     }
                 });
     }
