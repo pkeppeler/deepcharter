@@ -491,7 +491,12 @@ public class RetainedTest {
                 helper.succeed();
             }
         });
-        FarChunks.awaitEntityTicking(helper, level, origin, () -> made[0] = Arena.build(helper, level, origin, false));
+        // The treads drill through the arena's west wall and on, into the chunk beyond it (#1089).
+        FarChunks.awaitAllEntityTicking(
+                helper,
+                level,
+                List.of(origin, origin.west(16)),
+                () -> made[0] = Arena.build(helper, level, origin, false));
     }
 
     /**
