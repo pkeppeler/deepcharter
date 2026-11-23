@@ -81,7 +81,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
 
     /**
      * A short stall and the server's own lateness on top of it (#1112): the tall world's server ticks run long enough to add two, and the
-     * pod's coast and its tail cover it, so the drawn pod never stands.
+     * pod's coast and its tail cover it with a tick to spare, so the drawn pod never stands.
      */
     private static final int LAGGED_STALL_TICKS = 5;
 

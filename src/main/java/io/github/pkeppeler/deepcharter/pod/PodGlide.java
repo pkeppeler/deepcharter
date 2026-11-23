@@ -119,8 +119,10 @@ final class PodGlide extends AbstractInterpolationHandler {
             double pace = Math.max(speed, PodTuning.DEFAULT.movement().horizontalSpeed()) * tuning.catchUp();
             // A pod that coasted is nearly on its next target, and a share of that small gap would crawl for a tick:
             // while the
-            // server reports the pod moving, a tick covers at least that speed (or the whole gap, if it is smaller).
-            double flow = moving ? speed : 0;
+            // server reports the pod moving, a tick covers at least that speed (or the whole gap, if it is smaller). A
+            // pod
+            // that has not coasted trails its target by design, and keeps the share.
+            double flow = moving && coastDirection != null ? speed : 0;
             step = Math.min(Math.max(distance * share, flow), Math.max(pace, distance / tuning.catchUpTicks()));
         }
         boolean arrives = distance <= step + ARRIVED;
@@ -129,6 +131,13 @@ final class PodGlide extends AbstractInterpolationHandler {
         entity.setXRot((float) Mth.lerp(share, entity.getXRot(), target.xRot()));
         remaining = Math.max(0, remaining - 1);
         if (arrives) {
+            if (coastDirection != null) {
+                // The floor ran a coasted pod onto its target early: finish the turn and let it coast on, not stand out
+                // the glide.
+                entity.setYRot(target.yRot());
+                entity.setXRot(target.xRot());
+                remaining = 0;
+            }
             coastDirection = null;
             snapping = false;
         }

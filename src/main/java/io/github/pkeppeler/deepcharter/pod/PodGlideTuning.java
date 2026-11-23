@@ -33,5 +33,5 @@ public record PodGlideTuning(
         int settleDelayTicks,
         double settleShare,
         double snapGap) {
-    public static final PodGlideTuning DEFAULT = new PodGlideTuning(2, 1.35, 12, 3, 0.6, 10, 0.15, 16.0);
+    public static final PodGlideTuning DEFAULT = new PodGlideTuning(2, 1.35, 12, 4, 0.6, 10, 0.12, 16.0);
 }
