@@ -346,7 +346,10 @@ public class ThrownKitTest {
                                 level,
                                 lightIsOn || !burning,
                                 () -> "the flare never lit its place while it burned");
-                        expect(helper, lightIsOn, "the flare burnt out before its light was ever seen");
+                        if (!lightIsOn) {
+                            expect(helper, burning, "the flare burnt out before its light was ever seen");
+                            return;
+                        }
                         lightSeen[0] = true;
                     }
                     if (since <= SHORT_BURN_TICKS + SLACK_TICKS) {
