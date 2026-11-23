@@ -5,7 +5,8 @@
 # Per PR: wait until no workflow run for the head is unfinished, run the gate, then
 #   - PR already MERGED (checked first and after every refusal): done, skipped
 #   - refusal carrying the "[stale-base]" marker (stale base): re-run the whole runs holding the head's
-#     newest non-skipped build, tool-tests and client-gametest jobs (see rerun_ci; the PR's state and head are never touched), sleep, wait for CI again, retry
+#     newest non-skipped build, tool-tests and client-gametest jobs (see rerun_ci; the PR's state and head are
+#     never touched), sleep, wait for CI again, retry
 #     (up to MERGE_QUEUE_STALE_RETRIES, default 3). No such job for the sha, or a refused re-run, stops the queue
 #   - refusal "mergeable: UNKNOWN": sleep, retry (up to MERGE_QUEUE_UNKNOWN_RETRIES, default 4)
 #   - any other refusal: stop the queue and print the reason
@@ -136,6 +137,8 @@ rerun_ci() {
   for target in "CI|build|0" "CI|tool-tests|0" "Client tests|client-gametest|1"; do
     IFS='|' read -r workflow job optional <<<"$target"
     hit=
+    # A whole rerun re-decides client-changes against live main: if the PR no longer trips ci-client-needed.sh,
+    # client-gametest is skipped on the rerun and the gate keeps reading the older stale run (stops at the cap).
     # The API lists newest first. A skipped run (a label event adds one) has only skipped jobs. An unfinished
     # job has no conclusion, so it counts as not skipped.
     while IFS=$'\t' read -r run_id run_status; do
