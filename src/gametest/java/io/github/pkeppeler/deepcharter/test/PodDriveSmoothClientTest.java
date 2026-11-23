@@ -171,7 +171,12 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             boolean climbing,
             boolean steady,
             boolean wall,
-            @Nullable Late late) {}
+            @Nullable Late late) {
+        /** A drive with the forward key held. */
+        static Drive forward(String name, int ticks, double speed, boolean steady, boolean wall, @Nullable Late late) {
+            return new Drive(name, List.of(options -> options.keyUp), FORWARD, ticks, speed, false, steady, wall, late);
+        }
+    }
 
     /**
      * A drive through a late server (#1041): where the stall begins and how long it lasts, when the keys are released ({@code -1} for
@@ -215,68 +220,44 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
             expectPinnedPodSettles(context, rig);
             PacketJitter.start();
             try {
+                drive(context, rig, Drive.forward("flat drive", FLAT_TICKS, flatSpeed, true, false, null));
                 drive(
                         context,
                         rig,
-                        new Drive(
-                                "flat drive",
-                                List.of(options -> options.keyUp),
-                                FORWARD,
-                                FLAT_TICKS,
-                                flatSpeed,
-                                false,
-                                true,
-                                false,
-                                null));
-                drive(
-                        context,
-                        rig,
-                        new Drive(
+                        Drive.forward(
                                 "flat drive through a short server stall",
-                                List.of(options -> options.keyUp),
-                                FORWARD,
                                 STALL_DRIVE_TICKS,
                                 flatSpeed,
-                                false,
                                 true,
                                 false,
                                 new Late(STALL_AT_TICK, SHORT_STALL_TICKS, -1, 0, true, true)));
                 drive(
                         context,
                         rig,
-                        new Drive(
+                        Drive.forward(
                                 "flat drive through a long server stall",
-                                List.of(options -> options.keyUp),
-                                FORWARD,
                                 STALL_DRIVE_TICKS,
                                 flatSpeed,
-                                false,
                                 false,
                                 false,
                                 new Late(STALL_AT_TICK, LONG_STALL_TICKS, -1, 0, true, true)));
                 drive(
                         context,
                         rig,
-                        new Drive(
+                        Drive.forward(
                                 "flat drive stopped during a server stall",
-                                List.of(options -> options.keyUp),
-                                FORWARD,
                                 STALL_DRIVE_TICKS,
                                 flatSpeed,
-                                false,
                                 false,
                                 false,
                                 new Late(STALL_AT_TICK, STOP_STALL_TICKS, STOP_RELEASE_TICK, 0, true, false)));
                 drive(
                         context,
                         rig,
-                        new Drive(
+                        Drive.forward(
                                 "drilling into a wall through a server stall",
-                                List.of(options -> options.keyUp),
-                                FORWARD,
                                 DRILL_TICKS,
                                 flatSpeed,
-                                false,
                                 false,
                                 true,
                                 new Late(WALL_STALL_AT_TICK, WALL_STALL_TICKS, -1, 0, false, false)));
@@ -306,19 +287,7 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
                                 false,
                                 false,
                                 null));
-                drive(
-                        context,
-                        rig,
-                        new Drive(
-                                "drilling into a wall",
-                                List.of(options -> options.keyUp),
-                                FORWARD,
-                                DRILL_TICKS,
-                                flatSpeed,
-                                false,
-                                false,
-                                true,
-                                null));
+                drive(context, rig, Drive.forward("drilling into a wall", DRILL_TICKS, flatSpeed, false, true, null));
             } finally {
                 PacketJitter.stop();
                 context.getInput().releaseKey(options -> options.keyUp);
@@ -399,35 +368,30 @@ public class PodDriveSmoothClientTest implements FabricClientGameTest {
         } finally {
             drive.keys().forEach(key -> context.getInput().releaseKey(key));
             two.server().runOnServer(server -> two.mock().releaseInput());
-            // The server still acts on the last input the real client sent, for the ticks it takes the release to reach
-            // it; a pod
-            // put on its start before that would drive on from the start.
+            // The server acts on the last input the client sent until the release reaches it; a pod put on its start
+            // before that would drive on from the start.
             context.waitTicks(INPUT_LAG_TICKS);
         }
         if (drive.wall()) {
             require(drilled[0], "The watched pod never drilled, so the drilling drive was not a drilling drive");
         }
-        if (late == null) {
-            for (Subject subject : List.of(pilot, watched)) {
-                expectSmooth(drive.name() + ", " + subject.name(), subject.frames(), drive);
+        if (late != null) {
+            require(inside[0] == 0, drive.name() + ": a pod was drawn inside a block in " + inside[0] + " frames");
+            if (late.stops()) {
+                context.waitTicks(SETTLE_AFTER_TICKS);
+                expectStopped(drive, late, rig, context, ownPod, watched);
+                return;
             }
-            return;
-        }
-        require(inside[0] == 0, drive.name() + ": a pod was drawn inside a block in " + inside[0] + " frames");
-        if (late.stops()) {
-            context.waitTicks(SETTLE_AFTER_TICKS);
-            expectStopped(drive, late, rig, context, ownPod, watched);
-            return;
         }
         for (Subject subject : List.of(pilot, watched)) {
             expectSmooth(drive.name() + ", " + subject.name(), subject.frames(), drive);
         }
-        if (late.recovers()) {
+        if (late != null && late.recovers()) {
             for (Subject subject : List.of(ownPod, watched)) {
                 expectProgress(drive.name() + ", " + subject.name(), subject.frames(), drive);
             }
         }
-        if (late.settles()) {
+        if (late != null && late.settles()) {
             context.waitTicks(SETTLE_AFTER_TICKS);
             expectSettled(drive.name(), rig, context);
         }

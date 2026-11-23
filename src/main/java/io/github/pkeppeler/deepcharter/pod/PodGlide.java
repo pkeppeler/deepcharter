@@ -83,8 +83,7 @@ final class PodGlide extends AbstractInterpolationHandler {
         Vec3 reported = entity.getDeltaMovement();
         boolean moving = reported.lengthSqr() > ARRIVED * ARRIVED;
         if (coasting) {
-            if (moving && coasted < tuning.coastTicks() && coast(reported)) {
-                coasted++;
+            if (coastOn(tuning, reported, moving)) {
                 return;
             }
             coasting = false;
@@ -93,9 +92,8 @@ final class PodGlide extends AbstractInterpolationHandler {
         double distance = gap.length();
         if (remaining > 0 || distance > ARRIVED) {
             glide(tuning, gap, distance, reported.length(), moving);
-        } else if (moving && coasted < tuning.coastTicks() && coast(reported)) {
+        } else if (coastOn(tuning, reported, moving)) {
             coasting = true;
-            coasted++;
         } else {
             coastDirection = null;
             active = false;
@@ -108,9 +106,8 @@ final class PodGlide extends AbstractInterpolationHandler {
         double step;
         if (coastDirection != null && gap.dot(coastDirection) < 0) {
             // The pod coasted past where the server put it. While the server still reports it moving and no move has
-            // come, a late
-            // server may yet say it went on: wait. Once it reports the pod still, or a move arrives, give the excess
-            // back.
+            // come, a late server may yet say it went on: wait. Once it reports the pod still, or a move arrives,
+            // give the excess back.
             if (moving && remaining == 0 && sinceMove < tuning.settleDelayTicks()) {
                 active = true;
                 return;
@@ -132,6 +129,15 @@ final class PodGlide extends AbstractInterpolationHandler {
             snapping = false;
         }
         active = true;
+    }
+
+    /** Coasts one tick if the server reports the pod moving and the coast has ticks left; false when the pod does not coast. */
+    private boolean coastOn(PodGlideTuning tuning, Vec3 reported, boolean moving) {
+        if (!moving || coasted >= tuning.coastTicks() || !coast(reported)) {
+            return false;
+        }
+        coasted++;
+        return true;
     }
 
     /** Draws the pod one more tick at its reported speed, short of any block; false when it cannot move at all. */
