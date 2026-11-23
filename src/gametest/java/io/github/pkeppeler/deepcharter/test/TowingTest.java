@@ -373,6 +373,54 @@ public class TowingTest {
     }
 
     /**
+     * The tower stands 2.5 in from the lip of a long ledge and the pod starts level with it 4.2 out, over the drop (the recorded
+     * scene of #1122). The hull's bottom corners meet the lip when the pod has dropped about 0.46, so the line is blocked well
+     * before the pod has dropped half a block: it must still drape over the lip, not be snapped onto its tower.
+     */
+    @GameTest(maxTicks = FarChunks.AWAIT_BUDGET_TICKS + 200)
+    public void aTowedPodOnALongLedgesLipHangsFromItAfterAShortDrop(GameTestHelper helper) {
+        ServerLevel level = TestLayers.level(helper, 1);
+        Vec3 start = skyRoom(level, SKY_X + 500);
+        BlockPos below = BlockPos.containing(start).below();
+        RoomCarver.carve(level, below.offset(-2, -2, -1), below.offset(10, 0, 1), Blocks.STONE.defaultBlockState());
+        double trail = TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE);
+        Vec3[] resting = {Vec3.ZERO};
+        towScene(
+                helper,
+                level,
+                columns(SKY_X + 500, SKY_X + 540, TOW_Z),
+                start,
+                start.add(-4.2, 0, 0),
+                step -> start,
+                (tower, towed, age) -> {
+                    requireNoWalls(helper, towed);
+                    double gap = tower.position().distanceTo(towed.position());
+                    if (gap < 0.9 * 4.2) {
+                        throw failure(
+                                helper,
+                                "on tick %s the towed pod is %s from its tower, a line of %s: it was snapped onto it",
+                                age,
+                                gap,
+                                trail);
+                    }
+                    if (age == 120) {
+                        resting[0] = towed.position();
+                    }
+                    if (age < 160) {
+                        return false;
+                    }
+                    if (tower.getY() - towed.getY() < 2.0) {
+                        throw failure(
+                                helper,
+                                "the towed pod should hang below the lip, it is %s below its tower",
+                                tower.getY() - towed.getY());
+                    }
+                    requireAtRest(helper, 120, resting[0], towed);
+                    return true;
+                });
+    }
+
+    /**
      * The pod hangs from the lip of the tower's ledge, then the tower drives away, far past a line's length. The line draped over the
      * lip runs out: the pod is hauled up and follows its tower, never thrown to the far side of the lip or beyond the line.
      */
