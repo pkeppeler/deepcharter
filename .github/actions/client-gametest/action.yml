@@ -85,10 +85,11 @@ runs:
           exit 1
         }
         deadline=$((SECONDS + 180))
-        # Passing runs on main-merged branches took 16.8 to 21.3 minutes (runs 45081951417, 45099883446, 45097523345,
-        # 45102149991); #841's tall world took 27.5 minutes (run 45062159956). $SECONDS starts after setup, and both callers set
-        # timeout-minutes: 60, which leaves room for setup, the post steps and the stop. Raise only together with both job
-        # limits. A stopgap: sharding is #1079.
+        # Client-gametest job durations (job completed_at minus started_at). Passing runs on main-merged branches:
+        # 16m47s (run 45081951417), 19m39s (45097523345), 19m53s (45099883446), 21m17s (45102149991). #841's tall
+        # world: 28m32s (run 45062159956). $SECONDS starts after setup, and both callers set timeout-minutes: 60,
+        # which leaves room for setup, the post steps and the stop. Raise only together with both job limits.
+        # A stopgap: sharding is #1079.
         max_seconds=3000
         while kill -0 "$gradle_pid" 2>/dev/null; do
           if grep -q 'Failed to create backend' "$log"; then
