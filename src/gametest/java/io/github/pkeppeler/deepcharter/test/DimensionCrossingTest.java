@@ -460,7 +460,8 @@ public class DimensionCrossingTest {
         Vec3 start = new Vec3(x, TestLayers.dimensionBand(one).minY() + START_HEIGHT, z);
         MockPlayer mock = MockPlayers.join(helper, "crossing-tower");
         PodEntity[] pods = new PodEntity[2];
-        // Wider than the line, so the towed pod's first place, the trail offset, is open.
+        // Wider than the line, so the towed pod's first place, the trail offset, is open: in solid rock trailSpot
+        // falls back to the tower's place.
         int gallery = (int) Math.ceil(TowTuning.DEFAULT.trailDistance(Chassis.MOLE, Chassis.MOLE)) + 2;
         staged(
                 helper,
@@ -477,8 +478,7 @@ public class DimensionCrossingTest {
                             helper,
                             mock.player().startRiding(pods[0], true, false),
                             "the mock could not board the tower");
-                    // The pocket's rows of air at the arrival, wide enough that the towed pod's trail spot is open
-                    // air: in solid rock trailSpot falls back to the tower's place.
+                    // The pocket's rows of air at the arrival.
                     BlockPos arrival = BlockPos.containing(
                             x, TestLayers.dimensionBand(two).maxY() - LayerTuning.DEFAULT.pocketHeight(), z);
                     RoomCarver.carve(
