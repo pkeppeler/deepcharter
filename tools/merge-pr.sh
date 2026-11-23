@@ -110,6 +110,7 @@ fi
 # A matrix job that never started (skipped, or cancelled by a newer run's concurrency group) is reported under its
 # unexpanded template name, `client-gametest-shard ${{ matrix.shard }}`: no real shard run ever supersedes it, so it is
 # dropped, not read as a failed check. The aggregate `client-gametest` still has to pass.
+# shellcheck disable=SC2016 # a literal template, not an expansion
 checks_full=$(grep $'\t' <<<"$run_lines" | grep -vF '${{' | LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n | awk -F'\t' '
   function flush() {
     if (name == "") return

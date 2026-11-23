@@ -472,6 +472,7 @@ refusal "game path, one shard cancelled, no aggregate" "client-gametest-shard 2 
 client_args "$(runs "${required_pass_specs[@]}" "client-gametest-shard 1:5:success" "client-gametest-shard 2:6:in_progress")" "$game"
 refusal "game path, one shard still running" "client-gametest-shard 2 (newest non-skipped run: in_progress)" "${client_vars[@]}"
 # A cancelled matrix job that never started keeps its template name; it must not refuse a passing suite.
+# shellcheck disable=SC2016 # a literal template, not an expansion
 client_args "$(runs "${required_pass_specs[@]}" "${cg_pass_specs[@]}" 'client-gametest-shard ${{ matrix.shard }}:7:cancelled')" "$game"
 run_script "${client_vars[@]}"
 exited "game path, passing shards beside a never-started cancelled matrix job merges" 0
